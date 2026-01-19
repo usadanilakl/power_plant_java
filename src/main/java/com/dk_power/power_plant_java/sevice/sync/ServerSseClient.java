@@ -249,7 +249,7 @@ public class ServerSseClient {
                 return;
             }
 
-            log.debug("SSE: Unknown event type '{}': {}", eventType, data)
+            log.debug("SSE: Unknown event type '{}': {}", eventType, data);
 
         } catch (Exception e) {
             log.error("Error processing SSE event '{}': {}", eventType, e.getMessage(), e);
