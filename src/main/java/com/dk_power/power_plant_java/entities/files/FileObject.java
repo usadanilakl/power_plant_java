@@ -110,17 +110,44 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
         folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
         return folder;
     }
-    public String buildFileLink(String extention){
+    /**
+     * Build file link for a specific extension WITHOUT modifying entity state.
+     * Use this when you need the path for a specific extension without changing the entity.
+     */
+    public String buildFileLink(String ext){
         if(fileType == null || fileType.getName()==null) return null;
         if(vendor == null || vendor.getName()==null) return null;
-        this.extension = extention;
+        // Don't modify this.extension - just compute and return the path
+        return baseLink+"/"+ext+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+ext;
+    }
+
+    /**
+     * Build file link for a specific extension AND update entity state.
+     * Use this when you intentionally want to change the entity's extension field.
+     */
+    public String buildFileLinkAndSetExtension(String ext){
+        if(fileType == null || fileType.getName()==null) return null;
+        if(vendor == null || vendor.getName()==null) return null;
+        this.extension = ext;
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
         return fileLink;
     }
 
+    /**
+     * Build folder path for a specific extension WITHOUT modifying entity state.
+     * Use this when you need the folder path without changing the entity.
+     */
+    public String buildFolder(String ext){
+        // Don't modify this.extension - just compute and return the path
+        return baseLink+"/"+ext+"/"+fileType.getName()+"/"+vendor.getName();
+    }
 
-    public String buildFolder(String extention){
-        this.extension = extention;
+    /**
+     * Build folder path for a specific extension AND update entity state.
+     * Use this when you intentionally want to change the entity's extension field.
+     */
+    public String buildFolderAndSetExtension(String ext){
+        this.extension = ext;
         folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
         return folder;
     }
