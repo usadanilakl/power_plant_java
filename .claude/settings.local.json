@@ -22,7 +22,8 @@
       "Bash(tsc:*)",
       "Bash(curl:*)",
       "Bash(tree:*)",
-      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 50\")"
+      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 50\")",
+      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 20\")"
     ]
   }
 }
