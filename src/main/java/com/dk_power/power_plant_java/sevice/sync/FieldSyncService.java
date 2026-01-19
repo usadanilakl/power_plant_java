@@ -549,6 +549,15 @@ public class FieldSyncService {
                 return false;
             }
 
+            // Skip OneToMany collections with mappedBy - these are non-owning side relationships
+            // that should be managed by the child entity's ManyToOne field, not synced directly.
+            // This prevents deserialization errors and maintains referential integrity.
+            if ("OneToMany".equals(change.getRelationshipType())) {
+                log.debug("Skipping OneToMany field {}.{} - managed by child entity",
+                    entity.getClass().getSimpleName(), change.getFieldName());
+                return false;
+            }
+
             field.setAccessible(true);
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
 

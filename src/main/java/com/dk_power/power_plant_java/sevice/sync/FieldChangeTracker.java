@@ -424,6 +424,16 @@ public class FieldChangeTracker {
         // Skip final fields
         if (Modifier.isFinal(field.getModifiers())) return false;
 
+        // Skip OneToMany collections with mappedBy - these are the non-owning side
+        // of the relationship and are managed by the child entity's ManyToOne field.
+        // Syncing these would cause deserialization errors and potential conflicts.
+        if (field.isAnnotationPresent(OneToMany.class)) {
+            OneToMany oneToMany = field.getAnnotation(OneToMany.class);
+            if (oneToMany.mappedBy() != null && !oneToMany.mappedBy().isEmpty()) {
+                return false;
+            }
+        }
+
         return true;
     }
 
