@@ -264,9 +264,20 @@ public class RfValueService {
         return categories.isEmpty() ? null : categories.get(0);
     }
 
-    private Category createCategory(String categoryName) {
-        String alias = Util.toCamelCase(categoryName);
-        Category category = new Category(categoryName);
+    private Category createCategory(String categoryNameOrAlias) {
+        // If input looks like camelCase (no spaces), use it as alias and convert to display name
+        // If input has spaces, use it as name and convert to camelCase for alias
+        String name;
+        String alias;
+        if (categoryNameOrAlias.contains(" ")) {
+            name = categoryNameOrAlias;
+            alias = Util.toCamelCase(categoryNameOrAlias);
+        } else {
+            // Input is likely an alias (camelCase) - use as-is for alias, convert to display name
+            alias = categoryNameOrAlias;
+            name = Util.camelCaseToDisplayName(categoryNameOrAlias);
+        }
+        Category category = new Category(name);
         category.setAlias(alias);
         return categoryRepo.save(category);
     }

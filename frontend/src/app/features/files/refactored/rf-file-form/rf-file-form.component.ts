@@ -347,28 +347,27 @@ export class RfFileFormComponent {
     const { nameWithoutExtension } = event;
     this.selectedFileName.set(nameWithoutExtension);
 
-    const currentEntity = this.entity();
-    let updatedEntity = { ...currentEntity };
-    let hasChanges = false;
+    // Build patch data for form fields based on toggle settings
+    // We patch the form directly instead of calling setSelectedItem to avoid
+    // recreating the form (which would clear the file input)
+    const patchData: any = {};
 
     // Add to file number array if toggle is enabled
     if (this.useFileNameAsFileNumber()) {
-      const currentFileNumbers = currentEntity.fileNumber || [];
-      // Only add if not already in the array
+      const currentFileNumbers = this.reactiveForm?.form?.get('fileNumber')?.value || [];
       if (!currentFileNumbers.includes(nameWithoutExtension)) {
-        updatedEntity.fileNumber = [...currentFileNumbers, nameWithoutExtension];
-        hasChanges = true;
+        patchData.fileNumber = [...currentFileNumbers, nameWithoutExtension];
       }
     }
 
     // Set file name if toggle is enabled
     if (this.useFileNameAsName()) {
-      updatedEntity.name = nameWithoutExtension;
-      hasChanges = true;
+      patchData.name = nameWithoutExtension;
     }
 
-    if (hasChanges) {
-      this.stateService.setSelectedItem(new FileDto(updatedEntity));
+    // Patch the form directly if we have changes
+    if (Object.keys(patchData).length > 0 && this.reactiveForm?.form) {
+      this.reactiveForm.form.patchValue(patchData);
     }
   }
 
@@ -376,15 +375,13 @@ export class RfFileFormComponent {
     this.useFileNameAsFileNumber.set(enabled);
 
     // If toggle is enabled and we have a selected file name, add it to file numbers
-    if (enabled && this.selectedFileName()) {
-      const currentEntity = this.entity();
-      const currentFileNumbers = currentEntity.fileNumber || [];
+    // Patch form directly to avoid recreating form (which would clear file input)
+    if (enabled && this.selectedFileName() && this.reactiveForm?.form) {
+      const currentFileNumbers = this.reactiveForm.form.get('fileNumber')?.value || [];
       if (!currentFileNumbers.includes(this.selectedFileName())) {
-        const updatedEntity = new FileDto({
-          ...currentEntity,
+        this.reactiveForm.form.patchValue({
           fileNumber: [...currentFileNumbers, this.selectedFileName()],
         });
-        this.stateService.setSelectedItem(updatedEntity);
       }
     }
   }
@@ -393,13 +390,11 @@ export class RfFileFormComponent {
     this.useFileNameAsName.set(enabled);
 
     // If toggle is enabled and we have a selected file name, update the name field
-    if (enabled && this.selectedFileName()) {
-      const currentEntity = this.entity();
-      const updatedEntity = new FileDto({
-        ...currentEntity,
+    // Patch form directly to avoid recreating form (which would clear file input)
+    if (enabled && this.selectedFileName() && this.reactiveForm?.form) {
+      this.reactiveForm.form.patchValue({
         name: this.selectedFileName(),
       });
-      this.stateService.setSelectedItem(updatedEntity);
     }
   }
 }
