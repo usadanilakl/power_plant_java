@@ -26,10 +26,20 @@ public class WebConfigurer implements WebMvcConfigurer {
     @Value("${project.root}")
     String projectRoot;
 
+    @Value("${files.relative.path}")
+    String filesRelativePath;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Map the profile-specific uploads folder to /uploads/** URL pattern
+        // This allows the frontend to use a consistent URL regardless of profile
+        String uploadsLocation = "file:./" + filesRelativePath + "/";
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:./uploads/");
+                .addResourceLocations(uploadsLocation);
+
+        // Also map the actual folder name for direct access (e.g., /uploads-dev/**)
+        registry.addResourceHandler("/" + filesRelativePath + "/**")
+                .addResourceLocations(uploadsLocation);
         // New configuration for Angular
 //        registry.addResourceHandler("/angular/**")
 //                .addResourceLocations("classpath:/static/angular/");

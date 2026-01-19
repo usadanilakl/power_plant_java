@@ -25,10 +25,13 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
     private final ValueService valueService;
     private final ElectricalPanelService electricalPanelService;
     private final FileReaderService fileReaderService;
+
+    @org.springframework.beans.factory.annotation.Value("${files.relative.path}")
+    private String filesRelativePath;
     @Override
     public void createElectricalPanelFileObjectsFromExcelList() {
-        List<Map<String, String>> fileMaps = excelReaderService.readExcelFile("uploads/pdf/Electrical Panel Schedule/Kiewit/LIST OF PANELS.xlsx");
-        List<File> files = fileReaderService.getFilesInFolderUsingFilesList("uploads/pdf/Electrical Panel Schedule/Kiewit");
+        List<Map<String, String>> fileMaps = excelReaderService.readExcelFile(filesRelativePath + "/pdf/Electrical Panel Schedule/Kiewit/LIST OF PANELS.xlsx");
+        List<File> files = fileReaderService.getFilesInFolderUsingFilesList(filesRelativePath + "/pdf/Electrical Panel Schedule/Kiewit");
         Value fileType = valueService.valueSetup("File Type", "Electrical Panel Schedule");
         Value vendor = valueService.valueSetup("Vendor", "Kiewit");
         Value system = valueService.valueSetup("System", "Electrical");
@@ -42,7 +45,7 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
             file.setFileType(fileType);
             file.setVendor(vendor);
             file.setSystem(system);
-            file.setBaseLink("uploads");
+            file.setBaseLink(filesRelativePath);
             file.setExtension("jpg");
             file.buildFolder();
             file.buildFileLink();
@@ -68,7 +71,7 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
 
     @Override
     public void createFileObjectsForPanelPictures() {
-        List<File> files = fileReaderService.getFilesInFolderUsingFilesList("uploads/jpg/Electrical Panel Schedule Picture/Kiewit");
+        List<File> files = fileReaderService.getFilesInFolderUsingFilesList(filesRelativePath + "/jpg/Electrical Panel Schedule Picture/Kiewit");
         Value fileType = valueService.valueSetup("File Type", "Electrical Panel Schedule Picture");
         Value vendor = valueService.valueSetup("Vendor", "Kiewit");
         Value system = valueService.valueSetup("System", "Electrical");
@@ -79,7 +82,7 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
             file.setFileType(fileType);
             file.setVendor(vendor);
             file.setSystem(system);
-            file.setBaseLink("uploads");
+            file.setBaseLink(filesRelativePath);
             file.setExtension("jpg");
             file.buildFolder();
             file.buildFileLink();

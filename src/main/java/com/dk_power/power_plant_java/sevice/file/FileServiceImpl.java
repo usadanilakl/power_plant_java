@@ -23,6 +23,7 @@ import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,9 @@ public class FileServiceImpl implements FileService {
     private final HtBreakerService htBreakerService;
     private final ExcelReaderService excelReaderService;
     private final DataDistributionService dataDistributionService;
+
+    @Value("${files.relative.path}")
+    private String filesRelativePath;
 
     public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService, HtPanelService htPanelService, ElectricalPanelService electricalPanelService, HtBreakerService htBreakerService, ExcelReaderService excelReaderService, DataDistributionService dataDistributionService) {
         this.fileRepo = fileRepo;
@@ -85,7 +89,7 @@ public class FileServiceImpl implements FileService {
             FileObject f = getFileByNumber(fileNumber);
             if(f==null && file.getName().contains(extension)){
                 f = new FileObject();
-                f.setBaseLink("uploads");
+                f.setBaseLink(filesRelativePath);
                 f.setExtension(extension);
                 f.setFileType(valueService.valueSetup("FileType",type));
                 f.setVendor(valueService.valueSetup("Vendor",vendor));
@@ -109,7 +113,7 @@ public class FileServiceImpl implements FileService {
             FileObject f = getFileByNumber(file.getName());
             if(f==null){
                 f = new FileObject();
-                f.setBaseLink("uploads");
+                f.setBaseLink(filesRelativePath);
                 f.setExtension(extension);
                 f.setFileType(valueService.valueSetup("FileType",type));
                 f.setVendor(valueService.valueSetup("Vendor",vendor));
@@ -139,7 +143,7 @@ public class FileServiceImpl implements FileService {
             FileObject f = getFileByNumber(fileNumber);
             if(f==null && file.getName().contains(extension)){
                 f = new FileObject();
-                f.setBaseLink("uploads");
+                f.setBaseLink(filesRelativePath);
                 f.setExtension(extension);
                 f.setFileType(valueService.valueSetup("FileType",type));
                 f.setVendor(valueService.valueSetup("Vendor",vendor));
@@ -194,7 +198,7 @@ public class FileServiceImpl implements FileService {
             FileObject f = getFileByNumber(fileNumber);
             if (f == null && file.getName().contains(extension)) {
                 f = new FileObject();
-                f.setBaseLink("uploads");
+                f.setBaseLink(filesRelativePath);
                 f.setExtension(extension);
                 f.setFileType(valueService.valueSetup("FileType", type));
                 f.setVendor(valueService.valueSetup("Vendor", vendor));
@@ -404,7 +408,7 @@ public class FileServiceImpl implements FileService {
         FileObject file = convertToEntity(transfer);
         if(file.getFileType()!=null)file.setFileType(valueService.valueSetup("File Type",transfer.getFileType().getName()));
         if(file.getVendor()!=null)file.setVendor(valueService.valueSetup("Vendor",file.getVendor().getName()));
-        file.setBaseLink("uploads");
+        file.setBaseLink(filesRelativePath);
         file.setExtension("jpg");
         file.buildFileLink();
         return save(file);

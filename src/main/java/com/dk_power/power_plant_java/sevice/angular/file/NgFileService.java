@@ -649,7 +649,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             FileObject f = getFileByNumber(fileNumber);
             if(f==null && file.getName().contains(extension)){
                 f = new FileObject();
-                f.setBaseLink("uploads");
+                f.setBaseLink(filesRelativePath);
                 f.setExtension(extension);
                 f.addExtension(extension);
                 f.setFileType(valueService.createValue("File Type",type));
