@@ -110,10 +110,10 @@ hs_err_pid*
 /.angular/cache/**
 
 # Spring Boot application properties
-/src/main/resources/application-*.properties
-/src/main/resources/application-*.yml
-!/src/main/resources/application.properties
-!/src/main/resources/application.yml
+#/src/main/resources/application-*.properties
+#/src/main/resources/application-*.yml
+#!/src/main/resources/application.properties
+#!/src/main/resources/application.yml
 
 # H2 database files
 *.db
