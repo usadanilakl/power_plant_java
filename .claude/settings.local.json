@@ -27,7 +27,8 @@
       "Bash(/home/dk-power/.nvm/versions/node/v22.12.0/bin/npm run build)",
       "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/npx ng build)",
       "Bash(export PATH=/home/dk-power/.nvm/versions/node/v22.20.0/bin:$PATH)",
-      "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/node:*)"
+      "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/node:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

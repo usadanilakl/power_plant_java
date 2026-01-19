@@ -641,7 +641,7 @@ public class FieldSyncService {
     }
 
     /**
-     * Save an incoming change to our log (mark as synced to us)
+     * Save an incoming change to our log (mark as synced to us and to server)
      */
     private void saveIncomingChange(FieldChange change) {
         if (change == null) return;
@@ -653,6 +653,9 @@ public class FieldSyncService {
 
         if (!exists) {
             change.addSyncedMachine(syncConfig.getMachineId());
+            // Also mark as synced to SERVER since this change came FROM the server
+            // This prevents the change from being sent back to the server in the next periodic sync
+            change.addSyncedMachine("SERVER");
             // Generate new ID for our copy
             change.setId(null);
             fieldChangeRepository.save(change);
