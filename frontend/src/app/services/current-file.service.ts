@@ -268,19 +268,19 @@ export class CurrentFileService {
      */
     updateMapByType(type: string, file: FileDto): void {
       const partualType = this.fileTypes.find(t => type.toLowerCase().includes(t.toLowerCase()));
-      if (!partualType) {
-          // Still notify listeners even if file type doesn't match predefined list
-          // This ensures UI updates for all file types
-          this.filesUpdtedSubject.next();
-          return;
-      }
-      const currentFilesByType = this.getFilesByType(partualType);
-      const updatedFilesByType = currentFilesByType.filter(f => f.id!== file.id);
+
+      // Always try to update the map with the file
+      // Use the matched partial type if found, otherwise use 'pid' as fallback
+      // This ensures files with non-standard types still appear somewhere in the UI
+      const targetType = partualType || 'pid';
+
+      const currentFilesByType = this.getFilesByType(targetType);
+      const updatedFilesByType = currentFilesByType.filter(f => f.id !== file.id);
       updatedFilesByType.push(file);
 
       const currentMap = this.fileMapByTypeSubject.getValue();
       const newMap = new Map(currentMap);
-      newMap.set(partualType, updatedFilesByType);
+      newMap.set(targetType, updatedFilesByType);
 
       this.fileMapByTypeSubject.next(newMap);
       this.filesUpdtedSubject.next();
