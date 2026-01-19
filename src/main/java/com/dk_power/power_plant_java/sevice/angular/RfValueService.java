@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.util.Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -264,8 +265,9 @@ public class RfValueService {
     }
 
     private Category createCategory(String categoryName) {
+        String alias = Util.toCamelCase(categoryName);
         Category category = new Category(categoryName);
-        category.setAlias(generateAlias(categoryName));
+        category.setAlias(alias);
         return categoryRepo.save(category);
     }
 

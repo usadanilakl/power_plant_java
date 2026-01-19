@@ -47,12 +47,21 @@ export class RfFileFormComponent {
   // Track the last entity ID we checked for drafts to prevent re-checking
   private lastCheckedEntityId = signal<number | null | undefined>(undefined);
 
-  // Reset draft check state when form opens
+  // File selection auto-fill state (must be declared before resetOnFormOpen effect)
+  useFileNameAsFileNumber = signal<boolean>(true);
+  useFileNameAsName = signal<boolean>(true);
+  selectedFileName = signal<string>('');
+
+  // Reset draft check state and file selection state when form opens
   private resetOnFormOpen = effect(() => {
     const isOpen = this.stateService.isFileFormOpen();
     if (isOpen) {
       // Reset when form opens so we check for drafts again
       this.lastCheckedEntityId.set(undefined);
+      // Reset file selection state to prevent stale values affecting new selections
+      this.selectedFileName.set('');
+      this.useFileNameAsFileNumber.set(true);
+      this.useFileNameAsName.set(true);
     }
   });
 
@@ -332,10 +341,6 @@ export class RfFileFormComponent {
   }
 
   //===========================FILE SELECTION AUTO-FILL===========================
-  useFileNameAsFileNumber = signal<boolean>(true);
-  useFileNameAsName = signal<boolean>(true);
-  selectedFileName = signal<string>('');
-
   @ViewChild(RfReactiveFormComponent) reactiveForm!: RfReactiveFormComponent;
 
   onFileSelected(event: { file: File; nameWithoutExtension: string }): void {
