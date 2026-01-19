@@ -145,6 +145,7 @@ Thumbs.db
 /src/main/resources/static/brady/**
 /uploads/**
 token.properties
+machine-id.properties
 
 /frontend/.angular/
 
