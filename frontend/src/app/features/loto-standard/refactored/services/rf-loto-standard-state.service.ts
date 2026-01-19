@@ -1,4 +1,4 @@
-import { Injectable, inject, DestroyRef, signal } from '@angular/core';
+import { Injectable, inject, DestroyRef, signal, NgZone } from '@angular/core';
 import {
   LotoStandardDto,
   LotoStandardFieldName,
@@ -11,6 +11,7 @@ import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { LotoStandardLocalStorageService } from './rf-loto-standard-local-storage.service';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
+import { SyncUpdateService, EntityUpdateEvent } from '../../../../services/sync/sync-update.service';
 
 @Injectable({
   providedIn: 'root',
@@ -20,6 +21,8 @@ export class RfLotoStandardStateService {
   private localStorage = inject(LotoStandardLocalStorageService);
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
+  private syncUpdateService = inject(SyncUpdateService);
+  private ngZone = inject(NgZone);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -58,6 +61,114 @@ export class RfLotoStandardStateService {
   constructor() {
     // Don't auto-load drafts on service initialization
     // Drafts will be loaded by the form component's effect when appropriate
+
+    // Subscribe to SSE sync updates for real-time reactivity
+    this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        this.handleSyncUpdate(event);
+      });
+  }
+
+  /**
+   * Handle sync update from SSE - reload the entity from server
+   * This is called when a LotoStandard is updated by server sync
+   */
+  private handleSyncUpdate(event: EntityUpdateEvent): void {
+    const entityId = event.entityId;
+
+    // Reload the entity from server to get fresh data
+    this.apiService.getLotoStandardById(entityId + '')
+      .pipe(
+        tap((response) => {
+          if (response.responseData) {
+            const updatedItem = LotoStandardDto.fromJson(response.responseData);
+            this.updateLotoStandardInList(updatedItem);
+
+            // Show a notification if the currently selected item was updated
+            const selectedItem = this.selectedItem();
+            if (selectedItem?.id === entityId) {
+              this.messageService.showInfo('This LOTO standard was updated from another machine');
+            }
+          }
+        }),
+        catchError((error) => {
+          console.error('Error reloading synced LOTO standard:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * Update a LOTO standard in the local list or add it if not present.
+   * Called automatically when an update event is received.
+   */
+  updateLotoStandardInList(updatedItem: LotoStandardDto): void {
+    if (!updatedItem.id) {
+      return;
+    }
+
+    // Ensure we run inside Angular zone for proper change detection
+    this.ngZone.run(() => {
+      const current = this.allLoadedLotoStandardsSubject.value;
+      const index = current.findIndex(ls => ls.id === updatedItem.id);
+
+      if (index >= 0) {
+        // Update existing item in the list - create new array with new object
+        const updated = [...current];
+        // Add a version marker to force cdkVirtualFor to re-render
+        (updatedItem as any)._version = Date.now();
+        updated[index] = updatedItem;
+        this.allLoadedLotoStandardsSubject.next(updated);
+      } else {
+        // Item not in current list - add it at the beginning
+        (updatedItem as any)._version = Date.now();
+        this.allLoadedLotoStandardsSubject.next([updatedItem, ...current]);
+      }
+
+      // Also update selectedItem if it's the same one being edited
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === updatedItem.id) {
+        this.selectedItem.set(updatedItem);
+      }
+
+      // Also update in selectedItems array if present
+      const selectedItems = this.selectedItems();
+      const selectedIndex = selectedItems.findIndex(item => item.id === updatedItem.id);
+      if (selectedIndex >= 0) {
+        const updatedSelected = [...selectedItems];
+        updatedSelected[selectedIndex] = updatedItem;
+        this.selectedItems.set(updatedSelected);
+      }
+    });
+  }
+
+  /**
+   * Remove a LOTO standard from the local list by ID.
+   * Called automatically when a deletion event is received.
+   */
+  removeLotoStandardById(id: number): void {
+    const current = this.allLoadedLotoStandardsSubject.value;
+    const filtered = current.filter(ls => ls.id !== id);
+
+    // Only update if something was actually removed
+    if (filtered.length !== current.length) {
+      this.allLoadedLotoStandardsSubject.next(filtered);
+
+      // Also clear selected item if it was the deleted one
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === id) {
+        this.selectedItem.set(null);
+      }
+
+      // Also remove from selectedItems array
+      const selectedItems = this.selectedItems();
+      if (selectedItems.some(item => item.id === id)) {
+        this.selectedItems.set(selectedItems.filter(item => item.id !== id));
+      }
+    }
   }
 
   addLotoStandards(items: LotoStandardDto[]): void {

@@ -23,7 +23,11 @@
       "Bash(curl:*)",
       "Bash(tree:*)",
       "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 50\")",
-      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 20\")"
+      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java''; mvn compile -q 2>&1 | Select-Object -First 20\")",
+      "Bash(/home/dk-power/.nvm/versions/node/v22.12.0/bin/npm run build)",
+      "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/npx ng build)",
+      "Bash(export PATH=/home/dk-power/.nvm/versions/node/v22.20.0/bin:$PATH)",
+      "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/node:*)"
     ]
   }
 }

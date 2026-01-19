@@ -1,15 +1,19 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject, DestroyRef } from '@angular/core';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { map, shareReplay, tap } from 'rxjs/operators';
 import { ValueDto } from '../models/value.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { environment } from '../../environments/environment';
+import { SyncUpdateService } from './sync/sync-update.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SharedDataService {
+  private syncUpdateService = inject(SyncUpdateService);
+  private destroyRef = inject(DestroyRef);
+
   private systemsSubject = new BehaviorSubject<ValueDto[]>([]);
   private equipmentTypesSubject = new BehaviorSubject<ValueDto[]>([]);
   private fileTypeSubject = new BehaviorSubject<ValueDto[]>([]);
@@ -42,11 +46,29 @@ export class SharedDataService {
   lotoStatuses$: Observable<ValueDto[]> = this.lotoStatusesSubject.asObservable();
   private cachedLotoStatuses$: Observable<ValueDto[]> | null = null;
 
+  private sseSubscription: Subscription | null = null;
 
-  
   private url = environment.apiUrl + '/values';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    this.subscribeToValueUpdates();
+    this.destroyRef.onDestroy(() => {
+      this.sseSubscription?.unsubscribe();
+    });
+  }
+
+  /**
+   * Subscribe to SSE updates for Value entities.
+   * When a Value is synced from another machine, refresh all category caches.
+   */
+  private subscribeToValueUpdates(): void {
+    this.sseSubscription = this.syncUpdateService
+      .getEntityTypeUpdates$('Value')
+      .subscribe(event => {
+        console.log('SharedDataService: Value entity updated via sync, refreshing caches', event);
+        this.reloadAllData();
+      });
+  }
 
   private loadValuesOfCategory(category: string): Observable<ValueDto[]> {
     return this.http.get<SpringApiResponse<ValueDto[]>>(this.url + `/of-category/${category}`).pipe(

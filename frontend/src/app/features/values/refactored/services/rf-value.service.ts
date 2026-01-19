@@ -1,15 +1,18 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core';
 import { RfValueApiService } from './rf-value-api.service';
 import { RfValueDto, RfCategoryDto } from '../models/rf-value.model';
 import { Option } from '../../../../models/option.model';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { SyncUpdateService } from '../../../../services/sync/sync-update.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class RfValueService {
   private api = inject(RfValueApiService);
+  private syncUpdateService = inject(SyncUpdateService);
+  private destroyRef = inject(DestroyRef);
 
   // State signals
   private valuesCache = signal<Map<string, RfValueDto[]>>(new Map());
@@ -18,12 +21,51 @@ export class RfValueService {
   // Public computed signals
   categories = computed(() => this.categoriesCache());
 
+  private sseSubscription: Subscription | null = null;
+
   constructor() {
     // Load categories on init
     this.loadCategories();
 
     // Preload common value categories for loto points
     this.preloadCommonCategories();
+
+    // Subscribe to SSE updates for Value entities
+    this.subscribeToValueUpdates();
+
+    this.destroyRef.onDestroy(() => {
+      this.sseSubscription?.unsubscribe();
+    });
+  }
+
+  /**
+   * Subscribe to SSE updates for Value entities.
+   * When a Value is synced from another machine, refresh all cached categories.
+   */
+  private subscribeToValueUpdates(): void {
+    this.sseSubscription = this.syncUpdateService
+      .getEntityTypeUpdates$('Value')
+      .subscribe(event => {
+        console.log('RfValueService: Value entity updated via sync, refreshing caches', event);
+        this.refreshAllCachedCategories();
+      });
+  }
+
+  /**
+   * Refresh all categories that are currently in the cache
+   */
+  private refreshAllCachedCategories(): void {
+    const cache = this.valuesCache();
+    const categoryAliases = Array.from(cache.keys());
+    if (categoryAliases.length > 0) {
+      this.api.getValuesByCategories(categoryAliases).subscribe(valuesMap => {
+        const newCache = new Map(this.valuesCache());
+        valuesMap.forEach((values, alias) => {
+          newCache.set(alias, values);
+        });
+        this.valuesCache.set(newCache);
+      });
+    }
   }
 
   /**
