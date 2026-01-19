@@ -9,13 +9,18 @@ public class DefaultValueGeneratorService {
     private final NgValueService ngValueService;
 
     public void generateAllValues() {
-        generateSystems();
-        generateEquipmentTypes();
-        generatePermitStatuses();
-        generateUnitValues();
-        generateZeroEnergyTemplates();
-        generateGroupValues();
-        generateEquipmentNameValues();
+        // generateSystems();
+        // generateEquipmentTypes();
+        // generatePermitStatuses();
+        // generateUnitValues();
+        // generateZeroEnergyTemplates();
+        // generateGroupValues();
+        // generateEquipmentNameValues();
+        // generateVendorValues();
+        // generateFileTypeValues();
+        // generateIsoPosValues();
+        // generateNormPosValues();
+        // generateLocationValues();
     }
 
     private void generateSystems() {
@@ -55,22 +60,22 @@ public class DefaultValueGeneratorService {
     }
 
     private void generateEquipmentTypes() {
-        ngValueService.createValue("Equipment Type", "Manual Valve", "V");
-        ngValueService.createValue("Equipment Type", "Motor Operated Valve", "MOV");
-        ngValueService.createValue("Equipment Type", "Air Operated Valve", "AOV");
-        ngValueService.createValue("Equipment Type", "Pressure Control Valve", "PCV");
-        ngValueService.createValue("Equipment Type", "Temperature Control Valve", "TCV");
-        ngValueService.createValue("Equipment Type", "Flow Control Valve", "FCV");
-        ngValueService.createValue("Equipment Type", "Pump", "PMP");
-        ngValueService.createValue("Equipment Type", "Compressor", "CMP");
-        ngValueService.createValue("Equipment Type", "Transformer", "XRF");
-        ngValueService.createValue("Equipment Type", "Pressure Transmitter", "PIT");
-        ngValueService.createValue("Equipment Type", "Temperature Transmitter", "TIT");
-        ngValueService.createValue("Equipment Type", "Flow Transmitter", "FIT");
-        ngValueService.createValue("Equipment Type", "Relief Valve", "PRV");
-        ngValueService.createValue("Equipment Type", "Control Panel", "CPL");
-        ngValueService.createValue("Equipment Type", "Heater-Dryer", "HTR");
-        ngValueService.createValue("Equipment Type", "Skid", "SKD");
+        ngValueService.createValue("Eq Type", "Manual Valve", "V");
+        ngValueService.createValue("Eq Type", "Motor Operated Valve", "MOV");
+        ngValueService.createValue("Eq Type", "Air Operated Valve", "AOV");
+        ngValueService.createValue("Eq Type", "Pressure Control Valve", "PCV");
+        ngValueService.createValue("Eq Type", "Temperature Control Valve", "TCV");
+        ngValueService.createValue("Eq Type", "Flow Control Valve", "FCV");
+        ngValueService.createValue("Eq Type", "Pump", "PMP");
+        ngValueService.createValue("Eq Type", "Compressor", "CMP");
+        ngValueService.createValue("Eq Type", "Transformer", "XRF");
+        ngValueService.createValue("Eq Type", "Pressure Transmitter", "PIT");
+        ngValueService.createValue("Eq Type", "Temperature Transmitter", "TIT");
+        ngValueService.createValue("Eq Type", "Flow Transmitter", "FIT");
+        ngValueService.createValue("Eq Type", "Relief Valve", "PRV");
+        ngValueService.createValue("Eq Type", "Control Panel", "CPL");
+        ngValueService.createValue("Eq Type", "Heater-Dryer", "HTR");
+        ngValueService.createValue("Eq Type", "Skid", "SKD");
     }
 
     private void generatePermitStatuses(){
@@ -103,5 +108,30 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Equipment Name", "Interstage Attemperator", "INTERSTAGE ATTEMP");
         ngValueService.createValue("Equipment Name", "Boiler Feed Pump", "BFP");
         ngValueService.createValue("Equipment Name", "Condensate Pump", "CND PMP");
+    }
+
+    private void generateVendorValues(){
+        ngValueService.createValue("Vendor", "Kiewit", "KWT");
+    }
+
+    private void generateFileTypeValues(){
+        ngValueService.createValue("File Type", "PID", "PID");
+    }
+
+    private void generateIsoPosValues(){
+        ngValueService.createValue("Iso Pos", "Open", "OPEN");
+        ngValueService.createValue("Iso Pos", "Closed", "CLOSED");
+        ngValueService.createValue("Iso Pos", "Throttled", "THRTL");
+    }
+
+    private void generateNormPosValues(){
+        ngValueService.createValue("Norm Pos", "Open", "NO");
+        ngValueService.createValue("Norm Pos", "Closed", "NC");
+        ngValueService.createValue("Norm Pos", "Throttled", "THRTL");
+    }
+
+    private void generateLocationValues(){
+        ngValueService.createValue("Location", "Switchyard", "SY");
+        ngValueService.createValue("Location", "Control Room", "CR");
     }
 }

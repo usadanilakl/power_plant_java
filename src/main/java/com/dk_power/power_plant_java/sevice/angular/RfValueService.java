@@ -40,12 +40,12 @@ public class RfValueService {
     // ==================== VALUE CRUD OPERATIONS ====================
 
     /**
-     * Create a new value in a category
+     * Create a new value in a category. If category doesn't exist, it will be created.
      */
     public ValueDto createValue(String categoryAlias, String valueName, String valueAlias) {
         Category category = getCategoryByAliasOrName(categoryAlias);
         if (category == null) {
-            throw new IllegalArgumentException("Category not found: " + categoryAlias);
+            category = createCategory(categoryAlias);
         }
 
         // Check if value already exists in category
@@ -261,6 +261,12 @@ public class RfValueService {
         // Try name
         List<Category> categories = categoryRepo.findByName(aliasOrName);
         return categories.isEmpty() ? null : categories.get(0);
+    }
+
+    private Category createCategory(String categoryName) {
+        Category category = new Category(categoryName);
+        category.setAlias(generateAlias(categoryName));
+        return categoryRepo.save(category);
     }
 
     private String generateAlias(String name) {

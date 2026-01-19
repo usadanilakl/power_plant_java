@@ -23,7 +23,6 @@ import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.hibernate.SessionFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +49,7 @@ public class FileServiceImpl implements FileService {
     private final ExcelReaderService excelReaderService;
     private final DataDistributionService dataDistributionService;
 
-    @Value("${files.relative.path}")
+    @org.springframework.beans.factory.annotation.Value("${files.relative.path}")
     private String filesRelativePath;
 
     public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService, HtPanelService htPanelService, ElectricalPanelService electricalPanelService, HtBreakerService htBreakerService, ExcelReaderService excelReaderService, DataDistributionService dataDistributionService) {
