@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.categories;
 
 import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -17,6 +18,7 @@ import org.hibernate.envers.Audited;
 @Audited
 @Table(name = "val_table")
 @Where(clause = "deleted = false")
+@EntityListeners(FieldChangeEntityListener.class)
 public class Value extends BaseAuditEntity implements Referenceable {
     public Value(String name) {
         this.name = name;

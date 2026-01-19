@@ -25,6 +25,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
+
 /**
  * SSE Client that connects to the sync server and receives real-time change notifications.
  *
@@ -44,6 +47,8 @@ public class ServerSseClient {
     private final SyncContext syncContext;
     private final FieldSyncService fieldSyncService;
     private final ObjectMapper objectMapper;
+    private final FileRepo fileRepo;
+    private final FileObjectSyncHandler fileObjectSyncHandler;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -239,7 +244,12 @@ public class ServerSseClient {
                 return;
             }
 
-            log.debug("SSE: Unknown event type '{}': {}", eventType, data);
+            if ("file_upload".equals(eventType)) {
+                handleFileUploadEvent(data);
+                return;
+            }
+
+            log.debug("SSE: Unknown event type '{}': {}", eventType, data)
 
         } catch (Exception e) {
             log.error("Error processing SSE event '{}': {}", eventType, e.getMessage(), e);
@@ -292,6 +302,43 @@ public class ServerSseClient {
 
         } catch (Exception e) {
             log.error("Error handling sync event: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handle incoming file upload notification from SSE.
+     * This notifies us that another client has uploaded a file, so we should download it.
+     */
+    private void handleFileUploadEvent(String data) {
+        try {
+            Map<String, Object> eventData = objectMapper.readValue(data, new TypeReference<>() {});
+
+            String entityType = (String) eventData.get("entityType");
+            Long entityId = ((Number) eventData.get("entityId")).longValue();
+            String fileName = (String) eventData.get("fileName");
+            String originMachineId = (String) eventData.get("originMachineId");
+
+            log.info("SSE: File upload notification - {} for {}/{} from {}",
+                fileName, entityType, entityId, originMachineId);
+
+            // Only handle FileObject entities
+            if (!"FileObject".equals(entityType)) {
+                log.debug("SSE: Ignoring file upload for non-FileObject entity type: {}", entityType);
+                return;
+            }
+
+            // Queue the file for download
+            FileObject fileObject = fileRepo.findById(entityId).orElse(null);
+            if (fileObject != null) {
+                fileObjectSyncHandler.queueFileDownload(fileObject);
+                log.info("SSE: Queued download for FileObject #{} ({})", entityId, fileName);
+            } else {
+                // Entity might not be synced yet - the field sync will trigger download when it arrives
+                log.debug("SSE: FileObject #{} not found locally, will download when entity syncs", entityId);
+            }
+
+        } catch (Exception e) {
+            log.error("Error handling file_upload event: {}", e.getMessage(), e);
         }
     }
 

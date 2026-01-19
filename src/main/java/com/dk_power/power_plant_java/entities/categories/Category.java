@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.categories;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -18,6 +19,7 @@ import java.util.Set;
 @Setter
 @Audited
 @Entity
+@EntityListeners(FieldChangeEntityListener.class)
 public class Category extends BaseAuditEntity {
     public Category(String name) {
         this.name = name;
