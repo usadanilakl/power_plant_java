@@ -3,11 +3,16 @@ package com.dk_power.power_plant_java.sevice.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.entities.sync.PendingFileSync;
+import com.dk_power.power_plant_java.entities.sync.PendingFileSync.SyncDirection;
+import com.dk_power.power_plant_java.entities.sync.PendingFileSync.SyncStatus;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.repository.sync.PendingFileSyncRepository;
 import com.dk_power.power_plant_java.util.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.FileSystemResource;
@@ -15,6 +20,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -24,13 +30,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Handles file synchronization for FileObject entities.
@@ -54,6 +59,7 @@ public class FileObjectSyncHandler {
     private final RestTemplate restTemplate;
     private final FileRepo fileRepo;
     private final SyncContext syncContext;
+    private final PendingFileSyncRepository pendingFileSyncRepository;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -62,21 +68,49 @@ public class FileObjectSyncHandler {
     private String projectRootPath;
 
     // Retry configuration with exponential backoff
-    private static final int MAX_RETRIES = 5;
-    private static final long[] RETRY_DELAYS_MS = {1000, 2000, 4000, 8000, 16000};
+    private static final int MAX_RETRIES = 10;  // Increased for better offline handling
+    private static final long[] RETRY_DELAYS_MS = {1000, 2000, 4000, 8000, 16000, 32000, 60000, 120000, 300000, 600000};
 
-    // Queue of files waiting to be uploaded to sync server
-    private final ConcurrentLinkedQueue<FileUploadTask> uploadQueue = new ConcurrentLinkedQueue<>();
-
-    // Queue of files waiting to be downloaded from sync server
-    private final ConcurrentLinkedQueue<FileDownloadTask> downloadQueue = new ConcurrentLinkedQueue<>();
-
-    // Track in-progress operations to avoid duplicates
+    // Track in-progress operations to avoid concurrent processing of same entity
     private final Set<String> inProgressUploads = ConcurrentHashMap.newKeySet();
     private final Set<String> inProgressDownloads = ConcurrentHashMap.newKeySet();
 
     // Track old file paths when entity is being modified (for move operations)
     private final Map<Long, FileObjectSnapshot> entitySnapshots = new ConcurrentHashMap<>();
+
+    /**
+     * Initialize on application startup - reset any stuck tasks and log pending work.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void onApplicationReady() {
+        if (!syncConfig.isServerSyncEnabled()) {
+            return;
+        }
+
+        // Reset any tasks that were IN_PROGRESS when the app shut down
+        int resetCount = pendingFileSyncRepository.resetStuckTasks(Instant.now());
+        if (resetCount > 0) {
+            log.info("Reset {} stuck file sync tasks to PENDING status", resetCount);
+        }
+
+        // Clean up old completed tasks (older than 24 hours)
+        int cleanedCount = pendingFileSyncRepository.deleteCompletedBefore(
+            Instant.now().minus(24, ChronoUnit.HOURS));
+        if (cleanedCount > 0) {
+            log.debug("Cleaned up {} completed file sync tasks", cleanedCount);
+        }
+
+        // Log pending work
+        long pendingUploads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.UPLOAD, List.of(SyncStatus.PENDING, SyncStatus.IN_PROGRESS));
+        long pendingDownloads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.DOWNLOAD, List.of(SyncStatus.PENDING, SyncStatus.IN_PROGRESS));
+
+        if (pendingUploads > 0 || pendingDownloads > 0) {
+            log.info("File sync queue: {} pending uploads, {} pending downloads", pendingUploads, pendingDownloads);
+        }
+    }
 
     /**
      * Called when a FileObject is about to be updated.
@@ -361,28 +395,45 @@ public class FileObjectSyncHandler {
 
     /**
      * Queue a file for upload to sync server.
+     * Uses database-backed queue for persistence across restarts.
      */
-    private void queueFileUpload(FileObject fileObject) {
-        String taskKey = "upload:" + fileObject.getId();
-        if (!inProgressUploads.add(taskKey)) {
-            log.debug("Upload already in progress for FileObject #{}", fileObject.getId());
+    @Transactional
+    public void queueFileUpload(FileObject fileObject) {
+        // Check if there's already a pending upload for this entity
+        boolean exists = pendingFileSyncRepository.existsByEntityIdAndDirectionAndStatusIn(
+            fileObject.getId(),
+            SyncDirection.UPLOAD,
+            List.of(SyncStatus.PENDING, SyncStatus.IN_PROGRESS)
+        );
+
+        if (exists) {
+            log.debug("Upload already queued for FileObject #{}", fileObject.getId());
             return;
         }
 
-        FileUploadTask task = new FileUploadTask(
+        // Create persistent task
+        String extensions = fileObject.getExtensionsArray() != null
+            ? String.join(",", fileObject.getExtensionsArray())
+            : "";
+
+        PendingFileSync task = new PendingFileSync(
             fileObject.getId(),
+            SyncDirection.UPLOAD,
             fileObject.getFileNumber(),
-            fileObject.getExtensionsArray(),
-            getFullPath(fileObject)
+            extensions
         );
-        uploadQueue.add(task);
-        log.debug("Queued upload for FileObject #{}", fileObject.getId());
+        task.setTargetPath(getFullPath(fileObject));
+
+        pendingFileSyncRepository.save(task);
+        log.info("Queued upload for FileObject #{} (persisted to database)", fileObject.getId());
     }
 
     /**
      * Queue a file for download from sync server.
+     * Uses database-backed queue for persistence across restarts.
      */
-    private void queueFileDownload(FileObject fileObject) {
+    @Transactional
+    public void queueFileDownload(FileObject fileObject) {
         // Validate required fields before queueing
         String fullPath = getFullPath(fileObject);
         if (fullPath == null) {
@@ -396,148 +447,201 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        String taskKey = "download:" + fileObject.getId();
-        if (!inProgressDownloads.add(taskKey)) {
-            log.debug("Download already in progress for FileObject #{}", fileObject.getId());
+        // Check if there's already a pending download for this entity
+        boolean exists = pendingFileSyncRepository.existsByEntityIdAndDirectionAndStatusIn(
+            fileObject.getId(),
+            SyncDirection.DOWNLOAD,
+            List.of(SyncStatus.PENDING, SyncStatus.IN_PROGRESS)
+        );
+
+        if (exists) {
+            log.debug("Download already queued for FileObject #{}", fileObject.getId());
             return;
         }
 
-        FileDownloadTask task = new FileDownloadTask(
+        // Create persistent task
+        String extensions = fileObject.getExtensionsArray() != null
+            ? String.join(",", fileObject.getExtensionsArray())
+            : "";
+
+        PendingFileSync task = new PendingFileSync(
             fileObject.getId(),
+            SyncDirection.DOWNLOAD,
             fileNumber,
-            fileObject.getExtensionsArray(),
+            extensions,
             fullPath
         );
-        downloadQueue.add(task);
-        log.debug("Queued download for FileObject #{}", fileObject.getId());
+
+        pendingFileSyncRepository.save(task);
+        log.info("Queued download for FileObject #{} (persisted to database)", fileObject.getId());
     }
 
     /**
      * Process pending uploads (runs in background).
-     * Uses exponential backoff for retries.
+     * Uses database-backed queue with exponential backoff for retries.
      */
     @Scheduled(fixedDelay = 5000, initialDelay = 10000)
+    @Transactional
     public void processUploadQueue() {
         if (!syncConfig.isServerSyncEnabled()) {
             return;
         }
 
-        List<FileUploadTask> deferredTasks = new ArrayList<>();
-        FileUploadTask task;
-        int processed = 0;
+        // Get pending uploads that are ready to process
+        List<PendingFileSync> pendingTasks = pendingFileSyncRepository.findPendingUploads();
+        if (pendingTasks.isEmpty()) {
+            return;
+        }
 
-        while ((task = uploadQueue.poll()) != null && processed < 10) {
-            // Check if task is ready for retry (respects backoff delay)
-            if (!task.isReadyForRetry()) {
-                deferredTasks.add(task);
+        int processed = 0;
+        int maxPerBatch = 10;
+
+        for (PendingFileSync task : pendingTasks) {
+            if (processed >= maxPerBatch) {
+                break;
+            }
+
+            // Skip if already being processed in-memory (prevents concurrent processing)
+            String taskKey = "upload:" + task.getEntityId();
+            if (!inProgressUploads.add(taskKey)) {
                 continue;
             }
 
             try {
+                // Mark as in progress
+                task.markInProgress();
+                pendingFileSyncRepository.save(task);
+
+                // Perform upload
                 uploadFilesToServer(task);
+
+                // Mark as completed
+                task.markCompleted();
+                pendingFileSyncRepository.save(task);
                 processed++;
+                log.info("Successfully uploaded files for FileObject #{}", task.getEntityId());
+
             } catch (Exception e) {
                 log.error("Failed to upload files for FileObject #{}: {}",
-                    task.entityId, e.getMessage());
+                    task.getEntityId(), e.getMessage());
+
                 // Re-queue for retry with exponential backoff
-                if (task.retryCount < MAX_RETRIES) {
-                    long delay = RETRY_DELAYS_MS[Math.min(task.retryCount, RETRY_DELAYS_MS.length - 1)];
-                    task.retryCount++;
+                task.incrementRetry();
+                if (task.getRetryCount() < MAX_RETRIES) {
+                    long delay = RETRY_DELAYS_MS[Math.min(task.getRetryCount() - 1, RETRY_DELAYS_MS.length - 1)];
+                    task.setStatus(SyncStatus.PENDING);
                     task.scheduleRetry(delay);
-                    deferredTasks.add(task);
+                    task.setLastError(e.getMessage());
+                    pendingFileSyncRepository.save(task);
                     log.info("Scheduled retry {} for FileObject #{} upload in {}ms",
-                        task.retryCount, task.entityId, delay);
+                        task.getRetryCount(), task.getEntityId(), delay);
                 } else {
+                    task.markFailed("Max retries exceeded: " + e.getMessage());
+                    pendingFileSyncRepository.save(task);
                     log.error("Giving up on upload for FileObject #{} after {} retries",
-                        task.entityId, task.retryCount);
-                    inProgressUploads.remove("upload:" + task.entityId);
+                        task.getEntityId(), task.getRetryCount());
                 }
+            } finally {
+                inProgressUploads.remove(taskKey);
             }
-        }
-
-        // Re-add deferred tasks back to queue
-        uploadQueue.addAll(deferredTasks);
-
-        // Clean up completed uploads
-        if (processed > 0) {
-            // Only remove from inProgress after successful processing
-            // Failed tasks remain tracked until max retries exceeded
         }
     }
 
     /**
      * Process pending downloads (runs in background - eager download).
-     * Uses exponential backoff for retries.
+     * Uses database-backed queue with exponential backoff for retries.
      */
     @Scheduled(fixedDelay = 5000, initialDelay = 15000)
+    @Transactional
     public void processDownloadQueue() {
         if (!syncConfig.isServerSyncEnabled()) {
             return;
         }
 
-        List<FileDownloadTask> deferredTasks = new ArrayList<>();
-        FileDownloadTask task;
-        int processed = 0;
+        // Get pending downloads that are ready to process
+        List<PendingFileSync> pendingTasks = pendingFileSyncRepository.findPendingDownloads();
+        if (pendingTasks.isEmpty()) {
+            return;
+        }
 
-        while ((task = downloadQueue.poll()) != null && processed < 10) {
-            // Check if task is ready for retry (respects backoff delay)
-            if (!task.isReadyForRetry()) {
-                deferredTasks.add(task);
+        int processed = 0;
+        int maxPerBatch = 10;
+
+        for (PendingFileSync task : pendingTasks) {
+            if (processed >= maxPerBatch) {
+                break;
+            }
+
+            // Skip if already being processed in-memory (prevents concurrent processing)
+            String taskKey = "download:" + task.getEntityId();
+            if (!inProgressDownloads.add(taskKey)) {
                 continue;
             }
 
             try {
+                // Mark as in progress
+                task.markInProgress();
+                pendingFileSyncRepository.save(task);
+
+                // Perform download
                 downloadFilesFromServer(task);
+
+                // Mark as completed
+                task.markCompleted();
+                pendingFileSyncRepository.save(task);
                 processed++;
-                inProgressDownloads.remove("download:" + task.entityId);
+                log.info("Successfully downloaded files for FileObject #{}", task.getEntityId());
+
             } catch (Exception e) {
                 log.error("Failed to download files for FileObject #{}: {}",
-                    task.entityId, e.getMessage());
+                    task.getEntityId(), e.getMessage());
+
                 // Re-queue for retry with exponential backoff
-                if (task.retryCount < MAX_RETRIES) {
-                    long delay = RETRY_DELAYS_MS[Math.min(task.retryCount, RETRY_DELAYS_MS.length - 1)];
-                    task.retryCount++;
+                task.incrementRetry();
+                if (task.getRetryCount() < MAX_RETRIES) {
+                    long delay = RETRY_DELAYS_MS[Math.min(task.getRetryCount() - 1, RETRY_DELAYS_MS.length - 1)];
+                    task.setStatus(SyncStatus.PENDING);
                     task.scheduleRetry(delay);
-                    deferredTasks.add(task);
+                    task.setLastError(e.getMessage());
+                    pendingFileSyncRepository.save(task);
                     log.info("Scheduled retry {} for FileObject #{} download in {}ms",
-                        task.retryCount, task.entityId, delay);
+                        task.getRetryCount(), task.getEntityId(), delay);
                 } else {
+                    task.markFailed("Max retries exceeded: " + e.getMessage());
+                    pendingFileSyncRepository.save(task);
                     log.error("Giving up on download for FileObject #{} after {} retries",
-                        task.entityId, task.retryCount);
-                    inProgressDownloads.remove("download:" + task.entityId);
+                        task.getEntityId(), task.getRetryCount());
                 }
+            } finally {
+                inProgressDownloads.remove(taskKey);
             }
         }
-
-        // Re-add deferred tasks back to queue
-        downloadQueue.addAll(deferredTasks);
     }
 
     /**
      * Upload files to sync server.
      */
-    private void uploadFilesToServer(FileUploadTask task) throws IOException {
-        FileObject fileObject = fileRepo.findById(task.entityId).orElse(null);
+    private void uploadFilesToServer(PendingFileSync task) throws IOException {
+        FileObject fileObject = fileRepo.findById(task.getEntityId()).orElse(null);
         if (fileObject == null) {
-            log.warn("FileObject #{} not found, skipping upload", task.entityId);
+            log.warn("FileObject #{} not found, skipping upload", task.getEntityId());
             return;
         }
 
         List<File> filesToUpload = getAllPhysicalFiles(fileObject);
         if (filesToUpload.isEmpty()) {
-            log.debug("No physical files found for FileObject #{}", task.entityId);
+            log.debug("No physical files found for FileObject #{}", task.getEntityId());
             return;
         }
 
-        log.info("Uploading {} files for FileObject #{}", filesToUpload.size(), task.entityId);
-
-        String uploadUrl = syncConfig.getSyncServerUrl() + "/api/files/upload-multiple";
+        log.info("Uploading {} files for FileObject #{}", filesToUpload.size(), task.getEntityId());
 
         for (File file : filesToUpload) {
             try {
-                uploadSingleFile(file, "FileObject", task.entityId, file.getAbsolutePath());
+                uploadSingleFile(file, "FileObject", task.getEntityId(), file.getAbsolutePath());
             } catch (Exception e) {
                 log.error("Failed to upload file {}: {}", file.getName(), e.getMessage());
+                throw e;  // Re-throw to trigger retry
             }
         }
     }
@@ -579,15 +683,15 @@ public class FileObjectSyncHandler {
      * Download files from sync server.
      * Throws exception on failure to trigger retry with exponential backoff.
      */
-    private void downloadFilesFromServer(FileDownloadTask task) {
-        FileObject fileObject = fileRepo.findById(task.entityId).orElse(null);
+    private void downloadFilesFromServer(PendingFileSync task) {
+        FileObject fileObject = fileRepo.findById(task.getEntityId()).orElse(null);
         if (fileObject == null) {
-            log.warn("FileObject #{} not found, skipping download", task.entityId);
+            log.warn("FileObject #{} not found, skipping download", task.getEntityId());
             return; // Don't retry if entity doesn't exist
         }
 
         String listUrl = syncConfig.getSyncServerUrl() +
-            "/api/files/entity/FileObject/" + task.entityId + "/download-info";
+            "/api/files/entity/FileObject/" + task.getEntityId() + "/download-info";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
@@ -601,11 +705,11 @@ public class FileObjectSyncHandler {
             if (!response.getStatusCode().is2xxSuccessful()) {
                 // Server error - throw to trigger retry
                 throw new RuntimeException("Server returned " + response.getStatusCode() +
-                    " when fetching file list for FileObject #" + task.entityId);
+                    " when fetching file list for FileObject #" + task.getEntityId());
             }
 
             if (response.getBody() == null) {
-                log.debug("No files found on server for FileObject #{}", task.entityId);
+                log.debug("No files found on server for FileObject #{}", task.getEntityId());
                 return; // Empty response is OK - no files to download
             }
 
@@ -613,11 +717,11 @@ public class FileObjectSyncHandler {
             List<Map<String, Object>> files = (List<Map<String, Object>>) body.get("files");
 
             if (files == null || files.isEmpty()) {
-                log.debug("No files to download for FileObject #{}", task.entityId);
+                log.debug("No files to download for FileObject #{}", task.getEntityId());
                 return; // No files is OK
             }
 
-            log.info("Downloading {} files for FileObject #{}", files.size(), task.entityId);
+            log.info("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
 
             int successCount = 0;
             int failCount = 0;
@@ -633,17 +737,17 @@ public class FileObjectSyncHandler {
 
             // If all downloads failed, throw to trigger retry
             if (successCount == 0 && failCount > 0) {
-                throw new RuntimeException("All " + failCount + " file downloads failed for FileObject #" + task.entityId);
+                throw new RuntimeException("All " + failCount + " file downloads failed for FileObject #" + task.getEntityId());
             }
 
             // Partial success - log but don't retry
             if (failCount > 0) {
                 log.warn("Downloaded {}/{} files for FileObject #{}, {} failed",
-                    successCount, files.size(), task.entityId, failCount);
+                    successCount, files.size(), task.getEntityId(), failCount);
             }
 
         } catch (Exception e) {
-            log.error("Error downloading files for FileObject #{}: {}", task.entityId, e.getMessage());
+            log.error("Error downloading files for FileObject #{}: {}", task.getEntityId(), e.getMessage());
             throw new RuntimeException("Download failed: " + e.getMessage(), e);
         }
     }
@@ -756,55 +860,6 @@ public class FileObjectSyncHandler {
         return Paths.get(projectRootPath, fileLink).toString();
     }
 
-    // Task records with retry support
-    private static class FileUploadTask {
-        final Long entityId;
-        final String fileNumber;
-        final List<String> extensions;
-        final String basePath;
-        int retryCount = 0;
-        Instant nextRetryTime = Instant.MIN; // Can be processed immediately
-
-        FileUploadTask(Long entityId, String fileNumber, List<String> extensions, String basePath) {
-            this.entityId = entityId;
-            this.fileNumber = fileNumber;
-            this.extensions = new ArrayList<>(extensions);
-            this.basePath = basePath;
-        }
-
-        void scheduleRetry(long delayMs) {
-            this.nextRetryTime = Instant.now().plusMillis(delayMs);
-        }
-
-        boolean isReadyForRetry() {
-            return Instant.now().isAfter(nextRetryTime);
-        }
-    }
-
-    private static class FileDownloadTask {
-        final Long entityId;
-        final String fileNumber;
-        final List<String> extensions;
-        final String basePath;
-        int retryCount = 0;
-        Instant nextRetryTime = Instant.MIN; // Can be processed immediately
-
-        FileDownloadTask(Long entityId, String fileNumber, List<String> extensions, String basePath) {
-            this.entityId = entityId;
-            this.fileNumber = fileNumber;
-            this.extensions = new ArrayList<>(extensions);
-            this.basePath = basePath;
-        }
-
-        void scheduleRetry(long delayMs) {
-            this.nextRetryTime = Instant.now().plusMillis(delayMs);
-        }
-
-        boolean isReadyForRetry() {
-            return Instant.now().isAfter(nextRetryTime);
-        }
-    }
-
     private record FileObjectSnapshot(
         Long id,
         String fileNumber,
@@ -840,9 +895,20 @@ public class FileObjectSyncHandler {
      * Get queue statistics.
      */
     public Map<String, Object> getQueueStats() {
+        long pendingUploads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.UPLOAD, List.of(SyncStatus.PENDING));
+        long pendingDownloads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.DOWNLOAD, List.of(SyncStatus.PENDING));
+        long failedUploads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.UPLOAD, List.of(SyncStatus.FAILED));
+        long failedDownloads = pendingFileSyncRepository.countByDirectionAndStatusIn(
+            SyncDirection.DOWNLOAD, List.of(SyncStatus.FAILED));
+
         return Map.of(
-            "pendingUploads", uploadQueue.size(),
-            "pendingDownloads", downloadQueue.size(),
+            "pendingUploads", pendingUploads,
+            "pendingDownloads", pendingDownloads,
+            "failedUploads", failedUploads,
+            "failedDownloads", failedDownloads,
             "inProgressUploads", inProgressUploads.size(),
             "inProgressDownloads", inProgressDownloads.size()
         );
