@@ -302,12 +302,23 @@ export class RfFileStateService {
         tap((response) => {
           // Clear the draft after successful save
           this.clearDraftForItem(fileId);
-          // Create the saved file DTO
-          const savedFile = new FileDto(response.responseData);
-          this.setSelectedItem(savedFile);
+          // Handle response - processPidFile returns List<FileDto> (array), updateFileObject returns single FileDto
+          const responseData = response.responseData;
+          const fileDtos: FileDto[] = Array.isArray(responseData)
+            ? responseData.map((f: any) => new FileDto(f))
+            : [new FileDto(responseData)];
+
           // Update the files list so the left menu reflects the changes
-          this.updateOrAddFile(savedFile);
-          this.messageService.showSuccess('File uploaded successfully');
+          fileDtos.forEach(savedFile => this.updateOrAddFile(savedFile));
+
+          // Set the first file as the selected item
+          if (fileDtos.length > 0) {
+            this.setSelectedItem(fileDtos[0]);
+          }
+
+          this.messageService.showSuccess(fileDtos.length > 1
+            ? `${fileDtos.length} files uploaded successfully`
+            : 'File uploaded successfully');
           // Close the form (this also clears processing state)
           this.closeForm();
         }),
