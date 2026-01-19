@@ -55,6 +55,15 @@ public class FieldChangeTracker {
             return changes;
         }
 
+        // Skip tracking entirely if we're in sync context
+        // This prevents creating FieldChange records for entities being modified from sync,
+        // which could interfere with the original changes being applied
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping change tracking - in sync context for {} #{}",
+                newEntity.getClass().getSimpleName(), newEntity.getId());
+            return changes;
+        }
+
         String entityType = newEntity.getClass().getSimpleName();
         Long entityId = newEntity.getId();
 
@@ -76,19 +85,13 @@ public class FieldChangeTracker {
 
             log.info("Found {} changes for {} #{}", changes.size(), entityType, entityId);
 
-            // Save all changes and trigger sync (only if not already processing incoming sync)
+            // Save all changes and trigger sync
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
                 log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
-                // Only broadcast if this is a LOCAL change, not an incoming sync
-                // This prevents infinite sync loops between machines
-                if (!syncContext.isSyncing()) {
-                    log.info("Publishing {} changes for sync broadcast", changes.size());
-                    syncEventPublisher.publishChanges(changes);
-                } else {
-                    log.info("Skipping broadcast - change originated from sync");
-                }
+                log.info("Publishing {} changes for sync broadcast", changes.size());
+                syncEventPublisher.publishChanges(changes);
             } else {
                 log.info("No field changes detected for {} #{}", entityType, entityId);
             }
@@ -198,6 +201,15 @@ public class FieldChangeTracker {
             return changes;
         }
 
+        // Skip tracking entirely if we're in sync context
+        // This prevents creating FieldChange records for entities being created from sync,
+        // which would have null/default values that could overwrite real values on other machines
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping entity creation tracking - in sync context for {} #{}",
+                entity.getClass().getSimpleName(), entity.getId());
+            return changes;
+        }
+
         String entityType = entity.getClass().getSimpleName();
         Long entityId = entity.getId();
 
@@ -209,17 +221,13 @@ public class FieldChangeTracker {
                 fieldChangeRepository.saveAll(changes);
                 log.info("Saved {} field changes for new {} #{}", changes.size(), entityType, entityId);
 
-                if (!syncContext.isSyncing()) {
-                    log.info("Publishing {} changes for sync broadcast (create)", changes.size());
-                    syncEventPublisher.publishChanges(changes);
+                log.info("Publishing {} changes for sync broadcast (create)", changes.size());
+                syncEventPublisher.publishChanges(changes);
 
-                    // Notify FileObjectSyncHandler for file uploads
-                    if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
-                        fileObjectSyncHandler.onLocalFileObjectChanged(
-                            (com.dk_power.power_plant_java.entities.files.FileObject) entity, true);
-                    }
-                } else {
-                    log.info("Skipping broadcast - creation originated from sync");
+                // Notify FileObjectSyncHandler for file uploads
+                if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                    fileObjectSyncHandler.onLocalFileObjectChanged(
+                        (com.dk_power.power_plant_java.entities.files.FileObject) entity, true);
                 }
             }
         } catch (Exception e) {
@@ -239,6 +247,15 @@ public class FieldChangeTracker {
 
         if (newEntity == null || newEntity.getId() == null) {
             log.warn("Cannot track update: entity or ID is null");
+            return changes;
+        }
+
+        // Skip tracking entirely if we're in sync context
+        // This prevents creating FieldChange records for entities being updated from sync,
+        // which could interfere with the original changes being applied
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping entity update tracking - in sync context for {} #{}",
+                newEntity.getClass().getSimpleName(), newEntity.getId());
             return changes;
         }
 
@@ -296,17 +313,13 @@ public class FieldChangeTracker {
                 fieldChangeRepository.saveAll(changes);
                 log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
-                if (!syncContext.isSyncing()) {
-                    log.info("Publishing {} changes for sync broadcast (update)", changes.size());
-                    syncEventPublisher.publishChanges(changes);
+                log.info("Publishing {} changes for sync broadcast (update)", changes.size());
+                syncEventPublisher.publishChanges(changes);
 
-                    // Notify FileObjectSyncHandler for file uploads
-                    if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
-                        fileObjectSyncHandler.onLocalFileObjectChanged(
-                            (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
-                    }
-                } else {
-                    log.info("Skipping broadcast - update originated from sync");
+                // Notify FileObjectSyncHandler for file uploads
+                if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                    fileObjectSyncHandler.onLocalFileObjectChanged(
+                        (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
                 }
             } else {
                 log.info("No field changes detected for {} #{}", entityType, entityId);
@@ -325,6 +338,13 @@ public class FieldChangeTracker {
     public <T extends BaseIdEntity> FieldChange trackDelete(T entity) {
         if (entity == null || entity.getId() == null) {
             log.warn("Cannot track delete: entity or ID is null");
+            return null;
+        }
+
+        // Skip tracking if we're in sync context
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping delete tracking - in sync context for {} #{}",
+                entity.getClass().getSimpleName(), entity.getId());
             return null;
         }
 

@@ -269,6 +269,9 @@ export class CurrentFileService {
     updateMapByType(type: string, file: FileDto): void {
       const partualType = this.fileTypes.find(t => type.toLowerCase().includes(t.toLowerCase()));
       if (!partualType) {
+          // Still notify listeners even if file type doesn't match predefined list
+          // This ensures UI updates for all file types
+          this.filesUpdtedSubject.next();
           return;
       }
       const currentFilesByType = this.getFilesByType(partualType);

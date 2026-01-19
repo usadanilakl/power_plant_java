@@ -205,9 +205,9 @@ export class RfFileStateService {
     // Update the file map in CurrentFileService
     // This triggers filesUpdated$ which the left menu listens to
     const fileTypeName = file.fileType?.name ?? '';
-    if (fileTypeName) {
-      this.currentFileService.updateMapByType(fileTypeName, file);
-    }
+    // Always call updateMapByType - it will trigger filesUpdated$ even if
+    // the file type doesn't match the predefined list
+    this.currentFileService.updateMapByType(fileTypeName, file);
   }
 
   clearFiles(): void {
