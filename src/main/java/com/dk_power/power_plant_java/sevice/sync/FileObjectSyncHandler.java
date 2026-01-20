@@ -321,7 +321,7 @@ public class FileObjectSyncHandler {
             List<String> oldExtensions = currentExtensions;
 
             if (pathChanges.containsKey("fileNumber")) {
-                oldFileNumber = pathChanges.get("fileNumber").getOldValue();
+                oldFileNumber = stripJsonQuotes(pathChanges.get("fileNumber").getOldValue());
             }
             if (pathChanges.containsKey("fileType")) {
                 // oldValue is the ID of the old Value entity, need to look up its name
@@ -337,7 +337,7 @@ public class FileObjectSyncHandler {
             }
             if (pathChanges.containsKey("extension")) {
                 // Parse old extensions - could be comma-separated or single value
-                String oldExtValue = pathChanges.get("extension").getOldValue();
+                String oldExtValue = stripJsonQuotes(pathChanges.get("extension").getOldValue());
                 if (oldExtValue != null && !oldExtValue.isEmpty()) {
                     oldExtensions = Arrays.asList(oldExtValue.split(","));
                 }
@@ -497,6 +497,23 @@ public class FileObjectSyncHandler {
             log.debug("Could not parse Value ID '{}', using as-is", valueIdStr);
             return valueIdStr;
         }
+    }
+
+    /**
+     * Strip JSON quotes from a serialized string value.
+     * FieldChange stores string values with JSON serialization which wraps strings in quotes.
+     * E.g., "hello" becomes "\"hello\"" when serialized.
+     */
+    private String stripJsonQuotes(String value) {
+        if (value == null) {
+            return null;
+        }
+        // Remove leading and trailing quotes if present
+        String result = value.trim();
+        if (result.startsWith("\"") && result.endsWith("\"") && result.length() >= 2) {
+            result = result.substring(1, result.length() - 1);
+        }
+        return result;
     }
 
     /**
