@@ -343,16 +343,20 @@ public class FileObjectSyncHandler {
                 }
             }
 
-            log.info("Deleting old files: fileNumber={}, fileType={}, vendor={}, extensions={}",
-                oldFileNumber, oldFileType, oldVendor, oldExtensions);
+            // Get the base link from the FileObject (e.g., "uploads" or "uploads-test")
+            String baseLink = fileObject.getBaseLink() != null ? fileObject.getBaseLink() : filesRootPath;
+
+            log.info("Deleting old files: fileNumber={}, fileType={}, vendor={}, extensions={}, baseLink={}",
+                oldFileNumber, oldFileType, oldVendor, oldExtensions, baseLink);
 
             // Delete old files for EACH OLD extension (not current!)
             for (String extension : oldExtensions) {
                 String trimmedExt = extension.trim();
                 if (trimmedExt.isEmpty()) continue;
 
-                // Build old folder path: uploads/{extension}/{fileType}/{vendor}
-                String oldFolder = String.format("uploads/%s/%s/%s",
+                // Build old folder path: {baseLink}/{extension}/{fileType}/{vendor}
+                String oldFolder = String.format("%s/%s/%s/%s",
+                    baseLink,
                     trimmedExt,
                     oldFileType != null ? oldFileType : "",
                     oldVendor != null ? oldVendor : "");
