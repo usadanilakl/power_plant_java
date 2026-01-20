@@ -362,6 +362,11 @@ public class FieldSyncService {
             .filter(c -> c.getOldValue() != null && c.getNewValue() != null)
             .toList();
 
+        log.info("Collected {} Value name changes for file structure handling", valueNameChanges.size());
+        for (FieldChange vc : valueNameChanges) {
+            log.info("  Value #{} name: '{}' -> '{}'", vc.getEntityId(), vc.getOldValue(), vc.getNewValue());
+        }
+
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data
         if (!pendingBroadcasts.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -379,7 +384,12 @@ public class FieldSyncService {
                     }
 
                     // Handle Value name changes (delete old Vendor/FileType folders)
-                    handleValueNameChangesForFileStructure(valueNameChanges);
+                    // Run in a new transaction since afterCommit runs outside transaction context
+                    if (!valueNameChanges.isEmpty()) {
+                        transactionTemplate.executeWithoutResult(status -> {
+                            handleValueNameChangesForFileStructure(valueNameChanges);
+                        });
+                    }
                 }
             });
         } else {
@@ -393,7 +403,9 @@ public class FieldSyncService {
             }
 
             // Handle Value name changes (delete old Vendor/FileType folders)
-            handleValueNameChangesForFileStructure(valueNameChanges);
+            if (!valueNameChanges.isEmpty()) {
+                handleValueNameChangesForFileStructure(valueNameChanges);
+            }
         }
 
         return totalApplied;
@@ -410,24 +422,29 @@ public class FieldSyncService {
      * are generated, so the normal file sync doesn't trigger. But the files on the sync server
      * are already at the new path (uploaded from source machine after rename).
      */
-    @SuppressWarnings("rawtypes")
     private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
+        log.info("handleValueNameChangesForFileStructure called with {} changes", valueNameChanges.size());
         if (valueNameChanges.isEmpty()) {
             return;
         }
 
         for (FieldChange change : valueNameChanges) {
             try {
+                log.info("Processing Value name change for entity #{}: '{}' -> '{}'",
+                    change.getEntityId(), change.getOldValue(), change.getNewValue());
+
                 // Look up the Value entity to get its category
-                CrudService valueService = serviceFacade.getService("Value");
-                if (valueService == null) {
-                    log.warn("Value service not found, cannot handle file structure change");
+                // Use EntityManager.find() to bypass @Where(clause = "deleted = false")
+                Value value = entityManager.find(Value.class, change.getEntityId());
+                log.info("Value #{} lookup via EntityManager: found={}", change.getEntityId(), (value != null));
+
+                if (value == null) {
+                    log.warn("Value #{} not found via EntityManager, skipping file structure handling",
+                        change.getEntityId());
                     continue;
                 }
-
-                Value value = (Value) valueService.getEntityById(change.getEntityId());
-                if (value == null || value.getCategory() == null) {
-                    log.debug("Value #{} not found or has no category, skipping file structure handling",
+                if (value.getCategory() == null) {
+                    log.warn("Value #{} has no category, skipping file structure handling",
                         change.getEntityId());
                     continue;
                 }
