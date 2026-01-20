@@ -621,20 +621,20 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     /**
-     * Rename file structure folders after a Value entity name change from sync.
+     * Delete old file structure folders after a Value entity name change from sync.
      * This is called when a Vendor or File Type name is changed on another machine
-     * and synced to this machine.
+     * and synced to this machine. Files have already been copied to the new location
+     * by the file sync system, so we just need to clean up the old folders.
      *
      * @param oldName the old name (from FieldChange.oldValue)
-     * @param newName the new name (from FieldChange.newValue)
      * @param categoryName the category name ("Vendor" or "File Type")
      */
-    public void renameFileStructureAfterSync(String oldName, String newName, String categoryName) {
-        if (oldName == null || newName == null || oldName.equals(newName)) {
+    public void deleteOldFileStructureAfterSync(String oldName, String categoryName) {
+        if (oldName == null || oldName.isEmpty()) {
             return;
         }
 
-        logger.info("Renaming file structure after sync: {} -> {} (category: {})", oldName, newName, categoryName);
+        logger.info("Deleting old file structure after sync: {} (category: {})", oldName, categoryName);
 
         if ("File Type".equals(categoryName)) {
             try {
@@ -642,19 +642,18 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 Files.walk(rootPath, 1)
                         .filter(Files::isDirectory)
                         .forEach(path -> {
-                            Path folderToRename = path.resolve(oldName);
-                            if (Files.exists(folderToRename)) {
+                            Path folderToDelete = path.resolve(oldName);
+                            if (Files.exists(folderToDelete)) {
                                 try {
-                                    Path newPath = path.resolve(newName);
-                                    Files.move(folderToRename, newPath);
-                                    logger.info("Renamed folder from {} to {}", folderToRename, newPath);
+                                    deleteDirectoryRecursively(folderToDelete);
+                                    logger.info("Deleted old file type folder: {}", folderToDelete);
                                 } catch (IOException e) {
-                                    logger.error("Failed to rename folder from {} to {}", folderToRename, path.resolve(newName), e);
+                                    logger.error("Failed to delete old file type folder: {}", folderToDelete, e);
                                 }
                             }
                         });
             } catch (IOException e) {
-                logger.error("Error while traversing directories for File Type rename", e);
+                logger.error("Error while traversing directories for File Type cleanup", e);
             }
         } else if ("Vendor".equals(categoryName)) {
             try {
@@ -665,17 +664,33 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                             // Check if this is a vendor folder (at depth 3)
                             if (path.getNameCount() - rootPath.getNameCount() == 3 && path.getFileName().toString().equals(oldName)) {
                                 try {
-                                    Path newPath = path.resolveSibling(newName);
-                                    Files.move(path, newPath);
-                                    logger.info("Renamed vendor folder from {} to {}", path, newPath);
+                                    deleteDirectoryRecursively(path);
+                                    logger.info("Deleted old vendor folder: {}", path);
                                 } catch (IOException e) {
-                                    logger.error("Failed to rename vendor folder from {} to {}", path, path.resolveSibling(newName), e);
+                                    logger.error("Failed to delete old vendor folder: {}", path, e);
                                 }
                             }
                         });
             } catch (IOException e) {
-                logger.error("Error while traversing directories for Vendor rename", e);
+                logger.error("Error while traversing directories for Vendor cleanup", e);
             }
+        }
+    }
+
+    /**
+     * Recursively delete a directory and all its contents.
+     */
+    private void deleteDirectoryRecursively(Path directory) throws IOException {
+        if (Files.exists(directory)) {
+            Files.walk(directory)
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            logger.warn("Failed to delete: {}", path, e);
+                        }
+                    });
         }
     }
 

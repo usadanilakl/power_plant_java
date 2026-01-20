@@ -348,7 +348,7 @@ public class FieldSyncService {
             .filter(c -> "FileObject".equals(c.getEntityType()))
             .toList();
 
-        // Collect Value name changes for file structure rename (Vendor/FileType folder renames)
+        // Collect Value name changes for file structure cleanup (Vendor/FileType folder deletions)
         List<FieldChange> valueNameChanges = incomingChanges.stream()
             .filter(c -> "Value".equals(c.getEntityType()) && "name".equals(c.getFieldName()))
             .filter(c -> c.getOldValue() != null && c.getNewValue() != null)
@@ -370,7 +370,7 @@ public class FieldSyncService {
                             new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
                     }
 
-                    // Handle Value name changes (Vendor/FileType folder renames)
+                    // Handle Value name changes (delete old Vendor/FileType folders)
                     handleValueNameChangesForFileStructure(valueNameChanges);
                 }
             });
@@ -384,7 +384,7 @@ public class FieldSyncService {
                     new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
             }
 
-            // Handle Value name changes (Vendor/FileType folder renames)
+            // Handle Value name changes (delete old Vendor/FileType folders)
             handleValueNameChangesForFileStructure(valueNameChanges);
         }
 
@@ -392,8 +392,9 @@ public class FieldSyncService {
     }
 
     /**
-     * Handle Value name changes that affect file structure (Vendor/FileType folder renames).
-     * Looks up each Value entity to get its category, then renames folders accordingly.
+     * Handle Value name changes that affect file structure (delete old Vendor/FileType folders).
+     * Looks up each Value entity to get its category, then deletes old folders.
+     * Files have already been copied to the new location by the file sync system.
      */
     @SuppressWarnings("rawtypes")
     private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
@@ -406,13 +407,13 @@ public class FieldSyncService {
                 // Look up the Value entity to get its category
                 CrudService valueService = serviceFacade.getService("Value");
                 if (valueService == null) {
-                    log.warn("Value service not found, cannot rename file structure");
+                    log.warn("Value service not found, cannot cleanup file structure");
                     continue;
                 }
 
                 Value value = (Value) valueService.getEntityById(change.getEntityId());
                 if (value == null || value.getCategory() == null) {
-                    log.debug("Value #{} not found or has no category, skipping file structure rename",
+                    log.debug("Value #{} not found or has no category, skipping file structure cleanup",
                         change.getEntityId());
                     continue;
                 }
@@ -420,15 +421,14 @@ public class FieldSyncService {
                 String categoryName = value.getCategory().getName();
                 if ("Vendor".equals(categoryName) || "File Type".equals(categoryName)) {
                     String oldName = change.getOldValue().replace("\"", "");
-                    String newName = change.getNewValue().replace("\"", "");
 
-                    log.info("Value name change detected for {} category: {} -> {}",
-                        categoryName, oldName, newName);
+                    log.info("Value name change detected for {} category, deleting old folders: {}",
+                        categoryName, oldName);
 
-                    ngFileService.renameFileStructureAfterSync(oldName, newName, categoryName);
+                    ngFileService.deleteOldFileStructureAfterSync(oldName, categoryName);
                 }
             } catch (Exception e) {
-                log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
+                log.error("Error handling Value name change for file structure cleanup: {}", e.getMessage(), e);
             }
         }
     }
