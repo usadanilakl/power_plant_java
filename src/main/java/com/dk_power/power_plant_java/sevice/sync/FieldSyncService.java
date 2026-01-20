@@ -10,6 +10,8 @@ import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -49,6 +51,8 @@ public class FieldSyncService {
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
     private final NgFileService ngFileService;
+    private final FileRepo fileRepo;
+    private final FileObjectSyncHandler fileObjectSyncHandler;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -66,7 +70,9 @@ public class FieldSyncService {
             SyncUpdateController syncUpdateController,
             ApplicationEventPublisher eventPublisher,
             PlatformTransactionManager transactionManager,
-            NgFileService ngFileService) {
+            NgFileService ngFileService,
+            FileRepo fileRepo,
+            FileObjectSyncHandler fileObjectSyncHandler) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -78,6 +84,8 @@ public class FieldSyncService {
         this.eventPublisher = eventPublisher;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.ngFileService = ngFileService;
+        this.fileRepo = fileRepo;
+        this.fileObjectSyncHandler = fileObjectSyncHandler;
     }
 
     /**
@@ -392,9 +400,15 @@ public class FieldSyncService {
     }
 
     /**
-     * Handle Value name changes that affect file structure (delete old Vendor/FileType folders).
-     * Looks up each Value entity to get its category, then deletes old folders.
-     * Files have already been copied to the new location by the file sync system.
+     * Handle Value name changes that affect file structure.
+     * When a Vendor or FileType name changes:
+     * 1. Find all FileObjects that reference this Value
+     * 2. Queue file downloads for each (files will download to NEW path based on new name)
+     * 3. Delete old folders (files are at old path, new files will be downloaded)
+     *
+     * This is necessary because when Vendor/FileType name changes, no FileObject field changes
+     * are generated, so the normal file sync doesn't trigger. But the files on the sync server
+     * are already at the new path (uploaded from source machine after rename).
      */
     @SuppressWarnings("rawtypes")
     private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
@@ -407,13 +421,13 @@ public class FieldSyncService {
                 // Look up the Value entity to get its category
                 CrudService valueService = serviceFacade.getService("Value");
                 if (valueService == null) {
-                    log.warn("Value service not found, cannot cleanup file structure");
+                    log.warn("Value service not found, cannot handle file structure change");
                     continue;
                 }
 
                 Value value = (Value) valueService.getEntityById(change.getEntityId());
                 if (value == null || value.getCategory() == null) {
-                    log.debug("Value #{} not found or has no category, skipping file structure cleanup",
+                    log.debug("Value #{} not found or has no category, skipping file structure handling",
                         change.getEntityId());
                     continue;
                 }
@@ -422,13 +436,41 @@ public class FieldSyncService {
                 if ("Vendor".equals(categoryName) || "File Type".equals(categoryName)) {
                     String oldName = change.getOldValue().replace("\"", "");
 
-                    log.info("Value name change detected for {} category, deleting old folders: {}",
-                        categoryName, oldName);
+                    log.info("Value name change detected for {} category: '{}' -> '{}'",
+                        categoryName, oldName, value.getName());
 
+                    // Step 1: Find all FileObjects that reference this Value
+                    List<FileObject> affectedFiles;
+                    if ("Vendor".equals(categoryName)) {
+                        affectedFiles = fileRepo.findByVendor(value);
+                    } else {
+                        affectedFiles = fileRepo.findByFileType(value);
+                    }
+
+                    log.info("Found {} FileObjects affected by {} name change",
+                        affectedFiles.size(), categoryName);
+
+                    // Step 2: Queue file downloads for each affected FileObject
+                    // Files on sync server are at NEW path, local files are at OLD path
+                    // Download will get files to new location
+                    for (FileObject fileObject : affectedFiles) {
+                        try {
+                            fileObjectSyncHandler.queueFileDownload(fileObject);
+                            log.debug("Queued file download for FileObject #{} ({})",
+                                fileObject.getId(), fileObject.getFileNumber());
+                        } catch (Exception e) {
+                            log.warn("Failed to queue download for FileObject #{}: {}",
+                                fileObject.getId(), e.getMessage());
+                        }
+                    }
+
+                    // Step 3: Delete old folder structure
+                    // Old files will be removed, new files are being downloaded
+                    log.info("Deleting old {} folders: {}", categoryName, oldName);
                     ngFileService.deleteOldFileStructureAfterSync(oldName, categoryName);
                 }
             } catch (Exception e) {
-                log.error("Error handling Value name change for file structure cleanup: {}", e.getMessage(), e);
+                log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
             }
         }
     }
