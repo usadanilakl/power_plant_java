@@ -362,11 +362,6 @@ public class FieldSyncService {
             .filter(c -> c.getOldValue() != null && c.getNewValue() != null)
             .toList();
 
-        log.info("Collected {} Value name changes for file structure handling", valueNameChanges.size());
-        for (FieldChange vc : valueNameChanges) {
-            log.info("  Value #{} name: '{}' -> '{}'", vc.getEntityId(), vc.getOldValue(), vc.getNewValue());
-        }
-
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data
         if (!pendingBroadcasts.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -390,7 +385,6 @@ public class FieldSyncService {
                             transactionTemplate.executeWithoutResult(status -> {
                                 handleValueNameChangesForFileStructure(valueNameChanges);
                             });
-                            log.info("Value name change transaction committed successfully");
                         } catch (Exception e) {
                             log.error("Value name change transaction failed: {}", e.getMessage(), e);
                         }
@@ -428,29 +422,17 @@ public class FieldSyncService {
      * are already at the new path (uploaded from source machine after rename).
      */
     private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
-        log.info("handleValueNameChangesForFileStructure called with {} changes", valueNameChanges.size());
         if (valueNameChanges.isEmpty()) {
             return;
         }
 
         for (FieldChange change : valueNameChanges) {
             try {
-                log.info("Processing Value name change for entity #{}: '{}' -> '{}'",
-                    change.getEntityId(), change.getOldValue(), change.getNewValue());
-
                 // Look up the Value entity to get its category
                 // Use EntityManager.find() to bypass @Where(clause = "deleted = false")
                 Value value = entityManager.find(Value.class, change.getEntityId());
-                log.info("Value #{} lookup via EntityManager: found={}", change.getEntityId(), (value != null));
 
-                if (value == null) {
-                    log.warn("Value #{} not found via EntityManager, skipping file structure handling",
-                        change.getEntityId());
-                    continue;
-                }
-                if (value.getCategory() == null) {
-                    log.warn("Value #{} has no category, skipping file structure handling",
-                        change.getEntityId());
+                if (value == null || value.getCategory() == null) {
                     continue;
                 }
 
@@ -458,10 +440,7 @@ public class FieldSyncService {
                 if ("Vendor".equals(categoryName) || "File Type".equals(categoryName)) {
                     String oldName = change.getOldValue().replace("\"", "");
 
-                    log.info("Value name change detected for {} category: '{}' -> '{}'",
-                        categoryName, oldName, value.getName());
-
-                    // Step 1: Find all FileObjects that reference this Value
+                    // Find all FileObjects that reference this Value
                     // Use queries with fetch joins to ensure vendor and fileType are eagerly loaded
                     List<FileObject> affectedFiles;
                     if ("Vendor".equals(categoryName)) {
@@ -470,10 +449,10 @@ public class FieldSyncService {
                         affectedFiles = fileRepo.findByFileTypeWithRelationships(value);
                     }
 
-                    log.info("Found {} FileObjects affected by {} name change",
-                        affectedFiles.size(), categoryName);
+                    log.info("{} name change '{}' -> '{}': queueing downloads for {} files",
+                        categoryName, oldName, value.getName(), affectedFiles.size());
 
-                    // Step 2: Queue file downloads for each affected FileObject
+                    // Queue file downloads for each affected FileObject
                     // Files on sync server are at NEW path, local files are at OLD path
                     // Download will get files to new location
                     // OLD folders will be deleted AFTER download completes (not immediately!)
@@ -481,24 +460,17 @@ public class FieldSyncService {
                         try {
                             // Build old folder paths for this FileObject (to delete after download)
                             String oldFolderPaths = buildOldFolderPaths(fileObject, oldName, categoryName);
-
                             fileObjectSyncHandler.queueFileDownloadWithCleanup(fileObject, oldFolderPaths);
-                            log.debug("Queued file download for FileObject #{} ({}) with cleanup of: {}",
-                                fileObject.getId(), fileObject.getFileNumber(), oldFolderPaths);
                         } catch (Exception e) {
                             log.warn("Failed to queue download for FileObject #{}: {}",
                                 fileObject.getId(), e.getMessage());
                         }
                     }
-
-                    // NOTE: Old folders are now deleted AFTER download completes in FileObjectSyncHandler
-                    // This prevents file loss if download fails or is delayed
                 }
             } catch (Exception e) {
                 log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
             }
         }
-        log.info("handleValueNameChangesForFileStructure completed for {} changes", valueNameChanges.size());
     }
 
     /**
@@ -735,28 +707,10 @@ public class FieldSyncService {
 
             field.setAccessible(true);
 
-            // Get old value for diagnostic logging
-            Object oldValue = field.get(entity);
-
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
-
-            // Diagnostic logging for name field changes (to debug issue where name gets cleared)
-            if ("name".equals(change.getFieldName())) {
-                log.info("SYNC NAME CHANGE: {}.name #{} - oldValue='{}', newValue='{}', deserializedValue='{}', " +
-                    "changeOldValue='{}', changeTimestamp={}, originMachine={}",
-                    entity.getClass().getSimpleName(), entity.getId(),
-                    oldValue, change.getNewValue(), value,
-                    change.getOldValue(), change.getTimestamp(), change.getOriginMachineId());
-            }
 
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
-                // Extra warning if we're about to set name to null when it had a value
-                if ("name".equals(change.getFieldName()) && oldValue != null && value == null) {
-                    log.warn("WARNING: About to clear name field for {}#{} - old='{}', change.newValue='{}', " +
-                        "deserialized=null. This may indicate a sync bug!",
-                        entity.getClass().getSimpleName(), entity.getId(), oldValue, change.getNewValue());
-                }
                 field.set(entity, value);
                 return true;
             }

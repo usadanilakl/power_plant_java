@@ -291,8 +291,7 @@ public class FileObjectSyncHandler {
      * using all the old values, not mixing old and new.
      */
     private void handleIncomingPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
-        log.info("Incoming path changes for FileObject #{}: {}", fileObject.getId(),
-            pathChanges.keySet());
+        log.info("Path change for FileObject #{}: fields={}", fileObject.getId(), pathChanges.keySet());
 
         // Delete old files using the combined old values
         deleteOldFilesAfterPathChanges(fileObject, pathChanges);
@@ -328,13 +327,13 @@ public class FileObjectSyncHandler {
                 // oldValue is the ID of the old Value entity, need to look up its name
                 String oldFileTypeId = pathChanges.get("fileType").getOldValue();
                 oldFileType = resolveValueNameById(oldFileTypeId);
-                log.debug("Resolved old fileType ID {} to name '{}'", oldFileTypeId, oldFileType);
+                log.info("FileType change: oldId={} resolved to '{}'", oldFileTypeId, oldFileType);
             }
             if (pathChanges.containsKey("vendor")) {
                 // oldValue is the ID of the old Value entity, need to look up its name
                 String oldVendorId = pathChanges.get("vendor").getOldValue();
                 oldVendor = resolveValueNameById(oldVendorId);
-                log.debug("Resolved old vendor ID {} to name '{}'", oldVendorId, oldVendor);
+                log.info("Vendor change: oldId={} resolved to '{}'", oldVendorId, oldVendor);
             }
             if (pathChanges.containsKey("extension")) {
                 // Parse old extensions - could be comma-separated or single value
@@ -344,7 +343,7 @@ public class FileObjectSyncHandler {
                 }
             }
 
-            log.debug("Old path components: fileNumber={}, fileType={}, vendor={}, extensions={}",
+            log.info("Deleting old files: fileNumber={}, fileType={}, vendor={}, extensions={}",
                 oldFileNumber, oldFileType, oldVendor, oldExtensions);
 
             // Delete old files for EACH OLD extension (not current!)
@@ -364,7 +363,7 @@ public class FileObjectSyncHandler {
                     // Find files matching the old file number (including revisions like -rev1, -rev2)
                     List<File> oldFiles = FileUtil.getRevisionsByFileNumber(oldFileNumber, oldFolderPath.toString());
 
-                    log.debug("Found {} old files in {} for fileNumber {}",
+                    log.info("Found {} files to delete in {} for fileNumber {}",
                         oldFiles.size(), oldFolderPath, oldFileNumber);
 
                     for (File oldFile : oldFiles) {
@@ -592,17 +591,7 @@ public class FileObjectSyncHandler {
         // Validate required fields before queueing
         String fullPath = getFullPath(fileObject);
         if (fullPath == null) {
-            // Detailed diagnostic logging
-            log.warn("Cannot queue download for FileObject #{} - fileLink is null. " +
-                "Diagnostics: extensions={}, extension={}, fileType={}, fileTypeName={}, vendor={}, vendorName={}, fileNumber={}",
-                fileObject.getId(),
-                fileObject.getExtensions(),
-                fileObject.getExtension(),
-                fileObject.getFileType(),
-                fileObject.getFileType() != null ? fileObject.getFileType().getName() : "null",
-                fileObject.getVendor(),
-                fileObject.getVendor() != null ? fileObject.getVendor().getName() : "null",
-                fileObject.getFileNumber());
+            log.debug("Cannot queue download for FileObject #{} - fileLink is not set yet", fileObject.getId());
             return;
         }
 
@@ -740,17 +729,7 @@ public class FileObjectSyncHandler {
 
         // Get pending downloads that are ready to process
         List<PendingFileSync> pendingTasks = pendingFileSyncRepository.findPendingDownloads();
-        log.trace("processDownloadQueue: found {} ready download tasks", pendingTasks.size());
         if (pendingTasks.isEmpty()) {
-            // Debug: log counts to understand why no pending downloads were found
-            long totalPending = pendingFileSyncRepository.countByDirectionAndStatusIn(
-                SyncDirection.DOWNLOAD, List.of(SyncStatus.PENDING));
-            long totalInProgress = pendingFileSyncRepository.countByDirectionAndStatusIn(
-                SyncDirection.DOWNLOAD, List.of(SyncStatus.IN_PROGRESS));
-            if (totalPending > 0 || totalInProgress > 0) {
-                log.info("processDownloadQueue: no ready tasks, but {} pending, {} in-progress (nextRetryTime not yet reached?)",
-                    totalPending, totalInProgress);
-            }
             return;
         }
 

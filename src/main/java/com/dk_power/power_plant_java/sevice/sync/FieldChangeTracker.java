@@ -157,16 +157,6 @@ public class FieldChangeTracker {
                     Object oldValue = field.get(oldEntity);
                     Object newValue = field.get(newEntity);
 
-                    // Debug: log first few fields to see what's happening
-                    if (field.getName().equals("description") || field.getName().equals("tagNumber") ||
-                        field.getName().equals("specificLocation") || field.getName().equals("tagged")) {
-                        log.info("Field '{}': old='{}' ({}), new='{}' ({}), equal={}",
-                            field.getName(),
-                            truncateValue(oldValue), oldValue != null ? oldValue.getClass().getSimpleName() : "null",
-                            truncateValue(newValue), newValue != null ? newValue.getClass().getSimpleName() : "null",
-                            areValuesEqual(oldValue, newValue));
-                    }
-
                     if (!areValuesEqual(oldValue, newValue)) {
                         // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
                         // "changing" from a value to null. This can happen during cascade updates
@@ -292,23 +282,6 @@ public class FieldChangeTracker {
                         String fieldName = field.getName();
                         Object oldValue = originalValues.get(fieldName);
                         Object newValue = field.get(newEntity);
-
-                        // Debug logging for key fields
-                        if (fieldName.equals("description") || fieldName.equals("tagNumber") ||
-                            fieldName.equals("specificLocation") || fieldName.equals("tagged")) {
-                            log.info("Field '{}': oldFromMap='{}' ({}), newFromEntity='{}' ({}), equal={}",
-                                fieldName,
-                                truncateValue(oldValue), oldValue != null ? oldValue.getClass().getSimpleName() : "null",
-                                truncateValue(newValue), newValue != null ? newValue.getClass().getSimpleName() : "null",
-                                areValuesEqual(oldValue, newValue));
-                        }
-
-                        // DIAGNOSTIC: Always log 'name' field changes to debug cascade issues
-                        if ("name".equals(fieldName)) {
-                            log.info("NAME FIELD CHECK for {} #{}: oldFromMap='{}', newFromEntity='{}', equal={}",
-                                entityType, entityId, truncateValue(oldValue), truncateValue(newValue),
-                                areValuesEqual(oldValue, newValue));
-                        }
 
                         if (!areValuesEqual(oldValue, newValue)) {
                             // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
