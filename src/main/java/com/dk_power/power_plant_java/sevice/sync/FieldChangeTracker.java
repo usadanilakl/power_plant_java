@@ -168,6 +168,19 @@ public class FieldChangeTracker {
                     }
 
                     if (!areValuesEqual(oldValue, newValue)) {
+                        // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
+                        // "changing" from a value to null. This can happen during cascade updates
+                        // (e.g., when Vendor is renamed, FileObject may be marked dirty even though
+                        // no FileObject fields actually changed). In such cases, the in-memory entity
+                        // might have uninitialized/null fields due to Hibernate proxy behavior.
+                        // This is a protective measure - it's unlikely someone intentionally clears a name.
+                        if ("name".equals(field.getName()) && oldValue != null && newValue == null) {
+                            log.warn("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
+                                "(likely cascade false-positive, not a real user change)",
+                                entityType, field.getName(), truncateValue(oldValue));
+                            continue;
+                        }
+
                         FieldChange fieldChange = createFieldChange(
                             entityType, entityId, field.getName(),
                             oldValue, newValue,
@@ -287,6 +300,13 @@ public class FieldChangeTracker {
                                 fieldName,
                                 truncateValue(oldValue), oldValue != null ? oldValue.getClass().getSimpleName() : "null",
                                 truncateValue(newValue), newValue != null ? newValue.getClass().getSimpleName() : "null",
+                                areValuesEqual(oldValue, newValue));
+                        }
+
+                        // DIAGNOSTIC: Always log 'name' field changes to debug cascade issues
+                        if ("name".equals(fieldName)) {
+                            log.info("NAME FIELD CHECK for {} #{}: oldFromMap='{}', newFromEntity='{}', equal={}",
+                                entityType, entityId, truncateValue(oldValue), truncateValue(newValue),
                                 areValuesEqual(oldValue, newValue));
                         }
 

@@ -80,10 +80,17 @@ public class EntityStateCapture {
             // Map property names to their original values
             for (int i = 0; i < propertyNames.length && i < databaseState.length; i++) {
                 originalValues.put(propertyNames[i], databaseState[i]);
+                // Debug log for 'name' field specifically
+                if ("name".equals(propertyNames[i])) {
+                    log.info("DB SNAPSHOT for {} #{}: name='{}' (type={})",
+                        entity.getClass().getSimpleName(), entity.getId(),
+                        databaseState[i],
+                        databaseState[i] != null ? databaseState[i].getClass().getSimpleName() : "null");
+                }
             }
 
             log.trace("Retrieved {} original values from database for {} #{}",
-                originalValues.size(), entity.getClass().getSimpleName(), entity.getId());
+                originalValues.size(), entity.getClass().getSimpleName(), entity.getId())
 
         } catch (Exception e) {
             log.warn("Could not get database state via Hibernate for {} #{}, falling back to reflection: {}",
