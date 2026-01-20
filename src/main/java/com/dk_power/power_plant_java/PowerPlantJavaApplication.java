@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.config.TestCleanupConfig;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
@@ -52,7 +53,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
 
     public static void main(String[] args) {
-//        SpringApplication.run(PowerPlantJavaApplication.class, args);
+        // Run cleanup BEFORE Spring initializes (before database connection)
+        TestCleanupConfig.runCleanup();
 
         SpringApplicationBuilder builder = new SpringApplicationBuilder(PowerPlantJavaApplication.class);
         builder.headless(false);
