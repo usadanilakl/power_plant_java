@@ -470,26 +470,65 @@ public class FieldSyncService {
                     // Step 2: Queue file downloads for each affected FileObject
                     // Files on sync server are at NEW path, local files are at OLD path
                     // Download will get files to new location
+                    // OLD folders will be deleted AFTER download completes (not immediately!)
                     for (FileObject fileObject : affectedFiles) {
                         try {
-                            fileObjectSyncHandler.queueFileDownload(fileObject);
-                            log.debug("Queued file download for FileObject #{} ({})",
-                                fileObject.getId(), fileObject.getFileNumber());
+                            // Build old folder paths for this FileObject (to delete after download)
+                            String oldFolderPaths = buildOldFolderPaths(fileObject, oldName, categoryName);
+
+                            fileObjectSyncHandler.queueFileDownloadWithCleanup(fileObject, oldFolderPaths);
+                            log.debug("Queued file download for FileObject #{} ({}) with cleanup of: {}",
+                                fileObject.getId(), fileObject.getFileNumber(), oldFolderPaths);
                         } catch (Exception e) {
                             log.warn("Failed to queue download for FileObject #{}: {}",
                                 fileObject.getId(), e.getMessage());
                         }
                     }
 
-                    // Step 3: Delete old folder structure
-                    // Old files will be removed, new files are being downloaded
-                    log.info("Deleting old {} folders: {}", categoryName, oldName);
-                    ngFileService.deleteOldFileStructureAfterSync(oldName, categoryName);
+                    // NOTE: Old folders are now deleted AFTER download completes in FileObjectSyncHandler
+                    // This prevents file loss if download fails or is delayed
                 }
             } catch (Exception e) {
                 log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
             }
         }
+    }
+
+    /**
+     * Build old folder paths for a FileObject based on the old Vendor/FileType name.
+     * Returns semicolon-separated paths for each extension the FileObject has.
+     *
+     * File structure: uploads/{extension}/{fileType}/{vendor}/
+     * - When Vendor changes: old folder is uploads/{ext}/{fileType}/{oldVendorName}/
+     * - When FileType changes: old folder is uploads/{ext}/{oldFileTypeName}/{vendor}/
+     */
+    private String buildOldFolderPaths(FileObject fileObject, String oldName, String categoryName) {
+        List<String> extensions = fileObject.getExtensionsArray();
+        if (extensions == null || extensions.isEmpty()) {
+            return "";
+        }
+
+        List<String> oldPaths = new ArrayList<>();
+        String baseLink = fileObject.getBaseLink() != null ? fileObject.getBaseLink() : "uploads";
+
+        for (String ext : extensions) {
+            String trimmedExt = ext.trim();
+            if (trimmedExt.isEmpty()) continue;
+
+            String oldFolderPath;
+            if ("Vendor".equals(categoryName)) {
+                // Vendor name changed - build path with old vendor name
+                String fileTypeName = fileObject.getFileType() != null ? fileObject.getFileType().getName() : "";
+                oldFolderPath = baseLink + "/" + trimmedExt + "/" + fileTypeName + "/" + oldName;
+            } else {
+                // FileType name changed - build path with old file type name
+                String vendorName = fileObject.getVendor() != null ? fileObject.getVendor().getName() : "";
+                oldFolderPath = baseLink + "/" + trimmedExt + "/" + oldName + "/" + vendorName;
+            }
+            oldPaths.add(oldFolderPath);
+        }
+
+        return String.join(";", oldPaths);
     }
 
     /**
@@ -688,10 +727,29 @@ public class FieldSyncService {
             }
 
             field.setAccessible(true);
+
+            // Get old value for diagnostic logging
+            Object oldValue = field.get(entity);
+
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
+
+            // Diagnostic logging for name field changes (to debug issue where name gets cleared)
+            if ("name".equals(change.getFieldName())) {
+                log.info("SYNC NAME CHANGE: {}.name #{} - oldValue='{}', newValue='{}', deserializedValue='{}', " +
+                    "changeOldValue='{}', changeTimestamp={}, originMachine={}",
+                    entity.getClass().getSimpleName(), entity.getId(),
+                    oldValue, change.getNewValue(), value,
+                    change.getOldValue(), change.getTimestamp(), change.getOriginMachineId());
+            }
 
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
+                // Extra warning if we're about to set name to null when it had a value
+                if ("name".equals(change.getFieldName()) && oldValue != null && value == null) {
+                    log.warn("WARNING: About to clear name field for {}#{} - old='{}', change.newValue='{}', " +
+                        "deserialized=null. This may indicate a sync bug!",
+                        entity.getClass().getSimpleName(), entity.getId(), oldValue, change.getNewValue());
+                }
                 field.set(entity, value);
                 return true;
             }

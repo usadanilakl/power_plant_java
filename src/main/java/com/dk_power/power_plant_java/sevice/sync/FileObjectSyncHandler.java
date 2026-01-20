@@ -410,6 +410,64 @@ public class FileObjectSyncHandler {
     }
 
     /**
+     * Delete old folders after successful download.
+     * This is called when a Vendor or FileType name changes - the task stores the old folder paths
+     * that should be deleted only after new files are successfully downloaded to the new location.
+     */
+    private void deleteOldFoldersAfterDownload(PendingFileSync task) {
+        String oldFolders = task.getOldFolderToDelete();
+        if (oldFolders == null || oldFolders.isEmpty()) {
+            return;
+        }
+
+        log.info("Deleting old folders after successful download for FileObject #{}: {}",
+            task.getEntityId(), oldFolders);
+
+        // Folders can be semicolon-separated if multiple renames happened
+        for (String folderPath : oldFolders.split(";")) {
+            String trimmedPath = folderPath.trim();
+            if (trimmedPath.isEmpty()) {
+                continue;
+            }
+
+            try {
+                Path path = Paths.get(trimmedPath);
+                if (Files.exists(path)) {
+                    // Delete directory recursively
+                    deleteDirectoryRecursively(path);
+                    log.info("Deleted old folder after download: {}", path);
+
+                    // Clean up empty parent directories
+                    cleanupEmptyDirectories(path.getParent());
+                } else {
+                    log.debug("Old folder no longer exists (already deleted?): {}", path);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete old folder {}: {}", trimmedPath, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Delete a directory recursively.
+     */
+    private void deleteDirectoryRecursively(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
+        }
+
+        Files.walk(directory)
+            .sorted(Comparator.reverseOrder())
+            .forEach(path -> {
+                try {
+                    Files.delete(path);
+                } catch (IOException e) {
+                    log.warn("Failed to delete {}: {}", path, e.getMessage());
+                }
+            });
+    }
+
+    /**
      * Resolve a Value entity name by its ID.
      * Used to get the name of vendor/fileType from the ID stored in FieldChange.oldValue.
      *
@@ -522,6 +580,73 @@ public class FileObjectSyncHandler {
     }
 
     /**
+     * Queue a file for download from sync server, with old folder to delete after download completes.
+     * This is used when a Vendor or FileType name changes - the old folder contains files at the old path
+     * that should only be deleted AFTER new files are successfully downloaded.
+     *
+     * @param fileObject the FileObject to download
+     * @param oldFolderToDelete the old folder path to delete after download succeeds (can be semicolon-separated for multiple folders)
+     */
+    @Transactional
+    public void queueFileDownloadWithCleanup(FileObject fileObject, String oldFolderToDelete) {
+        // Validate required fields before queueing
+        String fullPath = getFullPath(fileObject);
+        if (fullPath == null) {
+            log.debug("Cannot queue download for FileObject #{} - fileLink is not set yet", fileObject.getId());
+            return;
+        }
+
+        String fileNumber = fileObject.getFileNumber();
+        if (fileNumber == null || fileNumber.isEmpty()) {
+            log.debug("Cannot queue download for FileObject #{} - fileNumber is not set", fileObject.getId());
+            return;
+        }
+
+        // Check if there's already a pending download for this entity
+        Optional<PendingFileSync> existingTask = pendingFileSyncRepository.findByEntityIdAndDirectionAndStatusIn(
+            fileObject.getId(),
+            SyncDirection.DOWNLOAD,
+            List.of(SyncStatus.PENDING, SyncStatus.IN_PROGRESS)
+        );
+
+        if (existingTask.isPresent()) {
+            // Update existing task to include the old folder to delete
+            PendingFileSync task = existingTask.get();
+            if (oldFolderToDelete != null && !oldFolderToDelete.isEmpty()) {
+                String existing = task.getOldFolderToDelete();
+                if (existing != null && !existing.isEmpty()) {
+                    // Append to existing list (semicolon-separated)
+                    task.setOldFolderToDelete(existing + ";" + oldFolderToDelete);
+                } else {
+                    task.setOldFolderToDelete(oldFolderToDelete);
+                }
+                pendingFileSyncRepository.save(task);
+                log.debug("Updated existing download task for FileObject #{} with old folder to delete: {}",
+                    fileObject.getId(), oldFolderToDelete);
+            }
+            return;
+        }
+
+        // Create persistent task
+        String extensions = fileObject.getExtensionsArray() != null
+            ? String.join(",", fileObject.getExtensionsArray())
+            : "";
+
+        PendingFileSync task = new PendingFileSync(
+            fileObject.getId(),
+            SyncDirection.DOWNLOAD,
+            fileNumber,
+            extensions,
+            fullPath
+        );
+        task.setOldFolderToDelete(oldFolderToDelete);
+
+        pendingFileSyncRepository.save(task);
+        log.info("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database)",
+            fileObject.getId(), oldFolderToDelete);
+    }
+
+    /**
      * Process pending uploads (runs in background).
      * Uses database-backed queue with exponential backoff for retries.
      */
@@ -630,6 +755,9 @@ public class FileObjectSyncHandler {
 
                 // Perform download
                 downloadFilesFromServer(task);
+
+                // Delete old folders AFTER successful download (for vendor/fileType rename scenarios)
+                deleteOldFoldersAfterDownload(task);
 
                 // Mark as completed
                 task.markCompleted();

@@ -63,6 +63,9 @@ public class PendingFileSync {
 
     private String targetPath;  // For downloads: where to save the file
 
+    @Column(columnDefinition = "TEXT")
+    private String oldFolderToDelete;  // For downloads triggered by vendor/fileType rename: old folder to delete after download completes
+
     public enum SyncDirection {
         UPLOAD,     // Local file -> Sync server
         DOWNLOAD    // Sync server -> Local file
