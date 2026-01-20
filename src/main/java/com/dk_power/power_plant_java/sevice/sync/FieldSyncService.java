@@ -310,13 +310,6 @@ public class FieldSyncService {
     /**
      * Internal method that actually applies the changes.
      * Uses batch queries for conflict resolution to eliminate N+1 query problem.
-     *
-     * IMPORTANT: Entity types are processed in a specific order to ensure referential integrity:
-     * 1. Category (parent of Value)
-     * 2. Value (used as vendor/fileType in FileObject, Equipment, etc.)
-     * 3. All other entities
-     *
-     * This prevents issues where a FileObject change references a Value that hasn't been synced yet.
      */
     private int applyIncomingChangesInternal(List<FieldChange> incomingChanges) {
         // Group changes by entity type first
@@ -331,23 +324,31 @@ public class FieldSyncService {
         // Collect broadcasts to send AFTER transaction commits
         List<Runnable> pendingBroadcasts = new ArrayList<>();
 
-        // Define processing order - reference entities first, then dependents
-        List<String> processingOrder = List.of("Category", "Value");
-
-        // Process reference entities first (Category, Value) in order
-        for (String priorityType : processingOrder) {
-            if (changesByEntity.containsKey(priorityType)) {
-                Map<Long, List<FieldChange>> changesById = changesByEntity.get(priorityType);
-                totalApplied += processEntityTypeChanges(priorityType, changesById, pendingBroadcasts);
-                changesByEntity.remove(priorityType);
-            }
-        }
-
-        // Process remaining entity types
+        // Process each entity type with batch conflict resolution
         for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
             String entityType = entityEntry.getKey();
             Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
-            totalApplied += processEntityTypeChanges(entityType, changesById, pendingBroadcasts);
+
+            // Batch fetch latest changes for all entities of this type (eliminates N+1)
+            List<Long> entityIds = new ArrayList<>(changesById.keySet());
+            Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
+
+            for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
+                Long entityId = idEntry.getKey();
+                List<FieldChange> changes = idEntry.getValue();
+
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
+                totalApplied += applied;
+
+                // Queue broadcast for after transaction commits
+                if (applied > 0) {
+                    // Capture values for lambda
+                    final String type = entityType;
+                    final Long id = entityId;
+                    final List<FieldChange> changeList = new ArrayList<>(changes);
+                    pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
+                }
+            }
         }
 
         // Collect FileObject changes for file sync
@@ -399,47 +400,15 @@ public class FieldSyncService {
     }
 
     /**
-     * Process changes for a single entity type.
-     * Handles batch conflict resolution and applies changes.
-     */
-    private int processEntityTypeChanges(String entityType, Map<Long, List<FieldChange>> changesById,
-                                         List<Runnable> pendingBroadcasts) {
-        int appliedCount = 0;
-
-        // Batch fetch latest changes for all entities of this type (eliminates N+1)
-        List<Long> entityIds = new ArrayList<>(changesById.keySet());
-        Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
-
-        for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
-            Long entityId = idEntry.getKey();
-            List<FieldChange> changes = idEntry.getValue();
-
-            int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
-            appliedCount += applied;
-
-            // Queue broadcast for after transaction commits
-            if (applied > 0) {
-                // Capture values for lambda
-                final String type = entityType;
-                final Long id = entityId;
-                final List<FieldChange> changeList = new ArrayList<>(changes);
-                pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
-            }
-        }
-
-        return appliedCount;
-    }
-
-    /**
      * Handle Value name changes that affect file structure.
      * When a Vendor or FileType name changes:
      * 1. Find all FileObjects that reference this Value
-     * 2. Move local files from old path to new path (in peer-to-peer mode)
-     * 3. Queue file downloads if server sync enabled (files on server are at new path)
-     * 4. Delete old folder structure
+     * 2. Queue file downloads for each (files will download to NEW path based on new name)
+     * 3. Delete old folders (files are at old path, new files will be downloaded)
      *
      * This is necessary because when Vendor/FileType name changes, no FileObject field changes
-     * are generated, so the normal file sync doesn't trigger.
+     * are generated, so the normal file sync doesn't trigger. But the files on the sync server
+     * are already at the new path (uploaded from source machine after rename).
      */
     @SuppressWarnings("rawtypes")
     private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
@@ -447,23 +416,18 @@ public class FieldSyncService {
             return;
         }
 
-        boolean serverSyncEnabled = syncConfig.isServerSyncEnabled();
-        log.info("handleValueNameChangesForFileStructure: {} changes, serverSync={}",
-            valueNameChanges.size(), serverSyncEnabled);
-
         for (FieldChange change : valueNameChanges) {
             try {
-                // Use EntityManager.find() to get Value entity including deleted ones
-                // This bypasses @Where(clause = "deleted = false") filter
-                Value value = entityManager.find(Value.class, change.getEntityId());
-                if (value == null) {
-                    log.warn("Value #{} not found (even with EntityManager), skipping file structure handling",
-                        change.getEntityId());
+                // Look up the Value entity to get its category
+                CrudService valueService = serviceFacade.getService("Value");
+                if (valueService == null) {
+                    log.warn("Value service not found, cannot handle file structure change");
                     continue;
                 }
 
-                if (value.getCategory() == null) {
-                    log.warn("Value #{} has no category, skipping file structure handling",
+                Value value = (Value) valueService.getEntityById(change.getEntityId());
+                if (value == null || value.getCategory() == null) {
+                    log.debug("Value #{} not found or has no category, skipping file structure handling",
                         change.getEntityId());
                     continue;
                 }
@@ -471,10 +435,9 @@ public class FieldSyncService {
                 String categoryName = value.getCategory().getName();
                 if ("Vendor".equals(categoryName) || "File Type".equals(categoryName)) {
                     String oldName = change.getOldValue().replace("\"", "");
-                    String newName = value.getName();
 
-                    log.info("Value name change detected for {} category: '{}' -> '{}' (deleted={})",
-                        categoryName, oldName, newName, value.getDeleted());
+                    log.info("Value name change detected for {} category: '{}' -> '{}'",
+                        categoryName, oldName, value.getName());
 
                     // Step 1: Find all FileObjects that reference this Value
                     List<FileObject> affectedFiles;
@@ -487,27 +450,22 @@ public class FieldSyncService {
                     log.info("Found {} FileObjects affected by {} name change",
                         affectedFiles.size(), categoryName);
 
-                    // Step 2: In peer-to-peer mode, move local files to new path
-                    // In server sync mode, queue downloads (files on server are at new path)
-                    if (serverSyncEnabled) {
-                        for (FileObject fileObject : affectedFiles) {
-                            try {
-                                fileObjectSyncHandler.queueFileDownload(fileObject);
-                                log.debug("Queued file download for FileObject #{} ({})",
-                                    fileObject.getId(), fileObject.getFileNumber());
-                            } catch (Exception e) {
-                                log.warn("Failed to queue download for FileObject #{}: {}",
-                                    fileObject.getId(), e.getMessage());
-                            }
+                    // Step 2: Queue file downloads for each affected FileObject
+                    // Files on sync server are at NEW path, local files are at OLD path
+                    // Download will get files to new location
+                    for (FileObject fileObject : affectedFiles) {
+                        try {
+                            fileObjectSyncHandler.queueFileDownload(fileObject);
+                            log.debug("Queued file download for FileObject #{} ({})",
+                                fileObject.getId(), fileObject.getFileNumber());
+                        } catch (Exception e) {
+                            log.warn("Failed to queue download for FileObject #{}: {}",
+                                fileObject.getId(), e.getMessage());
                         }
-                    } else {
-                        // Peer-to-peer mode: move files locally from old name to new name
-                        log.info("Peer-to-peer mode: moving files locally for {} name change: '{}' -> '{}'",
-                            categoryName, oldName, newName);
-                        ngFileService.moveFilesForValueNameChange(oldName, newName, categoryName);
                     }
 
                     // Step 3: Delete old folder structure
+                    // Old files will be removed, new files are being downloaded
                     log.info("Deleting old {} folders: {}", categoryName, oldName);
                     ngFileService.deleteOldFileStructureAfterSync(oldName, categoryName);
                 }
@@ -713,26 +671,17 @@ public class FieldSyncService {
             }
 
             field.setAccessible(true);
-            Object oldValue = field.get(entity);
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
 
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
                 field.set(entity, value);
-                log.info("Applied field change: {}.{} = {} (was: {}, newValue from change: '{}')",
-                    entity.getClass().getSimpleName(), change.getFieldName(),
-                    value != null ? (value instanceof BaseIdEntity ? ((BaseIdEntity)value).getId() : value) : "null",
-                    oldValue != null ? (oldValue instanceof BaseIdEntity ? ((BaseIdEntity)oldValue).getId() : oldValue) : "null",
-                    change.getNewValue());
                 return true;
             }
 
-            log.warn("Skipped field change {}.{}: deserialization returned null for newValue='{}' (relationshipType={})",
-                entity.getClass().getSimpleName(), change.getFieldName(),
-                change.getNewValue(), change.getRelationshipType());
             return false;
         } catch (Exception e) {
-            log.error("Error applying field change {}: {}", change.getFieldName(), e.getMessage(), e);
+            log.error("Error applying field change {}: {}", change.getFieldName(), e.getMessage());
             return false;
         }
     }
