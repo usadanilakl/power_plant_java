@@ -775,7 +775,17 @@ public class FieldSyncService {
     }
 
     /**
-     * Deserialize a value from JSON string
+     * Deserialize a value from JSON string.
+     *
+     * IMPORTANT: For relationship references, this method uses EntityManager.find() directly
+     * instead of the repository's findById(). This bypasses the @Where(clause = "deleted = false")
+     * filter that would otherwise prevent finding soft-deleted entities.
+     *
+     * This is critical for sync because:
+     * 1. When an entity (e.g., Vendor) is deleted, its 'deleted' flag is set to true
+     * 2. Other entities (e.g., FileObject) may still reference the deleted Vendor
+     * 3. When syncing, we need to preserve these references even to deleted entities
+     * 4. Using repository.findById() would return null for deleted entities, breaking the relationship
      */
     @SuppressWarnings("unchecked")
     private Object deserializeValue(String json, Class<?> targetType, String relationshipType) {
@@ -792,20 +802,18 @@ public class FieldSyncService {
 
                 try {
                     Long relatedId = Long.parseLong(cleanedJson);
-                    String targetTypeName = targetType.getSimpleName();
-                    CrudService relatedService = serviceFacade.getService(targetTypeName);
 
-                    if (relatedService != null) {
-                        Object relatedEntity = relatedService.getEntityById(relatedId);
-                        if (relatedEntity != null) {
-                            log.debug("Resolved relationship {} -> entity #{}", targetTypeName, relatedId);
-                            return relatedEntity;
-                        } else {
-                            log.warn("Related entity {}#{} not found", targetTypeName, relatedId);
-                            return null;
-                        }
+                    // Use EntityManager.find() directly to bypass @Where filter
+                    // This allows finding soft-deleted entities during sync
+                    Object relatedEntity = entityManager.find(targetType, relatedId);
+
+                    if (relatedEntity != null) {
+                        log.debug("Resolved relationship {} -> entity #{} (using EntityManager)",
+                            targetType.getSimpleName(), relatedId);
+                        return relatedEntity;
                     } else {
-                        log.warn("No service registered for relationship type: {}", targetTypeName);
+                        log.warn("Related entity {}#{} not found (even with EntityManager)",
+                            targetType.getSimpleName(), relatedId);
                         return null;
                     }
                 } catch (NumberFormatException e) {
