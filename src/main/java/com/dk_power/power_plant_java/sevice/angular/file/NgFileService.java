@@ -621,6 +621,106 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     /**
+     * Move files when a Vendor or File Type name changes during sync.
+     * This is used in peer-to-peer mode where files need to be moved locally
+     * (not downloaded from a central server).
+     *
+     * @param oldName the old name (from FieldChange.oldValue)
+     * @param newName the new name (from the updated Value entity)
+     * @param categoryName the category name ("Vendor" or "File Type")
+     */
+    public void moveFilesForValueNameChange(String oldName, String newName, String categoryName) {
+        if (oldName == null || oldName.isEmpty() || newName == null || newName.isEmpty()) {
+            logger.warn("moveFilesForValueNameChange: oldName or newName is null/empty");
+            return;
+        }
+
+        if (oldName.equals(newName)) {
+            logger.debug("moveFilesForValueNameChange: oldName equals newName '{}', nothing to do", oldName);
+            return;
+        }
+
+        logger.info("Moving files for {} name change: '{}' -> '{}'", categoryName, oldName, newName);
+
+        if ("File Type".equals(categoryName)) {
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                // File type folders are at depth 2: uploads/{extension}/{fileType}
+                Files.walk(rootPath, 2)
+                        .filter(Files::isDirectory)
+                        .filter(path -> path.getFileName().toString().equals(oldName))
+                        .forEach(path -> {
+                            try {
+                                Path newPath = path.resolveSibling(newName);
+                                if (!Files.exists(newPath)) {
+                                    Files.move(path, newPath);
+                                    logger.info("Moved file type folder from {} to {}", path, newPath);
+                                } else {
+                                    // Target exists, need to merge
+                                    logger.info("Target folder {} exists, merging contents", newPath);
+                                    mergeDirectories(path, newPath);
+                                }
+                            } catch (IOException e) {
+                                logger.error("Failed to move file type folder from {} to {}: {}",
+                                    path, path.resolveSibling(newName), e.getMessage());
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories for File Type move: {}", e.getMessage());
+            }
+        } else if ("Vendor".equals(categoryName)) {
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                // Vendor folders are at depth 3: uploads/{extension}/{fileType}/{vendor}
+                Files.walk(rootPath, 3)
+                        .filter(Files::isDirectory)
+                        .filter(path -> path.getNameCount() - rootPath.getNameCount() == 3)
+                        .filter(path -> path.getFileName().toString().equals(oldName))
+                        .forEach(path -> {
+                            try {
+                                Path newPath = path.resolveSibling(newName);
+                                if (!Files.exists(newPath)) {
+                                    Files.move(path, newPath);
+                                    logger.info("Moved vendor folder from {} to {}", path, newPath);
+                                } else {
+                                    // Target exists, need to merge
+                                    logger.info("Target folder {} exists, merging contents", newPath);
+                                    mergeDirectories(path, newPath);
+                                }
+                            } catch (IOException e) {
+                                logger.error("Failed to move vendor folder from {} to {}: {}",
+                                    path, path.resolveSibling(newName), e.getMessage());
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories for Vendor move: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Merge contents of source directory into target directory.
+     * Files in source are moved to target. Source directory is deleted after merge.
+     */
+    private void mergeDirectories(Path source, Path target) throws IOException {
+        Files.walk(source)
+                .filter(Files::isRegularFile)
+                .forEach(file -> {
+                    try {
+                        Path relativePath = source.relativize(file);
+                        Path targetFile = target.resolve(relativePath);
+                        Files.createDirectories(targetFile.getParent());
+                        Files.move(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
+                        logger.debug("Merged file {} to {}", file, targetFile);
+                    } catch (IOException e) {
+                        logger.warn("Failed to merge file {}: {}", file, e.getMessage());
+                    }
+                });
+        // Delete empty source directory
+        deleteDirectoryRecursively(source);
+    }
+
+    /**
      * Delete old file structure folders after a Value entity name change from sync.
      * This is called when a Vendor or File Type name is changed on another machine
      * and synced to this machine. Files have already been copied to the new location

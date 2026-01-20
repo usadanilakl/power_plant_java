@@ -232,6 +232,16 @@ public class FileObjectSyncHandler {
                 (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b
             ));
 
+        log.info("FileObject #{}: Found {} path-affecting changes out of {} total changes. Fields: {}",
+            entityId, pathChanges.size(), changes.size(),
+            pathChanges.keySet());
+
+        // Log all changes for debugging
+        for (FieldChange c : changes) {
+            log.debug("  Change: field={}, oldValue={}, newValue={}, relationshipType={}",
+                c.getFieldName(), c.getOldValue(), c.getNewValue(), c.getRelationshipType());
+        }
+
         // Check for extension/content changes
         boolean hasContentChange = changes.stream()
             .anyMatch(c -> "fileHash".equals(c.getFieldName()) || "extensions".equals(c.getFieldName()));
@@ -244,7 +254,10 @@ public class FileObjectSyncHandler {
 
         // Always handle path changes to delete old files locally
         if (!pathChanges.isEmpty()) {
+            log.info("Calling handleIncomingPathChanges for FileObject #{}", entityId);
             handleIncomingPathChanges(fileObject, pathChanges);
+        } else {
+            log.info("No path changes for FileObject #{}, skipping file cleanup", entityId);
         }
 
         // Only queue file downloads if server sync is enabled
@@ -308,12 +321,18 @@ public class FileObjectSyncHandler {
             return;
         }
 
+        log.info("deleteOldFilesAfterPathChanges: FileObject #{}, pathChanges={}",
+            fileObject.getId(), pathChanges.keySet());
+
         try {
-            // Get current values from entity (these are the NEW values)
+            // Get current values from entity (these are the NEW values after sync applied)
             String currentFileNumber = fileObject.getFileNumber();
             String currentFileType = fileObject.getFileType() != null ? fileObject.getFileType().getName() : null;
             String currentVendor = fileObject.getVendor() != null ? fileObject.getVendor().getName() : null;
             List<String> currentExtensions = fileObject.getExtensionsArray();
+
+            log.info("Current (NEW) values: fileNumber={}, fileType={}, vendor={}, extensions={}",
+                currentFileNumber, currentFileType, currentVendor, currentExtensions);
 
             // Reconstruct old values from ALL path changes
             String oldFileNumber = currentFileNumber;
@@ -323,18 +342,21 @@ public class FileObjectSyncHandler {
 
             if (pathChanges.containsKey("fileNumber")) {
                 oldFileNumber = pathChanges.get("fileNumber").getOldValue();
+                log.info("fileNumber changed: old='{}' -> new='{}'", oldFileNumber, currentFileNumber);
             }
             if (pathChanges.containsKey("fileType")) {
                 // oldValue is the ID of the old Value entity, need to look up its name
                 String oldFileTypeId = pathChanges.get("fileType").getOldValue();
                 oldFileType = resolveValueNameById(oldFileTypeId);
-                log.debug("Resolved old fileType ID {} to name '{}'", oldFileTypeId, oldFileType);
+                log.info("fileType changed: oldId={} resolved to '{}' -> new='{}'",
+                    oldFileTypeId, oldFileType, currentFileType);
             }
             if (pathChanges.containsKey("vendor")) {
                 // oldValue is the ID of the old Value entity, need to look up its name
                 String oldVendorId = pathChanges.get("vendor").getOldValue();
                 oldVendor = resolveValueNameById(oldVendorId);
-                log.debug("Resolved old vendor ID {} to name '{}'", oldVendorId, oldVendor);
+                log.info("vendor changed: oldId={} resolved to '{}' -> new='{}'",
+                    oldVendorId, oldVendor, currentVendor);
             }
             if (pathChanges.containsKey("extension")) {
                 // Parse old extensions - could be comma-separated or single value
@@ -342,9 +364,10 @@ public class FileObjectSyncHandler {
                 if (oldExtValue != null && !oldExtValue.isEmpty()) {
                     oldExtensions = Arrays.asList(oldExtValue.split(","));
                 }
+                log.info("extension changed: old={} -> new={}", oldExtensions, currentExtensions);
             }
 
-            log.debug("Old path components: fileNumber={}, fileType={}, vendor={}, extensions={}",
+            log.info("Computed OLD path components: fileNumber={}, fileType={}, vendor={}, extensions={}",
                 oldFileNumber, oldFileType, oldVendor, oldExtensions);
 
             // Delete old files for EACH OLD extension (not current!)
@@ -418,6 +441,7 @@ public class FileObjectSyncHandler {
      */
     private String resolveValueNameById(String valueIdStr) {
         if (valueIdStr == null || valueIdStr.isEmpty()) {
+            log.warn("resolveValueNameById called with null/empty valueIdStr");
             return null;
         }
 
@@ -430,7 +454,21 @@ public class FileObjectSyncHandler {
             // (the vendor may have been deleted, but we still need its name for path cleanup)
             com.dk_power.power_plant_java.entities.categories.Value value =
                 valueRepo.findByIdIncludingDeleted(valueId);
-            return value != null ? value.getName() : null;
+
+            if (value == null) {
+                log.warn("Value entity #{} not found (even including deleted)", valueId);
+                return null;
+            }
+
+            String name = value.getName();
+            if (name == null || name.isEmpty()) {
+                log.warn("Value entity #{} found but has null/empty name (deleted={})",
+                    valueId, value.getDeleted());
+                return null;
+            }
+
+            log.info("Resolved Value #{} to name '{}' (deleted={})", valueId, name, value.getDeleted());
+            return name;
         } catch (NumberFormatException e) {
             // If it's not a number, it might already be the name (legacy format)
             log.debug("Could not parse Value ID '{}', using as-is", valueIdStr);
