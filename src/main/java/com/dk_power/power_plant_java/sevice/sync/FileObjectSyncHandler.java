@@ -587,7 +587,7 @@ public class FileObjectSyncHandler {
      * @param fileObject the FileObject to download
      * @param oldFolderToDelete the old folder path to delete after download succeeds (can be semicolon-separated for multiple folders)
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void queueFileDownloadWithCleanup(FileObject fileObject, String oldFolderToDelete) {
         // Validate required fields before queueing
         String fullPath = getFullPath(fileObject);
@@ -651,7 +651,7 @@ public class FileObjectSyncHandler {
         );
         task.setOldFolderToDelete(oldFolderToDelete);
 
-        PendingFileSync savedTask = pendingFileSyncRepository.saveAndFlush(task);
+        PendingFileSync savedTask = pendingFileSyncRepository.save(task);
         log.info("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database, taskId={})",
             fileObject.getId(), oldFolderToDelete, savedTask.getId());
     }
