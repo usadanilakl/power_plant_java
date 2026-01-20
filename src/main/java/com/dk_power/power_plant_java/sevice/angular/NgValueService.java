@@ -292,15 +292,68 @@ public class NgValueService {
 
     public Value updateValueName(Long valueId, String newName) {
         Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
-        value.setName(newName);
+
+        Category category = value.getCategory();
+        boolean isVendorOrFileType = category != null &&
+            (category.getName().equals("Vendor") || category.getName().equals("File Type"));
+        boolean nameChanged = !value.getName().equals(newName);
+
+        if (isVendorOrFileType && nameChanged) {
+            // Rename folders on disk first
+            fileService.updateFileStructureWithNewValue(value, newName);
+
+            // Update the value name
+            value.setName(newName);
+
+            // Update all affected FileObjects' links in database
+            updateAffectedFileObjects(value, category.getName());
+        } else {
+            value.setName(newName);
+        }
+
         return valueRepo.save(value);
     }
+
     public Value updateValueName(Long valueId, String newName, String newAlias) {
         Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
-        fileService.updateFileStructureWithNewValue(value, newName);
-        value.setName(newName);
-        if(newAlias!=null && !newAlias.isEmpty())value.setAlias(newAlias);
+
+        Category category = value.getCategory();
+        boolean isVendorOrFileType = category != null &&
+            (category.getName().equals("Vendor") || category.getName().equals("File Type"));
+        boolean nameChanged = !value.getName().equals(newName);
+
+        if (isVendorOrFileType && nameChanged) {
+            // Rename folders on disk first
+            fileService.updateFileStructureWithNewValue(value, newName);
+
+            // Update the value name and alias
+            value.setName(newName);
+            if (newAlias != null && !newAlias.isEmpty()) value.setAlias(newAlias);
+
+            // Update all affected FileObjects' links in database
+            updateAffectedFileObjects(value, category.getName());
+        } else {
+            value.setName(newName);
+            if (newAlias != null && !newAlias.isEmpty()) value.setAlias(newAlias);
+        }
+
         return valueRepo.save(value);
+    }
+
+    /**
+     * Update all FileObjects affected by a Vendor or FileType name change.
+     * This rebuilds the fileLink and folder fields so they reflect the new path structure.
+     * This is critical for sync - without updating these fields, the change tracker won't
+     * detect the path changes and files won't be uploaded to the sync server at the new location.
+     */
+    private void updateAffectedFileObjects(Value value, String categoryName) {
+        // findByValue finds all FileObjects that reference this Value (as vendor, fileType, or system)
+        // Since we only call this for Vendor or FileType categories, it will find the right files
+        fileService.findByValue(value).forEach(file -> {
+            file.buildFileLink();
+            file.buildFolder();
+            fileService.save(file);
+        });
     }
 
 
