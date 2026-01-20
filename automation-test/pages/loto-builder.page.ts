@@ -483,7 +483,8 @@ export class LotoBuilderPage extends BasePage {
   async isVendorInLeftMenu(vendorName: string): Promise<boolean> {
     await this.switchToTreeView();
     // The toggle menu uses .item-content > .item-name structure
-    const vendorItem = this.page.locator('.item-content .item-name').filter({ hasText: vendorName });
+    // Use exact match regex to avoid partial matches (e.g., "Vendor 1" matching "Vendor 11")
+    const vendorItem = this.page.locator('.item-content .item-name').filter({ hasText: new RegExp(`^${vendorName}$`) });
     return await vendorItem.isVisible({ timeout: 5000 }).catch(() => false);
   }
 

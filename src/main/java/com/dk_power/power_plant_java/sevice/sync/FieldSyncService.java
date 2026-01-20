@@ -3,10 +3,12 @@ package com.dk_power.power_plant_java.sevice.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,7 @@ public class FieldSyncService {
     private final SyncUpdateController syncUpdateController;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
+    private final NgFileService ngFileService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -62,7 +65,8 @@ public class FieldSyncService {
             SyncContext syncContext,
             SyncUpdateController syncUpdateController,
             ApplicationEventPublisher eventPublisher,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            NgFileService ngFileService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -73,6 +77,7 @@ public class FieldSyncService {
         this.syncUpdateController = syncUpdateController;
         this.eventPublisher = eventPublisher;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.ngFileService = ngFileService;
     }
 
     /**
@@ -343,6 +348,12 @@ public class FieldSyncService {
             .filter(c -> "FileObject".equals(c.getEntityType()))
             .toList();
 
+        // Collect Value name changes for file structure rename (Vendor/FileType folder renames)
+        List<FieldChange> valueNameChanges = incomingChanges.stream()
+            .filter(c -> "Value".equals(c.getEntityType()) && "name".equals(c.getFieldName()))
+            .filter(c -> c.getOldValue() != null && c.getNewValue() != null)
+            .toList();
+
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data
         if (!pendingBroadcasts.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -358,6 +369,9 @@ public class FieldSyncService {
                         eventPublisher.publishEvent(
                             new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
                     }
+
+                    // Handle Value name changes (Vendor/FileType folder renames)
+                    handleValueNameChangesForFileStructure(valueNameChanges);
                 }
             });
         } else {
@@ -369,9 +383,54 @@ public class FieldSyncService {
                 eventPublisher.publishEvent(
                     new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
             }
+
+            // Handle Value name changes (Vendor/FileType folder renames)
+            handleValueNameChangesForFileStructure(valueNameChanges);
         }
 
         return totalApplied;
+    }
+
+    /**
+     * Handle Value name changes that affect file structure (Vendor/FileType folder renames).
+     * Looks up each Value entity to get its category, then renames folders accordingly.
+     */
+    @SuppressWarnings("rawtypes")
+    private void handleValueNameChangesForFileStructure(List<FieldChange> valueNameChanges) {
+        if (valueNameChanges.isEmpty()) {
+            return;
+        }
+
+        for (FieldChange change : valueNameChanges) {
+            try {
+                // Look up the Value entity to get its category
+                CrudService valueService = serviceFacade.getService("Value");
+                if (valueService == null) {
+                    log.warn("Value service not found, cannot rename file structure");
+                    continue;
+                }
+
+                Value value = (Value) valueService.getEntityById(change.getEntityId());
+                if (value == null || value.getCategory() == null) {
+                    log.debug("Value #{} not found or has no category, skipping file structure rename",
+                        change.getEntityId());
+                    continue;
+                }
+
+                String categoryName = value.getCategory().getName();
+                if ("Vendor".equals(categoryName) || "File Type".equals(categoryName)) {
+                    String oldName = change.getOldValue().replace("\"", "");
+                    String newName = change.getNewValue().replace("\"", "");
+
+                    log.info("Value name change detected for {} category: {} -> {}",
+                        categoryName, oldName, newName);
+
+                    ngFileService.renameFileStructureAfterSync(oldName, newName, categoryName);
+                }
+            } catch (Exception e) {
+                log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
+            }
+        }
     }
 
     /**

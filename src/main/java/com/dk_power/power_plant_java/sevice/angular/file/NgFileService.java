@@ -620,6 +620,65 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         }
     }
 
+    /**
+     * Rename file structure folders after a Value entity name change from sync.
+     * This is called when a Vendor or File Type name is changed on another machine
+     * and synced to this machine.
+     *
+     * @param oldName the old name (from FieldChange.oldValue)
+     * @param newName the new name (from FieldChange.newValue)
+     * @param categoryName the category name ("Vendor" or "File Type")
+     */
+    public void renameFileStructureAfterSync(String oldName, String newName, String categoryName) {
+        if (oldName == null || newName == null || oldName.equals(newName)) {
+            return;
+        }
+
+        logger.info("Renaming file structure after sync: {} -> {} (category: {})", oldName, newName, categoryName);
+
+        if ("File Type".equals(categoryName)) {
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                Files.walk(rootPath, 1)
+                        .filter(Files::isDirectory)
+                        .forEach(path -> {
+                            Path folderToRename = path.resolve(oldName);
+                            if (Files.exists(folderToRename)) {
+                                try {
+                                    Path newPath = path.resolve(newName);
+                                    Files.move(folderToRename, newPath);
+                                    logger.info("Renamed folder from {} to {}", folderToRename, newPath);
+                                } catch (IOException e) {
+                                    logger.error("Failed to rename folder from {} to {}", folderToRename, path.resolve(newName), e);
+                                }
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories for File Type rename", e);
+            }
+        } else if ("Vendor".equals(categoryName)) {
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                Files.walk(rootPath, 3)
+                        .filter(Files::isDirectory)
+                        .forEach(path -> {
+                            // Check if this is a vendor folder (at depth 3)
+                            if (path.getNameCount() - rootPath.getNameCount() == 3 && path.getFileName().toString().equals(oldName)) {
+                                try {
+                                    Path newPath = path.resolveSibling(newName);
+                                    Files.move(path, newPath);
+                                    logger.info("Renamed vendor folder from {} to {}", path, newPath);
+                                } catch (IOException e) {
+                                    logger.error("Failed to rename vendor folder from {} to {}", path, path.resolveSibling(newName), e);
+                                }
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories for Vendor rename", e);
+            }
+        }
+    }
+
     public List<FileObject> getFilesWithNoExtension() {
         return fileRepo.findByExtensionsIsNullOrBlank();
     }
