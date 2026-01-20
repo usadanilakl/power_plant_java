@@ -52,6 +52,12 @@
     - select vendor to keep
     - one by one select the rest of the vendors and click delete button
     - in the Value form select vendor to keep as where to transfer items of vendor that is being deleted.
+8. rename one vendor:
+    - open first file form
+    - click on vendor dropdown
+    - click Edit vendors
+    - set new name
+    - click save
 8. modify all existing in one section files one by one:
     - navigate to left file menu
     - find first toggle item

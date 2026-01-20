@@ -79,7 +79,8 @@ export class LotoBuilderPage extends BasePage {
 
   async clickAddNewFile() {
     // Click the + button in the left menu (Files section)
-    await this.page.locator('.add-button, button[title="Add New File"]').click();
+    // Use specific title attribute to avoid matching other add buttons
+    await this.page.locator('button[title="Add New File"]').click();
     await this.page.waitForTimeout(500);
     // Wait for file form popup to appear
     await this.page.waitForSelector('app-rf-file-form', { timeout: 5000 });
@@ -90,6 +91,9 @@ export class LotoBuilderPage extends BasePage {
     const closeButton = this.page.locator('app-rf-popup-projection button').filter({ hasText: /close|×/i });
     if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
       await closeButton.click();
+      // Wait for the popup overlay to disappear
+      const popupOverlay = this.page.locator('.popup-overlay');
+      await popupOverlay.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
       await this.page.waitForTimeout(300);
     }
   }
@@ -101,17 +105,29 @@ export class LotoBuilderPage extends BasePage {
   // ==================== FILE TYPE MANAGEMENT ====================
 
   async openFileTypeDropdown() {
-    // Click on the dropdown-input inside the File Type field
-    // The structure is: app-rf-value-select > app-searchable-select-input > .dropdown-input
-    const fileTypeField = this.page.locator('app-rf-value-select').filter({ hasText: /File Type/i });
-    await fileTypeField.locator('.dropdown-input').click();
+    // First check if dropdown is already open
+    const dropdownOptions = this.page.locator('.dropdown-options');
+    const isAlreadyOpen = await dropdownOptions.isVisible().catch(() => false);
+
+    if (!isAlreadyOpen) {
+      // Click on the dropdown-input inside the File Type field
+      // The structure is: app-rf-value-select > app-searchable-select-input > .dropdown-input
+      const fileTypeField = this.page.locator('app-rf-value-select').filter({ hasText: /File Type/i });
+      await fileTypeField.locator('.dropdown-input').click();
+      // Wait for dropdown options to appear in the CDK overlay
+      await dropdownOptions.waitFor({ state: 'visible', timeout: 5000 });
+    }
     await this.page.waitForTimeout(300);
   }
 
   async clickAddNewFileType() {
     await this.openFileTypeDropdown();
+    // Wait for dropdown options to be visible in the CDK overlay
+    const dropdownOptions = this.page.locator('.dropdown-options');
+    await dropdownOptions.waitFor({ state: 'visible', timeout: 5000 });
     // Click on "Add New" in dropdown options - it's a div with class .add-new-option
     const addNewOption = this.page.locator('.add-new-option').filter({ hasText: /Add New/i }).first();
+    await addNewOption.waitFor({ state: 'visible', timeout: 5000 });
     await addNewOption.click();
     await this.page.waitForTimeout(300);
     // Wait for dialog to appear
@@ -154,8 +170,11 @@ export class LotoBuilderPage extends BasePage {
   async isFileTypeOptionVisible(fileTypeName: string): Promise<boolean> {
     await this.openFileTypeDropdown();
     const isVisible = await this.page.locator('.dropdown-option').filter({ hasText: fileTypeName }).isVisible({ timeout: 2000 }).catch(() => false);
-    // Close dropdown by clicking elsewhere
+    // Close dropdown by pressing Escape and wait for it to close
     await this.page.keyboard.press('Escape');
+    const dropdownOptions = this.page.locator('.dropdown-options');
+    await dropdownOptions.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+    await this.page.waitForTimeout(200);
     return isVisible;
   }
 
@@ -187,7 +206,12 @@ export class LotoBuilderPage extends BasePage {
 
   async clickAddNewVendor() {
     await this.openVendorDropdown();
+    // Wait for dropdown options to be visible in the CDK overlay
+    const dropdownOptions = this.page.locator('.dropdown-options');
+    await dropdownOptions.waitFor({ state: 'visible', timeout: 5000 });
+    // Click on "Add New" in dropdown options
     const addNewOption = this.page.locator('.add-new-option').filter({ hasText: /Add New/i }).first();
+    await addNewOption.waitFor({ state: 'visible', timeout: 5000 });
     await addNewOption.click();
     await this.page.waitForTimeout(300);
     await this.page.waitForSelector('.dialog-content', { timeout: 5000 });
@@ -603,6 +627,8 @@ export class LotoBuilderPage extends BasePage {
     // Click Save button in dialog
     await dialogContent.locator('button.save-btn').click();
     await this.waitForLoadingToFinish();
+    // Wait for dialog to close
+    await dialogContent.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 
     // Close file form
     await this.closeFileForm();

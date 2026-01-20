@@ -456,3 +456,76 @@ test.describe('LOTO Builder - Vendor Deletion', () => {
     await lotoBuilder.closeFileForm();
   });
 });
+
+test.describe('LOTO Builder - Vendor Rename', () => {
+  let lotoBuilder: LotoBuilderPage;
+
+  test('9. should rename an existing vendor', async ({ page }) => {
+    const timestamp = Date.now();
+    const newVendorName = `Renamed-${timestamp}`;
+
+    lotoBuilder = new LotoBuilderPage(page);
+    await lotoBuilder.navigateToLotoBuilder();
+    await lotoBuilder.selectFilesTab();
+
+    // Open file form to get existing vendors
+    await lotoBuilder.clickAddNewFile();
+
+    // Get existing vendors from dropdown
+    const vendors = await lotoBuilder.getVendorOptions();
+
+    // Need at least 1 vendor to rename
+    if (vendors.length < 1) {
+      console.log('No vendors to rename. Skipping test.');
+      await lotoBuilder.closeFileForm();
+      return;
+    }
+
+    // Get the first vendor to rename
+    const originalVendorName = vendors[0];
+    console.log(`Renaming vendor: ${originalVendorName} -> ${newVendorName}`);
+
+    // Select the vendor to edit (file form is already open)
+    await lotoBuilder.selectVendor(originalVendorName);
+
+    // Open vendor dropdown again and click Edit option
+    await lotoBuilder.openVendorDropdown();
+
+    // Click "Edit vendors" option in the dropdown
+    const editOption = page.locator('.dropdown-options .add-new-option').filter({ hasText: /Edit.*vendor/i });
+    await editOption.click();
+    await page.waitForTimeout(300);
+
+    // Wait for the edit dialog to appear and fill new name
+    const dialogContent = page.locator('.dialog-content');
+    await dialogContent.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Find the name input field in the dialog and update it
+    const nameInput = dialogContent.locator('input.input-field').first();
+    await nameInput.click();
+    await nameInput.clear();
+    await nameInput.fill(newVendorName);
+
+    // Click Save button in dialog
+    await dialogContent.locator('button.save-btn').click();
+    await lotoBuilder.waitForLoadingToFinish();
+
+    // Wait for dialog to close
+    await dialogContent.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    // Close file form
+    await lotoBuilder.closeFileForm();
+
+    // Verify the old vendor name is gone and new name exists
+    await lotoBuilder.clickAddNewFile();
+
+    const oldVendorExists = await lotoBuilder.isVendorOptionVisible(originalVendorName);
+    expect(oldVendorExists).toBe(false);
+
+    const newVendorExists = await lotoBuilder.isVendorOptionVisible(newVendorName);
+    expect(newVendorExists).toBe(true);
+
+    // Cleanup
+    await lotoBuilder.closeFileForm();
+  });
+});
