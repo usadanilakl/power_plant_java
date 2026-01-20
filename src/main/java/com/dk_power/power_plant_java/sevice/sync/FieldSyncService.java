@@ -386,9 +386,14 @@ public class FieldSyncService {
                     // Handle Value name changes (delete old Vendor/FileType folders)
                     // Run in a new transaction since afterCommit runs outside transaction context
                     if (!valueNameChanges.isEmpty()) {
-                        transactionTemplate.executeWithoutResult(status -> {
-                            handleValueNameChangesForFileStructure(valueNameChanges);
-                        });
+                        try {
+                            transactionTemplate.executeWithoutResult(status -> {
+                                handleValueNameChangesForFileStructure(valueNameChanges);
+                            });
+                            log.info("Value name change transaction committed successfully");
+                        } catch (Exception e) {
+                            log.error("Value name change transaction failed: {}", e.getMessage(), e);
+                        }
                     }
                 }
             });
@@ -493,6 +498,7 @@ public class FieldSyncService {
                 log.error("Error handling Value name change for file structure: {}", e.getMessage(), e);
             }
         }
+        log.info("handleValueNameChangesForFileStructure completed for {} changes", valueNameChanges.size());
     }
 
     /**

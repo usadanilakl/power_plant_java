@@ -651,9 +651,9 @@ public class FileObjectSyncHandler {
         );
         task.setOldFolderToDelete(oldFolderToDelete);
 
-        pendingFileSyncRepository.save(task);
-        log.info("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database)",
-            fileObject.getId(), oldFolderToDelete);
+        PendingFileSync savedTask = pendingFileSyncRepository.saveAndFlush(task);
+        log.info("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database, taskId={})",
+            fileObject.getId(), oldFolderToDelete, savedTask.getId());
     }
 
     /**
@@ -740,7 +740,17 @@ public class FileObjectSyncHandler {
 
         // Get pending downloads that are ready to process
         List<PendingFileSync> pendingTasks = pendingFileSyncRepository.findPendingDownloads();
+        log.trace("processDownloadQueue: found {} ready download tasks", pendingTasks.size());
         if (pendingTasks.isEmpty()) {
+            // Debug: log counts to understand why no pending downloads were found
+            long totalPending = pendingFileSyncRepository.countByDirectionAndStatusIn(
+                SyncDirection.DOWNLOAD, List.of(SyncStatus.PENDING));
+            long totalInProgress = pendingFileSyncRepository.countByDirectionAndStatusIn(
+                SyncDirection.DOWNLOAD, List.of(SyncStatus.IN_PROGRESS));
+            if (totalPending > 0 || totalInProgress > 0) {
+                log.info("processDownloadQueue: no ready tasks, but {} pending, {} in-progress (nextRetryTime not yet reached?)",
+                    totalPending, totalInProgress);
+            }
             return;
         }
 
