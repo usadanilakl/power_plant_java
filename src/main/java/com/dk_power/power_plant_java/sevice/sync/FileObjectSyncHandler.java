@@ -592,7 +592,17 @@ public class FileObjectSyncHandler {
         // Validate required fields before queueing
         String fullPath = getFullPath(fileObject);
         if (fullPath == null) {
-            log.debug("Cannot queue download for FileObject #{} - fileLink is not set yet", fileObject.getId());
+            // Detailed diagnostic logging
+            log.warn("Cannot queue download for FileObject #{} - fileLink is null. " +
+                "Diagnostics: extensions={}, extension={}, fileType={}, fileTypeName={}, vendor={}, vendorName={}, fileNumber={}",
+                fileObject.getId(),
+                fileObject.getExtensions(),
+                fileObject.getExtension(),
+                fileObject.getFileType(),
+                fileObject.getFileType() != null ? fileObject.getFileType().getName() : "null",
+                fileObject.getVendor(),
+                fileObject.getVendor() != null ? fileObject.getVendor().getName() : "null",
+                fileObject.getFileNumber());
             return;
         }
 
@@ -1024,9 +1034,17 @@ public class FileObjectSyncHandler {
     /**
      * Get full path for a FileObject.
      * Returns null if fileLink is not set.
+     * Uses getStoredFileLink() to get the actual persisted path, not the dynamically-rebuilt one.
+     * This is important for sync scenarios where the stored path is the correct destination.
      */
     private String getFullPath(FileObject fileObject) {
-        String fileLink = fileObject.getFileLink();
+        // Use stored fileLink, not the dynamically-rebuilt one from getFileLink()
+        // The stored value is set during sync and represents the correct path
+        String fileLink = fileObject.getStoredFileLink();
+        if (fileLink == null || fileLink.isEmpty()) {
+            // Fallback to dynamic link if stored is empty
+            fileLink = fileObject.getFileLink();
+        }
         if (fileLink == null || fileLink.isEmpty()) {
             return null;
         }

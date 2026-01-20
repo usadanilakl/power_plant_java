@@ -457,11 +457,12 @@ public class FieldSyncService {
                         categoryName, oldName, value.getName());
 
                     // Step 1: Find all FileObjects that reference this Value
+                    // Use queries with fetch joins to ensure vendor and fileType are eagerly loaded
                     List<FileObject> affectedFiles;
                     if ("Vendor".equals(categoryName)) {
-                        affectedFiles = fileRepo.findByVendor(value);
+                        affectedFiles = fileRepo.findByVendorWithRelationships(value);
                     } else {
-                        affectedFiles = fileRepo.findByFileType(value);
+                        affectedFiles = fileRepo.findByFileTypeWithRelationships(value);
                     }
 
                     log.info("Found {} FileObjects affected by {} name change",

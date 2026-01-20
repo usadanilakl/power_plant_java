@@ -18,6 +18,12 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);
     Page<FileObject> findByVendor(Value vendor, Pageable pageable);
+
+    @Query("SELECT f FROM FileObject f LEFT JOIN FETCH f.vendor LEFT JOIN FETCH f.fileType WHERE f.vendor = ?1")
+    List<FileObject> findByVendorWithRelationships(Value vendor);
+
+    @Query("SELECT f FROM FileObject f LEFT JOIN FETCH f.vendor LEFT JOIN FETCH f.fileType WHERE f.fileType = ?1")
+    List<FileObject> findByFileTypeWithRelationships(Value fileType);
     @Query("SELECT DISTINCT e.system.name FROM FileObject e")
     List<String> getSystems();
     FileObject findByName(String name);
