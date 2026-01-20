@@ -1,5 +1,5 @@
 1. create new file type:
-    - go to loto builder page
+    - go to loto builder page: C:\Users\usada\my_projects\power_plant_java\frontend\src\app\features\loto-standard\refactored\loto-builder
     - click + in left menu
     - in the file form:
         - click on file type dropdown
@@ -29,7 +29,7 @@
         - in the value form:
             - add name "Vendor 1" 
             - add alias "VND1"
-        - add file to file field of the form: /home/dk-power/IdeaProjects/power_plant_java/automation-test/test-data/1.pdf
+        - add file to file field of the form: /home/dk-power/IdeaProjects/power_plant_java/automation-test/test-data/1.pdf or C:\Users\usada\my_projects\power_plant_java\automation-test\test-data
         - submit form
     - verify PID tab is selected, Vendor 1 dropdown present and file with name 1 is present inside the dropdown when toggled. 
     - click on file in the left menu and make sure it is displayed in the right side (file viewer).
@@ -40,10 +40,15 @@
     - file is present in the vendor toggle
     - file successfully opens in file viewer (right section of loto builder)
 6. full flow test: 
-    - crete file with new file type "PID" and new Vendor "Vendor 1" (1.pdf);
-    - crete file with type "PID" and new Vendor "Vendor 2" (2.pdf);
-    - create file - "PID"/"Vendor 1"/3.pdf
-    - create file - "PID"/"Vendor 1"/4.pdf
-    - create file - "PID"/"Vendor 2"/5.pdf
-    - create file - "PID"/"Vendor 2"/6.pdf
+    - crete file with new file type "PID" and new Vendor "Vendor 1" (1.pdf) - verify file opens;
+    - crete file with type "PID" and new Vendor "Vendor 2" (2.pdf) - verify file opens;
+    - create file - "PID"/"Vendor 1"/3.pdf - verify file opens
+    - create file - "PID"/"Vendor 1"/4.pdf - verify file opens
+    - create file - "PID"/"Vendor 2"/5.pdf - verify file opens
+    - create file - "PID"/"Vendor 2"/6.pdf - verify file opens
     - rename Vendor 1 to "Vendor 11" - make sure menu and viewer work.
+7. delete all vendors but one:
+    - open file form
+    - select vendor to keep
+    - one by one select the rest of the vendors and click delete button
+    - in the Value form select vendor to keep as where to transfer items of vendor that is being deleted. 

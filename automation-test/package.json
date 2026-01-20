@@ -18,6 +18,9 @@
     "test:loto-standards": "playwright test tests/loto-standards/",
     "test:loto-standards:headed": "playwright test tests/loto-standards/ --headed",
 
+    "test:loto-builder": "playwright test tests/files/loto-builder-file.spec.ts",
+    "test:loto-builder:headed": "playwright test tests/files/loto-builder-file.spec.ts --headed",
+
     "test:one": "playwright test --headed -g",
 
     "codegen": "playwright codegen http://localhost:4200"
