@@ -246,6 +246,16 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
     return item.color || null;
   }
 
+  isLeafWithSubtitle(item: FlatItem): boolean {
+    return !!item.subtitle && (!item.values || item.values.length === 0);
+  }
+
+  getItemSize(): number {
+    // Check if any items have subtitles (leaf items with two-line display)
+    const hasSubtitles = this.flatItems().some(item => this.isLeafWithSubtitle(item));
+    return hasSubtitles ? 50 : 40;
+  }
+
   ngOnDestroy() {
     // Clean up click timeout
     if (this.clickTimeout !== null) {

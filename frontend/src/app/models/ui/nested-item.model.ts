@@ -1,6 +1,7 @@
 export interface NestedItem {
   id: string | number;
   name: string;
+  subtitle?: string;  // Secondary text shown below name for leaf items
   values?: NestedItem[];
   isExpanded?: boolean;
   objectType: string;
@@ -12,6 +13,7 @@ export interface NestedItem {
 export class NestedItemImpl implements NestedItem {
   id: string | number;
   name: string;
+  subtitle?: string;
   values?: NestedItem[];
   isExpanded: boolean;
   objectType: string;
@@ -22,6 +24,7 @@ export class NestedItemImpl implements NestedItem {
   constructor(data: Partial<NestedItem> = {}) {
     this.id = data.id ?? '';
     this.name = data.name ?? '';
+    this.subtitle = data.subtitle;
     this.values = data.values?.map(item => new NestedItemImpl(item)) ?? [];
     this.isExpanded = data.isExpanded ?? false;
     this.objectType = data.objectType?? '';

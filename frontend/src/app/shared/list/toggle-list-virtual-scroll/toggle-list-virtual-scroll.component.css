@@ -21,6 +21,8 @@ cdk-virtual-scroll-viewport.toggle-list {
   padding: 8px;
   cursor: pointer;
   transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
 }
 
 .item-content:hover {
@@ -49,6 +51,36 @@ cdk-virtual-scroll-viewport.toggle-list {
 
 .toggle-icon {
   margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.item-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-subtitle {
+  font-size: 0.75em;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.item-content.has-subtitle {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
 }
 
 .highlighted:hover {

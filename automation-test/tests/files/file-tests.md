@@ -51,4 +51,16 @@
     - open file form
     - select vendor to keep
     - one by one select the rest of the vendors and click delete button
-    - in the Value form select vendor to keep as where to transfer items of vendor that is being deleted. 
+    - in the Value form select vendor to keep as where to transfer items of vendor that is being deleted.
+8. modify all existing in one section files one by one:
+    - navigate to left file menu
+    - find first toggle item
+    - for each file of that section: 
+        - open form
+        - add file number
+        - submit
+    - refresh page
+    - navigate to the same section
+    - verify that each file in the section:
+        - has the new file number
+        - still opens

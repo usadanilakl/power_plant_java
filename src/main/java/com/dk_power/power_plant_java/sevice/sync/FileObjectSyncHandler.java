@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.sync.PendingFileSync.SyncDirection
 import com.dk_power.power_plant_java.entities.sync.PendingFileSync.SyncStatus;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.sync.PendingFileSyncRepository;
+import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.util.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,7 @@ public class FileObjectSyncHandler {
     private final FileRepo fileRepo;
     private final SyncContext syncContext;
     private final PendingFileSyncRepository pendingFileSyncRepository;
+    private final ValueRepo valueRepo;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -315,10 +317,16 @@ public class FileObjectSyncHandler {
                 oldFileNumber = pathChanges.get("fileNumber").getOldValue();
             }
             if (pathChanges.containsKey("fileType")) {
-                oldFileType = pathChanges.get("fileType").getOldValue();
+                // oldValue is the ID of the old Value entity, need to look up its name
+                String oldFileTypeId = pathChanges.get("fileType").getOldValue();
+                oldFileType = resolveValueNameById(oldFileTypeId);
+                log.debug("Resolved old fileType ID {} to name '{}'", oldFileTypeId, oldFileType);
             }
             if (pathChanges.containsKey("vendor")) {
-                oldVendor = pathChanges.get("vendor").getOldValue();
+                // oldValue is the ID of the old Value entity, need to look up its name
+                String oldVendorId = pathChanges.get("vendor").getOldValue();
+                oldVendor = resolveValueNameById(oldVendorId);
+                log.debug("Resolved old vendor ID {} to name '{}'", oldVendorId, oldVendor);
             }
             if (pathChanges.containsKey("extension")) {
                 // Parse old extensions - could be comma-separated or single value
@@ -390,6 +398,35 @@ public class FileObjectSyncHandler {
             }
         } catch (IOException e) {
             log.debug("Could not clean up empty directories: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Resolve a Value entity name by its ID.
+     * Used to get the name of vendor/fileType from the ID stored in FieldChange.oldValue.
+     *
+     * @param valueIdStr the string representation of the Value ID
+     * @return the name of the Value entity, or null if not found
+     */
+    private String resolveValueNameById(String valueIdStr) {
+        if (valueIdStr == null || valueIdStr.isEmpty()) {
+            return null;
+        }
+
+        try {
+            // Remove quotes if present (JSON serialization may add them)
+            String cleanId = valueIdStr.replace("\"", "").trim();
+            Long valueId = Long.parseLong(cleanId);
+
+            // Look up the Value entity including deleted ones
+            // (the vendor may have been deleted, but we still need its name for path cleanup)
+            com.dk_power.power_plant_java.entities.categories.Value value =
+                valueRepo.findByIdIncludingDeleted(valueId);
+            return value != null ? value.getName() : null;
+        } catch (NumberFormatException e) {
+            // If it's not a number, it might already be the name (legacy format)
+            log.debug("Could not parse Value ID '{}', using as-is", valueIdStr);
+            return valueIdStr;
         }
     }
 

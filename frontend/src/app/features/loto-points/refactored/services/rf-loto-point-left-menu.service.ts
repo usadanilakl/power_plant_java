@@ -167,7 +167,8 @@ export class RfLotoPointLeftMenuService {
       parentItem.values = summariesInGroup.map(summary =>
         new NestedItemImpl({
           id: summary.id.toString(),
-          name: this.getSummaryDisplayName(summary),
+          name: summary.tagNumber || `LOTO Point #${summary.id}`,
+          subtitle: summary.description || undefined,
           isExpanded: false,
           objectType: 'LotoPoint',
           color: this.getSummaryColor(summary)

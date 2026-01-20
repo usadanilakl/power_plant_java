@@ -1,11 +1,12 @@
 
 
-<cdk-virtual-scroll-viewport itemSize="40" class="toggle-list">
+<cdk-virtual-scroll-viewport [itemSize]="getItemSize()" class="toggle-list">
   <ng-container *cdkVirtualFor="let item of flatItems(); trackBy: trackByFn">
     <div class="item-content"
          [class.highlighted]="highlightOnHover()"
          [class.clicked]="item.isClicked"
          [class.last-clicked]="item.isLastClicked"
+         [class.has-subtitle]="isLeafWithSubtitle(item)"
          [class.level-1]="colorLevels() && item.level === 0"
          [class.level-2]="colorLevels() && item.level === 1"
          [class.level-3]="colorLevels() && item.level === 2"
@@ -18,7 +19,10 @@
       <span class="toggle-icon" *ngIf="item.values && item.values.length > 0">
         {{ item.isExpanded ? '▼' : '▶' }}
       </span>
-      <span class="item-name">{{ item.name }}</span>
+      <div class="item-text">
+        <span class="item-name">{{ item.name }}</span>
+        <span class="item-subtitle" *ngIf="isLeafWithSubtitle(item)">{{ item.subtitle }}</span>
+      </div>
     </div>
   </ng-container>
 </cdk-virtual-scroll-viewport>

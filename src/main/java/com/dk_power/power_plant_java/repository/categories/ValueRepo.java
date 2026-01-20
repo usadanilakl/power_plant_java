@@ -11,6 +11,13 @@ import java.util.List;
 @Repository
 public interface ValueRepo extends BaseCategoryValueRepo<Value> {
     List<Value> findByCategory(Category category);
+
+    /**
+     * Find a Value by ID including deleted ones.
+     * Uses native query to bypass @Where(clause = "deleted = false").
+     */
+    @Query(value = "SELECT * FROM val_table WHERE id = ?1", nativeQuery = true)
+    Value findByIdIncludingDeleted(Long id);
 //    @Query(
 //            "SELECT new SharedValueDto(a.id, a.object_type) FROM Equipment WHERE a.value.id = : id" +
 //                    "UNION"+

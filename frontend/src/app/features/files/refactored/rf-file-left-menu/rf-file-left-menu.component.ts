@@ -155,7 +155,8 @@ constructor(
   
       parentItem.values = files.map(file => new NestedItemImpl({
         id: file.id.toString(),
-        name: file.name && file.name.trim() !== '' ? file.name : file.fileNumber.join(',') || 'Unnamed File',
+        name: file.name && file.name.trim() !== '' ? file.name : 'Unnamed File',
+        subtitle: file.fileNumber && file.fileNumber.length > 0 ? file.fileNumber.join(', ') : undefined,
         isExpanded: false,
         objectType: file.objectType,
         color: this.setFileItemColor(file)

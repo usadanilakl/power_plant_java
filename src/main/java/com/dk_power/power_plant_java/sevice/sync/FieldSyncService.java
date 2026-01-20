@@ -519,13 +519,24 @@ public class FieldSyncService {
                           && "_entity_".equals(c.getFieldName()));
 
             if (hasDelete && entity != null) {
-                // Apply soft delete
+                // Apply field changes BEFORE soft delete to preserve data state
+                // This ensures the entity has the same field values as the source
+                for (FieldChange change : changes) {
+                    if (!"_entity_".equals(change.getFieldName()) &&
+                        !"deleted".equals(change.getFieldName())) {
+                        applyFieldChange(entity, change);
+                        saveIncomingChange(change);
+                        appliedCount++;
+                    }
+                }
+
+                // Now apply soft delete
                 entity.setDeleted(true);
                 service.getRepo().save(entity);
                 saveIncomingChange(changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.DELETE)
                     .findFirst().orElse(null));
-                return 1;
+                return appliedCount + 1;
             }
 
             // Handle entity creation if entity doesn't exist
