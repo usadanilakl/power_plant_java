@@ -90,7 +90,7 @@ public class EntityStateCapture {
             }
 
             log.trace("Retrieved {} original values from database for {} #{}",
-                originalValues.size(), entity.getClass().getSimpleName(), entity.getId())
+                originalValues.size(), entity.getClass().getSimpleName(), entity.getId());
 
         } catch (Exception e) {
             log.warn("Could not get database state via Hibernate for {} #{}, falling back to reflection: {}",
