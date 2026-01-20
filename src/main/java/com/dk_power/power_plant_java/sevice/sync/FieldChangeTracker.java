@@ -291,6 +291,19 @@ public class FieldChangeTracker {
                         }
 
                         if (!areValuesEqual(oldValue, newValue)) {
+                            // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
+                            // "changing" from a value to null. This can happen during cascade updates
+                            // (e.g., when Vendor is renamed, FileObject may be marked dirty even though
+                            // no FileObject fields actually changed). In such cases, the in-memory entity
+                            // might have uninitialized/null fields due to Hibernate proxy behavior.
+                            // This is a protective measure - it's unlikely someone intentionally clears a name.
+                            if ("name".equals(fieldName) && oldValue != null && newValue == null) {
+                                log.warn("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
+                                    "(likely cascade false-positive, not a real user change)",
+                                    entityType, fieldName, truncateValue(oldValue));
+                                continue;
+                            }
+
                             FieldChange fieldChange = createFieldChange(
                                 entityType, entityId, fieldName,
                                 oldValue, newValue,
