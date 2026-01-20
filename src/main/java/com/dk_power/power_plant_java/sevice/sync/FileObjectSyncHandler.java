@@ -165,15 +165,17 @@ public class FileObjectSyncHandler {
     /**
      * Event listener for sync changes - handles incoming FileObject updates.
      * Groups changes by entity to handle multiple path-affecting changes together.
+     *
+     * This always processes path changes to delete old files locally,
+     * regardless of server sync mode. File downloads are only queued
+     * when server sync is enabled.
      */
     @Async
     @EventListener
     public void onSyncChangesApplied(FileObjectSyncEvent event) {
-        if (!syncConfig.isServerSyncEnabled()) {
-            return;
-        }
-
-        log.info("Processing {} FileObject sync changes", event.getChanges().size());
+        boolean serverSyncEnabled = syncConfig.isServerSyncEnabled();
+        log.info("Processing {} FileObject sync changes (serverSync={})",
+            event.getChanges().size(), serverSyncEnabled);
 
         // Group changes by entity ID to handle all path changes together
         Map<Long, List<FieldChange>> changesByEntity = event.getChanges().stream()
@@ -185,7 +187,7 @@ public class FileObjectSyncHandler {
             List<FieldChange> entityChanges = entry.getValue();
 
             try {
-                processIncomingSyncChanges(entityId, entityChanges);
+                processIncomingSyncChanges(entityId, entityChanges, serverSyncEnabled);
             } catch (Exception e) {
                 log.error("Error processing sync changes for FileObject #{}: {}",
                     entityId, e.getMessage(), e);
@@ -196,8 +198,12 @@ public class FileObjectSyncHandler {
     /**
      * Process all incoming sync changes for a single FileObject.
      * Handles multiple path-affecting changes together to correctly reconstruct old paths.
+     *
+     * @param entityId the FileObject ID
+     * @param changes the list of field changes
+     * @param serverSyncEnabled whether to queue file downloads (requires server sync)
      */
-    private void processIncomingSyncChanges(Long entityId, List<FieldChange> changes) {
+    private void processIncomingSyncChanges(Long entityId, List<FieldChange> changes, boolean serverSyncEnabled) {
         // Check for entity-level changes first
         FieldChange entityChange = changes.stream()
             .filter(c -> "_entity_".equals(c.getFieldName()))
@@ -205,9 +211,11 @@ public class FileObjectSyncHandler {
 
         if (entityChange != null) {
             if (entityChange.getChangeType() == FieldChange.ChangeType.CREATE) {
-                FileObject fileObject = fileRepo.findById(entityId).orElse(null);
-                if (fileObject != null) {
-                    queueFileDownload(fileObject);
+                if (serverSyncEnabled) {
+                    FileObject fileObject = fileRepo.findById(entityId).orElse(null);
+                    if (fileObject != null) {
+                        queueFileDownload(fileObject);
+                    }
                 }
             } else if (entityChange.getChangeType() == FieldChange.ChangeType.DELETE) {
                 log.info("FileObject #{} was deleted, local files retained", entityId);
@@ -234,13 +242,13 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        // If there are path-affecting changes, handle them together
+        // Always handle path changes to delete old files locally
         if (!pathChanges.isEmpty()) {
             handleIncomingPathChanges(fileObject, pathChanges);
         }
 
-        // Download files if path changed or content changed
-        if (!pathChanges.isEmpty() || hasContentChange) {
+        // Only queue file downloads if server sync is enabled
+        if (serverSyncEnabled && (!pathChanges.isEmpty() || hasContentChange)) {
             queueFileDownload(fileObject);
         }
     }
