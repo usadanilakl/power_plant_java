@@ -274,6 +274,16 @@ public class FieldChangeTracker {
             log.info("trackEntityUpdate (map-based) called for {} #{} with {} original values",
                 entityType, entityId, originalValues.size());
 
+            // Debug: log ManyToMany fields in originalValues
+            if ("Equipment".equals(entityType)) {
+                log.info("Equipment originalValues keys: {}", originalValues.keySet());
+                if (originalValues.containsKey("lotoPoints")) {
+                    log.info("Equipment originalValues.lotoPoints = {}", originalValues.get("lotoPoints"));
+                } else {
+                    log.warn("Equipment originalValues does NOT contain 'lotoPoints' key!");
+                }
+            }
+
             // Compare each field
             for (Field field : getAllFields(newEntity.getClass())) {
                 if (shouldTrackField(field)) {
@@ -282,6 +292,13 @@ public class FieldChangeTracker {
                         String fieldName = field.getName();
                         Object oldValue = originalValues.get(fieldName);
                         Object newValue = field.get(newEntity);
+
+                        // Debug: log ManyToMany field comparison
+                        if ("lotoPoints".equals(fieldName) && "Equipment".equals(entityType)) {
+                            log.info("Comparing Equipment.lotoPoints: oldValue={} (type={}), newValue={} (type={})",
+                                oldValue, oldValue != null ? oldValue.getClass().getSimpleName() : "null",
+                                newValue, newValue != null ? newValue.getClass().getSimpleName() : "null");
+                        }
 
                         if (!areValuesEqual(oldValue, newValue)) {
                             // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
