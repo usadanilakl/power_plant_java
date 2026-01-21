@@ -710,6 +710,16 @@ public class FieldSyncService {
                 return false;
             }
 
+            // Skip ManyToMany collections - these have their own join tables and complex
+            // cascade behavior that doesn't work well with field-level sync.
+            // ManyToMany relationships should be synced via the join table, not entity fields.
+            // This prevents cascade errors when referenced entities exist but aren't in session.
+            if ("ManyToMany".equals(change.getRelationshipType())) {
+                log.debug("Skipping ManyToMany field {}.{} - use join table sync instead",
+                    entity.getClass().getSimpleName(), change.getFieldName());
+                return false;
+            }
+
             field.setAccessible(true);
 
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
@@ -844,30 +854,28 @@ public class FieldSyncService {
                 try {
                     Long relatedId = Long.parseLong(cleanedJson);
 
-                    // Use getReference() to create a proxy without loading the entity.
-                    // This is more reliable for setting relationships, especially when
-                    // the referenced entity was just created in a previous transaction.
-                    // The proxy only needs the ID, which we already have.
-                    try {
-                        Object relatedEntity = entityManager.getReference(targetType, relatedId);
-                        log.debug("Resolved relationship {} -> entity #{} (using getReference)",
-                            targetType.getSimpleName(), relatedId);
-                        return relatedEntity;
-                    } catch (Exception refException) {
-                        // Fallback to find() if getReference fails
-                        log.debug("getReference failed for {}#{}, trying find(): {}",
-                            targetType.getSimpleName(), relatedId, refException.getMessage());
-                        Object relatedEntity = entityManager.find(targetType, relatedId);
+                    // Use find() to get the actual entity from the database.
+                    // We cannot use getReference() because it may return a proxy that hasn't been
+                    // properly associated with the current persistence context, causing cascade issues.
+                    Object relatedEntity = entityManager.find(targetType, relatedId);
 
-                        if (relatedEntity != null) {
+                    if (relatedEntity != null) {
+                        // Validate that we got an actual entity, not just the ID
+                        if (relatedEntity instanceof BaseIdEntity) {
                             log.debug("Resolved relationship {} -> entity #{} (using EntityManager.find)",
                                 targetType.getSimpleName(), relatedId);
                             return relatedEntity;
                         } else {
-                            log.warn("Related entity {}#{} not found (even with EntityManager)",
-                                targetType.getSimpleName(), relatedId);
+                            log.error("EntityManager.find returned non-entity for {}#{}: {}",
+                                targetType.getSimpleName(), relatedId, relatedEntity.getClass().getName());
                             return null;
                         }
+                    } else {
+                        // Entity not found - this can happen if the referenced entity hasn't been
+                        // synced yet (ordering issue). Skip this field for now.
+                        log.warn("Related entity {}#{} not found - may not be synced yet",
+                            targetType.getSimpleName(), relatedId);
+                        return null;
                     }
                 } catch (NumberFormatException e) {
                     log.warn("Could not parse relationship ID from '{}' for type {}", json, targetType.getSimpleName());
