@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PersistenceContext;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.entity.EntityPersister;
@@ -26,10 +27,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class EntityStateCapture {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private final SyncContext syncContext;
 
     // Thread-local map to store entity field values before update
     // Key: entity ID, Value: map of field name -> original value
@@ -91,7 +95,11 @@ public class EntityStateCapture {
                 originalValues.size(), entity.getClass().getSimpleName(), entity.getId());
 
             // Also capture ManyToMany collections (not included in getDatabaseSnapshot)
-            captureManyToManyCollections(entity, originalValues);
+            // Skip during sync context - the connection may be closed or in an inconsistent state,
+            // and we don't need to track ManyToMany changes for incoming sync (they're already handled)
+            if (!syncContext.isSyncing()) {
+                captureManyToManyCollections(entity, originalValues);
+            }
 
         } catch (Exception e) {
             log.warn("Could not get database state via Hibernate for {} #{}, falling back to reflection: {}",
