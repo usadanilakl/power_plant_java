@@ -1052,9 +1052,21 @@ public class FullResyncService {
         Map<String, ServerFileManifestEntry> serverFileMap = new HashMap<>();
         for (ServerFileManifestEntry entry : serverFiles) {
             if (entry.getOriginalPath() != null) {
-                // Normalize path
+                // Normalize path - extract relative path after uploads directory
                 String normalizedPath = entry.getOriginalPath().replace('\\', '/');
-                if (normalizedPath.startsWith("uploads/")) {
+                // Find the uploads directory marker and extract everything after it
+                int uploadsIndex = normalizedPath.indexOf("/uploads/");
+                if (uploadsIndex >= 0) {
+                    // Skip past "/uploads/" (9 chars)
+                    normalizedPath = normalizedPath.substring(uploadsIndex + 9);
+                } else if (normalizedPath.indexOf("/uploads-") >= 0) {
+                    // Handle uploads-test, uploads-dev, uploads-prod
+                    int idx = normalizedPath.indexOf("/uploads-");
+                    int slashAfter = normalizedPath.indexOf('/', idx + 1);
+                    if (slashAfter >= 0) {
+                        normalizedPath = normalizedPath.substring(slashAfter + 1);
+                    }
+                } else if (normalizedPath.startsWith("uploads/")) {
                     normalizedPath = normalizedPath.substring(8);
                 }
                 serverFileMap.put(normalizedPath, entry);
