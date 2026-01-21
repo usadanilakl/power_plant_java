@@ -344,29 +344,31 @@ public class FullResyncService {
 
     /**
      * Perform full resync from the sync server.
+     * Downloads the H2 backup ZIP and restores it directly.
      */
     private ResyncResult performServerResync(boolean skipDeletionCheck) {
         try {
-            // Phase 1: Download and restore database from server
-            currentResyncStatus.setPhase("Downloading database from server");
-            log.info("Downloading database export from sync server");
+            // Phase 1: Download H2 backup from server
+            currentResyncStatus.setPhase("Downloading H2 backup from server");
+            log.info("Downloading H2 backup from sync server");
 
-            String url = syncServerUrl + "/api/resync/database/json";
+            String url = syncServerUrl + "/api/resync/database/h2-backup";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
 
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url, HttpMethod.GET, new HttpEntity<>(headers),
-                new ParameterizedTypeReference<Map<String, Object>>() {});
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
 
-            Map<String, Object> dbExport = response.getBody();
-            if (dbExport == null) {
-                return new ResyncResult(false, "Failed to download database from server", null);
+            byte[] backupData = response.getBody();
+            if (backupData == null || backupData.length == 0) {
+                return new ResyncResult(false, "Failed to download H2 backup from server", null);
             }
 
-            // Phase 2: Restore entities from export
-            currentResyncStatus.setPhase("Restoring entities");
-            restoreEntitiesFromServerExport(dbExport);
+            log.info("Downloaded H2 backup: {} bytes", backupData.length);
+
+            // Phase 2: Restore from H2 backup
+            currentResyncStatus.setPhase("Restoring database from backup");
+            h2BackupService.restoreFromBytes(backupData);
 
             // Phase 3: Compare and restore files
             currentResyncStatus.setPhase("Comparing files");
