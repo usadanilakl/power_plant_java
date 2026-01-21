@@ -93,7 +93,22 @@ public class Equipment extends BaseEquipment implements Referenceable {
 
     public void addLotoPoint(LotoPoint lotoPoint) {
         if (lotoPoints == null) lotoPoints = new HashSet<>();
-        if (lotoPoint != null) lotoPoints.add(lotoPoint);
+        if (lotoPoint != null) {
+            lotoPoints.add(lotoPoint);
+            // Force entity to be marked dirty so @PreUpdate triggers for sync tracking
+            // ManyToMany collection changes don't automatically mark the entity as dirty
+            this.setDateModified(java.time.LocalDateTime.now());
+        }
+    }
+
+    /**
+     * Override Lombok setter to force entity dirty marking for sync.
+     * ManyToMany collection changes don't automatically mark the entity as dirty.
+     */
+    public void setLotoPoints(Set<LotoPoint> lotoPoints) {
+        this.lotoPoints = lotoPoints;
+        // Force entity to be marked dirty so @PreUpdate triggers for sync tracking
+        this.setDateModified(java.time.LocalDateTime.now());
     }
 
     public void setMainFile(FileObject file) {
