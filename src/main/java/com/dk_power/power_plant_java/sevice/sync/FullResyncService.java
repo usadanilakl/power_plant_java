@@ -392,16 +392,21 @@ public class FullResyncService {
             currentResyncStatus.setPhase("Deleting extra files");
             deleteExtraFiles(comparison);
 
-            currentResyncStatus.setPhase("Complete");
+            currentResyncStatus.setPhase("Complete - Restart Required");
             currentResyncStatus.setEndTime(Instant.now());
             currentResyncStatus.setSuccess(true);
+            currentResyncStatus.setRestartRequired(true);
 
             log.info("Server resync complete: {} downloaded, {} deleted, {} unchanged",
                 comparison.getFilesToDownload().size(),
                 comparison.getFilesToDelete().size(),
                 comparison.getUnchangedFiles().size());
 
-            return new ResyncResult(true, "Server resync completed successfully", comparison);
+            // Schedule restart via external script
+            scheduleExternalRestart();
+
+            return new ResyncResult(true,
+                "Resync completed successfully. Application is restarting...", comparison);
 
         } catch (Exception e) {
             log.error("Server resync failed: {}", e.getMessage(), e);
@@ -409,6 +414,58 @@ public class FullResyncService {
             currentResyncStatus.setSuccess(false);
             return new ResyncResult(false, "Server resync failed: " + e.getMessage(), null);
         }
+    }
+
+    /**
+     * Schedule an external restart using platform-specific script.
+     * The script runs independently and will restart the application.
+     */
+    private void scheduleExternalRestart() {
+        new Thread(() -> {
+            try {
+                // Give time for the response to be sent
+                Thread.sleep(2000);
+
+                log.info("Executing restart script...");
+
+                String os = System.getProperty("os.name").toLowerCase();
+                ProcessBuilder pb;
+
+                // Determine project root directory
+                String projectRoot = projectRootPath;
+                if (projectRoot == null || projectRoot.isEmpty()) {
+                    projectRoot = System.getProperty("user.dir");
+                }
+
+                if (os.contains("win")) {
+                    // Windows
+                    Path scriptPath = Paths.get(projectRoot, "restart-app.bat");
+                    if (Files.exists(scriptPath)) {
+                        pb = new ProcessBuilder("cmd", "/c", "start", "/b", scriptPath.toString());
+                    } else {
+                        log.warn("Restart script not found: {}. Manual restart required.", scriptPath);
+                        return;
+                    }
+                } else {
+                    // Linux/Mac
+                    Path scriptPath = Paths.get(projectRoot, "restart-app.sh");
+                    if (Files.exists(scriptPath)) {
+                        pb = new ProcessBuilder("/bin/bash", scriptPath.toString());
+                    } else {
+                        log.warn("Restart script not found: {}. Manual restart required.", scriptPath);
+                        return;
+                    }
+                }
+
+                pb.inheritIO();
+                pb.start();
+
+                log.info("Restart script launched, application will restart shortly...");
+
+            } catch (Exception e) {
+                log.error("Failed to execute restart script: {}. Manual restart required.", e.getMessage());
+            }
+        }).start();
     }
 
     /**
@@ -722,16 +779,21 @@ public class FullResyncService {
             currentResyncStatus.setPhase("Applying file changes");
             applyFileChanges(comparison);
 
-            currentResyncStatus.setPhase("Complete");
+            currentResyncStatus.setPhase("Complete - Restart Required");
             currentResyncStatus.setEndTime(Instant.now());
             currentResyncStatus.setSuccess(true);
+            currentResyncStatus.setRestartRequired(true);
 
             log.info("Full resync complete: {} downloaded, {} deleted, {} unchanged",
                 comparison.getFilesToDownload().size(),
                 comparison.getFilesToDelete().size(),
                 comparison.getUnchangedFiles().size());
 
-            return new ResyncResult(true, "Resync completed successfully", comparison);
+            // Schedule restart via external script
+            scheduleExternalRestart();
+
+            return new ResyncResult(true,
+                "Resync completed successfully. Application is restarting...", comparison);
 
         } catch (Exception e) {
             log.error("Resync failed: {}", e.getMessage(), e);
@@ -1261,6 +1323,7 @@ public class FullResyncService {
         private int totalFiles;
         private int processedFiles;
         private boolean success;
+        private boolean restartRequired;
     }
 
     @Data

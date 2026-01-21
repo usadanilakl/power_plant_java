@@ -217,6 +217,18 @@
           </div>
         </div>
       </div>
+
+      <!-- Restart Overlay -->
+      <div class="restart-overlay" *ngIf="restartProgress.isRestarting">
+        <div class="restart-modal">
+          <div class="restart-spinner"></div>
+          <h3>Application Restarting</h3>
+          <p>{{ restartProgress.message }}</p>
+          <p class="restart-note">
+            The page will automatically reload when the application is ready.
+          </p>
+        </div>
+      </div>
     </div>
   </ng-container>
 </app-main-layout>

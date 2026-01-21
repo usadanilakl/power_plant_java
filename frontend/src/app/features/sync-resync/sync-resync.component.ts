@@ -8,7 +8,8 @@ import {
   FileComparisonResult,
   OperationStatus,
   ResyncResult,
-  BackupResult
+  BackupResult,
+  RestartProgress
 } from '../../services/full-resync.service';
 import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
@@ -37,6 +38,9 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   showConfirmDialog = false;
   confirmAction: 'resync' | 'backup' | 'force-resync' | null = null;
 
+  // Restart monitoring
+  restartProgress: RestartProgress = { isRestarting: false, message: '', checkCount: 0 };
+
   constructor(
     private resyncService: FullResyncService,
     @Inject(PLATFORM_ID) platformId: Object
@@ -49,6 +53,13 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       this.loadHealth();
       this.loadStatus();
       this.startAutoRefresh();
+
+      // Subscribe to restart progress
+      this.resyncService.restartProgress$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(progress => {
+          this.restartProgress = progress;
+        });
     }
   }
 
@@ -174,15 +185,29 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
         this.loading = false;
         if (result.success) {
           this.showMessage(result.message, 'success');
+          // Start monitoring for restart if resync was successful
+          if (result.message.includes('restarting')) {
+            this.resyncService.startRestartMonitoring();
+          }
         } else {
           this.showMessage(result.message, 'error');
         }
-        this.loadHealth();
-        this.loadStatus();
+        // Don't reload health/status if restarting - server will be down
+        if (!result.message.includes('restarting')) {
+          this.loadHealth();
+          this.loadStatus();
+        }
       },
       error: (err) => {
         this.loading = false;
-        this.showMessage('Resync failed: ' + (err.error?.message || err.message), 'error');
+        // If we get a connection error right after starting resync,
+        // the server might be restarting
+        if (err.status === 0 || err.status === 504) {
+          this.showMessage('Connection lost - server may be restarting...', 'warning');
+          this.resyncService.startRestartMonitoring();
+        } else {
+          this.showMessage('Resync failed: ' + (err.error?.message || err.message), 'error');
+        }
       }
     });
   }

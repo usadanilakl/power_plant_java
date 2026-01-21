@@ -63,6 +63,12 @@ public class FieldChange {
     // For relationship fields
     private String relationshipType;    // "ManyToOne", "ManyToMany", "OneToMany" (null for simple fields)
 
+    /**
+     * When this change was received by the sync server.
+     * This field exists to maintain schema compatibility with the sync server's FieldChange entity.
+     */
+    private Instant receivedAt;
+
     public enum ChangeType {
         CREATE,     // New entity created
         UPDATE,     // Field value changed
@@ -83,6 +89,7 @@ public class FieldChange {
         this.originMachineName = machineName;
         this.changeType = changeType;
         this.syncedToMachines = "|" + machineId + "|"; // Initially only synced to origin (delimited format)
+        this.receivedAt = Instant.now(); // Set for schema compatibility with sync server
     }
 
     /**
