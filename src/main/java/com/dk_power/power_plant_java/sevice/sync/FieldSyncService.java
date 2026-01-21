@@ -324,14 +324,35 @@ public class FieldSyncService {
         // entities created in one batch need to be loadable from DB in the next.
         entityManager.clear();
 
-        // Separate ManyToMany changes from other changes
-        List<FieldChange> manyToManyChanges = incomingChanges.stream()
-            .filter(c -> "ManyToMany".equals(c.getRelationshipType()))
-            .toList();
+        // ==================== SINGLE-PASS CATEGORIZATION ====================
+        // Categorize all changes in one pass instead of multiple stream iterations
+        List<FieldChange> manyToManyChanges = new ArrayList<>();
+        List<FieldChange> nonManyToManyChanges = new ArrayList<>();
+        List<FieldChange> fileObjectChanges = new ArrayList<>();
+        List<FieldChange> valueNameChanges = new ArrayList<>();
 
-        List<FieldChange> nonManyToManyChanges = incomingChanges.stream()
-            .filter(c -> !"ManyToMany".equals(c.getRelationshipType()))
-            .toList();
+        for (FieldChange change : incomingChanges) {
+            // Categorize by relationship type
+            if ("ManyToMany".equals(change.getRelationshipType())) {
+                manyToManyChanges.add(change);
+            } else {
+                nonManyToManyChanges.add(change);
+            }
+
+            // Collect FileObject changes for file sync
+            if ("FileObject".equals(change.getEntityType())) {
+                fileObjectChanges.add(change);
+            }
+
+            // Collect Value name changes for file structure cleanup
+            if ("Value".equals(change.getEntityType())
+                    && "name".equals(change.getFieldName())
+                    && change.getOldValue() != null
+                    && change.getNewValue() != null) {
+                valueNameChanges.add(change);
+            }
+        }
+        // ==================== END SINGLE-PASS CATEGORIZATION ====================
 
         // Group non-ManyToMany changes by entity type first
         Map<String, Map<Long, List<FieldChange>>> changesByEntity = nonManyToManyChanges.stream()
@@ -411,17 +432,6 @@ public class FieldSyncService {
                 }
             }
         }
-
-        // Collect FileObject changes for file sync
-        List<FieldChange> fileObjectChanges = incomingChanges.stream()
-            .filter(c -> "FileObject".equals(c.getEntityType()))
-            .toList();
-
-        // Collect Value name changes for file structure cleanup (Vendor/FileType folder deletions)
-        List<FieldChange> valueNameChanges = incomingChanges.stream()
-            .filter(c -> "Value".equals(c.getEntityType()) && "name".equals(c.getFieldName()))
-            .filter(c -> c.getOldValue() != null && c.getNewValue() != null)
-            .toList();
 
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data

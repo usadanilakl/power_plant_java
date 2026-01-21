@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,101 @@ public class FieldChangeTracker {
         "dateCreated", "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );
+
+    // ==================== FIELD CACHE ====================
+    // Static cache for field metadata per entity class to avoid repeated reflection
+    private static final ConcurrentHashMap<Class<?>, List<CachedFieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
+
+    /**
+     * Cached field information including pre-computed tracking metadata.
+     * This avoids repeated reflection and annotation checks on every change.
+     */
+    private static class CachedFieldInfo {
+        final Field field;
+        final String fieldName;
+        final boolean shouldTrack;
+        final String relationshipType;
+
+        CachedFieldInfo(Field field, boolean shouldTrack, String relationshipType) {
+            this.field = field;
+            this.fieldName = field.getName();
+            this.shouldTrack = shouldTrack;
+            this.relationshipType = relationshipType;
+            // Make accessible once during caching
+            field.setAccessible(true);
+        }
+    }
+
+    /**
+     * Get cached field info for a class. Builds cache on first access.
+     */
+    private List<CachedFieldInfo> getCachedFields(Class<?> clazz) {
+        return FIELD_CACHE.computeIfAbsent(clazz, this::buildFieldCache);
+    }
+
+    /**
+     * Build the field cache for a class, including all inherited fields.
+     */
+    private List<CachedFieldInfo> buildFieldCache(Class<?> clazz) {
+        List<CachedFieldInfo> cachedFields = new ArrayList<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                boolean shouldTrack = computeShouldTrackField(field);
+                String relationshipType = computeRelationshipType(field);
+                cachedFields.add(new CachedFieldInfo(field, shouldTrack, relationshipType));
+            }
+            current = current.getSuperclass();
+        }
+        log.debug("Built field cache for {}: {} fields ({} trackable)",
+            clazz.getSimpleName(), cachedFields.size(),
+            cachedFields.stream().filter(f -> f.shouldTrack).count());
+        return cachedFields;
+    }
+
+    /**
+     * Compute whether a field should be tracked (called once during cache build).
+     */
+    private boolean computeShouldTrackField(Field field) {
+        String fieldName = field.getName();
+
+        // Skip excluded fields
+        if (EXCLUDED_FIELDS.contains(fieldName)) return false;
+
+        // Skip transient fields
+        if (field.isAnnotationPresent(Transient.class)) return false;
+
+        // Skip JsonIgnore fields
+        if (field.isAnnotationPresent(JsonIgnore.class)) return false;
+
+        // Skip static fields
+        if (Modifier.isStatic(field.getModifiers())) return false;
+
+        // Skip final fields
+        if (Modifier.isFinal(field.getModifiers())) return false;
+
+        // Skip OneToMany collections with mappedBy - these are the non-owning side
+        if (field.isAnnotationPresent(OneToMany.class)) {
+            OneToMany oneToMany = field.getAnnotation(OneToMany.class);
+            if (oneToMany.mappedBy() != null && !oneToMany.mappedBy().isEmpty()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Compute the relationship type (called once during cache build).
+     */
+    private String computeRelationshipType(Field field) {
+        if (field.isAnnotationPresent(ManyToOne.class)) return "ManyToOne";
+        if (field.isAnnotationPresent(OneToMany.class)) return "OneToMany";
+        if (field.isAnnotationPresent(ManyToMany.class)) return "ManyToMany";
+        if (field.isAnnotationPresent(OneToOne.class)) return "OneToOne";
+        return null;
+    }
+    // ==================== END FIELD CACHE ====================
 
     /**
      * Track changes between old and new entity state
@@ -115,23 +211,22 @@ public class FieldChangeTracker {
         );
         changes.add(createChange);
 
-        // Track all non-null fields as initial values
-        for (Field field : getAllFields(newEntity.getClass())) {
-            if (shouldTrackField(field)) {
+        // Track all non-null fields as initial values (using cached field info)
+        for (CachedFieldInfo fieldInfo : getCachedFields(newEntity.getClass())) {
+            if (fieldInfo.shouldTrack) {
                 try {
-                    field.setAccessible(true);
-                    Object newValue = field.get(newEntity);
+                    Object newValue = fieldInfo.field.get(newEntity);
                     if (newValue != null) {
                         FieldChange fieldChange = createFieldChange(
-                            entityType, entityId, field.getName(),
+                            entityType, entityId, fieldInfo.fieldName,
                             null, newValue,
                             FieldChange.ChangeType.CREATE,
-                            getRelationshipType(field)
+                            fieldInfo.relationshipType
                         );
                         changes.add(fieldChange);
                     }
                 } catch (Exception e) {
-                    log.warn("Error tracking field {} on create: {}", field.getName(), e.getMessage());
+                    log.warn("Error tracking field {} on create: {}", fieldInfo.fieldName, e.getMessage());
                 }
             }
         }
@@ -147,12 +242,12 @@ public class FieldChangeTracker {
 
         log.trace("Comparing fields for {} #{}", entityType, entityId);
 
-        for (Field field : getAllFields(newEntity.getClass())) {
-            if (shouldTrackField(field)) {
+        // Use cached field info for better performance
+        for (CachedFieldInfo fieldInfo : getCachedFields(newEntity.getClass())) {
+            if (fieldInfo.shouldTrack) {
                 try {
-                    field.setAccessible(true);
-                    Object oldValue = field.get(oldEntity);
-                    Object newValue = field.get(newEntity);
+                    Object oldValue = fieldInfo.field.get(oldEntity);
+                    Object newValue = fieldInfo.field.get(newEntity);
 
                     if (!areValuesEqual(oldValue, newValue)) {
                         // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
@@ -161,25 +256,25 @@ public class FieldChangeTracker {
                         // no FileObject fields actually changed). In such cases, the in-memory entity
                         // might have uninitialized/null fields due to Hibernate proxy behavior.
                         // This is a protective measure - it's unlikely someone intentionally clears a name.
-                        if ("name".equals(field.getName()) && oldValue != null && newValue == null) {
+                        if ("name".equals(fieldInfo.fieldName) && oldValue != null && newValue == null) {
                             log.warn("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
                                 "(likely cascade false-positive, not a real user change)",
-                                entityType, field.getName(), truncateValue(oldValue));
+                                entityType, fieldInfo.fieldName, truncateValue(oldValue));
                             continue;
                         }
 
                         FieldChange fieldChange = createFieldChange(
-                            entityType, entityId, field.getName(),
+                            entityType, entityId, fieldInfo.fieldName,
                             oldValue, newValue,
                             FieldChange.ChangeType.UPDATE,
-                            getRelationshipType(field)
+                            fieldInfo.relationshipType
                         );
                         changes.add(fieldChange);
-                        log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, field.getName(),
+                        log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldInfo.fieldName,
                             truncateValue(oldValue), truncateValue(newValue));
                     }
                 } catch (Exception e) {
-                    log.warn("Error comparing field {}: {}", field.getName(), e.getMessage());
+                    log.warn("Error comparing field {}: {}", fieldInfo.fieldName, e.getMessage());
                 }
             }
         }
@@ -271,14 +366,12 @@ public class FieldChangeTracker {
             log.debug("trackEntityUpdate (map-based) called for {} #{} with {} original values",
                 entityType, entityId, originalValues.size());
 
-            // Compare each field
-            for (Field field : getAllFields(newEntity.getClass())) {
-                if (shouldTrackField(field)) {
+            // Compare each field (using cached field info for better performance)
+            for (CachedFieldInfo fieldInfo : getCachedFields(newEntity.getClass())) {
+                if (fieldInfo.shouldTrack) {
                     try {
-                        field.setAccessible(true);
-                        String fieldName = field.getName();
-                        Object oldValue = originalValues.get(fieldName);
-                        Object newValue = field.get(newEntity);
+                        Object oldValue = originalValues.get(fieldInfo.fieldName);
+                        Object newValue = fieldInfo.field.get(newEntity);
 
                         if (!areValuesEqual(oldValue, newValue)) {
                             // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
@@ -287,25 +380,25 @@ public class FieldChangeTracker {
                             // no FileObject fields actually changed). In such cases, the in-memory entity
                             // might have uninitialized/null fields due to Hibernate proxy behavior.
                             // This is a protective measure - it's unlikely someone intentionally clears a name.
-                            if ("name".equals(fieldName) && oldValue != null && newValue == null) {
+                            if ("name".equals(fieldInfo.fieldName) && oldValue != null && newValue == null) {
                                 log.warn("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
                                     "(likely cascade false-positive, not a real user change)",
-                                    entityType, fieldName, truncateValue(oldValue));
+                                    entityType, fieldInfo.fieldName, truncateValue(oldValue));
                                 continue;
                             }
 
                             FieldChange fieldChange = createFieldChange(
-                                entityType, entityId, fieldName,
+                                entityType, entityId, fieldInfo.fieldName,
                                 oldValue, newValue,
                                 FieldChange.ChangeType.UPDATE,
-                                getRelationshipType(field)
+                                fieldInfo.relationshipType
                             );
                             changes.add(fieldChange);
-                            log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldName,
+                            log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldInfo.fieldName,
                                 truncateValue(oldValue), truncateValue(newValue));
                         }
                     } catch (Exception e) {
-                        log.warn("Error comparing field {}: {}", field.getName(), e.getMessage());
+                        log.warn("Error comparing field {}: {}", fieldInfo.fieldName, e.getMessage());
                     }
                 }
             }
@@ -422,63 +515,6 @@ public class FieldChangeTracker {
             log.warn("Error serializing value of type {}: {}", value.getClass().getSimpleName(), e.getMessage());
             return String.valueOf(value);
         }
-    }
-
-    /**
-     * Check if a field should be tracked
-     */
-    private boolean shouldTrackField(Field field) {
-        String fieldName = field.getName();
-
-        // Skip excluded fields
-        if (EXCLUDED_FIELDS.contains(fieldName)) return false;
-
-        // Skip transient fields
-        if (field.isAnnotationPresent(Transient.class)) return false;
-
-        // Skip JsonIgnore fields
-        if (field.isAnnotationPresent(JsonIgnore.class)) return false;
-
-        // Skip static fields
-        if (Modifier.isStatic(field.getModifiers())) return false;
-
-        // Skip final fields
-        if (Modifier.isFinal(field.getModifiers())) return false;
-
-        // Skip OneToMany collections with mappedBy - these are the non-owning side
-        // of the relationship and are managed by the child entity's ManyToOne field.
-        // Syncing these would cause deserialization errors and potential conflicts.
-        if (field.isAnnotationPresent(OneToMany.class)) {
-            OneToMany oneToMany = field.getAnnotation(OneToMany.class);
-            if (oneToMany.mappedBy() != null && !oneToMany.mappedBy().isEmpty()) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Get the relationship type annotation if present
-     */
-    private String getRelationshipType(Field field) {
-        if (field.isAnnotationPresent(ManyToOne.class)) return "ManyToOne";
-        if (field.isAnnotationPresent(OneToMany.class)) return "OneToMany";
-        if (field.isAnnotationPresent(ManyToMany.class)) return "ManyToMany";
-        if (field.isAnnotationPresent(OneToOne.class)) return "OneToOne";
-        return null;
-    }
-
-    /**
-     * Get all fields including inherited fields
-     */
-    private List<Field> getAllFields(Class<?> clazz) {
-        List<Field> fields = new ArrayList<>();
-        while (clazz != null && clazz != Object.class) {
-            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
-            clazz = clazz.getSuperclass();
-        }
-        return fields;
     }
 
     /**
