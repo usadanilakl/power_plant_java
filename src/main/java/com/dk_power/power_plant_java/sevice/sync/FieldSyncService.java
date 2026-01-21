@@ -310,6 +310,13 @@ public class FieldSyncService {
     /**
      * Internal method that actually applies the changes.
      * Uses batch queries for conflict resolution to eliminate N+1 query problem.
+     *
+     * Two-pass approach:
+     * 1. First pass: Apply all non-ManyToMany changes (entity creations, updates, deletes)
+     * 2. Second pass: Apply ManyToMany changes after all referenced entities exist
+     *
+     * This prevents foreign key constraint violations when ManyToMany references
+     * entities that are created in the same sync batch.
      */
     private int applyIncomingChangesInternal(List<FieldChange> incomingChanges) {
         // Clear the persistence context to ensure fresh state for this batch.
@@ -317,8 +324,17 @@ public class FieldSyncService {
         // entities created in one batch need to be loadable from DB in the next.
         entityManager.clear();
 
-        // Group changes by entity type first
-        Map<String, Map<Long, List<FieldChange>>> changesByEntity = incomingChanges.stream()
+        // Separate ManyToMany changes from other changes
+        List<FieldChange> manyToManyChanges = incomingChanges.stream()
+            .filter(c -> "ManyToMany".equals(c.getRelationshipType()))
+            .toList();
+
+        List<FieldChange> nonManyToManyChanges = incomingChanges.stream()
+            .filter(c -> !"ManyToMany".equals(c.getRelationshipType()))
+            .toList();
+
+        // Group non-ManyToMany changes by entity type first
+        Map<String, Map<Long, List<FieldChange>>> changesByEntity = nonManyToManyChanges.stream()
             .collect(Collectors.groupingBy(
                 FieldChange::getEntityType,
                 Collectors.groupingBy(FieldChange::getEntityId)
@@ -329,7 +345,7 @@ public class FieldSyncService {
         // Collect broadcasts to send AFTER transaction commits
         List<Runnable> pendingBroadcasts = new ArrayList<>();
 
-        // Process each entity type with batch conflict resolution
+        // FIRST PASS: Process non-ManyToMany changes (creates entities first)
         for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
             String entityType = entityEntry.getKey();
             Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
@@ -352,6 +368,46 @@ public class FieldSyncService {
                     final Long id = entityId;
                     final List<FieldChange> changeList = new ArrayList<>(changes);
                     pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
+                }
+            }
+        }
+
+        // Flush to ensure all entities are persisted before ManyToMany pass
+        if (!manyToManyChanges.isEmpty()) {
+            entityManager.flush();
+        }
+
+        // SECOND PASS: Process ManyToMany changes (after all entities exist)
+        if (!manyToManyChanges.isEmpty()) {
+            log.debug("Second pass: applying {} ManyToMany changes", manyToManyChanges.size());
+
+            // Group ManyToMany changes by entity
+            Map<String, Map<Long, List<FieldChange>>> manyToManyByEntity = manyToManyChanges.stream()
+                .collect(Collectors.groupingBy(
+                    FieldChange::getEntityType,
+                    Collectors.groupingBy(FieldChange::getEntityId)
+                ));
+
+            for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : manyToManyByEntity.entrySet()) {
+                String entityType = entityEntry.getKey();
+                Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
+
+                List<Long> entityIds = new ArrayList<>(changesById.keySet());
+                Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
+
+                for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
+                    Long entityId = idEntry.getKey();
+                    List<FieldChange> changes = idEntry.getValue();
+
+                    int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
+                    totalApplied += applied;
+
+                    if (applied > 0) {
+                        final String type = entityType;
+                        final Long id = entityId;
+                        final List<FieldChange> changeList = new ArrayList<>(changes);
+                        pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
+                    }
                 }
             }
         }
