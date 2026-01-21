@@ -457,10 +457,303 @@ test.describe('LOTO Builder - Vendor Deletion', () => {
   });
 });
 
+test.describe('LOTO Builder - File Type Deletion', () => {
+  let lotoBuilder: LotoBuilderPage;
+
+  test('9. should delete all file types but one and transfer their items', async ({ page }) => {
+    lotoBuilder = new LotoBuilderPage(page);
+    await lotoBuilder.navigateToLotoBuilder();
+    await lotoBuilder.selectFilesTab();
+
+    // Open file form to access file type dropdown
+    await lotoBuilder.clickAddNewFile();
+
+    // Get all existing file types from dropdown
+    let fileTypes = await lotoBuilder.getFileTypeOptions();
+
+    // Need at least 2 file types to run this test
+    if (fileTypes.length < 2) {
+      console.log('Not enough file types to test deletion. Skipping test.');
+      await lotoBuilder.closeFileForm();
+      return;
+    }
+
+    // First file type will be the one to keep
+    const fileTypeToKeep = fileTypes[0];
+    const initialFileTypeCount = fileTypes.length;
+
+    console.log(`Keeping file type: ${fileTypeToKeep}`);
+    console.log(`Initial file type count: ${initialFileTypeCount}`);
+
+    // Delete file types one by one until only fileTypeToKeep remains
+    while (true) {
+      // Get current file type list from dropdown
+      fileTypes = await lotoBuilder.getFileTypeOptions();
+
+      // If only one file type left, we're done
+      if (fileTypes.length <= 1) {
+        break;
+      }
+
+      // Find a file type to delete (any file type that's not the one to keep)
+      const fileTypeToDelete = fileTypes.find(ft => ft !== fileTypeToKeep);
+      if (!fileTypeToDelete) {
+        break;
+      }
+
+      console.log(`Deleting file type: ${fileTypeToDelete}, transferring to: ${fileTypeToKeep}`);
+
+      // Delete the file type and transfer items to fileTypeToKeep
+      await lotoBuilder.deleteFileTypeWithTransfer(fileTypeToDelete, fileTypeToKeep);
+    }
+
+    // Get final file type list
+    fileTypes = await lotoBuilder.getFileTypeOptions();
+
+    // Verify only fileTypeToKeep remains
+    expect(fileTypes.length).toBe(1);
+    expect(fileTypes).toContain(fileTypeToKeep);
+
+    // Close file form
+    await lotoBuilder.closeFileForm();
+  });
+});
+
+test.describe('LOTO Builder - File Type Rename', () => {
+  let lotoBuilder: LotoBuilderPage;
+
+  test('10. should rename an existing file type', async ({ page }) => {
+    const timestamp = Date.now();
+    const newFileTypeName = `PID-Renamed-FT-${timestamp}`;
+
+    lotoBuilder = new LotoBuilderPage(page);
+    await lotoBuilder.navigateToLotoBuilder();
+    await lotoBuilder.selectFilesTab();
+
+    // Open file form to get existing file types
+    await lotoBuilder.clickAddNewFile();
+
+    // Get existing file types from dropdown
+    const fileTypes = await lotoBuilder.getFileTypeOptions();
+
+    // Need at least 1 file type to rename
+    if (fileTypes.length < 1) {
+      console.log('No file types to rename. Skipping test.');
+      await lotoBuilder.closeFileForm();
+      return;
+    }
+
+    // Get the first file type to rename
+    const originalFileTypeName = fileTypes[0];
+    console.log(`Renaming file type: ${originalFileTypeName} -> ${newFileTypeName}`);
+
+    // Select the file type to edit (file form is already open)
+    await lotoBuilder.selectFileType(originalFileTypeName);
+
+    // Open file type dropdown again and click Edit option
+    await lotoBuilder.openFileTypeDropdown();
+
+    // Click "Edit file types" option in the dropdown
+    const editOption = page.locator('.dropdown-options .add-new-option').filter({ hasText: /Edit.*file.*type/i });
+    await editOption.click();
+    await page.waitForTimeout(300);
+
+    // Wait for the edit dialog to appear and fill new name
+    const dialogContent = page.locator('.dialog-content');
+    await dialogContent.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Find the name input field in the dialog and update it
+    const nameInput = dialogContent.locator('input.input-field').first();
+    await nameInput.click();
+    await nameInput.clear();
+    await nameInput.fill(newFileTypeName);
+
+    // Click Save button in dialog
+    await dialogContent.locator('button.save-btn').click();
+    await lotoBuilder.waitForLoadingToFinish();
+
+    // Wait for dialog to close
+    await dialogContent.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    // Close file form
+    await lotoBuilder.closeFileForm();
+
+    // Verify the old file type name is gone and new name exists
+    await lotoBuilder.clickAddNewFile();
+
+    const oldFileTypeExists = await lotoBuilder.isFileTypeOptionVisible(originalFileTypeName);
+    expect(oldFileTypeExists).toBe(false);
+
+    const newFileTypeExists = await lotoBuilder.isFileTypeOptionVisible(newFileTypeName);
+    expect(newFileTypeExists).toBe(true);
+
+    // Cleanup
+    await lotoBuilder.closeFileForm();
+  });
+});
+
+test.describe('LOTO Builder - File Number Modification', () => {
+  let lotoBuilder: LotoBuilderPage;
+
+  test('11. should modify all files in a section by adding file numbers', async ({ page }) => {
+    test.setTimeout(180000); // 3 minutes for this comprehensive test
+
+    lotoBuilder = new LotoBuilderPage(page);
+    await lotoBuilder.navigateToLotoBuilder();
+    await lotoBuilder.selectFilesTab();
+
+    // Navigate to left file menu and find first toggle item (vendor section)
+    await lotoBuilder.switchToTreeView();
+
+    // Select a file type category to see files
+    await lotoBuilder.selectFileTypeCategory('pid');
+
+    // Get all vendor toggle items in the left menu
+    const vendorItems = page.locator('.item-content').filter({ has: page.locator('.toggle-icon') });
+    const vendorCount = await vendorItems.count();
+
+    if (vendorCount === 0) {
+      console.log('No vendors found in the menu. Skipping test.');
+      return;
+    }
+
+    // Get the first vendor
+    const firstVendor = vendorItems.first();
+    const vendorNameElement = firstVendor.locator('.item-name');
+    const vendorName = await vendorNameElement.textContent();
+
+    if (!vendorName) {
+      console.log('Could not get vendor name. Skipping test.');
+      return;
+    }
+
+    console.log(`Processing vendor: ${vendorName}`);
+
+    // Expand the vendor to see files
+    const toggleIcon = firstVendor.locator('.toggle-icon');
+    const toggleText = await toggleIcon.textContent().catch(() => '');
+    const isExpanded = toggleText?.includes('▼');
+
+    if (!isExpanded) {
+      await firstVendor.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Get all files under this vendor
+    // Files have .has-subtitle class and no .toggle-icon (leaf nodes in the virtual scroll list)
+    const fileItems = page.locator('.item-content.has-subtitle .item-name');
+    const fileCount = await fileItems.count();
+
+    if (fileCount === 0) {
+      console.log('No files found under the vendor. Skipping test.');
+      return;
+    }
+
+    // Collect file names
+    const fileNames: string[] = [];
+    for (let i = 0; i < fileCount; i++) {
+      const fileName = await fileItems.nth(i).textContent();
+      if (fileName) {
+        fileNames.push(fileName.trim());
+      }
+    }
+
+    console.log(`Found ${fileNames.length} files to modify: ${fileNames.join(', ')}`);
+
+    // Generate random file numbers for each file
+    const timestamp = Date.now();
+    const fileNumbers: string[] = fileNames.map((_, index) => `FN-${timestamp}-${index}`);
+
+    // For each file in the section: open form, add file number, submit
+    for (let i = 0; i < fileNames.length; i++) {
+      const fileName = fileNames[i];
+      const fileNumber = fileNumbers[i];
+
+      console.log(`Modifying file ${i + 1}/${fileNames.length}: ${fileName} with file number: ${fileNumber}`);
+
+      // Click on the file to select it first
+      const fileItem = page.locator('.item-content.has-subtitle .item-name').filter({ hasText: new RegExp(`^${fileName}$`) }).first();
+      await fileItem.click();
+      await page.waitForTimeout(300);
+
+      // Right-click to get context menu
+      await fileItem.click({ button: 'right' });
+      await page.waitForTimeout(300);
+
+      // Click "View Details" option in context menu to open the form
+      await page.locator('.context-menu, app-context-menu, .cdk-overlay-container').getByText('View Details', { exact: true }).click();
+      await page.waitForTimeout(500);
+
+      // Wait for file form to appear
+      await page.waitForSelector('app-rf-file-form', { timeout: 5000 });
+
+      // Add file number using the +Add button
+      await lotoBuilder.addFileNumber(fileNumber);
+
+      // Submit the form
+      await lotoBuilder.submitFileForm();
+    }
+
+    // Refresh page
+    await page.reload();
+    await lotoBuilder.navigateToLotoBuilder();
+    await lotoBuilder.selectFilesTab();
+    await lotoBuilder.switchToTreeView();
+    await lotoBuilder.selectFileTypeCategory('pid');
+
+    // Navigate to the same vendor section
+    const refreshedVendorItem = page.locator('.item-content').filter({ has: page.locator('.item-name', { hasText: vendorName.trim() }) }).first();
+    const refreshedToggleIcon = refreshedVendorItem.locator('.toggle-icon');
+    const refreshedToggleText = await refreshedToggleIcon.textContent().catch(() => '');
+    const refreshedIsExpanded = refreshedToggleText?.includes('▼');
+
+    if (!refreshedIsExpanded) {
+      await refreshedVendorItem.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Verify that each file in the section:
+    // 1. Has the new file number
+    // 2. Still opens
+    for (let i = 0; i < fileNames.length; i++) {
+      const fileName = fileNames[i];
+      const expectedFileNumber = fileNumbers[i];
+
+      console.log(`Verifying file ${i + 1}/${fileNames.length}: ${fileName}`);
+
+      // Click on file to open it in viewer (verify it still opens)
+      const fileOpens = await lotoBuilder.verifyFileOpensInViewer(vendorName.trim(), fileName);
+      expect(fileOpens).toBe(true);
+
+      // Right-click to open form and verify file number
+      const fileItem = page.locator('.item-content.has-subtitle .item-name').filter({ hasText: new RegExp(`^${fileName}$`) }).first();
+      await fileItem.click();
+      await page.waitForTimeout(300);
+
+      await fileItem.click({ button: 'right' });
+      await page.waitForTimeout(300);
+
+      await page.locator('.context-menu, app-context-menu, .cdk-overlay-container').getByText('View Details', { exact: true }).click();
+      await page.waitForTimeout(500);
+
+      await page.waitForSelector('app-rf-file-form', { timeout: 5000 });
+
+      // Verify file number is present
+      const hasFileNumber = await lotoBuilder.verifyFileNumberExists(expectedFileNumber);
+      expect(hasFileNumber).toBe(true);
+
+      // Close the form
+      await lotoBuilder.closeFileForm();
+    }
+
+    console.log('All files successfully modified and verified!');
+  });
+});
+
 test.describe('LOTO Builder - Vendor Rename', () => {
   let lotoBuilder: LotoBuilderPage;
 
-  test('9. should rename an existing vendor', async ({ page }) => {
+  test('12. should rename an existing vendor', async ({ page }) => {
     const timestamp = Date.now();
     const newVendorName = `Renamed-${timestamp}`;
 

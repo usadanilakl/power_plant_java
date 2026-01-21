@@ -58,12 +58,23 @@
     - click Edit vendors
     - set new name
     - click save
-8. modify all existing in one section files one by one:
+9. delete all file types but one:
+    - open file form
+    - select file type to keep
+    - one by one select the rest of the file types and click delete button
+    - in the Value form select filt type to keep as where to transfer items of file type that is being deleted.
+10. rename one file type:
+    - open first file form
+    - click on file type dropdown
+    - click Edit file types
+    - set new name
+    - click save
+11. modify all existing in one section files one by one:
     - navigate to left file menu
     - find first toggle item
     - for each file of that section: 
         - open form
-        - add file number
+        - add file number (click +Add button and input random number in new input)
         - submit
     - refresh page
     - navigate to the same section

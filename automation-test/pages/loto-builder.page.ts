@@ -178,6 +178,109 @@ export class LotoBuilderPage extends BasePage {
     return isVisible;
   }
 
+  async closeFileTypeDropdown() {
+    const dropdownOptions = this.page.locator('.dropdown-options');
+    const isOpen = await dropdownOptions.isVisible().catch(() => false);
+    if (isOpen) {
+      await this.page.keyboard.press('Escape');
+      await dropdownOptions.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+      await this.page.waitForTimeout(200);
+    }
+  }
+
+  /**
+   * Get all file type options from the dropdown
+   */
+  async getFileTypeOptions(): Promise<string[]> {
+    await this.openFileTypeDropdown();
+    const options = this.page.locator('.dropdown-option');
+    const count = await options.count();
+    const fileTypeNames: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const text = await options.nth(i).textContent();
+      if (text) {
+        fileTypeNames.push(text.trim());
+      }
+    }
+    await this.closeFileTypeDropdown();
+    return fileTypeNames;
+  }
+
+  /**
+   * Click the delete option in the file type dropdown (requires a file type to be selected)
+   */
+  async clickDeleteFileType() {
+    await this.closeFileTypeDropdown();
+    await this.openFileTypeDropdown();
+    const deleteOption = this.page.locator('.add-new-option.delete-option').filter({ hasText: /Delete/i });
+    await deleteOption.click();
+    await this.page.waitForTimeout(300);
+    await this.page.waitForSelector('.dialog-content', { timeout: 5000 });
+  }
+
+  /**
+   * Select a file type to transfer items to in the delete confirmation dialog
+   */
+  async selectTransferFileType(fileTypeName: string) {
+    const transferSelect = this.page.locator('.dialog-content select.input-field');
+    await transferSelect.selectOption({ label: fileTypeName });
+    await this.page.waitForTimeout(300);
+  }
+
+  /**
+   * Confirm the file type deletion in the delete confirmation dialog
+   */
+  async confirmFileTypeDelete() {
+    const deleteButton = this.page.locator('.dialog-content button.delete-btn-confirm');
+    await deleteButton.click();
+    await this.page.locator('.loading-message').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    await this.page.locator('.dialog-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    await this.waitForLoadingToFinish();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Delete a file type and transfer its items to another file type
+   * @param fileTypeToDelete - Name of the file type to delete
+   * @param transferToFileType - Name of the file type to transfer items to
+   */
+  async deleteFileTypeWithTransfer(fileTypeToDelete: string, transferToFileType: string) {
+    await this.selectFileType(fileTypeToDelete);
+    await this.clickDeleteFileType();
+    await this.selectTransferFileType(transferToFileType);
+    await this.confirmFileTypeDelete();
+  }
+
+  /**
+   * Modify a file type name
+   * @param oldFileTypeName - Current name of the file type
+   * @param newFileTypeName - New name to set
+   */
+  async modifyFileTypeName(oldFileTypeName: string, newFileTypeName: string) {
+    await this.clickAddNewFile();
+    await this.selectFileType(oldFileTypeName);
+    await this.openFileTypeDropdown();
+    await this.page.waitForTimeout(300);
+
+    const editOption = this.page.locator('.dropdown-options .add-new-option').filter({ hasText: /Edit.*file.*type/i });
+    await editOption.click();
+    await this.page.waitForTimeout(300);
+
+    const dialogContent = this.page.locator('.dialog-content');
+    await dialogContent.waitFor({ state: 'visible', timeout: 5000 });
+
+    const nameInput = dialogContent.locator('input.input-field').first();
+    await nameInput.click();
+    await nameInput.clear();
+    await nameInput.fill(newFileTypeName);
+
+    await dialogContent.locator('button.save-btn').click();
+    await this.waitForLoadingToFinish();
+    await dialogContent.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    await this.closeFileForm();
+  }
+
   // ==================== VENDOR MANAGEMENT ====================
 
   async openVendorDropdown() {
@@ -353,6 +456,42 @@ export class LotoBuilderPage extends BasePage {
     // Fill the new input
     const newInput = fileNumberContainer.locator('.input-value input').first();
     await newInput.fill(fileNumber);
+  }
+
+  /**
+   * Add a file number to the file form without clearing existing values
+   * @param fileNumber - The file number to add
+   */
+  async addFileNumber(fileNumber: string) {
+    const fileNumberContainer = this.page.locator('app-rf-file-form .multi-input-container').filter({ hasText: /File Number/i });
+
+    // Click "Add" button to add a new input
+    await fileNumberContainer.locator('.add-button').click();
+    await this.page.waitForTimeout(100);
+
+    // Fill the last input (the newly added one)
+    const inputs = fileNumberContainer.locator('.input-value input');
+    const inputCount = await inputs.count();
+    await inputs.nth(inputCount - 1).fill(fileNumber);
+  }
+
+  /**
+   * Verify that a specific file number exists in the file form
+   * @param fileNumber - The file number to verify
+   * @returns true if the file number exists
+   */
+  async verifyFileNumberExists(fileNumber: string): Promise<boolean> {
+    const fileNumberContainer = this.page.locator('app-rf-file-form .multi-input-container').filter({ hasText: /File Number/i });
+    const inputs = fileNumberContainer.locator('.input-value input');
+    const count = await inputs.count();
+
+    for (let i = 0; i < count; i++) {
+      const value = await inputs.nth(i).inputValue();
+      if (value === fileNumber) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async uploadFile(fileName: string) {
