@@ -312,6 +312,11 @@ public class FieldSyncService {
      * Uses batch queries for conflict resolution to eliminate N+1 query problem.
      */
     private int applyIncomingChangesInternal(List<FieldChange> incomingChanges) {
+        // Clear the persistence context to ensure fresh state for this batch.
+        // This is important when SSE batches arrive in quick succession -
+        // entities created in one batch need to be loadable from DB in the next.
+        entityManager.clear();
+
         // Group changes by entity type first
         Map<String, Map<Long, List<FieldChange>>> changesByEntity = incomingChanges.stream()
             .collect(Collectors.groupingBy(
@@ -839,18 +844,30 @@ public class FieldSyncService {
                 try {
                     Long relatedId = Long.parseLong(cleanedJson);
 
-                    // Use EntityManager.find() directly to bypass @Where filter
-                    // This allows finding soft-deleted entities during sync
-                    Object relatedEntity = entityManager.find(targetType, relatedId);
-
-                    if (relatedEntity != null) {
-                        log.debug("Resolved relationship {} -> entity #{} (using EntityManager)",
+                    // Use getReference() to create a proxy without loading the entity.
+                    // This is more reliable for setting relationships, especially when
+                    // the referenced entity was just created in a previous transaction.
+                    // The proxy only needs the ID, which we already have.
+                    try {
+                        Object relatedEntity = entityManager.getReference(targetType, relatedId);
+                        log.debug("Resolved relationship {} -> entity #{} (using getReference)",
                             targetType.getSimpleName(), relatedId);
                         return relatedEntity;
-                    } else {
-                        log.warn("Related entity {}#{} not found (even with EntityManager)",
-                            targetType.getSimpleName(), relatedId);
-                        return null;
+                    } catch (Exception refException) {
+                        // Fallback to find() if getReference fails
+                        log.debug("getReference failed for {}#{}, trying find(): {}",
+                            targetType.getSimpleName(), relatedId, refException.getMessage());
+                        Object relatedEntity = entityManager.find(targetType, relatedId);
+
+                        if (relatedEntity != null) {
+                            log.debug("Resolved relationship {} -> entity #{} (using EntityManager.find)",
+                                targetType.getSimpleName(), relatedId);
+                            return relatedEntity;
+                        } else {
+                            log.warn("Related entity {}#{} not found (even with EntityManager)",
+                                targetType.getSimpleName(), relatedId);
+                            return null;
+                        }
                     }
                 } catch (NumberFormatException e) {
                     log.warn("Could not parse relationship ID from '{}' for type {}", json, targetType.getSimpleName());
