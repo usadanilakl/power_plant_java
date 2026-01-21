@@ -142,6 +142,41 @@ public class H2BackupService {
         }
     }
 
+    /**
+     * Restore database from a byte array (downloaded H2 backup).
+     * This is used for restoring from sync server's H2 backup.
+     */
+    public void restoreFromBytes(byte[] backupData) throws SQLException, IOException {
+        // Write bytes to a temporary file
+        Path tempBackup = Files.createTempFile("h2_restore_", ".zip");
+        try {
+            Files.write(tempBackup, backupData);
+            System.out.println("Wrote backup to temp file: " + tempBackup + " (" + backupData.length + " bytes)");
+
+            // Close all existing connections to the database
+            try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+                conn.createStatement().execute("SHUTDOWN");
+            }
+
+            // Extract the database name and path from the JDBC URL
+            String dbName = extractDatabaseName(dbUrl);
+            String dbPath = extractDatabasePath(dbUrl);
+
+            // Perform the restore
+            try {
+                Restore.execute(tempBackup.toString(), dbPath, dbName);
+                System.out.println("Database restored successfully from server backup");
+            } catch (Exception e) {
+                throw new IOException("Error restoring database: " + e.getMessage(), e);
+            }
+        } finally {
+            // Clean up temp file
+            try {
+                Files.deleteIfExists(tempBackup);
+            } catch (IOException ignored) {}
+        }
+    }
+
     private String extractDatabaseName(String jdbcUrl) {
         // Extract the part after "jdbc:h2:"
         String[] parts = jdbcUrl.split("jdbc:h2:");
