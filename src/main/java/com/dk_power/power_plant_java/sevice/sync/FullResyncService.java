@@ -1155,10 +1155,16 @@ public class FullResyncService {
     // ==================== UTILITIES ====================
 
     private Path getUploadsPath() {
+        Path filesPath = Paths.get(filesRootPath);
+        // If filesRootPath is already absolute, use it directly
+        if (filesPath.isAbsolute()) {
+            return filesPath;
+        }
+        // Otherwise, combine with project root
         if (projectRootPath != null && !projectRootPath.isEmpty()) {
             return Paths.get(projectRootPath, filesRootPath);
         }
-        return Paths.get(filesRootPath);
+        return filesPath;
     }
 
     private String computeChecksum(Path file) throws IOException {
