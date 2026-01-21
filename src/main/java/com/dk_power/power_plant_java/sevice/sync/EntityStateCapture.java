@@ -12,9 +12,10 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -154,20 +155,32 @@ public class EntityStateCapture {
 
     /**
      * Query a join table to get all related entity IDs for a given owner entity.
+     * Uses raw JDBC to avoid triggering Hibernate entity loading (prevents StackOverflowError).
      */
-    @SuppressWarnings("unchecked")
     private Set<Long> queryJoinTable(String tableName, String ownerColumn, String inverseColumn, Long ownerId) {
-        String sql = String.format("SELECT %s FROM %s WHERE %s = :ownerId", inverseColumn, tableName, ownerColumn);
-        List<Number> results = entityManager.createNativeQuery(sql)
-            .setParameter("ownerId", ownerId)
-            .getResultList();
-
         Set<Long> ids = new HashSet<>();
-        for (Number id : results) {
-            if (id != null) {
-                ids.add(id.longValue());
-            }
+        String sql = String.format("SELECT %s FROM %s WHERE %s = ?", inverseColumn, tableName, ownerColumn);
+
+        try {
+            SessionImplementor session = entityManager.unwrap(SessionImplementor.class);
+            // Use doWork to get raw JDBC connection without triggering entity loading
+            session.doWork(connection -> {
+                try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                    ps.setLong(1, ownerId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            long id = rs.getLong(1);
+                            if (!rs.wasNull()) {
+                                ids.add(id);
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.warn("Error querying join table {}: {}", tableName, e.getMessage());
         }
+
         return ids;
     }
 
