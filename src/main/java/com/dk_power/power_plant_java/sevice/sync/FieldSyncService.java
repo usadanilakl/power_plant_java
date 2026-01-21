@@ -710,14 +710,11 @@ public class FieldSyncService {
                 return false;
             }
 
-            // Skip ManyToMany collections - these have their own join tables and complex
-            // cascade behavior that doesn't work well with field-level sync.
-            // ManyToMany relationships should be synced via the join table, not entity fields.
-            // This prevents cascade errors when referenced entities exist but aren't in session.
+            // Handle ManyToMany relationships via direct join table manipulation.
+            // We cannot use JPA collections because cascade behavior causes issues when
+            // referenced entities exist but aren't in the current persistence context.
             if ("ManyToMany".equals(change.getRelationshipType())) {
-                log.debug("Skipping ManyToMany field {}.{} - use join table sync instead",
-                    entity.getClass().getSimpleName(), change.getFieldName());
-                return false;
+                return applyManyToManyChange(entity, field, change);
             }
 
             field.setAccessible(true);
@@ -733,6 +730,78 @@ public class FieldSyncService {
             return false;
         } catch (Exception e) {
             log.error("Error applying field change {}: {}", change.getFieldName(), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Apply a ManyToMany relationship change by directly manipulating the join table.
+     * This avoids cascade issues that occur when using JPA collections.
+     *
+     * @param entity the entity being updated
+     * @param field the ManyToMany field
+     * @param change the field change containing the new value (list of IDs)
+     * @return true if applied successfully
+     */
+    private boolean applyManyToManyChange(BaseIdEntity entity, Field field, FieldChange change) {
+        try {
+            // Get the @JoinTable annotation to find the join table name and column names
+            jakarta.persistence.JoinTable joinTable = field.getAnnotation(jakarta.persistence.JoinTable.class);
+            if (joinTable == null) {
+                // This is the inverse side (mappedBy), skip it - owning side will handle
+                log.debug("Skipping ManyToMany inverse side {}.{}",
+                    entity.getClass().getSimpleName(), change.getFieldName());
+                return false;
+            }
+
+            String tableName = joinTable.name();
+            String ownerColumn = joinTable.joinColumns()[0].name();
+            String inverseColumn = joinTable.inverseJoinColumns()[0].name();
+
+            Long ownerId = entity.getId();
+
+            // Parse the new value - should be a JSON array of IDs like [123, 456]
+            String json = change.getNewValue();
+            List<Long> newIds = new ArrayList<>();
+
+            if (json != null && !json.isEmpty() && !"null".equals(json) && !"[]".equals(json)) {
+                // Parse JSON array of IDs
+                json = json.trim();
+                if (json.startsWith("[") && json.endsWith("]")) {
+                    json = json.substring(1, json.length() - 1);
+                    if (!json.isEmpty()) {
+                        for (String idStr : json.split(",")) {
+                            idStr = idStr.trim().replace("\"", "");
+                            if (!idStr.isEmpty()) {
+                                newIds.add(Long.parseLong(idStr));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Delete existing entries for this entity
+            entityManager.createNativeQuery(
+                "DELETE FROM " + tableName + " WHERE " + ownerColumn + " = :ownerId")
+                .setParameter("ownerId", ownerId)
+                .executeUpdate();
+
+            // Insert new entries
+            for (Long relatedId : newIds) {
+                entityManager.createNativeQuery(
+                    "INSERT INTO " + tableName + " (" + ownerColumn + ", " + inverseColumn + ") VALUES (:ownerId, :relatedId)")
+                    .setParameter("ownerId", ownerId)
+                    .setParameter("relatedId", relatedId)
+                    .executeUpdate();
+            }
+
+            log.debug("Applied ManyToMany {}.{}: {} entries in join table {}",
+                entity.getClass().getSimpleName(), change.getFieldName(), newIds.size(), tableName);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error applying ManyToMany change {}.{}: {}",
+                entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
             return false;
         }
     }
