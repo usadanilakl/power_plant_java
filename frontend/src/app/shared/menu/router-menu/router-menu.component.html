@@ -1,6 +1,32 @@
 
 <nav class="router-menu" [ngClass]="layout()">
-  @if (menuItems()) {
+  @if (useGrouped() && groupedMenu()) {
+    <div class="menu-container">
+      <!-- Primary row: Home + Group links -->
+      <ul class="primary-menu">
+        <li class="home-link">
+          <a routerLink="/">Home</a>
+        </li>
+        @for (group of groupedMenu(); track group.label) {
+          <li class="menu-group-link" [class.active]="isGroupActive(group)">
+            <a [routerLink]="group.defaultRoute">{{ group.label }}</a>
+          </li>
+        }
+      </ul>
+
+      <!-- Secondary row: Items for active group -->
+      @if (showSecondaryMenu() && activeGroup()) {
+        <ul class="secondary-menu">
+          @for (item of activeGroup()!.items; track item.route) {
+            <li [appGuide]="item.guideId || ''"
+                [guideMessage]="item.guideMessage || ''">
+              <a [routerLink]="item.route" routerLinkActive="active-link">{{ item.label }}</a>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  } @else if (menuItems()) {
     <ul>
       @for (item of menuItems(); track item.route) {
         <li [appGuide]="item.guideId || ''"

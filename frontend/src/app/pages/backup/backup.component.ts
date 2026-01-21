@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BackupService } from '../../services/backup.service';
 import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
+import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 
 @Component({
   selector: 'app-backup',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, RouterMenuComponent, MainLayoutComponent],
   templateUrl: './backup.component.html',
   styleUrls: ['./backup.component.css']
 })

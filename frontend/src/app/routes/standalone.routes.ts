@@ -5,6 +5,7 @@ import { BackupComponent } from '../pages/backup/backup.component';
 import { AdminFunctionalitiesComponent } from '../pages/admin/admin-functionalities.component';
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncTestingComponent } from '../features/sync-testing/sync-testing.component';
+import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -12,5 +13,6 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'backup', component: BackupComponent },
   { path: 'admin', component: AdminFunctionalitiesComponent },
   { path: 'sync', component: SyncMonitorComponent },
-  { path: 'sync-test', component: SyncTestingComponent }
+  { path: 'sync-test', component: SyncTestingComponent },
+  { path: 'sync-resync', component: SyncResyncComponent }
 ];

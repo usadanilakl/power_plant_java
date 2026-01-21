@@ -15,8 +15,83 @@ export interface NavigationCard {
   reactiveGuideMessage?: string;
 }
 
-export type NavigationCards = NavigationCard[];
+export interface NavigationCardGroup {
+  label: string;
+  description: string;
+  icon: string;
+  color: string;
+  defaultRoute: string;
+  items: NavigationCard[];
+}
 
+export type NavigationCards = NavigationCard[];
+export type GroupedNavigationCards = NavigationCardGroup[];
+
+// Grouped navigation cards for home page
+export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
+  {
+    label: 'Files',
+    description: 'Manage equipment files, tags, and printing',
+    icon: 'folder',
+    color: '#3498db',
+    defaultRoute: '/file',
+    items: [
+      { title: 'View Files', description: 'View and edit equipment files', icon: 'folder', route: '/file', color: '#3498db' },
+      { title: 'Create Tag', description: 'Create new equipment tag numbers', icon: 'add_circle', route: '/tag-number', color: '#16a085' },
+      { title: 'Print', description: 'Print documents and reports', icon: 'print', route: '/print', color: '#7f8c8d' }
+    ]
+  },
+  {
+    label: 'LOTO',
+    description: 'Lockout/Tagout procedures and safety protocols',
+    icon: 'lock',
+    color: '#e74c3c',
+    defaultRoute: '/loto',
+    items: [
+      { title: 'LOTO', description: 'Manage LOTO procedures', icon: 'lock', route: '/loto', color: '#e74c3c' },
+      { title: 'Loto Points', description: 'Manage isolation points', icon: 'location_on', route: '/loto-points', color: '#9b59b6' },
+      { title: 'LOTO Standards', description: 'View standard procedures', icon: 'description', route: '/loto-standard', color: '#e67e22' },
+      { title: 'Loto Builder', description: 'Build LOTO procedures', icon: 'build', route: '/loto-builder', color: '#1abc9c' }
+    ]
+  },
+  {
+    label: 'Permits',
+    description: 'Work permits, scheduling, and authorizations',
+    icon: 'assignment',
+    color: '#f39c12',
+    defaultRoute: '/permit-builder',
+    items: [
+      { title: 'Permit Builder', description: 'Manage work permits', icon: 'assignment', route: '/permit-builder', color: '#f39c12' },
+      { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }
+    ]
+  },
+  {
+    label: 'Form Designer',
+    description: 'Design and preview printable forms',
+    icon: 'edit_document',
+    color: '#34495e',
+    defaultRoute: '/form-designer',
+    items: [
+      { title: 'Form Designer', description: 'Design printable forms', icon: 'edit_document', route: '/form-designer', color: '#34495e' }
+    ]
+  },
+  {
+    label: 'Admin',
+    description: 'System administration and synchronization',
+    icon: 'admin_panel_settings',
+    color: '#c0392b',
+    defaultRoute: '/backup',
+    items: [
+      { title: 'Backup', description: 'Backup and restore data', icon: 'backup', route: '/backup', color: '#8e44ad' },
+      { title: 'Sync Monitor', description: 'Monitor sync status', icon: 'sync', route: '/sync', color: '#27ae60' },
+      { title: 'Sync Test', description: 'Test synchronization', icon: 'science', route: '/sync-test', color: '#2980b9' },
+      { title: 'Sync Resync', description: 'Full resynchronization', icon: 'sync_problem', route: '/sync-resync', color: '#e67e22' },
+      { title: 'Admin', description: 'Admin settings', icon: 'admin_panel_settings', route: '/admin', color: '#c0392b' }
+    ]
+  }
+];
+
+// Flat navigation cards (for backward compatibility)
 export const HOME_NAVIGATION_CARDS: NavigationCards = [
   {
     title: 'LOTO',

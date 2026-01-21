@@ -1,0 +1,23 @@
+<div class="group-card" [style.--card-color]="group().color">
+  <a [routerLink]="group().defaultRoute" class="card-main">
+    <div class="card-icon">
+      <span class="material-icons">{{ group().icon }}</span>
+    </div>
+    <div class="card-content">
+      <h3 class="card-title">{{ group().label }}</h3>
+      <p class="card-description">{{ group().description }}</p>
+    </div>
+    <div class="card-arrow">
+      <span class="material-icons">chevron_right</span>
+    </div>
+  </a>
+
+  <div class="card-items">
+    @for (item of group().items; track item.route) {
+      <a [routerLink]="item.route" class="card-item" [style.--item-color]="item.color">
+        <span class="material-icons item-icon">{{ item.icon }}</span>
+        <span class="item-label">{{ item.title }}</span>
+      </a>
+    }
+  </div>
+</div>

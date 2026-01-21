@@ -17,6 +17,7 @@
 .router-menu.row ul {
   display: flex;
   flex-direction: row;
+  align-items: center;
 }
 
 .router-menu.row li {
@@ -34,4 +35,122 @@
 
 .router-menu a:hover {
   color: var(--router-menu-text-hover-color);
+}
+
+/* Two-row grouped menu layout */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primary-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.primary-menu li {
+  margin: 0;
+}
+
+.home-link a {
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.home-link a:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.menu-group-link a {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.menu-group-link a:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.menu-group-link.active a {
+  background-color: rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+
+/* Secondary menu (group items row) */
+.secondary-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  flex-wrap: wrap;
+}
+
+.secondary-menu li {
+  margin: 0;
+}
+
+.secondary-menu a {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+.secondary-menu a:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.secondary-menu a.active-link {
+  background-color: rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+/* Column layout adjustments */
+.router-menu.column .menu-container {
+  gap: 12px;
+}
+
+.router-menu.column .primary-menu {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.router-menu.column .secondary-menu {
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: none;
+  border-left: 2px solid var(--border-color, #e0e0e0);
+  padding: 0 0 0 12px;
+  margin-left: 8px;
+}
+
+/* Dark mode support */
+:host-context(.dark-mode) .home-link a:hover,
+:host-context(.dark-mode) .menu-group-link a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context(.dark-mode) .menu-group-link.active a {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+:host-context(.dark-mode) .secondary-menu {
+  border-color: var(--border-color-dark, #444);
+}
+
+:host-context(.dark-mode) .secondary-menu a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context(.dark-mode) .secondary-menu a.active-link {
+  background-color: rgba(255, 255, 255, 0.15);
 }

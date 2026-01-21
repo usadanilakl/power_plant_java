@@ -1,13 +1,6 @@
 <app-main-layout>
   <ng-container header>
-    <div class="header-menus">
-      <div class="menu-container">
-        <app-router-menu [layout]="'row'"></app-router-menu>
-      </div>
-      <div class="menu-container">
-        <app-router-menu [menuItems]="lotoNavMenuItems" [layout]="'row'"></app-router-menu>
-      </div>
-    </div>
+    <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
   <ng-container left-menu>
     <app-left-menu-outlet></app-left-menu-outlet>

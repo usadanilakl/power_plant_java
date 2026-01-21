@@ -9,8 +9,8 @@
         <p>Select a module to get started</p>
       </div>
       <div class="navigation-grid">
-        @for (card of navigationCards; track card.route) {
-          <app-navigation-card [card]="card"></app-navigation-card>
+        @for (group of groupedCards; track group.label) {
+          <app-group-navigation-card [group]="group"></app-group-navigation-card>
         }
       </div>
     </div>

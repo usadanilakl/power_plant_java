@@ -1,14 +1,75 @@
-export interface RouterMenuItem{
+export interface RouterMenuItem {
     route: string;
     label: string;
     guideId?: string;
     guideMessage?: string;
 }
 
+export interface RouterMenuGroup {
+    label: string;
+    icon?: string;
+    defaultRoute: string;
+    items: RouterMenuItem[];
+}
+
 export type RouterMenuItems = RouterMenuItem[];
+export type GroupedRouterMenu = RouterMenuGroup[];
 
-// Main menu items
+// Grouped main menu items
+export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
+    {
+        label: 'Files',
+        icon: 'folder',
+        defaultRoute: '/file',
+        items: [
+            { route: '/file', label: 'View Files' },
+            { route: '/tag-number', label: 'Create New Tag' },
+            { route: '/print', label: 'Print' }
+        ]
+    },
+    {
+        label: 'LOTO',
+        icon: 'lock',
+        defaultRoute: '/loto',
+        items: [
+            { route: '/loto', label: 'LOTO' },
+            { route: '/loto-points', label: 'Loto Points', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
+            { route: '/loto-standard', label: 'LOTO Standards' },
+            { route: '/loto-builder', label: 'Loto Builder' }
+        ]
+    },
+    {
+        label: 'Permits',
+        icon: 'assignment',
+        defaultRoute: '/permit-builder',
+        items: [
+            { route: '/permit-builder', label: 'Permit Builder' },
+            { route: '/scheduler', label: 'Scheduler' }
+        ]
+    },
+    {
+        label: 'Form Designer',
+        icon: 'edit_document',
+        defaultRoute: '/form-designer',
+        items: [
+            { route: '/form-designer', label: 'Form Designer' }
+        ]
+    },
+    {
+        label: 'Admin',
+        icon: 'admin_panel_settings',
+        defaultRoute: '/backup',
+        items: [
+            { route: '/backup', label: 'Backup' },
+            { route: '/sync', label: 'Sync Monitor' },
+            { route: '/sync-test', label: 'Sync Test' },
+            { route: '/sync-resync', label: 'Sync Resync' },
+            { route: '/admin', label: 'Admin' }
+        ]
+    }
+];
 
+// Flat main menu items (for backward compatibility)
 export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/', label: 'Home' },
     { route: '/loto', label: 'LOTO' },

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
+import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import {
   AdminFunctionalitiesService,
   FileIntegrityResult,
@@ -13,7 +14,7 @@ import {
 @Component({
   selector: 'app-admin-functionalities',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, RouterMenuComponent, MainLayoutComponent],
   templateUrl: './admin-functionalities.component.html',
   styleUrls: ['./admin-functionalities.component.css']
 })

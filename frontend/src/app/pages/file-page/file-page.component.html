@@ -2,14 +2,7 @@
   [isBottomMenuEnabled]="false"
 >
   <ng-container header>
-    <div class="header-menus">
-      <div class="menu-container">
-        <app-router-menu [layout]="'row'"></app-router-menu>
-      </div>
-      <div class="menu-container">
-        <app-router-menu [menuItems]="fileNavMenuItems" [layout]="'row'"></app-router-menu>
-      </div>
-    </div>
+    <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
   <ng-container left-menu>
     <app-file-menu></app-file-menu>

@@ -1,0 +1,222 @@
+<app-main-layout>
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="resync-container">
+      <h2>Sync Health & Recovery</h2>
+
+      <!-- Message Banner -->
+      <div *ngIf="message" class="message" [ngClass]="'message-' + messageType">
+        {{ message }}
+        <button class="close-btn" (click)="message = ''">&times;</button>
+      </div>
+
+      <!-- Health Status Card -->
+      <div class="card health-card" [ngClass]="getHealthStatusClass()">
+        <div class="card-header">
+          <h3>Sync Health Status</h3>
+          <span class="status-badge" [ngClass]="getHealthStatusClass()">{{ getHealthStatusText() }}</span>
+        </div>
+
+        <div class="card-body" *ngIf="healthStatus">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Machine ID</label>
+              <span>{{ healthStatus.machineId }}</span>
+            </div>
+            <div class="info-item">
+              <label>Machine Name</label>
+              <span>{{ healthStatus.machineName }}</span>
+            </div>
+            <div class="info-item">
+              <label>Local Files</label>
+              <span>{{ healthStatus.localFileCount }}</span>
+            </div>
+            <div class="info-item">
+              <label>Backup Available</label>
+              <span>{{ healthStatus.backupAvailable ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="info-item" *ngIf="healthStatus.backupAvailable">
+              <label>Backup Files</label>
+              <span>{{ healthStatus.backupFileCount }}</span>
+            </div>
+            <div class="info-item" *ngIf="healthStatus.backupAvailable && healthStatus.serverEntityCount">
+              <label>Server Entities</label>
+              <span>{{ healthStatus.serverEntityCount }}</span>
+            </div>
+            <div class="info-item" *ngIf="healthStatus.backupAvailable">
+              <label>Backup Source</label>
+              <span>{{ healthStatus.backupMachineId === 'SYNC_SERVER' ? 'Sync Server' : healthStatus.backupMachineId }}</span>
+            </div>
+            <div class="info-item" *ngIf="healthStatus.backupAvailable">
+              <label>Last Updated</label>
+              <span>{{ formatTimestamp(healthStatus.backupTimestamp) }}</span>
+            </div>
+            <div class="info-item" *ngIf="healthStatus.potentialMismatch">
+              <label>File Difference</label>
+              <span class="warning-text">{{ healthStatus.fileDifference }} files</span>
+            </div>
+          </div>
+
+          <div class="warning-box" *ngIf="healthStatus.potentialMismatch">
+            <strong>Warning:</strong> A potential sync mismatch has been detected.
+            Local file count differs significantly from backup.
+            Consider running a preview to see detailed differences.
+          </div>
+
+          <div class="error-box" *ngIf="healthStatus.errorMessage">
+            <strong>Error:</strong> {{ healthStatus.errorMessage }}
+          </div>
+        </div>
+
+        <div class="card-body loading" *ngIf="!healthStatus">
+          Loading health status...
+        </div>
+      </div>
+
+      <!-- Progress Card (shown during operations) -->
+      <div class="card progress-card" *ngIf="isOperationInProgress()">
+        <div class="card-header">
+          <h3>Operation In Progress</h3>
+        </div>
+        <div class="card-body">
+          <div class="progress-info">
+            <span class="phase">{{ getCurrentPhase() }}</span>
+            <span class="percent">{{ getProgressPercent() }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="getProgressPercent()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Card -->
+      <div class="card preview-card" *ngIf="previewResult">
+        <div class="card-header">
+          <h3>Resync Preview</h3>
+          <button class="btn btn-secondary btn-sm" (click)="previewResult = null">Close</button>
+        </div>
+        <div class="card-body">
+          <div class="preview-summary">
+            <div class="summary-item download">
+              <span class="count">{{ previewResult.filesToDownload.length }}</span>
+              <span class="label">Files to Download</span>
+            </div>
+            <div class="summary-item delete">
+              <span class="count">{{ previewResult.filesToDelete.length }}</span>
+              <span class="label">Files to Delete</span>
+            </div>
+            <div class="summary-item unchanged">
+              <span class="count">{{ previewResult.unchangedFiles.length }}</span>
+              <span class="label">Unchanged</span>
+            </div>
+          </div>
+
+          <div class="file-lists" *ngIf="previewResult.filesToDownload.length > 0 || previewResult.filesToDelete.length > 0">
+            <div class="file-list" *ngIf="previewResult.filesToDownload.length > 0">
+              <h4>Files to Download ({{ previewResult.filesToDownload.length }})</h4>
+              <ul class="file-list-items">
+                <li *ngFor="let file of previewResult.filesToDownload.slice(0, 20)">
+                  {{ file.relativePath }}
+                  <span class="file-size">({{ formatFileSize(file.size) }})</span>
+                </li>
+                <li *ngIf="previewResult.filesToDownload.length > 20" class="more-indicator">
+                  ... and {{ previewResult.filesToDownload.length - 20 }} more
+                </li>
+              </ul>
+            </div>
+
+            <div class="file-list" *ngIf="previewResult.filesToDelete.length > 0">
+              <h4>Files to Delete ({{ previewResult.filesToDelete.length }})</h4>
+              <ul class="file-list-items delete-list">
+                <li *ngFor="let file of previewResult.filesToDelete.slice(0, 20)">
+                  {{ file }}
+                </li>
+                <li *ngIf="previewResult.filesToDelete.length > 20" class="more-indicator">
+                  ... and {{ previewResult.filesToDelete.length - 20 }} more
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Card -->
+      <div class="card actions-card">
+        <div class="card-header">
+          <h3>Actions</h3>
+        </div>
+        <div class="card-body">
+          <div class="action-buttons">
+            <div class="action-group">
+              <h4>Recovery Actions</h4>
+              <button
+                class="btn btn-primary"
+                (click)="loadPreview()"
+                [disabled]="loading || previewLoading || isOperationInProgress()">
+                {{ previewLoading ? 'Loading...' : 'Preview Resync' }}
+              </button>
+              <button
+                class="btn btn-warning"
+                (click)="confirmResync()"
+                [disabled]="loading || isOperationInProgress() || !healthStatus?.backupAvailable">
+                Full Resync
+              </button>
+              <button
+                class="btn btn-danger"
+                (click)="confirmForceResync()"
+                [disabled]="loading || isOperationInProgress() || !healthStatus?.backupAvailable">
+                Force Resync (Skip Safety)
+              </button>
+            </div>
+
+            <div class="action-group">
+              <h4>Backup Actions</h4>
+              <button
+                class="btn btn-success"
+                (click)="confirmBackup()"
+                [disabled]="loading || isOperationInProgress()">
+                Create Full Backup
+              </button>
+              <button
+                class="btn btn-secondary"
+                (click)="loadHealth()"
+                [disabled]="loading">
+                Refresh Status
+              </button>
+            </div>
+          </div>
+
+          <div class="action-notes">
+            <p><strong>Preview Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
+            <p><strong>Full Resync:</strong> Restores database from backup and syncs files. Has safety checks for large deletions.</p>
+            <p><strong>Force Resync:</strong> Same as Full Resync but skips deletion safety checks. Use with caution!</p>
+            <p><strong>Create Full Backup:</strong> Creates a backup of database and file manifest to shared drive. Only use on a machine with up-to-date data.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmation Dialog -->
+      <div class="dialog-overlay" *ngIf="showConfirmDialog" (click)="cancelConfirm()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Confirm Action</h3>
+          </div>
+          <div class="dialog-body">
+            <p>{{ getConfirmMessage() }}</p>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-secondary" (click)="cancelConfirm()">Cancel</button>
+            <button
+              class="btn"
+              [ngClass]="confirmAction === 'force-resync' ? 'btn-danger' : 'btn-primary'"
+              (click)="executeConfirmed()">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>
