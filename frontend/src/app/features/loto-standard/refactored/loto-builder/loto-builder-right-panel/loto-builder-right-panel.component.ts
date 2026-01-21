@@ -20,6 +20,7 @@ import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
 import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
 import { PIDSymbol, PIDSymbolsService } from '../../../../../shared/image/refactored/services/pid-symbols.service';
+import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
 
 @Component({
   selector: 'app-loto-builder-right-panel',
@@ -46,6 +47,7 @@ export class LotoBuilderRightPanelComponent {
   private lotoPointApiService = inject(RfLotoPointApiService);
   private imageService = inject(ImageService);
   private pidSymbolsService = inject(PIDSymbolsService);
+  private syncUpdateService = inject(SyncUpdateService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
 
@@ -261,6 +263,26 @@ export class LotoBuilderRightPanelComponent {
         next: (deletedEquipmentId) => {
           console.log('[LOTO Builder] Equipment deleted:', deletedEquipmentId);
           this.removeEquipmentFromLocalList(deletedEquipmentId);
+        }
+      });
+
+    // Subscribe to SSE sync updates for Equipment entities (from other machines)
+    // This updates the UI when equipment is synced from the server
+    this.syncUpdateService.getEntityTypeUpdates$('Equipment')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          this.handleEquipmentSyncUpdate(event.entityId);
+        }
+      });
+
+    // Subscribe to SSE sync updates for LotoPoint entities (from other machines)
+    // This updates the UI when LOTO points are synced from the server
+    this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          this.handleLotoPointSyncUpdate(event.entityId);
         }
       });
   }
@@ -941,5 +963,100 @@ export class LotoBuilderRightPanelComponent {
     });
 
     this.builderState.setCurrentEquipment(mergedEquipment);
+  }
+
+  /**
+   * Handle Equipment sync update from SSE (when equipment is synced from another machine).
+   * Reloads the equipment from server and updates the local state if it belongs to the current file.
+   */
+  private handleEquipmentSyncUpdate(entityId: number): void {
+    const currentFileId = this.builderState.currentFile()?.id;
+    if (!currentFileId) {
+      return;
+    }
+
+    console.log('[LOTO Builder] SSE Equipment sync update received:', entityId);
+
+    // Fetch the updated equipment from server
+    this.equipmentService.getEquipmentById(entityId)
+      .pipe(
+        tap((response) => {
+          if (response.responseData) {
+            const updatedEquipment = EquipmentDto.fromJson(response.responseData);
+
+            // Only update if the equipment belongs to the current file
+            if (updatedEquipment.mainFileId === currentFileId) {
+              console.log('[LOTO Builder] SSE Equipment sync: updating equipment in current file:', entityId);
+              const currentEquipment = this.builderState.currentEquipment();
+
+              // Check if equipment already exists in the list
+              const existingIndex = currentEquipment.findIndex(eq => eq.id === entityId);
+
+              if (existingIndex >= 0) {
+                // Update existing equipment
+                const updatedList = currentEquipment.map(eq =>
+                  eq.id === entityId ? updatedEquipment : eq
+                );
+                this.builderState.setCurrentEquipment(updatedList);
+              } else {
+                // New equipment synced - add to list
+                console.log('[LOTO Builder] SSE Equipment sync: adding new equipment to list:', entityId);
+                this.builderState.setCurrentEquipment([...currentEquipment, updatedEquipment]);
+              }
+            }
+          }
+        }),
+        catchError((error) => {
+          // Equipment might have been deleted - check if we need to remove it
+          if (error.status === 404) {
+            console.log('[LOTO Builder] SSE Equipment sync: equipment was deleted:', entityId);
+            this.removeEquipmentFromLocalList(entityId);
+          } else {
+            console.error('[LOTO Builder] Error fetching synced equipment:', error);
+          }
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * Handle LotoPoint sync update from SSE (when LOTO point is synced from another machine).
+   * Reloads the LOTO point from server and updates any associated equipment in the local state.
+   */
+  private handleLotoPointSyncUpdate(entityId: number): void {
+    const currentFileId = this.builderState.currentFile()?.id;
+    if (!currentFileId) {
+      return;
+    }
+
+    console.log('[LOTO Builder] SSE LotoPoint sync update received:', entityId);
+
+    // Fetch the updated LOTO point from server
+    this.lotoPointApiService.getLotoPointById(entityId.toString())
+      .pipe(
+        tap((response) => {
+          if (response.responseData) {
+            const updatedLotoPoint = LotoPointDto.fromJson(response.responseData);
+            console.log('[LOTO Builder] SSE LotoPoint sync: updating LOTO point:', entityId, updatedLotoPoint.tagNumber);
+
+            // Update the LOTO point in any associated equipment
+            this.updateLotoPointInEquipment(updatedLotoPoint);
+          }
+        }),
+        catchError((error) => {
+          // LOTO point might have been deleted - check if we need to remove it
+          if (error.status === 404) {
+            console.log('[LOTO Builder] SSE LotoPoint sync: LOTO point was deleted:', entityId);
+            this.removeLotoPointFromEquipment(entityId);
+          } else {
+            console.error('[LOTO Builder] Error fetching synced LOTO point:', error);
+          }
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 }

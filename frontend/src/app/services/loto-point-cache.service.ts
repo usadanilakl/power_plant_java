@@ -1,8 +1,10 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { BehaviorSubject, forkJoin, Observable, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs/operators';
 import { LotoPointSummaryDto } from '../models/loto/loto-point-summary.model';
 import { RfLotoPointApiService } from '../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { SyncUpdateService } from './sync/sync-update.service';
 
 /**
  * Cache service for LOTO Point summaries
@@ -14,6 +16,7 @@ import { RfLotoPointApiService } from '../features/loto-points/refactored/servic
 })
 export class LotoPointCacheService {
   private apiService = inject(RfLotoPointApiService);
+  private syncUpdateService = inject(SyncUpdateService);
   private destroyRef = inject(DestroyRef);
 
   // State
@@ -32,9 +35,34 @@ export class LotoPointCacheService {
   private errorSubject = new BehaviorSubject<string | null>(null);
   error$ = this.errorSubject.asObservable();
 
+  // Debounce SSE updates to avoid too many refreshes
+  private sseUpdateSubject = new Subject<void>();
+
   constructor() {
     // Load summaries at startup
     this.loadAllSummaries();
+
+    // Subscribe to SSE sync updates for LotoPoint entities
+    // When LOTO points are synced from another machine, refresh the cache
+    this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          console.log('[LotoPointCache] SSE LotoPoint sync update received, queuing refresh');
+          this.sseUpdateSubject.next();
+        }
+      });
+
+    // Debounce SSE updates to avoid multiple refreshes in quick succession
+    this.sseUpdateSubject.pipe(
+      debounceTime(500), // Wait 500ms after last update before refreshing
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        console.log('[LotoPointCache] Refreshing cache after SSE sync updates');
+        this.refresh();
+      }
+    });
   }
 
   /**
@@ -56,6 +84,10 @@ export class LotoPointCacheService {
         this.summariesSubject.next(summaries);
         this.summariesLoadedSubject.next(true);
         this.isLoadingSubject.next(false);
+
+        // Notify subscribers that summaries were updated
+        // This triggers left menu to clear its grouped cache
+        this.summariesUpdatedSubject.next();
       },
       error: (error) => {
         console.error('Error loading LOTO point summaries:', error);
