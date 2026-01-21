@@ -99,11 +99,11 @@ public class EntityStateCapture {
             // Skip during sync context - the connection may be closed or in an inconsistent state,
             // and we don't need to track ManyToMany changes for incoming sync (they're already handled)
             if (!syncContext.isSyncing()) {
-                log.info("Capturing ManyToMany collections for {} #{} (not in sync context)",
+                log.trace("Capturing ManyToMany collections for {} #{} (not in sync context)",
                     entity.getClass().getSimpleName(), entity.getId());
                 captureManyToManyCollections(entity, originalValues);
             } else {
-                log.debug("Skipping ManyToMany capture for {} #{} - in sync context",
+                log.trace("Skipping ManyToMany capture for {} #{} - in sync context",
                     entity.getClass().getSimpleName(), entity.getId());
             }
 
@@ -139,8 +139,8 @@ public class EntityStateCapture {
                                 entity.getId()
                             );
                             originalValues.put(field.getName(), relatedIds);
-                            log.info("Captured ManyToMany {}.{}: {} related IDs = {}",
-                                entity.getClass().getSimpleName(), field.getName(), relatedIds.size(), relatedIds);
+                            log.trace("Captured ManyToMany {}.{}: {} related IDs",
+                                entity.getClass().getSimpleName(), field.getName(), relatedIds.size());
                         } catch (Exception e) {
                             log.warn("Error capturing ManyToMany field {}.{}: {}",
                                 entity.getClass().getSimpleName(), field.getName(), e.getMessage());

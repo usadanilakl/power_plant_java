@@ -73,7 +73,7 @@ public class FieldChangeTracker {
         }
 
         try {
-            log.info("trackChanges called for {} #{}, oldEntity={}", entityType, entityId, oldEntity != null ? "present" : "null");
+            log.debug("trackChanges called for {} #{}, oldEntity={}", entityType, entityId, oldEntity != null ? "present" : "null");
 
             // Handle create (new entity)
             if (oldEntity == null) {
@@ -83,17 +83,15 @@ public class FieldChangeTracker {
                 changes.addAll(trackEntityUpdate(entityType, entityId, oldEntity, newEntity));
             }
 
-            log.info("Found {} changes for {} #{}", changes.size(), entityType, entityId);
+            log.debug("Found {} changes for {} #{}", changes.size(), entityType, entityId);
 
             // Save all changes and trigger sync
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
-                log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
+                log.debug("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
-                log.info("Publishing {} changes for sync broadcast", changes.size());
+                log.debug("Publishing {} changes for sync broadcast", changes.size());
                 syncEventPublisher.publishChanges(changes);
-            } else {
-                log.info("No field changes detected for {} #{}", entityType, entityId);
             }
         } catch (Exception e) {
             log.error("Error tracking changes for {} #{}: {}", entityType, entityId, e.getMessage(), e);
@@ -147,8 +145,7 @@ public class FieldChangeTracker {
     private <T extends BaseIdEntity> List<FieldChange> trackEntityUpdate(String entityType, Long entityId, T oldEntity, T newEntity) {
         List<FieldChange> changes = new ArrayList<>();
 
-        log.info("Comparing fields for {} #{}", entityType, entityId);
-        log.info("oldEntity class: {}, newEntity class: {}", oldEntity.getClass().getName(), newEntity.getClass().getName());
+        log.trace("Comparing fields for {} #{}", entityType, entityId);
 
         for (Field field : getAllFields(newEntity.getClass())) {
             if (shouldTrackField(field)) {
@@ -178,7 +175,7 @@ public class FieldChangeTracker {
                             getRelationshipType(field)
                         );
                         changes.add(fieldChange);
-                        log.info("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, field.getName(),
+                        log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, field.getName(),
                             truncateValue(oldValue), truncateValue(newValue));
                     }
                 } catch (Exception e) {
@@ -187,7 +184,7 @@ public class FieldChangeTracker {
             }
         }
 
-        log.info("Total changes found: {}", changes.size());
+        log.trace("Total changes found: {}", changes.size());
         return changes;
     }
 
@@ -217,14 +214,14 @@ public class FieldChangeTracker {
         Long entityId = entity.getId();
 
         try {
-            log.info("trackEntityCreation called for {} #{}", entityType, entityId);
+            log.debug("trackEntityCreation called for {} #{}", entityType, entityId);
             changes.addAll(trackEntityCreation(entityType, entityId, entity));
 
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
-                log.info("Saved {} field changes for new {} #{}", changes.size(), entityType, entityId);
+                log.debug("Saved {} field changes for new {} #{}", changes.size(), entityType, entityId);
 
-                log.info("Publishing {} changes for sync broadcast (create)", changes.size());
+                log.debug("Publishing {} changes for sync broadcast (create)", changes.size());
                 syncEventPublisher.publishChanges(changes);
 
                 // Notify FileObjectSyncHandler for file uploads
@@ -271,18 +268,8 @@ public class FieldChangeTracker {
         Long entityId = newEntity.getId();
 
         try {
-            log.info("trackEntityUpdate (map-based) called for {} #{} with {} original values",
+            log.debug("trackEntityUpdate (map-based) called for {} #{} with {} original values",
                 entityType, entityId, originalValues.size());
-
-            // Debug: log ManyToMany fields in originalValues
-            if ("Equipment".equals(entityType)) {
-                log.info("Equipment originalValues keys: {}", originalValues.keySet());
-                if (originalValues.containsKey("lotoPoints")) {
-                    log.info("Equipment originalValues.lotoPoints = {}", originalValues.get("lotoPoints"));
-                } else {
-                    log.warn("Equipment originalValues does NOT contain 'lotoPoints' key!");
-                }
-            }
 
             // Compare each field
             for (Field field : getAllFields(newEntity.getClass())) {
@@ -292,13 +279,6 @@ public class FieldChangeTracker {
                         String fieldName = field.getName();
                         Object oldValue = originalValues.get(fieldName);
                         Object newValue = field.get(newEntity);
-
-                        // Debug: log ManyToMany field comparison
-                        if ("lotoPoints".equals(fieldName) && "Equipment".equals(entityType)) {
-                            log.info("Comparing Equipment.lotoPoints: oldValue={} (type={}), newValue={} (type={})",
-                                oldValue, oldValue != null ? oldValue.getClass().getSimpleName() : "null",
-                                newValue, newValue != null ? newValue.getClass().getSimpleName() : "null");
-                        }
 
                         if (!areValuesEqual(oldValue, newValue)) {
                             // IMPORTANT: Skip false-positive changes where the 'name' field appears to be
@@ -321,7 +301,7 @@ public class FieldChangeTracker {
                                 getRelationshipType(field)
                             );
                             changes.add(fieldChange);
-                            log.info("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldName,
+                            log.debug("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldName,
                                 truncateValue(oldValue), truncateValue(newValue));
                         }
                     } catch (Exception e) {
@@ -330,13 +310,13 @@ public class FieldChangeTracker {
                 }
             }
 
-            log.info("Found {} changes for {} #{}", changes.size(), entityType, entityId);
+            log.debug("Found {} changes for {} #{}", changes.size(), entityType, entityId);
 
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
-                log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
+                log.debug("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
-                log.info("Publishing {} changes for sync broadcast (update)", changes.size());
+                log.debug("Publishing {} changes for sync broadcast (update)", changes.size());
                 syncEventPublisher.publishChanges(changes);
 
                 // Notify FileObjectSyncHandler for file uploads
@@ -344,8 +324,6 @@ public class FieldChangeTracker {
                     fileObjectSyncHandler.onLocalFileObjectChanged(
                         (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
                 }
-            } else {
-                log.info("No field changes detected for {} #{}", entityType, entityId);
             }
         } catch (Exception e) {
             log.error("Error tracking entity update for {} #{}: {}", entityType, entityId, e.getMessage(), e);
