@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -10,7 +12,10 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -85,6 +90,9 @@ public class EntityStateCapture {
             log.trace("Retrieved {} original values from database for {} #{}",
                 originalValues.size(), entity.getClass().getSimpleName(), entity.getId());
 
+            // Also capture ManyToMany collections (not included in getDatabaseSnapshot)
+            captureManyToManyCollections(entity, originalValues);
+
         } catch (Exception e) {
             log.warn("Could not get database state via Hibernate for {} #{}, falling back to reflection: {}",
                 entity.getClass().getSimpleName(), entity.getId(), e.getMessage());
@@ -93,6 +101,61 @@ public class EntityStateCapture {
         }
 
         return originalValues;
+    }
+
+    /**
+     * Capture ManyToMany collection values by querying the join tables directly.
+     * These are NOT included in Hibernate's getDatabaseSnapshot() because they're
+     * stored in separate join tables, not in the entity's own table.
+     */
+    private void captureManyToManyCollections(BaseIdEntity entity, Map<String, Object> originalValues) {
+        Class<?> currentClass = entity.getClass();
+        while (currentClass != null && currentClass != Object.class) {
+            for (Field field : currentClass.getDeclaredFields()) {
+                if (field.isAnnotationPresent(ManyToMany.class)) {
+                    // Check if this is the owning side (has @JoinTable)
+                    JoinTable joinTable = field.getAnnotation(JoinTable.class);
+                    if (joinTable != null) {
+                        // This is the owning side - query the join table
+                        try {
+                            Set<Long> relatedIds = queryJoinTable(
+                                joinTable.name(),
+                                joinTable.joinColumns()[0].name(),
+                                joinTable.inverseJoinColumns()[0].name(),
+                                entity.getId()
+                            );
+                            originalValues.put(field.getName(), relatedIds);
+                            log.trace("Captured ManyToMany {}.{}: {} related IDs",
+                                entity.getClass().getSimpleName(), field.getName(), relatedIds.size());
+                        } catch (Exception e) {
+                            log.warn("Error capturing ManyToMany field {}.{}: {}",
+                                entity.getClass().getSimpleName(), field.getName(), e.getMessage());
+                        }
+                    }
+                    // Skip inverse side (mappedBy) - will be handled by owning side
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+    }
+
+    /**
+     * Query a join table to get all related entity IDs for a given owner entity.
+     */
+    @SuppressWarnings("unchecked")
+    private Set<Long> queryJoinTable(String tableName, String ownerColumn, String inverseColumn, Long ownerId) {
+        String sql = String.format("SELECT %s FROM %s WHERE %s = :ownerId", inverseColumn, tableName, ownerColumn);
+        List<Number> results = entityManager.createNativeQuery(sql)
+            .setParameter("ownerId", ownerId)
+            .getResultList();
+
+        Set<Long> ids = new HashSet<>();
+        for (Number id : results) {
+            if (id != null) {
+                ids.add(id.longValue());
+            }
+        }
+        return ids;
     }
 
     /**

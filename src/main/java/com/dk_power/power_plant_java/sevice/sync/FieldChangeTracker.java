@@ -532,25 +532,60 @@ public class FieldChangeTracker {
     private boolean collectionsEqual(Collection<?> col1, Collection<?> col2) {
         if (col1.size() != col2.size()) return false;
 
-        // For entity collections, compare by IDs
-        if (!col1.isEmpty() && col1.iterator().next() instanceof BaseIdEntity) {
-            Set<Long> ids1 = new HashSet<>();
-            Set<Long> ids2 = new HashSet<>();
+        // Extract IDs from both collections
+        Set<Long> ids1 = extractIdsFromCollection(col1);
+        Set<Long> ids2 = extractIdsFromCollection(col2);
 
-            for (Object item : col1) {
-                Long id = ((BaseIdEntity) item).getId();
-                if (id != null) ids1.add(id);
-            }
-            for (Object item : col2) {
-                Long id = ((BaseIdEntity) item).getId();
-                if (id != null) ids2.add(id);
-            }
-
+        // If both have IDs, compare them
+        if (ids1 != null && ids2 != null) {
             return ids1.equals(ids2);
         }
 
         // For other collections, use standard equality
         return Objects.equals(new HashSet<>(col1), new HashSet<>(col2));
+    }
+
+    /**
+     * Extract IDs from a collection, whether it contains entities, Longs, or Numbers.
+     * Returns null if the collection doesn't contain ID-like elements.
+     */
+    private Set<Long> extractIdsFromCollection(Collection<?> col) {
+        if (col.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        Object first = col.iterator().next();
+
+        // Collection of entities - extract their IDs
+        if (first instanceof BaseIdEntity) {
+            Set<Long> ids = new HashSet<>();
+            for (Object item : col) {
+                Long id = ((BaseIdEntity) item).getId();
+                if (id != null) ids.add(id);
+            }
+            return ids;
+        }
+
+        // Collection of Longs (from join table query)
+        if (first instanceof Long) {
+            Set<Long> ids = new HashSet<>();
+            for (Object item : col) {
+                ids.add((Long) item);
+            }
+            return ids;
+        }
+
+        // Collection of Numbers (some DBs return Integer/BigInteger for IDs)
+        if (first instanceof Number) {
+            Set<Long> ids = new HashSet<>();
+            for (Object item : col) {
+                ids.add(((Number) item).longValue());
+            }
+            return ids;
+        }
+
+        // Not an ID collection
+        return null;
     }
 
     /**
