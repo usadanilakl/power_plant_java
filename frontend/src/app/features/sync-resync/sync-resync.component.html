@@ -75,6 +75,67 @@
         </div>
       </div>
 
+      <!-- Background Sync Health Check Card -->
+      <div class="card sync-health-card" *ngIf="syncHealthCheck" [ngClass]="getSyncStatusClass()">
+        <div class="card-header">
+          <h3>Background Sync Check</h3>
+          <span class="status-badge" [ngClass]="getSyncStatusClass()">{{ getSyncStatusText() }}</span>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Last Check</label>
+              <span>{{ formatTimestamp(syncHealthCheck.checkTime) }}</span>
+            </div>
+            <div class="info-item">
+              <label>Server Reachable</label>
+              <span>{{ syncHealthCheck.serverReachable ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.localStats">
+              <label>Local Entities</label>
+              <span>{{ syncHealthCheck.localStats.totalEntities }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.serverStats">
+              <label>Server Entities</label>
+              <span>{{ syncHealthCheck.serverStats.totalEntities }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.entityDifference > 0">
+              <label>Entity Difference</label>
+              <span class="warning-text">{{ syncHealthCheck.entityDifference }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.localStats">
+              <label>Local Files</label>
+              <span>{{ syncHealthCheck.localStats.fileCount }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.serverStats">
+              <label>Server Files</label>
+              <span>{{ syncHealthCheck.serverStats.fileCount }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.fileDifference > 0">
+              <label>File Difference</label>
+              <span class="warning-text">{{ syncHealthCheck.fileDifference }}</span>
+            </div>
+            <div class="info-item" *ngIf="syncHealthCheck.localStats && syncHealthCheck.localStats.pendingSyncCount > 0">
+              <label>Pending Sync</label>
+              <span class="warning-text">{{ syncHealthCheck.localStats.pendingSyncCount }} changes</span>
+            </div>
+          </div>
+
+          <div class="sync-message" *ngIf="syncHealthCheck.message && syncHealthCheck.syncStatus !== 'IN_SYNC'">
+            <p>{{ syncHealthCheck.message }}</p>
+          </div>
+
+          <div class="sync-health-actions">
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="forceSyncHealthCheck()"
+              [disabled]="syncHealthCheckLoading">
+              {{ syncHealthCheckLoading ? 'Checking...' : 'Check Now' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Progress Card (shown during operations) -->
       <div class="card progress-card" *ngIf="isOperationInProgress()">
         <div class="card-header">

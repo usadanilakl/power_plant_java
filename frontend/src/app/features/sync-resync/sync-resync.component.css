@@ -165,6 +165,50 @@ h2 {
   color: #721c24;
 }
 
+/* Sync Health Card */
+.sync-health-card {
+  border-left: 4px solid #6c757d;
+}
+
+.sync-health-card.status-ok {
+  border-left-color: #28a745;
+}
+
+.sync-health-card.status-warning {
+  border-left-color: #ffc107;
+}
+
+.sync-health-card.status-error {
+  border-left-color: #dc3545;
+}
+
+.sync-message {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #fff3cd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.sync-message p {
+  margin: 0;
+  color: #856404;
+}
+
+.sync-health-card.status-error .sync-message {
+  background-color: #f8d7da;
+}
+
+.sync-health-card.status-error .sync-message p {
+  color: #721c24;
+}
+
+.sync-health-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
 /* Progress Card */
 .progress-card {
   border-left: 4px solid #007bff;

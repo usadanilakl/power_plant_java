@@ -9,7 +9,8 @@ import {
   OperationStatus,
   ResyncResult,
   BackupResult,
-  RestartProgress
+  RestartProgress,
+  SyncHealthCheckResult
 } from '../../services/full-resync.service';
 import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
@@ -41,6 +42,10 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   // Restart monitoring
   restartProgress: RestartProgress = { isRestarting: false, message: '', checkCount: 0 };
 
+  // Background sync health check
+  syncHealthCheck: SyncHealthCheckResult | null = null;
+  syncHealthCheckLoading = false;
+
   constructor(
     private resyncService: FullResyncService,
     @Inject(PLATFORM_ID) platformId: Object
@@ -52,6 +57,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     if (this.isBrowser) {
       this.loadHealth();
       this.loadStatus();
+      this.loadSyncHealthCheck();
       this.startAutoRefresh();
 
       // Subscribe to restart progress
@@ -110,6 +116,50 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       next: (status) => this.operationStatus = status,
       error: (err) => console.error('Failed to load status:', err)
     });
+  }
+
+  loadSyncHealthCheck(): void {
+    this.resyncService.getSyncHealthCheck().subscribe({
+      next: (result) => {
+        this.syncHealthCheck = result;
+      },
+      error: (err) => console.debug('Could not load sync health check:', err.message)
+    });
+  }
+
+  forceSyncHealthCheck(): void {
+    this.syncHealthCheckLoading = true;
+    this.resyncService.forceSyncHealthCheck().subscribe({
+      next: (result) => {
+        this.syncHealthCheck = result;
+        this.syncHealthCheckLoading = false;
+        this.showMessage('Sync health check completed', 'info');
+      },
+      error: (err) => {
+        this.syncHealthCheckLoading = false;
+        this.showMessage('Sync health check failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  getSyncStatusClass(): string {
+    if (!this.syncHealthCheck) return '';
+    switch (this.syncHealthCheck.syncStatus) {
+      case 'IN_SYNC': return 'status-ok';
+      case 'POSSIBLY_OUT_OF_SYNC': return 'status-warning';
+      case 'OUT_OF_SYNC': return 'status-error';
+      default: return 'status-info';
+    }
+  }
+
+  getSyncStatusText(): string {
+    if (!this.syncHealthCheck) return 'Unknown';
+    switch (this.syncHealthCheck.syncStatus) {
+      case 'IN_SYNC': return 'In Sync';
+      case 'POSSIBLY_OUT_OF_SYNC': return 'Possibly Out of Sync';
+      case 'OUT_OF_SYNC': return 'Out of Sync';
+      default: return 'Unknown';
+    }
   }
 
   loadPreview(): void {

@@ -87,6 +87,37 @@ export interface RestartProgress {
   checkCount: number;
 }
 
+export type SyncStatus = 'IN_SYNC' | 'POSSIBLY_OUT_OF_SYNC' | 'OUT_OF_SYNC' | 'UNKNOWN';
+
+export interface LocalSyncStats {
+  entityCounts: Record<string, number>;
+  totalEntities: number;
+  fileCount: number;
+  latestChangeTime: string | null;
+  recentChangeCount: number;
+  pendingSyncCount: number;
+}
+
+export interface ServerSyncStats {
+  entityCounts: Record<string, number>;
+  totalEntities: number;
+  fileCount: number;
+  latestChangeTime: string | null;
+  totalFieldChanges: number;
+}
+
+export interface SyncHealthCheckResult {
+  checkTime: string;
+  machineId: string;
+  syncStatus: SyncStatus;
+  message: string;
+  serverReachable: boolean;
+  entityDifference: number;
+  fileDifference: number;
+  localStats: LocalSyncStats | null;
+  serverStats: ServerSyncStats | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -237,5 +268,20 @@ export class FullResyncService {
       message: '',
       checkCount: 0
     });
+  }
+
+  /**
+   * Get background sync health check status.
+   * This runs automatically every 5 minutes on the backend.
+   */
+  getSyncHealthCheck(): Observable<SyncHealthCheckResult> {
+    return this.http.get<SyncHealthCheckResult>(`${this.baseUrl}/sync-health`);
+  }
+
+  /**
+   * Force an immediate sync health check.
+   */
+  forceSyncHealthCheck(): Observable<SyncHealthCheckResult> {
+    return this.http.post<SyncHealthCheckResult>(`${this.baseUrl}/sync-health/check`, {});
   }
 }

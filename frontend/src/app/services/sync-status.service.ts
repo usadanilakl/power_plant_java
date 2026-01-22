@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, of } from 'rxjs';
+import { Observable, BehaviorSubject, interval, of, Subscription } from 'rxjs';
 import { switchMap, tap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
@@ -50,10 +50,14 @@ export interface TriggerSyncResponse {
 @Injectable({ providedIn: 'root' })
 export class SyncStatusService {
   private apiUrl = `${environment.baseApiUrl}/api/field-sync`;
+  private resyncApiUrl = `${environment.baseApiUrl}/api/resync`;
   private statusSubject = new BehaviorSubject<SyncStatus | null>(null);
-  private pollingSubscription: any;
+  private syncHealthSubject = new BehaviorSubject<SyncHealthCheckResult | null>(null);
+  private pollingSubscription: Subscription | null = null;
+  private healthCheckSubscription: Subscription | null = null;
 
   status$ = this.statusSubject.asObservable();
+  syncHealth$ = this.syncHealthSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -191,6 +195,63 @@ export class SyncStatusService {
   getSyncServerHealth(syncServerUrl: string): Observable<SyncServerHealth> {
     return this.http.get<SyncServerHealth>(`${syncServerUrl}/api/sync/health`);
   }
+
+  /**
+   * Start polling for sync health check status
+   * @param intervalMs Polling interval in milliseconds (default: 60000 - 1 minute)
+   */
+  startHealthCheckPolling(intervalMs: number = 60000): void {
+    if (this.healthCheckSubscription) {
+      return; // Already polling
+    }
+
+    // Initial fetch
+    this.fetchSyncHealthCheck().subscribe();
+
+    // Poll at interval
+    this.healthCheckSubscription = interval(intervalMs).pipe(
+      switchMap(() => this.fetchSyncHealthCheck())
+    ).subscribe();
+  }
+
+  /**
+   * Stop polling for sync health check
+   */
+  stopHealthCheckPolling(): void {
+    if (this.healthCheckSubscription) {
+      this.healthCheckSubscription.unsubscribe();
+      this.healthCheckSubscription = null;
+    }
+  }
+
+  /**
+   * Fetch current sync health check status
+   */
+  fetchSyncHealthCheck(): Observable<SyncHealthCheckResult | null> {
+    return this.http.get<SyncHealthCheckResult>(`${this.resyncApiUrl}/sync-health`).pipe(
+      tap(health => this.syncHealthSubject.next(health)),
+      catchError(err => {
+        console.debug('Failed to fetch sync health check:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Get current sync health check value (non-observable)
+   */
+  getCurrentSyncHealth(): SyncHealthCheckResult | null {
+    return this.syncHealthSubject.value;
+  }
+
+  /**
+   * Force an immediate sync health check
+   */
+  forceSyncHealthCheck(): Observable<SyncHealthCheckResult> {
+    return this.http.post<SyncHealthCheckResult>(`${this.resyncApiUrl}/sync-health/check`, {}).pipe(
+      tap(health => this.syncHealthSubject.next(health))
+    );
+  }
 }
 
 export interface RegisterPeerResponse {
@@ -235,4 +296,32 @@ export interface SyncServerHealth {
   sseConnections?: number;
   activeClients?: number;
   warning?: string;
+}
+
+// Sync health check types (from background health checker)
+export type SyncHealthStatusType = 'IN_SYNC' | 'POSSIBLY_OUT_OF_SYNC' | 'OUT_OF_SYNC' | 'UNKNOWN';
+
+export interface SyncHealthCheckResult {
+  checkTime: string;
+  machineId: string;
+  syncStatus: SyncHealthStatusType;
+  message: string;
+  serverReachable: boolean;
+  entityDifference: number;
+  fileDifference: number;
+  localStats: {
+    entityCounts: Record<string, number>;
+    totalEntities: number;
+    fileCount: number;
+    latestChangeTime: string | null;
+    recentChangeCount: number;
+    pendingSyncCount: number;
+  } | null;
+  serverStats: {
+    entityCounts: Record<string, number>;
+    totalEntities: number;
+    fileCount: number;
+    latestChangeTime: string | null;
+    totalFieldChanges: number;
+  } | null;
 }

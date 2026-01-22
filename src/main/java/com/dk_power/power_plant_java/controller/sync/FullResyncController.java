@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.sync;
 
 import com.dk_power.power_plant_java.sevice.sync.FullResyncService;
 import com.dk_power.power_plant_java.sevice.sync.FullResyncService.*;
+import com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class FullResyncController {
 
     private final FullResyncService fullResyncService;
+    private final SyncHealthChecker syncHealthChecker;
 
     /**
      * Get current sync health status.
@@ -112,5 +114,24 @@ public class FullResyncController {
     @GetMapping("/backup/status")
     public ResponseEntity<BackupStatus> getBackupStatus() {
         return ResponseEntity.ok(fullResyncService.getBackupStatus());
+    }
+
+    /**
+     * Get background sync health check status.
+     * This runs automatically every 5 minutes and provides a quick comparison
+     * between local and server data (entity counts, file counts, timestamps).
+     */
+    @GetMapping("/sync-health")
+    public ResponseEntity<SyncHealthChecker.SyncHealthResult> getSyncHealthCheck() {
+        return ResponseEntity.ok(syncHealthChecker.getCurrentHealth());
+    }
+
+    /**
+     * Force an immediate sync health check.
+     * Useful for getting fresh data before making decisions.
+     */
+    @PostMapping("/sync-health/check")
+    public ResponseEntity<SyncHealthChecker.SyncHealthResult> forceSyncHealthCheck() {
+        return ResponseEntity.ok(syncHealthChecker.checkNow());
     }
 }
