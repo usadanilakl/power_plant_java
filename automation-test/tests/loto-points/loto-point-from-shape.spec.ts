@@ -289,6 +289,111 @@ test.describe('LOTO Point - Create from Shape', () => {
     // Location dropdown - select or create if no options
     await selectOrCreateDropdownValue(page, /^Location$/, 'CRT AREA', 'CRT');
 
+    // ==================== ZERO ENERGY SECTION ====================
+    // Step: Create a new zero energy phrase
+    const phraseBuilder = page.locator('app-zero-energy-phrase-builder').first();
+    await phraseBuilder.locator('.dropdown-input').click();
+    await page.waitForTimeout(300);
+
+    // Click "Add New" option to create a new phrase
+    const addNewPhraseOption = page.locator('.dropdown-options .dropdown-option, .dropdown-options .add-new-option')
+      .filter({ hasText: /add.*new|create.*new/i });
+    if (await addNewPhraseOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addNewPhraseOption.click();
+      await page.waitForTimeout(500);
+
+      // Fill phrase name
+      const phraseNameInput = page.locator('.dialog-content input[type="text"]').first();
+      await phraseNameInput.fill(`Test Phrase ${timestamp}`);
+
+      // Add tag placeholders
+      const addPlaceholderBtn = page.getByRole('button', { name: /add tag placeholder/i });
+      await addPlaceholderBtn.click();
+      await page.waitForTimeout(200);
+      await addPlaceholderBtn.click();
+      await page.waitForTimeout(200);
+
+      // Fill verification phrase
+      const phraseTextarea = page.locator('.dialog-content textarea.phrase-input');
+      await phraseTextarea.fill('Open [tag1] drain and verify [tag2] level gauge is empty');
+
+      // Create the phrase
+      await page.getByRole('button', { name: /create phrase/i }).click();
+      await page.waitForTimeout(500);
+      console.log('Created zero energy phrase');
+    } else {
+      // No add new option, try selecting existing phrase
+      const firstPhraseOption = page.locator('.dropdown-options .dropdown-option').first();
+      if (await firstPhraseOption.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await firstPhraseOption.click();
+        console.log('Selected existing zero energy phrase');
+      } else {
+        await page.keyboard.press('Escape');
+        console.log('No zero energy phrase options available');
+      }
+    }
+    await page.waitForTimeout(300);
+
+    // Step: Add equipment to Zero Energy section
+    const zeroEnergyEquipmentManager = page.locator('app-form-group-input app-equipment-list-manager');
+    const addZeroEnergyEquipmentBtn = zeroEnergyEquipmentManager.getByRole('button', { name: 'Add Equipment' });
+
+    if (await addZeroEnergyEquipmentBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addZeroEnergyEquipmentBtn.click();
+      await page.waitForTimeout(500);
+
+      // Select vendor and file - scope to the equipment dialog to avoid matching elements in main view
+      const equipmentDialog = page.locator('app-equipment-unified-dialog');
+      await equipmentDialog.getByText(vendorName).click();
+      await page.waitForTimeout(300);
+      await equipmentDialog.getByText(fileName).click();
+      await page.waitForTimeout(500);
+
+      // Wait for canvas and draw shape - scope to equipment dialog
+      const canvas = equipmentDialog.locator('app-interactive-image canvas.shape-canvas');
+      await canvas.waitFor({ state: 'visible', timeout: 10000 });
+
+      const box = await canvas.boundingBox();
+      if (box) {
+        // Draw shape using right-click drag (different area than main equipment)
+        const startX = box.x + box.width * 0.5;
+        const startY = box.y + box.height * 0.5;
+        const endX = box.x + box.width * 0.7;
+        const endY = box.y + box.height * 0.7;
+
+        await page.mouse.move(startX, startY);
+        await page.mouse.down({ button: 'right' });
+        await page.mouse.move(endX, endY, { steps: 10 });
+        await page.mouse.up({ button: 'right' });
+        await page.waitForTimeout(300);
+      }
+
+      // Click Save & Select
+      await page.getByRole('button', { name: /save.*select|select.*equipment/i }).click();
+      await page.waitForTimeout(500);
+
+      // Check if nested LOTO point form appears (for new equipment)
+      const nestedLotoForm = page.locator('.loto-form-section');
+      if (await nestedLotoForm.isVisible({ timeout: 2000 }).catch(() => false)) {
+        // Fill out the nested LOTO point form for zero energy equipment
+        const zeTimestamp = Date.now();
+        await nestedLotoForm.locator('input[formcontrolname="tagNumber"]').fill(`ZE-${zeTimestamp}`);
+        await nestedLotoForm.locator('input[formcontrolname="description"]').fill('Zero Energy Equipment');
+        await nestedLotoForm.locator('select[formcontrolname="eqType"]').selectOption({ index: 1 });
+        await nestedLotoForm.locator('select[formcontrolname="location"]').selectOption({ index: 1 });
+        await nestedLotoForm.locator('select[formcontrolname="isoPos"]').selectOption({ index: 1 });
+        await nestedLotoForm.locator('select[formcontrolname="normPos"]').selectOption({ index: 1 });
+        await nestedLotoForm.getByRole('button', { name: /create loto point/i }).click();
+        await page.waitForTimeout(500);
+        console.log('Created LOTO point for zero energy equipment');
+      }
+
+      // Wait for dialog to close
+      await page.locator('app-rf-popup-projection[ng-reflect-is-open="true"]').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      console.log('Added equipment to zero energy section');
+    }
+    await page.waitForTimeout(300);
+
     // Submit
     const submitButton = page.locator('.form-popup form button[type="submit"]');
     await submitButton.click();

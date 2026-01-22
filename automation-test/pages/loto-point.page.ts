@@ -14,6 +14,17 @@ export interface LotoPointFormData {
   location?: string;
   vendor?: string;
   file?: string;
+  zeroEnergy?: {
+    phrase?: {
+      name: string;
+      text: string;
+      placeholderCount?: number;
+    };
+    equipment?: {
+      vendor: string;
+      file: string;
+    };
+  };
 }
 
 /**
@@ -112,6 +123,24 @@ export class LotoPointPage extends BasePage {
   async createLotoPoint(data: LotoPointFormData) {
     await this.clickAddNewLotoPoint();
     await this.fillLotoPointForm(data);
+
+    // Fill zero energy if provided
+    if (data.zeroEnergy) {
+      if (data.zeroEnergy.phrase) {
+        await this.createZeroEnergyPhrase(
+          data.zeroEnergy.phrase.name,
+          data.zeroEnergy.phrase.text,
+          data.zeroEnergy.phrase.placeholderCount || 0
+        );
+      }
+      if (data.zeroEnergy.equipment) {
+        await this.addZeroEnergyEquipment(
+          data.zeroEnergy.equipment.vendor,
+          data.zeroEnergy.equipment.file
+        );
+      }
+    }
+
     await this.clickSave();
   }
 
@@ -188,6 +217,163 @@ export class LotoPointPage extends BasePage {
   async selectZeroEnergyPhrase(phraseName: string) {
     await this.page.locator('app-zero-energy-phrase-builder').first().click();
     await this.page.getByText(phraseName, { exact: true }).click();
+  }
+
+  /**
+   * Creates a new zero energy phrase via the phrase dialog.
+   * @param phraseName - Name for the phrase (e.g., "Valve Open Verification")
+   * @param verificationPhrase - The phrase text with placeholders (e.g., "Verify that [tag1] is open")
+   * @param placeholderCount - Number of tag placeholders to add (default: 0)
+   */
+  async createZeroEnergyPhrase(phraseName: string, verificationPhrase: string, placeholderCount: number = 0) {
+    // Click the dropdown to open it
+    const phraseBuilder = this.page.locator('app-zero-energy-phrase-builder').first();
+    await phraseBuilder.locator('.dropdown-input').click();
+    await this.page.waitForTimeout(300);
+
+    // Click "Add New" option in the dropdown (typically first or has specific text)
+    await this.page.getByText(/add.*new|create.*new/i).first().click();
+    await this.page.waitForTimeout(500);
+
+    // Fill phrase name
+    const phraseNameInput = this.page.locator('.dialog-content input[type="text"]').first();
+    await phraseNameInput.fill(phraseName);
+
+    // Add placeholders if needed
+    for (let i = 0; i < placeholderCount; i++) {
+      await this.page.getByRole('button', { name: /add tag placeholder/i }).click();
+      await this.page.waitForTimeout(200);
+    }
+
+    // Fill verification phrase in textarea
+    const phraseTextarea = this.page.locator('.dialog-content textarea.phrase-input');
+    await phraseTextarea.fill(verificationPhrase);
+
+    // Click Create Phrase button
+    await this.page.getByRole('button', { name: /create phrase/i }).click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Adds equipment to the Zero Energy section by drawing on a P&ID file.
+   * This is separate from the main equipment list - it's in the Zero Energy form group.
+   * @param vendorName - The vendor folder name to expand
+   * @param fileName - The file name to select
+   */
+  async addZeroEnergyEquipment(vendorName: string, fileName: string) {
+    // Find the Zero Energy section's equipment list manager (second one in form)
+    const zeroEnergyEquipmentManager = this.page.locator('app-form-group-input app-equipment-list-manager');
+    await zeroEnergyEquipmentManager.getByRole('button', { name: 'Add Equipment' }).click();
+    await this.page.waitForTimeout(500);
+
+    // Expand vendor folder and select file - scope to equipment dialog to avoid matching main view
+    const equipmentDialog = this.page.locator('app-equipment-unified-dialog');
+    await equipmentDialog.getByText(vendorName).click();
+    await this.page.waitForTimeout(300);
+    await equipmentDialog.getByText(fileName).click();
+    await this.page.waitForTimeout(500);
+
+    // Wait for image to load - scope to equipment dialog
+    const dialogCanvas = equipmentDialog.locator('app-interactive-image canvas.shape-canvas');
+    await dialogCanvas.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Draw shape on the canvas using right-click drag
+    await this.drawShapeOnCanvas(dialogCanvas);
+
+    // Click Save & Select or Select Equipment button
+    await this.page.getByRole('button', { name: /save.*select|select.*equipment/i }).click();
+    await this.page.waitForTimeout(500);
+
+    // Check if zero-energy-loto-point-form appears (when creating new equipment)
+    const lotoPointForm = this.page.locator('.loto-form-section');
+    if (await lotoPointForm.isVisible().catch(() => false)) {
+      await this.fillZeroEnergyLotoPointForm();
+    }
+
+    // Wait for dialog to close
+    await this.page.locator('app-rf-popup-projection[ng-reflect-is-open="true"]').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Fills out the LOTO Point form that appears when adding new equipment to zero energy.
+   * This form requires: Tag Number, Description, Equipment Type, Location, Isolated Position, Normal Position.
+   */
+  async fillZeroEnergyLotoPointForm(data?: {
+    tagNumber?: string;
+    description?: string;
+    eqTypeIndex?: number;
+    locationIndex?: number;
+    isoPosIndex?: number;
+    normPosIndex?: number;
+  }) {
+    const form = this.page.locator('.loto-form-section');
+    const timestamp = Date.now();
+
+    // Tag Number (required)
+    const tagInput = form.locator('input[formcontrolname="tagNumber"]');
+    await tagInput.fill(data?.tagNumber || `ZE-${timestamp}`);
+
+    // Description (required)
+    const descInput = form.locator('input[formcontrolname="description"]');
+    await descInput.fill(data?.description || 'Zero Energy Equipment');
+
+    // Equipment Type dropdown
+    const eqTypeSelect = form.locator('select[formcontrolname="eqType"]');
+    if (data?.eqTypeIndex) {
+      await eqTypeSelect.selectOption({ index: data.eqTypeIndex });
+    } else {
+      // Select first available option after "-- Select --"
+      await eqTypeSelect.selectOption({ index: 1 });
+    }
+
+    // Location dropdown
+    const locationSelect = form.locator('select[formcontrolname="location"]');
+    if (data?.locationIndex) {
+      await locationSelect.selectOption({ index: data.locationIndex });
+    } else {
+      await locationSelect.selectOption({ index: 1 });
+    }
+
+    // Isolated Position dropdown
+    const isoPosSelect = form.locator('select[formcontrolname="isoPos"]');
+    if (data?.isoPosIndex) {
+      await isoPosSelect.selectOption({ index: data.isoPosIndex });
+    } else {
+      await isoPosSelect.selectOption({ index: 1 });
+    }
+
+    // Normal Position dropdown
+    const normPosSelect = form.locator('select[formcontrolname="normPos"]');
+    if (data?.normPosIndex) {
+      await normPosSelect.selectOption({ index: data.normPosIndex });
+    } else {
+      await normPosSelect.selectOption({ index: 1 });
+    }
+
+    // Click Create LOTO Point button
+    await form.getByRole('button', { name: /create loto point/i }).click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Complete zero energy step: creates phrase and adds equipment.
+   * @param phraseData - Data for creating the phrase
+   * @param equipmentData - Data for adding equipment
+   */
+  async fillZeroEnergy(
+    phraseData: { name: string; phrase: string; placeholderCount?: number },
+    equipmentData: { vendor: string; file: string }
+  ) {
+    // Create the zero energy phrase
+    await this.createZeroEnergyPhrase(
+      phraseData.name,
+      phraseData.phrase,
+      phraseData.placeholderCount || 0
+    );
+
+    // Add equipment to zero energy
+    await this.addZeroEnergyEquipment(equipmentData.vendor, equipmentData.file);
   }
 
   // ==================== EQUIPMENT DRAWING ====================

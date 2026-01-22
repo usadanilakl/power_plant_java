@@ -167,6 +167,9 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       return;
     }
 
+    // If equipment already has LOTO points (e.g., from unified dialog's LOTO form), skip conflict checks
+    const hasLotoPointsFromDialog = equipment.lotoPoints && equipment.lotoPoints.length > 0;
+
     if (this.conflictMode === 'has-association') {
       const conflicts = this.conflictService.findConflicts(equipment.id, this.currentLotoPointId);
       if (conflicts.length > 0) {
@@ -175,7 +178,8 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
         return;
       }
     } else if (this.conflictMode === 'no-association') {
-      if (this.conflictService.hasNoAssociation(equipment.id)) {
+      // Skip the no-association check if equipment already has LOTO points from the dialog
+      if (!hasLotoPointsFromDialog && this.conflictService.hasNoAssociation(equipment.id)) {
         // If we require LOTO point for unassociated equipment, open LOTO form
         if (this.requireLotoPointForUnassociated) {
           this.closeUnifiedDialog();
@@ -463,14 +467,25 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
         next: (response) => {
           this.isSavingLotoPoint.set(false);
           if (response.responseData) {
-            // LOTO point created successfully, now add equipment to the list
+            // Parse the created LOTO point
+            const createdLotoPoint = LotoPointDto.fromJson(response.responseData);
+
+            // Update equipment with the newly created LOTO point association
+            const updatedEquipment = new EquipmentDto({
+              ...equipment,
+              lotoPoints: [createdLotoPoint]
+            });
+
+            // LOTO point created successfully, now add equipment to the list with proper tag number
             const newItem: EquipmentListItem = {
-              id: equipment.id,
-              coordinates: equipment.coordinates || '',
-              fileId: equipment.mainFileId ?? undefined,
-              fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
-              originalPictureSize: equipment.originalPictureSize || '',
-              tagNumber: equipment.tagNumber || `Equipment #${equipment.id}`,
+              id: updatedEquipment.id,
+              coordinates: updatedEquipment.coordinates || '',
+              fileId: updatedEquipment.mainFileId ?? undefined,
+              fileName: updatedEquipment.mainFileObject?.name ?? (updatedEquipment.mainFileId ? `File #${updatedEquipment.mainFileId}` : ''),
+              originalPictureSize: updatedEquipment.originalPictureSize || '',
+              // Use the LOTO point's tag number (what the user just entered in the form)
+              tagNumber: createdLotoPoint.tagNumber || updatedEquipment.tagNumber || `Equipment #${updatedEquipment.id}`,
+              lotoPoints: [createdLotoPoint],
               source: 'drawn'
             };
 

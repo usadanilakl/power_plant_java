@@ -9,6 +9,10 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
       ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope VARCHAR(5000);
       ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope VARCHAR(5000);
 
+-- Update alias column to TEXT to support longer values (e.g., JSON data)
+      ALTER TABLE IF EXISTS val_table ALTER COLUMN alias TEXT;
+      ALTER TABLE IF EXISTS val_table_aud ALTER COLUMN alias TEXT;
+
 -- Migrate ZeroEnergy from single templateLotoPoint to multiple templateLotoPointIds
 -- Note: Hibernate ddl-auto=update will handle column changes automatically
 -- This migration is only needed if you have existing data with the old schema

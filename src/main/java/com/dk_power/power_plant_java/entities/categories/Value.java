@@ -29,6 +29,8 @@ public class Value extends BaseAuditEntity implements Referenceable {
     }
 
     private String name;
+
+    @Column(columnDefinition = "TEXT")
     private String alias;
 
     @ManyToOne

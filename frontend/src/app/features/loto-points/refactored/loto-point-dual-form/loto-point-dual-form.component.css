@@ -44,6 +44,9 @@
   gap: 0;
   flex: 1;
   overflow: hidden;
+  /* Create stacking context for the layout, allowing fixed dialogs to escape */
+  position: relative;
+  z-index: 0;
 }
 
 /* Form Panels */
@@ -52,6 +55,9 @@
   flex-direction: column;
   background: var(--primary-background, #ffffff);
   overflow: hidden;
+  /* Ensure form panels don't create a stacking context that interferes with dialogs */
+  position: relative;
+  z-index: 0;
 }
 
 .primary-panel {
@@ -60,6 +66,8 @@
 
 .counterpart-panel {
   border-left: 1px solid var(--border-color, #e0e0e0);
+  /* Ensure counterpart panel doesn't overlap dialogs from primary panel */
+  z-index: 0;
 }
 
 .counterpart-panel.is-new {
@@ -139,6 +147,9 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  /* Reset stacking context to prevent dialog overlay issues */
+  position: relative;
+  z-index: 0;
 }
 
 .panel-actions {
@@ -160,6 +171,9 @@
   flex-direction: column;
   padding: 12px 8px;
   gap: 12px;
+  /* Ensure sync controls don't interfere with dialog stacking */
+  position: relative;
+  z-index: 0;
 }
 
 .sync-header {
