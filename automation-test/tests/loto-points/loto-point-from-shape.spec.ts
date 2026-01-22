@@ -384,12 +384,23 @@ test.describe('LOTO Point - Create from Shape', () => {
         await nestedLotoForm.locator('select[formcontrolname="isoPos"]').selectOption({ index: 1 });
         await nestedLotoForm.locator('select[formcontrolname="normPos"]').selectOption({ index: 1 });
         await nestedLotoForm.getByRole('button', { name: /create loto point/i }).click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         console.log('Created LOTO point for zero energy equipment');
+
+        // After creating the LOTO point, the equipment is now selectable
+        // Click the Select Equipment button in the dialog to confirm selection
+        const selectEquipmentBtn = equipmentDialog.getByRole('button', { name: /select.*equipment/i });
+        if (await selectEquipmentBtn.isEnabled({ timeout: 2000 }).catch(() => false)) {
+          await selectEquipmentBtn.click();
+          await page.waitForTimeout(500);
+          console.log('Clicked Select Equipment to confirm');
+        }
       }
 
-      // Wait for dialog to close
-      await page.locator('app-rf-popup-projection[ng-reflect-is-open="true"]').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      // Wait for equipment dialog/popup to close
+      await equipmentDialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      // Also wait for any popup overlay to disappear
+      await page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
       console.log('Added equipment to zero energy section');
     }
     await page.waitForTimeout(300);

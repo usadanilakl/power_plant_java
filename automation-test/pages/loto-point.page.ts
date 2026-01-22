@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, Locator } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export interface LotoPointFormData {
@@ -288,10 +288,19 @@ export class LotoPointPage extends BasePage {
     const lotoPointForm = this.page.locator('.loto-form-section');
     if (await lotoPointForm.isVisible().catch(() => false)) {
       await this.fillZeroEnergyLotoPointForm();
+
+      // After creating the LOTO point, click Select Equipment to confirm selection
+      const selectEquipmentBtn = equipmentDialog.getByRole('button', { name: /select.*equipment/i });
+      if (await selectEquipmentBtn.isEnabled({ timeout: 2000 }).catch(() => false)) {
+        await selectEquipmentBtn.click();
+        await this.page.waitForTimeout(500);
+      }
     }
 
-    // Wait for dialog to close
-    await this.page.locator('app-rf-popup-projection[ng-reflect-is-open="true"]').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    // Wait for equipment dialog to close
+    await equipmentDialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    // Also wait for any popup overlay to disappear
+    await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     await this.page.waitForTimeout(500);
   }
 
@@ -425,13 +434,21 @@ export class LotoPointPage extends BasePage {
    */
   async drawShapeOnInteractiveImage() {
     const canvas = this.page.locator('app-interactive-image canvas.shape-canvas');
+    await this.drawShapeOnCanvas(canvas);
+  }
+
+  /**
+   * Draws a rectangle shape on the provided canvas locator using right-click drag.
+   * @param canvas - Locator for the canvas element
+   */
+  async drawShapeOnCanvas(canvas: Locator) {
     const box = await canvas.boundingBox();
 
     if (!box) {
       throw new Error('Canvas not found or not visible');
     }
 
-    // Calculate random position within canvas for variety
+    // Calculate position within canvas for variety
     const startX = box.x + box.width * 0.2;
     const startY = box.y + box.height * 0.2;
     const endX = box.x + box.width * 0.4;
