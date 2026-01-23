@@ -2,209 +2,209 @@
 export default {
   bootstrap: () => import('./main.server.mjs').then(m => m.default),
   inlineCriticalCss: true,
-  baseHref: '/',
+  baseHref: '/angular/browser/',
   locale: undefined,
   routes: [
   {
     "renderMode": 2,
-    "redirectTo": "/home",
-    "route": "/"
+    "redirectTo": "/angular/browser/home",
+    "route": "/angular/browser"
   },
   {
     "renderMode": 2,
-    "route": "/home"
+    "route": "/angular/browser/home"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/file/edit",
-    "route": "/file"
+    "redirectTo": "/angular/browser/file/edit",
+    "route": "/angular/browser/file"
   },
   {
     "renderMode": 2,
-    "route": "/file/edit"
+    "route": "/angular/browser/file/edit"
   },
   {
     "renderMode": 2,
-    "route": "/file/table"
+    "route": "/angular/browser/file/table"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/loto/loto",
-    "route": "/loto"
+    "redirectTo": "/angular/browser/loto/loto",
+    "route": "/angular/browser/loto"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto"
+    "route": "/angular/browser/loto/loto"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-points-active"
+    "route": "/angular/browser/loto/loto-points-active"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-boxes"
+    "route": "/angular/browser/loto/loto-boxes"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-boxes-grid"
+    "route": "/angular/browser/loto/loto-boxes-grid"
   },
   {
     "renderMode": 2,
-    "route": "/loto/locks"
+    "route": "/angular/browser/loto/locks"
   },
   {
     "renderMode": 2,
-    "route": "/loto/esp-devices"
+    "route": "/angular/browser/loto/esp-devices"
   },
   {
     "renderMode": 2,
-    "route": "/loto-standard"
+    "route": "/angular/browser/loto-standard"
   },
   {
     "renderMode": 2,
-    "route": "/loto-builder"
+    "route": "/angular/browser/loto-builder"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/loto-points/table",
-    "route": "/loto-points"
+    "redirectTo": "/angular/browser/loto-points/table",
+    "route": "/angular/browser/loto-points"
   },
   {
     "renderMode": 1,
-    "route": "/loto-points/table"
+    "route": "/angular/browser/loto-points/table"
   },
   {
     "renderMode": 1,
-    "route": "/loto-points/*"
+    "route": "/angular/browser/loto-points/*"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/permit-builder/daily-packages",
-    "route": "/permit-builder"
+    "redirectTo": "/angular/browser/permit-builder/daily-packages",
+    "route": "/angular/browser/permit-builder"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/jobs"
+    "route": "/angular/browser/permit-builder/jobs"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/work-requests"
+    "route": "/angular/browser/permit-builder/work-requests"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/daily-packages"
+    "route": "/angular/browser/permit-builder/daily-packages"
   },
   {
     "renderMode": 1,
-    "route": "/permit-builder/daily-packages/re-issue/*"
+    "route": "/angular/browser/permit-builder/daily-packages/re-issue/*"
   },
   {
     "renderMode": 1,
-    "route": "/permit-builder/daily-packages/*"
+    "route": "/angular/browser/permit-builder/daily-packages/*"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/safe-works"
+    "route": "/angular/browser/permit-builder/safe-works"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/hot-works"
+    "route": "/angular/browser/permit-builder/hot-works"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/confined-spaces"
+    "route": "/angular/browser/permit-builder/confined-spaces"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/scheduler/flow",
-    "route": "/scheduler"
+    "redirectTo": "/angular/browser/scheduler/flow",
+    "route": "/angular/browser/scheduler"
   },
   {
     "renderMode": 2,
-    "route": "/scheduler/flow"
+    "route": "/angular/browser/scheduler/flow"
   },
   {
     "renderMode": 2,
-    "route": "/scheduler/table"
+    "route": "/angular/browser/scheduler/table"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/form-designer/forms",
-    "route": "/form-designer"
+    "redirectTo": "/angular/browser/form-designer/forms",
+    "route": "/angular/browser/form-designer"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/forms"
+    "route": "/angular/browser/form-designer/forms"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/preview"
+    "route": "/angular/browser/form-designer/preview"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/design"
+    "route": "/angular/browser/form-designer/design"
   },
   {
     "renderMode": 2,
-    "route": "/tag-number"
+    "route": "/angular/browser/tag-number"
   },
   {
     "renderMode": 2,
-    "route": "/print"
+    "route": "/angular/browser/print"
   },
   {
     "renderMode": 2,
-    "route": "/backup"
+    "route": "/angular/browser/backup"
   },
   {
     "renderMode": 2,
-    "route": "/admin"
+    "route": "/angular/browser/admin"
   },
   {
     "renderMode": 1,
-    "route": "/sync"
+    "route": "/angular/browser/sync"
   },
   {
     "renderMode": 2,
-    "route": "/sync-test"
+    "route": "/angular/browser/sync-test"
   },
   {
     "renderMode": 2,
-    "route": "/sync-resync"
+    "route": "/angular/browser/sync-resync"
   }
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 25121, hash: '35d078741437b0621d9b197029858785565e06202ef263d416d8dd783a9c6b60', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 17238, hash: '5b21a952eca8731265fa8ebe518885ea9b856741abc7d4208d6fc947eb6206b3', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
-    'home/index.html': {size: 115209, hash: '922dc3729cdd67131d240b0e415a567596ea25bf0e68e9e5b907874893fce0f4', text: () => import('./assets-chunks/home_index_html.mjs').then(m => m.default)},
-    'file/edit/index.html': {size: 183314, hash: 'eba5dca39a6d29a6566d832d793234299ec50c1154f3d23166bf65665133dda5', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
-    'file/table/index.html': {size: 156333, hash: 'ee78eab9d797f022199933a1d84a25d6e107dac3c5ff6bd28ef7e9782d8e139d', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
-    'loto/loto-points-active/index.html': {size: 115032, hash: 'ce36441055cabc1a209b4be07f96f69b0368662da67fb1561bbe5d012e437666', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes/index.html': {size: 109360, hash: 'c56bdb970d083328f6dea2c69a37ab4f71ae3ec209fb3023debffdd0df27b21a', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
-    'loto/esp-devices/index.html': {size: 110729, hash: '390d2a46e924ca2f8d4bd16c8ef0411e987fe737049d743fc622037bb26f00bc', text: () => import('./assets-chunks/loto_esp-devices_index_html.mjs').then(m => m.default)},
-    'loto/loto/index.html': {size: 114982, hash: '4e32537d06910ea75756ef592c003eeafbe2d6f11c735dc6c97b386a23f17119', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
-    'loto/locks/index.html': {size: 108797, hash: 'f59ef4fd793310968c3d8a5e19726a696d77e871fc41398f2207dd11a93c8106', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
-    'permit-builder/jobs/index.html': {size: 101632, hash: 'c5d77a16e7127bc51e1e1826a5ede66bd01ebf0c67e92ac605d8f7502352eb69', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
-    'loto-builder/index.html': {size: 191403, hash: 'eda4762a1a24dfb853692a8bed5c5df129d873e047e0fe9e0eace9cfc80678e5', text: () => import('./assets-chunks/loto-builder_index_html.mjs').then(m => m.default)},
-    'permit-builder/daily-packages/index.html': {size: 120767, hash: '994483cae56391e325b78d0f573baa28b3d3f8333e772eb422e5f9e2607b1ad0', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
-    'loto-standard/index.html': {size: 272962, hash: 'e51cbcb041b5f2e5c2084a96aafe120e8e9e92ee8f7cbeaa2d0fafceb29b8779', text: () => import('./assets-chunks/loto-standard_index_html.mjs').then(m => m.default)},
-    'permit-builder/safe-works/index.html': {size: 107808, hash: 'c84c5457694bcaff4dd74263582eaa5be92fb7e86a7f6c446be98a47d7582a06', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
-    'permit-builder/hot-works/index.html': {size: 107793, hash: '3ab366a3150a80dd62599a15e80b705b808439902266b745b07033c03de56234', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
-    'scheduler/flow/index.html': {size: 105069, hash: '2dc8b49f60f6a4395ab6e698988f5183f3e8c094e04b19b426ef3feb726a96f2', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes-grid/index.html': {size: 121205, hash: '4abd70c2344636b624e1781b63ae31b6a3d66cd7b100ab72955c8f479c79c98a', text: () => import('./assets-chunks/loto_loto-boxes-grid_index_html.mjs').then(m => m.default)},
-    'permit-builder/confined-spaces/index.html': {size: 107844, hash: '7e7f06e5f835a9e5ed49dc9009fd88142f66b2704f09ec0e9fbab5dc72dbe544', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
-    'scheduler/table/index.html': {size: 113966, hash: '79fc1bab74a868bb3e01ffac02653bbc72721064b4da9849af19b54ef55d09c4', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
-    'form-designer/preview/index.html': {size: 110554, hash: '130701c9ec92196c961026e702b62799dadbe2bbc57b6525be41e609d0159238', text: () => import('./assets-chunks/form-designer_preview_index_html.mjs').then(m => m.default)},
-    'form-designer/forms/index.html': {size: 108100, hash: 'bffb998c2e92b86840f2429c59aa86cb64fd35f6b2822d3df2c7f7b77475afcd', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
-    'print/index.html': {size: 59040, hash: '8edcb8c995bef7e630e60482dc31b73d72fefcb8504496f7477619fefcdbcfb1', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
-    'form-designer/design/index.html': {size: 124135, hash: '2d026bada048578500227bece05ea0ffc1de31ec3c78126cd8a33d4acb6b8517', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
-    'tag-number/index.html': {size: 102901, hash: '12ec5c4964a0d55778f9950bed1de0442113e985893558e211628e17c6e6f5e3', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
-    'admin/index.html': {size: 71218, hash: '6f94a1b305b44f4e75d6a140b10655d5970e9e9471924ea74e28584320398bca', text: () => import('./assets-chunks/admin_index_html.mjs').then(m => m.default)},
-    'backup/index.html': {size: 69669, hash: 'aa203c5566b182edfdf7c7b9fdd1c499f0ca5b7e10c31d6d2ab5e4f2aa3d8eb9', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
-    'sync-test/index.html': {size: 71291, hash: 'bed455b1f1ddd0355491b452c8462c3f0909b29117166380fc2fcf8c17fd3a2c', text: () => import('./assets-chunks/sync-test_index_html.mjs').then(m => m.default)},
-    'sync-resync/index.html': {size: 68894, hash: '3d155074620d95ec1e6b9187c74f48c17182b26f9e2449e9ed1638b50a5d8168', text: () => import('./assets-chunks/sync-resync_index_html.mjs').then(m => m.default)},
-    'permit-builder/work-requests/index.html': {size: 120343, hash: '8325da0ac489142718b39cf46b4663a5df6b4f7c2be1d8678311d3e283695814', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
+    'index.csr.html': {size: 25137, hash: '232d46870543eaed529ac73e5babf5086792cd4769a43cc5309e180186f6ac31', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 17254, hash: '61c7d4aa3f8cc267b1e6022e2650fe69b1d15b6607e251f5fd1e647107697a95', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'home/index.html': {size: 116285, hash: '8d846bc2f3e71a285b576a37b14bfc979a82d675875b431b0871197620f92281', text: () => import('./assets-chunks/home_index_html.mjs').then(m => m.default)},
+    'loto/loto-points-active/index.html': {size: 115009, hash: 'c75be6e1069b46390b927221ac590e2035c4cc54f3eb4671d4523a903a5fd1c2', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
+    'file/table/index.html': {size: 157032, hash: 'e082ac0d1bf44d102fbc7f892c454f14cf3141748aa259eec2485199217cb789', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes/index.html': {size: 109337, hash: 'e5a138d82219a28b62d0eed772b2490570b543277f7be35865d89dee6497cf99', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes-grid/index.html': {size: 121185, hash: '93a91ad8872e8c16aabd926ba772920cabef3310893664a28041d3e94a8813d0', text: () => import('./assets-chunks/loto_loto-boxes-grid_index_html.mjs').then(m => m.default)},
+    'loto/loto/index.html': {size: 114960, hash: '14eaf65e07c2371261ea31e559145027ee29a73196a9549866b6cc2f9d8fbec9', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
+    'file/edit/index.html': {size: 184019, hash: 'a34a8f516fe502cd501183764d1b30d8b1e69a425a50f31a66a367b4a1a42a8a', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
+    'loto/esp-devices/index.html': {size: 110708, hash: '44660347a9a4664313836e79456081f0faedd74ef9ce5ff811541f6e66c90ff1', text: () => import('./assets-chunks/loto_esp-devices_index_html.mjs').then(m => m.default)},
+    'loto/locks/index.html': {size: 108774, hash: '1cd1c3904da480130f348c4c26c1fc0f76a93aee2e2e6a34a7d7ca30564fd710', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
+    'permit-builder/jobs/index.html': {size: 101435, hash: 'cae21ff80bce382c86141806c936911fccdcea166847b846d514e1819a1857db', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
+    'permit-builder/daily-packages/index.html': {size: 120571, hash: '72c18783bfb21e7f032d02c0246b012fb9f2e25ade6c8e38072ddaead6612e2c', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
+    'loto-builder/index.html': {size: 192107, hash: 'dcf5feb20c63c3002b2f093d70fc0ca1fb7c5a99b07e3e55c7a80309a110da58', text: () => import('./assets-chunks/loto-builder_index_html.mjs').then(m => m.default)},
+    'permit-builder/safe-works/index.html': {size: 107612, hash: 'f2aadc89bb61f1c934215f8b2726cccb1404f8bb60497204f898f421323ee150', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
+    'permit-builder/confined-spaces/index.html': {size: 107648, hash: 'eafe34b54435aca1cfebd3f8197cd6834848146de9f1a26ee0b6a528a005b22b', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
+    'permit-builder/hot-works/index.html': {size: 107596, hash: '27441f47fd57b0e12e7188b668af5e1d1ad20adce6fe3ed3230a56b49244b700', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
+    'scheduler/flow/index.html': {size: 105740, hash: '9126bf688b548f7b7e6c27a2bc10d5cbd3a2c682415cb241e0cd469c2aaa1313', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
+    'scheduler/table/index.html': {size: 114637, hash: '859ef6e1a20be39d11d5ce04e85673cb492f8452b25e1f1ce89609096a48d2c2', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
+    'form-designer/forms/index.html': {size: 108200, hash: '992ab277542551e03cc852f812995e15da802ece9697548e54bc3878be5bd587', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
+    'form-designer/preview/index.html': {size: 110654, hash: 'be9bde10cbacba4ef7fd5b64d245412979cd22b71306aebd356820988711dfdc', text: () => import('./assets-chunks/form-designer_preview_index_html.mjs').then(m => m.default)},
+    'form-designer/design/index.html': {size: 124234, hash: '2ceccf777da4709e25ef2167ca00067fce8a48a738f090b987d6d22b9a20af56', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
+    'print/index.html': {size: 59056, hash: '11c82d07cd160540a34b962fc48203976a8f20a93b25d33dd5fbe551d343acac', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
+    'loto-standard/index.html': {size: 273735, hash: '8b17f1e7b2d99dacaa389f57a3657ddd50d6cb79ef0361a50f60d79e985e7e12', text: () => import('./assets-chunks/loto-standard_index_html.mjs').then(m => m.default)},
+    'backup/index.html': {size: 105280, hash: '7a324eaf131da9334737921746f3294e04e441454a65dcb85116613244fbbc0a', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
+    'admin/index.html': {size: 105801, hash: '519a50f1e996260d40c91fdf6760f0a1abf1bce07e7c371674f4a5afadd97225', text: () => import('./assets-chunks/admin_index_html.mjs').then(m => m.default)},
+    'tag-number/index.html': {size: 102910, hash: 'bed2d3954fc2a612414db472434b12505324a8b7ba76657da8b9791072b84625', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
+    'sync-test/index.html': {size: 112702, hash: '6d16f297aeb2dd0eca1d922d517c1ca0315e8bc0e4fdd04f91f24e431de8eb68', text: () => import('./assets-chunks/sync-test_index_html.mjs').then(m => m.default)},
+    'sync-resync/index.html': {size: 112171, hash: '64dc86f143cfff5aef6a03f1c6abfb59314177ef9d3d3ed9b5bbe6f45488b6f7', text: () => import('./assets-chunks/sync-resync_index_html.mjs').then(m => m.default)},
+    'permit-builder/work-requests/index.html': {size: 120144, hash: 'ec059a163b34c629c851b188356a13c4d394a6f15dad3c47e628d6a8cfe95a9d', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
     'styles-7VYHPHOB.css': {size: 28858, hash: 'm4VI6V+Txag', text: () => import('./assets-chunks/styles-7VYHPHOB_css.mjs').then(m => m.default)}
   },
 };
