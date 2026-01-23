@@ -30,7 +30,8 @@
       "Bash(/home/dk-power/.nvm/versions/node/v22.20.0/bin/node:*)",
       "Bash(xargs basename:*)",
       "Bash(~/.nvm/versions/node/*/bin/npx)",
-      "Bash(ng build:*)"
+      "Bash(ng build:*)",
+      "Bash(head:*)"
     ]
   }
 }

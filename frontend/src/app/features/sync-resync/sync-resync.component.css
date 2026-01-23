@@ -203,10 +203,189 @@ h2 {
   color: #721c24;
 }
 
+/* Sync Suggestion Box */
+.sync-suggestion-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.sync-suggestion-box .suggestion-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.sync-suggestion-box .suggestion-content {
+  flex: 1;
+}
+
+.sync-suggestion-box .suggestion-content h4 {
+  margin: 0 0 8px 0;
+  color: #856404;
+  font-size: 16px;
+}
+
+.sync-suggestion-box .suggestion-content p {
+  margin: 0 0 8px 0;
+  color: #856404;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sync-suggestion-box .suggestion-details {
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+
+.sync-suggestion-box .suggestion-details p {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+}
+
+.sync-suggestion-box .suggestion-details p:last-child {
+  margin-bottom: 0;
+}
+
+.sync-suggestion-box .suggestion-actions {
+  margin-top: 12px;
+}
+
+.sync-suggestion-box .suggestion-actions .btn {
+  font-weight: 600;
+}
+
+/* Out of sync state - make suggestion more prominent */
+.sync-health-card.status-error .sync-suggestion-box {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border-color: #dc3545;
+}
+
+.sync-health-card.status-error .sync-suggestion-box .suggestion-content h4,
+.sync-health-card.status-error .sync-suggestion-box .suggestion-content p {
+  color: #721c24;
+}
+
 .sync-health-actions {
   margin-top: 16px;
   display: flex;
   gap: 8px;
+}
+
+/* Partial Sync Card */
+.partial-sync-card {
+  border-left: 4px solid #17a2b8;
+}
+
+.partial-sync-description {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.partial-sync-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-select {
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  max-width: 300px;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #17a2b8;
+  box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.25);
+}
+
+.form-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.partial-sync-info {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.partial-sync-info p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.partial-sync-info p:last-child {
+  margin-bottom: 0;
+}
+
+.partial-sync-preview {
+  background-color: #e8f4f8;
+  padding: 16px;
+  border-radius: 4px;
+  border: 1px solid #bee5eb;
+}
+
+.partial-sync-preview h4 {
+  margin: 0 0 12px 0;
+  color: #0c5460;
+  font-size: 14px;
+}
+
+.partial-sync-preview .preview-summary {
+  margin-bottom: 0;
+}
+
+.partial-sync-preview .summary-item {
+  padding: 12px;
+}
+
+.partial-sync-preview .summary-item .count {
+  font-size: 24px;
+}
+
+.partial-sync-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.no-dates-message {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 4px;
+  text-align: center;
+  color: #666;
+}
+
+.no-dates-message p {
+  margin: 0;
 }
 
 /* Progress Card */

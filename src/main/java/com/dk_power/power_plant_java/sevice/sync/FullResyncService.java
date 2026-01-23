@@ -56,6 +56,7 @@ public class FullResyncService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final JdbcTemplate jdbcTemplate;
+    private final SyncHealthChecker syncHealthChecker;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -1208,6 +1209,313 @@ public class FullResyncService {
         return result;
     }
 
+    // ==================== PARTIAL SYNC ====================
+
+    /**
+     * Get available dates for partial sync from the sync server.
+     * Returns dates where sync history is available.
+     */
+    public PartialSyncDatesResponse getAvailableSyncDates() {
+        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            PartialSyncDatesResponse response = new PartialSyncDatesResponse();
+            response.setErrorMessage("Sync server URL not configured");
+            return response;
+        }
+
+        try {
+            String url = syncServerUrl + "/api/sync/partial-sync/available-dates";
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            ResponseEntity<PartialSyncDatesResponse> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), PartialSyncDatesResponse.class);
+
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Failed to get available sync dates: {}", e.getMessage());
+            PartialSyncDatesResponse response = new PartialSyncDatesResponse();
+            response.setErrorMessage("Failed to connect to sync server: " + e.getMessage());
+            return response;
+        }
+    }
+
+    /**
+     * Preview a partial sync from a specific date.
+     * Returns the count of changes that would be applied.
+     */
+    public PartialSyncPreview previewPartialSync(String date) {
+        PartialSyncPreview preview = new PartialSyncPreview();
+        preview.setDate(date);
+
+        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            preview.setErrorMessage("Sync server URL not configured");
+            return preview;
+        }
+
+        try {
+            // Get change count from server
+            String url = syncServerUrl + "/api/sync/partial-sync/count?date=" + date;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+
+            Map<String, Object> data = response.getBody();
+            if (data != null) {
+                preview.setChangeCount(((Number) data.get("changeCount")).longValue());
+            }
+
+            // Get file comparison preview
+            FileComparisonResult fileComparison = compareLocalWithServer();
+            preview.setFilesToDownload(fileComparison.getFilesToDownload().size());
+            preview.setFilesToDelete(fileComparison.getFilesToDelete().size());
+            preview.setFilesUnchanged(fileComparison.getUnchangedFiles().size());
+
+        } catch (Exception e) {
+            log.error("Failed to preview partial sync: {}", e.getMessage());
+            preview.setErrorMessage("Failed to preview: " + e.getMessage());
+        }
+
+        return preview;
+    }
+
+    /**
+     * Perform partial sync from a specific date.
+     * Fetches field changes since the date and applies them locally, then resyncs files.
+     *
+     * @param date The date to sync from (yyyy-MM-dd format)
+     * @param skipDeletionCheck If true, skip the file deletion safety check
+     * @return PartialSyncResult with details of the operation
+     */
+    public PartialSyncResult performPartialSync(String date, boolean skipDeletionCheck) {
+        if (!resyncInProgress.compareAndSet(false, true)) {
+            return new PartialSyncResult(false, "Resync already in progress", null, 0);
+        }
+
+        currentResyncStatus = new ResyncStatus();
+        currentResyncStatus.setStartTime(Instant.now());
+        currentResyncStatus.setPhase("Starting partial sync from " + date);
+
+        try {
+            if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+                return new PartialSyncResult(false, "Sync server URL not configured", null, 0);
+            }
+
+            // Phase 1: Fetch and apply field changes
+            currentResyncStatus.setPhase("Fetching field changes since " + date);
+            int changesApplied = fetchAndApplyFieldChanges(date);
+            log.info("Applied {} field changes from partial sync", changesApplied);
+
+            // Phase 2: Compare and restore files (same as full resync)
+            currentResyncStatus.setPhase("Comparing files");
+            FileComparisonResult comparison = compareLocalWithServer();
+            currentResyncStatus.setTotalFiles(comparison.getTotalBackupFiles());
+
+            // Phase 3: Safety check for deletions
+            if (!skipDeletionCheck) {
+                DeletionSafetyResult safetyResult = checkDeletionSafety(comparison);
+                if (!safetyResult.isSafe()) {
+                    currentResyncStatus.setPhase("Blocked by safety check");
+                    return new PartialSyncResult(false, safetyResult.getMessage(), comparison, changesApplied);
+                }
+            }
+
+            // Phase 4: Download files from server
+            currentResyncStatus.setPhase("Downloading files");
+            downloadFilesFromServer(comparison);
+
+            // Phase 5: Delete extra local files
+            currentResyncStatus.setPhase("Deleting extra files");
+            deleteExtraFiles(comparison);
+
+            currentResyncStatus.setPhase("Complete");
+            currentResyncStatus.setEndTime(Instant.now());
+            currentResyncStatus.setSuccess(true);
+
+            // Record successful sync for health tracking
+            syncHealthChecker.recordSuccessfulSync();
+
+            log.info("Partial sync complete: {} changes applied, {} files downloaded, {} files deleted",
+                changesApplied, comparison.getFilesToDownload().size(), comparison.getFilesToDelete().size());
+
+            return new PartialSyncResult(true,
+                String.format("Partial sync completed. %d changes applied, %d files downloaded, %d files deleted",
+                    changesApplied, comparison.getFilesToDownload().size(), comparison.getFilesToDelete().size()),
+                comparison, changesApplied);
+
+        } catch (Exception e) {
+            log.error("Partial sync failed: {}", e.getMessage(), e);
+            currentResyncStatus.setPhase("Failed: " + e.getMessage());
+            currentResyncStatus.setSuccess(false);
+            return new PartialSyncResult(false, "Partial sync failed: " + e.getMessage(), null, 0);
+        } finally {
+            resyncInProgress.set(false);
+        }
+    }
+
+    /**
+     * Fetch field changes from the server since a specific date and apply them locally.
+     */
+    private int fetchAndApplyFieldChanges(String date) {
+        int totalApplied = 0;
+        int page = 0;
+        int pageSize = 500;
+        boolean hasMore = true;
+
+        while (hasMore) {
+            String url = String.format("%s/api/sync/partial-sync/changes?date=%s&page=%d&size=%d",
+                syncServerUrl, date, page, pageSize);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            ResponseEntity<List<FieldChangeDto>> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<List<FieldChangeDto>>() {});
+
+            List<FieldChangeDto> changes = response.getBody();
+            if (changes == null || changes.isEmpty()) {
+                break;
+            }
+
+            // Apply each change
+            for (FieldChangeDto change : changes) {
+                try {
+                    applyFieldChange(change);
+                    totalApplied++;
+                } catch (Exception e) {
+                    log.warn("Failed to apply change for {}/{}: {}",
+                        change.getEntityType(), change.getEntityId(), e.getMessage());
+                }
+            }
+
+            // Check if there are more pages
+            String hasMoreHeader = response.getHeaders().getFirst("X-Has-More");
+            hasMore = "true".equalsIgnoreCase(hasMoreHeader);
+            page++;
+
+            log.debug("Applied {} changes from page {}", changes.size(), page - 1);
+        }
+
+        return totalApplied;
+    }
+
+    /**
+     * Apply a single field change to the local database.
+     */
+    @Transactional
+    private void applyFieldChange(FieldChangeDto change) {
+        String tableName = getTableNameForEntityType(change.getEntityType());
+        if (tableName == null) {
+            log.warn("Unknown entity type: {}", change.getEntityType());
+            return;
+        }
+
+        String fieldColumn = camelToSnakeCase(change.getFieldName());
+
+        if ("CREATE".equals(change.getChangeType())) {
+            // For CREATE, we need to check if the entity exists first
+            String checkSql = "SELECT COUNT(*) FROM " + tableName + " WHERE id = ?";
+            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, change.getEntityId());
+
+            if (count == null || count == 0) {
+                // Entity doesn't exist - this might be a new entity from another client
+                log.debug("Entity {}/{} doesn't exist locally, skipping CREATE field change",
+                    change.getEntityType(), change.getEntityId());
+                return;
+            }
+        }
+
+        if ("DELETE".equals(change.getChangeType())) {
+            // For DELETE, mark entity as deleted
+            String updateSql = "UPDATE " + tableName + " SET deleted = true WHERE id = ?";
+            jdbcTemplate.update(updateSql, change.getEntityId());
+        } else {
+            // For UPDATE/CREATE, update the specific field
+            String updateSql = "UPDATE " + tableName + " SET " + fieldColumn + " = ? WHERE id = ?";
+            Object value = convertValueForDb(change.getNewValue(), change.getFieldName());
+            jdbcTemplate.update(updateSql, value, change.getEntityId());
+        }
+    }
+
+    /**
+     * Get the database table name for an entity type.
+     */
+    private String getTableNameForEntityType(String entityType) {
+        return switch (entityType) {
+            case "Category" -> "category";
+            case "Value" -> "val_table";
+            case "FileObject" -> "file_object";
+            case "Equipment" -> "equipment";
+            case "LotoPoint" -> "loto_point";
+            case "Loto" -> "loto";
+            case "LotoStandard" -> "loto_standard";
+            case "LotoSnapshot" -> "loto_snapshot";
+            case "LotoBox" -> "loto_boxes";
+            case "Lock" -> "lock";
+            case "ZeroEnergy" -> "zero_energy";
+            case "HeatTrace" -> "heat_trace";
+            case "Highlight" -> "highlight";
+            case "ElectricalPanel" -> "electrical_panel";
+            case "EqBreaker" -> "eq_breaker";
+            case "HtPanel" -> "ht_panel";
+            case "HtBreaker" -> "ht_breaker";
+            case "User" -> "users";
+            case "EspDevice" -> "esp_devices";
+            case "LedStrip" -> "led_strips";
+            case "SafeWork" -> "safe_work";
+            case "HotWork" -> "hot_work";
+            case "ConfinedSpace" -> "confined_space";
+            case "WorkRequest" -> "work_request";
+            case "DailyPermitPackage" -> "daily_permit_package";
+            default -> null;
+        };
+    }
+
+    /**
+     * Convert a string value from the field change to the appropriate database type.
+     */
+    private Object convertValueForDb(String value, String fieldName) {
+        if (value == null || "null".equals(value)) {
+            return null;
+        }
+
+        // Handle timestamps
+        if (fieldName.toLowerCase().contains("time") ||
+            fieldName.toLowerCase().contains("date") ||
+            fieldName.toLowerCase().contains("created") ||
+            fieldName.toLowerCase().contains("updated")) {
+            try {
+                return Instant.parse(value);
+            } catch (Exception e) {
+                // Try parsing as LocalDateTime
+                try {
+                    return LocalDateTime.parse(value);
+                } catch (Exception ex) {
+                    return value;
+                }
+            }
+        }
+
+        // Handle booleans
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+            return Boolean.parseBoolean(value);
+        }
+
+        // Handle numbers
+        try {
+            if (value.contains(".")) {
+                return Double.parseDouble(value);
+            } else {
+                return Long.parseLong(value);
+            }
+        } catch (NumberFormatException e) {
+            // Return as string
+            return value;
+        }
+    }
+
     // ==================== STATUS GETTERS ====================
 
     public ResyncStatus getResyncStatus() {
@@ -1376,5 +1684,50 @@ public class FullResyncService {
         private String storagePath;
         private String originalPath;
         private Instant uploadedAt;
+    }
+
+    // Partial sync DTOs
+
+    @Data
+    public static class PartialSyncDatesResponse {
+        private List<String> availableDates;  // List of dates in yyyy-MM-dd format
+        private String oldestDate;             // Oldest available date
+        private String latestDate;             // Most recent date
+        private long totalChangesInHistory;    // Total changes available
+        private int retentionDays;             // How long history is kept
+        private String errorMessage;
+    }
+
+    @Data
+    public static class PartialSyncPreview {
+        private String date;
+        private long changeCount;
+        private int filesToDownload;
+        private int filesToDelete;
+        private int filesUnchanged;
+        private String errorMessage;
+    }
+
+    @Data
+    public static class PartialSyncResult {
+        private final boolean success;
+        private final String message;
+        private final FileComparisonResult fileComparison;
+        private final int changesApplied;
+    }
+
+    @Data
+    public static class FieldChangeDto {
+        private String id;
+        private String entityType;
+        private Long entityId;
+        private String fieldName;
+        private String oldValue;
+        private String newValue;
+        private Instant timestamp;
+        private String originMachineId;
+        private String originMachineName;
+        private String changeType;  // CREATE, UPDATE, DELETE
+        private String relationshipType;
     }
 }

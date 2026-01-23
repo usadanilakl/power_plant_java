@@ -134,4 +134,62 @@ public class FullResyncController {
     public ResponseEntity<SyncHealthChecker.SyncHealthResult> forceSyncHealthCheck() {
         return ResponseEntity.ok(syncHealthChecker.checkNow());
     }
+
+    // ==================== PARTIAL SYNC ENDPOINTS ====================
+
+    /**
+     * Get available dates for partial sync.
+     * Returns a list of dates where sync history is available on the server.
+     */
+    @GetMapping("/partial-sync/dates")
+    public ResponseEntity<PartialSyncDatesResponse> getAvailableSyncDates() {
+        log.info("Getting available partial sync dates");
+        PartialSyncDatesResponse response = fullResyncService.getAvailableSyncDates();
+        if (response.getErrorMessage() != null) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Preview what would happen in a partial sync from a specific date.
+     * Returns counts of changes and files that would be affected.
+     */
+    @GetMapping("/partial-sync/preview")
+    public ResponseEntity<PartialSyncPreview> previewPartialSync(@RequestParam String date) {
+        if (fullResyncService.isResyncInProgress()) {
+            PartialSyncPreview preview = new PartialSyncPreview();
+            preview.setErrorMessage("A resync operation is already in progress");
+            return ResponseEntity.badRequest().body(preview);
+        }
+        log.info("Previewing partial sync from date: {}", date);
+        return ResponseEntity.ok(fullResyncService.previewPartialSync(date));
+    }
+
+    /**
+     * Execute a partial sync from a specific date.
+     * Fetches and applies all field changes since the date, then resyncs files.
+     *
+     * @param date The date to sync from (yyyy-MM-dd format)
+     * @param force If true, skip file deletion safety checks
+     */
+    @PostMapping("/partial-sync/execute")
+    public ResponseEntity<PartialSyncResult> executePartialSync(
+            @RequestParam String date,
+            @RequestParam(defaultValue = "false") boolean force) {
+
+        if (fullResyncService.isResyncInProgress()) {
+            return ResponseEntity.badRequest()
+                .body(new PartialSyncResult(false, "Resync already in progress", null, 0));
+        }
+
+        log.info("Partial sync requested from date: {} (force={})", date, force);
+        PartialSyncResult result = fullResyncService.performPartialSync(date, force);
+
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
 }

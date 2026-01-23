@@ -125,6 +125,28 @@
             <p>{{ syncHealthCheck.message }}</p>
           </div>
 
+          <!-- Sync Suggestion Box -->
+          <div class="sync-suggestion-box" *ngIf="syncHealthCheck.suggestResync">
+            <div class="suggestion-icon">⚠️</div>
+            <div class="suggestion-content">
+              <h4>Sync Recommended</h4>
+              <p>{{ syncHealthCheck.recommendation }}</p>
+              <div class="suggestion-details" *ngIf="syncHealthCheck.suggestedSyncDate">
+                <p><strong>Suggested sync date:</strong> {{ syncHealthCheck.suggestedSyncDate }}</p>
+                <p><strong>Last successful sync:</strong> {{ formatTimestamp(syncHealthCheck.lastSuccessfulSyncTime) }}</p>
+                <p><strong>Consecutive failures:</strong> {{ syncHealthCheck.consecutiveOutOfSyncCount }}</p>
+              </div>
+              <div class="suggestion-actions">
+                <button
+                  class="btn btn-warning"
+                  (click)="executeSuggestedSync()"
+                  [disabled]="loading || isOperationInProgress()">
+                  {{ syncHealthCheck.suggestedSyncDate ? 'Run Suggested Partial Sync' : 'Run Full Resync' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="sync-health-actions">
             <button
               class="btn btn-secondary btn-sm"
@@ -203,10 +225,108 @@
         </div>
       </div>
 
+      <!-- Partial Sync Card -->
+      <div class="card partial-sync-card">
+        <div class="card-header">
+          <h3>Partial Sync (From Date)</h3>
+          <button
+            class="btn btn-secondary btn-sm"
+            (click)="loadPartialSyncDates()"
+            [disabled]="partialSyncLoading">
+            {{ partialSyncLoading ? 'Loading...' : 'Load Dates' }}
+          </button>
+        </div>
+        <div class="card-body">
+          <p class="partial-sync-description">
+            Partial sync applies only the changes since a specific date, without replacing the entire database.
+            Use this when you want to catch up on recent changes without a full resync.
+          </p>
+
+          <div class="partial-sync-form" *ngIf="partialSyncDates && partialSyncDates.availableDates?.length">
+            <div class="form-group">
+              <label for="partialSyncDate">Select Date to Sync From:</label>
+              <select
+                id="partialSyncDate"
+                class="form-select"
+                [value]="selectedPartialSyncDate"
+                (change)="onPartialSyncDateChange($event)"
+                [disabled]="loading || isOperationInProgress()">
+                <option value="">-- Select a date --</option>
+                <option *ngFor="let date of partialSyncDates.availableDates" [value]="date">
+                  {{ date }}
+                </option>
+              </select>
+            </div>
+
+            <div class="partial-sync-info">
+              <p><strong>History Retention:</strong> {{ partialSyncDates.retentionDays }} days</p>
+              <p><strong>Oldest Available:</strong> {{ partialSyncDates.oldestDate || 'N/A' }}</p>
+              <p><strong>Latest Available:</strong> {{ partialSyncDates.latestDate || 'N/A' }}</p>
+              <p><strong>Total Changes in History:</strong> {{ partialSyncDates.totalChangesInHistory }}</p>
+            </div>
+
+            <!-- Partial Sync Preview -->
+            <div class="partial-sync-preview" *ngIf="partialSyncPreview">
+              <h4>Preview for {{ partialSyncPreview.date }}</h4>
+              <div class="preview-summary">
+                <div class="summary-item">
+                  <span class="count">{{ partialSyncPreview.changeCount }}</span>
+                  <span class="label">Field Changes</span>
+                </div>
+                <div class="summary-item download">
+                  <span class="count">{{ partialSyncPreview.filesToDownload }}</span>
+                  <span class="label">Files to Download</span>
+                </div>
+                <div class="summary-item delete">
+                  <span class="count">{{ partialSyncPreview.filesToDelete }}</span>
+                  <span class="label">Files to Delete</span>
+                </div>
+                <div class="summary-item unchanged">
+                  <span class="count">{{ partialSyncPreview.filesUnchanged }}</span>
+                  <span class="label">Files Unchanged</span>
+                </div>
+              </div>
+              <div class="error-box" *ngIf="partialSyncPreview.errorMessage">
+                {{ partialSyncPreview.errorMessage }}
+              </div>
+            </div>
+
+            <div class="partial-sync-actions">
+              <button
+                class="btn btn-primary"
+                (click)="loadPartialSyncPreview()"
+                [disabled]="!selectedPartialSyncDate || partialSyncPreviewLoading || loading || isOperationInProgress()">
+                {{ partialSyncPreviewLoading ? 'Loading...' : 'Preview' }}
+              </button>
+              <button
+                class="btn btn-warning"
+                (click)="confirmPartialSync()"
+                [disabled]="!selectedPartialSyncDate || loading || isOperationInProgress()">
+                Execute Partial Sync
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                (click)="confirmForcePartialSync()"
+                [disabled]="!selectedPartialSyncDate || loading || isOperationInProgress()">
+                Force (Skip Safety)
+              </button>
+            </div>
+          </div>
+
+          <div class="no-dates-message" *ngIf="partialSyncDates && !partialSyncDates.availableDates?.length">
+            <p>No sync history available. The sync server may not have any field changes recorded yet.</p>
+          </div>
+
+          <div class="error-box" *ngIf="partialSyncDates?.errorMessage">
+            {{ partialSyncDates?.errorMessage }}
+          </div>
+        </div>
+      </div>
+
       <!-- Actions Card -->
       <div class="card actions-card">
         <div class="card-header">
-          <h3>Actions</h3>
+          <h3>Full Resync Actions</h3>
         </div>
         <div class="card-body">
           <div class="action-buttons">
@@ -216,7 +336,7 @@
                 class="btn btn-primary"
                 (click)="loadPreview()"
                 [disabled]="loading || previewLoading || isOperationInProgress()">
-                {{ previewLoading ? 'Loading...' : 'Preview Resync' }}
+                {{ previewLoading ? 'Loading...' : 'Preview Full Resync' }}
               </button>
               <button
                 class="btn btn-warning"
@@ -250,8 +370,8 @@
           </div>
 
           <div class="action-notes">
-            <p><strong>Preview Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
-            <p><strong>Full Resync:</strong> Restores database from backup and syncs files. Has safety checks for large deletions.</p>
+            <p><strong>Preview Full Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
+            <p><strong>Full Resync:</strong> Replaces entire database from backup and syncs all files. Use for major recovery.</p>
             <p><strong>Force Resync:</strong> Same as Full Resync but skips deletion safety checks. Use with caution!</p>
             <p><strong>Create Full Backup:</strong> Creates a backup of database and file manifest to shared drive. Only use on a machine with up-to-date data.</p>
           </div>
@@ -273,6 +393,27 @@
               class="btn"
               [ngClass]="confirmAction === 'force-resync' ? 'btn-danger' : 'btn-primary'"
               (click)="executeConfirmed()">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partial Sync Confirmation Dialog -->
+      <div class="dialog-overlay" *ngIf="showPartialSyncConfirm" (click)="cancelPartialSyncConfirm()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Confirm Partial Sync</h3>
+          </div>
+          <div class="dialog-body">
+            <p>{{ getPartialSyncConfirmMessage() }}</p>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-secondary" (click)="cancelPartialSyncConfirm()">Cancel</button>
+            <button
+              class="btn"
+              [ngClass]="forcePartialSync ? 'btn-danger' : 'btn-warning'"
+              (click)="executePartialSync()">
               Confirm
             </button>
           </div>

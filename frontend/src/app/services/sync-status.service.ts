@@ -324,4 +324,10 @@ export interface SyncHealthCheckResult {
     latestChangeTime: string | null;
     totalFieldChanges: number;
   } | null;
+  // Sync suggestion fields
+  suggestResync: boolean;              // True if system recommends a resync
+  suggestedSyncDate: string | null;    // yyyy-MM-dd format date to sync from
+  lastSuccessfulSyncTime: string | null; // When was the last successful sync
+  recommendation: string | null;       // Human-readable recommendation message
+  consecutiveOutOfSyncCount: number;   // How many consecutive checks were out of sync
 }

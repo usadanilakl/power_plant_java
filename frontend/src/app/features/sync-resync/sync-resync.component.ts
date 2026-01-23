@@ -10,7 +10,10 @@ import {
   ResyncResult,
   BackupResult,
   RestartProgress,
-  SyncHealthCheckResult
+  SyncHealthCheckResult,
+  PartialSyncDatesResponse,
+  PartialSyncPreview,
+  PartialSyncResult
 } from '../../services/full-resync.service';
 import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
@@ -45,6 +48,15 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   // Background sync health check
   syncHealthCheck: SyncHealthCheckResult | null = null;
   syncHealthCheckLoading = false;
+
+  // Partial sync state
+  partialSyncDates: PartialSyncDatesResponse | null = null;
+  partialSyncPreview: PartialSyncPreview | null = null;
+  selectedPartialSyncDate: string = '';
+  partialSyncLoading = false;
+  partialSyncPreviewLoading = false;
+  showPartialSyncConfirm = false;
+  forcePartialSync = false;
 
   constructor(
     private resyncService: FullResyncService,
@@ -122,9 +134,26 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     this.resyncService.getSyncHealthCheck().subscribe({
       next: (result) => {
         this.syncHealthCheck = result;
+        // Auto-select suggested date for partial sync if available
+        if (result.suggestResync && result.suggestedSyncDate) {
+          this.selectedPartialSyncDate = result.suggestedSyncDate;
+        }
       },
       error: (err) => console.debug('Could not load sync health check:', err.message)
     });
+  }
+
+  /**
+   * Execute suggested partial sync from the recommended date
+   */
+  executeSuggestedSync(): void {
+    if (this.syncHealthCheck?.suggestedSyncDate) {
+      this.selectedPartialSyncDate = this.syncHealthCheck.suggestedSyncDate;
+      this.confirmPartialSync();
+    } else if (this.syncHealthCheck?.suggestResync) {
+      // No suggested date - recommend full resync
+      this.confirmResync();
+    }
   }
 
   forceSyncHealthCheck(): void {
@@ -349,5 +378,144 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       return this.operationStatus.backupStatus?.phase || 'Processing...';
     }
     return '';
+  }
+
+  // ==================== PARTIAL SYNC METHODS ====================
+
+  /**
+   * Load available dates for partial sync
+   */
+  loadPartialSyncDates(): void {
+    this.partialSyncLoading = true;
+    this.resyncService.getAvailableSyncDates().subscribe({
+      next: (response) => {
+        this.partialSyncDates = response;
+        this.partialSyncLoading = false;
+        if (response.errorMessage) {
+          this.showMessage('Failed to load sync dates: ' + response.errorMessage, 'error');
+        } else if (response.availableDates && response.availableDates.length > 0) {
+          // Pre-select the most recent date
+          this.selectedPartialSyncDate = response.availableDates[0];
+        }
+      },
+      error: (err) => {
+        this.partialSyncLoading = false;
+        this.showMessage('Failed to load sync dates: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Preview partial sync for selected date
+   */
+  loadPartialSyncPreview(): void {
+    if (!this.selectedPartialSyncDate) {
+      this.showMessage('Please select a date first', 'warning');
+      return;
+    }
+
+    this.partialSyncPreviewLoading = true;
+    this.partialSyncPreview = null;
+
+    this.resyncService.previewPartialSync(this.selectedPartialSyncDate).subscribe({
+      next: (preview) => {
+        this.partialSyncPreview = preview;
+        this.partialSyncPreviewLoading = false;
+
+        if (preview.errorMessage) {
+          this.showMessage(preview.errorMessage, 'error');
+        } else {
+          this.showMessage(
+            `Partial sync preview: ${preview.changeCount} changes, ${preview.filesToDownload} files to download, ${preview.filesToDelete} files to delete`,
+            'info'
+          );
+        }
+      },
+      error: (err) => {
+        this.partialSyncPreviewLoading = false;
+        this.showMessage('Failed to preview partial sync: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Show confirmation for partial sync
+   */
+  confirmPartialSync(): void {
+    if (!this.selectedPartialSyncDate) {
+      this.showMessage('Please select a date first', 'warning');
+      return;
+    }
+    this.forcePartialSync = false;
+    this.showPartialSyncConfirm = true;
+  }
+
+  /**
+   * Show confirmation for force partial sync
+   */
+  confirmForcePartialSync(): void {
+    if (!this.selectedPartialSyncDate) {
+      this.showMessage('Please select a date first', 'warning');
+      return;
+    }
+    this.forcePartialSync = true;
+    this.showPartialSyncConfirm = true;
+  }
+
+  /**
+   * Cancel partial sync confirmation
+   */
+  cancelPartialSyncConfirm(): void {
+    this.showPartialSyncConfirm = false;
+    this.forcePartialSync = false;
+  }
+
+  /**
+   * Execute partial sync
+   */
+  executePartialSync(): void {
+    this.showPartialSyncConfirm = false;
+    this.loading = true;
+    this.showMessage(`Starting partial sync from ${this.selectedPartialSyncDate}...`, 'info');
+
+    this.resyncService.executePartialSync(this.selectedPartialSyncDate, this.forcePartialSync).subscribe({
+      next: (result) => {
+        this.loading = false;
+        if (result.success) {
+          this.showMessage(result.message, 'success');
+        } else {
+          this.showMessage(result.message, 'error');
+        }
+        this.loadHealth();
+        this.loadStatus();
+        this.loadSyncHealthCheck();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.showMessage('Partial sync failed: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  /**
+   * Handle date selection change
+   */
+  onPartialSyncDateChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.selectedPartialSyncDate = select.value;
+    this.partialSyncPreview = null;  // Clear preview when date changes
+  }
+
+  /**
+   * Get partial sync confirmation message
+   */
+  getPartialSyncConfirmMessage(): string {
+    if (this.forcePartialSync) {
+      return `WARNING: Force partial sync from ${this.selectedPartialSyncDate} will skip deletion safety checks. ` +
+             `This could delete a large number of files. Are you sure?`;
+    }
+    const changeCount = this.partialSyncPreview?.changeCount || 'unknown';
+    return `Are you sure you want to perform a partial sync from ${this.selectedPartialSyncDate}? ` +
+           `This will apply ${changeCount} changes and sync files.`;
   }
 }

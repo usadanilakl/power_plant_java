@@ -52,6 +52,15 @@ public class SyncHealthChecker {
     // Current sync health status (updated by background job)
     private final AtomicReference<SyncHealthResult> currentHealth = new AtomicReference<>(new SyncHealthResult());
 
+    // Track last successful sync date (when status was IN_SYNC)
+    private final AtomicReference<Instant> lastSuccessfulSyncTime = new AtomicReference<>(null);
+
+    // Track how many consecutive OUT_OF_SYNC checks have occurred
+    private int consecutiveOutOfSyncCount = 0;
+
+    // Threshold for suggesting resync (after N consecutive out-of-sync checks)
+    private static final int SUGGEST_RESYNC_THRESHOLD = 2;
+
     // Map of entity type name (used by server) to table name (used by client)
     // This ensures we're comparing the same entities on both sides
     // Table names verified from @Table annotations in entity classes
@@ -114,6 +123,9 @@ public class SyncHealthChecker {
                 result.setSyncStatus(SyncStatus.UNKNOWN);
                 result.setMessage("Cannot reach sync server");
             }
+
+            // Track last successful sync and consecutive failures
+            updateSyncTracking(result);
 
             currentHealth.set(result);
 
@@ -327,6 +339,75 @@ public class SyncHealthChecker {
         return currentHealth.get();
     }
 
+    /**
+     * Update tracking for sync status and generate recommendations.
+     */
+    private void updateSyncTracking(SyncHealthResult result) {
+        Instant now = Instant.now();
+
+        if (result.getSyncStatus() == SyncStatus.IN_SYNC) {
+            // Record successful sync time
+            lastSuccessfulSyncTime.set(now);
+            consecutiveOutOfSyncCount = 0;
+            result.setSuggestResync(false);
+            result.setSuggestedSyncDate(null);
+            result.setRecommendation(null);
+        } else if (result.getSyncStatus() == SyncStatus.OUT_OF_SYNC ||
+                   result.getSyncStatus() == SyncStatus.POSSIBLY_OUT_OF_SYNC) {
+            consecutiveOutOfSyncCount++;
+
+            // Get the last successful sync date for suggestion
+            Instant lastGoodSync = lastSuccessfulSyncTime.get();
+
+            // Determine if we should suggest a resync
+            if (consecutiveOutOfSyncCount >= SUGGEST_RESYNC_THRESHOLD) {
+                result.setSuggestResync(true);
+
+                if (lastGoodSync != null) {
+                    // Suggest syncing from the last known good date
+                    String suggestedDate = lastGoodSync.atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate().toString();
+                    result.setSuggestedSyncDate(suggestedDate);
+                    result.setLastSuccessfulSyncTime(lastGoodSync);
+                    result.setRecommendation(String.format(
+                        "Data has been out of sync for %d consecutive checks. " +
+                        "Recommended action: Run partial sync from %s to restore consistency.",
+                        consecutiveOutOfSyncCount, suggestedDate));
+                } else {
+                    // No last good sync date available - suggest full resync
+                    result.setSuggestedSyncDate(null);
+                    result.setRecommendation(
+                        "Data is out of sync and no previous sync point is available. " +
+                        "Recommended action: Run a full resync to restore consistency.");
+                }
+
+                log.warn("Sync suggestion: {} consecutive out-of-sync checks. Suggested date: {}",
+                    consecutiveOutOfSyncCount, result.getSuggestedSyncDate());
+            } else {
+                result.setSuggestResync(false);
+                result.setLastSuccessfulSyncTime(lastGoodSync);
+            }
+        }
+
+        result.setConsecutiveOutOfSyncCount(consecutiveOutOfSyncCount);
+    }
+
+    /**
+     * Get the last successful sync time.
+     */
+    public Instant getLastSuccessfulSyncTime() {
+        return lastSuccessfulSyncTime.get();
+    }
+
+    /**
+     * Manually set the last successful sync time (e.g., after a successful partial sync).
+     */
+    public void recordSuccessfulSync() {
+        lastSuccessfulSyncTime.set(Instant.now());
+        consecutiveOutOfSyncCount = 0;
+        log.info("Recorded successful sync at {}", lastSuccessfulSyncTime.get());
+    }
+
     private Path getUploadsPath() {
         Path filesPath = Paths.get(filesRootPath);
         if (filesPath.isAbsolute()) {
@@ -358,6 +439,13 @@ public class SyncHealthChecker {
         private long fileDifference;
         private LocalSyncStats localStats;
         private ServerSyncStats serverStats;
+
+        // Sync suggestion fields
+        private boolean suggestResync;              // True if system recommends a resync
+        private String suggestedSyncDate;           // yyyy-MM-dd format date to sync from
+        private Instant lastSuccessfulSyncTime;     // When was the last successful sync
+        private String recommendation;              // Human-readable recommendation message
+        private int consecutiveOutOfSyncCount;      // How many consecutive checks were out of sync
     }
 
     @Data

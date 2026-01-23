@@ -116,6 +116,38 @@ export interface SyncHealthCheckResult {
   fileDifference: number;
   localStats: LocalSyncStats | null;
   serverStats: ServerSyncStats | null;
+  // Sync suggestion fields
+  suggestResync: boolean;              // True if system recommends a resync
+  suggestedSyncDate: string | null;    // yyyy-MM-dd format date to sync from
+  lastSuccessfulSyncTime: string | null; // When was the last successful sync
+  recommendation: string | null;       // Human-readable recommendation message
+  consecutiveOutOfSyncCount: number;   // How many consecutive checks were out of sync
+}
+
+// Partial Sync interfaces
+export interface PartialSyncDatesResponse {
+  availableDates: string[];        // List of dates in yyyy-MM-dd format
+  oldestDate: string | null;       // Oldest available date
+  latestDate: string | null;       // Most recent date
+  totalChangesInHistory: number;   // Total changes available
+  retentionDays: number;           // How long history is kept
+  errorMessage: string | null;
+}
+
+export interface PartialSyncPreview {
+  date: string;
+  changeCount: number;
+  filesToDownload: number;
+  filesToDelete: number;
+  filesUnchanged: number;
+  errorMessage: string | null;
+}
+
+export interface PartialSyncResult {
+  success: boolean;
+  message: string;
+  fileComparison: FileComparisonResult | null;
+  changesApplied: number;
 }
 
 @Injectable({
@@ -283,5 +315,33 @@ export class FullResyncService {
    */
   forceSyncHealthCheck(): Observable<SyncHealthCheckResult> {
     return this.http.post<SyncHealthCheckResult>(`${this.baseUrl}/sync-health/check`, {});
+  }
+
+  // ==================== PARTIAL SYNC METHODS ====================
+
+  /**
+   * Get available dates for partial sync.
+   * Returns a list of dates where sync history is available on the server.
+   */
+  getAvailableSyncDates(): Observable<PartialSyncDatesResponse> {
+    return this.http.get<PartialSyncDatesResponse>(`${this.baseUrl}/partial-sync/dates`);
+  }
+
+  /**
+   * Preview what would happen in a partial sync from a specific date.
+   * Returns counts of changes and files that would be affected.
+   */
+  previewPartialSync(date: string): Observable<PartialSyncPreview> {
+    return this.http.get<PartialSyncPreview>(`${this.baseUrl}/partial-sync/preview?date=${date}`);
+  }
+
+  /**
+   * Execute a partial sync from a specific date.
+   * Fetches and applies all field changes since the date, then resyncs files.
+   */
+  executePartialSync(date: string, force: boolean = false): Observable<PartialSyncResult> {
+    return this.http.post<PartialSyncResult>(
+      `${this.baseUrl}/partial-sync/execute?date=${date}&force=${force}`, {}
+    );
   }
 }

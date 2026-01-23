@@ -133,6 +133,8 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   connectionState = signal<'connected' | 'disconnected' | 'connecting'>('disconnected');
   syncHealthState = signal<SyncHealthStatusType>('UNKNOWN');
   syncHealthMessage = signal<string>('');
+  suggestResync = signal<boolean>(false);
+  suggestedSyncDate = signal<string | null>(null);
   recentUpdateCount = signal<number>(0);
   private updateTimer: any = null;
 
@@ -162,6 +164,8 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     const state = this.connectionState();
     const health = this.syncHealthState();
     const healthMessage = this.syncHealthMessage();
+    const shouldSuggestResync = this.suggestResync();
+    const syncDate = this.suggestedSyncDate();
 
     let statusText = '';
 
@@ -198,6 +202,15 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
         break;
     }
 
+    // Add sync suggestion if available
+    if (shouldSuggestResync) {
+      if (syncDate) {
+        statusText += `\n⚠️ Sync recommended from ${syncDate}`;
+      } else {
+        statusText += `\n⚠️ Full resync recommended`;
+      }
+    }
+
     if (updates > 0) {
       statusText += `\n${updates} recent update${updates > 1 ? 's' : ''}`;
     }
@@ -228,6 +241,8 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
         if (health) {
           this.syncHealthState.set(health.syncStatus);
           this.syncHealthMessage.set(health.message || '');
+          this.suggestResync.set(health.suggestResync || false);
+          this.suggestedSyncDate.set(health.suggestedSyncDate || null);
         }
       })
     );
