@@ -44,6 +44,21 @@
           <p><strong>Total Tags:</strong> {{ modalService.totalItems() }}</p>
           <p><strong>Tags per Batch:</strong> 4 (max)</p>
         </div>
+
+        <!-- QR Code Toggle -->
+        <div class="qr-toggle-section">
+          <button
+            (click)="toggleQr()"
+            class="btn qr-toggle"
+            [class.active]="modalService.withQr()"
+          >
+            @if (modalService.withQr()) {
+              <span class="qr-icon">▣</span> QR On
+            } @else {
+              <span class="qr-icon">▢</span> QR Off
+            }
+          </button>
+        </div>
       </div>
 
       <!-- Main content area -->

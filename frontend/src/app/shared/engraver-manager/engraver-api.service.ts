@@ -7,6 +7,7 @@ import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 export interface EngraverBatchResponse {
   csvPath: string;
   itemCount: number;
+  withQr: boolean;
   message: string;
 }
 
@@ -26,10 +27,13 @@ export class EngraverApiService {
   /**
    * Process a batch of LOTO point IDs for engraving.
    * Generates CSV and opens LightBurn.
+   * @param ids LOTO point IDs to process
+   * @param openLightBurn Whether to open LightBurn after generating CSV
+   * @param withQr Whether to include QR codes and use QR template
    */
-  processBatch(ids: number[], openLightBurn = true): Observable<SpringApiResponse<EngraverBatchResponse>> {
+  processBatch(ids: number[], openLightBurn = true, withQr = false): Observable<SpringApiResponse<EngraverBatchResponse>> {
     return this.http.post<SpringApiResponse<EngraverBatchResponse>>(
-      `${this.apiUrl}/process-batch?openLightBurn=${openLightBurn}`,
+      `${this.apiUrl}/process-batch?openLightBurn=${openLightBurn}&withQr=${withQr}`,
       ids
     );
   }
@@ -43,8 +47,9 @@ export class EngraverApiService {
 
   /**
    * Open LightBurn with the existing CSV file.
+   * @param withQr Whether to open QR template or text-only template
    */
-  openLightBurn(): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/open-lightburn`, {});
+  openLightBurn(withQr = false): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/open-lightburn?withQr=${withQr}`, {});
   }
 }

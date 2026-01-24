@@ -26,6 +26,9 @@ public class EngraverService {
     @Value("${engraver.lightburn.template:tag-array-text-only.lbrn2}")
     private String lightburnTemplate;
 
+    @Value("${engraver.lightburn.template-with-qr:tag-array-with-qr.lbrn2}")
+    private String lightburnTemplateWithQr;
+
     @Value("${engraver.lightburn.path:C:/Program Files/LightBurn/LightBurn.exe}")
     private String lightburnPath;
 
@@ -37,7 +40,7 @@ public class EngraverService {
      * The CSV has columns for 1-line, 2-line, and 3-line descriptions.
      * Header inclusion is controlled by engraver.csv.include-header property (default: false).
      */
-    public String generateCsvForBatch(List<LotoPoint> batch) throws IOException {
+    public String generateCsvForBatch(List<LotoPoint> batch, boolean withQr) throws IOException {
         File csvFile = new File(engraverDataPath, csvFilename);
 
         // Ensure directory exists
@@ -46,25 +49,28 @@ public class EngraverService {
         try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
             // Write header only if configured to include it
             if (includeHeader) {
-                writer.println("tagNumber,oneLineDesctiption,twoLineDesctiption1,twoLineDescription2,threeLneDescription1,threeLneDescription2,threeLneDescription3");
+                writer.println("tagNumber,oneLineDesctiption,twoLineDesctiption1,twoLineDescription2,threeLneDescription1,threeLneDescription2,threeLneDescription3,qrCode");
             }
 
             // Write each item
             for (LotoPoint point : batch) {
-                String[] row = mapLotoPointToCsvRow(point);
+                String[] row = mapLotoPointToCsvRow(point, withQr);
                 writer.println(String.join(",", row));
             }
         }
 
-        log.info("Generated CSV file at: {} with {} items (header: {})", csvFile.getAbsolutePath(), batch.size(), includeHeader);
+        log.info("Generated CSV file at: {} with {} items (header: {}, withQr: {})", csvFile.getAbsolutePath(), batch.size(), includeHeader, withQr);
         return csvFile.getAbsolutePath();
     }
 
     /**
      * Maps a LotoPoint to CSV columns based on description length.
      * Automatically determines whether to use 1, 2, or 3 line format.
+     * QR code is added as the last column (column 8) to preserve existing template mappings.
+     *
+     * CSV columns: tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, qrCode
      */
-    private String[] mapLotoPointToCsvRow(LotoPoint point) {
+    private String[] mapLotoPointToCsvRow(LotoPoint point, boolean withQr) {
         String tagNumber = escapeCsvField(point.getTagNumber() != null ? point.getTagNumber() : "");
         String description = point.getDescription() != null ? point.getDescription() : "";
 
@@ -93,7 +99,10 @@ public class EngraverService {
             threeLine3 = lines.length > 2 ? escapeCsvField(lines[2]) : "";
         }
 
-        return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3};
+        // QR code is the last column (column 8) - contains tag number if withQr is true
+        String qrCode = withQr ? tagNumber : "";
+
+        return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, qrCode};
     }
 
     /**
@@ -179,10 +188,12 @@ public class EngraverService {
     }
 
     /**
-     * Opens LightBurn with the template file.
+     * Opens LightBurn with the appropriate template file based on QR setting.
+     * On Windows, also brings the window to foreground if already open.
      */
-    public void openLightBurn() throws IOException {
-        File templateFile = new File(engraverDataPath, lightburnTemplate);
+    public void openLightBurn(boolean withQr) throws IOException {
+        String templateName = withQr ? lightburnTemplateWithQr : lightburnTemplate;
+        File templateFile = new File(engraverDataPath, templateName);
 
         if (!templateFile.exists()) {
             log.warn("LightBurn template not found: {}", templateFile.getAbsolutePath());
@@ -190,25 +201,42 @@ public class EngraverService {
         }
 
         try {
-            ProcessBuilder pb;
             String os = System.getProperty("os.name").toLowerCase();
 
             if (os.contains("win")) {
-                // Windows - try to open with associated program first
-                pb = new ProcessBuilder("cmd", "/c", "start", "", templateFile.getAbsolutePath());
+                // Windows - use PowerShell to open file and bring window to foreground
+                String psScript = String.format(
+                    "$file = '%s'; " +
+                    "Start-Process $file; " +
+                    "Start-Sleep -Milliseconds 500; " +
+                    "$wshell = New-Object -ComObject wscript.shell; " +
+                    "$wshell.AppActivate('LightBurn')",
+                    templateFile.getAbsolutePath().replace("'", "''")
+                );
+                ProcessBuilder pb = new ProcessBuilder("powershell", "-Command", psScript);
+                pb.start();
             } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", templateFile.getAbsolutePath());
+                // macOS - open and activate
+                ProcessBuilder pb = new ProcessBuilder("open", "-a", "LightBurn", templateFile.getAbsolutePath());
+                pb.start();
             } else {
                 // Linux
-                pb = new ProcessBuilder("xdg-open", templateFile.getAbsolutePath());
+                ProcessBuilder pb = new ProcessBuilder("xdg-open", templateFile.getAbsolutePath());
+                pb.start();
             }
 
-            pb.start();
-            log.info("Opened LightBurn with template: {}", templateFile.getAbsolutePath());
+            log.info("Opened LightBurn with template: {} (withQr: {})", templateFile.getAbsolutePath(), withQr);
         } catch (Exception e) {
             log.error("Failed to open LightBurn: {}", e.getMessage());
             throw new IOException("Failed to open LightBurn: " + e.getMessage());
         }
+    }
+
+    /**
+     * Opens LightBurn with the default (no QR) template.
+     */
+    public void openLightBurn() throws IOException {
+        openLightBurn(false);
     }
 
     /**

@@ -424,6 +424,40 @@
   font-size: 1.5rem;
 }
 
+/* QR Toggle Section */
+.qr-toggle-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn.qr-toggle {
+  width: 100%;
+  background: var(--secondary-background);
+  color: var(--secondary-text);
+  border: 2px solid var(--border-color);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn.qr-toggle:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-color);
+}
+
+.btn.qr-toggle.active {
+  background: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+}
+
+.btn.qr-toggle .qr-icon {
+  font-size: 1.1rem;
+  margin-right: 0.25rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .engraver-container {

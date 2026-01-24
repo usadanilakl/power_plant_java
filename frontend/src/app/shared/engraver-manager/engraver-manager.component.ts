@@ -39,10 +39,12 @@ export class EngraverManagerComponent {
     this.errorMessage = '';
     this.modalService.startProcessingCurrentBatch();
 
-    this.engraverApi.processBatch(ids).subscribe({
+    const withQr = this.modalService.withQr();
+    this.engraverApi.processBatch(ids, true, withQr).subscribe({
       next: (response) => {
         if (response.responseData) {
-          this.statusMessage = `CSV generated with ${response.responseData.itemCount} items. LightBurn opened.`;
+          const qrText = withQr ? ' (with QR)' : '';
+          this.statusMessage = `CSV generated with ${response.responseData.itemCount} items${qrText}. LightBurn opened.`;
           // Don't auto-complete - user must click "Mark Complete" after engraving
         } else {
           this.errorMessage = response.message || 'Failed to process batch';
@@ -76,7 +78,8 @@ export class EngraverManagerComponent {
    */
   reopenLightBurn(): void {
     this.statusMessage = 'Opening LightBurn...';
-    this.engraverApi.openLightBurn().subscribe({
+    const withQr = this.modalService.withQr();
+    this.engraverApi.openLightBurn(withQr).subscribe({
       next: () => {
         this.statusMessage = 'LightBurn opened';
       },
@@ -84,6 +87,13 @@ export class EngraverManagerComponent {
         this.errorMessage = err.message || 'Failed to open LightBurn';
       }
     });
+  }
+
+  /**
+   * Toggle QR code setting.
+   */
+  toggleQr(): void {
+    this.modalService.toggleQr();
   }
 
   /**

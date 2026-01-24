@@ -20,6 +20,7 @@ export class EngraverModalService {
   currentBatchIndex = signal(0);
   batches = signal<EngraverBatchItem[]>([]);
   isProcessing = signal(false);
+  withQr = signal(false);
 
   // Computed signals
   totalBatches = computed(() => this.batches().length);
@@ -152,6 +153,13 @@ export class EngraverModalService {
   }
 
   /**
+   * Toggles QR code setting.
+   */
+  toggleQr(): void {
+    this.withQr.set(!this.withQr());
+  }
+
+  /**
    * Closes the modal and resets state.
    */
   close(): void {
@@ -160,5 +168,6 @@ export class EngraverModalService {
     this.batches.set([]);
     this.currentBatchIndex.set(0);
     this.isProcessing.set(false);
+    this.withQr.set(false);
   }
 }
