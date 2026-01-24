@@ -157,3 +157,4 @@ machine-id.properties
 /loto-boxes/loto-boxes-app/**
 /loto-boxes/dist-electron/**
 /uploads-test/**
+/uploads-dev/**

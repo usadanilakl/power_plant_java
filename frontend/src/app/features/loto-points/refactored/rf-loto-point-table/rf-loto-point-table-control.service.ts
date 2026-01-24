@@ -6,6 +6,7 @@ import { RfLotoPointStateService } from "../services/rf-loto-point-state.service
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
 import { LotoPointBulkEditService } from "../services/loto-point-bulk-edit.service";
 import { BradyPrinterModalService } from "../../../../shared/brady-printer-manager/brady-printer-modal.service";
+import { EngraverModalService } from "../../../../shared/engraver-manager/engraver-modal.service";
 import { ExportDialogService } from "../../../../shared/export-dialog/export-dialog.service";
 import { ExcelService } from "../../../../services/excel.service";
 
@@ -14,6 +15,7 @@ export class LotoPointTableControlService extends TableControlsService  {
     private stateService = inject(RfLotoPointStateService);
     private bulkEditService = inject(LotoPointBulkEditService);
     private bradyModalService = inject(BradyPrinterModalService);
+    private engraverModalService = inject(EngraverModalService);
     private exportDialogService = inject(ExportDialogService);
     private excelService = inject(ExcelService);
 
@@ -74,6 +76,16 @@ export class LotoPointTableControlService extends TableControlsService  {
             color: 'primary' as ButtonColor,
             icon: 'print',
             tooltip: 'Print labels for selected LOTO points'
+          },
+          {
+            name: 'Engrave Tags',
+            action: () => {
+              const selectedItems = this.stateService.selectedItems();
+              this.engraverModalService.openWithItems(selectedItems);
+            },
+            color: 'primary' as ButtonColor,
+            icon: 'hardware',
+            tooltip: 'Engrave tags for selected LOTO points (batches of 4)'
           }
         ]);
     }

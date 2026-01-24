@@ -1,0 +1,175 @@
+@if (modalService.isVisible()) {
+  <app-popup-projection
+    [title]="'Engraver Manager'"
+    [size]="'large'"
+    [isOpen]="true"
+    (close)="close()"
+  >
+    <div class="engraver-container">
+      <!-- Batch sidebar -->
+      <div class="batch-sidebar">
+        <div class="batch-header">
+          <h4>Batches</h4>
+          <span class="batch-count">{{ modalService.completedBatches() }} / {{ modalService.totalBatches() }}</span>
+        </div>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar" [style.width.%]="progressPercentage()"></div>
+        </div>
+
+        <div class="batch-list">
+          @for (batch of modalService.batches(); track batch.batchNumber; let i = $index) {
+            <div
+              class="batch-item"
+              [class.active]="modalService.currentBatchIndex() === i"
+              [class.completed]="batch.status === 'completed'"
+              [class.error]="batch.status === 'error'"
+              [class.processing]="batch.status === 'processing'"
+              (click)="modalService.selectBatch(i)"
+            >
+              <span class="batch-item-status">
+                <span class="status-icon" [class.spinning]="batch.status === 'processing'">
+                  {{ getStatusIcon(batch.status) }}
+                </span>
+              </span>
+              <div class="batch-item-content">
+                <span class="batch-item-title">Batch {{ batch.batchNumber }}</span>
+                <span class="batch-item-count">{{ batch.items.length }} tags</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="batch-info">
+          <p><strong>Total Tags:</strong> {{ modalService.totalItems() }}</p>
+          <p><strong>Tags per Batch:</strong> 4 (max)</p>
+        </div>
+      </div>
+
+      <!-- Main content area -->
+      <div class="main-content">
+        <div class="current-batch-header">
+          <h3>
+            Batch {{ modalService.currentBatchIndex() + 1 }} of {{ modalService.totalBatches() }}
+          </h3>
+          @if (modalService.currentBatch(); as batch) {
+            <span class="batch-status-badge" [class]="batch.status">
+              {{ batch.status | titlecase }}
+            </span>
+          }
+        </div>
+
+        <!-- Current batch items table -->
+        @if (modalService.currentBatch(); as batch) {
+          <div class="batch-items-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tag Number</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of batch.items; track item.id; let i = $index) {
+                  <tr>
+                    <td class="row-number">{{ i + 1 }}</td>
+                    <td class="tag-number">{{ item.tagNumber || '(no tag)' }}</td>
+                    <td class="description">{{ item.description || '(no description)' }}</td>
+                  </tr>
+                }
+                @for (_ of [].constructor(4 - batch.items.length); track $index) {
+                  <tr class="empty-row">
+                    <td class="row-number">{{ batch.items.length + $index + 1 }}</td>
+                    <td colspan="2" class="empty-cell">— empty slot —</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- Actions section -->
+        <div class="actions-section">
+          @if (modalService.currentBatch()?.status !== 'completed') {
+            <button
+              (click)="processBatch()"
+              [disabled]="modalService.isProcessing()"
+              class="btn primary"
+            >
+              @if (modalService.isProcessing()) {
+                Processing...
+              } @else {
+                Process in LightBurn
+              }
+            </button>
+
+            @if (modalService.currentBatch()?.status === 'processing') {
+              <button (click)="reopenLightBurn()" class="btn secondary">
+                Reopen LightBurn
+              </button>
+            }
+
+            <button
+              (click)="markCompleteAndNext()"
+              [disabled]="modalService.currentBatch()?.status === 'pending'"
+              class="btn success"
+            >
+              @if (modalService.hasNextBatch()) {
+                Mark Complete & Next →
+              } @else {
+                Mark Complete
+              }
+            </button>
+          } @else {
+            <div class="completed-message">
+              <span class="check-icon">✓</span>
+              This batch has been completed
+            </div>
+
+            @if (modalService.hasNextBatch()) {
+              <button (click)="modalService.nextBatch()" class="btn primary">
+                Next Batch →
+              </button>
+            }
+          }
+        </div>
+
+        <!-- Navigation buttons -->
+        <div class="navigation-section">
+          <button
+            (click)="modalService.previousBatch()"
+            [disabled]="!modalService.hasPreviousBatch()"
+            class="btn secondary"
+          >
+            ← Previous
+          </button>
+          <button
+            (click)="modalService.nextBatch()"
+            [disabled]="!modalService.hasNextBatch()"
+            class="btn secondary"
+          >
+            Next →
+          </button>
+        </div>
+
+        <!-- Status messages -->
+        @if (statusMessage) {
+          <div class="status-message">{{ statusMessage }}</div>
+        }
+        @if (errorMessage) {
+          <div class="error-message">{{ errorMessage }}</div>
+        }
+
+        <!-- All complete message -->
+        @if (modalService.allBatchesCompleted()) {
+          <div class="all-complete-message">
+            <span class="success-icon">✓</span>
+            <span>All {{ modalService.totalBatches() }} batches completed!</span>
+            <button (click)="close()" class="btn primary">Close</button>
+          </div>
+        }
+      </div>
+    </div>
+  </app-popup-projection>
+}

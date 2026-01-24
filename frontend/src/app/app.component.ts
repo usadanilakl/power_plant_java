@@ -5,6 +5,7 @@ import { GlobalMessageComponent } from "./shared/global-message/global-message.c
 import { GlobalContextMenuComponent } from "./shared/menu/context-menu/global-context-menu/global-context-menu.component";
 import { QrScannerComponent } from "./shared/qr-code/qr-scanner/qr-scanner.component";
 import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/brady-printer-manager.component";
+import { EngraverManagerComponent } from "./shared/engraver-manager/engraver-manager.component";
 import { WizardDialogComponent, WizardStackService, WizardFlowType } from "./shared/guide/guide-form";
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +22,7 @@ import { MatMenuModule } from '@angular/material/menu';
     GlobalContextMenuComponent,
     QrScannerComponent,
     BradyPrinterManagerComponent,
+    EngraverManagerComponent,
     WizardDialogComponent,
     MatButtonModule,
     MatIconModule,

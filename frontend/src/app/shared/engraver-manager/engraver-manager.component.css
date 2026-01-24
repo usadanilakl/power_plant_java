@@ -1,0 +1,442 @@
+/* Main Container */
+.engraver-container {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  background-color: var(--card-background);
+  color: var(--primary-text);
+  min-height: 400px;
+}
+
+/* Batch Sidebar Styles */
+.batch-sidebar {
+  width: 280px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  background: var(--secondary-background);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.batch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.batch-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.batch-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: var(--primary-background);
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  height: 6px;
+  background: var(--primary-background);
+  border-radius: 3px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Batch List */
+.batch-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.batch-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.batch-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.batch-list::-webkit-scrollbar-thumb {
+  background: var(--scroll-bar-color);
+  border-radius: 3px;
+}
+
+.batch-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--primary-background);
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.batch-item:hover {
+  transform: translateY(-1px);
+  background: var(--hover-color);
+}
+
+.batch-item.active {
+  border-color: var(--accent-color);
+  background: var(--menu-item-hover-bg-color);
+}
+
+.batch-item.completed {
+  opacity: 0.85;
+  background: var(--success-background);
+}
+
+.batch-item.error {
+  background: var(--error-background);
+}
+
+.batch-item.processing {
+  background: var(--menu-item-hover-bg-color);
+  border-color: var(--accent-color);
+}
+
+.batch-item-status {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.status-icon {
+  display: inline-block;
+  color: var(--secondary-text);
+}
+
+.status-icon.spinning {
+  animation: spin 1s linear infinite;
+  color: var(--accent-color);
+}
+
+.batch-item.completed .status-icon {
+  color: #27ae60;
+}
+
+.batch-item.error .status-icon {
+  color: #e74c3c;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.batch-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.batch-item-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--primary-text);
+}
+
+.batch-item-count {
+  font-size: 0.75rem;
+  color: var(--secondary-text);
+}
+
+.batch-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+}
+
+.batch-info p {
+  margin: 0.25rem 0;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.current-batch-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.current-batch-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.batch-status-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.batch-status-badge.pending {
+  background: var(--secondary-background);
+  color: var(--secondary-text);
+  border: 1px solid var(--border-color);
+}
+
+.batch-status-badge.processing {
+  background: var(--menu-item-hover-bg-color);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+}
+
+.batch-status-badge.completed {
+  background: var(--success-background);
+  color: #27ae60;
+  border: 1px solid #27ae60;
+}
+
+.batch-status-badge.error {
+  background: var(--error-background);
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
+
+/* Batch Items Table */
+.batch-items-table {
+  background: var(--secondary-background);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.batch-items-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.batch-items-table th,
+.batch-items-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.batch-items-table th {
+  background: var(--primary-background);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.batch-items-table tr:last-child td {
+  border-bottom: none;
+}
+
+.batch-items-table .row-number {
+  width: 40px;
+  text-align: center;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.batch-items-table .tag-number {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-weight: 600;
+  color: var(--accent-color);
+  white-space: nowrap;
+}
+
+.batch-items-table .description {
+  color: var(--primary-text);
+}
+
+.batch-items-table .empty-row {
+  opacity: 0.5;
+}
+
+.batch-items-table .empty-cell {
+  text-align: center;
+  font-style: italic;
+  color: var(--secondary-text);
+}
+
+/* Actions Section */
+.actions-section {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.navigation-section {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--disabled-background) !important;
+}
+
+.btn.primary {
+  background: var(--accent-color);
+  color: #ffffff;
+  box-shadow: var(--accent-color-shadow) 0 2px 8px;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-color-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--accent-color-shadow) 0 4px 12px;
+}
+
+.btn.secondary {
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: var(--hover-color);
+  border-color: var(--accent-color);
+}
+
+.btn.success {
+  background: #27ae60;
+  color: #ffffff;
+  box-shadow: rgba(39, 174, 96, 0.3) 0 2px 8px;
+}
+
+.btn.success:hover:not(:disabled) {
+  background: #219a52;
+  transform: translateY(-1px);
+  box-shadow: rgba(39, 174, 96, 0.4) 0 4px 12px;
+}
+
+/* Messages */
+.status-message {
+  padding: 0.75rem 1rem;
+  background: var(--menu-item-hover-bg-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--accent-color);
+}
+
+.error-message {
+  padding: 0.75rem 1rem;
+  background: var(--error-background);
+  border: 1px solid #e74c3c;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #e74c3c;
+}
+
+.completed-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--success-background);
+  border: 1px solid #27ae60;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #27ae60;
+}
+
+.check-icon {
+  font-size: 1.1rem;
+}
+
+.all-complete-message {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--success-background);
+  border: 2px solid #27ae60;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #27ae60;
+}
+
+.success-icon {
+  font-size: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .engraver-container {
+    flex-direction: column;
+  }
+
+  .batch-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-height: 250px;
+  }
+
+  .batch-list {
+    max-height: 120px;
+  }
+}
