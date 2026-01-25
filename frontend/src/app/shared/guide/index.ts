@@ -1,6 +1,5 @@
 // Guide System Public API
 export { GuideDirective } from './guide.directive';
-export { GuideMenuComponent } from './guide-menu.component';
 export { GuideService } from '../../services/guide/guide.service';
 export type {
   Guide,

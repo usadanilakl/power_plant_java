@@ -864,57 +864,6 @@ tr.reactive-guide-highlight,
   z-index: 10 !important;
 }
 
-/* src/app/shared/guide/contextual-guide.styles.css */
-.contextual-guide-target {
-  transition: box-shadow 0.3s ease, outline 0.3s ease;
-}
-.contextual-guide-highlight {
-  outline: 3px solid var(--primary-color, #1976d2) !important;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 6px rgba(25, 118, 210, 0.2) !important;
-  position: relative;
-  z-index: 100;
-}
-.contextual-guide-pulse {
-  animation: contextual-pulse 1.5s ease-in-out infinite;
-}
-@keyframes contextual-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 6px rgba(25, 118, 210, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(25, 118, 210, 0.4);
-  }
-}
-.contextual-guide-highlight::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: -1;
-}
-@media (prefers-color-scheme: dark) {
-  .contextual-guide-highlight {
-    outline-color: #64b5f6;
-    box-shadow: 0 0 0 6px rgba(100, 181, 246, 0.3) !important;
-  }
-  .contextual-guide-pulse {
-    animation: contextual-pulse-dark 1.5s ease-in-out infinite;
-  }
-  @keyframes contextual-pulse-dark {
-    0%, 100% {
-      box-shadow: 0 0 0 6px rgba(100, 181, 246, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 0 10px rgba(100, 181, 246, 0.5);
-    }
-  }
-}
-
 /* src/styles.css */
 * {
   padding: 0;

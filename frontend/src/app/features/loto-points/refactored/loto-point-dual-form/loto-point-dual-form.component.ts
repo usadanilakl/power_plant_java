@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, of, tap } from 'rxjs';
+import { catchError, of, tap, switchMap } from 'rxjs';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { LotoPointClipboardItem } from '../../../../models/loto/loto-point-clipboard.model';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
@@ -211,8 +211,8 @@ export class LotoPointDualFormComponent {
       this.targetUnit.set(this.counterpartService.getTargetUnit(source));
 
       if (primary?.id) {
-        // Existing item: load counterpart by ID
-        this.loadCounterpart(primary.id);
+        // Existing item: load fresh data from API and counterpart
+        this.loadPrimaryAndCounterpart(primary.id);
       } else if (primary?.tagNumber) {
         // New item: try to find counterpart by tag number
         this.loadCounterpartByTagNumber(primary.tagNumber);
@@ -224,7 +224,69 @@ export class LotoPointDualFormComponent {
   }
 
   /**
-   * Load counterpart data from API
+   * Load fresh primary data from API and then load counterpart.
+   * This ensures we have the latest data from the database, not stale in-memory data.
+   */
+  private loadPrimaryAndCounterpart(primaryId: number): void {
+    this.isLoading.set(true);
+    this.showManualSearch.set(false);
+
+    // First load the fresh primary data
+    this.apiService
+      .getLotoPointById(String(primaryId))
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if (response.responseData) {
+            // Update the current primary values with fresh data from API
+            const freshPrimary = LotoPointDto.fromJson(response.responseData);
+            this.currentPrimaryValues.set(freshPrimary);
+          }
+        }),
+        switchMap(() => {
+          // Now load counterpart data
+          return this.apiService.getUnitCounterpart(primaryId);
+        }),
+        tap((response) => {
+          if (response.responseData) {
+            const data = response.responseData as any;
+            const counterpart = LotoPointDto.fromJson(data.counterpart);
+            this.counterpartLotoPoint.set(counterpart);
+            this.currentCounterpartValues.set(counterpart);
+            this.isCounterpartNew.set(data.isNew);
+            this.isCounterpartLinked.set(data.isLinked ?? false);
+            this.sourceUnit.set(data.sourceUnit);
+            this.targetUnit.set(data.targetUnit);
+
+            // Set status based on response
+            if (data.isLinked) {
+              this.counterpartStatus.set('linked');
+            } else if (!data.isNew) {
+              this.counterpartStatus.set('found');
+            } else {
+              this.counterpartStatus.set('suggested');
+            }
+
+            this.updateDifferentFields();
+          } else {
+            // No counterpart data returned
+            this.counterpartStatus.set('not-found');
+          }
+          this.isLoading.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error loading primary and counterpart:', error);
+          this.messageService.showError('Failed to load LOTO point data');
+          this.counterpartStatus.set('not-found');
+          this.isLoading.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Load counterpart data from API (legacy method, now only used for new items)
    */
   private loadCounterpart(primaryId: number): void {
     this.isLoading.set(true);

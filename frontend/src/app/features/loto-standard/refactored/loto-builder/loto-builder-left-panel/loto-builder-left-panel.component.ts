@@ -8,7 +8,6 @@ import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-ta
 import { LotoBuilderLotoPointLeftMenuComponent } from './loto-builder-loto-point-left-menu/loto-builder-loto-point-left-menu.component';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
-import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
 
 @Component({
   selector: 'app-loto-builder-left-panel',
@@ -22,7 +21,6 @@ import { ContextualGuideDirective } from '../../../../../shared/guide/contextual
     LotoBuilderLotoPointLeftMenuComponent,
     GuideDirective,
     ReactiveGuideDirective,
-    ContextualGuideDirective,
   ],
   templateUrl: './loto-builder-left-panel.component.html',
   styleUrl: './loto-builder-left-panel.component.css',

@@ -65651,7 +65651,7 @@ var EquipmentListManagerComponent = class _EquipmentListManagerComponent {
         return;
       }
       this.lotoFormContainer.clear();
-      const { RfReactiveFormComponent: RfReactiveFormComponent2 } = yield import("./chunk-7ZAXQF6Y.js");
+      const { RfReactiveFormComponent: RfReactiveFormComponent2 } = yield import("./chunk-KYVISFIP.js");
       const componentRef = this.lotoFormContainer.createComponent(RfReactiveFormComponent2);
       componentRef.setInput("fields", this.lotoPointFormFields());
       componentRef.setInput("entity", this.newLotoPoint());
@@ -73024,7 +73024,6 @@ export {
   ɵɵinject,
   inject,
   EnvironmentInjector,
-  runInInjectionContext,
   ɵɵNgOnChangesFeature,
   ɵɵrestoreView,
   ɵɵresetView,
@@ -73503,4 +73502,4 @@ export {
    * License: MIT
    *)
 */
-//# sourceMappingURL=chunk-LCTRLMJA.js.map
+//# sourceMappingURL=chunk-2DJQGDSD.js.map

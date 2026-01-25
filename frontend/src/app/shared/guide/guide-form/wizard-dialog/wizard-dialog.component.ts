@@ -22,6 +22,7 @@ import { WizardBreadcrumbComponent } from './wizard-breadcrumb.component';
 import { WizardStepIndicatorComponent } from './wizard-step-indicator.component';
 import { WizardBranchRequest, StepDataPayload, WizardEntityData } from '../wizard-stack.types';
 import { RfLotoStandardApiService } from '../../../../features/loto-standard/refactored/services/rf-loto-standard-api.service';
+import { RfLotoStandardStateService } from '../../../../features/loto-standard/refactored/services/rf-loto-standard-state.service';
 import { RfLotoPointApiService } from '../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
 import { RfValueApiService } from '../../../../features/values/refactored/services/rf-value-api.service';
 import { RfFileApiService } from '../../../../features/files/refactored/services/rf-file-api.service';
@@ -176,6 +177,16 @@ import { FileDto } from '../../../../models/file/file.model';
                       {{ wizardService.isBranch() ? 'Save & Return' : 'Save' }}
                     </button>
                   }
+                } @else if (isCounterpartCreationStep()) {
+                  <!-- Counterpart creation step has its own buttons inside the step component -->
+                  <!-- Just show a Skip button to allow skipping counterpart creation -->
+                  <button
+                    mat-stroked-button
+                    (click)="onNext()"
+                    class="skip-btn"
+                  >
+                    Skip Counterpart
+                  </button>
                 } @else if (isWelcomeStep()) {
                   <button
                     mat-flat-button
@@ -380,6 +391,7 @@ import { FileDto } from '../../../../models/file/file.model';
 export class WizardDialogComponent implements OnInit, OnDestroy {
   wizardService = inject(WizardStackService);
   private lotoStandardApi = inject(RfLotoStandardApiService);
+  private lotoStandardStateService = inject(RfLotoStandardStateService);
   private lotoPointApi = inject(RfLotoPointApiService);
   private valueApi = inject(RfValueApiService);
   private fileApi = inject(RfFileApiService);
@@ -405,6 +417,7 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
   isWelcomeStep = computed(() => this.wizardService.currentStep()?.type === 'welcome');
   isReviewStep = computed(() => this.wizardService.currentStep()?.type === 'review');
   isCompleteStep = computed(() => this.wizardService.currentStep()?.type === 'complete');
+  isCounterpartCreationStep = computed(() => this.wizardService.currentStep()?.type === 'counterpart-creation');
 
   canProceed = computed(() => {
     const step = this.wizardService.currentStep();
@@ -497,6 +510,7 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
       // Complete branch and return result to parent
       const frame = this.wizardService.currentFrame();
       const entityData = frame?.entityData;
+      const flowType = frame?.flow.type;
 
       // Include saved entity ID in the return data
       if (entityData && this.savedEntityId()) {
@@ -512,7 +526,23 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
         }
       }
 
-      this.wizardService.completeBranch(entityData);
+      // Extract the correct entity to return based on flow type
+      // completeBranch expects the entity value, not the full WizardEntityData container
+      let entityToReturn: any = entityData;
+
+      if (flowType === 'add-loto-point' || flowType === 'add-loto-point-simple') {
+        entityToReturn = entityData?.lotoPoint;
+      } else if (flowType === 'create-value') {
+        entityToReturn = entityData?.value;
+      } else if (flowType === 'upload-file' || flowType === 'select-file') {
+        entityToReturn = entityData?.file;
+      } else if (flowType === 'create-zero-energy') {
+        entityToReturn = entityData?.zeroEnergy;
+      } else if (flowType === 'build-standard' || flowType === 'modify-standard') {
+        entityToReturn = entityData?.lotoStandard;
+      }
+
+      this.wizardService.completeBranch(entityToReturn);
       this.savedEntityId.set(null);
     } else {
       // Complete entire wizard
@@ -580,6 +610,15 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
           );
         }
       }
+    }
+
+    // Notify state service to update lists - fetch the full saved standard
+    const fullStandardResponse = await firstValueFrom(
+      this.lotoStandardApi.getLotoStandardById(String(standardId))
+    );
+    if (fullStandardResponse.responseData) {
+      const savedStandard = LotoStandardDto.fromJson(fullStandardResponse.responseData);
+      this.lotoStandardStateService.updateLotoStandardInList(savedStandard);
     }
 
     console.log('LOTO Standard saved successfully:', standardId);

@@ -191,7 +191,30 @@ export const BUILD_STANDARD_FLOW: WizardFlow = {
       ],
     },
 
-    // Step 7: Complete
+    // Step 7: Create Counterpart Standard (conditional)
+    {
+      id: 'counterpart-creation',
+      type: 'counterpart-creation',
+      title: 'Create Counterpart Standard',
+      description: 'Creating the matching LOTO standard for the other unit.',
+      skipCondition: (frame: WizardContextFrame) => {
+        return frame.entityData.lotoStandard?.buildCounterpart !== true;
+      },
+      hints: [
+        {
+          message: 'LOTO points without counterparts will need to be created.',
+          icon: 'sync',
+          type: 'info',
+        },
+        {
+          message: 'Counterpart names and descriptions are auto-transformed (01 ↔ 02).',
+          icon: 'auto_fix_high',
+          type: 'tip',
+        },
+      ],
+    },
+
+    // Step 8: Complete
     {
       id: 'complete',
       type: 'complete',

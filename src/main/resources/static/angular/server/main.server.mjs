@@ -63948,7 +63948,29 @@ var BUILD_STANDARD_FLOW = {
         }
       ]
     },
-    // Step 7: Complete
+    // Step 7: Create Counterpart Standard (conditional)
+    {
+      id: "counterpart-creation",
+      type: "counterpart-creation",
+      title: "Create Counterpart Standard",
+      description: "Creating the matching LOTO standard for the other unit.",
+      skipCondition: (frame2) => {
+        return frame2.entityData.lotoStandard?.buildCounterpart !== true;
+      },
+      hints: [
+        {
+          message: "LOTO points without counterparts will need to be created.",
+          icon: "sync",
+          type: "info"
+        },
+        {
+          message: "Counterpart names and descriptions are auto-transformed (01 \u2194 02).",
+          icon: "auto_fix_high",
+          type: "tip"
+        }
+      ]
+    },
+    // Step 8: Complete
     {
       id: "complete",
       type: "complete",
@@ -83187,10 +83209,10 @@ function WizardReviewStepComponent_For_2_Conditional_2_Template(rf, ctx) {
 }
 function WizardReviewStepComponent_For_2_For_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 5)(1, "span", 6);
+    \u0275\u0275elementStart(0, "div", 6)(1, "span", 7);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 7);
+    \u0275\u0275elementStart(3, "span", 8);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -83206,16 +83228,17 @@ function WizardReviewStepComponent_For_2_For_6_Template(rf, ctx) {
 }
 function WizardReviewStepComponent_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 1)(1, "h4", 3);
+    \u0275\u0275elementStart(0, "div", 3)(1, "h4", 4);
     \u0275\u0275template(2, WizardReviewStepComponent_For_2_Conditional_2_Template, 2, 1, "mat-icon");
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div", 4);
-    \u0275\u0275repeaterCreate(5, WizardReviewStepComponent_For_2_For_6_Template, 5, 4, "div", 5, _forTrack13);
+    \u0275\u0275elementStart(4, "div", 5);
+    \u0275\u0275repeaterCreate(5, WizardReviewStepComponent_For_2_For_6_Template, 5, 4, "div", 6, _forTrack13);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const section_r1 = ctx.$implicit;
+    \u0275\u0275classMap(section_r1.cssClass || "");
     \u0275\u0275advance(2);
     \u0275\u0275conditional(section_r1.icon ? 2 : -1);
     \u0275\u0275advance();
@@ -83260,6 +83283,7 @@ var WizardReviewStepComponent = class _WizardReviewStepComponent {
         sections.push({
           title: "Included LOTO Points",
           icon: "location_on",
+          cssClass: "loto-points-section",
           items: std.lotoPoints.map((p, i) => ({
             label: `Point ${i + 1}`,
             value: p.tagNumber || p.description || `ID: ${p.id}`
@@ -83332,10 +83356,10 @@ var WizardReviewStepComponent = class _WizardReviewStepComponent {
   static \u0275fac = function WizardReviewStepComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _WizardReviewStepComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardReviewStepComponent, selectors: [["app-wizard-review-step"]], inputs: { step: [1, "step"], frame: [1, "frame"] }, decls: 4, vars: 1, consts: [[1, "review-container"], [1, "review-section"], [1, "empty-review"], [1, "section-title"], [1, "section-content"], [1, "review-item"], [1, "item-label"], [1, "item-value"]], template: function WizardReviewStepComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardReviewStepComponent, selectors: [["app-wizard-review-step"]], inputs: { step: [1, "step"], frame: [1, "frame"] }, decls: 4, vars: 1, consts: [[1, "review-container"], [1, "review-section", 3, "class"], [1, "empty-review"], [1, "review-section"], [1, "section-title"], [1, "section-content"], [1, "review-item"], [1, "item-label"], [1, "item-value"]], template: function WizardReviewStepComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0);
-      \u0275\u0275repeaterCreate(1, WizardReviewStepComponent_For_2_Template, 7, 2, "div", 1, _forTrack011);
+      \u0275\u0275repeaterCreate(1, WizardReviewStepComponent_For_2_Template, 7, 4, "div", 1, _forTrack011);
       \u0275\u0275template(3, WizardReviewStepComponent_Conditional_3_Template, 5, 0, "div", 2);
       \u0275\u0275elementEnd();
     }
@@ -83345,10 +83369,10 @@ var WizardReviewStepComponent = class _WizardReviewStepComponent {
       \u0275\u0275advance(2);
       \u0275\u0275conditional(ctx.reviewSections().length === 0 ? 3 : -1);
     }
-  }, dependencies: [CommonModule, MatIconModule, MatIcon], styles: ["\n\n.review-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 24px;\n}\n.review-section[_ngcontent-%COMP%] {\n  background: #f9f9f9;\n  border-radius: 8px;\n  overflow: hidden;\n}\n.section-title[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0;\n  padding: 12px 16px;\n  background: #f0f0f0;\n  font-size: 14px;\n  font-weight: 500;\n  color: #333;\n}\n.section-title[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n  color: #1976d2;\n}\n.section-content[_ngcontent-%COMP%] {\n  padding: 8px 0;\n}\n.review-item[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: flex-start;\n  padding: 8px 16px;\n  border-bottom: 1px solid #eee;\n}\n.review-item[_ngcontent-%COMP%]:last-child {\n  border-bottom: none;\n}\n.item-label[_ngcontent-%COMP%] {\n  color: #666;\n  font-size: 13px;\n}\n.item-value[_ngcontent-%COMP%] {\n  font-weight: 500;\n  color: #333;\n  text-align: right;\n  max-width: 60%;\n  word-break: break-word;\n}\n.item-value.empty[_ngcontent-%COMP%] {\n  color: #999;\n  font-style: italic;\n  font-weight: normal;\n}\n.empty-review[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 40px;\n  color: #666;\n}\n.empty-review[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 48px;\n  width: 48px;\n  height: 48px;\n  color: #ccc;\n}\n/*# sourceMappingURL=wizard-review-step.component.css.map */"] });
+  }, dependencies: [CommonModule, MatIconModule, MatIcon], styles: ["\n\n.review-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 24px;\n}\n.review-section[_ngcontent-%COMP%] {\n  background: #f9f9f9;\n  border-radius: 8px;\n  overflow: hidden;\n}\n.section-title[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0;\n  padding: 12px 16px;\n  background: #f0f0f0;\n  font-size: 14px;\n  font-weight: 500;\n  color: #333;\n}\n.section-title[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n  color: #1976d2;\n}\n.section-content[_ngcontent-%COMP%] {\n  padding: 8px 0;\n}\n.loto-points-section[_ngcontent-%COMP%]   .section-content[_ngcontent-%COMP%] {\n  max-height: 250px;\n  overflow-y: auto;\n}\n.review-item[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: flex-start;\n  padding: 8px 16px;\n  border-bottom: 1px solid #eee;\n}\n.review-item[_ngcontent-%COMP%]:last-child {\n  border-bottom: none;\n}\n.item-label[_ngcontent-%COMP%] {\n  color: #666;\n  font-size: 13px;\n}\n.item-value[_ngcontent-%COMP%] {\n  font-weight: 500;\n  color: #333;\n  text-align: right;\n  max-width: 60%;\n  word-break: break-word;\n}\n.item-value.empty[_ngcontent-%COMP%] {\n  color: #999;\n  font-style: italic;\n  font-weight: normal;\n}\n.empty-review[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 40px;\n  color: #666;\n}\n.empty-review[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 48px;\n  width: 48px;\n  height: 48px;\n  color: #ccc;\n}\n/*# sourceMappingURL=wizard-review-step.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardReviewStepComponent, { className: "WizardReviewStepComponent", filePath: "src/app/shared/guide/guide-form/steps/wizard-review-step.component.ts", lineNumber: 128 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardReviewStepComponent, { className: "WizardReviewStepComponent", filePath: "src/app/shared/guide/guide-form/steps/wizard-review-step.component.ts", lineNumber: 141 });
 })();
 
 // src/app/shared/guide/guide-form/steps/wizard-complete-step.component.ts
@@ -104793,665 +104817,6 @@ var WizardLotoPointSelectorStepComponent = class _WizardLotoPointSelectorStepCom
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardLotoPointSelectorStepComponent, { className: "WizardLotoPointSelectorStepComponent", filePath: "src/app/shared/guide/guide-form/steps/wizard-loto-point-selector-step.component.ts", lineNumber: 626 });
 })();
 
-// src/app/shared/guide/guide-form/wizard-dialog/wizard-step-renderer.component.ts
-function WizardStepRendererComponent_Conditional_0_Case_7_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "app-wizard-welcome-step", 5);
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_8_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r2 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-text-input-step", 13);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_8_Template_app_wizard_text_input_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r2);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.inputConfig == null ? null : tmp_3_0.inputConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_9_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-text-input-step", 14);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_9_Template_app_wizard_text_input_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.inputConfig == null ? null : tmp_3_0.inputConfig.fieldName))("multiline", true);
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_10_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-select-input-step", 15);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_10_Template_app_wizard_select_input_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_10_Template_app_wizard_select_input_step_createNew_0_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.selectConfig == null ? null : tmp_3_0.selectConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_11_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-multi-select-step", 15);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_11_Template_app_wizard_multi_select_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r5);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_11_Template_app_wizard_multi_select_step_createNew_0_listener($event) {
-      \u0275\u0275restoreView(_r5);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_12_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-loto-point-selector-step", 15);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_12_Template_app_wizard_loto_point_selector_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_12_Template_app_wizard_loto_point_selector_step_createNew_0_listener($event) {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_13_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-form-section-step", 16);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_13_Template_app_wizard_form_section_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r7);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_13_Template_app_wizard_form_section_step_createNew_0_listener($event) {
-      \u0275\u0275restoreView(_r7);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("entityData", ctx_r0.entityData());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_14_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-file-upload-step", 17);
-    \u0275\u0275listener("fileSelected", function WizardStepRendererComponent_Conditional_0_Case_14_Template_app_wizard_file_upload_step_fileSelected_0_listener($event) {
-      \u0275\u0275restoreView(_r8);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onFileSelected($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentFile", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.uploadConfig == null ? null : tmp_3_0.uploadConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_15_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-file-browser-step", 18);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_15_Template_app_wizard_file_browser_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("uploadNew", function WizardStepRendererComponent_Conditional_0_Case_15_Template_app_wizard_file_browser_step_uploadNew_0_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onUploadNew());
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.fileBrowserConfig == null ? null : tmp_3_0.fileBrowserConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_16_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-table-selector-step", 15);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_16_Template_app_wizard_table_selector_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r10);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_16_Template_app_wizard_table_selector_step_createNew_0_listener($event) {
-      \u0275\u0275restoreView(_r10);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_17_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-tag-number-step", 13);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_17_Template_app_wizard_tag_number_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r11);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue(((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tagNumberConfig == null ? null : tmp_3_0.tagNumberConfig.fieldName) || "tagNumber"));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_18_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-description-step", 13);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_18_Template_app_wizard_description_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r12);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue(((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.descriptionConfig == null ? null : tmp_3_0.descriptionConfig.fieldName) || "description"));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_19_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-value-select-step", 13);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_19_Template_app_wizard_value_select_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r13);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_3_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.valueSelectConfig == null ? null : tmp_3_0.valueSelectConfig.fieldName));
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_20_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-zero-energy-step", 19);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_20_Template_app_wizard_zero_energy_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r14);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("branchRequest", function WizardStepRendererComponent_Conditional_0_Case_20_Template_app_wizard_zero_energy_step_branchRequest_0_listener($event) {
-      \u0275\u0275restoreView(_r14);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_21_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-equipment-picker-step", 19);
-    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_21_Template_app_wizard_equipment_picker_step_valueChange_0_listener($event) {
-      \u0275\u0275restoreView(_r15);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
-    })("branchRequest", function WizardStepRendererComponent_Conditional_0_Case_21_Template_app_wizard_equipment_picker_step_branchRequest_0_listener($event) {
-      \u0275\u0275restoreView(_r15);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_22_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r16 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-confirm-step", 20);
-    \u0275\u0275listener("confirmed", function WizardStepRendererComponent_Conditional_0_Case_22_Template_app_wizard_confirm_step_confirmed_0_listener($event) {
-      \u0275\u0275restoreView(_r16);
-      const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onConfirmed($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_23_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "app-wizard-review-step", 10);
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_24_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "app-wizard-complete-step", 5);
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("step", ctx_r0.step());
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Case_25_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 11)(1, "p");
-    \u0275\u0275text(2);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    let tmp_2_0;
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("Unknown step type: ", (tmp_2_0 = ctx_r0.step()) == null ? null : tmp_2_0.type, "");
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Conditional_26_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "app-wizard-hints-panel", 12);
-  }
-  if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("hints", ctx_r0.step().hints);
-  }
-}
-function WizardStepRendererComponent_Conditional_0_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "h2", 2);
-    \u0275\u0275text(3);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "p", 3);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 4);
-    \u0275\u0275template(7, WizardStepRendererComponent_Conditional_0_Case_7_Template, 1, 1, "app-wizard-welcome-step", 5)(8, WizardStepRendererComponent_Conditional_0_Case_8_Template, 1, 2, "app-wizard-text-input-step", 6)(9, WizardStepRendererComponent_Conditional_0_Case_9_Template, 1, 3, "app-wizard-text-input-step", 7)(10, WizardStepRendererComponent_Conditional_0_Case_10_Template, 1, 2, "app-wizard-select-input-step", 6)(11, WizardStepRendererComponent_Conditional_0_Case_11_Template, 1, 2, "app-wizard-multi-select-step", 6)(12, WizardStepRendererComponent_Conditional_0_Case_12_Template, 1, 2, "app-wizard-loto-point-selector-step", 6)(13, WizardStepRendererComponent_Conditional_0_Case_13_Template, 1, 2, "app-wizard-form-section-step", 8)(14, WizardStepRendererComponent_Conditional_0_Case_14_Template, 1, 2, "app-wizard-file-upload-step", 9)(15, WizardStepRendererComponent_Conditional_0_Case_15_Template, 1, 2, "app-wizard-file-browser-step", 6)(16, WizardStepRendererComponent_Conditional_0_Case_16_Template, 1, 2, "app-wizard-table-selector-step", 6)(17, WizardStepRendererComponent_Conditional_0_Case_17_Template, 1, 2, "app-wizard-tag-number-step", 6)(18, WizardStepRendererComponent_Conditional_0_Case_18_Template, 1, 2, "app-wizard-description-step", 6)(19, WizardStepRendererComponent_Conditional_0_Case_19_Template, 1, 2, "app-wizard-value-select-step", 6)(20, WizardStepRendererComponent_Conditional_0_Case_20_Template, 1, 2, "app-wizard-zero-energy-step", 10)(21, WizardStepRendererComponent_Conditional_0_Case_21_Template, 1, 2, "app-wizard-equipment-picker-step", 10)(22, WizardStepRendererComponent_Conditional_0_Case_22_Template, 1, 1, "app-wizard-confirm-step", 5)(23, WizardStepRendererComponent_Conditional_0_Case_23_Template, 1, 2, "app-wizard-review-step", 10)(24, WizardStepRendererComponent_Conditional_0_Case_24_Template, 1, 1, "app-wizard-complete-step", 5)(25, WizardStepRendererComponent_Conditional_0_Case_25_Template, 3, 1, "div", 11);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(26, WizardStepRendererComponent_Conditional_0_Conditional_26_Template, 1, 1, "app-wizard-hints-panel", 12);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_1_0;
-    let tmp_2_0;
-    let tmp_3_0;
-    let tmp_4_0;
-    const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate((tmp_1_0 = ctx_r0.step()) == null ? null : tmp_1_0.title);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((tmp_2_0 = ctx_r0.step()) == null ? null : tmp_2_0.description);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional((tmp_3_0 = (tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.type) === "welcome" ? 7 : tmp_3_0 === "text-input" ? 8 : tmp_3_0 === "textarea-input" ? 9 : tmp_3_0 === "select-input" ? 10 : tmp_3_0 === "multi-select" ? 11 : tmp_3_0 === "loto-point-selector" ? 12 : tmp_3_0 === "form-section" ? 13 : tmp_3_0 === "file-upload" ? 14 : tmp_3_0 === "file-browser" ? 15 : tmp_3_0 === "table-selector" ? 16 : tmp_3_0 === "tag-number" ? 17 : tmp_3_0 === "description-builder" ? 18 : tmp_3_0 === "value-select" ? 19 : tmp_3_0 === "zero-energy" ? 20 : tmp_3_0 === "equipment-picker" ? 21 : tmp_3_0 === "confirm" ? 22 : tmp_3_0 === "review" ? 23 : tmp_3_0 === "complete" ? 24 : 25);
-    \u0275\u0275advance(19);
-    \u0275\u0275conditional(((tmp_4_0 = ctx_r0.step()) == null ? null : tmp_4_0.hints == null ? null : tmp_4_0.hints.length) ? 26 : -1);
-  }
-}
-var WizardStepRendererComponent = class _WizardStepRendererComponent {
-  step = input(null);
-  frame = input(null);
-  stepDataChange = output();
-  branchRequest = output();
-  stepComplete = output();
-  entityData = computed(() => {
-    return this.frame()?.entityData ?? {};
-  });
-  getCurrentValue(fieldName) {
-    if (!fieldName)
-      return void 0;
-    const frame2 = this.frame();
-    if (!frame2)
-      return void 0;
-    const entityData = frame2.entityData;
-    if (entityData.lotoStandard?.[fieldName] !== void 0) {
-      return entityData.lotoStandard[fieldName];
-    }
-    if (entityData.lotoPoint?.[fieldName] !== void 0) {
-      return entityData.lotoPoint[fieldName];
-    }
-    if (entityData.file?.[fieldName] !== void 0) {
-      return entityData.file[fieldName];
-    }
-    if (entityData.value?.[fieldName] !== void 0) {
-      return entityData.value[fieldName];
-    }
-    if (entityData.zeroEnergy?.[fieldName] !== void 0) {
-      return entityData.zeroEnergy[fieldName];
-    }
-    if (entityData.collected?.[fieldName] !== void 0) {
-      return entityData.collected[fieldName];
-    }
-    return void 0;
-  }
-  onValueChange(payload) {
-    this.stepDataChange.emit(payload);
-  }
-  onCreateNew(config2) {
-    const frame2 = this.frame();
-    let entityPath = config2.field;
-    if (frame2?.flow.type === "build-standard" && config2.field === "lotoPoints") {
-      entityPath = "lotoStandard.lotoPoints";
-    }
-    this.branchRequest.emit({
-      flowType: config2.flowType,
-      initialData: config2.initialData,
-      returnCallback: {
-        field: entityPath,
-        mode: "append"
-        // Append to array instead of replacing
-      }
-    });
-  }
-  onFileSelected(event) {
-    this.stepDataChange.emit({
-      field: event.fieldName,
-      value: event.file,
-      entityType: "file"
-    });
-  }
-  onUploadNew() {
-    this.branchRequest.emit({
-      flowType: "upload-file",
-      returnCallback: {
-        field: "equipmentList",
-        mode: "append"
-      }
-    });
-  }
-  onConfirmed(result2) {
-    this.stepDataChange.emit({
-      field: result2.field,
-      value: result2.value
-    });
-    this.stepComplete.emit(result2);
-  }
-  static \u0275fac = function WizardStepRendererComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _WizardStepRendererComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardStepRendererComponent, selectors: [["app-wizard-step-renderer"]], inputs: { step: [1, "step"], frame: [1, "frame"] }, outputs: { stepDataChange: "stepDataChange", branchRequest: "branchRequest", stepComplete: "stepComplete" }, decls: 1, vars: 1, consts: [[1, "step-container"], [1, "step-header"], [1, "step-title"], [1, "step-description"], [1, "step-content"], [3, "step"], [3, "step", "currentValue"], [3, "step", "currentValue", "multiline"], [3, "step", "entityData"], [3, "step", "currentFile"], [3, "step", "frame"], [1, "unknown-step"], [3, "hints"], [3, "valueChange", "step", "currentValue"], [3, "valueChange", "step", "currentValue", "multiline"], [3, "valueChange", "createNew", "step", "currentValue"], [3, "valueChange", "createNew", "step", "entityData"], [3, "fileSelected", "step", "currentFile"], [3, "valueChange", "uploadNew", "step", "currentValue"], [3, "valueChange", "branchRequest", "step", "frame"], [3, "confirmed", "step"]], template: function WizardStepRendererComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275template(0, WizardStepRendererComponent_Conditional_0_Template, 27, 4, "div", 0);
-    }
-    if (rf & 2) {
-      \u0275\u0275conditional(ctx.step() ? 0 : -1);
-    }
-  }, dependencies: [
-    CommonModule,
-    WizardWelcomeStepComponent,
-    WizardTextInputStepComponent,
-    WizardSelectInputStepComponent,
-    WizardMultiSelectStepComponent,
-    WizardFormSectionStepComponent,
-    WizardFileUploadStepComponent,
-    WizardFileBrowserStepComponent,
-    WizardTableSelectorStepComponent,
-    WizardConfirmStepComponent,
-    WizardReviewStepComponent,
-    WizardCompleteStepComponent,
-    WizardHintsPanelComponent,
-    // New specialized step components
-    WizardTagNumberStepComponent,
-    WizardDescriptionStepComponent,
-    WizardValueSelectStepComponent,
-    WizardZeroEnergyStepComponent,
-    WizardEquipmentPickerStepComponent,
-    WizardLotoPointSelectorStepComponent
-  ], styles: ["\n\n.step-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.step-header[_ngcontent-%COMP%] {\n  text-align: center;\n  padding-bottom: 16px;\n  border-bottom: 1px solid #eee;\n}\n.step-title[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 20px;\n  font-weight: 500;\n  color: #333;\n}\n.step-description[_ngcontent-%COMP%] {\n  margin: 0;\n  color: #666;\n  font-size: 14px;\n  line-height: 1.5;\n}\n.step-content[_ngcontent-%COMP%] {\n  min-height: 150px;\n}\n.unknown-step[_ngcontent-%COMP%] {\n  padding: 20px;\n  background: #fff3e0;\n  border-radius: 8px;\n  text-align: center;\n  color: #e65100;\n}\n/*# sourceMappingURL=wizard-step-renderer.component.css.map */"] });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardStepRendererComponent, { className: "WizardStepRendererComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-step-renderer.component.ts", lineNumber: 275 });
-})();
-
-// src/app/shared/guide/guide-form/wizard-dialog/wizard-breadcrumb.component.ts
-var _forTrack022 = ($index, $item) => $item.name;
-function WizardBreadcrumbComponent_For_2_Conditional_0_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 1);
-    \u0275\u0275text(1, "chevron_right");
-    \u0275\u0275elementEnd();
-  }
-}
-function WizardBreadcrumbComponent_For_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275template(0, WizardBreadcrumbComponent_For_2_Conditional_0_Template, 2, 0, "mat-icon", 1);
-    \u0275\u0275elementStart(1, "span", 2);
-    \u0275\u0275listener("click", function WizardBreadcrumbComponent_For_2_Template_span_click_1_listener() {
-      const ctx_r1 = \u0275\u0275restoreView(_r1);
-      const item_r3 = ctx_r1.$implicit;
-      const \u0275$index_3_r4 = ctx_r1.$index;
-      const ctx_r4 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r4.onItemClick(item_r3, \u0275$index_3_r4));
-    });
-    \u0275\u0275text(2);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const item_r3 = ctx.$implicit;
-    const \u0275$index_3_r4 = ctx.$index;
-    const ctx_r4 = \u0275\u0275nextContext();
-    \u0275\u0275conditional(\u0275$index_3_r4 > 0 ? 0 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275classProp("active", item_r3.isActive)("clickable", !item_r3.isActive && \u0275$index_3_r4 === ctx_r4.trail().length - 2);
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", item_r3.name, " ");
-  }
-}
-var WizardBreadcrumbComponent = class _WizardBreadcrumbComponent {
-  trail = input([]);
-  navigateBack = output();
-  onItemClick(item, index) {
-    if (!item.isActive && index === this.trail().length - 2) {
-      this.navigateBack.emit();
-    }
-  }
-  static \u0275fac = function WizardBreadcrumbComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _WizardBreadcrumbComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardBreadcrumbComponent, selectors: [["app-wizard-breadcrumb"]], inputs: { trail: [1, "trail"] }, outputs: { navigateBack: "navigateBack" }, decls: 3, vars: 0, consts: [[1, "breadcrumb-container"], [1, "separator"], [1, "breadcrumb-item", 3, "click"]], template: function WizardBreadcrumbComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275elementStart(0, "div", 0);
-      \u0275\u0275repeaterCreate(1, WizardBreadcrumbComponent_For_2_Template, 3, 6, null, null, _forTrack022);
-      \u0275\u0275elementEnd();
-    }
-    if (rf & 2) {
-      \u0275\u0275advance();
-      \u0275\u0275repeater(ctx.trail());
-    }
-  }, dependencies: [CommonModule, MatIconModule, MatIcon], styles: ["\n\n.breadcrumb-container[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  font-size: 12px;\n  color: #666;\n  margin-bottom: 4px;\n}\n.separator[_ngcontent-%COMP%] {\n  font-size: 14px;\n  width: 14px;\n  height: 14px;\n  margin: 0 2px;\n  color: #999;\n}\n.breadcrumb-item[_ngcontent-%COMP%] {\n  padding: 2px 6px;\n  border-radius: 4px;\n}\n.breadcrumb-item.active[_ngcontent-%COMP%] {\n  color: #1976d2;\n  font-weight: 500;\n}\n.breadcrumb-item.clickable[_ngcontent-%COMP%] {\n  cursor: pointer;\n}\n.breadcrumb-item.clickable[_ngcontent-%COMP%]:hover {\n  background: #e3f2fd;\n  color: #1976d2;\n}\n/*# sourceMappingURL=wizard-breadcrumb.component.css.map */"] });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardBreadcrumbComponent, { className: "WizardBreadcrumbComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-breadcrumb.component.ts", lineNumber: 69 });
-})();
-
-// src/app/shared/guide/guide-form/wizard-dialog/wizard-step-indicator.component.ts
-var _forTrack023 = ($index, $item) => $item.id;
-function WizardStepIndicatorComponent_For_3_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 6);
-    \u0275\u0275text(1, "check");
-    \u0275\u0275elementEnd();
-  }
-}
-function WizardStepIndicatorComponent_For_3_Conditional_3_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 7);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const step_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(step_r2.index + 1);
-  }
-}
-function WizardStepIndicatorComponent_For_3_Conditional_4_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "div", 9);
-  }
-  if (rf & 2) {
-    const step_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275classProp("completed", step_r2.status === "completed");
-  }
-}
-function WizardStepIndicatorComponent_For_3_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 4);
-    \u0275\u0275listener("click", function WizardStepIndicatorComponent_For_3_Template_div_click_0_listener() {
-      const step_r2 = \u0275\u0275restoreView(_r1).$implicit;
-      const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.onStepClick(step_r2));
-    });
-    \u0275\u0275elementStart(1, "div", 5);
-    \u0275\u0275template(2, WizardStepIndicatorComponent_For_3_Conditional_2_Template, 2, 0, "mat-icon", 6)(3, WizardStepIndicatorComponent_For_3_Conditional_3_Template, 2, 1, "span", 7);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(4, WizardStepIndicatorComponent_For_3_Conditional_4_Template, 1, 2, "div", 8);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const step_r2 = ctx.$implicit;
-    const \u0275$index_5_r4 = ctx.$index;
-    const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275classProp("completed", step_r2.status === "completed")("current", step_r2.status === "current")("upcoming", step_r2.status === "upcoming")("clickable", step_r2.isClickable);
-    \u0275\u0275property("matTooltip", step_r2.title);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(step_r2.status === "completed" ? 2 : 3);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(\u0275$index_5_r4 < ctx_r2.stepItems().length - 1 ? 4 : -1);
-  }
-}
-var WizardStepIndicatorComponent = class _WizardStepIndicatorComponent {
-  steps = input.required();
-  currentStepIndex = input.required();
-  visitedSteps = input([]);
-  stepClick = output();
-  stepItems = computed(() => {
-    const allSteps = this.steps();
-    const current = this.currentStepIndex();
-    const visited = new Set(this.visitedSteps());
-    return allSteps.map((step, index) => {
-      let status;
-      if (index < current) {
-        status = "completed";
-      } else if (index === current) {
-        status = "current";
-      } else {
-        status = "upcoming";
-      }
-      const isClickable = status === "completed" || visited.has(index);
-      return {
-        id: step.id,
-        title: step.title,
-        index,
-        status,
-        isClickable
-      };
-    });
-  });
-  currentStepTitle = computed(() => {
-    const items = this.stepItems();
-    const current = items.find((s2) => s2.status === "current");
-    return current?.title ?? "";
-  });
-  onStepClick(step) {
-    if (step.isClickable && step.status !== "current") {
-      this.stepClick.emit(step.id);
-    }
-  }
-  static \u0275fac = function WizardStepIndicatorComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _WizardStepIndicatorComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardStepIndicatorComponent, selectors: [["app-wizard-step-indicator"]], inputs: { steps: [1, "steps"], currentStepIndex: [1, "currentStepIndex"], visitedSteps: [1, "visitedSteps"] }, outputs: { stepClick: "stepClick" }, decls: 6, vars: 1, consts: [[1, "step-indicator-container"], [1, "step-chain"], ["matTooltipPosition", "above", 1, "step-item", 3, "completed", "current", "upcoming", "clickable", "matTooltip"], [1, "step-label"], ["matTooltipPosition", "above", 1, "step-item", 3, "click", "matTooltip"], [1, "step-circle"], [1, "check-icon"], [1, "step-number"], [1, "step-connector", 3, "completed"], [1, "step-connector"]], template: function WizardStepIndicatorComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
-      \u0275\u0275repeaterCreate(2, WizardStepIndicatorComponent_For_3_Template, 5, 11, "div", 2, _forTrack023);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(4, "div", 3);
-      \u0275\u0275text(5);
-      \u0275\u0275elementEnd()();
-    }
-    if (rf & 2) {
-      \u0275\u0275advance(2);
-      \u0275\u0275repeater(ctx.stepItems());
-      \u0275\u0275advance(3);
-      \u0275\u0275textInterpolate1(" ", ctx.currentStepTitle(), " ");
-    }
-  }, dependencies: [CommonModule, MatIconModule, MatIcon, MatTooltipModule, MatTooltip], styles: ["\n\n.step-indicator-container[_ngcontent-%COMP%] {\n  padding: 8px 16px;\n  background: #fafafa;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.step-chain[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  overflow-x: auto;\n  padding: 4px 0;\n}\n.step-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  flex-shrink: 0;\n}\n.step-circle[_ngcontent-%COMP%] {\n  width: 28px;\n  height: 28px;\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  border: 2px solid #e0e0e0;\n  background: white;\n  color: #9e9e9e;\n}\n.step-item.completed[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: #4caf50;\n  border-color: #4caf50;\n  color: white;\n}\n.step-item.current[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: #1976d2;\n  border-color: #1976d2;\n  color: white;\n  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);\n}\n.step-item.upcoming[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: white;\n  border-color: #e0e0e0;\n  color: #9e9e9e;\n}\n.step-item.clickable[_ngcontent-%COMP%] {\n  cursor: pointer;\n}\n.step-item.clickable[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  transform: scale(1.1);\n}\n.step-item.clickable.completed[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  background: #43a047;\n}\n.step-item.clickable.current[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  background: #1565c0;\n}\n.check-icon[_ngcontent-%COMP%] {\n  font-size: 16px;\n  width: 16px;\n  height: 16px;\n}\n.step-number[_ngcontent-%COMP%] {\n  font-size: 12px;\n}\n.step-connector[_ngcontent-%COMP%] {\n  width: 24px;\n  height: 2px;\n  background: #e0e0e0;\n  margin: 0 2px;\n  transition: background 0.2s ease;\n}\n.step-connector.completed[_ngcontent-%COMP%] {\n  background: #4caf50;\n}\n.step-label[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 13px;\n  color: #424242;\n  font-weight: 500;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n@media (max-width: 600px) {\n  .step-circle[_ngcontent-%COMP%] {\n    width: 24px;\n    height: 24px;\n    font-size: 11px;\n  }\n  .step-connector[_ngcontent-%COMP%] {\n    width: 16px;\n  }\n  .check-icon[_ngcontent-%COMP%] {\n    font-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n}\n/*# sourceMappingURL=wizard-step-indicator.component.css.map */"] });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardStepIndicatorComponent, { className: "WizardStepIndicatorComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-step-indicator.component.ts", lineNumber: 181 });
-})();
-
 // src/app/models/loto/loto-standard-id.model.ts
 var LotoStandardIdDto = class _LotoStandardIdDto extends BaseDto {
   description;
@@ -105923,6 +105288,3414 @@ var RfLotoStandardApiService = class _RfLotoStandardApiService {
   static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _RfLotoStandardApiService, factory: _RfLotoStandardApiService.\u0275fac, providedIn: "root" });
 };
 
+// src/app/features/loto-standard/refactored/services/rf-loto-standard-local-storage.service.ts
+var LotoStandardLocalStorageService = class _LotoStandardLocalStorageService extends BaseDraftService {
+  /**
+   * LocalStorage key for LotoStandard drafts
+   */
+  DRAFTS_KEY = "loto-standard-drafts";
+  constructor(localStorageService) {
+    super();
+    this.localStorageService = localStorageService;
+  }
+  /**
+   * Extract entity ID from LotoStandard draft
+   * Returns the ID if present, null otherwise
+   */
+  getEntityId(draft) {
+    return draft.id || null;
+  }
+  static \u0275fac = function LotoStandardLocalStorageService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _LotoStandardLocalStorageService)(\u0275\u0275inject(LocalStorageService));
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _LotoStandardLocalStorageService, factory: _LotoStandardLocalStorageService.\u0275fac, providedIn: "root" });
+};
+
+// src/app/features/loto-standard/refactored/services/rf-loto-standard-state.service.ts
+var RfLotoStandardStateService = class _RfLotoStandardStateService {
+  apiService = inject(RfLotoStandardApiService);
+  localStorage = inject(LotoStandardLocalStorageService);
+  destroyRef = inject(DestroyRef);
+  messageService = inject(GlobalMessageService);
+  syncUpdateService = inject(SyncUpdateService);
+  ngZone = inject(NgZone);
+  pageSize = 50;
+  currentPage = 1;
+  allLoadedLotoStandardsSubject = new BehaviorSubject([]);
+  allLoadedLotoStandards$ = this.allLoadedLotoStandardsSubject.asObservable();
+  filterOutItems = signal([]);
+  selectedItems = signal([]);
+  selectedItem = signal(null);
+  currentSortColumnSubject = new BehaviorSubject(null);
+  currentSortColumn$ = this.currentSortColumnSubject.asObservable();
+  currentSortDirectionSubject = new BehaviorSubject("ASC");
+  currentSortDirection$ = this.currentSortDirectionSubject.asObservable();
+  currentSearchCriteriaSubject = new BehaviorSubject(null);
+  currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
+  // Unique items cache for column filters
+  uniqueItemsCache = /* @__PURE__ */ new Map();
+  // Unique values cache with pagination metadata
+  uniqueValuesCache = /* @__PURE__ */ new Map();
+  currentColumnUniqueItems = signal([]);
+  loadingUniqueItems = signal(false);
+  // Form state
+  formFields = signal([]);
+  isLotoStandardFormOpen = signal(false);
+  constructor() {
+    this.syncUpdateService.getEntityTypeUpdates$("LotoStandard").pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+      this.handleSyncUpdate(event);
+    });
+  }
+  /**
+   * Handle sync update from SSE - reload the entity from server
+   * This is called when a LotoStandard is updated by server sync
+   */
+  handleSyncUpdate(event) {
+    const entityId = event.entityId;
+    this.apiService.getLotoStandardById(entityId + "").pipe(tap((response) => {
+      if (response.responseData) {
+        const updatedItem = LotoStandardDto.fromJson(response.responseData);
+        this.updateLotoStandardInList(updatedItem);
+        const selectedItem = this.selectedItem();
+        if (selectedItem?.id === entityId) {
+          this.messageService.showInfo("This LOTO standard was updated from another machine");
+        }
+      }
+    }), catchError((error) => {
+      console.error("Error reloading synced LOTO standard:", error);
+      return of(null);
+    }), takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+  /**
+   * Update a LOTO standard in the local list or add it if not present.
+   * Called automatically when an update event is received.
+   */
+  updateLotoStandardInList(updatedItem) {
+    if (!updatedItem.id) {
+      return;
+    }
+    this.ngZone.run(() => {
+      const current = this.allLoadedLotoStandardsSubject.value;
+      const index = current.findIndex((ls) => ls.id === updatedItem.id);
+      if (index >= 0) {
+        const updated = [...current];
+        updatedItem._version = Date.now();
+        updated[index] = updatedItem;
+        this.allLoadedLotoStandardsSubject.next(updated);
+      } else {
+        updatedItem._version = Date.now();
+        this.allLoadedLotoStandardsSubject.next([updatedItem, ...current]);
+      }
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === updatedItem.id) {
+        this.selectedItem.set(updatedItem);
+      }
+      const selectedItems = this.selectedItems();
+      const selectedIndex = selectedItems.findIndex((item) => item.id === updatedItem.id);
+      if (selectedIndex >= 0) {
+        const updatedSelected = [...selectedItems];
+        updatedSelected[selectedIndex] = updatedItem;
+        this.selectedItems.set(updatedSelected);
+      }
+    });
+  }
+  /**
+   * Remove a LOTO standard from the local list by ID.
+   * Called automatically when a deletion event is received.
+   */
+  removeLotoStandardById(id2) {
+    const current = this.allLoadedLotoStandardsSubject.value;
+    const filtered = current.filter((ls) => ls.id !== id2);
+    if (filtered.length !== current.length) {
+      this.allLoadedLotoStandardsSubject.next(filtered);
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === id2) {
+        this.selectedItem.set(null);
+      }
+      const selectedItems = this.selectedItems();
+      if (selectedItems.some((item) => item.id === id2)) {
+        this.selectedItems.set(selectedItems.filter((item) => item.id !== id2));
+      }
+    }
+  }
+  addLotoStandards(items) {
+    const current = this.allLoadedLotoStandardsSubject.value;
+    this.allLoadedLotoStandardsSubject.next([...current, ...items]);
+  }
+  clearLotoStandards() {
+    this.allLoadedLotoStandardsSubject.next([]);
+    this.currentPage = 1;
+  }
+  getCurrentPage() {
+    return this.currentPage;
+  }
+  incrementPage() {
+    this.currentPage++;
+  }
+  setSelectedLotoStandards(items) {
+    this.selectedItems.set(items);
+  }
+  setSelectedItem(item) {
+    this.selectedItem.set(item);
+  }
+  /**
+   * Load full entity from server by ID
+   * This is used when clicking on table items to get complete data
+   */
+  loadItemById(id2) {
+    this.apiService.getLotoStandardById(id2 + "").pipe(tap((response) => {
+      this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
+      this.openForm();
+    }), catchError((error) => {
+      console.error("Error loading LOTO Standard:", error);
+      return of(null);
+    }), takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+  submitForm(item) {
+    const lotoStandardId = item.id;
+    const isNew = !lotoStandardId;
+    this.apiService.saveLotoStandard(item).pipe(tap((response) => {
+      this.clearDraftForItem(lotoStandardId);
+      this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
+      const action = isNew ? "created" : "updated";
+      this.messageService.showSuccess(`LOTO Standard ${action} successfully`);
+      this.closeForm();
+    }), catchError((error) => {
+      console.error("Error saving LOTO Standard:", error);
+      console.error("Error details:", error.error);
+      console.error("Error message:", error.message);
+      const errorMsg = error.error?.message || error.message || "Unknown error";
+      this.messageService.showError(`Failed to save LOTO Standard: ${errorMsg}`);
+      return of(null);
+    }), takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+  openNewLotoStandardForm() {
+    this.setSelectedItem(new LotoStandardDto());
+  }
+  saveDraft(item) {
+    this.localStorage.saveDraft(item);
+  }
+  /**
+   * Load draft for a specific loto standard or new item
+   * Returns the draft metadata if found
+   */
+  loadDraftForItem(lotoStandardId = null) {
+    return this.localStorage.loadDraft(lotoStandardId);
+  }
+  /**
+   * Check if draft exists for specific loto standard
+   */
+  hasDraftForItem(lotoStandardId = null) {
+    return this.localStorage.hasDraft(lotoStandardId);
+  }
+  /**
+   * Clear draft for specific loto standard
+   */
+  clearDraftForItem(lotoStandardId = null) {
+    this.localStorage.clearDraft(lotoStandardId);
+  }
+  resetPage() {
+    this.currentPage = 1;
+  }
+  setSortState(sortColumn, sortDirection) {
+    this.currentSortColumnSubject.next(sortColumn);
+    this.currentSortDirectionSubject.next(sortDirection);
+  }
+  setSearchCriteria(criteria) {
+    this.currentSearchCriteriaSubject.next(criteria);
+  }
+  getCurrentSearchCriteria() {
+    return this.currentSearchCriteriaSubject.value;
+  }
+  clearSortState() {
+    this.currentSortColumnSubject.next(null);
+    this.currentSortDirectionSubject.next("ASC");
+    this.currentSearchCriteriaSubject.next(null);
+  }
+  /**
+   * Set unique items for a specific column
+   */
+  setUniqueItems(columnKey, values) {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.set(columnKey, new BehaviorSubject(values));
+    } else {
+      const subject = this.uniqueItemsCache.get(columnKey);
+      subject.next(values);
+    }
+  }
+  /**
+   * Get unique items observable for a specific column
+   */
+  getUniqueItems$(columnKey) {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.set(columnKey, new BehaviorSubject([]));
+    }
+    return this.uniqueItemsCache.get(columnKey).asObservable();
+  }
+  /**
+   * Get unique items value for a specific column
+   */
+  getUniqueItemsValue(columnKey) {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      return [];
+    }
+    return this.uniqueItemsCache.get(columnKey).value;
+  }
+  /**
+   * Clear unique items cache for a specific column
+   */
+  clearUniqueItemsForColumn(columnKey) {
+    if (this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.get(columnKey).next([]);
+    }
+  }
+  /**
+   * Clear all unique items cache
+   */
+  clearAllUniqueItems() {
+    this.uniqueItemsCache.forEach((subject) => subject.next([]));
+    this.uniqueItemsCache.clear();
+  }
+  /**
+   * Load unique items for a column with server-side filtering and pagination
+   */
+  loadUniqueItems(columnKey, searchString) {
+    const cacheKey = `${columnKey}:${searchString}`;
+    this.loadingUniqueItems.set(true);
+    const filters2 = this.getCurrentSearchCriteria() ?? {
+      type: "column",
+      filters: {}
+    };
+    this.apiService.getFilteredUniqueValuesOfColumn(String(columnKey), filters2, 1, 50).pipe(tap((response) => {
+      if (response.responseData?.content && response.responseData.content.length > 0) {
+        const uniqueValues = response.responseData.content;
+        this.setUniqueItems(String(columnKey), uniqueValues);
+        this.currentColumnUniqueItems.set(uniqueValues);
+        this.loadingUniqueItems.set(false);
+        this.uniqueValuesCache.set(cacheKey, {
+          values: uniqueValues,
+          page: 1,
+          hasMore: !response.responseData.last
+        });
+      }
+    }), catchError((error) => {
+      console.error(`Error loading unique items for column ${columnKey}:`, error);
+      this.loadingUniqueItems.set(false);
+      return of(null);
+    }), takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+  /**
+   * Load more unique items for a column (pagination)
+   */
+  loadMoreUniqueItems(columnKey, searchString) {
+    const cacheKey = `${columnKey}:${searchString}`;
+    const cached = this.uniqueValuesCache.get(cacheKey);
+    this.loadingUniqueItems.set(true);
+    if (!cached || !cached.hasMore) {
+      this.loadingUniqueItems.set(false);
+      return;
+    }
+    const nextPage = cached.page + 1;
+    const filters2 = this.getCurrentSearchCriteria() ?? {
+      type: "column",
+      filters: {}
+    };
+    this.apiService.getFilteredUniqueValuesOfColumn(String(columnKey), filters2, nextPage, 50).pipe(tap((response) => {
+      if (response.responseData?.content && response.responseData.content.length > 0) {
+        const currentValues = cached.values;
+        const uniqueValues = response.responseData.content;
+        const newValues = [...currentValues, ...uniqueValues];
+        this.setUniqueItems(String(columnKey), newValues);
+        this.currentColumnUniqueItems.update((existing) => [
+          ...existing,
+          ...newValues
+        ]);
+        this.loadingUniqueItems.set(false);
+        this.uniqueValuesCache.set(cacheKey, {
+          values: newValues,
+          page: nextPage,
+          hasMore: !response.responseData.last
+        });
+      }
+    }), catchError((error) => {
+      console.error(`Error loading more unique items for column ${columnKey}:`, error);
+      this.loadingUniqueItems.set(false);
+      return of(null);
+    }), takeUntilDestroyed(this.destroyRef)).subscribe();
+  }
+  /**
+   * Clear unique values cache (useful when data changes)
+   */
+  clearUniqueValuesCache() {
+    this.uniqueValuesCache.clear();
+  }
+  /**
+   * Open form with specified fields
+   */
+  openForm(fields = []) {
+    this.formFields.set(fields);
+    this.isLotoStandardFormOpen.set(true);
+  }
+  /**
+   * Close form and clear selected item
+   */
+  closeForm() {
+    this.isLotoStandardFormOpen.set(false);
+    this.selectedItem.set(null);
+  }
+  static \u0275fac = function RfLotoStandardStateService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _RfLotoStandardStateService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _RfLotoStandardStateService, factory: _RfLotoStandardStateService.\u0275fac, providedIn: "root" });
+};
+
+// src/app/features/loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component.ts
+var _c029 = ["primaryForm"];
+var _c117 = ["counterpartForm"];
+var _c213 = () => ["tagNumber", "description", "normPos"];
+function LotoPointDualFormComponent_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 3);
+    \u0275\u0275element(1, "div", 8);
+    \u0275\u0275elementStart(2, "span");
+    \u0275\u0275text(3, "Loading counterpart...");
+    \u0275\u0275elementEnd()();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 14);
+    \u0275\u0275text(1, "Saving...");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Deleting... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Delete ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_18_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 33);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_18_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.deletePrimary());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("disabled", ctx_r1.isDeletingPrimary() || ctx_r1.isDeletingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isDeletingPrimary() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 38);
+    \u0275\u0275text(1, "\uF517 Linked");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 39);
+    \u0275\u0275text(1, "Found (not linked)");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_9_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 40);
+    \u0275\u0275text(1, "Suggestion");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Unlinking... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Unlink ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 49);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.unlinkCounterpart());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(4);
+    \u0275\u0275property("disabled", ctx_r1.isLinking());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isLinking() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Linking... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Link ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 50);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.linkCounterparts());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_5_0;
+    const ctx_r1 = \u0275\u0275nextContext(4);
+    \u0275\u0275property("disabled", ctx_r1.isLinking() || !(((tmp_5_0 = ctx_r1.currentPrimaryValues()) == null ? null : tmp_5_0.id) || ctx_r1.primaryLotoPoint().id));
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isLinking() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 41);
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template, 3, 2, "button", 47)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template, 3, 2, "button", 48);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isCounterpartLinked() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r7 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 51)(1, "button", 52);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template_button_click_1_listener() {
+      const field_r8 = \u0275\u0275restoreView(_r7).$implicit;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.syncFieldToCounterpart(field_r8));
+    });
+    \u0275\u0275text(2, " \u2192 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "span", 53);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "button", 54);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template_button_click_5_listener() {
+      const field_r8 = \u0275\u0275restoreView(_r7).$implicit;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.syncFieldToPrimary(field_r8));
+    });
+    \u0275\u0275text(6, " \u2190 ");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const field_r8 = ctx.$implicit;
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275classProp("different", ctx_r1.isFieldDifferent(field_r8));
+    \u0275\u0275advance();
+    \u0275\u0275propertyInterpolate2("title", "Sync ", ctx_r1.getFieldLabel(field_r8), " to Unit ", ctx_r1.targetUnit(), "");
+    \u0275\u0275property("disabled", !ctx_r1.isFieldDifferent(field_r8));
+    \u0275\u0275advance(2);
+    \u0275\u0275classProp("different", ctx_r1.isFieldDifferent(field_r8));
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" ", ctx_r1.getFieldLabel(field_r8), " ");
+    \u0275\u0275advance();
+    \u0275\u0275propertyInterpolate2("title", "Sync ", ctx_r1.getFieldLabel(field_r8), " to Unit ", ctx_r1.sourceUnit(), "");
+    \u0275\u0275property("disabled", !ctx_r1.isFieldDifferent(field_r8));
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 34)(2, "span", 35);
+    \u0275\u0275text(3, "\u21C4");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "span", 36);
+    \u0275\u0275text(5, "Sync");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 37);
+    \u0275\u0275template(7, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_7_Template, 2, 0, "span", 38)(8, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_8_Template, 2, 0, "span", 39)(9, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_9_Template, 2, 0, "span", 40);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(10, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Template, 3, 1, "div", 41);
+    \u0275\u0275elementStart(11, "div", 42)(12, "button", 43);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template_button_click_12_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.syncAllToCounterpart());
+    });
+    \u0275\u0275text(13, " Sync All \u2192 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(14, "button", 44);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template_button_click_14_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.syncAllToPrimary());
+    });
+    \u0275\u0275text(15, " \u2190 Sync All ");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(16, "div", 45);
+    \u0275\u0275repeaterCreate(17, LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template, 7, 13, "div", 46, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    let tmp_4_0;
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(6);
+    \u0275\u0275classMap(ctx_r1.counterpartStatus());
+    \u0275\u0275advance();
+    \u0275\u0275conditional((tmp_4_0 = ctx_r1.counterpartStatus()) === "linked" ? 7 : tmp_4_0 === "found" ? 8 : tmp_4_0 === "suggested" ? 9 : -1);
+    \u0275\u0275advance(3);
+    \u0275\u0275conditional(!ctx_r1.isCounterpartNew() ? 10 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275propertyInterpolate1("title", "Sync all fields to Unit ", ctx_r1.targetUnit(), "");
+    \u0275\u0275advance(2);
+    \u0275\u0275propertyInterpolate1("title", "Sync all fields to Unit ", ctx_r1.sourceUnit(), "");
+    \u0275\u0275advance(3);
+    \u0275\u0275repeater(ctx_r1.syncableFields);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_20_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24)(1, "div", 55)(2, "span", 35);
+    \u0275\u0275text(3, "\u21C4");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "span", 36);
+    \u0275\u0275text(5, "Sync");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 56)(7, "span");
+    \u0275\u0275text(8, "No counterpart selected");
+    \u0275\u0275elementEnd()()();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 58);
+    \u0275\u0275text(1, "NEW");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 59);
+    \u0275\u0275text(1, "\uF517");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_6_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 60);
+    \u0275\u0275text(1, "Suggestion");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 14);
+    \u0275\u0275text(1, "Saving...");
+    \u0275\u0275elementEnd();
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Deleting... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Delete ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 33);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r10);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.deleteCounterpart());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275property("disabled", ctx_r1.isDeletingCounterpart() || ctx_r1.isDeletingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isDeletingCounterpart() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 57)(1, "div", 11)(2, "h3", 12);
+    \u0275\u0275text(3);
+    \u0275\u0275template(4, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_4_Template, 2, 0, "span", 58)(5, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_5_Template, 2, 0, "span", 59)(6, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_6_Template, 2, 0, "span", 60);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "div", 61);
+    \u0275\u0275template(8, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_8_Template, 2, 0, "span", 14);
+    \u0275\u0275elementStart(9, "button", 62);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_9_listener() {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.openManualSearch());
+    });
+    \u0275\u0275text(10, " \uF50D Change ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(11, "div", 15)(12, "app-rf-reactive-form", 16, 1);
+    \u0275\u0275listener("formValueChange", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_app_rf_reactive_form_formValueChange_12_listener($event) {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onCounterpartValueChange($event));
+    });
+    \u0275\u0275elementContainerStart(14, 17);
+    \u0275\u0275elementStart(15, "button", 18);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_15_listener() {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.openCounterpartTagGenerator());
+    });
+    \u0275\u0275text(16, " Generate Tag ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(17, "app-clipboard-form", 19);
+    \u0275\u0275listener("itemSelected", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_app_clipboard_form_itemSelected_17_listener($event) {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onCounterpartClipboardItemSelected($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementContainerEnd();
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(18, "div", 20)(19, "button", 21);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_19_listener() {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.saveCounterpart());
+    });
+    \u0275\u0275text(20);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(21, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template, 3, 2, "button", 22);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275classProp("is-new", ctx_r1.isCounterpartNew())("is-linked", ctx_r1.isCounterpartLinked())("is-suggestion", ctx_r1.counterpartStatus() === "suggested");
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.targetUnit(), " ");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isCounterpartNew() ? 4 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isCounterpartLinked() ? 5 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.counterpartStatus() === "suggested" && !ctx_r1.isCounterpartLinked() ? 6 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.isSavingCounterpart() ? 8 : -1);
+    \u0275\u0275advance(4);
+    \u0275\u0275property("entity", ctx_r1.currentCounterpartValues() || ctx_r1.counterpartLotoPoint())("fields", ctx_r1.counterpartFields())("title", "")("showSubmitButton", false);
+    \u0275\u0275advance(5);
+    \u0275\u0275property("entityType", "LotoPoint")("initialEntity", ctx_r1.initialCounterpartEntity())("currentEntity", ctx_r1.currentCounterpartValues() || ctx_r1.counterpartLotoPoint())("hasValidData", ctx_r1.hasValidData)("getItemSummary", ctx_r1.getItemSummary)("clipboardFormatter", ctx_r1.clipboardFormatter)("excludeIdOnPaste", true);
+    \u0275\u0275advance(2);
+    \u0275\u0275property("disabled", ctx_r1.isSavingCounterpart() || ctx_r1.isSavingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate2(" ", ctx_r1.isCounterpartNew() ? "Create" : "Save", " Unit ", ctx_r1.targetUnit(), " ");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.canDeleteCounterpart() ? 21 : -1);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r11 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 26)(1, "div", 11)(2, "h3", 12);
+    \u0275\u0275text(3);
+    \u0275\u0275elementStart(4, "span", 13);
+    \u0275\u0275text(5, "(No counterpart)");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(6, "div", 63)(7, "div", 64);
+    \u0275\u0275text(8, "?");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "h4");
+    \u0275\u0275text(10, "No Counterpart Found");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "p");
+    \u0275\u0275text(12);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "div", 65)(14, "button", 66);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template_button_click_14_listener() {
+      \u0275\u0275restoreView(_r11);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.createNewCounterpart());
+    });
+    \u0275\u0275elementStart(15, "span", 67);
+    \u0275\u0275text(16, "+");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(17, " Create New ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(18, "button", 68);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template_button_click_18_listener() {
+      \u0275\u0275restoreView(_r11);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.openManualSearch());
+    });
+    \u0275\u0275elementStart(19, "span", 67);
+    \u0275\u0275text(20, "\uF50D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(21, " Search Existing ");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(22, "p", 69);
+    \u0275\u0275text(23, " You can continue editing the primary form.");
+    \u0275\u0275element(24, "br");
+    \u0275\u0275text(25, " Choose an option when ready. ");
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.targetUnit(), " ");
+    \u0275\u0275advance(9);
+    \u0275\u0275textInterpolate1("No matching LOTO point found for Unit ", ctx_r1.targetUnit(), ".");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Deleting... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Delete Both ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_27_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r12 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 70);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_27_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r12);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.deleteBoth());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("disabled", ctx_r1.isDeletingPrimary() || ctx_r1.isDeletingCounterpart() || ctx_r1.isDeletingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isDeletingBoth() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Saving Both... ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " Save Both Units ");
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Conditional_29_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 71);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_29_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r13);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.saveBoth());
+    });
+    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_2_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("disabled", ctx_r1.isSavingPrimary() || ctx_r1.isSavingCounterpart() || ctx_r1.isSavingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.isSavingBoth() ? 1 : 2);
+  }
+}
+function LotoPointDualFormComponent_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 9)(1, "div", 10)(2, "div", 11)(3, "h3", 12);
+    \u0275\u0275text(4);
+    \u0275\u0275elementStart(5, "span", 13);
+    \u0275\u0275text(6, "(Primary)");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275template(7, LotoPointDualFormComponent_Conditional_2_Conditional_7_Template, 2, 0, "span", 14);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(8, "div", 15)(9, "app-rf-reactive-form", 16, 0);
+    \u0275\u0275listener("formValueChange", function LotoPointDualFormComponent_Conditional_2_Template_app_rf_reactive_form_formValueChange_9_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onPrimaryValueChange($event));
+    });
+    \u0275\u0275elementContainerStart(11, 17);
+    \u0275\u0275elementStart(12, "button", 18);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_12_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.openPrimaryTagGenerator());
+    });
+    \u0275\u0275text(13, " Generate Tag ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(14, "app-clipboard-form", 19);
+    \u0275\u0275listener("itemSelected", function LotoPointDualFormComponent_Conditional_2_Template_app_clipboard_form_itemSelected_14_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onPrimaryClipboardItemSelected($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementContainerEnd();
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(15, "div", 20)(16, "button", 21);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_16_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.savePrimary());
+    });
+    \u0275\u0275text(17);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(18, LotoPointDualFormComponent_Conditional_2_Conditional_18_Template, 3, 2, "button", 22);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275template(19, LotoPointDualFormComponent_Conditional_2_Conditional_19_Template, 19, 8, "div", 23)(20, LotoPointDualFormComponent_Conditional_2_Conditional_20_Template, 9, 0, "div", 24)(21, LotoPointDualFormComponent_Conditional_2_Conditional_21_Template, 22, 26, "div", 25)(22, LotoPointDualFormComponent_Conditional_2_Conditional_22_Template, 26, 2, "div", 26);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "div", 27)(24, "div", 28)(25, "button", 29);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_25_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.close());
+    });
+    \u0275\u0275text(26, " Cancel ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(27, LotoPointDualFormComponent_Conditional_2_Conditional_27_Template, 3, 2, "button", 30);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(28, "div", 31);
+    \u0275\u0275template(29, LotoPointDualFormComponent_Conditional_2_Conditional_29_Template, 3, 2, "button", 32);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.sourceUnit(), " ");
+    \u0275\u0275advance(3);
+    \u0275\u0275conditional(ctx_r1.isSavingPrimary() ? 7 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275property("entity", ctx_r1.currentPrimaryValues() || ctx_r1.primaryLotoPoint())("fields", ctx_r1.primaryFields())("title", "")("showSubmitButton", false);
+    \u0275\u0275advance(5);
+    \u0275\u0275property("entityType", "LotoPoint")("initialEntity", ctx_r1.initialPrimaryEntity())("currentEntity", ctx_r1.currentPrimaryValues() || ctx_r1.primaryLotoPoint())("hasValidData", ctx_r1.hasValidData)("getItemSummary", ctx_r1.getItemSummary)("clipboardFormatter", ctx_r1.clipboardFormatter)("excludeIdOnPaste", true);
+    \u0275\u0275advance(2);
+    \u0275\u0275property("disabled", ctx_r1.isSavingPrimary() || ctx_r1.isSavingBoth());
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" Save Unit ", ctx_r1.sourceUnit(), " ");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.canDeletePrimary() ? 18 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 19 : 20);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 21 : 22);
+    \u0275\u0275advance(6);
+    \u0275\u0275conditional(ctx_r1.canDeletePrimary() && ctx_r1.canDeleteCounterpart() ? 27 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 29 : -1);
+  }
+}
+function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r15 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-rf-loto-point-table", 81);
+    \u0275\u0275listener("selectedItemsEvent", function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template_app_rf_loto_point_table_selectedItemsEvent_0_listener($event) {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onSearchSelected($event));
+    })("rowDoubleClickedEvent", function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template_app_rf_loto_point_table_rowDoubleClickedEvent_0_listener($event) {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onSearchRowDoubleClicked($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("tableId", "dual-form-counterpart-search-" + ctx_r1.targetUnit())("fieldsToDisplay", \u0275\u0275pureFunction0(3, _c213))("initialSearchCriteria", ctx_r1.searchCriteria());
+  }
+}
+function LotoPointDualFormComponent_Conditional_3_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 78)(1, "span", 82);
+    \u0275\u0275text(2, "Selected:");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "strong");
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "span", 83);
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.selectedFromSearch().tagNumber);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(ctx_r1.selectedFromSearch().description);
+  }
+}
+function LotoPointDualFormComponent_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 4)(1, "div", 72)(2, "div", 73)(3, "h3");
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "button", 74);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.closeManualSearch());
+    });
+    \u0275\u0275text(6, "\u2715");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(7, "p", 75);
+    \u0275\u0275text(8, ' Double-click a row to select, or select and click "Use Selected". ');
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "div", 76);
+    \u0275\u0275template(10, LotoPointDualFormComponent_Conditional_3_Conditional_10_Template, 1, 4, "app-rf-loto-point-table", 77);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(11, LotoPointDualFormComponent_Conditional_3_Conditional_11_Template, 7, 2, "div", 78);
+    \u0275\u0275elementStart(12, "div", 79)(13, "button", 29);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_13_listener() {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.closeManualSearch());
+    });
+    \u0275\u0275text(14, " Cancel ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "button", 80);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_15_listener() {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.useSelectedFromSearch());
+    });
+    \u0275\u0275text(16, " Use Selected ");
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1("Search for Counterpart in Unit ", ctx_r1.targetUnit(), "");
+    \u0275\u0275advance(6);
+    \u0275\u0275conditional(ctx_r1.showManualSearch() ? 10 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.selectedFromSearch() ? 11 : -1);
+    \u0275\u0275advance(4);
+    \u0275\u0275property("disabled", !ctx_r1.selectedFromSearch());
+  }
+}
+function LotoPointDualFormComponent_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r16 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 5)(1, "p");
+    \u0275\u0275text(2, "This LOTO point's tag number does not start with 01 or 02.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "p");
+    \u0275\u0275text(4, "Dual form view is only available for unit-specific LOTO points.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "button", 84);
+    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_4_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r16);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.close());
+    });
+    \u0275\u0275text(6, "Close");
+    \u0275\u0275elementEnd()();
+  }
+}
+var LotoPointDualFormComponent = class _LotoPointDualFormComponent {
+  primaryFormRef;
+  counterpartFormRef;
+  apiService = inject(RfLotoPointApiService);
+  mapperService = inject(LotoPointMapperService);
+  counterpartService = inject(LotoPointCounterpartService);
+  messageService = inject(GlobalMessageService);
+  confirmationService = inject(ConfirmationService);
+  destroyRef = inject(DestroyRef);
+  lotoPointStateService = inject(RfLotoPointStateService);
+  clipboardService = inject(ClipboardService2);
+  // Inputs
+  primaryLotoPoint = input.required();
+  fieldsToDisplay = input([
+    "tagNumber",
+    "description",
+    "specificLocation",
+    "eqType",
+    "isoPos",
+    "normPos",
+    "location",
+    "zeroEnergy",
+    "equipmentList"
+  ]);
+  // Outputs
+  primarySaved = new EventEmitter();
+  counterpartSaved = new EventEmitter();
+  bothSaved = new EventEmitter();
+  formClosed = new EventEmitter();
+  // State
+  counterpartLotoPoint = signal(null);
+  isCounterpartNew = signal(false);
+  isCounterpartLinked = signal(false);
+  counterpartStatus = signal("not-found");
+  sourceUnit = signal("01");
+  targetUnit = signal("02");
+  isLoading = signal(false);
+  isSavingPrimary = signal(false);
+  isSavingCounterpart = signal(false);
+  isSavingBoth = signal(false);
+  isLinking = signal(false);
+  // For manual search mode
+  showManualSearch = signal(false);
+  // Selected item from manual search table
+  selectedFromSearch = signal(null);
+  // Search criteria for counterpart search (filters by target unit)
+  searchCriteria = computed(() => {
+    return {
+      filters: {
+        unit: this.targetUnit()
+      },
+      pageSize: 50
+    };
+  });
+  // Track form values for syncing
+  currentPrimaryValues = signal(null);
+  currentCounterpartValues = signal(null);
+  // Track which fields are different between forms
+  differentFields = signal(/* @__PURE__ */ new Set());
+  // Expose syncable fields for template
+  syncableFields = SYNCABLE_FIELDS.filter((f) => f !== "tagNumber");
+  // Computed: Check if primary tag or unit starts with 01 or 02
+  isUnitSpecific = computed(() => {
+    return this.counterpartService.isUnitSpecific(this.primaryLotoPoint());
+  });
+  // Computed: Form fields for primary
+  primaryFields = computed(() => {
+    const entity = this.currentPrimaryValues() || this.primaryLotoPoint();
+    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
+  });
+  // Computed: Form fields for counterpart
+  counterpartFields = computed(() => {
+    const entity = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!entity)
+      return [];
+    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
+  });
+  constructor() {
+    effect(() => {
+      const primary = this.primaryLotoPoint();
+      if (!primary) {
+        return;
+      }
+      const isUnitSpecific = this.counterpartService.isUnitSpecific(primary);
+      if (!isUnitSpecific) {
+        return;
+      }
+      const source = this.counterpartService.getSourceUnit(primary);
+      this.sourceUnit.set(source);
+      this.targetUnit.set(this.counterpartService.getTargetUnit(source));
+      if (primary?.id) {
+        this.loadPrimaryAndCounterpart(primary.id);
+      } else if (primary?.tagNumber) {
+        this.loadCounterpartByTagNumber(primary.tagNumber);
+      } else if (primary?.unit) {
+        this.loadCounterpartByTagNumber(primary.unit);
+      }
+    });
+  }
+  /**
+   * Load fresh primary data from API and then load counterpart.
+   * This ensures we have the latest data from the database, not stale in-memory data.
+   */
+  loadPrimaryAndCounterpart(primaryId) {
+    this.isLoading.set(true);
+    this.showManualSearch.set(false);
+    this.apiService.getLotoPointById(String(primaryId)).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
+      if (response.responseData) {
+        const freshPrimary = LotoPointDto.fromJson(response.responseData);
+        this.currentPrimaryValues.set(freshPrimary);
+      }
+    }), switchMap(() => {
+      return this.apiService.getUnitCounterpart(primaryId);
+    }), tap((response) => {
+      if (response.responseData) {
+        const data = response.responseData;
+        const counterpart = LotoPointDto.fromJson(data.counterpart);
+        this.counterpartLotoPoint.set(counterpart);
+        this.currentCounterpartValues.set(counterpart);
+        this.isCounterpartNew.set(data.isNew);
+        this.isCounterpartLinked.set(data.isLinked ?? false);
+        this.sourceUnit.set(data.sourceUnit);
+        this.targetUnit.set(data.targetUnit);
+        if (data.isLinked) {
+          this.counterpartStatus.set("linked");
+        } else if (!data.isNew) {
+          this.counterpartStatus.set("found");
+        } else {
+          this.counterpartStatus.set("suggested");
+        }
+        this.updateDifferentFields();
+      } else {
+        this.counterpartStatus.set("not-found");
+      }
+      this.isLoading.set(false);
+    }), catchError((error) => {
+      console.error("Error loading primary and counterpart:", error);
+      this.messageService.showError("Failed to load LOTO point data");
+      this.counterpartStatus.set("not-found");
+      this.isLoading.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Load counterpart data from API (legacy method, now only used for new items)
+   */
+  loadCounterpart(primaryId) {
+    this.isLoading.set(true);
+    this.showManualSearch.set(false);
+    this.apiService.getUnitCounterpart(primaryId).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
+      if (response.responseData) {
+        const data = response.responseData;
+        const counterpart = LotoPointDto.fromJson(data.counterpart);
+        this.counterpartLotoPoint.set(counterpart);
+        this.currentCounterpartValues.set(counterpart);
+        this.isCounterpartNew.set(data.isNew);
+        this.isCounterpartLinked.set(data.isLinked ?? false);
+        this.sourceUnit.set(data.sourceUnit);
+        this.targetUnit.set(data.targetUnit);
+        if (data.isLinked) {
+          this.counterpartStatus.set("linked");
+        } else if (!data.isNew) {
+          this.counterpartStatus.set("found");
+        } else {
+          this.counterpartStatus.set("suggested");
+        }
+        this.updateDifferentFields();
+      } else {
+        this.counterpartStatus.set("not-found");
+      }
+      this.isLoading.set(false);
+    }), catchError((error) => {
+      console.error("Error loading counterpart:", error);
+      this.messageService.showError("Failed to load unit counterpart");
+      this.counterpartStatus.set("not-found");
+      this.isLoading.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Load counterpart by tag number (for new items)
+   */
+  loadCounterpartByTagNumber(tagNumber) {
+    if (!tagNumber || !tagNumber.startsWith("01") && !tagNumber.startsWith("02")) {
+      this.counterpartStatus.set("not-found");
+      return;
+    }
+    this.isLoading.set(true);
+    this.apiService.getCounterpartByTagNumber(tagNumber).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
+      if (response.responseData) {
+        const data = response.responseData;
+        const counterpart = LotoPointDto.fromJson(data.counterpart);
+        this.counterpartLotoPoint.set(counterpart);
+        this.currentCounterpartValues.set(counterpart);
+        this.isCounterpartNew.set(data.isNew);
+        this.isCounterpartLinked.set(false);
+        this.sourceUnit.set(data.sourceUnit);
+        this.targetUnit.set(data.targetUnit);
+        this.counterpartStatus.set(data.isNew ? "suggested" : "found");
+        this.updateDifferentFields();
+      }
+      this.isLoading.set(false);
+    }), catchError((error) => {
+      console.error("Error loading counterpart by tag:", error);
+      this.counterpartStatus.set("not-found");
+      this.isLoading.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Set counterpart manually (from external selection like a table)
+   */
+  setCounterpartManually(lotoPoint) {
+    this.counterpartLotoPoint.set(lotoPoint);
+    this.currentCounterpartValues.set(lotoPoint);
+    this.isCounterpartNew.set(false);
+    this.isCounterpartLinked.set(false);
+    this.counterpartStatus.set("found");
+    this.showManualSearch.set(false);
+    this.updateDifferentFields();
+  }
+  /**
+   * Create a new counterpart (empty form)
+   */
+  createNewCounterpart() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary?.tagNumber)
+      return;
+    const newCounterpart = this.counterpartService.generateCounterpart(primary, this.targetUnit());
+    this.counterpartLotoPoint.set(newCounterpart);
+    this.currentCounterpartValues.set(newCounterpart);
+    this.isCounterpartNew.set(true);
+    this.isCounterpartLinked.set(false);
+    this.counterpartStatus.set("suggested");
+    this.showManualSearch.set(false);
+    this.updateDifferentFields();
+  }
+  /**
+   * Show manual search UI
+   */
+  openManualSearch() {
+    this.lotoPointStateService.clearLotoPoints();
+    this.lotoPointStateService.resetPage();
+    this.lotoPointStateService.clearSortState();
+    this.selectedFromSearch.set(null);
+    this.showManualSearch.set(true);
+  }
+  /**
+   * Hide manual search UI
+   */
+  closeManualSearch() {
+    this.showManualSearch.set(false);
+    this.selectedFromSearch.set(null);
+  }
+  /**
+   * Handle selection from manual search table
+   */
+  onSearchSelected(items) {
+    if (items.length > 0) {
+      this.selectedFromSearch.set(items[0]);
+    } else {
+      this.selectedFromSearch.set(null);
+    }
+  }
+  /**
+   * Handle double-click on search table row - immediately use that counterpart
+   */
+  onSearchRowDoubleClicked(item) {
+    this.setCounterpartManually(item);
+  }
+  /**
+   * Use the selected item from search as counterpart
+   */
+  useSelectedFromSearch() {
+    const selected = this.selectedFromSearch();
+    if (selected) {
+      this.setCounterpartManually(selected);
+    }
+  }
+  /**
+   * Handle primary form value changes
+   */
+  onPrimaryValueChange(values) {
+    this.currentPrimaryValues.set(values);
+    this.updateDifferentFields();
+  }
+  /**
+   * Handle counterpart form value changes
+   */
+  onCounterpartValueChange(values) {
+    this.currentCounterpartValues.set(values);
+    this.updateDifferentFields();
+  }
+  /**
+   * Update the set of fields that differ between forms
+   */
+  updateDifferentFields() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    this.differentFields.set(this.counterpartService.getDifferentFields(primary, counterpart, true));
+  }
+  /**
+   * Check if a field is different between forms
+   */
+  isFieldDifferent(field) {
+    return this.differentFields().has(field);
+  }
+  /**
+   * Check if there are any different fields
+   */
+  hasDifferentFields() {
+    return this.differentFields().size > 0;
+  }
+  /**
+   * Get a short label for a field
+   */
+  getFieldLabel(field) {
+    return this.counterpartService.getFieldLabel(field);
+  }
+  /**
+   * Sync a single field from primary to counterpart
+   */
+  syncFieldToCounterpart(field) {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary || !counterpart)
+      return;
+    if (field === "zeroEnergy") {
+      this.isLoading.set(true);
+      this.counterpartService.syncZeroEnergy(primary, counterpart, this.sourceUnit(), this.destroyRef).pipe(tap((updated) => {
+        this.currentCounterpartValues.set(updated);
+        this.counterpartLotoPoint.set(updated);
+        this.updateDifferentFields();
+        this.isLoading.set(false);
+      }), catchError((error) => {
+        console.error("Error syncing zeroEnergy:", error);
+        this.isLoading.set(false);
+        return of(null);
+      })).subscribe();
+      return;
+    }
+    const updatedCounterpart = this.counterpartService.syncField(primary, counterpart, field, this.sourceUnit(), this.targetUnit());
+    this.currentCounterpartValues.set(updatedCounterpart);
+    this.counterpartLotoPoint.set(updatedCounterpart);
+    this.updateDifferentFields();
+  }
+  /**
+   * Sync a single field from counterpart to primary
+   */
+  syncFieldToPrimary(field) {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary || !counterpart)
+      return;
+    if (field === "zeroEnergy") {
+      this.isLoading.set(true);
+      this.counterpartService.syncZeroEnergy(counterpart, primary, this.targetUnit(), this.destroyRef).pipe(tap((updated) => {
+        this.currentPrimaryValues.set(updated);
+        this.updateDifferentFields();
+        this.isLoading.set(false);
+      }), catchError((error) => {
+        console.error("Error syncing zeroEnergy:", error);
+        this.isLoading.set(false);
+        return of(null);
+      })).subscribe();
+      return;
+    }
+    const updatedPrimary = this.counterpartService.syncField(counterpart, primary, field, this.targetUnit(), this.sourceUnit());
+    this.currentPrimaryValues.set(updatedPrimary);
+    this.updateDifferentFields();
+  }
+  /**
+   * Sync all fields from primary to counterpart
+   */
+  syncAllToCounterpart() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary || !counterpart)
+      return;
+    const updatedCounterpart = this.counterpartService.syncAllFields(
+      primary,
+      counterpart,
+      this.sourceUnit(),
+      this.targetUnit(),
+      true
+      // exclude tagNumber
+    );
+    this.currentCounterpartValues.set(updatedCounterpart);
+    this.counterpartLotoPoint.set(updatedCounterpart);
+    this.isLoading.set(true);
+    this.counterpartService.syncZeroEnergy(primary, updatedCounterpart, this.sourceUnit(), this.destroyRef).pipe(tap((finalCounterpart) => {
+      this.currentCounterpartValues.set(finalCounterpart);
+      this.counterpartLotoPoint.set(finalCounterpart);
+      this.updateDifferentFields();
+      this.isLoading.set(false);
+      this.messageService.showSuccess(`All fields synced to Unit ${this.targetUnit()}`);
+    }), catchError((error) => {
+      console.error("Error syncing zeroEnergy:", error);
+      this.updateDifferentFields();
+      this.isLoading.set(false);
+      this.messageService.showSuccess(`Fields synced to Unit ${this.targetUnit()} (zeroEnergy sync failed)`);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Sync all fields from counterpart to primary
+   */
+  syncAllToPrimary() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary || !counterpart)
+      return;
+    const updatedPrimary = this.counterpartService.syncAllFields(
+      counterpart,
+      primary,
+      this.targetUnit(),
+      this.sourceUnit(),
+      true
+      // exclude tagNumber
+    );
+    this.currentPrimaryValues.set(updatedPrimary);
+    this.isLoading.set(true);
+    this.counterpartService.syncZeroEnergy(counterpart, updatedPrimary, this.targetUnit(), this.destroyRef).pipe(tap((finalPrimary) => {
+      this.currentPrimaryValues.set(finalPrimary);
+      this.updateDifferentFields();
+      this.isLoading.set(false);
+      this.messageService.showSuccess(`All fields synced to Unit ${this.sourceUnit()}`);
+    }), catchError((error) => {
+      console.error("Error syncing zeroEnergy:", error);
+      this.updateDifferentFields();
+      this.isLoading.set(false);
+      this.messageService.showSuccess(`Fields synced to Unit ${this.sourceUnit()} (zeroEnergy sync failed)`);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Save primary LOTO point
+   */
+  savePrimary() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary)
+      return;
+    this.isSavingPrimary.set(true);
+    this.apiService.saveLotoPoint(primary).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
+      if (response.responseData) {
+        const saved = LotoPointDto.fromJson(response.responseData);
+        this.currentPrimaryValues.set(saved);
+        this.primarySaved.emit(saved);
+        this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point saved`);
+      }
+      this.isSavingPrimary.set(false);
+    }), catchError((error) => {
+      console.error("Error saving primary:", error);
+      this.messageService.showError("Failed to save primary LOTO point");
+      this.isSavingPrimary.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Save counterpart LOTO point
+   */
+  saveCounterpart() {
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!counterpart)
+      return;
+    this.isSavingCounterpart.set(true);
+    this.apiService.saveLotoPoint(counterpart).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
+      if (response.responseData) {
+        const saved = LotoPointDto.fromJson(response.responseData);
+        this.counterpartLotoPoint.set(saved);
+        this.currentCounterpartValues.set(saved);
+        this.isCounterpartNew.set(false);
+        this.counterpartSaved.emit(saved);
+        this.messageService.showSuccess(`Unit ${this.targetUnit()} LOTO point saved`);
+      }
+      this.isSavingCounterpart.set(false);
+    }), catchError((error) => {
+      console.error("Error saving counterpart:", error);
+      this.messageService.showError("Failed to save counterpart LOTO point");
+      this.isSavingCounterpart.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Save both LOTO points and link them
+   */
+  saveBoth() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary || !counterpart)
+      return;
+    this.isSavingBoth.set(true);
+    this.apiService.saveLotoPoint(primary).pipe(takeUntilDestroyed(this.destroyRef), tap((primaryResponse) => {
+      if (primaryResponse.responseData) {
+        const savedPrimary = LotoPointDto.fromJson(primaryResponse.responseData);
+        this.currentPrimaryValues.set(savedPrimary);
+        this.apiService.saveLotoPoint(counterpart).pipe(takeUntilDestroyed(this.destroyRef), tap((counterpartResponse) => {
+          if (counterpartResponse.responseData) {
+            const savedCounterpart = LotoPointDto.fromJson(counterpartResponse.responseData);
+            this.counterpartLotoPoint.set(savedCounterpart);
+            this.currentCounterpartValues.set(savedCounterpart);
+            this.isCounterpartNew.set(false);
+            if (!this.isCounterpartLinked() && savedPrimary.id && savedCounterpart.id) {
+              this.linkCounterpartsAfterSave(savedPrimary, savedCounterpart);
+            } else {
+              this.bothSaved.emit({ primary: savedPrimary, counterpart: savedCounterpart });
+              this.messageService.showSuccess("Both LOTO points saved successfully");
+              this.isSavingBoth.set(false);
+            }
+          } else {
+            this.isSavingBoth.set(false);
+          }
+        }), catchError((error) => {
+          console.error("Error saving counterpart:", error);
+          this.messageService.showError("Primary saved but failed to save counterpart");
+          this.isSavingBoth.set(false);
+          return of(null);
+        })).subscribe();
+      }
+    }), catchError((error) => {
+      console.error("Error saving primary:", error);
+      this.messageService.showError("Failed to save primary LOTO point");
+      this.isSavingBoth.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Link counterparts after both are saved
+   */
+  linkCounterpartsAfterSave(primary, counterpart) {
+    if (!primary.id || !counterpart.id) {
+      this.bothSaved.emit({ primary, counterpart });
+      this.messageService.showSuccess("Both LOTO points saved (linking skipped - missing IDs)");
+      this.isSavingBoth.set(false);
+      return;
+    }
+    this.apiService.linkCounterparts(primary.id, counterpart.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
+      primary.counterpartId = counterpart.id;
+      counterpart.counterpartId = primary.id;
+      this.currentPrimaryValues.set(primary);
+      this.currentCounterpartValues.set(counterpart);
+      this.counterpartLotoPoint.set(counterpart);
+      this.isCounterpartLinked.set(true);
+      this.counterpartStatus.set("linked");
+      this.bothSaved.emit({ primary, counterpart });
+      this.messageService.showSuccess("Both LOTO points saved and linked");
+      this.isSavingBoth.set(false);
+    }), catchError((error) => {
+      console.error("Error linking counterparts:", error);
+      this.bothSaved.emit({ primary, counterpart });
+      this.messageService.showWarning("Both saved, but linking failed. You may need to link manually.");
+      this.isSavingBoth.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Manually link current primary and counterpart
+   */
+  linkCounterparts() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary?.id || !counterpart?.id) {
+      this.messageService.showError("Both LOTO points must be saved before linking");
+      return;
+    }
+    this.isLinking.set(true);
+    this.apiService.linkCounterparts(primary.id, counterpart.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
+      primary.counterpartId = counterpart.id;
+      counterpart.counterpartId = primary.id;
+      this.currentPrimaryValues.set(primary);
+      this.currentCounterpartValues.set(counterpart);
+      this.counterpartLotoPoint.set(counterpart);
+      this.isCounterpartLinked.set(true);
+      this.counterpartStatus.set("linked");
+      this.messageService.showSuccess("LOTO points linked successfully");
+      this.isLinking.set(false);
+    }), catchError((error) => {
+      console.error("Error linking counterparts:", error);
+      this.messageService.showError("Failed to link counterparts");
+      this.isLinking.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  /**
+   * Unlink current counterpart
+   */
+  unlinkCounterpart() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary?.id) {
+      this.messageService.showError("Primary LOTO point must be saved");
+      return;
+    }
+    this.isLinking.set(true);
+    this.apiService.unlinkCounterpart(primary.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
+      primary.counterpartId = null;
+      const counterpart = this.counterpartLotoPoint();
+      if (counterpart) {
+        counterpart.counterpartId = null;
+        this.counterpartLotoPoint.set(counterpart);
+        this.currentCounterpartValues.set(counterpart);
+      }
+      this.currentPrimaryValues.set(primary);
+      this.isCounterpartLinked.set(false);
+      this.counterpartStatus.set("found");
+      this.messageService.showSuccess("Counterpart unlinked");
+      this.isLinking.set(false);
+    }), catchError((error) => {
+      console.error("Error unlinking counterpart:", error);
+      this.messageService.showError("Failed to unlink counterpart");
+      this.isLinking.set(false);
+      return of(null);
+    })).subscribe();
+  }
+  // ========== Tag Number Generator ==========
+  /** Whether primary tag generator popup is open */
+  isPrimaryTagGeneratorOpen = signal(false);
+  /** Whether counterpart tag generator popup is open */
+  isCounterpartTagGeneratorOpen = signal(false);
+  /**
+   * Open tag generator for primary form
+   */
+  openPrimaryTagGenerator() {
+    this.isPrimaryTagGeneratorOpen.set(true);
+  }
+  /**
+   * Close tag generator for primary form
+   */
+  closePrimaryTagGenerator() {
+    this.isPrimaryTagGeneratorOpen.set(false);
+  }
+  /**
+   * Handle tag generated for primary form
+   */
+  onPrimaryTagGenerated(tagNumber) {
+    const current = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const updated = new LotoPointDto(__spreadProps(__spreadValues({}, current), {
+      tagNumber
+    }));
+    this.currentPrimaryValues.set(updated);
+    this.closePrimaryTagGenerator();
+    this.updateDifferentFields();
+  }
+  /**
+   * Open tag generator for counterpart form
+   */
+  openCounterpartTagGenerator() {
+    this.isCounterpartTagGeneratorOpen.set(true);
+  }
+  /**
+   * Close tag generator for counterpart form
+   */
+  closeCounterpartTagGenerator() {
+    this.isCounterpartTagGeneratorOpen.set(false);
+  }
+  /**
+   * Handle tag generated for counterpart form
+   */
+  onCounterpartTagGenerated(tagNumber) {
+    const current = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!current)
+      return;
+    const updated = new LotoPointDto(__spreadProps(__spreadValues({}, current), {
+      tagNumber
+    }));
+    this.currentCounterpartValues.set(updated);
+    this.counterpartLotoPoint.set(updated);
+    this.closeCounterpartTagGenerator();
+    this.updateDifferentFields();
+  }
+  // ========== Clipboard Functionality ==========
+  /** Initial entity for primary clipboard tracking */
+  initialPrimaryEntity = signal(new LotoPointDto());
+  /** Initial entity for counterpart clipboard tracking */
+  initialCounterpartEntity = signal(new LotoPointDto());
+  /** Capture initial primary entity for clipboard */
+  captureInitialPrimary = effect(() => {
+    const entity = this.primaryLotoPoint();
+    const current = this.initialPrimaryEntity();
+    if (entity && (entity.id || entity.tagNumber || entity.description) && !(current.id || current.tagNumber || current.description)) {
+      this.initialPrimaryEntity.set(structuredClone(entity));
+    }
+  });
+  /** Capture initial counterpart entity for clipboard */
+  captureInitialCounterpart = effect(() => {
+    const entity = this.counterpartLotoPoint();
+    const current = this.initialCounterpartEntity();
+    if (entity && (entity.id || entity.tagNumber || entity.description) && !(current.id || current.tagNumber || current.description)) {
+      this.initialCounterpartEntity.set(structuredClone(entity));
+    }
+  });
+  /**
+   * Check if entity has valid data for clipboard operations
+   */
+  hasValidData = (entity) => {
+    return !!(entity.id || entity.tagNumber || entity.description);
+  };
+  /**
+   * Get summary string for clipboard item display
+   */
+  getItemSummary = (item) => {
+    return `${item.tagNumber || "N/A"} - ${item.description || "No description"}`;
+  };
+  /**
+   * Formatter to transform LotoPointDto to LotoPointClipboardItem before adding to clipboard
+   */
+  clipboardFormatter = (entity) => {
+    const clipboardItem = new LotoPointClipboardItem(entity);
+    clipboardItem.objectType = "LotoPoint";
+    return clipboardItem;
+  };
+  /**
+   * Handle clipboard item selected for primary form
+   */
+  onPrimaryClipboardItemSelected(item) {
+    if (item) {
+      const updated = new LotoPointDto(item);
+      this.currentPrimaryValues.set(updated);
+      this.updateDifferentFields();
+    }
+  }
+  /**
+   * Handle clipboard item selected for counterpart form
+   */
+  onCounterpartClipboardItemSelected(item) {
+    if (item) {
+      const updated = new LotoPointDto(item);
+      this.currentCounterpartValues.set(updated);
+      this.counterpartLotoPoint.set(updated);
+      this.updateDifferentFields();
+    }
+  }
+  // ========== Delete Functionality ==========
+  /** Whether currently deleting primary */
+  isDeletingPrimary = signal(false);
+  /** Whether currently deleting counterpart */
+  isDeletingCounterpart = signal(false);
+  /** Whether currently deleting both */
+  isDeletingBoth = signal(false);
+  /**
+   * Check if primary can be deleted (must have an ID)
+   */
+  canDeletePrimary() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    return !!primary?.id;
+  }
+  /**
+   * Check if counterpart can be deleted (must have an ID and not be new)
+   */
+  canDeleteCounterpart() {
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    return !!counterpart?.id && !this.isCounterpartNew();
+  }
+  /**
+   * Delete primary LOTO point with confirmation
+   */
+  deletePrimary() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary?.id)
+      return;
+    const tagNumber = primary.tagNumber || `LOTO Point #${primary.id}`;
+    this.confirmationService.confirm(`Are you sure you want to delete "${tagNumber}" (Unit ${this.sourceUnit()})?
+
+This will also delete all associated equipment shapes.`).then((confirmed) => {
+      if (!confirmed)
+        return;
+      if (this.isCounterpartLinked()) {
+        this.confirmationService.confirm(`This LOTO point has a linked counterpart.
+
+Do you also want to delete the counterpart LOTO point (Unit ${this.targetUnit()})?`).then((deleteCounterpart) => {
+          this.executeDeletePrimary(primary.id, deleteCounterpart);
+        });
+      } else {
+        this.executeDeletePrimary(primary.id, false);
+      }
+    });
+  }
+  /**
+   * Execute delete primary API call
+   */
+  executeDeletePrimary(id2, deleteCounterpart) {
+    this.isDeletingPrimary.set(true);
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    const counterpartId = deleteCounterpart ? counterpart?.id : void 0;
+    this.apiService.deleteLotoPoint(id2, deleteCounterpart, counterpartId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point deleted`);
+        this.isDeletingPrimary.set(false);
+        if (deleteCounterpart) {
+          this.messageService.showSuccess(`Counterpart (Unit ${this.targetUnit()}) also deleted`);
+        }
+        this.formClosed.emit();
+      },
+      error: (error) => {
+        console.error("Error deleting primary:", error);
+        this.messageService.showError("Failed to delete LOTO point");
+        this.isDeletingPrimary.set(false);
+      }
+    });
+  }
+  /**
+   * Delete counterpart LOTO point with confirmation
+   */
+  deleteCounterpart() {
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!counterpart?.id)
+      return;
+    const tagNumber = counterpart.tagNumber || `LOTO Point #${counterpart.id}`;
+    this.confirmationService.confirm(`Are you sure you want to delete "${tagNumber}" (Unit ${this.targetUnit()})?
+
+This will also delete all associated equipment shapes.`).then((confirmed) => {
+      if (!confirmed)
+        return;
+      this.executeDeleteCounterpart(counterpart.id, false);
+    });
+  }
+  /**
+   * Execute delete counterpart API call
+   */
+  executeDeleteCounterpart(id2, deleteCounterpart) {
+    this.isDeletingCounterpart.set(true);
+    this.apiService.deleteLotoPoint(id2, deleteCounterpart).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.messageService.showSuccess(`Unit ${this.targetUnit()} LOTO point deleted`);
+        this.isDeletingCounterpart.set(false);
+        this.counterpartLotoPoint.set(null);
+        this.currentCounterpartValues.set(null);
+        this.isCounterpartLinked.set(false);
+        this.counterpartStatus.set("not-found");
+      },
+      error: (error) => {
+        console.error("Error deleting counterpart:", error);
+        this.messageService.showError("Failed to delete counterpart LOTO point");
+        this.isDeletingCounterpart.set(false);
+      }
+    });
+  }
+  /**
+   * Delete both LOTO points with confirmation
+   */
+  deleteBoth() {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!primary?.id)
+      return;
+    const primaryTag = primary.tagNumber || `LOTO Point #${primary.id}`;
+    const counterpartTag = counterpart?.tagNumber || (counterpart?.id ? `LOTO Point #${counterpart.id}` : "counterpart");
+    this.confirmationService.confirm(`Are you sure you want to delete BOTH LOTO points?
+
+- ${primaryTag} (Unit ${this.sourceUnit()})
+- ${counterpartTag} (Unit ${this.targetUnit()})
+
+This will also delete all associated equipment shapes.`).then((confirmed) => {
+      if (!confirmed)
+        return;
+      this.isDeletingBoth.set(true);
+      const counterpartId = counterpart?.id;
+      this.apiService.deleteLotoPoint(primary.id, true, counterpartId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: () => {
+          this.messageService.showSuccess("Both LOTO points deleted successfully");
+          this.isDeletingBoth.set(false);
+          this.formClosed.emit();
+        },
+        error: (error) => {
+          console.error("Error deleting both:", error);
+          this.messageService.showError("Failed to delete LOTO points");
+          this.isDeletingBoth.set(false);
+        }
+      });
+    });
+  }
+  /**
+   * Close the form
+   */
+  close() {
+    this.formClosed.emit();
+  }
+  static \u0275fac = function LotoPointDualFormComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _LotoPointDualFormComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoPointDualFormComponent, selectors: [["app-loto-point-dual-form"]], viewQuery: function LotoPointDualFormComponent_Query(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275viewQuery(_c029, 5);
+      \u0275\u0275viewQuery(_c117, 5);
+    }
+    if (rf & 2) {
+      let _t;
+      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.primaryFormRef = _t.first);
+      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.counterpartFormRef = _t.first);
+    }
+  }, inputs: { primaryLotoPoint: [1, "primaryLotoPoint"], fieldsToDisplay: [1, "fieldsToDisplay"] }, outputs: { primarySaved: "primarySaved", counterpartSaved: "counterpartSaved", bothSaved: "bothSaved", formClosed: "formClosed" }, features: [\u0275\u0275ProvidersFeature([
+    // Provide isolated instances for this component's table
+    RfLotoPointStateService,
+    TableSelectionService,
+    TableStateService,
+    TableDragService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    LotoPointBulkEditService,
+    RfLotoPointTableDataService,
+    {
+      provide: TableDataService,
+      useClass: RfLotoPointTableDataService
+    }
+  ])], decls: 9, vars: 10, consts: [["primaryForm", ""], ["counterpartForm", ""], [1, "dual-form-container"], [1, "loading-overlay"], [1, "manual-search-overlay"], [1, "not-unit-specific"], [3, "close", "isOpen", "title", "size"], [3, "tagGenerated", "cancelled"], [1, "loading-spinner"], [1, "dual-form-layout"], [1, "form-panel", "primary-panel"], [1, "panel-header"], [1, "panel-title"], [1, "panel-subtitle"], [1, "saving-indicator"], [1, "form-content"], [3, "formValueChange", "entity", "fields", "title", "showSubmitButton"], ["extra-buttons", ""], ["type", "button", "title", "Generate New Tag Number", 1, "tag-generator-button", 3, "click"], [3, "itemSelected", "entityType", "initialEntity", "currentEntity", "hasValidData", "getItemSummary", "clipboardFormatter", "excludeIdOnPaste"], [1, "panel-actions"], [1, "action-btn", "save-btn", 3, "click", "disabled"], ["title", "Delete this LOTO point", 1, "action-btn", "delete-btn", 3, "disabled"], [1, "sync-controls"], [1, "sync-controls", "sync-controls-empty"], [1, "form-panel", "counterpart-panel", 3, "is-new", "is-linked", "is-suggestion"], [1, "form-panel", "counterpart-panel", "counterpart-panel-empty"], [1, "dual-form-footer"], [1, "footer-left"], [1, "action-btn", "cancel-btn", 3, "click"], ["title", "Delete both LOTO points", 1, "action-btn", "delete-both-btn", 3, "disabled"], [1, "footer-right"], [1, "action-btn", "save-both-btn", 3, "disabled"], ["title", "Delete this LOTO point", 1, "action-btn", "delete-btn", 3, "click", "disabled"], [1, "sync-header"], [1, "sync-icon"], [1, "sync-label"], [1, "counterpart-status"], [1, "status-badge", "linked"], [1, "status-badge", "found"], [1, "status-badge", "suggested"], [1, "link-controls"], [1, "sync-buttons"], [1, "sync-all-btn", "sync-right", 3, "click", "title"], [1, "sync-all-btn", "sync-left", 3, "click", "title"], [1, "field-sync-list"], [1, "field-sync-row", 3, "different"], ["title", "Remove counterpart link", 1, "link-btn", "unlink", 3, "disabled"], ["title", "Link these LOTO points as counterparts", 1, "link-btn", "link", 3, "disabled"], ["title", "Remove counterpart link", 1, "link-btn", "unlink", 3, "click", "disabled"], ["title", "Link these LOTO points as counterparts", 1, "link-btn", "link", 3, "click", "disabled"], [1, "field-sync-row"], [1, "field-sync-btn", "sync-right", 3, "click", "disabled", "title"], [1, "field-name"], [1, "field-sync-btn", "sync-left", 3, "click", "disabled", "title"], [1, "sync-header", "disabled"], [1, "sync-placeholder"], [1, "form-panel", "counterpart-panel"], [1, "new-badge"], [1, "linked-badge"], [1, "suggestion-badge"], [1, "panel-header-actions"], ["title", "Search for a different counterpart", 1, "change-counterpart-btn", 3, "click"], [1, "counterpart-options-inline"], [1, "options-icon"], [1, "options-buttons"], [1, "option-btn", "create-btn", 3, "click"], [1, "btn-icon"], [1, "option-btn", "search-btn", 3, "click"], [1, "options-hint"], ["title", "Delete both LOTO points", 1, "action-btn", "delete-both-btn", 3, "click", "disabled"], [1, "action-btn", "save-both-btn", 3, "click", "disabled"], [1, "manual-search-panel"], [1, "search-header"], ["title", "Close", 1, "close-search-btn", 3, "click"], [1, "search-instructions"], [1, "search-table-container"], [3, "tableId", "fieldsToDisplay", "initialSearchCriteria"], [1, "selected-info"], [1, "manual-search-actions"], [1, "action-btn", "use-btn", 3, "click", "disabled"], [3, "selectedItemsEvent", "rowDoubleClickedEvent", "tableId", "fieldsToDisplay", "initialSearchCriteria"], [1, "selected-label"], [1, "selected-desc"], [1, "action-btn", 3, "click"]], template: function LotoPointDualFormComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 2);
+      \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_1_Template, 4, 0, "div", 3)(2, LotoPointDualFormComponent_Conditional_2_Template, 30, 20)(3, LotoPointDualFormComponent_Conditional_3_Template, 17, 4, "div", 4)(4, LotoPointDualFormComponent_Conditional_4_Template, 7, 0, "div", 5);
+      \u0275\u0275elementStart(5, "app-popup-projection", 6);
+      \u0275\u0275listener("close", function LotoPointDualFormComponent_Template_app_popup_projection_close_5_listener() {
+        return ctx.closePrimaryTagGenerator();
+      });
+      \u0275\u0275elementStart(6, "app-tag-number-generator", 7);
+      \u0275\u0275listener("tagGenerated", function LotoPointDualFormComponent_Template_app_tag_number_generator_tagGenerated_6_listener($event) {
+        return ctx.onPrimaryTagGenerated($event);
+      })("cancelled", function LotoPointDualFormComponent_Template_app_tag_number_generator_cancelled_6_listener() {
+        return ctx.closePrimaryTagGenerator();
+      });
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(7, "app-popup-projection", 6);
+      \u0275\u0275listener("close", function LotoPointDualFormComponent_Template_app_popup_projection_close_7_listener() {
+        return ctx.closeCounterpartTagGenerator();
+      });
+      \u0275\u0275elementStart(8, "app-tag-number-generator", 7);
+      \u0275\u0275listener("tagGenerated", function LotoPointDualFormComponent_Template_app_tag_number_generator_tagGenerated_8_listener($event) {
+        return ctx.onCounterpartTagGenerated($event);
+      })("cancelled", function LotoPointDualFormComponent_Template_app_tag_number_generator_cancelled_8_listener() {
+        return ctx.closeCounterpartTagGenerator();
+      });
+      \u0275\u0275elementEnd()()();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.isLoading() ? 1 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(!ctx.isLoading() && ctx.isUnitSpecific() ? 2 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.showManualSearch() ? 3 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(!ctx.isUnitSpecific() ? 4 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275property("isOpen", ctx.isPrimaryTagGeneratorOpen())("title", "Generate Tag Number (Unit " + ctx.sourceUnit() + ")")("size", "medium");
+      \u0275\u0275advance(2);
+      \u0275\u0275property("isOpen", ctx.isCounterpartTagGeneratorOpen())("title", "Generate Tag Number (Unit " + ctx.targetUnit() + ")")("size", "medium");
+    }
+  }, dependencies: [
+    CommonModule,
+    RfReactiveFormComponent,
+    RfLotoPointTableComponent,
+    ClipboardFormComponent,
+    TagNumberGeneratorComponent,
+    PopupProjectionComponent
+  ], styles: ["\n\n.dual-form-container[_ngcontent-%COMP%] {\n  position: relative;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: var(--secondary-background, #f5f5f5);\n}\n.loading-overlay[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(255, 255, 255, 0.9);\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 12px;\n  z-index: 10;\n}\n.loading-spinner[_ngcontent-%COMP%] {\n  width: 40px;\n  height: 40px;\n  border: 4px solid var(--border-color, #e0e0e0);\n  border-top-color: var(--primary-color, #2196F3);\n  border-radius: 50%;\n  animation: _ngcontent-%COMP%_spin 1s linear infinite;\n}\n@keyframes _ngcontent-%COMP%_spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n.dual-form-layout[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: 1fr auto 1fr;\n  gap: 0;\n  flex: 1;\n  overflow: hidden;\n  position: relative;\n  z-index: 0;\n}\n.form-panel[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  background: var(--primary-background, #ffffff);\n  overflow: hidden;\n  position: relative;\n  z-index: 0;\n}\n.primary-panel[_ngcontent-%COMP%] {\n  border-right: 1px solid var(--border-color, #e0e0e0);\n}\n.counterpart-panel[_ngcontent-%COMP%] {\n  border-left: 1px solid var(--border-color, #e0e0e0);\n  z-index: 0;\n}\n.counterpart-panel.is-new[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      to bottom,\n      rgba(76, 175, 80, 0.05) 0%,\n      transparent 100px);\n}\n.panel-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 12px 16px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-bottom: 2px solid rgba(0, 0, 0, 0.1);\n}\n.panel-title[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 16px;\n  font-weight: 600;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.panel-subtitle[_ngcontent-%COMP%] {\n  font-size: 12px;\n  font-weight: 400;\n  opacity: 0.8;\n}\n.new-badge[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  font-size: 10px;\n  font-weight: 700;\n  padding: 2px 6px;\n  border-radius: 4px;\n  text-transform: uppercase;\n}\n.saving-indicator[_ngcontent-%COMP%] {\n  font-size: 12px;\n  opacity: 0.8;\n  animation: _ngcontent-%COMP%_pulse 1s ease-in-out infinite;\n}\n@keyframes _ngcontent-%COMP%_pulse {\n  0%, 100% {\n    opacity: 0.5;\n  }\n  50% {\n    opacity: 1;\n  }\n}\n.panel-header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.change-counterpart-btn[_ngcontent-%COMP%] {\n  background: rgba(255, 255, 255, 0.2);\n  border: 1px solid rgba(255, 255, 255, 0.3);\n  color: white;\n  font-size: 12px;\n  padding: 4px 10px;\n  border-radius: 4px;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  white-space: nowrap;\n}\n.change-counterpart-btn[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.3);\n  border-color: rgba(255, 255, 255, 0.5);\n}\n.form-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 16px;\n  position: relative;\n  z-index: 0;\n}\n.panel-actions[_ngcontent-%COMP%] {\n  padding: 12px 16px;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #f5f5f5);\n  display: flex;\n  justify-content: flex-end;\n  gap: 8px;\n}\n.sync-controls[_ngcontent-%COMP%] {\n  width: 140px;\n  background: var(--secondary-background, #f5f5f5);\n  border-left: 1px solid var(--border-color, #e0e0e0);\n  border-right: 1px solid var(--border-color, #e0e0e0);\n  display: flex;\n  flex-direction: column;\n  padding: 12px 8px;\n  gap: 12px;\n  position: relative;\n  z-index: 0;\n}\n.sync-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 6px;\n  padding: 8px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-radius: 6px;\n  font-weight: 600;\n}\n.sync-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n}\n.sync-label[_ngcontent-%COMP%] {\n  font-size: 14px;\n}\n.sync-buttons[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n.sync-all-btn[_ngcontent-%COMP%] {\n  padding: 8px 12px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.sync-all-btn.sync-right[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n}\n.sync-all-btn.sync-right[_ngcontent-%COMP%]:hover {\n  background: #BBDEFB;\n}\n.sync-all-btn.sync-left[_ngcontent-%COMP%] {\n  background: #E8F5E9;\n  color: #2E7D32;\n}\n.sync-all-btn.sync-left[_ngcontent-%COMP%]:hover {\n  background: #C8E6C9;\n}\n.field-sync-list[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.field-sync-row[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  padding: 4px;\n  border-radius: 4px;\n  background: var(--primary-background, #ffffff);\n  border: 1px solid var(--border-color, #e0e0e0);\n}\n.field-sync-row.different[_ngcontent-%COMP%] {\n  border-color: #FFA726;\n  background: #FFF3E0;\n}\n.field-sync-btn[_ngcontent-%COMP%] {\n  width: 24px;\n  height: 24px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  background: transparent;\n  color: var(--secondary-text, #666);\n  transition: all 0.2s ease;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.field-sync-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.3;\n  cursor: not-allowed;\n}\n.field-sync-btn[_ngcontent-%COMP%]:not(:disabled):hover {\n  background: var(--primary-color, #2196F3);\n  color: white;\n}\n.field-name[_ngcontent-%COMP%] {\n  flex: 1;\n  font-size: 11px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.field-name.different[_ngcontent-%COMP%] {\n  color: #E65100;\n  font-weight: 600;\n}\n.dual-form-footer[_ngcontent-%COMP%] {\n  padding: 12px 24px;\n  background: var(--primary-background, #ffffff);\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 12px;\n}\n.footer-left[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.footer-right[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.action-btn[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  border: 1px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #e5e5e5);\n  color: var(--primary-text, #333);\n}\n.action-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  transform: translateY(-1px);\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n}\n.action-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n  transform: none;\n}\n.save-btn[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.save-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.cancel-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: var(--primary-text, #333);\n}\n.cancel-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #d5d5d5;\n}\n.save-both-btn[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  border-color: #4CAF50;\n  min-width: 140px;\n}\n.save-both-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n  border-color: #43A047;\n}\n.delete-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: #c62828;\n  border-color: #c62828;\n}\n.delete-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #c62828;\n  color: white;\n  border-color: #c62828;\n}\n.delete-both-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: #c62828;\n  border-color: #c62828;\n}\n.delete-both-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #c62828;\n  color: white;\n  border-color: #c62828;\n}\n.no-counterpart[_ngcontent-%COMP%], \n.not-unit-specific[_ngcontent-%COMP%] {\n  padding: 40px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n}\n.no-counterpart[_ngcontent-%COMP%]   p[_ngcontent-%COMP%], \n.not-unit-specific[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  font-size: 14px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: #bbb;\n}\n.form-content[_ngcontent-%COMP%]     .form-title {\n  display: none;\n}\n.form-content[_ngcontent-%COMP%]     .reactive-form-container {\n  padding: 0;\n}\n.form-content[_ngcontent-%COMP%]     .form-fields {\n  gap: 12px;\n}\n.counterpart-status[_ngcontent-%COMP%] {\n  padding: 6px 8px;\n  border-radius: 4px;\n  text-align: center;\n}\n.status-badge[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 600;\n  padding: 4px 8px;\n  border-radius: 4px;\n  display: inline-block;\n}\n.status-badge.linked[_ngcontent-%COMP%] {\n  background: #E8F5E9;\n  color: #2E7D32;\n  border: 1px solid #A5D6A7;\n}\n.status-badge.found[_ngcontent-%COMP%] {\n  background: #FFF3E0;\n  color: #E65100;\n  border: 1px solid #FFCC80;\n}\n.status-badge.suggested[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n  border: 1px solid #90CAF9;\n}\n.link-controls[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: center;\n}\n.link-btn[_ngcontent-%COMP%] {\n  padding: 6px 12px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.link-btn.link[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n}\n.link-btn.link[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n}\n.link-btn.unlink[_ngcontent-%COMP%] {\n  background: #FF5722;\n  color: white;\n}\n.link-btn.unlink[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #E64A19;\n}\n.link-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n.linked-badge[_ngcontent-%COMP%] {\n  font-size: 14px;\n}\n.suggestion-badge[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n  font-size: 10px;\n  font-weight: 700;\n  padding: 2px 6px;\n  border-radius: 4px;\n}\n.counterpart-panel.is-linked[_ngcontent-%COMP%] {\n  border-left: 3px solid #4CAF50;\n}\n.counterpart-panel.is-suggestion[_ngcontent-%COMP%] {\n  border-left: 3px solid #2196F3;\n}\n.sync-controls-empty[_ngcontent-%COMP%] {\n  opacity: 0.6;\n}\n.sync-header.disabled[_ngcontent-%COMP%] {\n  background: var(--secondary-text, #999);\n}\n.sync-placeholder[_ngcontent-%COMP%] {\n  padding: 12px 8px;\n  text-align: center;\n  font-size: 11px;\n  color: var(--secondary-text, #666);\n}\n.counterpart-panel-empty[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n}\n.counterpart-options-inline[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 32px 24px;\n  text-align: center;\n  height: 100%;\n  min-height: 300px;\n}\n.options-icon[_ngcontent-%COMP%] {\n  width: 60px;\n  height: 60px;\n  border-radius: 50%;\n  background: var(--border-color, #e0e0e0);\n  color: var(--secondary-text, #666);\n  font-size: 32px;\n  font-weight: bold;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin-bottom: 16px;\n}\n.counterpart-options-inline[_ngcontent-%COMP%]   h4[_ngcontent-%COMP%] {\n  margin: 0 0 8px;\n  font-size: 16px;\n  color: var(--primary-text, #333);\n}\n.counterpart-options-inline[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  font-size: 13px;\n  color: var(--secondary-text, #666);\n}\n.options-buttons[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  margin: 16px 0;\n}\n.option-btn[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  padding: 16px 24px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  background: var(--primary-background, #ffffff);\n  cursor: pointer;\n  font-size: 13px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  min-width: 120px;\n}\n.option-btn[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);\n}\n.option-btn[_ngcontent-%COMP%]   .btn-icon[_ngcontent-%COMP%] {\n  font-size: 24px;\n}\n.option-btn.create-btn[_ngcontent-%COMP%] {\n  border-color: #4CAF50;\n  color: #2E7D32;\n}\n.option-btn.create-btn[_ngcontent-%COMP%]:hover {\n  background: #E8F5E9;\n}\n.option-btn.search-btn[_ngcontent-%COMP%] {\n  border-color: #2196F3;\n  color: #1565C0;\n}\n.option-btn.search-btn[_ngcontent-%COMP%]:hover {\n  background: #E3F2FD;\n}\n.options-hint[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--secondary-text, #999);\n  font-style: italic;\n  line-height: 1.5;\n}\n.no-counterpart[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  color: var(--primary-text, #333);\n}\n.no-counterpart-options[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  align-items: center;\n  margin-top: 24px;\n}\n.no-counterpart-options[_ngcontent-%COMP%]   .action-btn[_ngcontent-%COMP%] {\n  min-width: 200px;\n}\n.create-btn[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  border-color: #4CAF50;\n}\n.create-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n  border-color: #43A047;\n}\n.search-btn[_ngcontent-%COMP%] {\n  background: #2196F3;\n  color: white;\n  border-color: #2196F3;\n}\n.search-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.manual-search-overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 100;\n}\n.manual-search-panel[_ngcontent-%COMP%] {\n  background: var(--primary-background, #ffffff);\n  border-radius: 8px;\n  max-width: 900px;\n  width: 90%;\n  max-height: 80vh;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n}\n.search-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 20px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n}\n.search-header[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n}\n.close-search-btn[_ngcontent-%COMP%] {\n  background: transparent;\n  border: none;\n  color: white;\n  font-size: 20px;\n  cursor: pointer;\n  padding: 4px 8px;\n  border-radius: 4px;\n  line-height: 1;\n}\n.close-search-btn[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.2);\n}\n.search-instructions[_ngcontent-%COMP%] {\n  margin: 0;\n  padding: 12px 20px;\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n  border-bottom: 1px solid var(--border-color, #e0e0e0);\n}\n.search-table-container[_ngcontent-%COMP%] {\n  flex: 1;\n  min-height: 300px;\n  max-height: 400px;\n  overflow: hidden;\n  padding: 0;\n  display: flex;\n  flex-direction: column;\n}\n.search-table-container[_ngcontent-%COMP%]   app-rf-loto-point-table[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     .loto-point-table-container {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     app-table {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     .table-wrapper {\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n}\n.search-table-container[_ngcontent-%COMP%]     table {\n  width: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     tbody tr {\n  display: table-row;\n}\n.search-table-container[_ngcontent-%COMP%]     td, \n.search-table-container[_ngcontent-%COMP%]     th {\n  padding: 8px 12px;\n}\n.selected-info[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 12px 20px;\n  background: #E3F2FD;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n}\n.selected-label[_ngcontent-%COMP%] {\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n}\n.selected-info[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--primary-color, #2196F3);\n}\n.selected-desc[_ngcontent-%COMP%] {\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n.manual-search-actions[_ngcontent-%COMP%] {\n  padding: 16px 20px;\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  background: var(--primary-background, #ffffff);\n}\n.action-btn.use-btn[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.action-btn.use-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.action-btn.use-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n.tag-generator-button[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  color: white;\n  border: none;\n  padding: 8px 16px;\n  border-radius: 6px;\n  font-size: 12px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  white-space: nowrap;\n}\n.tag-generator-button[_ngcontent-%COMP%]:hover {\n  transform: translateY(-1px);\n  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);\n}\n.tag-generator-button[_ngcontent-%COMP%]:active {\n  transform: translateY(0);\n}\n/*# sourceMappingURL=loto-point-dual-form.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoPointDualFormComponent, { className: "LotoPointDualFormComponent", filePath: "src/app/features/loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component.ts", lineNumber: 103 });
+})();
+
+// src/app/shared/guide/guide-form/steps/wizard-counterpart-creation-step.component.ts
+var _forTrack022 = ($index, $item) => $item.primary.id;
+function WizardCounterpartCreationStepComponent_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 1);
+    \u0275\u0275element(1, "mat-spinner", 4);
+    \u0275\u0275elementStart(2, "p");
+    \u0275\u0275text(3, "Loading LOTO points...");
+    \u0275\u0275elementEnd()();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 18)(1, "mat-icon");
+    \u0275\u0275text(2, "link");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " Linked ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 19)(1, "mat-icon");
+    \u0275\u0275text(2, "search");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " Found ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_9_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 20)(1, "mat-icon");
+    \u0275\u0275text(2, "check");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " Ready ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_10_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 21)(1, "mat-icon");
+    \u0275\u0275text(2, "content_copy");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " Using Same ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 22);
+    \u0275\u0275element(1, "mat-spinner", 24);
+    \u0275\u0275text(2, " Creating... ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_12_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 23)(1, "button", 25);
+    \u0275\u0275listener("click", function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_12_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r1);
+      const item_r2 = \u0275\u0275nextContext().$implicit;
+      const ctx_r2 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r2.createCounterpart(item_r2));
+    });
+    \u0275\u0275elementStart(2, "mat-icon");
+    \u0275\u0275text(3, "add");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " Create Counterpart ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "button", 26);
+    \u0275\u0275listener("click", function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_12_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r1);
+      const item_r2 = \u0275\u0275nextContext().$implicit;
+      const ctx_r2 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r2.useSamePoint(item_r2));
+    });
+    \u0275\u0275elementStart(6, "mat-icon");
+    \u0275\u0275text(7, "content_copy");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(8, " Use Same ");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const item_r2 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275property("disabled", item_r2.isProcessing);
+    \u0275\u0275advance(4);
+    \u0275\u0275property("disabled", item_r2.isProcessing);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_For_10_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 13)(1, "div", 14)(2, "span", 15);
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "span", 16);
+    \u0275\u0275text(5);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 17);
+    \u0275\u0275template(7, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_7_Template, 4, 0, "span", 18)(8, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_8_Template, 4, 0, "span", 19)(9, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_9_Template, 4, 0, "span", 20)(10, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_10_Template, 4, 0, "span", 21)(11, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_11_Template, 3, 0, "span", 22)(12, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Case_12_Template, 9, 2, "div", 23);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    let tmp_14_0;
+    const item_r2 = ctx.$implicit;
+    \u0275\u0275classProp("done", item_r2.status === "done" || item_r2.status === "linked");
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(item_r2.primary.tagNumber || "No tag");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(item_r2.primary.description || "No description");
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional((tmp_14_0 = item_r2.status) === "linked" ? 7 : tmp_14_0 === "found" ? 8 : tmp_14_0 === "done" ? 9 : tmp_14_0 === "use-same" ? 10 : tmp_14_0 === "creating" ? 11 : tmp_14_0 === "needs-creation" ? 12 : -1);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "mat-spinner", 28);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "mat-icon");
+    \u0275\u0275text(1, "add_circle");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 11)(1, "button", 27);
+    \u0275\u0275listener("click", function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r2.createAllMissingCounterparts());
+    });
+    \u0275\u0275template(2, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Conditional_2_Template, 1, 0, "mat-spinner", 28)(3, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Conditional_3_Template, 2, 0, "mat-icon");
+    \u0275\u0275text(4, " Create All Missing Counterparts ");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance();
+    \u0275\u0275property("disabled", ctx_r2.isCreatingAll() || !ctx_r2.hasMissingCounterparts());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r2.isCreatingAll() ? 2 : 3);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "mat-spinner", 28);
+    \u0275\u0275text(1, " Creating Standard... ");
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "mat-icon");
+    \u0275\u0275text(1, "playlist_add");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(2, " Create Counterpart Standard ");
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 27);
+    \u0275\u0275listener("click", function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r2 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r2.createCounterpartStandard());
+    });
+    \u0275\u0275template(1, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Conditional_1_Template, 2, 0)(2, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Conditional_2_Template, 3, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext(3);
+    \u0275\u0275property("disabled", ctx_r2.isCreatingStandard());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r2.isCreatingStandard() ? 1 : 2);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_12_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 35)(1, "mat-icon");
+    \u0275\u0275text(2, "check_circle");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "span");
+    \u0275\u0275text(4, "Counterpart standard created successfully!");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(5, "button", 36);
+    \u0275\u0275listener("click", function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_12_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r2 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r2.onContinue());
+    });
+    \u0275\u0275elementStart(6, "mat-icon");
+    \u0275\u0275text(7, "arrow_forward");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(8, " Continue ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 12)(1, "div", 29)(2, "mat-icon", 30);
+    \u0275\u0275text(3, "check_circle");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "div", 31)(5, "p", 32);
+    \u0275\u0275text(6, "All LOTO point counterparts are ready!");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "p", 33)(8, "strong");
+    \u0275\u0275text(9, "Counterpart Standard:");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(10);
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275template(11, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_11_Template, 3, 2, "button", 34)(12, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Conditional_12_Template, 9, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(10);
+    \u0275\u0275textInterpolate1(" ", ctx_r2.counterpartStandardName(), " ");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(!ctx_r2.isStandardCreated() ? 11 : 12);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 5)(1, "div", 6)(2, "mat-icon");
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "span");
+    \u0275\u0275text(5);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 7);
+    \u0275\u0275element(7, "div", 8);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(8, "div", 9);
+    \u0275\u0275repeaterCreate(9, WizardCounterpartCreationStepComponent_Conditional_2_For_10_Template, 13, 5, "div", 10, _forTrack022);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(11, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_11_Template, 5, 2, "div", 11)(12, WizardCounterpartCreationStepComponent_Conditional_2_Conditional_12_Template, 13, 2, "div", 12);
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275advance(2);
+    \u0275\u0275classProp("success", ctx_r2.allCounterpartsReady());
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" ", ctx_r2.allCounterpartsReady() ? "check_circle" : "sync", " ");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(ctx_r2.progressText());
+    \u0275\u0275advance(2);
+    \u0275\u0275styleProp("width", ctx_r2.progressPercent(), "%");
+    \u0275\u0275advance(2);
+    \u0275\u0275repeater(ctx_r2.lotoPointStatuses());
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(!ctx_r2.allCounterpartsReady() ? 11 : 12);
+  }
+}
+function WizardCounterpartCreationStepComponent_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r7 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-loto-point-dual-form", 37);
+    \u0275\u0275listener("primarySaved", function WizardCounterpartCreationStepComponent_Conditional_4_Template_app_loto_point_dual_form_primarySaved_0_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.onPrimarySaved($event));
+    })("counterpartSaved", function WizardCounterpartCreationStepComponent_Conditional_4_Template_app_loto_point_dual_form_counterpartSaved_0_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.onCounterpartSaved($event));
+    })("bothSaved", function WizardCounterpartCreationStepComponent_Conditional_4_Template_app_loto_point_dual_form_bothSaved_0_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.onBothSaved($event));
+    })("formClosed", function WizardCounterpartCreationStepComponent_Conditional_4_Template_app_loto_point_dual_form_formClosed_0_listener() {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.closeDualForm());
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275property("primaryLotoPoint", ctx_r2.editingItem().primary);
+  }
+}
+var WizardCounterpartCreationStepComponent = class _WizardCounterpartCreationStepComponent {
+  lotoStandardApi = inject(RfLotoStandardApiService);
+  lotoPointApi = inject(RfLotoPointApiService);
+  counterpartService = inject(LotoPointCounterpartService);
+  messageService = inject(GlobalMessageService);
+  destroyRef = inject(DestroyRef);
+  dialog = inject(MatDialog);
+  lotoStandardStateService = inject(RfLotoStandardStateService);
+  // Inputs
+  step = input.required();
+  frame = input.required();
+  // Outputs
+  valueChange = output();
+  stepComplete = output();
+  // State
+  isLoading = signal(true);
+  lotoPointStatuses = signal([]);
+  isCreatingAll = signal(false);
+  isCreatingStandard = signal(false);
+  isStandardCreated = signal(false);
+  createdStandardId = signal(null);
+  // Dual form popup state
+  isDualFormOpen = signal(false);
+  editingItem = signal(null);
+  // Source unit from primary standard
+  sourceUnit = signal("01");
+  targetUnit = signal("02");
+  // Computed values
+  allCounterpartsReady = computed(() => {
+    const statuses = this.lotoPointStatuses();
+    return statuses.length > 0 && statuses.every((s2) => s2.status === "linked" || s2.status === "found" || s2.status === "done" || s2.status === "use-same");
+  });
+  hasMissingCounterparts = computed(() => {
+    return this.lotoPointStatuses().some((s2) => s2.status === "needs-creation");
+  });
+  progressPercent = computed(() => {
+    const statuses = this.lotoPointStatuses();
+    if (statuses.length === 0)
+      return 0;
+    const ready = statuses.filter((s2) => s2.status === "linked" || s2.status === "found" || s2.status === "done" || s2.status === "use-same").length;
+    return Math.round(ready / statuses.length * 100);
+  });
+  progressText = computed(() => {
+    const statuses = this.lotoPointStatuses();
+    const ready = statuses.filter((s2) => s2.status === "linked" || s2.status === "found" || s2.status === "done" || s2.status === "use-same").length;
+    return `${ready} of ${statuses.length} LOTO points ready`;
+  });
+  counterpartStandardName = computed(() => {
+    const frameData = this.frame();
+    if (!frameData?.entityData?.lotoStandard)
+      return "";
+    const primaryName = frameData.entityData.lotoStandard.name || "";
+    const counterpartName = frameData.entityData.lotoStandard.counterpartName;
+    if (counterpartName)
+      return counterpartName;
+    return this.counterpartService.transformUnitText(primaryName, this.sourceUnit(), this.targetUnit());
+  });
+  constructor() {
+    effect(() => {
+      const frameData = this.frame();
+      if (frameData?.entityData?.lotoStandard?.lotoPoints) {
+        this.loadCounterpartStatuses(frameData.entityData.lotoStandard.lotoPoints);
+      }
+    });
+  }
+  /**
+   * Load counterpart status for all LOTO points
+   */
+  loadCounterpartStatuses(lotoPoints) {
+    if (!lotoPoints || lotoPoints.length === 0) {
+      this.isLoading.set(false);
+      return;
+    }
+    const firstPoint = lotoPoints[0];
+    const sourceUnit = this.counterpartService.getSourceUnit(firstPoint);
+    this.sourceUnit.set(sourceUnit);
+    this.targetUnit.set(this.counterpartService.getTargetUnit(sourceUnit));
+    const statuses = lotoPoints.map((lp) => ({
+      primary: lp,
+      counterpart: null,
+      status: lp.counterpartId ? "linked" : "needs-creation",
+      isProcessing: false
+    }));
+    this.lotoPointStatuses.set(statuses);
+    const pointsWithCounterparts = lotoPoints.filter((lp) => lp.counterpartId);
+    if (pointsWithCounterparts.length === 0) {
+      this.checkExistingCounterpartsByTag(statuses);
+      return;
+    }
+    const counterpartRequests = pointsWithCounterparts.map((lp) => this.lotoPointApi.getLotoPointById(String(lp.counterpartId)).pipe(catchError(() => of(null))));
+    forkJoin(counterpartRequests).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (responses) => {
+        const updatedStatuses = [...statuses];
+        responses.forEach((response, index) => {
+          if (response?.responseData) {
+            const primaryId = pointsWithCounterparts[index].id;
+            const statusIndex = updatedStatuses.findIndex((s2) => s2.primary.id === primaryId);
+            if (statusIndex !== -1) {
+              updatedStatuses[statusIndex] = __spreadProps(__spreadValues({}, updatedStatuses[statusIndex]), {
+                counterpart: LotoPointDto.fromJson(response.responseData),
+                status: "linked"
+              });
+            }
+          }
+        });
+        this.lotoPointStatuses.set(updatedStatuses);
+        this.checkExistingCounterpartsByTag(updatedStatuses);
+      },
+      error: () => {
+        this.isLoading.set(false);
+      }
+    });
+  }
+  /**
+   * Check for existing counterparts by tag number for points that aren't linked
+   */
+  checkExistingCounterpartsByTag(statuses) {
+    const needsCheck = statuses.filter((s2) => s2.status === "needs-creation" && s2.primary.tagNumber);
+    if (needsCheck.length === 0) {
+      this.isLoading.set(false);
+      return;
+    }
+    const searchRequests = needsCheck.map((s2) => this.lotoPointApi.getCounterpartByTagNumber(s2.primary.tagNumber).pipe(catchError(() => of(null))));
+    forkJoin(searchRequests).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (responses) => {
+        const updatedStatuses = [...this.lotoPointStatuses()];
+        responses.forEach((response, index) => {
+          if (response?.responseData && !response.responseData.isNew) {
+            const primaryId = needsCheck[index].primary.id;
+            const statusIndex = updatedStatuses.findIndex((s2) => s2.primary.id === primaryId);
+            if (statusIndex !== -1) {
+              updatedStatuses[statusIndex] = __spreadProps(__spreadValues({}, updatedStatuses[statusIndex]), {
+                counterpart: LotoPointDto.fromJson(response.responseData.counterpart),
+                status: "found"
+              });
+            }
+          }
+        });
+        this.lotoPointStatuses.set(updatedStatuses);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.isLoading.set(false);
+      }
+    });
+  }
+  /**
+   * Open dual form to create/link counterpart for a LOTO point
+   */
+  createCounterpart(item) {
+    this.editingItem.set(item);
+    this.isDualFormOpen.set(true);
+  }
+  /**
+   * Use the same LOTO point for both units (common equipment)
+   * This marks the point as ready without creating a separate counterpart
+   */
+  useSamePoint(item) {
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === item.primary.id);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        counterpart: item.primary,
+        // Use primary as counterpart
+        status: "use-same",
+        isProcessing: false
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+  }
+  /**
+   * Close the dual form popup
+   */
+  closeDualForm() {
+    this.isDualFormOpen.set(false);
+    this.editingItem.set(null);
+  }
+  /**
+   * Handle when primary LOTO point is saved from dual form
+   */
+  onPrimarySaved(primary) {
+    const editingItem = this.editingItem();
+    if (!editingItem)
+      return;
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === editingItem.primary.id);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        primary
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+  }
+  /**
+   * Handle when counterpart LOTO point is saved from dual form
+   */
+  onCounterpartSaved(counterpart) {
+    const editingItem = this.editingItem();
+    if (!editingItem)
+      return;
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === editingItem.primary.id);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        counterpart,
+        status: counterpart.id ? "done" : "needs-creation",
+        isProcessing: false
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+    this.closeDualForm();
+    this.messageService.showSuccess("Counterpart created successfully");
+  }
+  /**
+   * Handle when both LOTO points are saved from dual form
+   */
+  onBothSaved(event) {
+    const editingItem = this.editingItem();
+    if (!editingItem)
+      return;
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === editingItem.primary.id);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        primary: event.primary,
+        counterpart: event.counterpart,
+        status: "done",
+        isProcessing: false
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+    this.closeDualForm();
+    this.messageService.showSuccess("Both LOTO points saved and linked successfully");
+  }
+  /**
+   * Create all missing counterparts at once
+   */
+  createAllMissingCounterparts() {
+    const missing = this.lotoPointStatuses().filter((s2) => s2.status === "needs-creation");
+    if (missing.length === 0)
+      return;
+    this.isCreatingAll.set(true);
+    this.createCounterpartsSequentially(missing, 0);
+  }
+  /**
+   * Create counterparts one by one
+   */
+  createCounterpartsSequentially(items, index) {
+    if (index >= items.length) {
+      this.isCreatingAll.set(false);
+      this.messageService.showSuccess("All counterparts created successfully");
+      return;
+    }
+    const item = items[index];
+    const statuses = [...this.lotoPointStatuses()];
+    const statusIndex = statuses.findIndex((s2) => s2.primary.id === item.primary.id);
+    if (statusIndex !== -1) {
+      statuses[statusIndex] = __spreadProps(__spreadValues({}, statuses[statusIndex]), { status: "creating", isProcessing: true });
+      this.lotoPointStatuses.set(statuses);
+    }
+    const counterpartData = this.counterpartService.generateCounterpart(item.primary, this.targetUnit());
+    this.lotoPointApi.saveLotoPoint(counterpartData).pipe(takeUntilDestroyed(this.destroyRef), switchMap((response) => {
+      if (!response.responseData) {
+        throw new Error("Failed to create counterpart");
+      }
+      const savedCounterpart = LotoPointDto.fromJson(response.responseData);
+      if (item.primary.id && savedCounterpart.id) {
+        return this.lotoPointApi.linkCounterparts(item.primary.id, savedCounterpart.id).pipe(tap(() => {
+          this.updateStatusToDone(item.primary.id, savedCounterpart);
+        }), catchError(() => {
+          this.updateStatusToDone(item.primary.id, savedCounterpart);
+          return of(null);
+        }));
+      }
+      return of(savedCounterpart);
+    })).subscribe({
+      next: () => {
+        setTimeout(() => {
+          this.createCounterpartsSequentially(items, index + 1);
+        }, 100);
+      },
+      error: (error) => {
+        console.error("Error creating counterpart:", error);
+        this.resetStatusToNeedsCreation(item.primary.id);
+        setTimeout(() => {
+          this.createCounterpartsSequentially(items, index + 1);
+        }, 100);
+      }
+    });
+  }
+  updateStatusToDone(primaryId, counterpart) {
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === primaryId);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        counterpart,
+        status: "done",
+        isProcessing: false
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+  }
+  resetStatusToNeedsCreation(primaryId) {
+    const currentStatuses = [...this.lotoPointStatuses()];
+    const idx = currentStatuses.findIndex((s2) => s2.primary.id === primaryId);
+    if (idx !== -1) {
+      currentStatuses[idx] = __spreadProps(__spreadValues({}, currentStatuses[idx]), {
+        status: "needs-creation",
+        isProcessing: false
+      });
+      this.lotoPointStatuses.set(currentStatuses);
+    }
+  }
+  /**
+   * Continue to next step after counterpart standard is created
+   */
+  onContinue() {
+    this.stepComplete.emit();
+  }
+  /**
+   * Create the counterpart LOTO standard
+   */
+  createCounterpartStandard() {
+    this.isCreatingStandard.set(true);
+    const frameData = this.frame();
+    const primaryStandard = frameData?.entityData?.lotoStandard;
+    if (!primaryStandard) {
+      this.messageService.showError("Primary standard data not found");
+      this.isCreatingStandard.set(false);
+      return;
+    }
+    const counterpartStandardData = {
+      name: this.counterpartStandardName(),
+      description: this.counterpartService.transformUnitText(primaryStandard.description || "", this.sourceUnit(), this.targetUnit())
+    };
+    this.lotoStandardApi.createLotoStandard(counterpartStandardData).pipe(takeUntilDestroyed(this.destroyRef), switchMap((response) => {
+      if (!response.responseData?.id) {
+        throw new Error("Failed to create counterpart standard");
+      }
+      const standardId = response.responseData.id;
+      this.createdStandardId.set(standardId);
+      const counterpartPoints = this.lotoPointStatuses().filter((s2) => s2.counterpart?.id).map((s2) => s2.counterpart);
+      if (counterpartPoints.length === 0) {
+        return of(standardId);
+      }
+      return this.addPointsToStandard(standardId, counterpartPoints, 0);
+    })).subscribe({
+      next: (standardId) => {
+        this.isCreatingStandard.set(false);
+        this.isStandardCreated.set(true);
+        this.messageService.showSuccess("Counterpart LOTO standard created successfully");
+        if (typeof standardId === "number") {
+          this.lotoStandardApi.getLotoStandardById(String(standardId)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (response) => {
+              if (response.responseData) {
+                const createdStandard = LotoStandardDto.fromJson(response.responseData);
+                this.lotoStandardStateService.updateLotoStandardInList(createdStandard);
+              }
+            }
+          });
+        }
+        const primaryStandard2 = this.frame()?.entityData?.lotoStandard;
+        if (primaryStandard2?.id) {
+          this.lotoStandardApi.getLotoStandardById(String(primaryStandard2.id)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (response) => {
+              if (response.responseData) {
+                const refreshedPrimary = LotoStandardDto.fromJson(response.responseData);
+                this.lotoStandardStateService.updateLotoStandardInList(refreshedPrimary);
+              }
+            }
+          });
+        }
+      },
+      error: (error) => {
+        console.error("Error creating counterpart standard:", error);
+        this.messageService.showError("Failed to create counterpart standard");
+        this.isCreatingStandard.set(false);
+      }
+    });
+  }
+  /**
+   * Add LOTO points to standard one by one
+   */
+  addPointsToStandard(standardId, points, index) {
+    if (index >= points.length) {
+      return of(standardId);
+    }
+    const point = points[index];
+    return this.lotoStandardApi.addLotoPointToStandard(standardId, point.id).pipe(switchMap(() => this.addPointsToStandard(standardId, points, index + 1)), catchError((error) => {
+      console.error(`Error adding point ${point.id} to standard:`, error);
+      return this.addPointsToStandard(standardId, points, index + 1);
+    }));
+  }
+  static \u0275fac = function WizardCounterpartCreationStepComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _WizardCounterpartCreationStepComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardCounterpartCreationStepComponent, selectors: [["app-wizard-counterpart-creation-step"]], inputs: { step: [1, "step"], frame: [1, "frame"] }, outputs: { valueChange: "valueChange", stepComplete: "stepComplete" }, decls: 5, vars: 5, consts: [[1, "counterpart-creation-container"], [1, "loading-state"], [3, "close", "isOpen", "title", "size"], [3, "primaryLotoPoint"], ["diameter", "40"], [1, "progress-header"], [1, "progress-info"], [1, "progress-bar"], [1, "progress-fill"], [1, "loto-points-list"], [1, "loto-point-item", 3, "done"], [1, "action-buttons"], [1, "standard-creation-section"], [1, "loto-point-item"], [1, "item-info"], [1, "tag-number"], [1, "description"], [1, "item-status"], [1, "status-badge", "linked"], [1, "status-badge", "found"], [1, "status-badge", "done"], [1, "status-badge", "use-same"], [1, "status-badge", "creating"], [1, "action-btn-group"], ["diameter", "16"], ["mat-stroked-button", "", "color", "primary", "title", "Create a counterpart LOTO point for the other unit", 3, "click", "disabled"], ["mat-stroked-button", "", "title", "Use the same LOTO point for both units (common equipment)", 3, "click", "disabled"], ["mat-flat-button", "", "color", "primary", 3, "click", "disabled"], ["diameter", "18"], [1, "standard-info"], [1, "success-icon"], [1, "standard-details"], [1, "ready-message"], [1, "standard-name"], ["mat-flat-button", "", "color", "primary", 3, "disabled"], [1, "success-message"], ["mat-flat-button", "", "color", "primary", 1, "continue-btn", 3, "click"], [3, "primarySaved", "counterpartSaved", "bothSaved", "formClosed", "primaryLotoPoint"]], template: function WizardCounterpartCreationStepComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0);
+      \u0275\u0275template(1, WizardCounterpartCreationStepComponent_Conditional_1_Template, 4, 0, "div", 1)(2, WizardCounterpartCreationStepComponent_Conditional_2_Template, 13, 7);
+      \u0275\u0275elementStart(3, "app-popup-projection", 2);
+      \u0275\u0275listener("close", function WizardCounterpartCreationStepComponent_Template_app_popup_projection_close_3_listener() {
+        return ctx.closeDualForm();
+      });
+      \u0275\u0275template(4, WizardCounterpartCreationStepComponent_Conditional_4_Template, 1, 1, "app-loto-point-dual-form", 3);
+      \u0275\u0275elementEnd()();
+    }
+    if (rf & 2) {
+      let tmp_2_0;
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.isLoading() ? 1 : 2);
+      \u0275\u0275advance(2);
+      \u0275\u0275property("isOpen", ctx.isDualFormOpen())("title", "Create Counterpart for " + (((tmp_2_0 = ctx.editingItem()) == null ? null : tmp_2_0.primary == null ? null : tmp_2_0.primary.tagNumber) || "LOTO Point"))("size", "large");
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.editingItem() ? 4 : -1);
+    }
+  }, dependencies: [
+    CommonModule,
+    MatIconModule,
+    MatIcon,
+    MatButtonModule,
+    MatButton,
+    MatProgressSpinnerModule,
+    MatProgressSpinner,
+    MatDialogModule,
+    LotoPointDualFormComponent,
+    PopupProjectionComponent
+  ], styles: ["\n\n.counterpart-creation-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.loading-state[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 40px;\n  gap: 16px;\n  color: #666;\n}\n.progress-header[_ngcontent-%COMP%] {\n  background: #f5f5f5;\n  padding: 16px;\n  border-radius: 8px;\n}\n.progress-info[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-bottom: 12px;\n}\n.progress-info[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  color: #1976d2;\n}\n.progress-info[_ngcontent-%COMP%]   mat-icon.success[_ngcontent-%COMP%] {\n  color: #4caf50;\n}\n.progress-bar[_ngcontent-%COMP%] {\n  height: 8px;\n  background: #e0e0e0;\n  border-radius: 4px;\n  overflow: hidden;\n}\n.progress-fill[_ngcontent-%COMP%] {\n  height: 100%;\n  background:\n    linear-gradient(\n      90deg,\n      #1976d2,\n      #42a5f5);\n  border-radius: 4px;\n  transition: width 0.3s ease;\n}\n.loto-points-list[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  max-height: 300px;\n  overflow-y: auto;\n}\n.loto-point-item[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 12px 16px;\n  background: #fafafa;\n  border: 1px solid #e0e0e0;\n  border-radius: 8px;\n  transition: all 0.2s;\n}\n.loto-point-item.done[_ngcontent-%COMP%] {\n  background: #e8f5e9;\n  border-color: #c8e6c9;\n}\n.item-info[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n  flex: 1;\n}\n.tag-number[_ngcontent-%COMP%] {\n  font-weight: 600;\n  font-family: monospace;\n  color: #1976d2;\n}\n.description[_ngcontent-%COMP%] {\n  font-size: 12px;\n  color: #666;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.item-status[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n  margin-left: 16px;\n}\n.status-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  padding: 4px 12px;\n  border-radius: 16px;\n  font-size: 12px;\n  font-weight: 500;\n}\n.status-badge[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 16px;\n  width: 16px;\n  height: 16px;\n}\n.status-badge.linked[_ngcontent-%COMP%] {\n  background: #e3f2fd;\n  color: #1976d2;\n}\n.status-badge.found[_ngcontent-%COMP%] {\n  background: #fff3e0;\n  color: #f57c00;\n}\n.status-badge.done[_ngcontent-%COMP%] {\n  background: #e8f5e9;\n  color: #2e7d32;\n}\n.status-badge.creating[_ngcontent-%COMP%] {\n  background: #f5f5f5;\n  color: #666;\n}\n.status-badge.use-same[_ngcontent-%COMP%] {\n  background: #f3e5f5;\n  color: #7b1fa2;\n}\n.action-btn-group[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n}\n.action-btn-group[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  font-size: 12px;\n}\n.action-buttons[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: center;\n  padding: 16px 0;\n}\n.standard-creation-section[_ngcontent-%COMP%] {\n  background: #e8f5e9;\n  border: 1px solid #c8e6c9;\n  border-radius: 8px;\n  padding: 20px;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 16px;\n}\n.standard-info[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n}\n.success-icon[_ngcontent-%COMP%] {\n  font-size: 48px;\n  width: 48px;\n  height: 48px;\n  color: #4caf50;\n}\n.standard-details[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.ready-message[_ngcontent-%COMP%] {\n  margin: 0;\n  font-weight: 500;\n  color: #2e7d32;\n}\n.standard-name[_ngcontent-%COMP%] {\n  margin: 0;\n  color: #666;\n  font-size: 14px;\n}\n.success-message[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  color: #2e7d32;\n  font-weight: 500;\n}\n.success-message[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  color: #4caf50;\n}\n.continue-btn[_ngcontent-%COMP%] {\n  margin-top: 16px;\n}\n/*# sourceMappingURL=wizard-counterpart-creation-step.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardCounterpartCreationStepComponent, { className: "WizardCounterpartCreationStepComponent", filePath: "src/app/shared/guide/guide-form/steps/wizard-counterpart-creation-step.component.ts", lineNumber: 441 });
+})();
+
+// src/app/shared/guide/guide-form/wizard-dialog/wizard-step-renderer.component.ts
+function WizardStepRendererComponent_Conditional_0_Case_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "app-wizard-welcome-step", 5);
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_8_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-text-input-step", 13);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_8_Template_app_wizard_text_input_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.inputConfig == null ? null : tmp_3_0.inputConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_9_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-text-input-step", 14);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_9_Template_app_wizard_text_input_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.inputConfig == null ? null : tmp_3_0.inputConfig.fieldName))("multiline", true);
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_10_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-select-input-step", 15);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_10_Template_app_wizard_select_input_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_10_Template_app_wizard_select_input_step_createNew_0_listener($event) {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.selectConfig == null ? null : tmp_3_0.selectConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_11_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-multi-select-step", 15);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_11_Template_app_wizard_multi_select_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_11_Template_app_wizard_multi_select_step_createNew_0_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_12_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-loto-point-selector-step", 15);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_12_Template_app_wizard_loto_point_selector_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_12_Template_app_wizard_loto_point_selector_step_createNew_0_listener($event) {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_13_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r7 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-form-section-step", 16);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_13_Template_app_wizard_form_section_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_13_Template_app_wizard_form_section_step_createNew_0_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("entityData", ctx_r0.entityData());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_14_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r8 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-file-upload-step", 17);
+    \u0275\u0275listener("fileSelected", function WizardStepRendererComponent_Conditional_0_Case_14_Template_app_wizard_file_upload_step_fileSelected_0_listener($event) {
+      \u0275\u0275restoreView(_r8);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onFileSelected($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentFile", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.uploadConfig == null ? null : tmp_3_0.uploadConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_15_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-file-browser-step", 18);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_15_Template_app_wizard_file_browser_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("uploadNew", function WizardStepRendererComponent_Conditional_0_Case_15_Template_app_wizard_file_browser_step_uploadNew_0_listener() {
+      \u0275\u0275restoreView(_r9);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onUploadNew());
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.fileBrowserConfig == null ? null : tmp_3_0.fileBrowserConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_16_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-table-selector-step", 15);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_16_Template_app_wizard_table_selector_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r10);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("createNew", function WizardStepRendererComponent_Conditional_0_Case_16_Template_app_wizard_table_selector_step_createNew_0_listener($event) {
+      \u0275\u0275restoreView(_r10);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tableConfig == null ? null : tmp_3_0.tableConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_17_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r11 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-tag-number-step", 13);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_17_Template_app_wizard_tag_number_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r11);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue(((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.tagNumberConfig == null ? null : tmp_3_0.tagNumberConfig.fieldName) || "tagNumber"));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_18_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r12 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-description-step", 13);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_18_Template_app_wizard_description_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r12);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue(((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.descriptionConfig == null ? null : tmp_3_0.descriptionConfig.fieldName) || "description"));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_19_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-value-select-step", 13);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_19_Template_app_wizard_value_select_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r13);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_3_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("currentValue", ctx_r0.getCurrentValue((tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.valueSelectConfig == null ? null : tmp_3_0.valueSelectConfig.fieldName));
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_20_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-zero-energy-step", 19);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_20_Template_app_wizard_zero_energy_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("branchRequest", function WizardStepRendererComponent_Conditional_0_Case_20_Template_app_wizard_zero_energy_step_branchRequest_0_listener($event) {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_21_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r15 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-equipment-picker-step", 19);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_21_Template_app_wizard_equipment_picker_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("branchRequest", function WizardStepRendererComponent_Conditional_0_Case_21_Template_app_wizard_equipment_picker_step_branchRequest_0_listener($event) {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCreateNew($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_22_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r16 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-confirm-step", 20);
+    \u0275\u0275listener("confirmed", function WizardStepRendererComponent_Conditional_0_Case_22_Template_app_wizard_confirm_step_confirmed_0_listener($event) {
+      \u0275\u0275restoreView(_r16);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onConfirmed($event));
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_23_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "app-wizard-review-step", 10);
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_24_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r17 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-wizard-counterpart-creation-step", 21);
+    \u0275\u0275listener("valueChange", function WizardStepRendererComponent_Conditional_0_Case_24_Template_app_wizard_counterpart_creation_step_valueChange_0_listener($event) {
+      \u0275\u0275restoreView(_r17);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onValueChange($event));
+    })("stepComplete", function WizardStepRendererComponent_Conditional_0_Case_24_Template_app_wizard_counterpart_creation_step_stepComplete_0_listener() {
+      \u0275\u0275restoreView(_r17);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.onCounterpartStepComplete());
+    });
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step())("frame", ctx_r0.frame());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_25_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "app-wizard-complete-step", 5);
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("step", ctx_r0.step());
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Case_26_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 11)(1, "p");
+    \u0275\u0275text(2);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    let tmp_2_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate1("Unknown step type: ", (tmp_2_0 = ctx_r0.step()) == null ? null : tmp_2_0.type, "");
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Conditional_27_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "app-wizard-hints-panel", 12);
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("hints", ctx_r0.step().hints);
+  }
+}
+function WizardStepRendererComponent_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "h2", 2);
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "p", 3);
+    \u0275\u0275text(5);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 4);
+    \u0275\u0275template(7, WizardStepRendererComponent_Conditional_0_Case_7_Template, 1, 1, "app-wizard-welcome-step", 5)(8, WizardStepRendererComponent_Conditional_0_Case_8_Template, 1, 2, "app-wizard-text-input-step", 6)(9, WizardStepRendererComponent_Conditional_0_Case_9_Template, 1, 3, "app-wizard-text-input-step", 7)(10, WizardStepRendererComponent_Conditional_0_Case_10_Template, 1, 2, "app-wizard-select-input-step", 6)(11, WizardStepRendererComponent_Conditional_0_Case_11_Template, 1, 2, "app-wizard-multi-select-step", 6)(12, WizardStepRendererComponent_Conditional_0_Case_12_Template, 1, 2, "app-wizard-loto-point-selector-step", 6)(13, WizardStepRendererComponent_Conditional_0_Case_13_Template, 1, 2, "app-wizard-form-section-step", 8)(14, WizardStepRendererComponent_Conditional_0_Case_14_Template, 1, 2, "app-wizard-file-upload-step", 9)(15, WizardStepRendererComponent_Conditional_0_Case_15_Template, 1, 2, "app-wizard-file-browser-step", 6)(16, WizardStepRendererComponent_Conditional_0_Case_16_Template, 1, 2, "app-wizard-table-selector-step", 6)(17, WizardStepRendererComponent_Conditional_0_Case_17_Template, 1, 2, "app-wizard-tag-number-step", 6)(18, WizardStepRendererComponent_Conditional_0_Case_18_Template, 1, 2, "app-wizard-description-step", 6)(19, WizardStepRendererComponent_Conditional_0_Case_19_Template, 1, 2, "app-wizard-value-select-step", 6)(20, WizardStepRendererComponent_Conditional_0_Case_20_Template, 1, 2, "app-wizard-zero-energy-step", 10)(21, WizardStepRendererComponent_Conditional_0_Case_21_Template, 1, 2, "app-wizard-equipment-picker-step", 10)(22, WizardStepRendererComponent_Conditional_0_Case_22_Template, 1, 1, "app-wizard-confirm-step", 5)(23, WizardStepRendererComponent_Conditional_0_Case_23_Template, 1, 2, "app-wizard-review-step", 10)(24, WizardStepRendererComponent_Conditional_0_Case_24_Template, 1, 2, "app-wizard-counterpart-creation-step", 10)(25, WizardStepRendererComponent_Conditional_0_Case_25_Template, 1, 1, "app-wizard-complete-step", 5)(26, WizardStepRendererComponent_Conditional_0_Case_26_Template, 3, 1, "div", 11);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(27, WizardStepRendererComponent_Conditional_0_Conditional_27_Template, 1, 1, "app-wizard-hints-panel", 12);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_1_0;
+    let tmp_2_0;
+    let tmp_3_0;
+    let tmp_4_0;
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate((tmp_1_0 = ctx_r0.step()) == null ? null : tmp_1_0.title);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate((tmp_2_0 = ctx_r0.step()) == null ? null : tmp_2_0.description);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional((tmp_3_0 = (tmp_3_0 = ctx_r0.step()) == null ? null : tmp_3_0.type) === "welcome" ? 7 : tmp_3_0 === "text-input" ? 8 : tmp_3_0 === "textarea-input" ? 9 : tmp_3_0 === "select-input" ? 10 : tmp_3_0 === "multi-select" ? 11 : tmp_3_0 === "loto-point-selector" ? 12 : tmp_3_0 === "form-section" ? 13 : tmp_3_0 === "file-upload" ? 14 : tmp_3_0 === "file-browser" ? 15 : tmp_3_0 === "table-selector" ? 16 : tmp_3_0 === "tag-number" ? 17 : tmp_3_0 === "description-builder" ? 18 : tmp_3_0 === "value-select" ? 19 : tmp_3_0 === "zero-energy" ? 20 : tmp_3_0 === "equipment-picker" ? 21 : tmp_3_0 === "confirm" ? 22 : tmp_3_0 === "review" ? 23 : tmp_3_0 === "counterpart-creation" ? 24 : tmp_3_0 === "complete" ? 25 : 26);
+    \u0275\u0275advance(20);
+    \u0275\u0275conditional(((tmp_4_0 = ctx_r0.step()) == null ? null : tmp_4_0.hints == null ? null : tmp_4_0.hints.length) ? 27 : -1);
+  }
+}
+var WizardStepRendererComponent = class _WizardStepRendererComponent {
+  step = input(null);
+  frame = input(null);
+  stepDataChange = output();
+  branchRequest = output();
+  stepComplete = output();
+  entityData = computed(() => {
+    return this.frame()?.entityData ?? {};
+  });
+  getCurrentValue(fieldName) {
+    if (!fieldName)
+      return void 0;
+    const frame2 = this.frame();
+    if (!frame2)
+      return void 0;
+    const entityData = frame2.entityData;
+    if (entityData.lotoStandard?.[fieldName] !== void 0) {
+      return entityData.lotoStandard[fieldName];
+    }
+    if (entityData.lotoPoint?.[fieldName] !== void 0) {
+      return entityData.lotoPoint[fieldName];
+    }
+    if (entityData.file?.[fieldName] !== void 0) {
+      return entityData.file[fieldName];
+    }
+    if (entityData.value?.[fieldName] !== void 0) {
+      return entityData.value[fieldName];
+    }
+    if (entityData.zeroEnergy?.[fieldName] !== void 0) {
+      return entityData.zeroEnergy[fieldName];
+    }
+    if (entityData.collected?.[fieldName] !== void 0) {
+      return entityData.collected[fieldName];
+    }
+    return void 0;
+  }
+  onValueChange(payload) {
+    this.stepDataChange.emit(payload);
+  }
+  onCreateNew(config2) {
+    const frame2 = this.frame();
+    let entityPath = config2.field;
+    if (frame2?.flow.type === "build-standard" && config2.field === "lotoPoints") {
+      entityPath = "lotoStandard.lotoPoints";
+    }
+    this.branchRequest.emit({
+      flowType: config2.flowType,
+      initialData: config2.initialData,
+      returnCallback: {
+        field: entityPath,
+        mode: "append"
+        // Append to array instead of replacing
+      }
+    });
+  }
+  onFileSelected(event) {
+    this.stepDataChange.emit({
+      field: event.fieldName,
+      value: event.file,
+      entityType: "file"
+    });
+  }
+  onUploadNew() {
+    this.branchRequest.emit({
+      flowType: "upload-file",
+      returnCallback: {
+        field: "equipmentList",
+        mode: "append"
+      }
+    });
+  }
+  onConfirmed(result2) {
+    this.stepDataChange.emit({
+      field: result2.field,
+      value: result2.value
+    });
+    this.stepComplete.emit(result2);
+  }
+  onCounterpartStepComplete() {
+    this.stepComplete.emit({ counterpartCreated: true });
+  }
+  static \u0275fac = function WizardStepRendererComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _WizardStepRendererComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardStepRendererComponent, selectors: [["app-wizard-step-renderer"]], inputs: { step: [1, "step"], frame: [1, "frame"] }, outputs: { stepDataChange: "stepDataChange", branchRequest: "branchRequest", stepComplete: "stepComplete" }, decls: 1, vars: 1, consts: [[1, "step-container"], [1, "step-header"], [1, "step-title"], [1, "step-description"], [1, "step-content"], [3, "step"], [3, "step", "currentValue"], [3, "step", "currentValue", "multiline"], [3, "step", "entityData"], [3, "step", "currentFile"], [3, "step", "frame"], [1, "unknown-step"], [3, "hints"], [3, "valueChange", "step", "currentValue"], [3, "valueChange", "step", "currentValue", "multiline"], [3, "valueChange", "createNew", "step", "currentValue"], [3, "valueChange", "createNew", "step", "entityData"], [3, "fileSelected", "step", "currentFile"], [3, "valueChange", "uploadNew", "step", "currentValue"], [3, "valueChange", "branchRequest", "step", "frame"], [3, "confirmed", "step"], [3, "valueChange", "stepComplete", "step", "frame"]], template: function WizardStepRendererComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275template(0, WizardStepRendererComponent_Conditional_0_Template, 28, 4, "div", 0);
+    }
+    if (rf & 2) {
+      \u0275\u0275conditional(ctx.step() ? 0 : -1);
+    }
+  }, dependencies: [
+    CommonModule,
+    WizardWelcomeStepComponent,
+    WizardTextInputStepComponent,
+    WizardSelectInputStepComponent,
+    WizardMultiSelectStepComponent,
+    WizardFormSectionStepComponent,
+    WizardFileUploadStepComponent,
+    WizardFileBrowserStepComponent,
+    WizardTableSelectorStepComponent,
+    WizardConfirmStepComponent,
+    WizardReviewStepComponent,
+    WizardCompleteStepComponent,
+    WizardHintsPanelComponent,
+    // New specialized step components
+    WizardTagNumberStepComponent,
+    WizardDescriptionStepComponent,
+    WizardValueSelectStepComponent,
+    WizardZeroEnergyStepComponent,
+    WizardEquipmentPickerStepComponent,
+    WizardLotoPointSelectorStepComponent,
+    WizardCounterpartCreationStepComponent
+  ], styles: ["\n\n.step-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.step-header[_ngcontent-%COMP%] {\n  text-align: center;\n  padding-bottom: 16px;\n  border-bottom: 1px solid #eee;\n}\n.step-title[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 20px;\n  font-weight: 500;\n  color: #333;\n}\n.step-description[_ngcontent-%COMP%] {\n  margin: 0;\n  color: #666;\n  font-size: 14px;\n  line-height: 1.5;\n}\n.step-content[_ngcontent-%COMP%] {\n  min-height: 150px;\n}\n.unknown-step[_ngcontent-%COMP%] {\n  padding: 20px;\n  background: #fff3e0;\n  border-radius: 8px;\n  text-align: center;\n  color: #e65100;\n}\n/*# sourceMappingURL=wizard-step-renderer.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardStepRendererComponent, { className: "WizardStepRendererComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-step-renderer.component.ts", lineNumber: 286 });
+})();
+
+// src/app/shared/guide/guide-form/wizard-dialog/wizard-breadcrumb.component.ts
+var _forTrack023 = ($index, $item) => $item.name;
+function WizardBreadcrumbComponent_For_2_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "mat-icon", 1);
+    \u0275\u0275text(1, "chevron_right");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardBreadcrumbComponent_For_2_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275template(0, WizardBreadcrumbComponent_For_2_Conditional_0_Template, 2, 0, "mat-icon", 1);
+    \u0275\u0275elementStart(1, "span", 2);
+    \u0275\u0275listener("click", function WizardBreadcrumbComponent_For_2_Template_span_click_1_listener() {
+      const ctx_r1 = \u0275\u0275restoreView(_r1);
+      const item_r3 = ctx_r1.$implicit;
+      const \u0275$index_3_r4 = ctx_r1.$index;
+      const ctx_r4 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r4.onItemClick(item_r3, \u0275$index_3_r4));
+    });
+    \u0275\u0275text(2);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const item_r3 = ctx.$implicit;
+    const \u0275$index_3_r4 = ctx.$index;
+    const ctx_r4 = \u0275\u0275nextContext();
+    \u0275\u0275conditional(\u0275$index_3_r4 > 0 ? 0 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275classProp("active", item_r3.isActive)("clickable", !item_r3.isActive && \u0275$index_3_r4 === ctx_r4.trail().length - 2);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" ", item_r3.name, " ");
+  }
+}
+var WizardBreadcrumbComponent = class _WizardBreadcrumbComponent {
+  trail = input([]);
+  navigateBack = output();
+  onItemClick(item, index) {
+    if (!item.isActive && index === this.trail().length - 2) {
+      this.navigateBack.emit();
+    }
+  }
+  static \u0275fac = function WizardBreadcrumbComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _WizardBreadcrumbComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardBreadcrumbComponent, selectors: [["app-wizard-breadcrumb"]], inputs: { trail: [1, "trail"] }, outputs: { navigateBack: "navigateBack" }, decls: 3, vars: 0, consts: [[1, "breadcrumb-container"], [1, "separator"], [1, "breadcrumb-item", 3, "click"]], template: function WizardBreadcrumbComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0);
+      \u0275\u0275repeaterCreate(1, WizardBreadcrumbComponent_For_2_Template, 3, 6, null, null, _forTrack023);
+      \u0275\u0275elementEnd();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance();
+      \u0275\u0275repeater(ctx.trail());
+    }
+  }, dependencies: [CommonModule, MatIconModule, MatIcon], styles: ["\n\n.breadcrumb-container[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  font-size: 12px;\n  color: #666;\n  margin-bottom: 4px;\n}\n.separator[_ngcontent-%COMP%] {\n  font-size: 14px;\n  width: 14px;\n  height: 14px;\n  margin: 0 2px;\n  color: #999;\n}\n.breadcrumb-item[_ngcontent-%COMP%] {\n  padding: 2px 6px;\n  border-radius: 4px;\n}\n.breadcrumb-item.active[_ngcontent-%COMP%] {\n  color: #1976d2;\n  font-weight: 500;\n}\n.breadcrumb-item.clickable[_ngcontent-%COMP%] {\n  cursor: pointer;\n}\n.breadcrumb-item.clickable[_ngcontent-%COMP%]:hover {\n  background: #e3f2fd;\n  color: #1976d2;\n}\n/*# sourceMappingURL=wizard-breadcrumb.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardBreadcrumbComponent, { className: "WizardBreadcrumbComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-breadcrumb.component.ts", lineNumber: 69 });
+})();
+
+// src/app/shared/guide/guide-form/wizard-dialog/wizard-step-indicator.component.ts
+var _forTrack024 = ($index, $item) => $item.id;
+function WizardStepIndicatorComponent_For_3_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "mat-icon", 6);
+    \u0275\u0275text(1, "check");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardStepIndicatorComponent_For_3_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 7);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const step_r2 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(step_r2.index + 1);
+  }
+}
+function WizardStepIndicatorComponent_For_3_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "div", 9);
+  }
+  if (rf & 2) {
+    const step_r2 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275classProp("completed", step_r2.status === "completed");
+  }
+}
+function WizardStepIndicatorComponent_For_3_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 4);
+    \u0275\u0275listener("click", function WizardStepIndicatorComponent_For_3_Template_div_click_0_listener() {
+      const step_r2 = \u0275\u0275restoreView(_r1).$implicit;
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.onStepClick(step_r2));
+    });
+    \u0275\u0275elementStart(1, "div", 5);
+    \u0275\u0275template(2, WizardStepIndicatorComponent_For_3_Conditional_2_Template, 2, 0, "mat-icon", 6)(3, WizardStepIndicatorComponent_For_3_Conditional_3_Template, 2, 1, "span", 7);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(4, WizardStepIndicatorComponent_For_3_Conditional_4_Template, 1, 2, "div", 8);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const step_r2 = ctx.$implicit;
+    const \u0275$index_5_r4 = ctx.$index;
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275classProp("completed", step_r2.status === "completed")("current", step_r2.status === "current")("upcoming", step_r2.status === "upcoming")("clickable", step_r2.isClickable);
+    \u0275\u0275property("matTooltip", step_r2.title);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(step_r2.status === "completed" ? 2 : 3);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(\u0275$index_5_r4 < ctx_r2.stepItems().length - 1 ? 4 : -1);
+  }
+}
+var WizardStepIndicatorComponent = class _WizardStepIndicatorComponent {
+  steps = input.required();
+  currentStepIndex = input.required();
+  visitedSteps = input([]);
+  stepClick = output();
+  stepItems = computed(() => {
+    const allSteps = this.steps();
+    const current = this.currentStepIndex();
+    const visited = new Set(this.visitedSteps());
+    return allSteps.map((step, index) => {
+      let status;
+      if (index < current) {
+        status = "completed";
+      } else if (index === current) {
+        status = "current";
+      } else {
+        status = "upcoming";
+      }
+      const isClickable = status === "completed" || visited.has(index);
+      return {
+        id: step.id,
+        title: step.title,
+        index,
+        status,
+        isClickable
+      };
+    });
+  });
+  currentStepTitle = computed(() => {
+    const items = this.stepItems();
+    const current = items.find((s2) => s2.status === "current");
+    return current?.title ?? "";
+  });
+  onStepClick(step) {
+    if (step.isClickable && step.status !== "current") {
+      this.stepClick.emit(step.id);
+    }
+  }
+  static \u0275fac = function WizardStepIndicatorComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _WizardStepIndicatorComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WizardStepIndicatorComponent, selectors: [["app-wizard-step-indicator"]], inputs: { steps: [1, "steps"], currentStepIndex: [1, "currentStepIndex"], visitedSteps: [1, "visitedSteps"] }, outputs: { stepClick: "stepClick" }, decls: 6, vars: 1, consts: [[1, "step-indicator-container"], [1, "step-chain"], ["matTooltipPosition", "above", 1, "step-item", 3, "completed", "current", "upcoming", "clickable", "matTooltip"], [1, "step-label"], ["matTooltipPosition", "above", 1, "step-item", 3, "click", "matTooltip"], [1, "step-circle"], [1, "check-icon"], [1, "step-number"], [1, "step-connector", 3, "completed"], [1, "step-connector"]], template: function WizardStepIndicatorComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
+      \u0275\u0275repeaterCreate(2, WizardStepIndicatorComponent_For_3_Template, 5, 11, "div", 2, _forTrack024);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(4, "div", 3);
+      \u0275\u0275text(5);
+      \u0275\u0275elementEnd()();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance(2);
+      \u0275\u0275repeater(ctx.stepItems());
+      \u0275\u0275advance(3);
+      \u0275\u0275textInterpolate1(" ", ctx.currentStepTitle(), " ");
+    }
+  }, dependencies: [CommonModule, MatIconModule, MatIcon, MatTooltipModule, MatTooltip], styles: ["\n\n.step-indicator-container[_ngcontent-%COMP%] {\n  padding: 8px 16px;\n  background: #fafafa;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.step-chain[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  overflow-x: auto;\n  padding: 4px 0;\n}\n.step-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  flex-shrink: 0;\n}\n.step-circle[_ngcontent-%COMP%] {\n  width: 28px;\n  height: 28px;\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  border: 2px solid #e0e0e0;\n  background: white;\n  color: #9e9e9e;\n}\n.step-item.completed[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: #4caf50;\n  border-color: #4caf50;\n  color: white;\n}\n.step-item.current[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: #1976d2;\n  border-color: #1976d2;\n  color: white;\n  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);\n}\n.step-item.upcoming[_ngcontent-%COMP%]   .step-circle[_ngcontent-%COMP%] {\n  background: white;\n  border-color: #e0e0e0;\n  color: #9e9e9e;\n}\n.step-item.clickable[_ngcontent-%COMP%] {\n  cursor: pointer;\n}\n.step-item.clickable[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  transform: scale(1.1);\n}\n.step-item.clickable.completed[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  background: #43a047;\n}\n.step-item.clickable.current[_ngcontent-%COMP%]:hover   .step-circle[_ngcontent-%COMP%] {\n  background: #1565c0;\n}\n.check-icon[_ngcontent-%COMP%] {\n  font-size: 16px;\n  width: 16px;\n  height: 16px;\n}\n.step-number[_ngcontent-%COMP%] {\n  font-size: 12px;\n}\n.step-connector[_ngcontent-%COMP%] {\n  width: 24px;\n  height: 2px;\n  background: #e0e0e0;\n  margin: 0 2px;\n  transition: background 0.2s ease;\n}\n.step-connector.completed[_ngcontent-%COMP%] {\n  background: #4caf50;\n}\n.step-label[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 13px;\n  color: #424242;\n  font-weight: 500;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n@media (max-width: 600px) {\n  .step-circle[_ngcontent-%COMP%] {\n    width: 24px;\n    height: 24px;\n    font-size: 11px;\n  }\n  .step-connector[_ngcontent-%COMP%] {\n    width: 16px;\n  }\n  .check-icon[_ngcontent-%COMP%] {\n    font-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n}\n/*# sourceMappingURL=wizard-step-indicator.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardStepIndicatorComponent, { className: "WizardStepIndicatorComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-step-indicator.component.ts", lineNumber: 181 });
+})();
+
 // src/app/shared/guide/guide-form/wizard-dialog/wizard-dialog.component.ts
 function WizardDialogComponent_Conditional_0_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
@@ -105956,7 +108729,7 @@ function WizardDialogComponent_Conditional_0_Conditional_6_Template(rf, ctx) {
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-wizard-step-indicator", 22);
+    \u0275\u0275elementStart(0, "app-wizard-step-indicator", 23);
     \u0275\u0275listener("stepClick", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_0_Template_app_wizard_step_indicator_stepClick_0_listener($event) {
       \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext(3);
@@ -105972,7 +108745,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_0_Templa
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 23);
+    \u0275\u0275elementStart(0, "button", 24);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext(3);
@@ -105993,13 +108766,13 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_5_Templa
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 25);
+    \u0275\u0275elementStart(0, "button", 26);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_0_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r2 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r2.onFinish());
     });
-    \u0275\u0275elementStart(1, "mat-icon", 26);
+    \u0275\u0275elementStart(1, "mat-icon", 27);
     \u0275\u0275text(2, "sync");
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " Saving... ");
@@ -106012,7 +108785,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Condit
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 27);
+    \u0275\u0275elementStart(0, "button", 28);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_1_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r8);
       const ctx_r2 = \u0275\u0275nextContext(4);
@@ -106027,7 +108800,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Condit
 }
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_0_Template, 4, 1, "button", 24)(1, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_1_Template, 4, 0, "button", 21);
+    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_0_Template, 4, 1, "button", 25)(1, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Conditional_1_Template, 4, 0, "button", 22);
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(3);
@@ -106037,13 +108810,13 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Templa
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 25);
+    \u0275\u0275elementStart(0, "button", 26);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_0_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r9);
       const ctx_r2 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r2.onSubmit());
     });
-    \u0275\u0275elementStart(1, "mat-icon", 26);
+    \u0275\u0275elementStart(1, "mat-icon", 27);
     \u0275\u0275text(2, "sync");
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " Saving... ");
@@ -106056,7 +108829,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Condit
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 27);
+    \u0275\u0275elementStart(0, "button", 28);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_1_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r10);
       const ctx_r2 = \u0275\u0275nextContext(4);
@@ -106076,7 +108849,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Condit
 }
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_0_Template, 4, 1, "button", 24)(1, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_1_Template, 4, 1, "button", 21);
+    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_0_Template, 4, 1, "button", 25)(1, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Conditional_1_Template, 4, 1, "button", 22);
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(3);
@@ -106086,9 +108859,22 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Templa
 function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 27);
+    \u0275\u0275elementStart(0, "button", 29);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_9_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r11);
+      const ctx_r2 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r2.onNext());
+    });
+    \u0275\u0275text(1, " Skip Counterpart ");
+    \u0275\u0275elementEnd();
+  }
+}
+function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r12 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 28);
+    \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r12);
       const ctx_r2 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r2.onNext());
     });
@@ -106098,12 +108884,12 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_9_Templa
     \u0275\u0275elementEnd()();
   }
 }
-function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Conditional_0_Template(rf, ctx) {
+function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    const _r13 = \u0275\u0275getCurrentView();
+    const _r14 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 29);
-    \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Conditional_0_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r13);
+    \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Conditional_0_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r2.onSkip());
     });
@@ -106111,13 +108897,13 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Condi
     \u0275\u0275elementEnd();
   }
 }
-function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template(rf, ctx) {
+function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Conditional_0_Template, 2, 0, "button", 28);
-    \u0275\u0275elementStart(1, "button", 25);
-    \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r12);
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Conditional_0_Template, 2, 0, "button", 21);
+    \u0275\u0275elementStart(1, "button", 26);
+    \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r13);
       const ctx_r2 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r2.onNext());
     });
@@ -106157,7 +108943,7 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Template(rf, ctx) {
     \u0275\u0275template(5, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_5_Template, 4, 1, "button", 19);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "div", 20);
-    \u0275\u0275template(7, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Template, 2, 1)(8, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Template, 2, 1)(9, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_9_Template, 4, 0, "button", 21)(10, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template, 5, 2);
+    \u0275\u0275template(7, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_7_Template, 2, 1)(8, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_8_Template, 2, 1)(9, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_9_Template, 2, 0, "button", 21)(10, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_10_Template, 4, 0, "button", 22)(11, WizardDialogComponent_Conditional_0_Conditional_16_Conditional_11_Template, 5, 2);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -106169,15 +108955,15 @@ function WizardDialogComponent_Conditional_0_Conditional_16_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.wizardService.canGoBack() ? 5 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r2.isCompleteStep() ? 7 : ctx_r2.isReviewStep() ? 8 : ctx_r2.isWelcomeStep() ? 9 : 10);
+    \u0275\u0275conditional(ctx_r2.isCompleteStep() ? 7 : ctx_r2.isReviewStep() ? 8 : ctx_r2.isCounterpartCreationStep() ? 9 : ctx_r2.isWelcomeStep() ? 10 : 11);
   }
 }
 function WizardDialogComponent_Conditional_0_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
-    const _r14 = \u0275\u0275getCurrentView();
+    const _r15 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 30);
     \u0275\u0275listener("click", function WizardDialogComponent_Conditional_0_Conditional_17_Template_div_click_0_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r2.wizardService.expand());
     });
@@ -106223,7 +109009,7 @@ function WizardDialogComponent_Conditional_0_Template(rf, ctx) {
     \u0275\u0275elementStart(14, "mat-icon");
     \u0275\u0275text(15, "close");
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275template(16, WizardDialogComponent_Conditional_0_Conditional_16_Template, 11, 5)(17, WizardDialogComponent_Conditional_0_Conditional_17_Template, 5, 1, "div", 12);
+    \u0275\u0275template(16, WizardDialogComponent_Conditional_0_Conditional_16_Template, 12, 5)(17, WizardDialogComponent_Conditional_0_Conditional_17_Template, 5, 1, "div", 12);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -106251,6 +109037,7 @@ function WizardDialogComponent_Conditional_0_Template(rf, ctx) {
 var WizardDialogComponent = class _WizardDialogComponent {
   wizardService = inject(WizardStackService);
   lotoStandardApi = inject(RfLotoStandardApiService);
+  lotoStandardStateService = inject(RfLotoStandardStateService);
   lotoPointApi = inject(RfLotoPointApiService);
   valueApi = inject(RfValueApiService);
   fileApi = inject(RfFileApiService);
@@ -106269,6 +109056,7 @@ var WizardDialogComponent = class _WizardDialogComponent {
   isWelcomeStep = computed(() => this.wizardService.currentStep()?.type === "welcome");
   isReviewStep = computed(() => this.wizardService.currentStep()?.type === "review");
   isCompleteStep = computed(() => this.wizardService.currentStep()?.type === "complete");
+  isCounterpartCreationStep = computed(() => this.wizardService.currentStep()?.type === "counterpart-creation");
   canProceed = computed(() => {
     const step = this.wizardService.currentStep();
     if (!step)
@@ -106341,6 +109129,7 @@ var WizardDialogComponent = class _WizardDialogComponent {
     if (this.wizardService.isBranch()) {
       const frame2 = this.wizardService.currentFrame();
       const entityData = frame2?.entityData;
+      const flowType = frame2?.flow.type;
       if (entityData && this.savedEntityId()) {
         if (entityData.lotoPoint) {
           entityData.lotoPoint.id = this.savedEntityId();
@@ -106352,7 +109141,19 @@ var WizardDialogComponent = class _WizardDialogComponent {
           entityData.lotoStandard.id = this.savedEntityId();
         }
       }
-      this.wizardService.completeBranch(entityData);
+      let entityToReturn = entityData;
+      if (flowType === "add-loto-point" || flowType === "add-loto-point-simple") {
+        entityToReturn = entityData?.lotoPoint;
+      } else if (flowType === "create-value") {
+        entityToReturn = entityData?.value;
+      } else if (flowType === "upload-file" || flowType === "select-file") {
+        entityToReturn = entityData?.file;
+      } else if (flowType === "create-zero-energy") {
+        entityToReturn = entityData?.zeroEnergy;
+      } else if (flowType === "build-standard" || flowType === "modify-standard") {
+        entityToReturn = entityData?.lotoStandard;
+      }
+      this.wizardService.completeBranch(entityToReturn);
       this.savedEntityId.set(null);
     } else {
       this.wizardService.complete();
@@ -106403,6 +109204,11 @@ var WizardDialogComponent = class _WizardDialogComponent {
             yield firstValueFrom(this.lotoStandardApi.addLotoPointToStandard(standardId, point.id));
           }
         }
+      }
+      const fullStandardResponse = yield firstValueFrom(this.lotoStandardApi.getLotoStandardById(String(standardId)));
+      if (fullStandardResponse.responseData) {
+        const savedStandard = LotoStandardDto.fromJson(fullStandardResponse.responseData);
+        this.lotoStandardStateService.updateLotoStandardInList(savedStandard);
       }
       console.log("LOTO Standard saved successfully:", standardId);
     });
@@ -106501,7 +109307,7 @@ var WizardDialogComponent = class _WizardDialogComponent {
         return ctx.onEscape();
       }, false, \u0275\u0275resolveDocument);
     }
-  }, decls: 1, vars: 1, consts: [[1, "wizard-overlay", 3, "minimized"], [1, "wizard-overlay"], ["cdkDrag", "", "cdkDragBoundary", ".wizard-overlay", 1, "wizard-dialog", 3, "cdkDragDisabled"], ["cdkDragHandle", "", 1, "dialog-header"], [1, "header-content"], [3, "trail"], [1, "header-title"], [1, "flow-icon"], [1, "flow-name"], [1, "header-actions"], ["mat-icon-button", "", 1, "header-btn", 3, "click", "matTooltip"], ["mat-icon-button", "", "matTooltip", "Close", 1, "header-btn", "close-btn", 3, "click"], [1, "minimized-info"], [3, "navigateBack", "trail"], [3, "steps", "currentStepIndex", "visitedSteps"], [1, "dialog-content"], [3, "stepDataChange", "branchRequest", "stepComplete", "step", "frame"], [1, "dialog-footer"], [1, "footer-left"], ["mat-stroked-button", "", 1, "back-btn"], [1, "footer-right"], ["mat-flat-button", "", "color", "primary"], [3, "stepClick", "steps", "currentStepIndex", "visitedSteps"], ["mat-stroked-button", "", 1, "back-btn", 3, "click"], ["mat-flat-button", "", "color", "primary", 3, "disabled"], ["mat-flat-button", "", "color", "primary", 3, "click", "disabled"], [1, "spinning"], ["mat-flat-button", "", "color", "primary", 3, "click"], ["mat-stroked-button", "", 1, "skip-btn"], ["mat-stroked-button", "", 1, "skip-btn", 3, "click"], [1, "minimized-info", 3, "click"]], template: function WizardDialogComponent_Template(rf, ctx) {
+  }, decls: 1, vars: 1, consts: [[1, "wizard-overlay", 3, "minimized"], [1, "wizard-overlay"], ["cdkDrag", "", "cdkDragBoundary", ".wizard-overlay", 1, "wizard-dialog", 3, "cdkDragDisabled"], ["cdkDragHandle", "", 1, "dialog-header"], [1, "header-content"], [3, "trail"], [1, "header-title"], [1, "flow-icon"], [1, "flow-name"], [1, "header-actions"], ["mat-icon-button", "", 1, "header-btn", 3, "click", "matTooltip"], ["mat-icon-button", "", "matTooltip", "Close", 1, "header-btn", "close-btn", 3, "click"], [1, "minimized-info"], [3, "navigateBack", "trail"], [3, "steps", "currentStepIndex", "visitedSteps"], [1, "dialog-content"], [3, "stepDataChange", "branchRequest", "stepComplete", "step", "frame"], [1, "dialog-footer"], [1, "footer-left"], ["mat-stroked-button", "", 1, "back-btn"], [1, "footer-right"], ["mat-stroked-button", "", 1, "skip-btn"], ["mat-flat-button", "", "color", "primary"], [3, "stepClick", "steps", "currentStepIndex", "visitedSteps"], ["mat-stroked-button", "", 1, "back-btn", 3, "click"], ["mat-flat-button", "", "color", "primary", 3, "disabled"], ["mat-flat-button", "", "color", "primary", 3, "click", "disabled"], [1, "spinning"], ["mat-flat-button", "", "color", "primary", 3, "click"], ["mat-stroked-button", "", 1, "skip-btn", 3, "click"], [1, "minimized-info", 3, "click"]], template: function WizardDialogComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275template(0, WizardDialogComponent_Conditional_0_Template, 18, 11, "div", 0);
     }
@@ -106525,13 +109331,13 @@ var WizardDialogComponent = class _WizardDialogComponent {
   ], styles: ["\n\n.wizard-overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.3);\n  z-index: 1000;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  pointer-events: none;\n}\n.wizard-overlay.minimized[_ngcontent-%COMP%] {\n  background: transparent;\n  pointer-events: none;\n}\n.wizard-dialog[_ngcontent-%COMP%] {\n  background: white;\n  border-radius: 12px;\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);\n  width: 600px;\n  max-width: 90vw;\n  max-height: 85vh;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n  pointer-events: all;\n}\n.wizard-dialog.is-branch[_ngcontent-%COMP%] {\n  border: 2px solid #1976d2;\n}\n.wizard-overlay.minimized[_ngcontent-%COMP%]   .wizard-dialog[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 20px;\n  right: 20px;\n  width: auto;\n  max-width: 300px;\n  max-height: auto;\n}\n.dialog-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 12px 16px;\n  background: #f5f5f5;\n  border-bottom: 1px solid #e0e0e0;\n  cursor: move;\n}\n.header-content[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.header-title[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.flow-icon[_ngcontent-%COMP%] {\n  color: #1976d2;\n}\n.flow-name[_ngcontent-%COMP%] {\n  font-weight: 500;\n  font-size: 16px;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 4px;\n}\n.header-btn[_ngcontent-%COMP%] {\n  width: 32px;\n  height: 32px;\n  line-height: 32px;\n}\n.header-btn[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 20px;\n  width: 20px;\n  height: 20px;\n}\n.close-btn[_ngcontent-%COMP%]:hover {\n  color: #d32f2f;\n}\n.dialog-content[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 24px;\n  overflow-y: auto;\n  min-height: 300px;\n}\n.dialog-footer[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px;\n  border-top: 1px solid #e0e0e0;\n  background: #fafafa;\n}\n.footer-left[_ngcontent-%COMP%], \n.footer-right[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n}\n.back-btn[_ngcontent-%COMP%] {\n  color: #666;\n}\n.skip-btn[_ngcontent-%COMP%] {\n  color: #666;\n}\nbutton[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  margin-right: 4px;\n}\n.footer-right[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  margin-right: 4px;\n  margin-left: 0;\n}\n.spinning[_ngcontent-%COMP%] {\n  animation: _ngcontent-%COMP%_spin 1s linear infinite;\n}\n@keyframes _ngcontent-%COMP%_spin {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n.minimized-info[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 8px 16px;\n  cursor: pointer;\n  color: #666;\n}\n.minimized-info[_ngcontent-%COMP%]:hover {\n  background: #f5f5f5;\n}\n/*# sourceMappingURL=wizard-dialog.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardDialogComponent, { className: "WizardDialogComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-dialog.component.ts", lineNumber: 380 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WizardDialogComponent, { className: "WizardDialogComponent", filePath: "src/app/shared/guide/guide-form/wizard-dialog/wizard-dialog.component.ts", lineNumber: 391 });
 })();
 
 // node_modules/@angular/material/fesm2022/menu.mjs
-var _c029 = ["mat-menu-item", ""];
-var _c117 = [[["mat-icon"], ["", "matMenuItemIcon", ""]], "*"];
-var _c213 = ["mat-icon, [matMenuItemIcon]", "*"];
+var _c030 = ["mat-menu-item", ""];
+var _c118 = [[["mat-icon"], ["", "matMenuItemIcon", ""]], "*"];
+var _c214 = ["mat-icon, [matMenuItemIcon]", "*"];
 function MatMenuItem_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
@@ -106691,14 +109497,14 @@ var MatMenuItem = class _MatMenuItem {
       disableRipple: [2, "disableRipple", "disableRipple", booleanAttribute]
     },
     exportAs: ["matMenuItem"],
-    attrs: _c029,
-    ngContentSelectors: _c213,
+    attrs: _c030,
+    ngContentSelectors: _c214,
     decls: 5,
     vars: 3,
     consts: [[1, "mat-mdc-menu-item-text"], ["matRipple", "", 1, "mat-mdc-menu-ripple", 3, "matRippleDisabled", "matRippleTrigger"], ["viewBox", "0 0 5 10", "focusable", "false", "aria-hidden", "true", 1, "mat-mdc-menu-submenu-icon"], ["points", "0,0 5,5 0,10"]],
     template: function MatMenuItem_Template(rf, ctx) {
       if (rf & 1) {
-        \u0275\u0275projectionDef(_c117);
+        \u0275\u0275projectionDef(_c118);
         \u0275\u0275projection(0);
         \u0275\u0275elementStart(1, "span", 0);
         \u0275\u0275projection(2, 1);
@@ -110044,7 +112850,7 @@ var LOTO_BUILDER_TOUR = {
 };
 
 // src/app/shared/tour/tour-trigger.component.ts
-var _forTrack024 = ($index, $item) => $item.id;
+var _forTrack025 = ($index, $item) => $item.id;
 function TourTriggerComponent_For_11_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "mat-icon", 7);
@@ -110143,7 +112949,7 @@ var TourTriggerComponent = class _TourTriggerComponent {
       \u0275\u0275elementStart(8, "span");
       \u0275\u0275text(9, "Interactive Tours");
       \u0275\u0275elementEnd()();
-      \u0275\u0275repeaterCreate(10, TourTriggerComponent_For_11_Template, 6, 5, "button", 4, _forTrack024);
+      \u0275\u0275repeaterCreate(10, TourTriggerComponent_For_11_Template, 6, 5, "button", 4, _forTrack025);
       \u0275\u0275element(12, "div", 5);
       \u0275\u0275elementStart(13, "button", 6);
       \u0275\u0275listener("click", function TourTriggerComponent_Template_button_click_13_listener() {
@@ -110179,2007 +112985,6 @@ var TourTriggerComponent = class _TourTriggerComponent {
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(TourTriggerComponent, { className: "TourTriggerComponent", filePath: "src/app/shared/tour/tour-trigger.component.ts", lineNumber: 106 });
-})();
-
-// src/app/services/guide/contextual-guide.service.ts
-var CONTEXTUAL_GUIDE_STORAGE_KEY = "app_contextual_guide_enabled";
-var ContextualGuideService = class _ContextualGuideService {
-  platformId = inject(PLATFORM_ID);
-  localStorageService = inject(LocalStorageService);
-  router = inject(Router);
-  destroyRef = inject(DestroyRef);
-  injector = inject(Injector);
-  /** Registered page guides */
-  pageGuides = [];
-  /** Context providers (services that contribute to context) */
-  contextProviders = [];
-  /** Manual refresh trigger */
-  refreshTrigger = new Subject();
-  /** Current route */
-  _currentRoute = signal("");
-  /** Whether guide is enabled */
-  _isEnabled = signal(false);
-  /** Whether panel is expanded */
-  _isExpanded = signal(true);
-  /** Currently selected action for highlighting */
-  _selectedActionId = signal(null);
-  /** Open dialogs tracked by the system */
-  _openDialogs = signal([]);
-  /** Active elements tracked by the system */
-  _activeElements = signal([]);
-  /** Custom state flags from various services */
-  _stateFlags = signal({});
-  /** Expanded state for sections (section id -> expanded) */
-  _expandedSections = signal({});
-  /** Expanded state for subsections (subsection id -> expanded) */
-  _expandedSubsections = signal({});
-  // ========== Public Signals ==========
-  /** Whether guide is enabled */
-  isEnabled = computed(() => this._isEnabled());
-  /** Whether panel is expanded */
-  isExpanded = computed(() => this._isExpanded());
-  /** Currently selected action */
-  selectedActionId = computed(() => this._selectedActionId());
-  /** Current application context */
-  currentContext = computed(() => {
-    let mergedContext = {};
-    for (const provider of this.contextProviders) {
-      try {
-        const provided = provider();
-        mergedContext = __spreadValues(__spreadValues({}, mergedContext), provided);
-      } catch (e) {
-        console.warn("Context provider error:", e);
-      }
-    }
-    return {
-      route: this._currentRoute(),
-      routeCategory: this.getRouteCategory(this._currentRoute()),
-      openDialogs: mergedContext.openDialogs ?? this._openDialogs(),
-      activeElements: mergedContext.activeElements ?? this._activeElements(),
-      stateFlags: __spreadValues(__spreadValues({}, this._stateFlags()), mergedContext.stateFlags ?? {})
-    };
-  });
-  /** Current page guide based on route */
-  currentPageGuide = computed(() => {
-    const route = this._currentRoute();
-    for (const guide of this.pageGuides) {
-      if (this.matchesRoute(route, guide.routePattern)) {
-        return guide;
-      }
-    }
-    return null;
-  });
-  /** Available sections for current context (new hierarchical structure) */
-  availableSections = computed(() => {
-    if (!this._isEnabled())
-      return [];
-    const pageGuide = this.currentPageGuide();
-    if (!pageGuide?.sections)
-      return [];
-    const context = this.currentContext();
-    return pageGuide.sections.filter((section) => section.isRelevant(context));
-  });
-  /** Check if using new section-based structure */
-  useSections = computed(() => {
-    const pageGuide = this.currentPageGuide();
-    return !!pageGuide?.sections && pageGuide.sections.length > 0;
-  });
-  /** Available action groups for current context (legacy support) */
-  availableActionGroups = computed(() => {
-    if (!this._isEnabled())
-      return [];
-    const pageGuide = this.currentPageGuide();
-    if (!pageGuide?.actionGroups)
-      return [];
-    const context = this.currentContext();
-    return pageGuide.actionGroups.filter((group) => group.isRelevant(context));
-  });
-  /** All available actions for current context (flattened and sorted) */
-  availableActions = computed(() => {
-    const groups = this.availableActionGroups();
-    const context = this.currentContext();
-    const allActions = [];
-    for (const group of groups) {
-      for (const action of group.actions) {
-        if (action.isAvailable(context)) {
-          allActions.push(action);
-        }
-      }
-    }
-    return allActions.sort((a, b) => b.priority - a.priority);
-  });
-  /** Highlight targets for selected action */
-  currentHighlightTargets = computed(() => {
-    const selectedId = this._selectedActionId();
-    if (!selectedId)
-      return [];
-    const sections = this.availableSections();
-    for (const section of sections) {
-      if (section.actions) {
-        const action2 = section.actions.find((a) => a.id === selectedId);
-        if (action2?.highlightTargets)
-          return action2.highlightTargets;
-      }
-      if (section.subsections) {
-        for (const subsection of section.subsections) {
-          const action2 = subsection.actions.find((a) => a.id === selectedId);
-          if (action2?.highlightTargets)
-            return action2.highlightTargets;
-        }
-      }
-    }
-    const action = this.availableActions().find((a) => a.id === selectedId);
-    return action?.highlightTargets ?? [];
-  });
-  /** Page name for current route */
-  currentPageName = computed(() => {
-    return this.currentPageGuide()?.pageName ?? "Unknown Page";
-  });
-  /** Page icon for current route */
-  currentPageIcon = computed(() => {
-    return this.currentPageGuide()?.icon ?? "help_outline";
-  });
-  constructor() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.router.events.pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
-        this._currentRoute.set(event.urlAfterRedirects);
-        this._selectedActionId.set(null);
-      });
-      this._currentRoute.set(this.router.url);
-      this.restoreState();
-      this.refreshTrigger.pipe(debounceTime(50), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-        this._stateFlags.update((flags) => __spreadValues({}, flags));
-      });
-    }
-  }
-  // ========== Public Methods ==========
-  /**
-   * Toggle the guide on/off
-   */
-  toggle() {
-    this._isEnabled.update((v) => !v);
-    this.saveState();
-    if (!this._isEnabled()) {
-      this._selectedActionId.set(null);
-    }
-  }
-  /**
-   * Enable the guide
-   */
-  enable() {
-    this._isEnabled.set(true);
-    this.saveState();
-  }
-  /**
-   * Disable the guide
-   */
-  disable() {
-    this._isEnabled.set(false);
-    this._selectedActionId.set(null);
-    this.saveState();
-  }
-  /**
-   * Toggle panel expanded/minimized
-   */
-  toggleExpanded() {
-    this._isExpanded.update((v) => !v);
-  }
-  /**
-   * Check if a section is expanded
-   */
-  isSectionExpanded(sectionId) {
-    const expanded = this._expandedSections();
-    if (sectionId in expanded) {
-      return expanded[sectionId];
-    }
-    const sections = this.availableSections();
-    const section = sections.find((s2) => s2.id === sectionId);
-    return section?.defaultExpanded ?? false;
-  }
-  /**
-   * Toggle a section expanded/collapsed
-   */
-  toggleSection(sectionId) {
-    this._expandedSections.update((expanded) => __spreadProps(__spreadValues({}, expanded), {
-      [sectionId]: !this.isSectionExpanded(sectionId)
-    }));
-  }
-  /**
-   * Check if a subsection is expanded
-   */
-  isSubsectionExpanded(subsectionId) {
-    const expanded = this._expandedSubsections();
-    return expanded[subsectionId] ?? false;
-  }
-  /**
-   * Toggle a subsection expanded/collapsed
-   */
-  toggleSubsection(subsectionId) {
-    this._expandedSubsections.update((expanded) => __spreadProps(__spreadValues({}, expanded), {
-      [subsectionId]: !this.isSubsectionExpanded(subsectionId)
-    }));
-  }
-  /**
-   * Get available subsections for a section based on current context
-   */
-  getAvailableSubsections(section) {
-    if (!section.subsections)
-      return [];
-    const context = this.currentContext();
-    return section.subsections.filter((sub) => sub.isRelevant(context));
-  }
-  /**
-   * Get available actions for a section (when no subsections)
-   */
-  getSectionActions(section) {
-    if (!section.actions)
-      return [];
-    const context = this.currentContext();
-    return section.actions.filter((action) => action.isAvailable(context)).sort((a, b) => b.priority - a.priority);
-  }
-  /**
-   * Get available actions for a subsection
-   */
-  getSubsectionActions(subsection) {
-    const context = this.currentContext();
-    return subsection.actions.filter((action) => action.isAvailable(context)).sort((a, b) => b.priority - a.priority);
-  }
-  /**
-   * Select an action (highlights its targets)
-   */
-  selectAction(actionId) {
-    this._selectedActionId.set(actionId);
-  }
-  /**
-   * Execute an action
-   */
-  executeAction(action) {
-    if (action.execute) {
-      action.execute();
-    }
-    this._selectedActionId.set(null);
-  }
-  /**
-   * Register a page guide
-   */
-  registerPageGuide(guide) {
-    this.pageGuides.push(guide);
-  }
-  /**
-   * Register multiple page guides
-   */
-  registerPageGuides(guides) {
-    this.pageGuides.push(...guides);
-  }
-  /**
-   * Register a context provider function
-   */
-  registerContextProvider(provider) {
-    this.contextProviders.push(provider);
-  }
-  /**
-   * Update a state flag
-   */
-  setStateFlag(key, value) {
-    this._stateFlags.update((flags) => __spreadProps(__spreadValues({}, flags), { [key]: value }));
-  }
-  /**
-   * Update multiple state flags
-   */
-  setStateFlags(flags) {
-    this._stateFlags.update((current) => __spreadValues(__spreadValues({}, current), flags));
-  }
-  /**
-   * Register an open dialog
-   */
-  registerDialog(dialogId) {
-    this._openDialogs.update((dialogs) => {
-      if (!dialogs.includes(dialogId)) {
-        return [...dialogs, dialogId];
-      }
-      return dialogs;
-    });
-  }
-  /**
-   * Unregister a closed dialog
-   */
-  unregisterDialog(dialogId) {
-    this._openDialogs.update((dialogs) => dialogs.filter((d) => d !== dialogId));
-  }
-  /**
-   * Register an active element
-   */
-  registerActiveElement(elementId) {
-    this._activeElements.update((elements) => {
-      if (!elements.includes(elementId)) {
-        return [...elements, elementId];
-      }
-      return elements;
-    });
-  }
-  /**
-   * Unregister an inactive element
-   */
-  unregisterActiveElement(elementId) {
-    this._activeElements.update((elements) => elements.filter((e) => e !== elementId));
-  }
-  /**
-   * Trigger a manual refresh of context
-   */
-  refresh() {
-    this.refreshTrigger.next();
-  }
-  /**
-   * Check if an element should be highlighted
-   */
-  shouldHighlight(target) {
-    if (!this._isEnabled())
-      return false;
-    return this.currentHighlightTargets().includes(target);
-  }
-  // ========== Private Methods ==========
-  getRouteCategory(route) {
-    if (route.startsWith("/loto-builder"))
-      return "loto-builder";
-    if (route.startsWith("/loto-standard"))
-      return "loto-standard";
-    if (route.startsWith("/loto-points"))
-      return "loto-points";
-    if (route.startsWith("/loto"))
-      return "loto";
-    if (route.startsWith("/file"))
-      return "files";
-    if (route.startsWith("/equipment"))
-      return "equipment";
-    if (route.startsWith("/permit"))
-      return "permits";
-    if (route === "/" || route === "/home")
-      return "home";
-    return "other";
-  }
-  matchesRoute(route, pattern) {
-    if (pattern instanceof RegExp) {
-      return pattern.test(route);
-    }
-    if (pattern.endsWith("*")) {
-      return route.startsWith(pattern.slice(0, -1));
-    }
-    return route === pattern || route.startsWith(pattern + "/");
-  }
-  saveState() {
-    this.localStorageService.setItem(CONTEXTUAL_GUIDE_STORAGE_KEY, this._isEnabled());
-  }
-  restoreState() {
-    const saved = this.localStorageService.getItem(CONTEXTUAL_GUIDE_STORAGE_KEY);
-    if (saved !== null) {
-      this._isEnabled.set(saved);
-    }
-  }
-  static \u0275fac = function ContextualGuideService_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _ContextualGuideService)();
-  };
-  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _ContextualGuideService, factory: _ContextualGuideService.\u0275fac, providedIn: "root" });
-};
-
-// src/app/features/loto-standard/refactored/loto-builder/services/loto-builder-state.service.ts
-var LotoBuilderStateService = class _LotoBuilderStateService {
-  apiService = inject(RfLotoStandardApiService);
-  destroyRef = inject(DestroyRef);
-  // ========== Left Panel State ==========
-  /** Current active tab in left panel */
-  leftMenuTab = signal("file");
-  /** Display mode for left panel content */
-  displayMode = signal("toggle-menu");
-  /** Left panel width (for resizing) */
-  leftPanelWidth = signal(400);
-  // ========== Current Context ==========
-  /** Currently selected file */
-  currentFile = signal(null);
-  /** Currently selected LOTO point */
-  currentLotoPoint = signal(null);
-  /** Equipment for current file */
-  currentEquipment = signal([]);
-  /** Shapes derived from equipment */
-  currentShapes = signal([]);
-  // ========== LOTO Building Mode ==========
-  /** Whether LOTO building mode is active */
-  isLotoBuildingMode = signal(false);
-  /** Selected LOTO standards for building mode */
-  selectedLotoStandards = signal([]);
-  /** Currently active LOTO standard index in carousel */
-  activeLotoStandardIndex = signal(0);
-  // ========== UI State ==========
-  /** Whether the builder popup is open */
-  isBuilderOpen = signal(false);
-  /** Hovered shape ID (for highlighting) */
-  hoveredShapeId = signal(null);
-  /** Selected shape ID (for selection with handles) */
-  selectedShapeId = signal(null);
-  /** Hovered LOTO point (for highlighting) */
-  hoveredLotoPoint = signal(null);
-  /** Whether LOTO point table popup is open */
-  isLotoPointTableOpen = signal(false);
-  /** Whether LOTO point form is open */
-  isLotoPointFormOpen = signal(false);
-  /** Whether LOTO standards popup is open */
-  isLotoStandardsPopupOpen = signal(false);
-  /** Whether LOTO point info window is shown */
-  showLotoPointInfo = signal(false);
-  /** LOTO point to display in info window */
-  infoWindowLotoPoint = signal(null);
-  /** Selected LOTO point for form editing */
-  selectedLotoPointForEdit = signal(null);
-  /** Newly created equipment (pending LOTO point association) */
-  pendingEquipment = signal(null);
-  // ========== Text Recognition State ==========
-  /** Whether text recognition is enabled */
-  isTextRecognitionEnabled = signal(true);
-  /** Recognized text from OCR */
-  recognizedText = signal(null);
-  /** Pre-filter search term for loto point table (from text recognition) */
-  tableSearchTerm = signal(null);
-  // ========== Processing State ==========
-  /** Whether a shape is being processed (saved/OCR) */
-  isProcessingShape = signal(false);
-  /** Processing message to display */
-  processingMessage = signal("");
-  // ========== Form/Table View State ==========
-  /** Current view mode in loto point popup (form or table) */
-  lotoPointPopupView = signal("form");
-  /** Whether we are editing an existing LOTO point (vs creating new) */
-  isEditMode = signal(false);
-  // ========== Computed Values ==========
-  /** All LOTO points from current file's equipment */
-  allLotoPointsInFile = computed(() => {
-    const equipment = this.currentEquipment();
-    const lotoPoints = [];
-    equipment.forEach((eq) => {
-      if (eq.lotoPoints && eq.lotoPoints.length > 0) {
-        eq.lotoPoints.forEach((lp) => {
-          if (!lotoPoints.some((existing) => existing.id === lp.id)) {
-            lotoPoints.push(lp);
-          }
-        });
-      }
-    });
-    return lotoPoints;
-  });
-  /** Whether builder is in a dirty state (unsaved changes) */
-  hasUnsavedChanges = signal(false);
-  /** Currently active LOTO standard */
-  activeLotoStandard = computed(() => {
-    const standards = this.selectedLotoStandards();
-    const index = this.activeLotoStandardIndex();
-    return standards[index] || null;
-  });
-  /** Whether carousel should be visible */
-  isCarouselVisible = computed(() => {
-    return this.isLotoBuildingMode() && this.selectedLotoStandards().length > 0;
-  });
-  // ========== Dual Form / Counterpart State (for contextual guide) ==========
-  /** Whether the current LOTO point is unit-specific (tag starts with 01 or 02) */
-  isUnitSpecificLotoPoint = signal(false);
-  /** Whether a counterpart LOTO point has been selected/loaded */
-  hasCounterpartLotoPoint = signal(false);
-  /** Whether the counterpart selection dialog is open */
-  isCounterpartDialogOpen = signal(false);
-  /** Whether a suggested counterpart was found */
-  hasSuggestedCounterpart = signal(false);
-  // ========== Methods ==========
-  /**
-   * Set the current file and load its equipment
-   * @param file The file to set
-   * @param preserveLotoPoint If true, don't clear the current LOTO point (used when navigating via LOTO point click)
-   */
-  setCurrentFile(file, preserveLotoPoint = false) {
-    this.currentFile.set(file);
-    if (!preserveLotoPoint) {
-      this.currentLotoPoint.set(null);
-    }
-    this.hasUnsavedChanges.set(false);
-  }
-  /**
-   * Set current equipment and derive shapes
-   */
-  setCurrentEquipment(equipment) {
-    this.currentEquipment.set(equipment);
-  }
-  /**
-   * Set current LOTO point
-   */
-  setCurrentLotoPoint(lotoPoint) {
-    this.currentLotoPoint.set(lotoPoint);
-  }
-  /**
-   * Open LOTO point table popup
-   */
-  openLotoPointTable() {
-    this.isLotoPointTableOpen.set(true);
-  }
-  /**
-   * Close LOTO point table popup
-   */
-  closeLotoPointTable() {
-    this.isLotoPointTableOpen.set(false);
-    this.hoveredShapeId.set(null);
-  }
-  /**
-   * Toggle LOTO point table popup
-   */
-  toggleLotoPointTable() {
-    this.isLotoPointTableOpen.set(!this.isLotoPointTableOpen());
-    if (!this.isLotoPointTableOpen()) {
-      this.hoveredShapeId.set(null);
-    }
-  }
-  /**
-   * Open LOTO point form for editing
-   */
-  openLotoPointForm(lotoPoint = null) {
-    this.selectedLotoPointForEdit.set(lotoPoint);
-    this.isEditMode.set(lotoPoint !== null);
-    if (lotoPoint !== null) {
-      this.lotoPointPopupView.set("form");
-    }
-    this.isLotoPointFormOpen.set(true);
-  }
-  /**
-   * Close LOTO point form
-   */
-  closeLotoPointForm() {
-    this.isLotoPointFormOpen.set(false);
-    this.selectedLotoPointForEdit.set(null);
-    this.isEditMode.set(false);
-  }
-  /**
-   * Open LOTO standards popup
-   */
-  openLotoStandardsPopup() {
-    this.isLotoStandardsPopupOpen.set(true);
-  }
-  /**
-   * Close LOTO standards popup
-   */
-  closeLotoStandardsPopup() {
-    this.isLotoStandardsPopupOpen.set(false);
-  }
-  /**
-   * Toggle LOTO building mode
-   */
-  toggleLotoBuildingMode() {
-    this.isLotoBuildingMode.set(!this.isLotoBuildingMode());
-    if (!this.isLotoBuildingMode()) {
-      this.selectedLotoStandards.set([]);
-    }
-  }
-  /**
-   * Show LOTO point info in info window
-   */
-  showLotoPointInfoWindow(lotoPoint) {
-    this.infoWindowLotoPoint.set(lotoPoint);
-    this.showLotoPointInfo.set(true);
-  }
-  /**
-   * Hide LOTO point info window
-   */
-  hideLotoPointInfoWindow() {
-    this.showLotoPointInfo.set(false);
-    this.infoWindowLotoPoint.set(null);
-  }
-  /**
-   * Set pending equipment (after drawing, before LOTO point association)
-   */
-  setPendingEquipment(equipment) {
-    this.pendingEquipment.set(equipment);
-  }
-  /**
-   * Toggle text recognition
-   */
-  toggleTextRecognition() {
-    this.isTextRecognitionEnabled.set(!this.isTextRecognitionEnabled());
-  }
-  /**
-   * Set recognized text from OCR
-   */
-  setRecognizedText(text) {
-    this.recognizedText.set(text);
-  }
-  /**
-   * Set table search term (for pre-filtering)
-   */
-  setTableSearchTerm(term) {
-    this.tableSearchTerm.set(term);
-  }
-  /**
-   * Start processing state with message
-   */
-  startProcessing(message) {
-    this.isProcessingShape.set(true);
-    this.processingMessage.set(message);
-  }
-  /**
-   * Stop processing state
-   */
-  stopProcessing() {
-    this.isProcessingShape.set(false);
-    this.processingMessage.set("");
-  }
-  /**
-   * Switch popup view to form
-   */
-  switchToFormView() {
-    this.lotoPointPopupView.set("form");
-  }
-  /**
-   * Switch popup view to table
-   */
-  switchToTableView() {
-    this.lotoPointPopupView.set("table");
-  }
-  /**
-   * Toggle between form and table view
-   */
-  togglePopupView() {
-    const current = this.lotoPointPopupView();
-    this.lotoPointPopupView.set(current === "form" ? "table" : "form");
-  }
-  // ========== Dual Form / Counterpart Methods ==========
-  /**
-   * Update unit-specific state based on tag number
-   * Called from loto-builder-form-popup when form values change
-   */
-  setIsUnitSpecific(isUnitSpecific) {
-    this.isUnitSpecificLotoPoint.set(isUnitSpecific);
-  }
-  /**
-   * Update counterpart loaded state
-   * Called from loto-builder-form-popup when counterpart is selected/loaded
-   */
-  setHasCounterpart(hasCounterpart) {
-    this.hasCounterpartLotoPoint.set(hasCounterpart);
-  }
-  /**
-   * Set counterpart dialog open state
-   * Called from loto-builder-form-popup when dialog opens/closes
-   */
-  setCounterpartDialogOpen(isOpen) {
-    this.isCounterpartDialogOpen.set(isOpen);
-  }
-  /**
-   * Set suggested counterpart found state
-   * Called from loto-builder-form-popup when search finds a suggestion
-   */
-  setHasSuggestedCounterpart(hasSuggested) {
-    this.hasSuggestedCounterpart.set(hasSuggested);
-  }
-  /**
-   * Reset all counterpart-related state
-   */
-  resetCounterpartState() {
-    this.isUnitSpecificLotoPoint.set(false);
-    this.hasCounterpartLotoPoint.set(false);
-    this.isCounterpartDialogOpen.set(false);
-    this.hasSuggestedCounterpart.set(false);
-  }
-  /**
-   * Open LOTO point popup with table view and pre-filtered search
-   */
-  openLotoPointTableWithSearch(searchTerm, equipment) {
-    this.setPendingEquipment(equipment);
-    this.setTableSearchTerm(searchTerm);
-    this.isEditMode.set(false);
-    this.lotoPointPopupView.set("table");
-    this.isLotoPointFormOpen.set(true);
-  }
-  /**
-   * Open LOTO point popup with empty form
-   */
-  openLotoPointFormForNewEquipment(equipment) {
-    this.setPendingEquipment(equipment);
-    this.selectedLotoPointForEdit.set(null);
-    this.isEditMode.set(false);
-    this.lotoPointPopupView.set("form");
-    this.isLotoPointFormOpen.set(true);
-  }
-  /**
-   * Add LOTO standard to the list
-   */
-  addLotoStandard(standard) {
-    this.selectedLotoStandards.update((standards) => [...standards, standard]);
-    this.activeLotoStandardIndex.set(this.selectedLotoStandards().length - 1);
-    this.isLotoBuildingMode.set(true);
-    const pendingPoint = this.currentLotoPoint();
-    if (pendingPoint) {
-      this.addLotoPointToActiveStandard(pendingPoint);
-      this.setCurrentLotoPoint(null);
-    }
-  }
-  /**
-   * Update LOTO standard at specific index
-   */
-  updateLotoStandard(index, standard) {
-    this.selectedLotoStandards.update((standards) => {
-      const updated = [...standards];
-      if (index >= 0 && index < updated.length) {
-        updated[index] = standard;
-      }
-      return updated;
-    });
-  }
-  /**
-   * Remove LOTO standard at specific index
-   */
-  removeLotoStandard(index) {
-    this.selectedLotoStandards.update((standards) => {
-      const updated = standards.filter((_2, i) => i !== index);
-      return updated;
-    });
-    const currentActive = this.activeLotoStandardIndex();
-    if (currentActive >= this.selectedLotoStandards().length) {
-      this.activeLotoStandardIndex.set(Math.max(0, this.selectedLotoStandards().length - 1));
-    }
-  }
-  /**
-   * Set active LOTO standard index
-   */
-  setActiveLotoStandardIndex(index) {
-    if (index >= 0 && index < this.selectedLotoStandards().length) {
-      this.activeLotoStandardIndex.set(index);
-    }
-  }
-  /**
-   * Add LOTO point to currently active standard
-   */
-  addLotoPointToActiveStandard(lotoPoint) {
-    const index = this.activeLotoStandardIndex();
-    const standard = this.activeLotoStandard();
-    if (standard) {
-      const existingPoints = standard.lotoPoints || [];
-      if (existingPoints.some((p) => p.id === lotoPoint.id)) {
-        console.warn("LOTO point already exists in this standard");
-        return;
-      }
-      const updatedStandard = new LotoStandardDto(__spreadProps(__spreadValues({}, standard), {
-        lotoPoints: [...existingPoints, lotoPoint]
-      }));
-      this.updateLotoStandard(index, updatedStandard);
-      if (standard.id && lotoPoint.id) {
-        this.apiService.addLotoPointToStandard(standard.id, lotoPoint.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          error: (err) => console.error("Failed to add LOTO point to standard:", err)
-        });
-      }
-    }
-  }
-  /**
-   * Toggle LOTO building mode with carousel
-   */
-  toggleCarousel() {
-    const isVisible = this.isCarouselVisible();
-    if (isVisible) {
-      this.isLotoBuildingMode.set(false);
-    } else {
-      this.isLotoBuildingMode.set(true);
-      if (this.selectedLotoStandards().length === 0) {
-        this.openLotoStandardsPopup();
-      }
-    }
-  }
-  /**
-   * Initialize builder (called when page loads)
-   */
-  initializeBuilder() {
-    this.isBuilderOpen.set(true);
-  }
-  /**
-   * Refresh equipment data.
-   * This is typically called after bulk edits are applied.
-   * The actual refresh happens automatically via lotoPointUpdated$ subscription
-   * in the right panel, so this method serves as a documentation hook.
-   */
-  refreshEquipment() {
-    console.log("[LotoBuilderState] refreshEquipment called - updates propagate via lotoPointUpdated$");
-  }
-  /**
-   * Reset builder state
-   */
-  reset() {
-    this.currentFile.set(null);
-    this.currentLotoPoint.set(null);
-    this.currentEquipment.set([]);
-    this.currentShapes.set([]);
-    this.selectedLotoStandards.set([]);
-    this.activeLotoStandardIndex.set(0);
-    this.isLotoBuildingMode.set(false);
-    this.hasUnsavedChanges.set(false);
-    this.closeLotoPointForm();
-    this.closeLotoPointTable();
-    this.closeLotoStandardsPopup();
-    this.hideLotoPointInfoWindow();
-    this.setPendingEquipment(null);
-    this.recognizedText.set(null);
-    this.tableSearchTerm.set(null);
-    this.lotoPointPopupView.set("form");
-    this.isEditMode.set(false);
-    this.resetCounterpartState();
-  }
-  static \u0275fac = function LotoBuilderStateService_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _LotoBuilderStateService)();
-  };
-  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _LotoBuilderStateService, factory: _LotoBuilderStateService.\u0275fac, providedIn: "root" });
-};
-
-// src/app/services/guide/page-guides/loto-builder.page-guide.ts
-function createLotoBuilderPageGuide() {
-  const router = inject(Router);
-  const builderState = inject(LotoBuilderStateService);
-  const fileManagementSection = {
-    id: "file-management",
-    title: "File Management",
-    icon: "folder",
-    defaultExpanded: false,
-    isRelevant: () => true,
-    // Always show
-    subsections: [
-      {
-        id: "file-browse",
-        title: "Browse & Select",
-        icon: "search",
-        isRelevant: () => true,
-        actions: [
-          {
-            id: "file-toggle-menu-view",
-            label: "Toggle Menu View",
-            description: "View files grouped by type in tabs",
-            icon: "view_list",
-            priority: 100,
-            isAvailable: () => builderState.displayMode() === "table",
-            highlightTargets: ["contextual:toggle-view-button"],
-            hint: "Click to switch to toggle-menu view with type tabs"
-          },
-          {
-            id: "file-table-view",
-            label: "Table View",
-            description: "View all files in a searchable table",
-            icon: "table_view",
-            priority: 90,
-            isAvailable: () => builderState.displayMode() === "toggle-menu",
-            highlightTargets: ["contextual:toggle-view-button"],
-            hint: "Click to switch to table view for searching"
-          },
-          {
-            id: "file-select",
-            label: "Select a File",
-            description: "Click on a file to view it in the image area",
-            icon: "touch_app",
-            priority: 80,
-            isAvailable: () => builderState.currentFile() === null,
-            highlightTargets: ["contextual:file-tree"],
-            hint: "Click on any file in the left panel to select it"
-          },
-          {
-            id: "file-type-tabs",
-            label: "Filter by Type",
-            description: "Use tabs to show only specific file types",
-            icon: "filter_list",
-            priority: 70,
-            isAvailable: () => builderState.displayMode() === "toggle-menu",
-            highlightTargets: ["contextual:file-type-tabs"],
-            hint: "Click on type tabs (P&ID, One-Line, etc.) to filter"
-          }
-        ]
-      },
-      {
-        id: "file-upload",
-        title: "Upload New",
-        icon: "upload_file",
-        isRelevant: () => true,
-        actions: [
-          {
-            id: "upload-file",
-            label: "Upload P&ID File",
-            description: "Add a new P&ID image to the system",
-            icon: "add_photo_alternate",
-            priority: 100,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:upload-button"],
-            hint: "Click the + button to upload a new file"
-          }
-        ]
-      },
-      {
-        id: "file-edit",
-        title: "Edit File Info",
-        icon: "edit",
-        isRelevant: () => builderState.currentFile() !== null,
-        actions: [
-          {
-            id: "edit-file-context-menu",
-            label: "Right-Click to Edit",
-            description: "Use context menu to edit file name, description, type",
-            icon: "menu",
-            priority: 100,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:file-item"],
-            hint: "Right-click on a file to access edit options"
-          },
-          {
-            id: "edit-file-name",
-            label: "Edit Name & Description",
-            description: "Change the file name or description",
-            icon: "drive_file_rename_outline",
-            priority: 90,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:edit-file-dialog"],
-            hint: 'Select "Edit" from the context menu'
-          },
-          {
-            id: "change-file-type",
-            label: "Change File Type",
-            description: "Recategorize the file (P&ID, One-Line, etc.)",
-            icon: "category",
-            priority: 80,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:file-type-select"],
-            hint: "Change the file type dropdown in the edit dialog"
-          }
-        ]
-      }
-    ]
-  };
-  const lotoStandardSection = {
-    id: "loto-standard-management",
-    title: "LOTO Standard Management",
-    icon: "checklist",
-    defaultExpanded: false,
-    isRelevant: () => true,
-    subsections: [
-      {
-        id: "standard-create",
-        title: "Create New",
-        icon: "add_box",
-        isRelevant: () => true,
-        actions: [
-          {
-            id: "open-standards-popup",
-            label: "Open Standards Selector",
-            description: "Open the popup to create or select standards",
-            icon: "open_in_new",
-            priority: 100,
-            isAvailable: () => !builderState.isLotoStandardsPopupOpen(),
-            highlightTargets: ["contextual:select-standards-button"],
-            hint: 'Click "Select Standards" button in the toolbar'
-          },
-          {
-            id: "create-new-standard",
-            label: "Create New Standard",
-            description: "Fill in name and description to create",
-            icon: "note_add",
-            priority: 90,
-            isAvailable: () => builderState.isLotoStandardsPopupOpen(),
-            highlightTargets: ["contextual:create-standard-form"],
-            hint: 'Enter name and description, then click "Create & Add"'
-          }
-        ]
-      },
-      {
-        id: "standard-select",
-        title: "Select Existing",
-        icon: "playlist_add_check",
-        isRelevant: () => true,
-        actions: [
-          {
-            id: "select-existing-standard",
-            label: "Select from List",
-            description: "Choose existing standards to work with",
-            icon: "check_circle",
-            priority: 100,
-            isAvailable: () => builderState.isLotoStandardsPopupOpen(),
-            highlightTargets: ["contextual:standards-list"],
-            hint: "Click on standards in the list to select them"
-          },
-          {
-            id: "search-standards",
-            label: "Search Standards",
-            description: "Use search to find specific standards",
-            icon: "search",
-            priority: 90,
-            isAvailable: () => builderState.isLotoStandardsPopupOpen(),
-            highlightTargets: ["contextual:standards-search"],
-            hint: "Type in the search box to filter standards"
-          }
-        ]
-      },
-      {
-        id: "standard-carousel",
-        title: "Manage Carousel",
-        icon: "view_carousel",
-        isRelevant: () => builderState.isCarouselVisible(),
-        actions: [
-          {
-            id: "switch-active-standard",
-            label: "Switch Active Standard",
-            description: "Change which standard receives new points",
-            icon: "swap_horiz",
-            priority: 100,
-            isAvailable: () => builderState.selectedLotoStandards().length > 1,
-            highlightTargets: ["contextual:carousel-arrows"],
-            hint: "Use arrows to switch between selected standards"
-          },
-          {
-            id: "view-standard-points",
-            label: "View Points in Standard",
-            description: "Expand to see all LOTO points in this standard",
-            icon: "expand_more",
-            priority: 90,
-            isAvailable: () => {
-              const standard = builderState.activeLotoStandard();
-              return standard !== null && !!standard.lotoPoints && standard.lotoPoints.length > 0;
-            },
-            highlightTargets: ["contextual:standard-points-expand"],
-            hint: "Click to expand and view all points"
-          },
-          {
-            id: "remove-standard",
-            label: "Remove from Selection",
-            description: "Remove a standard from the carousel",
-            icon: "remove_circle",
-            priority: 70,
-            isAvailable: () => builderState.selectedLotoStandards().length > 0,
-            highlightTargets: ["contextual:remove-standard-button"],
-            hint: "Click X on a standard to remove it"
-          }
-        ]
-      }
-    ]
-  };
-  const lotoPointSection = {
-    id: "loto-point-management",
-    title: "LOTO Point Management",
-    icon: "location_on",
-    defaultExpanded: true,
-    // Main workflow, expand by default
-    isRelevant: () => true,
-    subsections: [
-      {
-        id: "point-create",
-        title: "Create New Point",
-        icon: "add_circle",
-        isRelevant: () => true,
-        actions: [
-          {
-            id: "draw-on-image",
-            label: "Draw on Image",
-            description: "Right-click + drag to draw a rectangle around equipment",
-            icon: "crop",
-            priority: 100,
-            isAvailable: () => builderState.currentFile() !== null && !builderState.isLotoPointFormOpen(),
-            highlightTargets: ["contextual:image-viewer"],
-            hint: "Hold right-click, drag to create a rectangle, release to create"
-          },
-          {
-            id: "use-form-new-tab",
-            label: "Use Form (New Tab)",
-            description: "Switch to form view to manually enter LOTO point details",
-            icon: "edit_note",
-            priority: 90,
-            isAvailable: () => builderState.isLotoPointFormOpen() && builderState.lotoPointPopupView() === "table",
-            highlightTargets: ["contextual:form-view-tab"],
-            hint: 'Click the "New" tab to switch to the creation form'
-          },
-          {
-            id: "fill-form-fields",
-            label: "Fill Form Fields",
-            description: "Enter tag number, description, type, positions",
-            icon: "text_fields",
-            priority: 80,
-            isAvailable: () => builderState.isLotoPointFormOpen() && builderState.lotoPointPopupView() === "form",
-            highlightTargets: ["contextual:loto-point-form"],
-            hint: "Fill in all required fields and click Save"
-          }
-        ]
-      },
-      {
-        id: "point-select-existing",
-        title: "Select Existing Point",
-        icon: "search",
-        isRelevant: () => builderState.isLotoPointFormOpen(),
-        actions: [
-          {
-            id: "switch-to-table-view",
-            label: "Switch to Table View",
-            description: 'Use "Select Existing" tab to search',
-            icon: "table_view",
-            priority: 100,
-            isAvailable: () => builderState.lotoPointPopupView() === "form",
-            highlightTargets: ["contextual:table-view-tab"],
-            hint: 'Click "Select Existing" tab to search the database'
-          },
-          {
-            id: "search-by-column",
-            label: "Search by Column",
-            description: "Type in column headers to filter",
-            icon: "filter_list",
-            priority: 90,
-            isAvailable: () => builderState.lotoPointPopupView() === "table",
-            highlightTargets: ["contextual:table-column-headers"],
-            hint: "Click on column header inputs to filter by that field"
-          },
-          {
-            id: "double-click-select",
-            label: "Double-Click to Select",
-            description: "Double-click a row to immediately associate",
-            icon: "mouse",
-            priority: 85,
-            isAvailable: () => builderState.lotoPointPopupView() === "table",
-            highlightTargets: ["contextual:table-rows"],
-            hint: "Double-click any row to quickly select that LOTO point"
-          },
-          {
-            id: "click-then-associate",
-            label: "Click Row Then Associate",
-            description: 'Single-click to select, then click "Associate Selected"',
-            icon: "touch_app",
-            priority: 80,
-            isAvailable: () => builderState.lotoPointPopupView() === "table",
-            highlightTargets: ["contextual:associate-selected-button"],
-            hint: 'Click a row, then click "Associate Selected" button'
-          },
-          {
-            id: "not-found-create-new",
-            label: "Not Found? Create New",
-            description: "If LOTO point does not exist, create a new one",
-            icon: "add_box",
-            priority: 70,
-            isAvailable: () => builderState.lotoPointPopupView() === "table",
-            highlightTargets: ["contextual:create-new-instead-button"],
-            hint: 'Click "Create New Instead" to switch to form view'
-          }
-        ]
-      },
-      {
-        id: "point-edit",
-        title: "Edit Existing Point",
-        icon: "edit",
-        isRelevant: () => builderState.currentFile() !== null,
-        actions: [
-          {
-            id: "click-shape-to-edit",
-            label: "Click Shape on Image",
-            description: "Click an equipment shape to see info window",
-            icon: "touch_app",
-            priority: 100,
-            isAvailable: () => builderState.currentEquipment().length > 0,
-            highlightTargets: ["contextual:equipment-shapes"],
-            hint: "Click on any shape on the image to see LOTO point info"
-          },
-          {
-            id: "edit-from-info-window",
-            label: "Edit from Info Window",
-            description: "Click edit in the info window to modify",
-            icon: "edit_note",
-            priority: 90,
-            isAvailable: () => builderState.showLotoPointInfo(),
-            highlightTargets: ["contextual:info-window-edit"],
-            hint: "Click the edit button in the info popup"
-          },
-          {
-            id: "open-loto-points-table",
-            label: "Open LOTO Points Table",
-            description: "View all LOTO points in a table",
-            icon: "table_chart",
-            priority: 80,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:loto-points-button"],
-            hint: 'Click "LOTO Points" button to see all points'
-          }
-        ]
-      },
-      {
-        id: "point-counterpart",
-        title: "Counterpart (01/02)",
-        icon: "compare_arrows",
-        isRelevant: () => {
-          return builderState.isLotoPointFormOpen() && builderState.lotoPointPopupView() === "form" && builderState.isUnitSpecificLotoPoint();
-        },
-        actions: [
-          {
-            id: "understand-dual-form",
-            label: "Dual Form Mode",
-            description: "Tag starts with 01/02, both units shown side-by-side",
-            icon: "view_column",
-            priority: 100,
-            isAvailable: () => true,
-            highlightTargets: ["contextual:dual-form-layout"],
-            hint: "Left = primary unit, Right = counterpart unit"
-          },
-          {
-            id: "set-counterpart",
-            label: "Set Counterpart",
-            description: "Link or create the matching LOTO point for other unit",
-            icon: "link",
-            priority: 95,
-            isAvailable: () => !builderState.hasCounterpartLotoPoint(),
-            highlightTargets: ["contextual:set-counterpart-button"],
-            hint: 'Click "Set Counterpart" to search or create'
-          },
-          {
-            id: "sync-fields",
-            label: "Sync Field Values",
-            description: "Copy values between primary and counterpart forms",
-            icon: "sync",
-            priority: 90,
-            isAvailable: () => builderState.hasCounterpartLotoPoint(),
-            highlightTargets: ["contextual:sync-controls"],
-            hint: 'Use "Sync All" or individual field arrows to copy values'
-          },
-          {
-            id: "save-both-units",
-            label: "Save Both Units",
-            description: "Save both primary and counterpart together",
-            icon: "save",
-            priority: 85,
-            isAvailable: () => builderState.hasCounterpartLotoPoint(),
-            highlightTargets: ["contextual:save-both-button"],
-            hint: "Best option - saves both and links them as counterparts"
-          },
-          {
-            id: "change-counterpart",
-            label: "Change Counterpart",
-            description: "Select a different counterpart LOTO point",
-            icon: "swap_horiz",
-            priority: 80,
-            isAvailable: () => builderState.hasCounterpartLotoPoint(),
-            highlightTargets: ["contextual:change-counterpart-button"],
-            hint: 'Click "Change" to select a different counterpart'
-          }
-        ]
-      }
-    ]
-  };
-  const pageControlsSection = {
-    id: "page-controls",
-    title: "Page Controls",
-    icon: "settings",
-    defaultExpanded: false,
-    isRelevant: () => true,
-    actions: [
-      {
-        id: "toggle-ocr",
-        label: "Toggle OCR (Text Recognition)",
-        description: "Enable/disable automatic text recognition when drawing",
-        icon: "document_scanner",
-        priority: 100,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:ocr-toggle-button"],
-        hint: "When ON, drawn shapes will attempt to read text from the image"
-      },
-      {
-        id: "zoom-pan-controls",
-        label: "Zoom & Pan",
-        description: "Use mouse wheel to zoom, drag to pan the image",
-        icon: "zoom_in",
-        priority: 90,
-        isAvailable: () => builderState.currentFile() !== null,
-        highlightTargets: ["contextual:image-viewer"],
-        hint: "Mouse wheel = zoom, Click + drag = pan, Double-click = reset"
-      },
-      {
-        id: "save-changes",
-        label: "Save All Changes",
-        description: "Save any unsaved modifications",
-        icon: "save",
-        priority: 80,
-        isAvailable: () => builderState.hasUnsavedChanges(),
-        highlightTargets: ["contextual:save-button"],
-        hint: "Click Save to persist all changes"
-      },
-      {
-        id: "close-builder",
-        label: "Close Builder",
-        description: "Exit the LOTO Builder",
-        icon: "close",
-        priority: 50,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:close-button"],
-        hint: "You will be prompted to save if there are unsaved changes"
-      }
-    ]
-  };
-  return {
-    routePattern: "/loto-builder",
-    pageName: "LOTO Builder",
-    icon: "build",
-    sections: [
-      fileManagementSection,
-      lotoStandardSection,
-      lotoPointSection,
-      pageControlsSection
-    ]
-  };
-}
-
-// src/app/services/guide/page-guides/home.page-guide.ts
-function createHomePageGuide() {
-  const router = inject(Router);
-  const navigationGroup = {
-    id: "navigation",
-    title: "Quick Navigation",
-    icon: "navigation",
-    isRelevant: () => true,
-    actions: [
-      {
-        id: "go-to-loto-builder",
-        label: "Open LOTO Builder",
-        description: "Build and configure LOTO procedures with visual P&ID files",
-        icon: "build",
-        priority: 100,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:loto-builder-card"],
-        hint: "Click this card to open the LOTO Builder",
-        execute: () => router.navigate(["/loto-builder"])
-      },
-      {
-        id: "go-to-loto-standards",
-        label: "View LOTO Standards",
-        description: "View and manage existing LOTO standard procedures",
-        icon: "description",
-        priority: 90,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:loto-standards-card"],
-        hint: "Click to view all LOTO standards",
-        execute: () => router.navigate(["/loto-standard"])
-      },
-      {
-        id: "go-to-files",
-        label: "Manage Files",
-        description: "View and edit equipment files and documentation",
-        icon: "folder",
-        priority: 80,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:files-card"],
-        hint: "Click to access the file management system",
-        execute: () => router.navigate(["/file"])
-      },
-      {
-        id: "go-to-loto-points",
-        label: "Manage LOTO Points",
-        description: "View and edit all LOTO isolation points",
-        icon: "location_on",
-        priority: 70,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:loto-points-card"],
-        hint: "Click to manage all LOTO points",
-        execute: () => router.navigate(["/loto-points"])
-      }
-    ]
-  };
-  const commonTasksGroup = {
-    id: "common-tasks",
-    title: "Common Tasks",
-    icon: "task_alt",
-    isRelevant: () => true,
-    actions: [
-      {
-        id: "create-loto-standard",
-        label: "Create LOTO Standard",
-        description: "Start creating a new LOTO standard procedure",
-        icon: "add_circle",
-        priority: 100,
-        isAvailable: () => true,
-        hint: "Navigate to LOTO Builder and use Build LOTO mode",
-        execute: () => router.navigate(["/loto-builder"])
-      },
-      {
-        id: "upload-pid-file",
-        label: "Upload P&ID File",
-        description: "Upload a new process and instrumentation diagram",
-        icon: "upload_file",
-        priority: 90,
-        isAvailable: () => true,
-        hint: "Navigate to Files or LOTO Builder to upload",
-        execute: () => router.navigate(["/file"])
-      },
-      {
-        id: "print-documents",
-        label: "Print Documents",
-        description: "Print LOTO procedures and reports",
-        icon: "print",
-        priority: 60,
-        isAvailable: () => true,
-        highlightTargets: ["contextual:print-card"],
-        execute: () => router.navigate(["/print"])
-      }
-    ]
-  };
-  return {
-    routePattern: /^\/(home)?$/,
-    pageName: "Home",
-    icon: "home",
-    actionGroups: [navigationGroup, commonTasksGroup]
-  };
-}
-
-// src/app/services/guide/page-guides/index.ts
-var PAGE_GUIDE_FACTORIES = [
-  createLotoBuilderPageGuide,
-  createHomePageGuide
-];
-
-// src/app/shared/guide/contextual-guide-panel/contextual-guide-panel.component.ts
-var _forTrack025 = ($index, $item) => $item.id;
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_0_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13)(1, "mat-icon");
-    \u0275\u0275text(2, "info");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span");
-    \u0275\u0275text(4, "No suggestions for current context");
-    \u0275\u0275elementEnd()();
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
-    \u0275\u0275text(1, "chevron_right");
-    \u0275\u0275elementEnd();
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 28);
-    \u0275\u0275listener("mouseenter", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Template_button_mouseenter_0_listener() {
-      const action_r8 = \u0275\u0275restoreView(_r7).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(10);
-      return \u0275\u0275resetView(ctx_r1.selectAction(action_r8.id));
-    })("mouseleave", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Template_button_mouseleave_0_listener() {
-      \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext(10);
-      return \u0275\u0275resetView(ctx_r1.clearSelection());
-    })("click", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Template_button_click_0_listener() {
-      const action_r8 = \u0275\u0275restoreView(_r7).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(10);
-      return \u0275\u0275resetView(ctx_r1.executeAction(action_r8));
-    });
-    \u0275\u0275elementStart(1, "mat-icon", 29);
-    \u0275\u0275text(2);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 30)(4, "span", 31);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 32);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Conditional_8_Template, 2, 0, "mat-icon", 33);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const action_r8 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(10);
-    \u0275\u0275classProp("selected", ctx_r1.selectedActionId() === action_r8.id)("has-execute", !!action_r8.execute);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r8.icon);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(action_r8.label);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r8.description);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(action_r8.execute ? 8 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275repeaterCreate(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_For_2_Template, 9, 8, "button", 27, _forTrack025);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const subsection_r6 = \u0275\u0275nextContext().$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(8);
-    \u0275\u0275advance();
-    \u0275\u0275repeater(ctx_r1.getSubsectionActions(subsection_r6));
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 21)(1, "button", 22);
-    \u0275\u0275listener("click", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Template_button_click_1_listener() {
-      const subsection_r6 = \u0275\u0275restoreView(_r5).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(8);
-      return \u0275\u0275resetView(ctx_r1.toggleSubsection(subsection_r6.id));
-    });
-    \u0275\u0275elementStart(2, "mat-icon", 23);
-    \u0275\u0275text(3);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 24);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "mat-icon", 25);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Conditional_8_Template, 3, 0, "div", 26);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const subsection_r6 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(8);
-    \u0275\u0275advance();
-    \u0275\u0275classProp("expanded", ctx_r1.isSubsectionExpanded(subsection_r6.id));
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(subsection_r6.icon);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(subsection_r6.title);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", ctx_r1.isSubsectionExpanded(subsection_r6.id) ? "expand_less" : "expand_more", " ");
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isSubsectionExpanded(subsection_r6.id) ? 8 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_For_1_Template, 9, 6, "div", 21, _forTrack025);
-  }
-  if (rf & 2) {
-    const section_r4 = \u0275\u0275nextContext(2).$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(5);
-    \u0275\u0275repeater(ctx_r1.getSubsections(section_r4));
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
-    \u0275\u0275text(1, "chevron_right");
-    \u0275\u0275elementEnd();
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 28);
-    \u0275\u0275listener("mouseenter", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Template_button_mouseenter_0_listener() {
-      const action_r10 = \u0275\u0275restoreView(_r9).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(8);
-      return \u0275\u0275resetView(ctx_r1.selectAction(action_r10.id));
-    })("mouseleave", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Template_button_mouseleave_0_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(8);
-      return \u0275\u0275resetView(ctx_r1.clearSelection());
-    })("click", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Template_button_click_0_listener() {
-      const action_r10 = \u0275\u0275restoreView(_r9).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(8);
-      return \u0275\u0275resetView(ctx_r1.executeAction(action_r10));
-    });
-    \u0275\u0275elementStart(1, "mat-icon", 29);
-    \u0275\u0275text(2);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 30)(4, "span", 31);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 32);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Conditional_8_Template, 2, 0, "mat-icon", 33);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const action_r10 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(8);
-    \u0275\u0275classProp("selected", ctx_r1.selectedActionId() === action_r10.id)("has-execute", !!action_r10.execute);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r10.icon);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(action_r10.label);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r10.description);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(action_r10.execute ? 8 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
-    \u0275\u0275repeaterCreate(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_For_2_Template, 9, 8, "button", 27, _forTrack025);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const section_r4 = \u0275\u0275nextContext(2).$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(5);
-    \u0275\u0275advance();
-    \u0275\u0275repeater(ctx_r1.getSectionActions(section_r4));
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 19);
-    \u0275\u0275template(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_1_Template, 2, 0)(2, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Conditional_2_Template, 3, 0, "div", 20);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const section_r4 = \u0275\u0275nextContext().$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(5);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.getSubsections(section_r4).length > 0 ? 1 : 2);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 14)(1, "button", 15);
-    \u0275\u0275listener("click", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Template_button_click_1_listener() {
-      const section_r4 = \u0275\u0275restoreView(_r3).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(5);
-      return \u0275\u0275resetView(ctx_r1.toggleSection(section_r4.id));
-    });
-    \u0275\u0275elementStart(2, "mat-icon", 16);
-    \u0275\u0275text(3);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 17);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "mat-icon", 18);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Conditional_8_Template, 3, 1, "div", 19);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const section_r4 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(5);
-    \u0275\u0275advance();
-    \u0275\u0275classProp("expanded", ctx_r1.isSectionExpanded(section_r4.id));
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(section_r4.icon);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(section_r4.title);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", ctx_r1.isSectionExpanded(section_r4.id) ? "expand_less" : "expand_more", " ");
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isSectionExpanded(section_r4.id) ? 8 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_For_1_Template, 9, 6, "div", 14, _forTrack025);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275repeater(ctx_r1.sections());
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275template(0, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_0_Template, 5, 0, "div", 13)(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Conditional_1_Template, 2, 0);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275conditional(ctx_r1.sections().length === 0 ? 0 : 1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_0_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13)(1, "mat-icon");
-    \u0275\u0275text(2, "info");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span");
-    \u0275\u0275text(4, "No suggestions for current context");
-    \u0275\u0275elementEnd()();
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
-    \u0275\u0275text(1, "chevron_right");
-    \u0275\u0275elementEnd();
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 28);
-    \u0275\u0275listener("mouseenter", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Template_button_mouseenter_0_listener() {
-      const action_r12 = \u0275\u0275restoreView(_r11).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(6);
-      return \u0275\u0275resetView(ctx_r1.selectAction(action_r12.id));
-    })("mouseleave", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Template_button_mouseleave_0_listener() {
-      \u0275\u0275restoreView(_r11);
-      const ctx_r1 = \u0275\u0275nextContext(6);
-      return \u0275\u0275resetView(ctx_r1.clearSelection());
-    })("click", function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Template_button_click_0_listener() {
-      const action_r12 = \u0275\u0275restoreView(_r11).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(6);
-      return \u0275\u0275resetView(ctx_r1.executeAction(action_r12));
-    });
-    \u0275\u0275elementStart(1, "mat-icon", 29);
-    \u0275\u0275text(2);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 30)(4, "span", 31);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 32);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Conditional_8_Template, 2, 0, "mat-icon", 33);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const action_r12 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(6);
-    \u0275\u0275classProp("selected", ctx_r1.selectedActionId() === action_r12.id)("has-execute", !!action_r12.execute);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r12.icon);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(action_r12.label);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(action_r12.description);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(action_r12.execute ? 8 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 34)(1, "div", 35)(2, "mat-icon", 36);
-    \u0275\u0275text(3);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 37);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 38);
-    \u0275\u0275repeaterCreate(7, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_For_8_Template, 9, 8, "button", 27, _forTrack025);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const group_r13 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(5);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(group_r13.icon);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(group_r13.title);
-    \u0275\u0275advance(2);
-    \u0275\u0275repeater(ctx_r1.getGroupActions(group_r13));
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_For_1_Template, 9, 2, "div", 34, _forTrack025);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275repeater(ctx_r1.actionGroups());
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275template(0, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_0_Template, 5, 0, "div", 13)(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Conditional_1_Template, 2, 0);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275conditional(ctx_r1.actionGroups().length === 0 ? 0 : 1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_3_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 12)(1, "mat-icon");
-    \u0275\u0275text(2, "lightbulb");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span");
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(ctx_r1.currentHint());
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Conditional_14_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 11);
-    \u0275\u0275template(1, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_1_Template, 2, 1)(2, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_2_Template, 2, 1);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(3, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Conditional_3_Template, 5, 1, "div", 12);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.useSections() ? 1 : 2);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.currentHint() ? 3 : -1);
-  }
-}
-function ContextualGuidePanelComponent_Conditional_4_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 3)(1, "div", 4)(2, "div", 5)(3, "mat-icon", 6);
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "span", 7);
-    \u0275\u0275text(6);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "div", 8)(8, "button", 9);
-    \u0275\u0275listener("click", function ContextualGuidePanelComponent_Conditional_4_Template_button_click_8_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.toggleExpanded());
-    });
-    \u0275\u0275elementStart(9, "mat-icon");
-    \u0275\u0275text(10);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "button", 10);
-    \u0275\u0275listener("click", function ContextualGuidePanelComponent_Conditional_4_Template_button_click_11_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.toggleGuide());
-    });
-    \u0275\u0275elementStart(12, "mat-icon");
-    \u0275\u0275text(13, "close");
-    \u0275\u0275elementEnd()()()();
-    \u0275\u0275template(14, ContextualGuidePanelComponent_Conditional_4_Conditional_14_Template, 4, 2);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275classProp("minimized", !ctx_r1.isExpanded());
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(ctx_r1.pageIcon());
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(ctx_r1.pageName());
-    \u0275\u0275advance(2);
-    \u0275\u0275property("matTooltip", ctx_r1.isExpanded() ? "Minimize" : "Expand");
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(ctx_r1.isExpanded() ? "expand_more" : "expand_less");
-    \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r1.isExpanded() ? 14 : -1);
-  }
-}
-var ContextualGuidePanelComponent = class _ContextualGuidePanelComponent {
-  guideService = inject(ContextualGuideService);
-  // Expose service signals
-  isEnabled = computed(() => this.guideService.isEnabled());
-  isExpanded = computed(() => this.guideService.isExpanded());
-  selectedActionId = computed(() => this.guideService.selectedActionId());
-  pageName = computed(() => this.guideService.currentPageName());
-  pageIcon = computed(() => this.guideService.currentPageIcon());
-  // New section-based signals
-  useSections = computed(() => this.guideService.useSections());
-  sections = computed(() => this.guideService.availableSections());
-  // Legacy action groups
-  actionGroups = computed(() => this.guideService.availableActionGroups());
-  availableActions = computed(() => this.guideService.availableActions());
-  currentHint = computed(() => {
-    const selectedId = this.selectedActionId();
-    if (!selectedId)
-      return null;
-    for (const section of this.sections()) {
-      if (section.actions) {
-        const action2 = section.actions.find((a) => a.id === selectedId);
-        if (action2?.hint)
-          return action2.hint;
-      }
-      if (section.subsections) {
-        for (const sub of section.subsections) {
-          const action2 = sub.actions.find((a) => a.id === selectedId);
-          if (action2?.hint)
-            return action2.hint;
-        }
-      }
-    }
-    const action = this.availableActions().find((a) => a.id === selectedId);
-    return action?.hint ?? null;
-  });
-  toggleGuide() {
-    this.guideService.toggle();
-  }
-  toggleExpanded() {
-    this.guideService.toggleExpanded();
-  }
-  // Section methods
-  isSectionExpanded(sectionId) {
-    return this.guideService.isSectionExpanded(sectionId);
-  }
-  toggleSection(sectionId) {
-    this.guideService.toggleSection(sectionId);
-  }
-  getSubsections(section) {
-    return this.guideService.getAvailableSubsections(section);
-  }
-  getSectionActions(section) {
-    return this.guideService.getSectionActions(section);
-  }
-  // Subsection methods
-  isSubsectionExpanded(subsectionId) {
-    return this.guideService.isSubsectionExpanded(subsectionId);
-  }
-  toggleSubsection(subsectionId) {
-    this.guideService.toggleSubsection(subsectionId);
-  }
-  getSubsectionActions(subsection) {
-    return this.guideService.getSubsectionActions(subsection);
-  }
-  // Action methods
-  selectAction(actionId) {
-    this.guideService.selectAction(actionId);
-  }
-  clearSelection() {
-    this.guideService.selectAction(null);
-  }
-  executeAction(action) {
-    this.guideService.executeAction(action);
-  }
-  // Legacy method for action groups
-  getGroupActions(group) {
-    const context = this.guideService.currentContext();
-    return group.actions.filter((action) => action.isAvailable(context)).sort((a, b) => b.priority - a.priority);
-  }
-  static \u0275fac = function ContextualGuidePanelComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _ContextualGuidePanelComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ContextualGuidePanelComponent, selectors: [["app-contextual-guide-panel"]], decls: 5, vars: 5, consts: [["cdkDrag", "", 1, "toggle-container"], ["cdkDragHandle", "", 1, "guide-toggle-btn", 3, "click", "matTooltip"], ["cdkDrag", "", 1, "contextual-panel", 3, "minimized"], ["cdkDrag", "", 1, "contextual-panel"], ["cdkDragHandle", "", 1, "panel-header"], [1, "header-left"], [1, "page-icon"], [1, "page-name"], [1, "header-actions"], ["mat-icon-button", "", 1, "header-btn", 3, "click", "matTooltip"], ["mat-icon-button", "", "matTooltip", "Disable Helper", 1, "header-btn", "close-btn", 3, "click"], [1, "panel-content"], [1, "hint-bar"], [1, "no-actions"], [1, "guide-section"], [1, "section-header", 3, "click"], [1, "section-icon"], [1, "section-title"], [1, "section-chevron"], [1, "section-content"], [1, "section-actions"], [1, "guide-subsection"], [1, "subsection-header", 3, "click"], [1, "subsection-icon"], [1, "subsection-title"], [1, "subsection-chevron"], [1, "subsection-actions"], [1, "action-button", 3, "selected", "has-execute"], [1, "action-button", 3, "mouseenter", "mouseleave", "click"], [1, "action-icon"], [1, "action-text"], [1, "action-label"], [1, "action-description"], [1, "action-arrow"], [1, "action-group"], [1, "group-header"], [1, "group-icon"], [1, "group-title"], [1, "group-actions"]], template: function ContextualGuidePanelComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275elementStart(0, "div", 0)(1, "button", 1);
-      \u0275\u0275listener("click", function ContextualGuidePanelComponent_Template_button_click_1_listener() {
-        return ctx.toggleGuide();
-      });
-      \u0275\u0275elementStart(2, "mat-icon");
-      \u0275\u0275text(3);
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275template(4, ContextualGuidePanelComponent_Conditional_4_Template, 15, 7, "div", 2);
-    }
-    if (rf & 2) {
-      \u0275\u0275advance();
-      \u0275\u0275classProp("active", ctx.isEnabled());
-      \u0275\u0275property("matTooltip", ctx.isEnabled() ? "Disable Smart Helper" : "Enable Smart Helper");
-      \u0275\u0275advance(2);
-      \u0275\u0275textInterpolate(ctx.isEnabled() ? "assistant" : "help_outline");
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.isEnabled() ? 4 : -1);
-    }
-  }, dependencies: [
-    CommonModule,
-    MatIconModule,
-    MatIcon,
-    MatButtonModule,
-    MatIconButton,
-    MatTooltipModule,
-    MatTooltip,
-    CdkDrag,
-    CdkDragHandle
-  ], styles: ["\n\n[_nghost-%COMP%] {\n  display: contents;\n}\n.toggle-container[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 24px;\n  left: 24px;\n  z-index: 10001;\n}\n.guide-toggle-btn[_ngcontent-%COMP%] {\n  width: 56px;\n  height: 56px;\n  border-radius: 50%;\n  border: none;\n  background: var(--primary-color, #1976d2);\n  color: white;\n  cursor: grab;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n  transition: background 0.3s ease, transform 0.2s ease;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.guide-toggle-btn[_ngcontent-%COMP%]:hover {\n  background: var(--primary-hover, #1565c0);\n  transform: scale(1.05);\n}\n.guide-toggle-btn[_ngcontent-%COMP%]:active {\n  cursor: grabbing;\n}\n.guide-toggle-btn.active[_ngcontent-%COMP%] {\n  background: var(--success-color, #4caf50);\n  animation: _ngcontent-%COMP%_pulse-glow 2s infinite;\n}\n@keyframes _ngcontent-%COMP%_pulse-glow {\n  0%, 100% {\n    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);\n  }\n  50% {\n    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.6);\n  }\n}\n.guide-toggle-btn[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 28px;\n  width: 28px;\n  height: 28px;\n}\n.contextual-panel[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 100px;\n  left: 24px;\n  width: 340px;\n  max-width: calc(100vw - 48px);\n  max-height: calc(100vh - 150px);\n  background: var(--surface-color, #ffffff);\n  border-radius: 12px;\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);\n  overflow: hidden;\n  animation: _ngcontent-%COMP%_slideIn 0.3s ease;\n  display: flex;\n  flex-direction: column;\n  z-index: 10001;\n}\n@keyframes _ngcontent-%COMP%_slideIn {\n  from {\n    opacity: 0;\n    transform: translateX(-20px);\n  }\n  to {\n    opacity: 1;\n    transform: translateX(0);\n  }\n}\n.contextual-panel.minimized[_ngcontent-%COMP%] {\n  width: auto;\n  min-width: 180px;\n}\n.panel-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 10px 8px 10px 14px;\n  background: var(--primary-color, #1976d2);\n  color: white;\n  cursor: grab;\n}\n.panel-header[_ngcontent-%COMP%]:active {\n  cursor: grabbing;\n}\n.header-left[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.page-icon[_ngcontent-%COMP%] {\n  font-size: 20px;\n  width: 20px;\n  height: 20px;\n}\n.page-name[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 500;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 2px;\n}\n.header-btn[_ngcontent-%COMP%] {\n  width: 28px;\n  height: 28px;\n  line-height: 28px;\n  color: rgba(255, 255, 255, 0.9);\n}\n.header-btn[_ngcontent-%COMP%]:hover {\n  color: white;\n  background: rgba(255, 255, 255, 0.1);\n}\n.header-btn[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n}\n.close-btn[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 0, 0, 0.2);\n}\n.panel-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 4px 0;\n}\n.no-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 16px;\n  color: var(--text-tertiary, #888);\n  font-size: 13px;\n}\n.no-actions[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n}\n.guide-section[_ngcontent-%COMP%] {\n  border-bottom: 1px solid var(--border-light, #f0f0f0);\n}\n.guide-section[_ngcontent-%COMP%]:last-child {\n  border-bottom: none;\n}\n.section-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  width: 100%;\n  padding: 12px 14px;\n  background: transparent;\n  border: none;\n  cursor: pointer;\n  text-align: left;\n  transition: background 0.15s ease;\n}\n.section-header[_ngcontent-%COMP%]:hover {\n  background: var(--hover-bg, #f5f5f5);\n}\n.section-header.expanded[_ngcontent-%COMP%] {\n  background: var(--primary-light, #e3f2fd);\n}\n.section-icon[_ngcontent-%COMP%] {\n  color: var(--primary-color, #1976d2);\n  font-size: 22px;\n  width: 22px;\n  height: 22px;\n  flex-shrink: 0;\n}\n.section-title[_ngcontent-%COMP%] {\n  flex: 1;\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--text-primary, #333);\n}\n.section-chevron[_ngcontent-%COMP%] {\n  color: var(--text-tertiary, #888);\n  font-size: 20px;\n  width: 20px;\n  height: 20px;\n  flex-shrink: 0;\n  transition: transform 0.2s ease;\n}\n.section-content[_ngcontent-%COMP%] {\n  padding: 0 0 8px 0;\n  animation: _ngcontent-%COMP%_expandIn 0.2s ease;\n}\n@keyframes _ngcontent-%COMP%_expandIn {\n  from {\n    opacity: 0;\n    max-height: 0;\n  }\n  to {\n    opacity: 1;\n    max-height: 500px;\n  }\n}\n.guide-subsection[_ngcontent-%COMP%] {\n  margin-left: 12px;\n  border-left: 2px solid var(--border-light, #e0e0e0);\n}\n.subsection-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  width: 100%;\n  padding: 8px 12px;\n  background: transparent;\n  border: none;\n  cursor: pointer;\n  text-align: left;\n  transition: background 0.15s ease;\n}\n.subsection-header[_ngcontent-%COMP%]:hover {\n  background: var(--hover-bg, #fafafa);\n}\n.subsection-header.expanded[_ngcontent-%COMP%] {\n  background: var(--primary-extra-light, #f3f9ff);\n}\n.subsection-icon[_ngcontent-%COMP%] {\n  color: var(--text-secondary, #666);\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n  flex-shrink: 0;\n}\n.subsection-title[_ngcontent-%COMP%] {\n  flex: 1;\n  font-size: 13px;\n  font-weight: 500;\n  color: var(--text-secondary, #555);\n}\n.subsection-chevron[_ngcontent-%COMP%] {\n  color: var(--text-tertiary, #aaa);\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n  flex-shrink: 0;\n}\n.subsection-actions[_ngcontent-%COMP%] {\n  padding: 4px 0 4px 16px;\n}\n.section-actions[_ngcontent-%COMP%] {\n  padding: 4px 0 4px 8px;\n}\n.action-group[_ngcontent-%COMP%] {\n  margin-bottom: 4px;\n}\n.group-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  padding: 8px 14px 4px;\n  font-size: 11px;\n  font-weight: 600;\n  text-transform: uppercase;\n  color: var(--primary-color, #1976d2);\n  letter-spacing: 0.5px;\n}\n.group-icon[_ngcontent-%COMP%] {\n  font-size: 14px;\n  width: 14px;\n  height: 14px;\n}\n.group-actions[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n}\n.action-button[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  padding: 8px 12px;\n  background: transparent;\n  border: none;\n  cursor: pointer;\n  text-align: left;\n  transition: all 0.15s ease;\n  width: 100%;\n  border-radius: 6px;\n  margin: 1px 0;\n}\n.action-button[_ngcontent-%COMP%]:hover, \n.action-button.selected[_ngcontent-%COMP%] {\n  background: var(--primary-light, #e3f2fd);\n}\n.action-button.has-execute[_ngcontent-%COMP%]:hover {\n  background: var(--success-bg, #e8f5e9);\n}\n.action-icon[_ngcontent-%COMP%] {\n  color: var(--primary-color, #1976d2);\n  font-size: 18px;\n  width: 18px;\n  height: 18px;\n  flex-shrink: 0;\n}\n.action-button.has-execute[_ngcontent-%COMP%]   .action-icon[_ngcontent-%COMP%] {\n  color: var(--success-color, #4caf50);\n}\n.action-text[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 1px;\n  min-width: 0;\n}\n.action-label[_ngcontent-%COMP%] {\n  font-size: 12px;\n  font-weight: 500;\n  color: var(--text-primary, #333);\n}\n.action-description[_ngcontent-%COMP%] {\n  font-size: 10px;\n  color: var(--text-tertiary, #888);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.action-arrow[_ngcontent-%COMP%] {\n  color: var(--success-color, #4caf50);\n  font-size: 16px;\n  width: 16px;\n  height: 16px;\n  flex-shrink: 0;\n}\n.hint-bar[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 10px 14px;\n  background: var(--warning-bg, #fff8e1);\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  font-size: 12px;\n  color: var(--text-secondary, #666);\n}\n.hint-bar[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  color: var(--warning-color, #f9a825);\n  font-size: 16px;\n  width: 16px;\n  height: 16px;\n  flex-shrink: 0;\n}\n@media (max-width: 480px) {\n  .toggle-container[_ngcontent-%COMP%] {\n    bottom: 16px;\n    left: 16px;\n  }\n  .contextual-panel[_ngcontent-%COMP%] {\n    top: auto;\n    bottom: 80px;\n    left: 16px;\n    width: calc(100vw - 32px);\n    max-height: 50vh;\n  }\n  .guide-toggle-btn[_ngcontent-%COMP%] {\n    width: 48px;\n    height: 48px;\n  }\n  .guide-toggle-btn[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n    font-size: 24px;\n    width: 24px;\n    height: 24px;\n  }\n}\n/*# sourceMappingURL=contextual-guide-panel.component.css.map */"] });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ContextualGuidePanelComponent, { className: "ContextualGuidePanelComponent", filePath: "src/app/shared/guide/contextual-guide-panel/contextual-guide-panel.component.ts", lineNumber: 668 });
-})();
-
-// src/app/shared/guide/guide-menu.component.ts
-var GuideMenuComponent = class _GuideMenuComponent {
-  contextualGuideService = inject(ContextualGuideService);
-  injector = inject(Injector);
-  ngOnInit() {
-    this.registerPageGuides();
-  }
-  registerPageGuides() {
-    runInInjectionContext(this.injector, () => {
-      PAGE_GUIDE_FACTORIES.forEach((factory) => {
-        try {
-          const pageGuide = factory();
-          this.contextualGuideService.registerPageGuide(pageGuide);
-        } catch (error) {
-          console.error("Failed to create page guide:", error);
-        }
-      });
-    });
-  }
-  static \u0275fac = function GuideMenuComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _GuideMenuComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _GuideMenuComponent, selectors: [["app-guide-menu"]], decls: 1, vars: 0, template: function GuideMenuComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275element(0, "app-contextual-guide-panel");
-    }
-  }, dependencies: [CommonModule, ContextualGuidePanelComponent], encapsulation: 2 });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(GuideMenuComponent, { className: "GuideMenuComponent", filePath: "src/app/shared/guide/guide-menu.component.ts", lineNumber: 27 });
 })();
 
 // node_modules/@angular/material/fesm2022/badge.mjs
@@ -112682,7 +113487,7 @@ var SyncStatusService = class _SyncStatusService {
 };
 
 // src/app/shared/sync-indicator/sync-indicator.component.ts
-var _c030 = () => ["/sync-resync"];
+var _c031 = () => ["/sync-resync"];
 function SyncIndicatorComponent_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 1);
@@ -112856,7 +113661,7 @@ ${updates} recent update${updates > 1 ? "s" : ""}`;
     }
     if (rf & 2) {
       \u0275\u0275classProp("connected", ctx.connectionState() === "connected" && ctx.syncHealthState() === "IN_SYNC")("connecting", ctx.connectionState() === "connecting")("disconnected", ctx.connectionState() === "disconnected")("out-of-sync", ctx.syncHealthState() === "OUT_OF_SYNC")("possibly-out-of-sync", ctx.syncHealthState() === "POSSIBLY_OUT_OF_SYNC");
-      \u0275\u0275property("routerLink", \u0275\u0275pureFunction0(17, _c030))("matTooltip", ctx.tooltipText());
+      \u0275\u0275property("routerLink", \u0275\u0275pureFunction0(17, _c031))("matTooltip", ctx.tooltipText());
       \u0275\u0275advance();
       \u0275\u0275classProp("pulse", ctx.connectionState() === "connecting" || ctx.syncHealthState() === "OUT_OF_SYNC");
       \u0275\u0275advance();
@@ -112873,9 +113678,9 @@ ${updates} recent update${updates > 1 ? "s" : ""}`;
 })();
 
 // src/app/layout/refactored/main-layout.component.ts
-var _c031 = ["leftMenu"];
-var _c118 = ["resizer"];
-var _c214 = ["mainContent"];
+var _c032 = ["leftMenu"];
+var _c119 = ["resizer"];
+var _c215 = ["mainContent"];
 var _c314 = ["footer"];
 var _c410 = ["overlay"];
 var _c57 = ["clipboardContainer"];
@@ -113236,9 +114041,9 @@ var MainLayoutComponent = class _MainLayoutComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _MainLayoutComponent, selectors: [["app-main-layout"]], viewQuery: function MainLayoutComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c031, 5);
-      \u0275\u0275viewQuery(_c118, 5);
-      \u0275\u0275viewQuery(_c214, 5);
+      \u0275\u0275viewQuery(_c032, 5);
+      \u0275\u0275viewQuery(_c119, 5);
+      \u0275\u0275viewQuery(_c215, 5);
       \u0275\u0275viewQuery(_c314, 5);
       \u0275\u0275viewQuery(_c410, 5);
       \u0275\u0275viewQuery(_c57, 5);
@@ -113252,7 +114057,7 @@ var MainLayoutComponent = class _MainLayoutComponent {
       \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.overlay = _t.first);
       \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.clipboardContainer = _t.first);
     }
-  }, inputs: { header: [1, "header"], isSideMenuEnabled: [1, "isSideMenuEnabled"], isBottomMenuEnabled: [1, "isBottomMenuEnabled"], bottomMenuHeader: [1, "bottomMenuHeader"], isLeftMenuEnabled: [1, "isLeftMenuEnabled"] }, ngContentSelectors: _c75, decls: 21, vars: 3, consts: [["mainContent", ""], ["clipboardContainer", ""], ["overlay", ""], ["leftMenu", ""], ["resizer", ""], ["footerResizer", ""], ["footer", ""], [1, "layout-container"], [1, "header"], [1, "header-content"], [1, "header-actions"], [1, "content-wrapper"], [1, "main-and-footer"], [1, "main-content"], [1, "clipboard-container"], [1, "overlay", 3, "click"], ["id", "leftMenu", 1, "left-menu"], ["id", "resizer", 1, "resizer", 3, "mousedown"], [1, "menu-toggle-btn", 3, "click"], [1, "arrow"], [1, "footer-resizer", 3, "mousedown"], [1, "footer"]], template: function MainLayoutComponent_Template(rf, ctx) {
+  }, inputs: { header: [1, "header"], isSideMenuEnabled: [1, "isSideMenuEnabled"], isBottomMenuEnabled: [1, "isBottomMenuEnabled"], bottomMenuHeader: [1, "bottomMenuHeader"], isLeftMenuEnabled: [1, "isLeftMenuEnabled"] }, ngContentSelectors: _c75, decls: 20, vars: 3, consts: [["mainContent", ""], ["clipboardContainer", ""], ["overlay", ""], ["leftMenu", ""], ["resizer", ""], ["footerResizer", ""], ["footer", ""], [1, "layout-container"], [1, "header"], [1, "header-content"], [1, "header-actions"], [1, "content-wrapper"], [1, "main-and-footer"], [1, "main-content"], [1, "clipboard-container"], [1, "overlay", 3, "click"], ["id", "leftMenu", 1, "left-menu"], ["id", "resizer", 1, "resizer", 3, "mousedown"], [1, "menu-toggle-btn", 3, "click"], [1, "arrow"], [1, "footer-resizer", 3, "mousedown"], [1, "footer"]], template: function MainLayoutComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275projectionDef(_c66);
       \u0275\u0275elementStart(0, "div", 7)(1, "header", 8)(2, "div", 9);
@@ -113271,9 +114076,7 @@ var MainLayoutComponent = class _MainLayoutComponent {
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(17, "div", 14, 1);
       \u0275\u0275element(19, "app-clipboard");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(20, "app-guide-menu");
-      \u0275\u0275elementEnd();
+      \u0275\u0275elementEnd()();
     }
     if (rf & 2) {
       \u0275\u0275advance(3);
@@ -113283,10 +114086,10 @@ var MainLayoutComponent = class _MainLayoutComponent {
       \u0275\u0275advance(5);
       \u0275\u0275conditional(ctx.isBottomMenuEnabled() ? 16 : -1);
     }
-  }, dependencies: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, GuideMenuComponent, SyncIndicatorComponent], styles: ['\n\n.layout-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100vh;\n  height: calc(var(--vh, 1vh) * 100);\n  background-color: var(--primary-background);\n  color: var(--primary-text);\n  position: relative;\n  overflow: hidden;\n}\n.header[_ngcontent-%COMP%] {\n  position: relative;\n  background-color: var(--header-background);\n  color: var(--header-text);\n  padding: 1rem;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 1rem;\n  overflow: hidden;\n  z-index: 100;\n}\n.header-content[_ngcontent-%COMP%] {\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 1rem;\n  overflow-x: auto;\n  flex: 1;\n  position: relative;\n}\n.header-content[_ngcontent-%COMP%]::after {\n  content: "";\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  width: 30px;\n  background:\n    linear-gradient(\n      to right,\n      hsla(0, 0%, 100%, 0),\n      var(--header-background));\n  pointer-events: none;\n}\n.header-content[_ngcontent-%COMP%]::-webkit-scrollbar {\n  display: none;\n}\n.header-content[_ngcontent-%COMP%] {\n  -ms-overflow-style: none;\n  scrollbar-width: none;\n}\n.header-content[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  margin: 0;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.auth-btn[_ngcontent-%COMP%] {\n  background-color: var(--accent-color);\n  color: var(--header-text);\n  border: none;\n  padding: 0.5rem 1rem;\n  border-radius: 6px;\n  cursor: pointer;\n  font-weight: 500;\n  transition: background-color 0.2s ease-in-out;\n}\n.auth-btn[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color-hover);\n}\n.content-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  flex: 1;\n  overflow: hidden;\n  position: relative;\n}\n.left-menu[_ngcontent-%COMP%] {\n  background-color: var(--menu-background);\n  flex-shrink: 0;\n  overflow-y: auto;\n  overflow-x: hidden;\n  display: flex;\n  flex-direction: column;\n  border-right: 1px solid var(--border-color);\n}\n.resizer[_ngcontent-%COMP%] {\n  width: 15px;\n  cursor: col-resize;\n  background-color: transparent;\n  position: relative;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  transition: background-color 0.2s ease-in-out;\n  flex-shrink: 0;\n  z-index: 10;\n}\n.resizer[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color-translucent);\n}\n.menu-toggle-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  width: 30px;\n  height: 30px;\n  border-radius: 50%;\n  background-color: var(--secondary-background);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  box-shadow: var(--card-shadow);\n  transition: all 0.3s ease;\n  z-index: 1002;\n}\n.menu-toggle-btn[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color);\n  transform: translate(-50%, -50%) scale(1.1);\n}\n.arrow[_ngcontent-%COMP%] {\n  border: solid var(--primary-text);\n  border-width: 0 2px 2px 0;\n  display: inline-block;\n  padding: 3px;\n  transition: transform 0.3s ease;\n}\n.arrow[_ngcontent-%COMP%]:not(.collapsed) {\n  transform: rotate(135deg);\n}\n.arrow.collapsed[_ngcontent-%COMP%] {\n  transform: rotate(-45deg);\n  margin-left: -2px;\n}\n.main-and-footer[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  overflow: hidden;\n}\n.main-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: auto;\n  padding: 1rem;\n  background-color: var(--primary-background);\n}\n.footer-resizer[_ngcontent-%COMP%] {\n  height: 5px;\n  background-color: var(--border-color);\n  cursor: row-resize;\n  transition: background-color 0.3s ease;\n}\n.footer-resizer[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color);\n}\n.footer[_ngcontent-%COMP%] {\n  overflow: auto;\n  background-color: var(--secondary-background);\n  border-top: 1px solid var(--border-color);\n  padding: 1rem;\n}\n.overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  background-color: rgba(0, 0, 0, 0.5);\n  opacity: 0;\n  visibility: hidden;\n  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;\n  z-index: 1000;\n  pointer-events: none;\n}\n.overlay.active[_ngcontent-%COMP%] {\n  opacity: 1;\n  visibility: visible;\n  pointer-events: auto;\n}\n@supports (-webkit-touch-callout: none) {\n  .layout-container[_ngcontent-%COMP%] {\n    height: -webkit-fill-available;\n  }\n}\n@media screen and (max-width: 768px) {\n  .layout-container[_ngcontent-%COMP%] {\n    min-height: 100vh;\n    min-height: calc(var(--vh, 1vh) * 100);\n    -webkit-overflow-scrolling: touch;\n  }\n  .content-wrapper[_ngcontent-%COMP%] {\n    flex: 1;\n    display: flex;\n    overflow: hidden;\n    position: relative;\n    transform: translateZ(0);\n    -webkit-transform: translateZ(0);\n  }\n  .main-and-footer[_ngcontent-%COMP%] {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    overscroll-behavior: contain;\n  }\n  .main-content[_ngcontent-%COMP%] {\n    flex: 1;\n    overflow: auto;\n    -webkit-overflow-scrolling: touch;\n    transform: translate3d(0, 0, 0);\n    -webkit-transform: translate3d(0, 0, 0);\n  }\n}\n@media (max-width: 768px) {\n  .left-menu[_ngcontent-%COMP%] {\n    position: fixed !important;\n    top: 0 !important;\n    left: 0 !important;\n    height: 100% !important;\n    width: 100% !important;\n    max-width: 100% !important;\n    z-index: 1002 !important;\n    transform: translateX(-100%) !important;\n    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2) !important;\n    transition: transform 0.3s ease-in-out !important;\n  }\n  .left-menu.active[_ngcontent-%COMP%] {\n    transform: translateX(0) !important;\n  }\n  .resizer[_ngcontent-%COMP%] {\n    width: 50px !important;\n    cursor: default !important;\n    background-color: transparent !important;\n    position: fixed !important;\n    left: 0 !important;\n    top: 50% !important;\n    height: auto !important;\n    z-index: 1003 !important;\n    transform: translateY(-50%) !important;\n  }\n  .resizer[_ngcontent-%COMP%]:hover {\n    background-color: transparent !important;\n  }\n  .menu-toggle-btn[_ngcontent-%COMP%] {\n    position: static !important;\n    transform: none !important;\n    left: auto !important;\n    top: auto !important;\n  }\n  .menu-toggle-btn[_ngcontent-%COMP%]:hover {\n    transform: scale(1.1) !important;\n  }\n  .left-menu.active[_ngcontent-%COMP%]    ~ .resizer[_ngcontent-%COMP%] {\n    left: calc(100% - 60px) !important;\n  }\n  .main-and-footer[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .main-content[_ngcontent-%COMP%] {\n    padding: 0.5rem;\n  }\n  .header[_ngcontent-%COMP%] {\n    padding: 0.75rem;\n  }\n  .header-content[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n    font-size: 1.25rem;\n  }\n  .auth-btn[_ngcontent-%COMP%] {\n    padding: 0.4rem 0.8rem;\n    font-size: 0.9rem;\n  }\n}\n@media (min-width: 769px) and (max-width: 1024px) {\n  .left-menu[_ngcontent-%COMP%] {\n    max-width: 350px;\n  }\n}\n@media (max-width: 768px) {\n  body.menu-open[_ngcontent-%COMP%] {\n    overflow: hidden;\n  }\n}\n.clipboard-container[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 20px;\n  right: 20px;\n  z-index: 1000;\n  cursor: move;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);\n  border-radius: 4px;\n  background-color: white;\n  max-width: 400px;\n}\n/*# sourceMappingURL=main-layout.component.css.map */'] });
+  }, dependencies: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent], styles: ['\n\n.layout-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100vh;\n  height: calc(var(--vh, 1vh) * 100);\n  background-color: var(--primary-background);\n  color: var(--primary-text);\n  position: relative;\n  overflow: hidden;\n}\n.header[_ngcontent-%COMP%] {\n  position: relative;\n  background-color: var(--header-background);\n  color: var(--header-text);\n  padding: 1rem;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 1rem;\n  overflow: hidden;\n  z-index: 100;\n}\n.header-content[_ngcontent-%COMP%] {\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 1rem;\n  overflow-x: auto;\n  flex: 1;\n  position: relative;\n}\n.header-content[_ngcontent-%COMP%]::after {\n  content: "";\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  width: 30px;\n  background:\n    linear-gradient(\n      to right,\n      hsla(0, 0%, 100%, 0),\n      var(--header-background));\n  pointer-events: none;\n}\n.header-content[_ngcontent-%COMP%]::-webkit-scrollbar {\n  display: none;\n}\n.header-content[_ngcontent-%COMP%] {\n  -ms-overflow-style: none;\n  scrollbar-width: none;\n}\n.header-content[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  margin: 0;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.auth-btn[_ngcontent-%COMP%] {\n  background-color: var(--accent-color);\n  color: var(--header-text);\n  border: none;\n  padding: 0.5rem 1rem;\n  border-radius: 6px;\n  cursor: pointer;\n  font-weight: 500;\n  transition: background-color 0.2s ease-in-out;\n}\n.auth-btn[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color-hover);\n}\n.content-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  flex: 1;\n  overflow: hidden;\n  position: relative;\n}\n.left-menu[_ngcontent-%COMP%] {\n  background-color: var(--menu-background);\n  flex-shrink: 0;\n  overflow-y: auto;\n  overflow-x: hidden;\n  display: flex;\n  flex-direction: column;\n  border-right: 1px solid var(--border-color);\n}\n.resizer[_ngcontent-%COMP%] {\n  width: 15px;\n  cursor: col-resize;\n  background-color: transparent;\n  position: relative;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  transition: background-color 0.2s ease-in-out;\n  flex-shrink: 0;\n  z-index: 10;\n}\n.resizer[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color-translucent);\n}\n.menu-toggle-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  left: 50%;\n  top: 50%;\n  transform: translate(-50%, -50%);\n  width: 30px;\n  height: 30px;\n  border-radius: 50%;\n  background-color: var(--secondary-background);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  box-shadow: var(--card-shadow);\n  transition: all 0.3s ease;\n  z-index: 1002;\n}\n.menu-toggle-btn[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color);\n  transform: translate(-50%, -50%) scale(1.1);\n}\n.arrow[_ngcontent-%COMP%] {\n  border: solid var(--primary-text);\n  border-width: 0 2px 2px 0;\n  display: inline-block;\n  padding: 3px;\n  transition: transform 0.3s ease;\n}\n.arrow[_ngcontent-%COMP%]:not(.collapsed) {\n  transform: rotate(135deg);\n}\n.arrow.collapsed[_ngcontent-%COMP%] {\n  transform: rotate(-45deg);\n  margin-left: -2px;\n}\n.main-and-footer[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  overflow: hidden;\n}\n.main-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: auto;\n  padding: 1rem;\n  background-color: var(--primary-background);\n}\n.footer-resizer[_ngcontent-%COMP%] {\n  height: 5px;\n  background-color: var(--border-color);\n  cursor: row-resize;\n  transition: background-color 0.3s ease;\n}\n.footer-resizer[_ngcontent-%COMP%]:hover {\n  background-color: var(--accent-color);\n}\n.footer[_ngcontent-%COMP%] {\n  overflow: auto;\n  background-color: var(--secondary-background);\n  border-top: 1px solid var(--border-color);\n  padding: 1rem;\n}\n.overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  background-color: rgba(0, 0, 0, 0.5);\n  opacity: 0;\n  visibility: hidden;\n  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;\n  z-index: 1000;\n  pointer-events: none;\n}\n.overlay.active[_ngcontent-%COMP%] {\n  opacity: 1;\n  visibility: visible;\n  pointer-events: auto;\n}\n@supports (-webkit-touch-callout: none) {\n  .layout-container[_ngcontent-%COMP%] {\n    height: -webkit-fill-available;\n  }\n}\n@media screen and (max-width: 768px) {\n  .layout-container[_ngcontent-%COMP%] {\n    min-height: 100vh;\n    min-height: calc(var(--vh, 1vh) * 100);\n    -webkit-overflow-scrolling: touch;\n  }\n  .content-wrapper[_ngcontent-%COMP%] {\n    flex: 1;\n    display: flex;\n    overflow: hidden;\n    position: relative;\n    transform: translateZ(0);\n    -webkit-transform: translateZ(0);\n  }\n  .main-and-footer[_ngcontent-%COMP%] {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    overscroll-behavior: contain;\n  }\n  .main-content[_ngcontent-%COMP%] {\n    flex: 1;\n    overflow: auto;\n    -webkit-overflow-scrolling: touch;\n    transform: translate3d(0, 0, 0);\n    -webkit-transform: translate3d(0, 0, 0);\n  }\n}\n@media (max-width: 768px) {\n  .left-menu[_ngcontent-%COMP%] {\n    position: fixed !important;\n    top: 0 !important;\n    left: 0 !important;\n    height: 100% !important;\n    width: 100% !important;\n    max-width: 100% !important;\n    z-index: 1002 !important;\n    transform: translateX(-100%) !important;\n    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2) !important;\n    transition: transform 0.3s ease-in-out !important;\n  }\n  .left-menu.active[_ngcontent-%COMP%] {\n    transform: translateX(0) !important;\n  }\n  .resizer[_ngcontent-%COMP%] {\n    width: 50px !important;\n    cursor: default !important;\n    background-color: transparent !important;\n    position: fixed !important;\n    left: 0 !important;\n    top: 50% !important;\n    height: auto !important;\n    z-index: 1003 !important;\n    transform: translateY(-50%) !important;\n  }\n  .resizer[_ngcontent-%COMP%]:hover {\n    background-color: transparent !important;\n  }\n  .menu-toggle-btn[_ngcontent-%COMP%] {\n    position: static !important;\n    transform: none !important;\n    left: auto !important;\n    top: auto !important;\n  }\n  .menu-toggle-btn[_ngcontent-%COMP%]:hover {\n    transform: scale(1.1) !important;\n  }\n  .left-menu.active[_ngcontent-%COMP%]    ~ .resizer[_ngcontent-%COMP%] {\n    left: calc(100% - 60px) !important;\n  }\n  .main-and-footer[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .main-content[_ngcontent-%COMP%] {\n    padding: 0.5rem;\n  }\n  .header[_ngcontent-%COMP%] {\n    padding: 0.75rem;\n  }\n  .header-content[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n    font-size: 1.25rem;\n  }\n  .auth-btn[_ngcontent-%COMP%] {\n    padding: 0.4rem 0.8rem;\n    font-size: 0.9rem;\n  }\n}\n@media (min-width: 769px) and (max-width: 1024px) {\n  .left-menu[_ngcontent-%COMP%] {\n    max-width: 350px;\n  }\n}\n@media (max-width: 768px) {\n  body.menu-open[_ngcontent-%COMP%] {\n    overflow: hidden;\n  }\n}\n.clipboard-container[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 20px;\n  right: 20px;\n  z-index: 1000;\n  cursor: move;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);\n  border-radius: 4px;\n  background-color: white;\n  max-width: 400px;\n}\n/*# sourceMappingURL=main-layout.component.css.map */'] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(MainLayoutComponent, { className: "MainLayoutComponent", filePath: "src/app/layout/refactored/main-layout.component.ts", lineNumber: 16 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(MainLayoutComponent, { className: "MainLayoutComponent", filePath: "src/app/layout/refactored/main-layout.component.ts", lineNumber: 15 });
 })();
 
 // src/app/models/ui/router-menu.model.ts
@@ -115801,9 +116604,9 @@ var ShapeUtilService = class _ShapeUtilService {
 };
 
 // src/app/shared/image/image-zoom-interactive/image-zoom-interactive.component.ts
-var _c032 = ["zoomElement"];
-var _c119 = ["zoomOuter"];
-var _c215 = ["imageElement"];
+var _c033 = ["zoomElement"];
+var _c120 = ["zoomOuter"];
+var _c216 = ["imageElement"];
 var _c315 = ["canvasElement"];
 function ImageZoomInteractiveComponent_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
@@ -116379,9 +117182,9 @@ var ImageZoomInteractiveComponent = class _ImageZoomInteractiveComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ImageZoomInteractiveComponent, selectors: [["app-image-zoom-interactive"]], viewQuery: function ImageZoomInteractiveComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c032, 5);
-      \u0275\u0275viewQuery(_c119, 5);
-      \u0275\u0275viewQuery(_c215, 5);
+      \u0275\u0275viewQuery(_c033, 5);
+      \u0275\u0275viewQuery(_c120, 5);
+      \u0275\u0275viewQuery(_c216, 5);
       \u0275\u0275viewQuery(_c315, 5);
     }
     if (rf & 2) {
@@ -116427,7 +117230,7 @@ var ImageZoomInteractiveComponent = class _ImageZoomInteractiveComponent {
 })();
 
 // src/app/shared/image/image-carusel/image-carousel.component.ts
-var _c033 = ["carousel"];
+var _c034 = ["carousel"];
 function ImageCarouselComponent_For_6_Template(rf, ctx) {
   if (rf & 1) {
     const _r2 = \u0275\u0275getCurrentView();
@@ -116588,7 +117391,7 @@ var ImageCarouselComponent = class _ImageCarouselComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ImageCarouselComponent, selectors: [["app-image-carousel"]], viewQuery: function ImageCarouselComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c033, 5);
+      \u0275\u0275viewQuery(_c034, 5);
     }
     if (rf & 2) {
       let _t;
@@ -118879,9 +119682,9 @@ var ReactiveFormComponent = class _ReactiveFormComponent {
 })();
 
 // src/app/shared/table/table.component.ts
-var _c034 = ["tableContainer"];
-var _c120 = ["tableBody"];
-var _c216 = [[["", "table-controls", ""]]];
+var _c035 = ["tableContainer"];
+var _c121 = ["tableBody"];
+var _c217 = [[["", "table-controls", ""]]];
 var _c316 = ["[table-controls]"];
 var _forTrack035 = ($index, $item) => $item.id;
 function TableComponent_For_14_Template(rf, ctx) {
@@ -119411,8 +120214,8 @@ var TableComponent2 = class _TableComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TableComponent, selectors: [["app-shared-table"]], viewQuery: function TableComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c034, 5);
-      \u0275\u0275viewQuery(_c120, 5);
+      \u0275\u0275viewQuery(_c035, 5);
+      \u0275\u0275viewQuery(_c121, 5);
       \u0275\u0275viewQuery(CdkVirtualScrollViewport, 5);
     }
     if (rf & 2) {
@@ -119424,7 +120227,7 @@ var TableComponent2 = class _TableComponent {
   }, inputs: { columns: "columns", clickCallback: "clickCallback", doubleClickCallback: "doubleClickCallback", rightClickCallback: "rightClickCallback", middleClickCallback: "middleClickCallback", cellDoubleClickCallback: "cellDoubleClickCallback", deleteItem: "deleteItem", hoverDebounceTime: [1, "hoverDebounceTime"], isDragAndDropEnabled: [1, "isDragAndDropEnabled"], items: "items" }, outputs: { loadMoreItems: "loadMoreItems", search: "search", rowHoveredEvent: "rowHoveredEvent", selectedItemsEvent: "selectedItemsEvent", itemsReordered: "itemsReordered" }, ngContentSelectors: _c316, decls: 21, vars: 3, consts: [["tableBody", ""], [1, "table-wrapper"], [1, "table-controls"], [1, "default-controls"], [1, "button-row"], [3, "click"], [1, "search-row"], ["appCopyPaste", "", "type", "text", "placeholder", "Global Search...", 1, "search-input", 3, "ngModelChange", "ngModel"], ["itemSize", "50", 1, "table-container", 3, "scrolledIndexChange"], [3, "selected", "cursor", "ghost-row", "dragging", "mouseenter", "click", "dblclick", "contextmenu", "auxclick", "mousedown", "mousemove", "mouseup", "dragover", 4, "cdkVirtualFor", "cdkVirtualForOf", "cdkVirtualForTrackBy"], [1, "resizer"], ["appCopyPaste", "", "type", "text", 1, "filter-input", 3, "ngModelChange", "placeholder", "ngModel"], [3, "mouseenter", "click", "dblclick", "contextmenu", "auxclick", "mousedown", "mousemove", "mouseup", "dragover"], [3, "ngStyle"], [3, "click", "ngStyle"]], template: function TableComponent_Template(rf, ctx) {
     if (rf & 1) {
       const _r1 = \u0275\u0275getCurrentView();
-      \u0275\u0275projectionDef(_c216);
+      \u0275\u0275projectionDef(_c217);
       \u0275\u0275elementStart(0, "div", 1)(1, "div", 2)(2, "div", 3)(3, "div", 4)(4, "button", 5);
       \u0275\u0275listener("click", function TableComponent_Template_button_click_4_listener() {
         \u0275\u0275restoreView(_r1);
@@ -120153,7 +120956,7 @@ var DrawingService = class _DrawingService {
 };
 
 // src/app/shared/image/image-canvas/image-canvas.component.ts
-var _c035 = ["canvas"];
+var _c036 = ["canvas"];
 var ImageCanvasComponent = class _ImageCanvasComponent {
   shapeService;
   drawingService;
@@ -120364,7 +121167,7 @@ var ImageCanvasComponent = class _ImageCanvasComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ImageCanvasComponent, selectors: [["app-image-canvas"]], viewQuery: function ImageCanvasComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c035, 5);
+      \u0275\u0275viewQuery(_c036, 5);
     }
     if (rf & 2) {
       let _t;
@@ -120596,8 +121399,8 @@ var DrawingComponent = class _DrawingComponent {
 })();
 
 // src/app/shared/image/image-interactive/image-interactive.component.ts
-var _c036 = ["container"];
-var _c121 = ["img"];
+var _c037 = ["container"];
+var _c122 = ["img"];
 var ImageInteractiveComponent = class _ImageInteractiveComponent {
   shapeService;
   zoomService;
@@ -120817,8 +121620,8 @@ var ImageInteractiveComponent = class _ImageInteractiveComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ImageInteractiveComponent, selectors: [["app-image-interactive"]], viewQuery: function ImageInteractiveComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c036, 5);
-      \u0275\u0275viewQuery(_c121, 5);
+      \u0275\u0275viewQuery(_c037, 5);
+      \u0275\u0275viewQuery(_c122, 5);
       \u0275\u0275viewQuery(ImageCanvasComponent, 5);
     }
     if (rf & 2) {
@@ -122179,7 +122982,7 @@ var FILE_ROUTES = [
 ];
 
 // src/app/shared/left-menu-outlet/left-menu-outlet.component.ts
-var _c037 = ["leftMenuHost"];
+var _c038 = ["leftMenuHost"];
 var LeftMenuOutletComponent = class _LeftMenuOutletComponent {
   route;
   router;
@@ -122228,7 +123031,7 @@ var LeftMenuOutletComponent = class _LeftMenuOutletComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LeftMenuOutletComponent, selectors: [["app-left-menu-outlet"]], viewQuery: function LeftMenuOutletComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c037, 5, ViewContainerRef);
+      \u0275\u0275viewQuery(_c038, 5, ViewContainerRef);
     }
     if (rf & 2) {
       let _t;
@@ -122781,7 +123584,7 @@ var EquipmentDetailsComponent = class _EquipmentDetailsComponent {
 })();
 
 // src/app/features/loto/loto.component.ts
-var _c038 = ["pdfDisplay"];
+var _c039 = ["pdfDisplay"];
 function LotoComponent_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
@@ -122991,7 +123794,7 @@ var LotoComponent = class _LotoComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoComponent, selectors: [["app-loto"]], viewQuery: function LotoComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c038, 5);
+      \u0275\u0275viewQuery(_c039, 5);
     }
     if (rf & 2) {
       let _t;
@@ -123613,7 +124416,7 @@ var PrintTagFormComponent = class _PrintTagFormComponent {
 })();
 
 // src/app/features/loto/active-loto-points/active-loto-points.component.ts
-var _c039 = (a0) => ({ lotoPoint: a0 });
+var _c040 = (a0) => ({ lotoPoint: a0 });
 function ActiveLotoPointsComponent_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
@@ -123627,7 +124430,7 @@ function ActiveLotoPointsComponent_Conditional_5_Template(rf, ctx) {
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("isOpen", ctx_r1.isPopupOpen)("title", "Print Tag")("contentComponent", ctx_r1.PrintTagFormComponent)("contentInputs", \u0275\u0275pureFunction1(4, _c039, ctx_r1.selectedItem));
+    \u0275\u0275property("isOpen", ctx_r1.isPopupOpen)("title", "Print Tag")("contentComponent", ctx_r1.PrintTagFormComponent)("contentInputs", \u0275\u0275pureFunction1(4, _c040, ctx_r1.selectedItem));
   }
 }
 var ActiveLotoPointsComponent = class _ActiveLotoPointsComponent {
@@ -125390,367 +126193,6 @@ var EspDeviceListComponent = class _EspDeviceListComponent {
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(EspDeviceListComponent, { className: "EspDeviceListComponent", filePath: "src/app/features/esp/esp-device-list/esp-device-list.component.ts", lineNumber: 13 });
 })();
-
-// src/app/features/loto-standard/refactored/services/rf-loto-standard-local-storage.service.ts
-var LotoStandardLocalStorageService = class _LotoStandardLocalStorageService extends BaseDraftService {
-  /**
-   * LocalStorage key for LotoStandard drafts
-   */
-  DRAFTS_KEY = "loto-standard-drafts";
-  constructor(localStorageService) {
-    super();
-    this.localStorageService = localStorageService;
-  }
-  /**
-   * Extract entity ID from LotoStandard draft
-   * Returns the ID if present, null otherwise
-   */
-  getEntityId(draft) {
-    return draft.id || null;
-  }
-  static \u0275fac = function LotoStandardLocalStorageService_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _LotoStandardLocalStorageService)(\u0275\u0275inject(LocalStorageService));
-  };
-  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _LotoStandardLocalStorageService, factory: _LotoStandardLocalStorageService.\u0275fac, providedIn: "root" });
-};
-
-// src/app/features/loto-standard/refactored/services/rf-loto-standard-state.service.ts
-var RfLotoStandardStateService = class _RfLotoStandardStateService {
-  apiService = inject(RfLotoStandardApiService);
-  localStorage = inject(LotoStandardLocalStorageService);
-  destroyRef = inject(DestroyRef);
-  messageService = inject(GlobalMessageService);
-  syncUpdateService = inject(SyncUpdateService);
-  ngZone = inject(NgZone);
-  pageSize = 50;
-  currentPage = 1;
-  allLoadedLotoStandardsSubject = new BehaviorSubject([]);
-  allLoadedLotoStandards$ = this.allLoadedLotoStandardsSubject.asObservable();
-  filterOutItems = signal([]);
-  selectedItems = signal([]);
-  selectedItem = signal(null);
-  currentSortColumnSubject = new BehaviorSubject(null);
-  currentSortColumn$ = this.currentSortColumnSubject.asObservable();
-  currentSortDirectionSubject = new BehaviorSubject("ASC");
-  currentSortDirection$ = this.currentSortDirectionSubject.asObservable();
-  currentSearchCriteriaSubject = new BehaviorSubject(null);
-  currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
-  // Unique items cache for column filters
-  uniqueItemsCache = /* @__PURE__ */ new Map();
-  // Unique values cache with pagination metadata
-  uniqueValuesCache = /* @__PURE__ */ new Map();
-  currentColumnUniqueItems = signal([]);
-  loadingUniqueItems = signal(false);
-  // Form state
-  formFields = signal([]);
-  isLotoStandardFormOpen = signal(false);
-  constructor() {
-    this.syncUpdateService.getEntityTypeUpdates$("LotoStandard").pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
-      this.handleSyncUpdate(event);
-    });
-  }
-  /**
-   * Handle sync update from SSE - reload the entity from server
-   * This is called when a LotoStandard is updated by server sync
-   */
-  handleSyncUpdate(event) {
-    const entityId = event.entityId;
-    this.apiService.getLotoStandardById(entityId + "").pipe(tap((response) => {
-      if (response.responseData) {
-        const updatedItem = LotoStandardDto.fromJson(response.responseData);
-        this.updateLotoStandardInList(updatedItem);
-        const selectedItem = this.selectedItem();
-        if (selectedItem?.id === entityId) {
-          this.messageService.showInfo("This LOTO standard was updated from another machine");
-        }
-      }
-    }), catchError((error) => {
-      console.error("Error reloading synced LOTO standard:", error);
-      return of(null);
-    }), takeUntilDestroyed(this.destroyRef)).subscribe();
-  }
-  /**
-   * Update a LOTO standard in the local list or add it if not present.
-   * Called automatically when an update event is received.
-   */
-  updateLotoStandardInList(updatedItem) {
-    if (!updatedItem.id) {
-      return;
-    }
-    this.ngZone.run(() => {
-      const current = this.allLoadedLotoStandardsSubject.value;
-      const index = current.findIndex((ls) => ls.id === updatedItem.id);
-      if (index >= 0) {
-        const updated = [...current];
-        updatedItem._version = Date.now();
-        updated[index] = updatedItem;
-        this.allLoadedLotoStandardsSubject.next(updated);
-      } else {
-        updatedItem._version = Date.now();
-        this.allLoadedLotoStandardsSubject.next([updatedItem, ...current]);
-      }
-      const selectedItem = this.selectedItem();
-      if (selectedItem?.id === updatedItem.id) {
-        this.selectedItem.set(updatedItem);
-      }
-      const selectedItems = this.selectedItems();
-      const selectedIndex = selectedItems.findIndex((item) => item.id === updatedItem.id);
-      if (selectedIndex >= 0) {
-        const updatedSelected = [...selectedItems];
-        updatedSelected[selectedIndex] = updatedItem;
-        this.selectedItems.set(updatedSelected);
-      }
-    });
-  }
-  /**
-   * Remove a LOTO standard from the local list by ID.
-   * Called automatically when a deletion event is received.
-   */
-  removeLotoStandardById(id2) {
-    const current = this.allLoadedLotoStandardsSubject.value;
-    const filtered = current.filter((ls) => ls.id !== id2);
-    if (filtered.length !== current.length) {
-      this.allLoadedLotoStandardsSubject.next(filtered);
-      const selectedItem = this.selectedItem();
-      if (selectedItem?.id === id2) {
-        this.selectedItem.set(null);
-      }
-      const selectedItems = this.selectedItems();
-      if (selectedItems.some((item) => item.id === id2)) {
-        this.selectedItems.set(selectedItems.filter((item) => item.id !== id2));
-      }
-    }
-  }
-  addLotoStandards(items) {
-    const current = this.allLoadedLotoStandardsSubject.value;
-    this.allLoadedLotoStandardsSubject.next([...current, ...items]);
-  }
-  clearLotoStandards() {
-    this.allLoadedLotoStandardsSubject.next([]);
-    this.currentPage = 1;
-  }
-  getCurrentPage() {
-    return this.currentPage;
-  }
-  incrementPage() {
-    this.currentPage++;
-  }
-  setSelectedLotoStandards(items) {
-    this.selectedItems.set(items);
-  }
-  setSelectedItem(item) {
-    this.selectedItem.set(item);
-  }
-  /**
-   * Load full entity from server by ID
-   * This is used when clicking on table items to get complete data
-   */
-  loadItemById(id2) {
-    this.apiService.getLotoStandardById(id2 + "").pipe(tap((response) => {
-      this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
-      this.openForm();
-    }), catchError((error) => {
-      console.error("Error loading LOTO Standard:", error);
-      return of(null);
-    }), takeUntilDestroyed(this.destroyRef)).subscribe();
-  }
-  submitForm(item) {
-    const lotoStandardId = item.id;
-    const isNew = !lotoStandardId;
-    this.apiService.saveLotoStandard(item).pipe(tap((response) => {
-      this.clearDraftForItem(lotoStandardId);
-      this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
-      const action = isNew ? "created" : "updated";
-      this.messageService.showSuccess(`LOTO Standard ${action} successfully`);
-      this.closeForm();
-    }), catchError((error) => {
-      console.error("Error saving LOTO Standard:", error);
-      console.error("Error details:", error.error);
-      console.error("Error message:", error.message);
-      const errorMsg = error.error?.message || error.message || "Unknown error";
-      this.messageService.showError(`Failed to save LOTO Standard: ${errorMsg}`);
-      return of(null);
-    }), takeUntilDestroyed(this.destroyRef)).subscribe();
-  }
-  openNewLotoStandardForm() {
-    this.setSelectedItem(new LotoStandardDto());
-  }
-  saveDraft(item) {
-    this.localStorage.saveDraft(item);
-  }
-  /**
-   * Load draft for a specific loto standard or new item
-   * Returns the draft metadata if found
-   */
-  loadDraftForItem(lotoStandardId = null) {
-    return this.localStorage.loadDraft(lotoStandardId);
-  }
-  /**
-   * Check if draft exists for specific loto standard
-   */
-  hasDraftForItem(lotoStandardId = null) {
-    return this.localStorage.hasDraft(lotoStandardId);
-  }
-  /**
-   * Clear draft for specific loto standard
-   */
-  clearDraftForItem(lotoStandardId = null) {
-    this.localStorage.clearDraft(lotoStandardId);
-  }
-  resetPage() {
-    this.currentPage = 1;
-  }
-  setSortState(sortColumn, sortDirection) {
-    this.currentSortColumnSubject.next(sortColumn);
-    this.currentSortDirectionSubject.next(sortDirection);
-  }
-  setSearchCriteria(criteria) {
-    this.currentSearchCriteriaSubject.next(criteria);
-  }
-  getCurrentSearchCriteria() {
-    return this.currentSearchCriteriaSubject.value;
-  }
-  clearSortState() {
-    this.currentSortColumnSubject.next(null);
-    this.currentSortDirectionSubject.next("ASC");
-    this.currentSearchCriteriaSubject.next(null);
-  }
-  /**
-   * Set unique items for a specific column
-   */
-  setUniqueItems(columnKey, values) {
-    if (!this.uniqueItemsCache.has(columnKey)) {
-      this.uniqueItemsCache.set(columnKey, new BehaviorSubject(values));
-    } else {
-      const subject = this.uniqueItemsCache.get(columnKey);
-      subject.next(values);
-    }
-  }
-  /**
-   * Get unique items observable for a specific column
-   */
-  getUniqueItems$(columnKey) {
-    if (!this.uniqueItemsCache.has(columnKey)) {
-      this.uniqueItemsCache.set(columnKey, new BehaviorSubject([]));
-    }
-    return this.uniqueItemsCache.get(columnKey).asObservable();
-  }
-  /**
-   * Get unique items value for a specific column
-   */
-  getUniqueItemsValue(columnKey) {
-    if (!this.uniqueItemsCache.has(columnKey)) {
-      return [];
-    }
-    return this.uniqueItemsCache.get(columnKey).value;
-  }
-  /**
-   * Clear unique items cache for a specific column
-   */
-  clearUniqueItemsForColumn(columnKey) {
-    if (this.uniqueItemsCache.has(columnKey)) {
-      this.uniqueItemsCache.get(columnKey).next([]);
-    }
-  }
-  /**
-   * Clear all unique items cache
-   */
-  clearAllUniqueItems() {
-    this.uniqueItemsCache.forEach((subject) => subject.next([]));
-    this.uniqueItemsCache.clear();
-  }
-  /**
-   * Load unique items for a column with server-side filtering and pagination
-   */
-  loadUniqueItems(columnKey, searchString) {
-    const cacheKey = `${columnKey}:${searchString}`;
-    this.loadingUniqueItems.set(true);
-    const filters2 = this.getCurrentSearchCriteria() ?? {
-      type: "column",
-      filters: {}
-    };
-    this.apiService.getFilteredUniqueValuesOfColumn(String(columnKey), filters2, 1, 50).pipe(tap((response) => {
-      if (response.responseData?.content && response.responseData.content.length > 0) {
-        const uniqueValues = response.responseData.content;
-        this.setUniqueItems(String(columnKey), uniqueValues);
-        this.currentColumnUniqueItems.set(uniqueValues);
-        this.loadingUniqueItems.set(false);
-        this.uniqueValuesCache.set(cacheKey, {
-          values: uniqueValues,
-          page: 1,
-          hasMore: !response.responseData.last
-        });
-      }
-    }), catchError((error) => {
-      console.error(`Error loading unique items for column ${columnKey}:`, error);
-      this.loadingUniqueItems.set(false);
-      return of(null);
-    }), takeUntilDestroyed(this.destroyRef)).subscribe();
-  }
-  /**
-   * Load more unique items for a column (pagination)
-   */
-  loadMoreUniqueItems(columnKey, searchString) {
-    const cacheKey = `${columnKey}:${searchString}`;
-    const cached = this.uniqueValuesCache.get(cacheKey);
-    this.loadingUniqueItems.set(true);
-    if (!cached || !cached.hasMore) {
-      this.loadingUniqueItems.set(false);
-      return;
-    }
-    const nextPage = cached.page + 1;
-    const filters2 = this.getCurrentSearchCriteria() ?? {
-      type: "column",
-      filters: {}
-    };
-    this.apiService.getFilteredUniqueValuesOfColumn(String(columnKey), filters2, nextPage, 50).pipe(tap((response) => {
-      if (response.responseData?.content && response.responseData.content.length > 0) {
-        const currentValues = cached.values;
-        const uniqueValues = response.responseData.content;
-        const newValues = [...currentValues, ...uniqueValues];
-        this.setUniqueItems(String(columnKey), newValues);
-        this.currentColumnUniqueItems.update((existing) => [
-          ...existing,
-          ...newValues
-        ]);
-        this.loadingUniqueItems.set(false);
-        this.uniqueValuesCache.set(cacheKey, {
-          values: newValues,
-          page: nextPage,
-          hasMore: !response.responseData.last
-        });
-      }
-    }), catchError((error) => {
-      console.error(`Error loading more unique items for column ${columnKey}:`, error);
-      this.loadingUniqueItems.set(false);
-      return of(null);
-    }), takeUntilDestroyed(this.destroyRef)).subscribe();
-  }
-  /**
-   * Clear unique values cache (useful when data changes)
-   */
-  clearUniqueValuesCache() {
-    this.uniqueValuesCache.clear();
-  }
-  /**
-   * Open form with specified fields
-   */
-  openForm(fields = []) {
-    this.formFields.set(fields);
-    this.isLotoStandardFormOpen.set(true);
-  }
-  /**
-   * Close form and clear selected item
-   */
-  closeForm() {
-    this.isLotoStandardFormOpen.set(false);
-    this.selectedItem.set(null);
-  }
-  static \u0275fac = function RfLotoStandardStateService_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _RfLotoStandardStateService)();
-  };
-  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _RfLotoStandardStateService, factory: _RfLotoStandardStateService.\u0275fac, providedIn: "root" });
-};
 
 // src/app/features/loto-points/refactored/double-loto-point-table/double-loto-point-table.service.ts
 var DoubleLotoPointTableService = class _DoubleLotoPointTableService {
@@ -128479,6 +128921,453 @@ var RfLotoStandardMainTableViewComponent = class _RfLotoStandardMainTableViewCom
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(RfLotoStandardMainTableViewComponent, { className: "RfLotoStandardMainTableViewComponent", filePath: "src/app/features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-main-table-view.component.ts", lineNumber: 53 });
 })();
 
+// src/app/features/loto-standard/refactored/loto-builder/services/loto-builder-state.service.ts
+var LotoBuilderStateService = class _LotoBuilderStateService {
+  apiService = inject(RfLotoStandardApiService);
+  destroyRef = inject(DestroyRef);
+  // ========== Left Panel State ==========
+  /** Current active tab in left panel */
+  leftMenuTab = signal("file");
+  /** Display mode for left panel content */
+  displayMode = signal("toggle-menu");
+  /** Left panel width (for resizing) */
+  leftPanelWidth = signal(400);
+  // ========== Current Context ==========
+  /** Currently selected file */
+  currentFile = signal(null);
+  /** Currently selected LOTO point */
+  currentLotoPoint = signal(null);
+  /** Equipment for current file */
+  currentEquipment = signal([]);
+  /** Shapes derived from equipment */
+  currentShapes = signal([]);
+  // ========== LOTO Building Mode ==========
+  /** Whether LOTO building mode is active */
+  isLotoBuildingMode = signal(false);
+  /** Selected LOTO standards for building mode */
+  selectedLotoStandards = signal([]);
+  /** Currently active LOTO standard index in carousel */
+  activeLotoStandardIndex = signal(0);
+  // ========== UI State ==========
+  /** Whether the builder popup is open */
+  isBuilderOpen = signal(false);
+  /** Hovered shape ID (for highlighting) */
+  hoveredShapeId = signal(null);
+  /** Selected shape ID (for selection with handles) */
+  selectedShapeId = signal(null);
+  /** Hovered LOTO point (for highlighting) */
+  hoveredLotoPoint = signal(null);
+  /** Whether LOTO point table popup is open */
+  isLotoPointTableOpen = signal(false);
+  /** Whether LOTO point form is open */
+  isLotoPointFormOpen = signal(false);
+  /** Whether LOTO standards popup is open */
+  isLotoStandardsPopupOpen = signal(false);
+  /** Whether LOTO point info window is shown */
+  showLotoPointInfo = signal(false);
+  /** LOTO point to display in info window */
+  infoWindowLotoPoint = signal(null);
+  /** Selected LOTO point for form editing */
+  selectedLotoPointForEdit = signal(null);
+  /** Newly created equipment (pending LOTO point association) */
+  pendingEquipment = signal(null);
+  // ========== Text Recognition State ==========
+  /** Whether text recognition is enabled */
+  isTextRecognitionEnabled = signal(true);
+  /** Recognized text from OCR */
+  recognizedText = signal(null);
+  /** Pre-filter search term for loto point table (from text recognition) */
+  tableSearchTerm = signal(null);
+  // ========== Processing State ==========
+  /** Whether a shape is being processed (saved/OCR) */
+  isProcessingShape = signal(false);
+  /** Processing message to display */
+  processingMessage = signal("");
+  // ========== Form/Table View State ==========
+  /** Current view mode in loto point popup (form or table) */
+  lotoPointPopupView = signal("form");
+  /** Whether we are editing an existing LOTO point (vs creating new) */
+  isEditMode = signal(false);
+  // ========== Computed Values ==========
+  /** All LOTO points from current file's equipment */
+  allLotoPointsInFile = computed(() => {
+    const equipment = this.currentEquipment();
+    const lotoPoints = [];
+    equipment.forEach((eq) => {
+      if (eq.lotoPoints && eq.lotoPoints.length > 0) {
+        eq.lotoPoints.forEach((lp) => {
+          if (!lotoPoints.some((existing) => existing.id === lp.id)) {
+            lotoPoints.push(lp);
+          }
+        });
+      }
+    });
+    return lotoPoints;
+  });
+  /** Whether builder is in a dirty state (unsaved changes) */
+  hasUnsavedChanges = signal(false);
+  /** Currently active LOTO standard */
+  activeLotoStandard = computed(() => {
+    const standards = this.selectedLotoStandards();
+    const index = this.activeLotoStandardIndex();
+    return standards[index] || null;
+  });
+  /** Whether carousel should be visible */
+  isCarouselVisible = computed(() => {
+    return this.isLotoBuildingMode() && this.selectedLotoStandards().length > 0;
+  });
+  // ========== Dual Form / Counterpart State (for contextual guide) ==========
+  /** Whether the current LOTO point is unit-specific (tag starts with 01 or 02) */
+  isUnitSpecificLotoPoint = signal(false);
+  /** Whether a counterpart LOTO point has been selected/loaded */
+  hasCounterpartLotoPoint = signal(false);
+  /** Whether the counterpart selection dialog is open */
+  isCounterpartDialogOpen = signal(false);
+  /** Whether a suggested counterpart was found */
+  hasSuggestedCounterpart = signal(false);
+  // ========== Methods ==========
+  /**
+   * Set the current file and load its equipment
+   * @param file The file to set
+   * @param preserveLotoPoint If true, don't clear the current LOTO point (used when navigating via LOTO point click)
+   */
+  setCurrentFile(file, preserveLotoPoint = false) {
+    this.currentFile.set(file);
+    if (!preserveLotoPoint) {
+      this.currentLotoPoint.set(null);
+    }
+    this.hasUnsavedChanges.set(false);
+  }
+  /**
+   * Set current equipment and derive shapes
+   */
+  setCurrentEquipment(equipment) {
+    this.currentEquipment.set(equipment);
+  }
+  /**
+   * Set current LOTO point
+   */
+  setCurrentLotoPoint(lotoPoint) {
+    this.currentLotoPoint.set(lotoPoint);
+  }
+  /**
+   * Open LOTO point table popup
+   */
+  openLotoPointTable() {
+    this.isLotoPointTableOpen.set(true);
+  }
+  /**
+   * Close LOTO point table popup
+   */
+  closeLotoPointTable() {
+    this.isLotoPointTableOpen.set(false);
+    this.hoveredShapeId.set(null);
+  }
+  /**
+   * Toggle LOTO point table popup
+   */
+  toggleLotoPointTable() {
+    this.isLotoPointTableOpen.set(!this.isLotoPointTableOpen());
+    if (!this.isLotoPointTableOpen()) {
+      this.hoveredShapeId.set(null);
+    }
+  }
+  /**
+   * Open LOTO point form for editing
+   */
+  openLotoPointForm(lotoPoint = null) {
+    this.selectedLotoPointForEdit.set(lotoPoint);
+    this.isEditMode.set(lotoPoint !== null);
+    if (lotoPoint !== null) {
+      this.lotoPointPopupView.set("form");
+    }
+    this.isLotoPointFormOpen.set(true);
+  }
+  /**
+   * Close LOTO point form
+   */
+  closeLotoPointForm() {
+    this.isLotoPointFormOpen.set(false);
+    this.selectedLotoPointForEdit.set(null);
+    this.isEditMode.set(false);
+  }
+  /**
+   * Open LOTO standards popup
+   */
+  openLotoStandardsPopup() {
+    this.isLotoStandardsPopupOpen.set(true);
+  }
+  /**
+   * Close LOTO standards popup
+   */
+  closeLotoStandardsPopup() {
+    this.isLotoStandardsPopupOpen.set(false);
+  }
+  /**
+   * Toggle LOTO building mode
+   */
+  toggleLotoBuildingMode() {
+    this.isLotoBuildingMode.set(!this.isLotoBuildingMode());
+    if (!this.isLotoBuildingMode()) {
+      this.selectedLotoStandards.set([]);
+    }
+  }
+  /**
+   * Show LOTO point info in info window
+   */
+  showLotoPointInfoWindow(lotoPoint) {
+    this.infoWindowLotoPoint.set(lotoPoint);
+    this.showLotoPointInfo.set(true);
+  }
+  /**
+   * Hide LOTO point info window
+   */
+  hideLotoPointInfoWindow() {
+    this.showLotoPointInfo.set(false);
+    this.infoWindowLotoPoint.set(null);
+  }
+  /**
+   * Set pending equipment (after drawing, before LOTO point association)
+   */
+  setPendingEquipment(equipment) {
+    this.pendingEquipment.set(equipment);
+  }
+  /**
+   * Toggle text recognition
+   */
+  toggleTextRecognition() {
+    this.isTextRecognitionEnabled.set(!this.isTextRecognitionEnabled());
+  }
+  /**
+   * Set recognized text from OCR
+   */
+  setRecognizedText(text) {
+    this.recognizedText.set(text);
+  }
+  /**
+   * Set table search term (for pre-filtering)
+   */
+  setTableSearchTerm(term) {
+    this.tableSearchTerm.set(term);
+  }
+  /**
+   * Start processing state with message
+   */
+  startProcessing(message) {
+    this.isProcessingShape.set(true);
+    this.processingMessage.set(message);
+  }
+  /**
+   * Stop processing state
+   */
+  stopProcessing() {
+    this.isProcessingShape.set(false);
+    this.processingMessage.set("");
+  }
+  /**
+   * Switch popup view to form
+   */
+  switchToFormView() {
+    this.lotoPointPopupView.set("form");
+  }
+  /**
+   * Switch popup view to table
+   */
+  switchToTableView() {
+    this.lotoPointPopupView.set("table");
+  }
+  /**
+   * Toggle between form and table view
+   */
+  togglePopupView() {
+    const current = this.lotoPointPopupView();
+    this.lotoPointPopupView.set(current === "form" ? "table" : "form");
+  }
+  // ========== Dual Form / Counterpart Methods ==========
+  /**
+   * Update unit-specific state based on tag number
+   * Called from loto-builder-form-popup when form values change
+   */
+  setIsUnitSpecific(isUnitSpecific) {
+    this.isUnitSpecificLotoPoint.set(isUnitSpecific);
+  }
+  /**
+   * Update counterpart loaded state
+   * Called from loto-builder-form-popup when counterpart is selected/loaded
+   */
+  setHasCounterpart(hasCounterpart) {
+    this.hasCounterpartLotoPoint.set(hasCounterpart);
+  }
+  /**
+   * Set counterpart dialog open state
+   * Called from loto-builder-form-popup when dialog opens/closes
+   */
+  setCounterpartDialogOpen(isOpen) {
+    this.isCounterpartDialogOpen.set(isOpen);
+  }
+  /**
+   * Set suggested counterpart found state
+   * Called from loto-builder-form-popup when search finds a suggestion
+   */
+  setHasSuggestedCounterpart(hasSuggested) {
+    this.hasSuggestedCounterpart.set(hasSuggested);
+  }
+  /**
+   * Reset all counterpart-related state
+   */
+  resetCounterpartState() {
+    this.isUnitSpecificLotoPoint.set(false);
+    this.hasCounterpartLotoPoint.set(false);
+    this.isCounterpartDialogOpen.set(false);
+    this.hasSuggestedCounterpart.set(false);
+  }
+  /**
+   * Open LOTO point popup with table view and pre-filtered search
+   */
+  openLotoPointTableWithSearch(searchTerm, equipment) {
+    this.setPendingEquipment(equipment);
+    this.setTableSearchTerm(searchTerm);
+    this.isEditMode.set(false);
+    this.lotoPointPopupView.set("table");
+    this.isLotoPointFormOpen.set(true);
+  }
+  /**
+   * Open LOTO point popup with empty form
+   */
+  openLotoPointFormForNewEquipment(equipment) {
+    this.setPendingEquipment(equipment);
+    this.selectedLotoPointForEdit.set(null);
+    this.isEditMode.set(false);
+    this.lotoPointPopupView.set("form");
+    this.isLotoPointFormOpen.set(true);
+  }
+  /**
+   * Add LOTO standard to the list
+   */
+  addLotoStandard(standard) {
+    this.selectedLotoStandards.update((standards) => [...standards, standard]);
+    this.activeLotoStandardIndex.set(this.selectedLotoStandards().length - 1);
+    this.isLotoBuildingMode.set(true);
+    const pendingPoint = this.currentLotoPoint();
+    if (pendingPoint) {
+      this.addLotoPointToActiveStandard(pendingPoint);
+      this.setCurrentLotoPoint(null);
+    }
+  }
+  /**
+   * Update LOTO standard at specific index
+   */
+  updateLotoStandard(index, standard) {
+    this.selectedLotoStandards.update((standards) => {
+      const updated = [...standards];
+      if (index >= 0 && index < updated.length) {
+        updated[index] = standard;
+      }
+      return updated;
+    });
+  }
+  /**
+   * Remove LOTO standard at specific index
+   */
+  removeLotoStandard(index) {
+    this.selectedLotoStandards.update((standards) => {
+      const updated = standards.filter((_2, i) => i !== index);
+      return updated;
+    });
+    const currentActive = this.activeLotoStandardIndex();
+    if (currentActive >= this.selectedLotoStandards().length) {
+      this.activeLotoStandardIndex.set(Math.max(0, this.selectedLotoStandards().length - 1));
+    }
+  }
+  /**
+   * Set active LOTO standard index
+   */
+  setActiveLotoStandardIndex(index) {
+    if (index >= 0 && index < this.selectedLotoStandards().length) {
+      this.activeLotoStandardIndex.set(index);
+    }
+  }
+  /**
+   * Add LOTO point to currently active standard
+   */
+  addLotoPointToActiveStandard(lotoPoint) {
+    const index = this.activeLotoStandardIndex();
+    const standard = this.activeLotoStandard();
+    if (standard) {
+      const existingPoints = standard.lotoPoints || [];
+      if (existingPoints.some((p) => p.id === lotoPoint.id)) {
+        console.warn("LOTO point already exists in this standard");
+        return;
+      }
+      const updatedStandard = new LotoStandardDto(__spreadProps(__spreadValues({}, standard), {
+        lotoPoints: [...existingPoints, lotoPoint]
+      }));
+      this.updateLotoStandard(index, updatedStandard);
+      if (standard.id && lotoPoint.id) {
+        this.apiService.addLotoPointToStandard(standard.id, lotoPoint.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          error: (err) => console.error("Failed to add LOTO point to standard:", err)
+        });
+      }
+    }
+  }
+  /**
+   * Toggle LOTO building mode with carousel
+   */
+  toggleCarousel() {
+    const isVisible = this.isCarouselVisible();
+    if (isVisible) {
+      this.isLotoBuildingMode.set(false);
+    } else {
+      this.isLotoBuildingMode.set(true);
+      if (this.selectedLotoStandards().length === 0) {
+        this.openLotoStandardsPopup();
+      }
+    }
+  }
+  /**
+   * Initialize builder (called when page loads)
+   */
+  initializeBuilder() {
+    this.isBuilderOpen.set(true);
+  }
+  /**
+   * Refresh equipment data.
+   * This is typically called after bulk edits are applied.
+   * The actual refresh happens automatically via lotoPointUpdated$ subscription
+   * in the right panel, so this method serves as a documentation hook.
+   */
+  refreshEquipment() {
+    console.log("[LotoBuilderState] refreshEquipment called - updates propagate via lotoPointUpdated$");
+  }
+  /**
+   * Reset builder state
+   */
+  reset() {
+    this.currentFile.set(null);
+    this.currentLotoPoint.set(null);
+    this.currentEquipment.set([]);
+    this.currentShapes.set([]);
+    this.selectedLotoStandards.set([]);
+    this.activeLotoStandardIndex.set(0);
+    this.isLotoBuildingMode.set(false);
+    this.hasUnsavedChanges.set(false);
+    this.closeLotoPointForm();
+    this.closeLotoPointTable();
+    this.closeLotoStandardsPopup();
+    this.hideLotoPointInfoWindow();
+    this.setPendingEquipment(null);
+    this.recognizedText.set(null);
+    this.tableSearchTerm.set(null);
+    this.lotoPointPopupView.set("form");
+    this.isEditMode.set(false);
+    this.resetCounterpartState();
+  }
+  static \u0275fac = function LotoBuilderStateService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _LotoBuilderStateService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _LotoBuilderStateService, factory: _LotoBuilderStateService.\u0275fac, providedIn: "root" });
+};
+
 // src/app/features/loto-standard/refactored/loto-builder/loto-builder-left-panel/loto-builder-file-table/loto-builder-file-table-click.service.ts
 var LotoBuilderFileTableClickService = class _LotoBuilderFileTableClickService extends TableClickService {
   currentFileService = inject(CurrentFileService);
@@ -129878,58 +130767,6 @@ var ReactiveGuideDirective = class _ReactiveGuideDirective {
   }, inputs: { appReactiveGuide: [1, "appReactiveGuide"], reactiveGuideMessage: [1, "reactiveGuideMessage"], reactiveGuideTitle: [1, "reactiveGuideTitle"], reactiveGuideTooltipOnly: [1, "reactiveGuideTooltipOnly"] } });
 };
 
-// src/app/shared/guide/contextual-guide.directive.ts
-var ContextualGuideDirective = class _ContextualGuideDirective {
-  el = inject(ElementRef);
-  renderer = inject(Renderer2);
-  guideService = inject(ContextualGuideService);
-  /** Target identifier in format "contextual:target-name" */
-  targetId = "";
-  /** Optional message to show as tooltip when highlighted */
-  contextualMessage = "";
-  highlightClass = "contextual-guide-highlight";
-  pulseClass = "contextual-guide-pulse";
-  constructor() {
-    effect(() => {
-      const shouldHighlight = this.guideService.shouldHighlight(this.targetId);
-      this.updateHighlight(shouldHighlight);
-    });
-  }
-  ngOnInit() {
-    this.renderer.addClass(this.el.nativeElement, "contextual-guide-target");
-  }
-  ngOnDestroy() {
-    this.removeHighlight();
-  }
-  updateHighlight(shouldHighlight) {
-    if (shouldHighlight) {
-      this.addHighlight();
-    } else {
-      this.removeHighlight();
-    }
-  }
-  addHighlight() {
-    this.renderer.addClass(this.el.nativeElement, this.highlightClass);
-    this.renderer.addClass(this.el.nativeElement, this.pulseClass);
-    const element = this.el.nativeElement;
-    if (!this.isElementInViewport(element)) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }
-  removeHighlight() {
-    this.renderer.removeClass(this.el.nativeElement, this.highlightClass);
-    this.renderer.removeClass(this.el.nativeElement, this.pulseClass);
-  }
-  isElementInViewport(el) {
-    const rect = el.getBoundingClientRect();
-    return rect.top >= 0 && rect.left >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-  }
-  static \u0275fac = function ContextualGuideDirective_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _ContextualGuideDirective)();
-  };
-  static \u0275dir = /* @__PURE__ */ \u0275\u0275defineDirective({ type: _ContextualGuideDirective, selectors: [["", "appContextualGuide", ""]], inputs: { targetId: [0, "appContextualGuide", "targetId"], contextualMessage: "contextualMessage" } });
-};
-
 // src/app/features/loto-standard/refactored/loto-builder/loto-builder-left-panel/loto-builder-left-panel.component.ts
 function LotoBuilderLeftPanelComponent_Conditional_15_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
@@ -129999,7 +130836,7 @@ var LotoBuilderLeftPanelComponent = class _LotoBuilderLeftPanelComponent {
   static \u0275fac = function LotoBuilderLeftPanelComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _LotoBuilderLeftPanelComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoBuilderLeftPanelComponent, selectors: [["app-loto-builder-left-panel"]], decls: 17, vars: 12, consts: [["appGuide", "create-loto-point-bulk:left-panel-files", "guideMessage", "Select the Files tab to browse P&ID files. Click on a file to load it in the viewer.", 1, "left-panel-container", 3, "guideTooltipOnly"], [1, "panel-header"], [1, "tabs"], ["appReactiveGuide", "loto-builder-full:files-tab", "reactiveGuideMessage", "Click to view files", 1, "tab-button", 3, "click"], [1, "tab-button", 3, "click"], ["appContextualGuide", "contextual:toggle-view-button", 1, "mode-toggle"], ["title", "Table View", 1, "mode-button", 3, "click"], ["title", "Tree View", 1, "mode-button", 3, "click"], ["appGuide", "create-loto-point-bulk:file-menu", "guideMessage", "Expand folders and click on a P&ID file to load it. The file will be displayed on the right.", "appReactiveGuide", "loto-builder-full:file-tree", "reactiveGuideMessage", "Expand folders and click on a file to load it", "appContextualGuide", "contextual:file-tree", 1, "panel-content", 3, "guideTooltipOnly", "reactiveGuideTooltipOnly"], [3, "tableId", "isTableIsolated", "loadMoreEnabled", "enableDragDrop"]], template: function LotoBuilderLeftPanelComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoBuilderLeftPanelComponent, selectors: [["app-loto-builder-left-panel"]], decls: 17, vars: 12, consts: [["appGuide", "create-loto-point-bulk:left-panel-files", "guideMessage", "Select the Files tab to browse P&ID files. Click on a file to load it in the viewer.", 1, "left-panel-container", 3, "guideTooltipOnly"], [1, "panel-header"], [1, "tabs"], ["appReactiveGuide", "loto-builder-full:files-tab", "reactiveGuideMessage", "Click to view files", 1, "tab-button", 3, "click"], [1, "tab-button", 3, "click"], [1, "mode-toggle"], ["title", "Table View", 1, "mode-button", 3, "click"], ["title", "Tree View", 1, "mode-button", 3, "click"], ["appGuide", "create-loto-point-bulk:file-menu", "guideMessage", "Expand folders and click on a P&ID file to load it. The file will be displayed on the right.", "appReactiveGuide", "loto-builder-full:file-tree", "reactiveGuideMessage", "Expand folders and click on a file to load it", 1, "panel-content", 3, "guideTooltipOnly", "reactiveGuideTooltipOnly"], [3, "tableId", "isTableIsolated", "loadMoreEnabled", "enableDragDrop"]], template: function LotoBuilderLeftPanelComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2)(3, "button", 3);
       \u0275\u0275listener("click", function LotoBuilderLeftPanelComponent_Template_button_click_3_listener() {
@@ -130055,12 +130892,11 @@ var LotoBuilderLeftPanelComponent = class _LotoBuilderLeftPanelComponent {
     LotoBuilderLotoPointTableComponent,
     LotoBuilderLotoPointLeftMenuComponent,
     GuideDirective,
-    ReactiveGuideDirective,
-    ContextualGuideDirective
+    ReactiveGuideDirective
   ], styles: ["\n\n[_nghost-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  width: 100%;\n  flex: 1;\n  min-height: 0;\n}\n.left-panel-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  width: 100%;\n  flex: 1;\n  min-height: 0;\n}\n.panel-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 12px 16px;\n  background: var(--primary-background, #ffffff);\n  border-bottom: 2px solid var(--border-color, #e0e0e0);\n  flex-shrink: 0;\n  gap: 16px;\n}\n.tabs[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n  flex: 1;\n}\n.tab-button[_ngcontent-%COMP%] {\n  padding: 8px 16px;\n  background: transparent;\n  border: 2px solid transparent;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  color: var(--secondary-text, #666);\n  transition: all 0.2s ease;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n}\n.tab-button[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #f5f5f5);\n  color: var(--primary-text, #333);\n}\n.tab-button.active[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.mode-toggle[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 4px;\n  background: var(--secondary-background, #f5f5f5);\n  padding: 4px;\n  border-radius: 6px;\n  flex-shrink: 0;\n}\n.mode-button[_ngcontent-%COMP%] {\n  padding: 6px 10px;\n  background: transparent;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 16px;\n  transition: all 0.2s ease;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  color: var(--primary-text, #333);\n}\n.mode-button[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 20px;\n  width: 20px;\n  height: 20px;\n}\n.mode-button[_ngcontent-%COMP%]:hover {\n  background: rgba(33, 150, 243, 0.1);\n}\n.mode-button.active[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n  color: white;\n}\n.mode-button.active[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  color: white;\n}\n.panel-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  background: var(--secondary-background, #f5f5f5);\n  min-height: 0;\n}\n.panel-content[_ngcontent-%COMP%]   app-rf-file-table[_ngcontent-%COMP%], \n.panel-content[_ngcontent-%COMP%]   app-rf-loto-point-table[_ngcontent-%COMP%], \n.panel-content[_ngcontent-%COMP%]   app-rf-file-left-menu[_ngcontent-%COMP%], \n.panel-content[_ngcontent-%COMP%]   app-rf-loto-point-left-menu[_ngcontent-%COMP%], \n.panel-content[_ngcontent-%COMP%]   app-loto-builder-file-table[_ngcontent-%COMP%], \n.panel-content[_ngcontent-%COMP%]   app-loto-builder-loto-point-table[_ngcontent-%COMP%] {\n  width: 100%;\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n}\n.placeholder[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  color: var(--secondary-text, #999);\n  font-style: italic;\n}\n/*# sourceMappingURL=loto-builder-left-panel.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoBuilderLeftPanelComponent, { className: "LotoBuilderLeftPanelComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/loto-builder-left-panel/loto-builder-left-panel.component.ts", lineNumber: 30 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoBuilderLeftPanelComponent, { className: "LotoBuilderLeftPanelComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/loto-builder-left-panel/loto-builder-left-panel.component.ts", lineNumber: 28 });
 })();
 
 // src/app/features/loto-standard/refactored/loto-builder/loto-builder-info-window/loto-builder-info-window.component.ts
@@ -131191,7 +132027,7 @@ var LotoBuilderRightPanelComponent = class _LotoBuilderRightPanelComponent {
       let _t;
       \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.interactiveImage = _t.first);
     }
-  }, outputs: { closeRequested: "closeRequested" }, decls: 21, vars: 13, consts: [[1, "right-panel-container"], [1, "processing-overlay"], [1, "symbol-picker-overlay"], ["appGuide", "create-loto-point-bulk:image-viewer", "guideMessage", "Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point.", "appReactiveGuide", "loto-builder-full:image-viewer", "reactiveGuideMessage", "Right-click and drag to draw a rectangle around equipment", "appContextualGuide", "contextual:image-viewer", 1, "image-area", 3, "guideTooltipOnly", "reactiveGuideTooltipOnly"], [1, "empty-state"], [1, "toolbar"], ["title", "Toggle Text Recognition - When enabled, OCR will recognize text from drawn shapes", 1, "toolbar-button", 3, "click"], ["title", "Delete Selected Equipment", 1, "toolbar-button", "danger", 3, "click", "disabled"], ["title", "Show LOTO Points", 1, "toolbar-button", 3, "click"], ["title", "Toggle LOTO Building Mode", "appReactiveGuide", "loto-builder-full:build-loto-button", "reactiveGuideMessage", "Click to start LOTO building mode", "appContextualGuide", "contextual:build-loto-button", 1, "toolbar-button", 3, "click"], ["title", "Select LOTO Standards", "appReactiveGuide", "loto-builder-full:select-standards-button", "reactiveGuideMessage", "Click to select existing LOTO standards", "appContextualGuide", "contextual:select-standards-button", 1, "toolbar-button", 3, "click"], ["title", "Save Changes", 1, "toolbar-button", "primary", 3, "click", "disabled"], ["title", "Close Builder", 1, "toolbar-button", 3, "click"], [1, "processing-content"], [1, "processing-spinner"], [1, "processing-message"], [1, "symbol-picker-overlay", 3, "click"], [1, "symbol-picker-modal", 3, "click"], [1, "symbol-picker-header"], [1, "close-button", 3, "click"], [1, "symbol-picker-content"], [1, "symbol-option", 3, "click"], [1, "symbol-preview", "rectangle-preview"], ["viewBox", "0 0 40 30", "width", "40", "height", "30"], ["x", "2", "y", "2", "width", "36", "height", "26", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], [1, "symbol-name"], [1, "symbol-option", 3, "selected"], [1, "symbol-preview"], ["fill", "none", "stroke", "currentColor", "stroke-width", "1.5"], [3, "shapeHovered", "shapeClicked", "shapeDoubleClicked", "shapeRightClicked", "shapeUpdated", "shapeDrawn", "shapeDeleted", "imageUrl", "shapesInput", "hoveredShapeId", "selectedShapeIdInput", "config", "customContextMenuActions"], [1, "empty-icon"], [1, "empty-title"], [1, "empty-message"]], template: function LotoBuilderRightPanelComponent_Template(rf, ctx) {
+  }, outputs: { closeRequested: "closeRequested" }, decls: 21, vars: 13, consts: [[1, "right-panel-container"], [1, "processing-overlay"], [1, "symbol-picker-overlay"], ["appGuide", "create-loto-point-bulk:image-viewer", "guideMessage", "Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point.", "appReactiveGuide", "loto-builder-full:image-viewer", "reactiveGuideMessage", "Right-click and drag to draw a rectangle around equipment", 1, "image-area", 3, "guideTooltipOnly", "reactiveGuideTooltipOnly"], [1, "empty-state"], [1, "toolbar"], ["title", "Toggle Text Recognition - When enabled, OCR will recognize text from drawn shapes", 1, "toolbar-button", 3, "click"], ["title", "Delete Selected Equipment", 1, "toolbar-button", "danger", 3, "click", "disabled"], ["title", "Show LOTO Points", 1, "toolbar-button", 3, "click"], ["title", "Toggle LOTO Building Mode", "appReactiveGuide", "loto-builder-full:build-loto-button", "reactiveGuideMessage", "Click to start LOTO building mode", 1, "toolbar-button", 3, "click"], ["title", "Select LOTO Standards", "appReactiveGuide", "loto-builder-full:select-standards-button", "reactiveGuideMessage", "Click to select existing LOTO standards", 1, "toolbar-button", 3, "click"], ["title", "Save Changes", 1, "toolbar-button", "primary", 3, "click", "disabled"], ["title", "Close Builder", 1, "toolbar-button", 3, "click"], [1, "processing-content"], [1, "processing-spinner"], [1, "processing-message"], [1, "symbol-picker-overlay", 3, "click"], [1, "symbol-picker-modal", 3, "click"], [1, "symbol-picker-header"], [1, "close-button", 3, "click"], [1, "symbol-picker-content"], [1, "symbol-option", 3, "click"], [1, "symbol-preview", "rectangle-preview"], ["viewBox", "0 0 40 30", "width", "40", "height", "30"], ["x", "2", "y", "2", "width", "36", "height", "26", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], [1, "symbol-name"], [1, "symbol-option", 3, "selected"], [1, "symbol-preview"], ["fill", "none", "stroke", "currentColor", "stroke-width", "1.5"], [3, "shapeHovered", "shapeClicked", "shapeDoubleClicked", "shapeRightClicked", "shapeUpdated", "shapeDrawn", "shapeDeleted", "imageUrl", "shapesInput", "hoveredShapeId", "selectedShapeIdInput", "config", "customContextMenuActions"], [1, "empty-icon"], [1, "empty-title"], [1, "empty-message"]], template: function LotoBuilderRightPanelComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0);
       \u0275\u0275template(1, LotoBuilderRightPanelComponent_Conditional_1_Template, 5, 1, "div", 1)(2, LotoBuilderRightPanelComponent_Conditional_2_Template, 16, 2, "div", 2);
@@ -131268,18 +132104,17 @@ var LotoBuilderRightPanelComponent = class _LotoBuilderRightPanelComponent {
     InteractiveImageComponent,
     LotoBuilderInfoWindowComponent,
     GuideDirective,
-    ReactiveGuideDirective,
-    ContextualGuideDirective
+    ReactiveGuideDirective
   ], styles: ["\n\n.right-panel-container[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  width: 100%;\n}\n.image-area[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: hidden;\n  background: var(--secondary-background, #f5f5f5);\n  position: relative;\n}\n.empty-state[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  color: var(--secondary-text, #999);\n}\n.empty-icon[_ngcontent-%COMP%] {\n  font-size: 64px;\n  margin-bottom: 16px;\n  opacity: 0.5;\n}\n.empty-title[_ngcontent-%COMP%] {\n  font-size: 20px;\n  font-weight: 600;\n  margin: 0 0 8px 0;\n  color: var(--primary-text, #333);\n}\n.empty-message[_ngcontent-%COMP%] {\n  font-size: 14px;\n  margin: 0;\n  text-align: center;\n  max-width: 400px;\n}\n.toolbar[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  padding: 12px 16px;\n  background: var(--primary-background, #ffffff);\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  flex-shrink: 0;\n}\n.toolbar-button[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  background: var(--secondary-background, #f5f5f5);\n  border: 1px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  color: var(--primary-text, #333);\n  transition: all 0.2s ease;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n}\n.toolbar-button[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e5e5e5);\n  transform: translateY(-1px);\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n}\n.toolbar-button.primary[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.toolbar-button.primary[_ngcontent-%COMP%]:hover {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.toolbar-button.danger[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n  color: #c62828;\n  border-color: #c62828;\n}\n.toolbar-button.danger[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #c62828;\n  color: white;\n  border-color: #c62828;\n}\n.toolbar-button.danger[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n.toolbar-button[_ngcontent-%COMP%]:active {\n  transform: translateY(0);\n}\n.toolbar-button.active[_ngcontent-%COMP%] {\n  background: rgba(33, 150, 243, 0.15);\n  border-color: var(--primary-color, #2196F3);\n  color: var(--primary-color, #2196F3);\n  font-weight: 600;\n}\n.processing-overlay[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 1000;\n  -webkit-backdrop-filter: blur(2px);\n  backdrop-filter: blur(2px);\n}\n.processing-content[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 16px;\n  padding: 32px 48px;\n  background: var(--primary-background, #ffffff);\n  border-radius: 12px;\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);\n}\n.processing-spinner[_ngcontent-%COMP%] {\n  width: 48px;\n  height: 48px;\n  border: 4px solid var(--border-color, #e0e0e0);\n  border-top-color: var(--primary-color, #2196F3);\n  border-radius: 50%;\n  animation: _ngcontent-%COMP%_spin 1s linear infinite;\n}\n@keyframes _ngcontent-%COMP%_spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n.processing-message[_ngcontent-%COMP%] {\n  font-size: 16px;\n  font-weight: 500;\n  color: var(--primary-text, #333);\n  text-align: center;\n}\n.symbol-picker-overlay[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 1001;\n  -webkit-backdrop-filter: blur(2px);\n  backdrop-filter: blur(2px);\n}\n.symbol-picker-modal[_ngcontent-%COMP%] {\n  background: var(--primary-background, #ffffff);\n  border-radius: 12px;\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);\n  max-width: 500px;\n  max-height: 80vh;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n}\n.symbol-picker-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 16px 20px;\n  border-bottom: 1px solid var(--border-color, #e0e0e0);\n}\n.symbol-picker-header[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.symbol-picker-header[_ngcontent-%COMP%]   .close-button[_ngcontent-%COMP%] {\n  background: none;\n  border: none;\n  font-size: 24px;\n  cursor: pointer;\n  color: var(--secondary-text, #666);\n  padding: 0;\n  line-height: 1;\n  transition: color 0.2s;\n}\n.symbol-picker-header[_ngcontent-%COMP%]   .close-button[_ngcontent-%COMP%]:hover {\n  color: var(--primary-text, #333);\n}\n.symbol-picker-content[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));\n  gap: 12px;\n  padding: 20px;\n  overflow-y: auto;\n}\n.symbol-option[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  padding: 12px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  cursor: pointer;\n  transition: all 0.2s;\n  background: var(--primary-background, #ffffff);\n}\n.symbol-option[_ngcontent-%COMP%]:hover {\n  border-color: var(--primary-color, #2196F3);\n  background: rgba(33, 150, 243, 0.05);\n  transform: translateY(-2px);\n  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);\n}\n.symbol-option.selected[_ngcontent-%COMP%] {\n  border-color: var(--primary-color, #2196F3);\n  background: rgba(33, 150, 243, 0.1);\n}\n.symbol-preview[_ngcontent-%COMP%] {\n  width: 50px;\n  height: 50px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  color: var(--primary-text, #333);\n}\n.symbol-preview[_ngcontent-%COMP%]   svg[_ngcontent-%COMP%] {\n  max-width: 100%;\n  max-height: 100%;\n}\n.symbol-name[_ngcontent-%COMP%] {\n  font-size: 11px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n  line-height: 1.2;\n  word-break: break-word;\n}\n/*# sourceMappingURL=loto-builder-right-panel.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoBuilderRightPanelComponent, { className: "LotoBuilderRightPanelComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/loto-builder-right-panel/loto-builder-right-panel.component.ts", lineNumber: 39 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoBuilderRightPanelComponent, { className: "LotoBuilderRightPanelComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/loto-builder-right-panel/loto-builder-right-panel.component.ts", lineNumber: 37 });
 })();
 
 // src/app/features/loto-points/refactored/rf-loto-point-dual-form/rf-loto-point-dual-form.component.ts
-var _c040 = ["primaryForm"];
-var _c122 = ["counterpartForm"];
-var _c217 = () => ["tagNumber", "description", "normPos"];
+var _c041 = ["primaryForm"];
+var _c123 = ["counterpartForm"];
+var _c218 = () => ["tagNumber", "description", "normPos"];
 function RfLotoPointDualFormComponent_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 3);
@@ -131843,7 +132678,7 @@ function RfLotoPointDualFormComponent_Conditional_3_Conditional_10_Template(rf, 
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("tableId", "rf-dual-form-counterpart-search-" + ctx_r1.targetUnit())("fieldsToDisplay", \u0275\u0275pureFunction0(3, _c217))("initialSearchCriteria", ctx_r1.searchCriteria());
+    \u0275\u0275property("tableId", "rf-dual-form-counterpart-search-" + ctx_r1.targetUnit())("fieldsToDisplay", \u0275\u0275pureFunction0(3, _c218))("initialSearchCriteria", ctx_r1.searchCriteria());
   }
 }
 function RfLotoPointDualFormComponent_Conditional_3_Conditional_11_Template(rf, ctx) {
@@ -132667,8 +133502,8 @@ This will also delete all associated equipment shapes.`).then((confirmed) => {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _RfLotoPointDualFormComponent, selectors: [["app-rf-loto-point-dual-form"]], viewQuery: function RfLotoPointDualFormComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c040, 5);
-      \u0275\u0275viewQuery(_c122, 5);
+      \u0275\u0275viewQuery(_c041, 5);
+      \u0275\u0275viewQuery(_c123, 5);
     }
     if (rf & 2) {
       let _t;
@@ -132718,9 +133553,9 @@ This will also delete all associated equipment shapes.`).then((confirmed) => {
 })();
 
 // src/app/features/loto-standard/refactored/loto-builder/loto-builder-form-popup/loto-builder-form-popup.component.ts
-var _c041 = ["popupElement"];
-var _c123 = ["headerElement"];
-var _c218 = () => ["tagNumber", "description", "normPos", "zeroEnergyMethod"];
+var _c042 = ["popupElement"];
+var _c124 = ["headerElement"];
+var _c219 = () => ["tagNumber", "description", "normPos", "zeroEnergyMethod"];
 var _c317 = () => ["tagNumber", "description", "specificLocation", "eqType", "isoPos", "normPos", "location", "zeroEnergy", "equipmentList"];
 function LotoBuilderFormPopupComponent_Conditional_0_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
@@ -132780,7 +133615,7 @@ function LotoBuilderFormPopupComponent_Conditional_0_Conditional_15_Template(rf,
     \u0275\u0275advance(2);
     \u0275\u0275conditional(ctx_r1.searchTerm() ? 2 : -1);
     \u0275\u0275advance(3);
-    \u0275\u0275property("tableId", "loto-builder-select-table")("fieldsToDisplay", \u0275\u0275pureFunction0(4, _c218))("initialSearchCriteria", ctx_r1.getInitialSearchCriteria());
+    \u0275\u0275property("tableId", "loto-builder-select-table")("fieldsToDisplay", \u0275\u0275pureFunction0(4, _c219))("initialSearchCriteria", ctx_r1.getInitialSearchCriteria());
   }
 }
 function LotoBuilderFormPopupComponent_Conditional_0_Conditional_16_Template(rf, ctx) {
@@ -133463,8 +134298,8 @@ var LotoBuilderFormPopupComponent = class _LotoBuilderFormPopupComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoBuilderFormPopupComponent, selectors: [["app-loto-builder-form-popup"]], viewQuery: function LotoBuilderFormPopupComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c041, 5);
-      \u0275\u0275viewQuery(_c123, 5);
+      \u0275\u0275viewQuery(_c042, 5);
+      \u0275\u0275viewQuery(_c124, 5);
     }
     if (rf & 2) {
       let _t;
@@ -133644,8 +134479,8 @@ var DraggableWindowService = class _DraggableWindowService {
 };
 
 // src/app/shared/rf-floating-window/rf-floating-window.component.ts
-var _c042 = ["*", [["", "window-footer", ""]], [["", "window-header", ""]]];
-var _c124 = ["*", "[window-footer]", "[window-header]"];
+var _c043 = ["*", [["", "window-footer", ""]], [["", "window-header", ""]]];
+var _c125 = ["*", "[window-footer]", "[window-header]"];
 function RfFloatingWindowComponent_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
@@ -133823,10 +134658,16 @@ var RfFloatingWindowComponent = class _RfFloatingWindowComponent {
       return;
     const deltaX = event.clientX - this.dragStartPos.x;
     const deltaY = event.clientY - this.dragStartPos.y;
-    const newPosition = {
-      x: this.windowStartPos.x + deltaX,
-      y: this.windowStartPos.y + deltaY
-    };
+    let newX = this.windowStartPos.x + deltaX;
+    let newY = this.windowStartPos.y + deltaY;
+    const windowWidth = this.size().width;
+    const headerHeight = 50;
+    const minVisibleWidth = 100;
+    newY = Math.max(0, newY);
+    newX = Math.max(-(windowWidth - minVisibleWidth), newX);
+    const viewportWidth = window.innerWidth;
+    newX = Math.min(viewportWidth - minVisibleWidth, newX);
+    const newPosition = { x: newX, y: newY };
     this.position.set(newPosition);
   };
   /**
@@ -133913,9 +134754,9 @@ var RfFloatingWindowComponent = class _RfFloatingWindowComponent {
   static \u0275fac = function RfFloatingWindowComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _RfFloatingWindowComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _RfFloatingWindowComponent, selectors: [["app-rf-floating-window"]], inputs: { windowId: [1, "windowId"], initialPosition: [1, "initialPosition"], initialSize: [1, "initialSize"], minSize: [1, "minSize"], maxSize: [1, "maxSize"], resizable: [1, "resizable"], showHeader: [1, "showHeader"], headerClass: [1, "headerClass"] }, outputs: { closed: "closed", positionChanged: "positionChanged", sizeChanged: "sizeChanged" }, ngContentSelectors: _c124, decls: 6, vars: 14, consts: [[1, "floating-window", 3, "mousedown"], [1, "window-header", 3, "class"], [1, "window-content"], [1, "window-header", 3, "mousedown"], [1, "resize-handle", "resize-n", 3, "mousedown"], [1, "resize-handle", "resize-s", 3, "mousedown"], [1, "resize-handle", "resize-e", 3, "mousedown"], [1, "resize-handle", "resize-w", 3, "mousedown"], [1, "resize-handle", "resize-ne", 3, "mousedown"], [1, "resize-handle", "resize-nw", 3, "mousedown"], [1, "resize-handle", "resize-se", 3, "mousedown"], [1, "resize-handle", "resize-sw", 3, "mousedown"]], template: function RfFloatingWindowComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _RfFloatingWindowComponent, selectors: [["app-rf-floating-window"]], inputs: { windowId: [1, "windowId"], initialPosition: [1, "initialPosition"], initialSize: [1, "initialSize"], minSize: [1, "minSize"], maxSize: [1, "maxSize"], resizable: [1, "resizable"], showHeader: [1, "showHeader"], headerClass: [1, "headerClass"] }, outputs: { closed: "closed", positionChanged: "positionChanged", sizeChanged: "sizeChanged" }, ngContentSelectors: _c125, decls: 6, vars: 14, consts: [[1, "floating-window", 3, "mousedown"], [1, "window-header", 3, "class"], [1, "window-content"], [1, "window-header", 3, "mousedown"], [1, "resize-handle", "resize-n", 3, "mousedown"], [1, "resize-handle", "resize-s", 3, "mousedown"], [1, "resize-handle", "resize-e", 3, "mousedown"], [1, "resize-handle", "resize-w", 3, "mousedown"], [1, "resize-handle", "resize-ne", 3, "mousedown"], [1, "resize-handle", "resize-nw", 3, "mousedown"], [1, "resize-handle", "resize-se", 3, "mousedown"], [1, "resize-handle", "resize-sw", 3, "mousedown"]], template: function RfFloatingWindowComponent_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275projectionDef(_c042);
+      \u0275\u0275projectionDef(_c043);
       \u0275\u0275elementStart(0, "div", 0);
       \u0275\u0275listener("mousedown", function RfFloatingWindowComponent_Template_div_mousedown_0_listener() {
         return ctx.onWindowClick();
@@ -133936,7 +134777,7 @@ var RfFloatingWindowComponent = class _RfFloatingWindowComponent {
       \u0275\u0275advance(4);
       \u0275\u0275conditional(ctx.resizable() ? 5 : -1);
     }
-  }, dependencies: [CommonModule], styles: ['\n\n[_nghost-%COMP%] {\n  display: block;\n  position: absolute;\n}\n.floating-window[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  display: flex;\n  flex-direction: column;\n  background: var(--primary-background, #ffffff);\n  border-radius: 8px;\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);\n  overflow: hidden;\n  min-width: 200px;\n  min-height: 150px;\n}\n.floating-window.dragging[_ngcontent-%COMP%] {\n  -webkit-user-select: none;\n  user-select: none;\n  cursor: grabbing;\n  opacity: 0.95;\n}\n.floating-window.dragging[_ngcontent-%COMP%]   .window-header[_ngcontent-%COMP%] {\n  cursor: grabbing;\n}\n.floating-window.resizing[_ngcontent-%COMP%] {\n  -webkit-user-select: none;\n  user-select: none;\n  opacity: 0.95;\n}\n.window-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 12px 16px;\n  background:\n    linear-gradient(\n      135deg,\n      #1976D2 0%,\n      #1565C0 100%);\n  color: white;\n  flex-shrink: 0;\n  cursor: grab;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);\n  gap: 12px;\n}\n.window-header[_ngcontent-%COMP%]:active {\n  cursor: grabbing;\n}\n.window-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n}\n.resize-handle[_ngcontent-%COMP%] {\n  position: absolute;\n  background: transparent;\n  z-index: 10;\n}\n.resize-n[_ngcontent-%COMP%] {\n  top: 0;\n  left: 8px;\n  right: 8px;\n  height: 6px;\n  cursor: ns-resize;\n}\n.resize-s[_ngcontent-%COMP%] {\n  bottom: 0;\n  left: 8px;\n  right: 8px;\n  height: 6px;\n  cursor: ns-resize;\n}\n.resize-e[_ngcontent-%COMP%] {\n  right: 0;\n  top: 8px;\n  bottom: 8px;\n  width: 6px;\n  cursor: ew-resize;\n}\n.resize-w[_ngcontent-%COMP%] {\n  left: 0;\n  top: 8px;\n  bottom: 8px;\n  width: 6px;\n  cursor: ew-resize;\n}\n.resize-ne[_ngcontent-%COMP%] {\n  top: 0;\n  right: 0;\n  width: 12px;\n  height: 12px;\n  cursor: nesw-resize;\n}\n.resize-nw[_ngcontent-%COMP%] {\n  top: 0;\n  left: 0;\n  width: 12px;\n  height: 12px;\n  cursor: nwse-resize;\n}\n.resize-se[_ngcontent-%COMP%] {\n  bottom: 0;\n  right: 0;\n  width: 12px;\n  height: 12px;\n  cursor: nwse-resize;\n}\n.resize-sw[_ngcontent-%COMP%] {\n  bottom: 0;\n  left: 0;\n  width: 12px;\n  height: 12px;\n  cursor: nesw-resize;\n}\n.resize-se[_ngcontent-%COMP%]::after {\n  content: "";\n  position: absolute;\n  bottom: 3px;\n  right: 3px;\n  width: 8px;\n  height: 8px;\n  border-right: 2px solid rgba(0, 0, 0, 0.2);\n  border-bottom: 2px solid rgba(0, 0, 0, 0.2);\n}\n.resize-handle[_ngcontent-%COMP%]:hover {\n  background: rgba(25, 118, 210, 0.1);\n}\n.resize-se[_ngcontent-%COMP%]:hover::after, \n.resize-sw[_ngcontent-%COMP%]:hover::after, \n.resize-ne[_ngcontent-%COMP%]:hover::after, \n.resize-nw[_ngcontent-%COMP%]:hover::after {\n  border-color: rgba(25, 118, 210, 0.6);\n}\n/*# sourceMappingURL=rf-floating-window.component.css.map */'] });
+  }, dependencies: [CommonModule], styles: ['\n\n[_nghost-%COMP%] {\n  display: block;\n  position: absolute;\n}\n.floating-window[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  display: flex;\n  flex-direction: column;\n  background: var(--primary-background, #ffffff);\n  border-radius: 8px;\n  border: 2px solid rgba(100, 100, 100, 0.4);\n  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);\n  overflow: visible;\n  min-width: 200px;\n  min-height: 150px;\n}\n.floating-window.dragging[_ngcontent-%COMP%] {\n  -webkit-user-select: none;\n  user-select: none;\n  cursor: grabbing;\n  opacity: 0.95;\n}\n.floating-window.dragging[_ngcontent-%COMP%]   .window-header[_ngcontent-%COMP%] {\n  cursor: grabbing;\n}\n.floating-window.resizing[_ngcontent-%COMP%] {\n  -webkit-user-select: none;\n  user-select: none;\n  opacity: 0.95;\n}\n.window-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 12px 16px;\n  background:\n    linear-gradient(\n      135deg,\n      #1976D2 0%,\n      #1565C0 100%);\n  color: white;\n  flex-shrink: 0;\n  cursor: grab;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);\n  gap: 12px;\n}\n.window-header[_ngcontent-%COMP%]:active {\n  cursor: grabbing;\n}\n.window-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n}\n.resize-handle[_ngcontent-%COMP%] {\n  position: absolute;\n  background: transparent;\n  z-index: 10;\n}\n.resize-n[_ngcontent-%COMP%] {\n  top: -3px;\n  left: 12px;\n  right: 12px;\n  height: 8px;\n  cursor: ns-resize;\n}\n.resize-s[_ngcontent-%COMP%] {\n  bottom: -3px;\n  left: 12px;\n  right: 12px;\n  height: 8px;\n  cursor: ns-resize;\n}\n.resize-e[_ngcontent-%COMP%] {\n  right: -3px;\n  top: 12px;\n  bottom: 12px;\n  width: 8px;\n  cursor: ew-resize;\n}\n.resize-w[_ngcontent-%COMP%] {\n  left: -3px;\n  top: 12px;\n  bottom: 12px;\n  width: 8px;\n  cursor: ew-resize;\n}\n.resize-ne[_ngcontent-%COMP%] {\n  top: -4px;\n  right: -4px;\n  width: 16px;\n  height: 16px;\n  cursor: nesw-resize;\n}\n.resize-nw[_ngcontent-%COMP%] {\n  top: -4px;\n  left: -4px;\n  width: 16px;\n  height: 16px;\n  cursor: nwse-resize;\n}\n.resize-se[_ngcontent-%COMP%] {\n  bottom: -4px;\n  right: -4px;\n  width: 20px;\n  height: 20px;\n  cursor: nwse-resize;\n}\n.resize-sw[_ngcontent-%COMP%] {\n  bottom: -4px;\n  left: -4px;\n  width: 16px;\n  height: 16px;\n  cursor: nesw-resize;\n}\n.resize-se[_ngcontent-%COMP%]::after {\n  content: "";\n  position: absolute;\n  bottom: 4px;\n  right: 4px;\n  width: 12px;\n  height: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      transparent 30%,\n      rgba(100, 100, 100, 0.5) 30%,\n      rgba(100, 100, 100, 0.5) 40%,\n      transparent 40%,\n      transparent 50%,\n      rgba(100, 100, 100, 0.5) 50%,\n      rgba(100, 100, 100, 0.5) 60%,\n      transparent 60%,\n      transparent 70%,\n      rgba(100, 100, 100, 0.5) 70%,\n      rgba(100, 100, 100, 0.5) 80%,\n      transparent 80%);\n  border-radius: 2px;\n}\n.resize-handle[_ngcontent-%COMP%]:hover {\n  background: rgba(25, 118, 210, 0.15);\n}\n.resize-se[_ngcontent-%COMP%]:hover::after {\n  background:\n    linear-gradient(\n      135deg,\n      transparent 30%,\n      rgba(25, 118, 210, 0.7) 30%,\n      rgba(25, 118, 210, 0.7) 40%,\n      transparent 40%,\n      transparent 50%,\n      rgba(25, 118, 210, 0.7) 50%,\n      rgba(25, 118, 210, 0.7) 60%,\n      transparent 60%,\n      transparent 70%,\n      rgba(25, 118, 210, 0.7) 70%,\n      rgba(25, 118, 210, 0.7) 80%,\n      transparent 80%);\n}\n/*# sourceMappingURL=rf-floating-window.component.css.map */'] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(RfFloatingWindowComponent, { className: "RfFloatingWindowComponent", filePath: "src/app/shared/rf-floating-window/rf-floating-window.component.ts", lineNumber: 27 });
@@ -134294,7 +135135,7 @@ var SimpleLotoFormComponent = class _SimpleLotoFormComponent {
       \u0275\u0275advance(5);
       \u0275\u0275property("disabled", !ctx.lotoStandard().name);
     }
-  }, dependencies: [CommonModule, FormsModule, DragDropModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder], styles: ["\n\n[_nghost-%COMP%] {\n  display: block;\n  width: 100%;\n  height: 100%;\n}\n.simple-loto-form[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: var(--primary-background, #ffffff);\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);\n  transition: all 0.3s ease;\n  overflow: hidden;\n}\n.simple-loto-form.active[_ngcontent-%COMP%] {\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);\n}\n.form-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 16px 20px;\n  background:\n    linear-gradient(\n      135deg,\n      var(--primary-color, #2196F3) 0%,\n      #1976D2 100%);\n  color: white;\n  flex-shrink: 0;\n}\n.form-title[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  flex: 1;\n}\n.point-count-badge[_ngcontent-%COMP%] {\n  background: rgba(255, 255, 255, 0.25);\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 13px;\n  font-weight: 500;\n  -webkit-backdrop-filter: blur(10px);\n  backdrop-filter: blur(10px);\n}\n.form-body[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 20px;\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n  min-height: 0;\n}\n.form-field[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.form-field[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.reorder-hint[_ngcontent-%COMP%] {\n  font-weight: 400;\n  font-size: 12px;\n  color: var(--secondary-text, #666);\n  font-style: italic;\n}\n.form-input[_ngcontent-%COMP%], \n.form-textarea[_ngcontent-%COMP%] {\n  padding: 10px 12px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  font-size: 14px;\n  font-family: inherit;\n  transition: all 0.2s ease;\n  background: var(--input-background, #ffffff);\n}\n.form-input[_ngcontent-%COMP%]:focus, \n.form-textarea[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.form-textarea[_ngcontent-%COMP%] {\n  resize: vertical;\n  min-height: 80px;\n}\n.points-list[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  max-height: 300px;\n  overflow-y: auto;\n  padding: 4px;\n}\n.empty-state[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 32px 16px;\n  color: var(--secondary-text, #666);\n}\n.empty-message[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 15px;\n  font-weight: 500;\n}\n.empty-hint[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 13px;\n  color: var(--tertiary-text, #999);\n  font-style: italic;\n}\n.point-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 12px;\n  background: var(--secondary-background, #f5f5f5);\n  border: 1px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  transition: all 0.2s ease;\n  cursor: grab;\n}\n.point-item[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e3f2fd);\n  border-color: var(--primary-color, #2196F3);\n}\n.drag-handle[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  padding: 4px 6px;\n  cursor: grab;\n  color: var(--secondary-text, #999);\n  flex-shrink: 0;\n}\n.drag-handle[_ngcontent-%COMP%]:hover {\n  color: var(--primary-color, #2196F3);\n}\n.drag-icon[_ngcontent-%COMP%] {\n  font-size: 14px;\n  letter-spacing: 2px;\n  line-height: 1;\n}\n.point-number[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 600;\n  background: var(--border-color, #e0e0e0);\n  border-radius: 50%;\n  width: 20px;\n  height: 20px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.cdk-drag-preview[_ngcontent-%COMP%] {\n  box-sizing: border-box;\n  border-radius: 6px;\n  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);\n  background: var(--primary-background, #ffffff);\n  border: 2px solid var(--primary-color, #2196F3);\n}\n.cdk-drag-placeholder[_ngcontent-%COMP%] {\n  opacity: 0;\n}\n.cdk-drag-animating[_ngcontent-%COMP%] {\n  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);\n}\n.points-list.cdk-drop-list-dragging[_ngcontent-%COMP%]   .point-item[_ngcontent-%COMP%]:not(.cdk-drag-placeholder) {\n  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);\n}\n.point-item-placeholder[_ngcontent-%COMP%] {\n  background: var(--hover-color, #e3f2fd);\n  border: 2px dashed var(--primary-color, #2196F3);\n  border-radius: 6px;\n  min-height: 60px;\n}\n.point-item.cdk-drag-preview[_ngcontent-%COMP%]   .drag-handle[_ngcontent-%COMP%] {\n  cursor: grabbing;\n}\n.point-info[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  min-width: 0;\n  overflow: hidden;\n}\n.point-tag[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-color, #2196F3);\n  word-break: break-word;\n  line-height: 1.3;\n}\n.point-description[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--secondary-text, #666);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  line-height: 1.4;\n  word-break: break-word;\n}\n.remove-button[_ngcontent-%COMP%] {\n  padding: 6px 10px;\n  background: transparent;\n  border: 1px solid var(--border-color, #e0e0e0);\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 16px;\n  color: var(--secondary-text, #666);\n  transition: all 0.2s ease;\n  flex-shrink: 0;\n}\n.remove-button[_ngcontent-%COMP%]:hover {\n  background: #ffebee;\n  border-color: #f44336;\n  color: #f44336;\n}\n.form-footer[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  padding: 16px 20px;\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #f9f9f9);\n  flex-shrink: 0;\n}\n.button[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border: none;\n  border-radius: 6px;\n  font-size: 14px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  font-family: inherit;\n}\n.button-secondary[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--primary-text, #333);\n  border: 2px solid var(--border-color, #e0e0e0);\n}\n.button-secondary[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e0e0e0);\n}\n.button-primary[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);\n}\n.button-primary[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);\n  transform: translateY(-1px);\n}\n.button-primary[_ngcontent-%COMP%]:disabled {\n  background: var(--disabled-background, #cccccc);\n  color: var(--disabled-text, #999);\n  cursor: not-allowed;\n  box-shadow: none;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: var(--secondary-text, #999);\n}\n/*# sourceMappingURL=simple-loto-form.component.css.map */"] });
+  }, dependencies: [CommonModule, FormsModule, DragDropModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder], styles: ["\n\n[_nghost-%COMP%] {\n  display: block;\n  width: 100%;\n  height: 100%;\n}\n.simple-loto-form[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: var(--primary-background, #ffffff);\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);\n  transition: all 0.3s ease;\n  overflow: hidden;\n}\n.simple-loto-form.active[_ngcontent-%COMP%] {\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);\n}\n.form-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 16px 20px;\n  background:\n    linear-gradient(\n      135deg,\n      var(--primary-color, #2196F3) 0%,\n      #1976D2 100%);\n  color: white;\n  flex-shrink: 0;\n}\n.form-title[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  flex: 1;\n}\n.point-count-badge[_ngcontent-%COMP%] {\n  background: rgba(255, 255, 255, 0.25);\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 13px;\n  font-weight: 500;\n  -webkit-backdrop-filter: blur(10px);\n  backdrop-filter: blur(10px);\n}\n.form-body[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 20px;\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n  min-height: 0;\n}\n.form-field[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.form-field[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.reorder-hint[_ngcontent-%COMP%] {\n  font-weight: 400;\n  font-size: 12px;\n  color: var(--secondary-text, #666);\n  font-style: italic;\n}\n.form-input[_ngcontent-%COMP%], \n.form-textarea[_ngcontent-%COMP%] {\n  padding: 10px 12px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  font-size: 14px;\n  font-family: inherit;\n  transition: all 0.2s ease;\n  background: var(--input-background, #ffffff);\n  flex-shrink: 0;\n}\n.form-input[_ngcontent-%COMP%] {\n  min-height: 40px;\n}\n.form-input[_ngcontent-%COMP%]:focus, \n.form-textarea[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.form-textarea[_ngcontent-%COMP%] {\n  resize: vertical;\n  min-height: 50px;\n  max-height: 120px;\n}\n.form-field[_ngcontent-%COMP%]:nth-child(1) {\n  flex-shrink: 0;\n}\n.form-field[_ngcontent-%COMP%]:nth-child(2) {\n  flex-shrink: 1;\n  min-height: 60px;\n}\n.form-field[_ngcontent-%COMP%]:nth-child(3) {\n  flex: 1;\n  min-height: 120px;\n  overflow: hidden;\n}\n.points-list[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  flex: 1;\n  min-height: 100px;\n  max-height: none;\n  overflow-y: auto;\n  padding: 4px;\n}\n.empty-state[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 32px 16px;\n  color: var(--secondary-text, #666);\n}\n.empty-message[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 15px;\n  font-weight: 500;\n}\n.empty-hint[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 13px;\n  color: var(--tertiary-text, #999);\n  font-style: italic;\n}\n.point-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 12px;\n  background: var(--secondary-background, #f5f5f5);\n  border: 1px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  transition: all 0.2s ease;\n  cursor: grab;\n  flex-shrink: 0;\n  min-height: fit-content;\n}\n.point-item[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e3f2fd);\n  border-color: var(--primary-color, #2196F3);\n}\n.drag-handle[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  padding: 4px 6px;\n  cursor: grab;\n  color: var(--secondary-text, #999);\n  flex-shrink: 0;\n}\n.drag-handle[_ngcontent-%COMP%]:hover {\n  color: var(--primary-color, #2196F3);\n}\n.drag-icon[_ngcontent-%COMP%] {\n  font-size: 14px;\n  letter-spacing: 2px;\n  line-height: 1;\n}\n.point-number[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 600;\n  background: var(--border-color, #e0e0e0);\n  border-radius: 50%;\n  width: 20px;\n  height: 20px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.cdk-drag-preview[_ngcontent-%COMP%] {\n  box-sizing: border-box;\n  border-radius: 6px;\n  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);\n  background: var(--primary-background, #ffffff);\n  border: 2px solid var(--primary-color, #2196F3);\n}\n.cdk-drag-placeholder[_ngcontent-%COMP%] {\n  opacity: 0;\n}\n.cdk-drag-animating[_ngcontent-%COMP%] {\n  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);\n}\n.points-list.cdk-drop-list-dragging[_ngcontent-%COMP%]   .point-item[_ngcontent-%COMP%]:not(.cdk-drag-placeholder) {\n  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);\n}\n.point-item-placeholder[_ngcontent-%COMP%] {\n  background: var(--hover-color, #e3f2fd);\n  border: 2px dashed var(--primary-color, #2196F3);\n  border-radius: 6px;\n  min-height: 60px;\n}\n.point-item.cdk-drag-preview[_ngcontent-%COMP%]   .drag-handle[_ngcontent-%COMP%] {\n  cursor: grabbing;\n}\n.point-info[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  min-width: 0;\n  overflow: hidden;\n}\n.point-tag[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-color, #2196F3);\n  word-break: break-word;\n  line-height: 1.3;\n}\n.point-description[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--secondary-text, #666);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  line-height: 1.4;\n  word-break: break-word;\n}\n.remove-button[_ngcontent-%COMP%] {\n  padding: 6px 10px;\n  background: transparent;\n  border: 1px solid var(--border-color, #e0e0e0);\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 16px;\n  color: var(--secondary-text, #666);\n  transition: all 0.2s ease;\n  flex-shrink: 0;\n}\n.remove-button[_ngcontent-%COMP%]:hover {\n  background: #ffebee;\n  border-color: #f44336;\n  color: #f44336;\n}\n.form-footer[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  padding: 16px 20px;\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #f9f9f9);\n  flex-shrink: 0;\n}\n.button[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border: none;\n  border-radius: 6px;\n  font-size: 14px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  font-family: inherit;\n}\n.button-secondary[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--primary-text, #333);\n  border: 2px solid var(--border-color, #e0e0e0);\n}\n.button-secondary[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e0e0e0);\n}\n.button-primary[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);\n}\n.button-primary[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);\n  transform: translateY(-1px);\n}\n.button-primary[_ngcontent-%COMP%]:disabled {\n  background: var(--disabled-background, #cccccc);\n  color: var(--disabled-text, #999);\n  cursor: not-allowed;\n  box-shadow: none;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.form-body[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.points-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: var(--secondary-text, #999);\n}\n/*# sourceMappingURL=simple-loto-form.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(SimpleLotoFormComponent, { className: "SimpleLotoFormComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/simple-loto-form/simple-loto-form.component.ts", lineNumber: 15 });
@@ -135082,7 +135923,7 @@ var LotoStandardsSelectorComponent = class _LotoStandardsSelectorComponent {
     if (rf & 2) {
       \u0275\u0275conditional(ctx.isVisible() ? 0 : -1);
     }
-  }, dependencies: [CommonModule, FormsModule, RfFloatingWindowComponent], styles: ["\n\n[_nghost-%COMP%] {\n  display: block;\n}\n.header-content[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  width: 100%;\n}\n.header-title[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n}\n.drag-handle[_ngcontent-%COMP%] {\n  font-size: 18px;\n  opacity: 0.7;\n  letter-spacing: 2px;\n  cursor: grab;\n}\n.header-content[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 20px;\n  font-weight: 600;\n}\n.close-button[_ngcontent-%COMP%] {\n  padding: 8px 12px;\n  background: rgba(255, 255, 255, 0.2);\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 20px;\n  color: white;\n  transition: all 0.2s ease;\n  -webkit-backdrop-filter: blur(10px);\n  backdrop-filter: blur(10px);\n}\n.close-button[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.3);\n  transform: scale(1.1);\n}\n.selector-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 24px;\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n  min-height: 0;\n}\n.search-section[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n}\n.search-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  font-size: 14px;\n  transition: all 0.2s ease;\n  box-sizing: border-box;\n}\n.search-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.standards-list[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  flex: 1;\n  overflow-y: auto;\n  min-height: 0;\n}\n.standard-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 16px;\n  background: var(--secondary-background, #f5f5f5);\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  cursor: pointer;\n  transition: all 0.2s ease;\n}\n.standard-item[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e3f2fd);\n  border-color: var(--primary-color, #2196F3);\n}\n.standard-item.selected[_ngcontent-%COMP%] {\n  background: rgba(33, 150, 243, 0.1);\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);\n}\n.standard-checkbox[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n  padding-top: 2px;\n}\n.standard-checkbox[_ngcontent-%COMP%]   input[type=checkbox][_ngcontent-%COMP%] {\n  width: 18px;\n  height: 18px;\n  cursor: pointer;\n}\n.standard-info[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  min-width: 0;\n}\n.standard-name[_ngcontent-%COMP%] {\n  font-size: 16px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.standard-description[_ngcontent-%COMP%] {\n  font-size: 14px;\n  color: var(--secondary-text, #666);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n}\n.standard-points-count[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--primary-color, #2196F3);\n  font-weight: 500;\n}\n.create-new-form[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.form-field[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.form-field[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.form-input[_ngcontent-%COMP%], \n.form-textarea[_ngcontent-%COMP%] {\n  padding: 12px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  font-size: 14px;\n  font-family: inherit;\n  transition: all 0.2s ease;\n  box-sizing: border-box;\n}\n.form-input[_ngcontent-%COMP%]:focus, \n.form-textarea[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.form-textarea[_ngcontent-%COMP%] {\n  resize: vertical;\n  min-height: 100px;\n}\n.form-actions[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  padding-top: 8px;\n}\n.loading-state[_ngcontent-%COMP%], \n.error-state[_ngcontent-%COMP%], \n.empty-state[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 48px 24px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n}\n.loading-state[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 15px;\n}\n.error-message[_ngcontent-%COMP%] {\n  margin: 0 0 16px 0;\n  font-size: 15px;\n  color: #c62828;\n}\n.retry-button[_ngcontent-%COMP%] {\n  padding: 8px 16px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.retry-button[_ngcontent-%COMP%]:hover {\n  background: #1976D2;\n}\n.empty-message[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 16px;\n  font-weight: 500;\n}\n.empty-hint[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 14px;\n  color: var(--tertiary-text, #999);\n  font-style: italic;\n}\n.selector-footer[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 16px 24px;\n  background: var(--secondary-background, #f9f9f9);\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  flex-shrink: 0;\n}\n.footer-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.button[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border: none;\n  border-radius: 6px;\n  font-size: 14px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  font-family: inherit;\n}\n.button-secondary[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--primary-text, #333);\n  border: 2px solid var(--border-color, #e0e0e0);\n}\n.button-secondary[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e0e0e0);\n}\n.button-primary[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);\n}\n.button-primary[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);\n  transform: translateY(-1px);\n}\n.button-primary[_ngcontent-%COMP%]:disabled {\n  background: var(--disabled-background, #cccccc);\n  color: var(--disabled-text, #999);\n  cursor: not-allowed;\n  box-shadow: none;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: var(--secondary-text, #999);\n}\n/*# sourceMappingURL=loto-standards-selector.component.css.map */"] });
+  }, dependencies: [CommonModule, FormsModule, RfFloatingWindowComponent], styles: ["\n\n[_nghost-%COMP%] {\n  display: block;\n}\n.header-content[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  width: 100%;\n}\n.header-title[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n}\n.drag-handle[_ngcontent-%COMP%] {\n  font-size: 18px;\n  opacity: 0.7;\n  letter-spacing: 2px;\n  cursor: grab;\n}\n.header-content[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 20px;\n  font-weight: 600;\n}\n.close-button[_ngcontent-%COMP%] {\n  padding: 8px 12px;\n  background: rgba(255, 255, 255, 0.2);\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 20px;\n  color: white;\n  transition: all 0.2s ease;\n  -webkit-backdrop-filter: blur(10px);\n  backdrop-filter: blur(10px);\n}\n.close-button[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.3);\n  transform: scale(1.1);\n}\n.selector-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 24px;\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n  min-height: 0;\n}\n.search-section[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n}\n.search-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  font-size: 14px;\n  transition: all 0.2s ease;\n  box-sizing: border-box;\n}\n.search-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.standards-list[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  flex: 1;\n  overflow-y: auto;\n  min-height: 0;\n}\n.standard-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 16px;\n  background: var(--secondary-background, #f5f5f5);\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  flex-shrink: 0;\n}\n.standard-item[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e3f2fd);\n  border-color: var(--primary-color, #2196F3);\n}\n.standard-item.selected[_ngcontent-%COMP%] {\n  background: rgba(33, 150, 243, 0.1);\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);\n}\n.standard-checkbox[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n  padding-top: 2px;\n}\n.standard-checkbox[_ngcontent-%COMP%]   input[type=checkbox][_ngcontent-%COMP%] {\n  width: 18px;\n  height: 18px;\n  cursor: pointer;\n}\n.standard-info[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  min-width: 0;\n}\n.standard-name[_ngcontent-%COMP%] {\n  font-size: 16px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.standard-description[_ngcontent-%COMP%] {\n  font-size: 14px;\n  color: var(--secondary-text, #666);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n}\n.standard-points-count[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--primary-color, #2196F3);\n  font-weight: 500;\n}\n.create-new-form[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.form-field[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n.form-field[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--primary-text, #333);\n}\n.form-input[_ngcontent-%COMP%], \n.form-textarea[_ngcontent-%COMP%] {\n  padding: 12px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 6px;\n  font-size: 14px;\n  font-family: inherit;\n  transition: all 0.2s ease;\n  box-sizing: border-box;\n}\n.form-input[_ngcontent-%COMP%]:focus, \n.form-textarea[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary-color, #2196F3);\n  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);\n}\n.form-textarea[_ngcontent-%COMP%] {\n  resize: vertical;\n  min-height: 100px;\n}\n.form-actions[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  padding-top: 8px;\n}\n.loading-state[_ngcontent-%COMP%], \n.error-state[_ngcontent-%COMP%], \n.empty-state[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 48px 24px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n}\n.loading-state[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 15px;\n}\n.error-message[_ngcontent-%COMP%] {\n  margin: 0 0 16px 0;\n  font-size: 15px;\n  color: #c62828;\n}\n.retry-button[_ngcontent-%COMP%] {\n  padding: 8px 16px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border: none;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.retry-button[_ngcontent-%COMP%]:hover {\n  background: #1976D2;\n}\n.empty-message[_ngcontent-%COMP%] {\n  margin: 0 0 8px 0;\n  font-size: 16px;\n  font-weight: 500;\n}\n.empty-hint[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 14px;\n  color: var(--tertiary-text, #999);\n  font-style: italic;\n}\n.selector-footer[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 16px 24px;\n  background: var(--secondary-background, #f9f9f9);\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  flex-shrink: 0;\n}\n.footer-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.button[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border: none;\n  border-radius: 6px;\n  font-size: 14px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  font-family: inherit;\n}\n.button-secondary[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--primary-text, #333);\n  border: 2px solid var(--border-color, #e0e0e0);\n}\n.button-secondary[_ngcontent-%COMP%]:hover {\n  background: var(--hover-color, #e0e0e0);\n}\n.button-primary[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);\n}\n.button-primary[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);\n  transform: translateY(-1px);\n}\n.button-primary[_ngcontent-%COMP%]:disabled {\n  background: var(--disabled-background, #cccccc);\n  color: var(--disabled-text, #999);\n  cursor: not-allowed;\n  box-shadow: none;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.selector-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.standards-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: var(--secondary-text, #999);\n}\n/*# sourceMappingURL=loto-standards-selector.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoStandardsSelectorComponent, { className: "LotoStandardsSelectorComponent", filePath: "src/app/features/loto-standard/refactored/loto-builder/loto-standards-selector/loto-standards-selector.component.ts", lineNumber: 17 });
@@ -135372,7 +136213,7 @@ var CheckboxOnlyLabelComponent = class _CheckboxOnlyLabelComponent {
 })();
 
 // src/app/shared/reactive-form/smart-form/smart-form.component.ts
-var _c043 = () => [];
+var _c044 = () => [];
 var _forTrack047 = ($index, $item) => $item.name;
 function SmartFormComponent_Conditional_0_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
@@ -135417,7 +136258,7 @@ function SmartFormComponent_Conditional_0_For_3_For_3_Case_1_Template(rf, ctx) {
     let tmp_23_0;
     const field_r5 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(4, _c043))("formControl", ctx_r1.getFormControl(field_r5.name))("categoryName", field_r5.name);
+    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(4, _c044))("formControl", ctx_r1.getFormControl(field_r5.name))("categoryName", field_r5.name);
   }
 }
 function SmartFormComponent_Conditional_0_For_3_For_3_Case_2_Template(rf, ctx) {
@@ -135428,7 +136269,7 @@ function SmartFormComponent_Conditional_0_For_3_For_3_Case_2_Template(rf, ctx) {
     let tmp_23_0;
     const field_r5 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(3, _c043))("formControl", ctx_r1.getFormControl(field_r5.name));
+    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(3, _c044))("formControl", ctx_r1.getFormControl(field_r5.name));
   }
 }
 function SmartFormComponent_Conditional_0_For_3_For_3_Case_3_Template(rf, ctx) {
@@ -135449,7 +136290,7 @@ function SmartFormComponent_Conditional_0_For_3_For_3_Case_4_Template(rf, ctx) {
     let tmp_23_0;
     const field_r5 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(3, _c043))("formControl", ctx_r1.getFormControl(field_r5.name));
+    \u0275\u0275property("label", field_r5.label)("options", (tmp_23_0 = field_r5.options) !== null && tmp_23_0 !== void 0 ? tmp_23_0 : \u0275\u0275pureFunction0(3, _c044))("formControl", ctx_r1.getFormControl(field_r5.name));
   }
 }
 function SmartFormComponent_Conditional_0_For_3_For_3_Case_5_Template(rf, ctx) {
@@ -135471,7 +136312,7 @@ function SmartFormComponent_Conditional_0_For_3_For_3_Case_5_Template(rf, ctx) {
     let tmp_22_0;
     const field_r5 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("options", (tmp_22_0 = field_r5.options) !== null && tmp_22_0 !== void 0 ? tmp_22_0 : \u0275\u0275pureFunction0(4, _c043))("label", field_r5.label)("formControl", ctx_r1.getFormControl(field_r5.name))("categoryName", field_r5.name);
+    \u0275\u0275property("options", (tmp_22_0 = field_r5.options) !== null && tmp_22_0 !== void 0 ? tmp_22_0 : \u0275\u0275pureFunction0(4, _c044))("label", field_r5.label)("formControl", ctx_r1.getFormControl(field_r5.name))("categoryName", field_r5.name);
   }
 }
 function SmartFormComponent_Conditional_0_For_3_For_3_Case_6_Template(rf, ctx) {
@@ -136242,7 +137083,7 @@ var LotoDetailFormComponent = class _LotoDetailFormComponent {
 })();
 
 // src/app/features/loto/loto-table/loto-table.component.ts
-var _c044 = (a0, a1, a2, a3, a4) => ({ values: a0, formSubmit: a1, formDelete: a2, imageUrls$: a3, selectedItem: a4 });
+var _c045 = (a0, a1, a2, a3, a4) => ({ values: a0, formSubmit: a1, formDelete: a2, imageUrls$: a3, selectedItem: a4 });
 var LotoTableComponent = class _LotoTableComponent {
   columns = [
     { id: "id", header: "ID", accessorKey: "id" },
@@ -136451,7 +137292,7 @@ var LotoTableComponent = class _LotoTableComponent {
     if (rf & 2) {
       \u0275\u0275property("columns", ctx.columns)("items", ctx.items$)("clickCallback", ctx.onItemClick)("doubleClickCallback", ctx.onItemDoubleClick)("rightClickCallback", ctx.onItemRightClick)("middleClickCallback", ctx.onItemMiddleClick);
       \u0275\u0275advance(6);
-      \u0275\u0275property("isOpen", ctx.isPopupOpen)("title", "LOTO Details")("contentComponent", ctx.LotoDetailFormComponent)("contentInputs", \u0275\u0275pureFunction5(10, _c044, ctx.selectedItem, ctx.onFormSubmit.bind(ctx), ctx.onFormDelete.bind(ctx), ctx.relatedImages$, ctx.selectedItem));
+      \u0275\u0275property("isOpen", ctx.isPopupOpen)("title", "LOTO Details")("contentComponent", ctx.LotoDetailFormComponent)("contentInputs", \u0275\u0275pureFunction5(10, _c045, ctx.selectedItem, ctx.onFormSubmit.bind(ctx), ctx.onFormDelete.bind(ctx), ctx.relatedImages$, ctx.selectedItem));
     }
   }, dependencies: [CommonModule, TableComponent2, PopupComponent], styles: ["\n\n[_nghost-%COMP%] {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  height: 100%;\n  min-height: 100%;\n  width: 100%;\n  overflow: visible;\n}\n/*# sourceMappingURL=loto-table.component.css.map */"] });
 };
@@ -136460,9 +137301,9 @@ var LotoTableComponent = class _LotoTableComponent {
 })();
 
 // src/app/features/loto/loto-side-menu/loto-side-menu.component.ts
-var _c045 = ["container"];
-var _c125 = ["topPanel"];
-var _c219 = ["bottomPanel"];
+var _c046 = ["container"];
+var _c126 = ["topPanel"];
+var _c220 = ["bottomPanel"];
 var _c318 = ["resizeHandle"];
 function LotoSideMenuComponent_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
@@ -136656,9 +137497,9 @@ var LotoSideMenuComponent = class _LotoSideMenuComponent {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoSideMenuComponent, selectors: [["app-loto-side-menu"]], viewQuery: function LotoSideMenuComponent_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuery(_c045, 5);
-      \u0275\u0275viewQuery(_c125, 5);
-      \u0275\u0275viewQuery(_c219, 5);
+      \u0275\u0275viewQuery(_c046, 5);
+      \u0275\u0275viewQuery(_c126, 5);
+      \u0275\u0275viewQuery(_c220, 5);
       \u0275\u0275viewQuery(_c318, 5);
     }
     if (rf & 2) {
@@ -136724,1606 +137565,6 @@ var LOTO_ROUTES = [
     component: LotoBuilderContainerComponent
   }
 ];
-
-// src/app/features/loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component.ts
-var _c046 = ["primaryForm"];
-var _c126 = ["counterpartForm"];
-var _c220 = () => ["tagNumber", "description", "normPos"];
-function LotoPointDualFormComponent_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 3);
-    \u0275\u0275element(1, "div", 8);
-    \u0275\u0275elementStart(2, "span");
-    \u0275\u0275text(3, "Loading counterpart...");
-    \u0275\u0275elementEnd()();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_7_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 14);
-    \u0275\u0275text(1, "Saving...");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Deleting... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Delete ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_18_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 33);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_18_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.deletePrimary());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_18_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("disabled", ctx_r1.isDeletingPrimary() || ctx_r1.isDeletingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isDeletingPrimary() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_7_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 38);
-    \u0275\u0275text(1, "\uF517 Linked");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 39);
-    \u0275\u0275text(1, "Found (not linked)");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_9_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 40);
-    \u0275\u0275text(1, "Suggestion");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Unlinking... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Unlink ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 49);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r5);
-      const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.unlinkCounterpart());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("disabled", ctx_r1.isLinking());
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isLinking() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Linking... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Link ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 50);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.linkCounterparts());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    let tmp_5_0;
-    const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("disabled", ctx_r1.isLinking() || !(((tmp_5_0 = ctx_r1.currentPrimaryValues()) == null ? null : tmp_5_0.id) || ctx_r1.primaryLotoPoint().id));
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isLinking() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 41);
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_1_Template, 3, 2, "button", 47)(2, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Conditional_2_Template, 3, 2, "button", 48);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isCounterpartLinked() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 51)(1, "button", 52);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template_button_click_1_listener() {
-      const field_r8 = \u0275\u0275restoreView(_r7).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.syncFieldToCounterpart(field_r8));
-    });
-    \u0275\u0275text(2, " \u2192 ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 53);
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 54);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template_button_click_5_listener() {
-      const field_r8 = \u0275\u0275restoreView(_r7).$implicit;
-      const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.syncFieldToPrimary(field_r8));
-    });
-    \u0275\u0275text(6, " \u2190 ");
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const field_r8 = ctx.$implicit;
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275classProp("different", ctx_r1.isFieldDifferent(field_r8));
-    \u0275\u0275advance();
-    \u0275\u0275propertyInterpolate2("title", "Sync ", ctx_r1.getFieldLabel(field_r8), " to Unit ", ctx_r1.targetUnit(), "");
-    \u0275\u0275property("disabled", !ctx_r1.isFieldDifferent(field_r8));
-    \u0275\u0275advance(2);
-    \u0275\u0275classProp("different", ctx_r1.isFieldDifferent(field_r8));
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r1.getFieldLabel(field_r8), " ");
-    \u0275\u0275advance();
-    \u0275\u0275propertyInterpolate2("title", "Sync ", ctx_r1.getFieldLabel(field_r8), " to Unit ", ctx_r1.sourceUnit(), "");
-    \u0275\u0275property("disabled", !ctx_r1.isFieldDifferent(field_r8));
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 23)(1, "div", 34)(2, "span", 35);
-    \u0275\u0275text(3, "\u21C4");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 36);
-    \u0275\u0275text(5, "Sync");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 37);
-    \u0275\u0275template(7, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_7_Template, 2, 0, "span", 38)(8, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_8_Template, 2, 0, "span", 39)(9, LotoPointDualFormComponent_Conditional_2_Conditional_19_Case_9_Template, 2, 0, "span", 40);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(10, LotoPointDualFormComponent_Conditional_2_Conditional_19_Conditional_10_Template, 3, 1, "div", 41);
-    \u0275\u0275elementStart(11, "div", 42)(12, "button", 43);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template_button_click_12_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.syncAllToCounterpart());
-    });
-    \u0275\u0275text(13, " Sync All \u2192 ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "button", 44);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_19_Template_button_click_14_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.syncAllToPrimary());
-    });
-    \u0275\u0275text(15, " \u2190 Sync All ");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(16, "div", 45);
-    \u0275\u0275repeaterCreate(17, LotoPointDualFormComponent_Conditional_2_Conditional_19_For_18_Template, 7, 13, "div", 46, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    let tmp_4_0;
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(6);
-    \u0275\u0275classMap(ctx_r1.counterpartStatus());
-    \u0275\u0275advance();
-    \u0275\u0275conditional((tmp_4_0 = ctx_r1.counterpartStatus()) === "linked" ? 7 : tmp_4_0 === "found" ? 8 : tmp_4_0 === "suggested" ? 9 : -1);
-    \u0275\u0275advance(3);
-    \u0275\u0275conditional(!ctx_r1.isCounterpartNew() ? 10 : -1);
-    \u0275\u0275advance(2);
-    \u0275\u0275propertyInterpolate1("title", "Sync all fields to Unit ", ctx_r1.targetUnit(), "");
-    \u0275\u0275advance(2);
-    \u0275\u0275propertyInterpolate1("title", "Sync all fields to Unit ", ctx_r1.sourceUnit(), "");
-    \u0275\u0275advance(3);
-    \u0275\u0275repeater(ctx_r1.syncableFields);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_20_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 24)(1, "div", 55)(2, "span", 35);
-    \u0275\u0275text(3, "\u21C4");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 36);
-    \u0275\u0275text(5, "Sync");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 56)(7, "span");
-    \u0275\u0275text(8, "No counterpart selected");
-    \u0275\u0275elementEnd()()();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_4_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 58);
-    \u0275\u0275text(1, "NEW");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_5_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 59);
-    \u0275\u0275text(1, "\uF517");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_6_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 60);
-    \u0275\u0275text(1, "Suggestion");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 14);
-    \u0275\u0275text(1, "Saving...");
-    \u0275\u0275elementEnd();
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Deleting... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Delete ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 33);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r10);
-      const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.deleteCounterpart());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("disabled", ctx_r1.isDeletingCounterpart() || ctx_r1.isDeletingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isDeletingCounterpart() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 57)(1, "div", 11)(2, "h3", 12);
-    \u0275\u0275text(3);
-    \u0275\u0275template(4, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_4_Template, 2, 0, "span", 58)(5, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_5_Template, 2, 0, "span", 59)(6, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_6_Template, 2, 0, "span", 60);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "div", 61);
-    \u0275\u0275template(8, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_8_Template, 2, 0, "span", 14);
-    \u0275\u0275elementStart(9, "button", 62);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_9_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.openManualSearch());
-    });
-    \u0275\u0275text(10, " \uF50D Change ");
-    \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(11, "div", 15)(12, "app-rf-reactive-form", 16, 1);
-    \u0275\u0275listener("formValueChange", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_app_rf_reactive_form_formValueChange_12_listener($event) {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onCounterpartValueChange($event));
-    });
-    \u0275\u0275elementContainerStart(14, 17);
-    \u0275\u0275elementStart(15, "button", 18);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_15_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.openCounterpartTagGenerator());
-    });
-    \u0275\u0275text(16, " Generate Tag ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "app-clipboard-form", 19);
-    \u0275\u0275listener("itemSelected", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_app_clipboard_form_itemSelected_17_listener($event) {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onCounterpartClipboardItemSelected($event));
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementContainerEnd();
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "div", 20)(19, "button", 21);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_21_Template_button_click_19_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.saveCounterpart());
-    });
-    \u0275\u0275text(20);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(21, LotoPointDualFormComponent_Conditional_2_Conditional_21_Conditional_21_Template, 3, 2, "button", 22);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275classProp("is-new", ctx_r1.isCounterpartNew())("is-linked", ctx_r1.isCounterpartLinked())("is-suggestion", ctx_r1.counterpartStatus() === "suggested");
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.targetUnit(), " ");
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isCounterpartNew() ? 4 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isCounterpartLinked() ? 5 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.counterpartStatus() === "suggested" && !ctx_r1.isCounterpartLinked() ? 6 : -1);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.isSavingCounterpart() ? 8 : -1);
-    \u0275\u0275advance(4);
-    \u0275\u0275property("entity", ctx_r1.currentCounterpartValues() || ctx_r1.counterpartLotoPoint())("fields", ctx_r1.counterpartFields())("title", "")("showSubmitButton", false);
-    \u0275\u0275advance(5);
-    \u0275\u0275property("entityType", "LotoPoint")("initialEntity", ctx_r1.initialCounterpartEntity())("currentEntity", ctx_r1.currentCounterpartValues() || ctx_r1.counterpartLotoPoint())("hasValidData", ctx_r1.hasValidData)("getItemSummary", ctx_r1.getItemSummary)("clipboardFormatter", ctx_r1.clipboardFormatter)("excludeIdOnPaste", true);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.isSavingCounterpart() || ctx_r1.isSavingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate2(" ", ctx_r1.isCounterpartNew() ? "Create" : "Save", " Unit ", ctx_r1.targetUnit(), " ");
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.canDeleteCounterpart() ? 21 : -1);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 11)(2, "h3", 12);
-    \u0275\u0275text(3);
-    \u0275\u0275elementStart(4, "span", 13);
-    \u0275\u0275text(5, "(No counterpart)");
-    \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(6, "div", 63)(7, "div", 64);
-    \u0275\u0275text(8, "?");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "h4");
-    \u0275\u0275text(10, "No Counterpart Found");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "p");
-    \u0275\u0275text(12);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "div", 65)(14, "button", 66);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template_button_click_14_listener() {
-      \u0275\u0275restoreView(_r11);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.createNewCounterpart());
-    });
-    \u0275\u0275elementStart(15, "span", 67);
-    \u0275\u0275text(16, "+");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(17, " Create New ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "button", 68);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_22_Template_button_click_18_listener() {
-      \u0275\u0275restoreView(_r11);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.openManualSearch());
-    });
-    \u0275\u0275elementStart(19, "span", 67);
-    \u0275\u0275text(20, "\uF50D");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(21, " Search Existing ");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(22, "p", 69);
-    \u0275\u0275text(23, " You can continue editing the primary form.");
-    \u0275\u0275element(24, "br");
-    \u0275\u0275text(25, " Choose an option when ready. ");
-    \u0275\u0275elementEnd()()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.targetUnit(), " ");
-    \u0275\u0275advance(9);
-    \u0275\u0275textInterpolate1("No matching LOTO point found for Unit ", ctx_r1.targetUnit(), ".");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Deleting... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Delete Both ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_27_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 70);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_27_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r12);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.deleteBoth());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_27_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("disabled", ctx_r1.isDeletingPrimary() || ctx_r1.isDeletingCounterpart() || ctx_r1.isDeletingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isDeletingBoth() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Saving Both... ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275text(0, " Save Both Units ");
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Conditional_29_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 71);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Conditional_29_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r13);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.saveBoth());
-    });
-    \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_1_Template, 1, 0)(2, LotoPointDualFormComponent_Conditional_2_Conditional_29_Conditional_2_Template, 1, 0);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("disabled", ctx_r1.isSavingPrimary() || ctx_r1.isSavingCounterpart() || ctx_r1.isSavingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.isSavingBoth() ? 1 : 2);
-  }
-}
-function LotoPointDualFormComponent_Conditional_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 9)(1, "div", 10)(2, "div", 11)(3, "h3", 12);
-    \u0275\u0275text(4);
-    \u0275\u0275elementStart(5, "span", 13);
-    \u0275\u0275text(6, "(Primary)");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(7, LotoPointDualFormComponent_Conditional_2_Conditional_7_Template, 2, 0, "span", 14);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "div", 15)(9, "app-rf-reactive-form", 16, 0);
-    \u0275\u0275listener("formValueChange", function LotoPointDualFormComponent_Conditional_2_Template_app_rf_reactive_form_formValueChange_9_listener($event) {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.onPrimaryValueChange($event));
-    });
-    \u0275\u0275elementContainerStart(11, 17);
-    \u0275\u0275elementStart(12, "button", 18);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_12_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.openPrimaryTagGenerator());
-    });
-    \u0275\u0275text(13, " Generate Tag ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "app-clipboard-form", 19);
-    \u0275\u0275listener("itemSelected", function LotoPointDualFormComponent_Conditional_2_Template_app_clipboard_form_itemSelected_14_listener($event) {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.onPrimaryClipboardItemSelected($event));
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementContainerEnd();
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(15, "div", 20)(16, "button", 21);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_16_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.savePrimary());
-    });
-    \u0275\u0275text(17);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(18, LotoPointDualFormComponent_Conditional_2_Conditional_18_Template, 3, 2, "button", 22);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(19, LotoPointDualFormComponent_Conditional_2_Conditional_19_Template, 19, 8, "div", 23)(20, LotoPointDualFormComponent_Conditional_2_Conditional_20_Template, 9, 0, "div", 24)(21, LotoPointDualFormComponent_Conditional_2_Conditional_21_Template, 22, 26, "div", 25)(22, LotoPointDualFormComponent_Conditional_2_Conditional_22_Template, 26, 2, "div", 26);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "div", 27)(24, "div", 28)(25, "button", 29);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_2_Template_button_click_25_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.close());
-    });
-    \u0275\u0275text(26, " Cancel ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(27, LotoPointDualFormComponent_Conditional_2_Conditional_27_Template, 3, 2, "button", 30);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(28, "div", 31);
-    \u0275\u0275template(29, LotoPointDualFormComponent_Conditional_2_Conditional_29_Template, 3, 2, "button", 32);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate1(" Unit ", ctx_r1.sourceUnit(), " ");
-    \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r1.isSavingPrimary() ? 7 : -1);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("entity", ctx_r1.currentPrimaryValues() || ctx_r1.primaryLotoPoint())("fields", ctx_r1.primaryFields())("title", "")("showSubmitButton", false);
-    \u0275\u0275advance(5);
-    \u0275\u0275property("entityType", "LotoPoint")("initialEntity", ctx_r1.initialPrimaryEntity())("currentEntity", ctx_r1.currentPrimaryValues() || ctx_r1.primaryLotoPoint())("hasValidData", ctx_r1.hasValidData)("getItemSummary", ctx_r1.getItemSummary)("clipboardFormatter", ctx_r1.clipboardFormatter)("excludeIdOnPaste", true);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.isSavingPrimary() || ctx_r1.isSavingBoth());
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" Save Unit ", ctx_r1.sourceUnit(), " ");
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.canDeletePrimary() ? 18 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 19 : 20);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 21 : 22);
-    \u0275\u0275advance(6);
-    \u0275\u0275conditional(ctx_r1.canDeletePrimary() && ctx_r1.canDeleteCounterpart() ? 27 : -1);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.counterpartLotoPoint() ? 29 : -1);
-  }
-}
-function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-rf-loto-point-table", 81);
-    \u0275\u0275listener("selectedItemsEvent", function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template_app_rf_loto_point_table_selectedItemsEvent_0_listener($event) {
-      \u0275\u0275restoreView(_r15);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onSearchSelected($event));
-    })("rowDoubleClickedEvent", function LotoPointDualFormComponent_Conditional_3_Conditional_10_Template_app_rf_loto_point_table_rowDoubleClickedEvent_0_listener($event) {
-      \u0275\u0275restoreView(_r15);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onSearchRowDoubleClicked($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("tableId", "dual-form-counterpart-search-" + ctx_r1.targetUnit())("fieldsToDisplay", \u0275\u0275pureFunction0(3, _c220))("initialSearchCriteria", ctx_r1.searchCriteria());
-  }
-}
-function LotoPointDualFormComponent_Conditional_3_Conditional_11_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 78)(1, "span", 82);
-    \u0275\u0275text(2, "Selected:");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "strong");
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "span", 83);
-    \u0275\u0275text(6);
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(ctx_r1.selectedFromSearch().tagNumber);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(ctx_r1.selectedFromSearch().description);
-  }
-}
-function LotoPointDualFormComponent_Conditional_3_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 4)(1, "div", 72)(2, "div", 73)(3, "h3");
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 74);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_5_listener() {
-      \u0275\u0275restoreView(_r14);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.closeManualSearch());
-    });
-    \u0275\u0275text(6, "\u2715");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "p", 75);
-    \u0275\u0275text(8, ' Double-click a row to select, or select and click "Use Selected". ');
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "div", 76);
-    \u0275\u0275template(10, LotoPointDualFormComponent_Conditional_3_Conditional_10_Template, 1, 4, "app-rf-loto-point-table", 77);
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(11, LotoPointDualFormComponent_Conditional_3_Conditional_11_Template, 7, 2, "div", 78);
-    \u0275\u0275elementStart(12, "div", 79)(13, "button", 29);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_13_listener() {
-      \u0275\u0275restoreView(_r14);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.closeManualSearch());
-    });
-    \u0275\u0275text(14, " Cancel ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "button", 80);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_3_Template_button_click_15_listener() {
-      \u0275\u0275restoreView(_r14);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.useSelectedFromSearch());
-    });
-    \u0275\u0275text(16, " Use Selected ");
-    \u0275\u0275elementEnd()()()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate1("Search for Counterpart in Unit ", ctx_r1.targetUnit(), "");
-    \u0275\u0275advance(6);
-    \u0275\u0275conditional(ctx_r1.showManualSearch() ? 10 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.selectedFromSearch() ? 11 : -1);
-    \u0275\u0275advance(4);
-    \u0275\u0275property("disabled", !ctx_r1.selectedFromSearch());
-  }
-}
-function LotoPointDualFormComponent_Conditional_4_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r16 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 5)(1, "p");
-    \u0275\u0275text(2, "This LOTO point's tag number does not start with 01 or 02.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p");
-    \u0275\u0275text(4, "Dual form view is only available for unit-specific LOTO points.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 84);
-    \u0275\u0275listener("click", function LotoPointDualFormComponent_Conditional_4_Template_button_click_5_listener() {
-      \u0275\u0275restoreView(_r16);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.close());
-    });
-    \u0275\u0275text(6, "Close");
-    \u0275\u0275elementEnd()();
-  }
-}
-var LotoPointDualFormComponent = class _LotoPointDualFormComponent {
-  primaryFormRef;
-  counterpartFormRef;
-  apiService = inject(RfLotoPointApiService);
-  mapperService = inject(LotoPointMapperService);
-  counterpartService = inject(LotoPointCounterpartService);
-  messageService = inject(GlobalMessageService);
-  confirmationService = inject(ConfirmationService);
-  destroyRef = inject(DestroyRef);
-  lotoPointStateService = inject(RfLotoPointStateService);
-  clipboardService = inject(ClipboardService2);
-  // Inputs
-  primaryLotoPoint = input.required();
-  fieldsToDisplay = input([
-    "tagNumber",
-    "description",
-    "specificLocation",
-    "eqType",
-    "isoPos",
-    "normPos",
-    "location",
-    "zeroEnergy",
-    "equipmentList"
-  ]);
-  // Outputs
-  primarySaved = new EventEmitter();
-  counterpartSaved = new EventEmitter();
-  bothSaved = new EventEmitter();
-  formClosed = new EventEmitter();
-  // State
-  counterpartLotoPoint = signal(null);
-  isCounterpartNew = signal(false);
-  isCounterpartLinked = signal(false);
-  counterpartStatus = signal("not-found");
-  sourceUnit = signal("01");
-  targetUnit = signal("02");
-  isLoading = signal(false);
-  isSavingPrimary = signal(false);
-  isSavingCounterpart = signal(false);
-  isSavingBoth = signal(false);
-  isLinking = signal(false);
-  // For manual search mode
-  showManualSearch = signal(false);
-  // Selected item from manual search table
-  selectedFromSearch = signal(null);
-  // Search criteria for counterpart search (filters by target unit)
-  searchCriteria = computed(() => {
-    return {
-      filters: {
-        unit: this.targetUnit()
-      },
-      pageSize: 50
-    };
-  });
-  // Track form values for syncing
-  currentPrimaryValues = signal(null);
-  currentCounterpartValues = signal(null);
-  // Track which fields are different between forms
-  differentFields = signal(/* @__PURE__ */ new Set());
-  // Expose syncable fields for template
-  syncableFields = SYNCABLE_FIELDS.filter((f) => f !== "tagNumber");
-  // Computed: Check if primary tag or unit starts with 01 or 02
-  isUnitSpecific = computed(() => {
-    return this.counterpartService.isUnitSpecific(this.primaryLotoPoint());
-  });
-  // Computed: Form fields for primary
-  primaryFields = computed(() => {
-    const entity = this.currentPrimaryValues() || this.primaryLotoPoint();
-    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
-  });
-  // Computed: Form fields for counterpart
-  counterpartFields = computed(() => {
-    const entity = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!entity)
-      return [];
-    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
-  });
-  constructor() {
-    effect(() => {
-      const primary = this.primaryLotoPoint();
-      if (!primary) {
-        return;
-      }
-      const isUnitSpecific = this.counterpartService.isUnitSpecific(primary);
-      if (!isUnitSpecific) {
-        return;
-      }
-      const source = this.counterpartService.getSourceUnit(primary);
-      this.sourceUnit.set(source);
-      this.targetUnit.set(this.counterpartService.getTargetUnit(source));
-      if (primary?.id) {
-        this.loadCounterpart(primary.id);
-      } else if (primary?.tagNumber) {
-        this.loadCounterpartByTagNumber(primary.tagNumber);
-      } else if (primary?.unit) {
-        this.loadCounterpartByTagNumber(primary.unit);
-      }
-    });
-  }
-  /**
-   * Load counterpart data from API
-   */
-  loadCounterpart(primaryId) {
-    this.isLoading.set(true);
-    this.showManualSearch.set(false);
-    this.apiService.getUnitCounterpart(primaryId).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
-      if (response.responseData) {
-        const data = response.responseData;
-        const counterpart = LotoPointDto.fromJson(data.counterpart);
-        this.counterpartLotoPoint.set(counterpart);
-        this.currentCounterpartValues.set(counterpart);
-        this.isCounterpartNew.set(data.isNew);
-        this.isCounterpartLinked.set(data.isLinked ?? false);
-        this.sourceUnit.set(data.sourceUnit);
-        this.targetUnit.set(data.targetUnit);
-        if (data.isLinked) {
-          this.counterpartStatus.set("linked");
-        } else if (!data.isNew) {
-          this.counterpartStatus.set("found");
-        } else {
-          this.counterpartStatus.set("suggested");
-        }
-        this.updateDifferentFields();
-      } else {
-        this.counterpartStatus.set("not-found");
-      }
-      this.isLoading.set(false);
-    }), catchError((error) => {
-      console.error("Error loading counterpart:", error);
-      this.messageService.showError("Failed to load unit counterpart");
-      this.counterpartStatus.set("not-found");
-      this.isLoading.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Load counterpart by tag number (for new items)
-   */
-  loadCounterpartByTagNumber(tagNumber) {
-    if (!tagNumber || !tagNumber.startsWith("01") && !tagNumber.startsWith("02")) {
-      this.counterpartStatus.set("not-found");
-      return;
-    }
-    this.isLoading.set(true);
-    this.apiService.getCounterpartByTagNumber(tagNumber).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
-      if (response.responseData) {
-        const data = response.responseData;
-        const counterpart = LotoPointDto.fromJson(data.counterpart);
-        this.counterpartLotoPoint.set(counterpart);
-        this.currentCounterpartValues.set(counterpart);
-        this.isCounterpartNew.set(data.isNew);
-        this.isCounterpartLinked.set(false);
-        this.sourceUnit.set(data.sourceUnit);
-        this.targetUnit.set(data.targetUnit);
-        this.counterpartStatus.set(data.isNew ? "suggested" : "found");
-        this.updateDifferentFields();
-      }
-      this.isLoading.set(false);
-    }), catchError((error) => {
-      console.error("Error loading counterpart by tag:", error);
-      this.counterpartStatus.set("not-found");
-      this.isLoading.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Set counterpart manually (from external selection like a table)
-   */
-  setCounterpartManually(lotoPoint) {
-    this.counterpartLotoPoint.set(lotoPoint);
-    this.currentCounterpartValues.set(lotoPoint);
-    this.isCounterpartNew.set(false);
-    this.isCounterpartLinked.set(false);
-    this.counterpartStatus.set("found");
-    this.showManualSearch.set(false);
-    this.updateDifferentFields();
-  }
-  /**
-   * Create a new counterpart (empty form)
-   */
-  createNewCounterpart() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    if (!primary?.tagNumber)
-      return;
-    const newCounterpart = this.counterpartService.generateCounterpart(primary, this.targetUnit());
-    this.counterpartLotoPoint.set(newCounterpart);
-    this.currentCounterpartValues.set(newCounterpart);
-    this.isCounterpartNew.set(true);
-    this.isCounterpartLinked.set(false);
-    this.counterpartStatus.set("suggested");
-    this.showManualSearch.set(false);
-    this.updateDifferentFields();
-  }
-  /**
-   * Show manual search UI
-   */
-  openManualSearch() {
-    this.lotoPointStateService.clearLotoPoints();
-    this.lotoPointStateService.resetPage();
-    this.lotoPointStateService.clearSortState();
-    this.selectedFromSearch.set(null);
-    this.showManualSearch.set(true);
-  }
-  /**
-   * Hide manual search UI
-   */
-  closeManualSearch() {
-    this.showManualSearch.set(false);
-    this.selectedFromSearch.set(null);
-  }
-  /**
-   * Handle selection from manual search table
-   */
-  onSearchSelected(items) {
-    if (items.length > 0) {
-      this.selectedFromSearch.set(items[0]);
-    } else {
-      this.selectedFromSearch.set(null);
-    }
-  }
-  /**
-   * Handle double-click on search table row - immediately use that counterpart
-   */
-  onSearchRowDoubleClicked(item) {
-    this.setCounterpartManually(item);
-  }
-  /**
-   * Use the selected item from search as counterpart
-   */
-  useSelectedFromSearch() {
-    const selected = this.selectedFromSearch();
-    if (selected) {
-      this.setCounterpartManually(selected);
-    }
-  }
-  /**
-   * Handle primary form value changes
-   */
-  onPrimaryValueChange(values) {
-    this.currentPrimaryValues.set(values);
-    this.updateDifferentFields();
-  }
-  /**
-   * Handle counterpart form value changes
-   */
-  onCounterpartValueChange(values) {
-    this.currentCounterpartValues.set(values);
-    this.updateDifferentFields();
-  }
-  /**
-   * Update the set of fields that differ between forms
-   */
-  updateDifferentFields() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    this.differentFields.set(this.counterpartService.getDifferentFields(primary, counterpart, true));
-  }
-  /**
-   * Check if a field is different between forms
-   */
-  isFieldDifferent(field) {
-    return this.differentFields().has(field);
-  }
-  /**
-   * Check if there are any different fields
-   */
-  hasDifferentFields() {
-    return this.differentFields().size > 0;
-  }
-  /**
-   * Get a short label for a field
-   */
-  getFieldLabel(field) {
-    return this.counterpartService.getFieldLabel(field);
-  }
-  /**
-   * Sync a single field from primary to counterpart
-   */
-  syncFieldToCounterpart(field) {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary || !counterpart)
-      return;
-    if (field === "zeroEnergy") {
-      this.isLoading.set(true);
-      this.counterpartService.syncZeroEnergy(primary, counterpart, this.sourceUnit(), this.destroyRef).pipe(tap((updated) => {
-        this.currentCounterpartValues.set(updated);
-        this.counterpartLotoPoint.set(updated);
-        this.updateDifferentFields();
-        this.isLoading.set(false);
-      }), catchError((error) => {
-        console.error("Error syncing zeroEnergy:", error);
-        this.isLoading.set(false);
-        return of(null);
-      })).subscribe();
-      return;
-    }
-    const updatedCounterpart = this.counterpartService.syncField(primary, counterpart, field, this.sourceUnit(), this.targetUnit());
-    this.currentCounterpartValues.set(updatedCounterpart);
-    this.counterpartLotoPoint.set(updatedCounterpart);
-    this.updateDifferentFields();
-  }
-  /**
-   * Sync a single field from counterpart to primary
-   */
-  syncFieldToPrimary(field) {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary || !counterpart)
-      return;
-    if (field === "zeroEnergy") {
-      this.isLoading.set(true);
-      this.counterpartService.syncZeroEnergy(counterpart, primary, this.targetUnit(), this.destroyRef).pipe(tap((updated) => {
-        this.currentPrimaryValues.set(updated);
-        this.updateDifferentFields();
-        this.isLoading.set(false);
-      }), catchError((error) => {
-        console.error("Error syncing zeroEnergy:", error);
-        this.isLoading.set(false);
-        return of(null);
-      })).subscribe();
-      return;
-    }
-    const updatedPrimary = this.counterpartService.syncField(counterpart, primary, field, this.targetUnit(), this.sourceUnit());
-    this.currentPrimaryValues.set(updatedPrimary);
-    this.updateDifferentFields();
-  }
-  /**
-   * Sync all fields from primary to counterpart
-   */
-  syncAllToCounterpart() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary || !counterpart)
-      return;
-    const updatedCounterpart = this.counterpartService.syncAllFields(
-      primary,
-      counterpart,
-      this.sourceUnit(),
-      this.targetUnit(),
-      true
-      // exclude tagNumber
-    );
-    this.currentCounterpartValues.set(updatedCounterpart);
-    this.counterpartLotoPoint.set(updatedCounterpart);
-    this.isLoading.set(true);
-    this.counterpartService.syncZeroEnergy(primary, updatedCounterpart, this.sourceUnit(), this.destroyRef).pipe(tap((finalCounterpart) => {
-      this.currentCounterpartValues.set(finalCounterpart);
-      this.counterpartLotoPoint.set(finalCounterpart);
-      this.updateDifferentFields();
-      this.isLoading.set(false);
-      this.messageService.showSuccess(`All fields synced to Unit ${this.targetUnit()}`);
-    }), catchError((error) => {
-      console.error("Error syncing zeroEnergy:", error);
-      this.updateDifferentFields();
-      this.isLoading.set(false);
-      this.messageService.showSuccess(`Fields synced to Unit ${this.targetUnit()} (zeroEnergy sync failed)`);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Sync all fields from counterpart to primary
-   */
-  syncAllToPrimary() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary || !counterpart)
-      return;
-    const updatedPrimary = this.counterpartService.syncAllFields(
-      counterpart,
-      primary,
-      this.targetUnit(),
-      this.sourceUnit(),
-      true
-      // exclude tagNumber
-    );
-    this.currentPrimaryValues.set(updatedPrimary);
-    this.isLoading.set(true);
-    this.counterpartService.syncZeroEnergy(counterpart, updatedPrimary, this.targetUnit(), this.destroyRef).pipe(tap((finalPrimary) => {
-      this.currentPrimaryValues.set(finalPrimary);
-      this.updateDifferentFields();
-      this.isLoading.set(false);
-      this.messageService.showSuccess(`All fields synced to Unit ${this.sourceUnit()}`);
-    }), catchError((error) => {
-      console.error("Error syncing zeroEnergy:", error);
-      this.updateDifferentFields();
-      this.isLoading.set(false);
-      this.messageService.showSuccess(`Fields synced to Unit ${this.sourceUnit()} (zeroEnergy sync failed)`);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Save primary LOTO point
-   */
-  savePrimary() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    if (!primary)
-      return;
-    this.isSavingPrimary.set(true);
-    this.apiService.saveLotoPoint(primary).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
-      if (response.responseData) {
-        const saved = LotoPointDto.fromJson(response.responseData);
-        this.currentPrimaryValues.set(saved);
-        this.primarySaved.emit(saved);
-        this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point saved`);
-      }
-      this.isSavingPrimary.set(false);
-    }), catchError((error) => {
-      console.error("Error saving primary:", error);
-      this.messageService.showError("Failed to save primary LOTO point");
-      this.isSavingPrimary.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Save counterpart LOTO point
-   */
-  saveCounterpart() {
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!counterpart)
-      return;
-    this.isSavingCounterpart.set(true);
-    this.apiService.saveLotoPoint(counterpart).pipe(takeUntilDestroyed(this.destroyRef), tap((response) => {
-      if (response.responseData) {
-        const saved = LotoPointDto.fromJson(response.responseData);
-        this.counterpartLotoPoint.set(saved);
-        this.currentCounterpartValues.set(saved);
-        this.isCounterpartNew.set(false);
-        this.counterpartSaved.emit(saved);
-        this.messageService.showSuccess(`Unit ${this.targetUnit()} LOTO point saved`);
-      }
-      this.isSavingCounterpart.set(false);
-    }), catchError((error) => {
-      console.error("Error saving counterpart:", error);
-      this.messageService.showError("Failed to save counterpart LOTO point");
-      this.isSavingCounterpart.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Save both LOTO points and link them
-   */
-  saveBoth() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary || !counterpart)
-      return;
-    this.isSavingBoth.set(true);
-    this.apiService.saveLotoPoint(primary).pipe(takeUntilDestroyed(this.destroyRef), tap((primaryResponse) => {
-      if (primaryResponse.responseData) {
-        const savedPrimary = LotoPointDto.fromJson(primaryResponse.responseData);
-        this.currentPrimaryValues.set(savedPrimary);
-        this.apiService.saveLotoPoint(counterpart).pipe(takeUntilDestroyed(this.destroyRef), tap((counterpartResponse) => {
-          if (counterpartResponse.responseData) {
-            const savedCounterpart = LotoPointDto.fromJson(counterpartResponse.responseData);
-            this.counterpartLotoPoint.set(savedCounterpart);
-            this.currentCounterpartValues.set(savedCounterpart);
-            this.isCounterpartNew.set(false);
-            if (!this.isCounterpartLinked() && savedPrimary.id && savedCounterpart.id) {
-              this.linkCounterpartsAfterSave(savedPrimary, savedCounterpart);
-            } else {
-              this.bothSaved.emit({ primary: savedPrimary, counterpart: savedCounterpart });
-              this.messageService.showSuccess("Both LOTO points saved successfully");
-              this.isSavingBoth.set(false);
-            }
-          } else {
-            this.isSavingBoth.set(false);
-          }
-        }), catchError((error) => {
-          console.error("Error saving counterpart:", error);
-          this.messageService.showError("Primary saved but failed to save counterpart");
-          this.isSavingBoth.set(false);
-          return of(null);
-        })).subscribe();
-      }
-    }), catchError((error) => {
-      console.error("Error saving primary:", error);
-      this.messageService.showError("Failed to save primary LOTO point");
-      this.isSavingBoth.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Link counterparts after both are saved
-   */
-  linkCounterpartsAfterSave(primary, counterpart) {
-    if (!primary.id || !counterpart.id) {
-      this.bothSaved.emit({ primary, counterpart });
-      this.messageService.showSuccess("Both LOTO points saved (linking skipped - missing IDs)");
-      this.isSavingBoth.set(false);
-      return;
-    }
-    this.apiService.linkCounterparts(primary.id, counterpart.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
-      primary.counterpartId = counterpart.id;
-      counterpart.counterpartId = primary.id;
-      this.currentPrimaryValues.set(primary);
-      this.currentCounterpartValues.set(counterpart);
-      this.counterpartLotoPoint.set(counterpart);
-      this.isCounterpartLinked.set(true);
-      this.counterpartStatus.set("linked");
-      this.bothSaved.emit({ primary, counterpart });
-      this.messageService.showSuccess("Both LOTO points saved and linked");
-      this.isSavingBoth.set(false);
-    }), catchError((error) => {
-      console.error("Error linking counterparts:", error);
-      this.bothSaved.emit({ primary, counterpart });
-      this.messageService.showWarning("Both saved, but linking failed. You may need to link manually.");
-      this.isSavingBoth.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Manually link current primary and counterpart
-   */
-  linkCounterparts() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary?.id || !counterpart?.id) {
-      this.messageService.showError("Both LOTO points must be saved before linking");
-      return;
-    }
-    this.isLinking.set(true);
-    this.apiService.linkCounterparts(primary.id, counterpart.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
-      primary.counterpartId = counterpart.id;
-      counterpart.counterpartId = primary.id;
-      this.currentPrimaryValues.set(primary);
-      this.currentCounterpartValues.set(counterpart);
-      this.counterpartLotoPoint.set(counterpart);
-      this.isCounterpartLinked.set(true);
-      this.counterpartStatus.set("linked");
-      this.messageService.showSuccess("LOTO points linked successfully");
-      this.isLinking.set(false);
-    }), catchError((error) => {
-      console.error("Error linking counterparts:", error);
-      this.messageService.showError("Failed to link counterparts");
-      this.isLinking.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  /**
-   * Unlink current counterpart
-   */
-  unlinkCounterpart() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    if (!primary?.id) {
-      this.messageService.showError("Primary LOTO point must be saved");
-      return;
-    }
-    this.isLinking.set(true);
-    this.apiService.unlinkCounterpart(primary.id).pipe(takeUntilDestroyed(this.destroyRef), tap(() => {
-      primary.counterpartId = null;
-      const counterpart = this.counterpartLotoPoint();
-      if (counterpart) {
-        counterpart.counterpartId = null;
-        this.counterpartLotoPoint.set(counterpart);
-        this.currentCounterpartValues.set(counterpart);
-      }
-      this.currentPrimaryValues.set(primary);
-      this.isCounterpartLinked.set(false);
-      this.counterpartStatus.set("found");
-      this.messageService.showSuccess("Counterpart unlinked");
-      this.isLinking.set(false);
-    }), catchError((error) => {
-      console.error("Error unlinking counterpart:", error);
-      this.messageService.showError("Failed to unlink counterpart");
-      this.isLinking.set(false);
-      return of(null);
-    })).subscribe();
-  }
-  // ========== Tag Number Generator ==========
-  /** Whether primary tag generator popup is open */
-  isPrimaryTagGeneratorOpen = signal(false);
-  /** Whether counterpart tag generator popup is open */
-  isCounterpartTagGeneratorOpen = signal(false);
-  /**
-   * Open tag generator for primary form
-   */
-  openPrimaryTagGenerator() {
-    this.isPrimaryTagGeneratorOpen.set(true);
-  }
-  /**
-   * Close tag generator for primary form
-   */
-  closePrimaryTagGenerator() {
-    this.isPrimaryTagGeneratorOpen.set(false);
-  }
-  /**
-   * Handle tag generated for primary form
-   */
-  onPrimaryTagGenerated(tagNumber) {
-    const current = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const updated = new LotoPointDto(__spreadProps(__spreadValues({}, current), {
-      tagNumber
-    }));
-    this.currentPrimaryValues.set(updated);
-    this.closePrimaryTagGenerator();
-    this.updateDifferentFields();
-  }
-  /**
-   * Open tag generator for counterpart form
-   */
-  openCounterpartTagGenerator() {
-    this.isCounterpartTagGeneratorOpen.set(true);
-  }
-  /**
-   * Close tag generator for counterpart form
-   */
-  closeCounterpartTagGenerator() {
-    this.isCounterpartTagGeneratorOpen.set(false);
-  }
-  /**
-   * Handle tag generated for counterpart form
-   */
-  onCounterpartTagGenerated(tagNumber) {
-    const current = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!current)
-      return;
-    const updated = new LotoPointDto(__spreadProps(__spreadValues({}, current), {
-      tagNumber
-    }));
-    this.currentCounterpartValues.set(updated);
-    this.counterpartLotoPoint.set(updated);
-    this.closeCounterpartTagGenerator();
-    this.updateDifferentFields();
-  }
-  // ========== Clipboard Functionality ==========
-  /** Initial entity for primary clipboard tracking */
-  initialPrimaryEntity = signal(new LotoPointDto());
-  /** Initial entity for counterpart clipboard tracking */
-  initialCounterpartEntity = signal(new LotoPointDto());
-  /** Capture initial primary entity for clipboard */
-  captureInitialPrimary = effect(() => {
-    const entity = this.primaryLotoPoint();
-    const current = this.initialPrimaryEntity();
-    if (entity && (entity.id || entity.tagNumber || entity.description) && !(current.id || current.tagNumber || current.description)) {
-      this.initialPrimaryEntity.set(structuredClone(entity));
-    }
-  });
-  /** Capture initial counterpart entity for clipboard */
-  captureInitialCounterpart = effect(() => {
-    const entity = this.counterpartLotoPoint();
-    const current = this.initialCounterpartEntity();
-    if (entity && (entity.id || entity.tagNumber || entity.description) && !(current.id || current.tagNumber || current.description)) {
-      this.initialCounterpartEntity.set(structuredClone(entity));
-    }
-  });
-  /**
-   * Check if entity has valid data for clipboard operations
-   */
-  hasValidData = (entity) => {
-    return !!(entity.id || entity.tagNumber || entity.description);
-  };
-  /**
-   * Get summary string for clipboard item display
-   */
-  getItemSummary = (item) => {
-    return `${item.tagNumber || "N/A"} - ${item.description || "No description"}`;
-  };
-  /**
-   * Formatter to transform LotoPointDto to LotoPointClipboardItem before adding to clipboard
-   */
-  clipboardFormatter = (entity) => {
-    const clipboardItem = new LotoPointClipboardItem(entity);
-    clipboardItem.objectType = "LotoPoint";
-    return clipboardItem;
-  };
-  /**
-   * Handle clipboard item selected for primary form
-   */
-  onPrimaryClipboardItemSelected(item) {
-    if (item) {
-      const updated = new LotoPointDto(item);
-      this.currentPrimaryValues.set(updated);
-      this.updateDifferentFields();
-    }
-  }
-  /**
-   * Handle clipboard item selected for counterpart form
-   */
-  onCounterpartClipboardItemSelected(item) {
-    if (item) {
-      const updated = new LotoPointDto(item);
-      this.currentCounterpartValues.set(updated);
-      this.counterpartLotoPoint.set(updated);
-      this.updateDifferentFields();
-    }
-  }
-  // ========== Delete Functionality ==========
-  /** Whether currently deleting primary */
-  isDeletingPrimary = signal(false);
-  /** Whether currently deleting counterpart */
-  isDeletingCounterpart = signal(false);
-  /** Whether currently deleting both */
-  isDeletingBoth = signal(false);
-  /**
-   * Check if primary can be deleted (must have an ID)
-   */
-  canDeletePrimary() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    return !!primary?.id;
-  }
-  /**
-   * Check if counterpart can be deleted (must have an ID and not be new)
-   */
-  canDeleteCounterpart() {
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    return !!counterpart?.id && !this.isCounterpartNew();
-  }
-  /**
-   * Delete primary LOTO point with confirmation
-   */
-  deletePrimary() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    if (!primary?.id)
-      return;
-    const tagNumber = primary.tagNumber || `LOTO Point #${primary.id}`;
-    this.confirmationService.confirm(`Are you sure you want to delete "${tagNumber}" (Unit ${this.sourceUnit()})?
-
-This will also delete all associated equipment shapes.`).then((confirmed) => {
-      if (!confirmed)
-        return;
-      if (this.isCounterpartLinked()) {
-        this.confirmationService.confirm(`This LOTO point has a linked counterpart.
-
-Do you also want to delete the counterpart LOTO point (Unit ${this.targetUnit()})?`).then((deleteCounterpart) => {
-          this.executeDeletePrimary(primary.id, deleteCounterpart);
-        });
-      } else {
-        this.executeDeletePrimary(primary.id, false);
-      }
-    });
-  }
-  /**
-   * Execute delete primary API call
-   */
-  executeDeletePrimary(id2, deleteCounterpart) {
-    this.isDeletingPrimary.set(true);
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    const counterpartId = deleteCounterpart ? counterpart?.id : void 0;
-    this.apiService.deleteLotoPoint(id2, deleteCounterpart, counterpartId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point deleted`);
-        this.isDeletingPrimary.set(false);
-        if (deleteCounterpart) {
-          this.messageService.showSuccess(`Counterpart (Unit ${this.targetUnit()}) also deleted`);
-        }
-        this.formClosed.emit();
-      },
-      error: (error) => {
-        console.error("Error deleting primary:", error);
-        this.messageService.showError("Failed to delete LOTO point");
-        this.isDeletingPrimary.set(false);
-      }
-    });
-  }
-  /**
-   * Delete counterpart LOTO point with confirmation
-   */
-  deleteCounterpart() {
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!counterpart?.id)
-      return;
-    const tagNumber = counterpart.tagNumber || `LOTO Point #${counterpart.id}`;
-    this.confirmationService.confirm(`Are you sure you want to delete "${tagNumber}" (Unit ${this.targetUnit()})?
-
-This will also delete all associated equipment shapes.`).then((confirmed) => {
-      if (!confirmed)
-        return;
-      this.executeDeleteCounterpart(counterpart.id, false);
-    });
-  }
-  /**
-   * Execute delete counterpart API call
-   */
-  executeDeleteCounterpart(id2, deleteCounterpart) {
-    this.isDeletingCounterpart.set(true);
-    this.apiService.deleteLotoPoint(id2, deleteCounterpart).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.messageService.showSuccess(`Unit ${this.targetUnit()} LOTO point deleted`);
-        this.isDeletingCounterpart.set(false);
-        this.counterpartLotoPoint.set(null);
-        this.currentCounterpartValues.set(null);
-        this.isCounterpartLinked.set(false);
-        this.counterpartStatus.set("not-found");
-      },
-      error: (error) => {
-        console.error("Error deleting counterpart:", error);
-        this.messageService.showError("Failed to delete counterpart LOTO point");
-        this.isDeletingCounterpart.set(false);
-      }
-    });
-  }
-  /**
-   * Delete both LOTO points with confirmation
-   */
-  deleteBoth() {
-    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
-    if (!primary?.id)
-      return;
-    const primaryTag = primary.tagNumber || `LOTO Point #${primary.id}`;
-    const counterpartTag = counterpart?.tagNumber || (counterpart?.id ? `LOTO Point #${counterpart.id}` : "counterpart");
-    this.confirmationService.confirm(`Are you sure you want to delete BOTH LOTO points?
-
-- ${primaryTag} (Unit ${this.sourceUnit()})
-- ${counterpartTag} (Unit ${this.targetUnit()})
-
-This will also delete all associated equipment shapes.`).then((confirmed) => {
-      if (!confirmed)
-        return;
-      this.isDeletingBoth.set(true);
-      const counterpartId = counterpart?.id;
-      this.apiService.deleteLotoPoint(primary.id, true, counterpartId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: () => {
-          this.messageService.showSuccess("Both LOTO points deleted successfully");
-          this.isDeletingBoth.set(false);
-          this.formClosed.emit();
-        },
-        error: (error) => {
-          console.error("Error deleting both:", error);
-          this.messageService.showError("Failed to delete LOTO points");
-          this.isDeletingBoth.set(false);
-        }
-      });
-    });
-  }
-  /**
-   * Close the form
-   */
-  close() {
-    this.formClosed.emit();
-  }
-  static \u0275fac = function LotoPointDualFormComponent_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _LotoPointDualFormComponent)();
-  };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LotoPointDualFormComponent, selectors: [["app-loto-point-dual-form"]], viewQuery: function LotoPointDualFormComponent_Query(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275viewQuery(_c046, 5);
-      \u0275\u0275viewQuery(_c126, 5);
-    }
-    if (rf & 2) {
-      let _t;
-      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.primaryFormRef = _t.first);
-      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.counterpartFormRef = _t.first);
-    }
-  }, inputs: { primaryLotoPoint: [1, "primaryLotoPoint"], fieldsToDisplay: [1, "fieldsToDisplay"] }, outputs: { primarySaved: "primarySaved", counterpartSaved: "counterpartSaved", bothSaved: "bothSaved", formClosed: "formClosed" }, features: [\u0275\u0275ProvidersFeature([
-    // Provide isolated instances for this component's table
-    RfLotoPointStateService,
-    TableSelectionService,
-    TableStateService,
-    TableDragService,
-    TableSearchService,
-    TableSortService,
-    TableResizeService,
-    TableSyncService,
-    TableClickService,
-    TableControlsService,
-    LotoPointBulkEditService,
-    RfLotoPointTableDataService,
-    {
-      provide: TableDataService,
-      useClass: RfLotoPointTableDataService
-    }
-  ])], decls: 9, vars: 10, consts: [["primaryForm", ""], ["counterpartForm", ""], [1, "dual-form-container"], [1, "loading-overlay"], [1, "manual-search-overlay"], [1, "not-unit-specific"], [3, "close", "isOpen", "title", "size"], [3, "tagGenerated", "cancelled"], [1, "loading-spinner"], [1, "dual-form-layout"], [1, "form-panel", "primary-panel"], [1, "panel-header"], [1, "panel-title"], [1, "panel-subtitle"], [1, "saving-indicator"], [1, "form-content"], [3, "formValueChange", "entity", "fields", "title", "showSubmitButton"], ["extra-buttons", ""], ["type", "button", "title", "Generate New Tag Number", 1, "tag-generator-button", 3, "click"], [3, "itemSelected", "entityType", "initialEntity", "currentEntity", "hasValidData", "getItemSummary", "clipboardFormatter", "excludeIdOnPaste"], [1, "panel-actions"], [1, "action-btn", "save-btn", 3, "click", "disabled"], ["title", "Delete this LOTO point", 1, "action-btn", "delete-btn", 3, "disabled"], [1, "sync-controls"], [1, "sync-controls", "sync-controls-empty"], [1, "form-panel", "counterpart-panel", 3, "is-new", "is-linked", "is-suggestion"], [1, "form-panel", "counterpart-panel", "counterpart-panel-empty"], [1, "dual-form-footer"], [1, "footer-left"], [1, "action-btn", "cancel-btn", 3, "click"], ["title", "Delete both LOTO points", 1, "action-btn", "delete-both-btn", 3, "disabled"], [1, "footer-right"], [1, "action-btn", "save-both-btn", 3, "disabled"], ["title", "Delete this LOTO point", 1, "action-btn", "delete-btn", 3, "click", "disabled"], [1, "sync-header"], [1, "sync-icon"], [1, "sync-label"], [1, "counterpart-status"], [1, "status-badge", "linked"], [1, "status-badge", "found"], [1, "status-badge", "suggested"], [1, "link-controls"], [1, "sync-buttons"], [1, "sync-all-btn", "sync-right", 3, "click", "title"], [1, "sync-all-btn", "sync-left", 3, "click", "title"], [1, "field-sync-list"], [1, "field-sync-row", 3, "different"], ["title", "Remove counterpart link", 1, "link-btn", "unlink", 3, "disabled"], ["title", "Link these LOTO points as counterparts", 1, "link-btn", "link", 3, "disabled"], ["title", "Remove counterpart link", 1, "link-btn", "unlink", 3, "click", "disabled"], ["title", "Link these LOTO points as counterparts", 1, "link-btn", "link", 3, "click", "disabled"], [1, "field-sync-row"], [1, "field-sync-btn", "sync-right", 3, "click", "disabled", "title"], [1, "field-name"], [1, "field-sync-btn", "sync-left", 3, "click", "disabled", "title"], [1, "sync-header", "disabled"], [1, "sync-placeholder"], [1, "form-panel", "counterpart-panel"], [1, "new-badge"], [1, "linked-badge"], [1, "suggestion-badge"], [1, "panel-header-actions"], ["title", "Search for a different counterpart", 1, "change-counterpart-btn", 3, "click"], [1, "counterpart-options-inline"], [1, "options-icon"], [1, "options-buttons"], [1, "option-btn", "create-btn", 3, "click"], [1, "btn-icon"], [1, "option-btn", "search-btn", 3, "click"], [1, "options-hint"], ["title", "Delete both LOTO points", 1, "action-btn", "delete-both-btn", 3, "click", "disabled"], [1, "action-btn", "save-both-btn", 3, "click", "disabled"], [1, "manual-search-panel"], [1, "search-header"], ["title", "Close", 1, "close-search-btn", 3, "click"], [1, "search-instructions"], [1, "search-table-container"], [3, "tableId", "fieldsToDisplay", "initialSearchCriteria"], [1, "selected-info"], [1, "manual-search-actions"], [1, "action-btn", "use-btn", 3, "click", "disabled"], [3, "selectedItemsEvent", "rowDoubleClickedEvent", "tableId", "fieldsToDisplay", "initialSearchCriteria"], [1, "selected-label"], [1, "selected-desc"], [1, "action-btn", 3, "click"]], template: function LotoPointDualFormComponent_Template(rf, ctx) {
-    if (rf & 1) {
-      \u0275\u0275elementStart(0, "div", 2);
-      \u0275\u0275template(1, LotoPointDualFormComponent_Conditional_1_Template, 4, 0, "div", 3)(2, LotoPointDualFormComponent_Conditional_2_Template, 30, 20)(3, LotoPointDualFormComponent_Conditional_3_Template, 17, 4, "div", 4)(4, LotoPointDualFormComponent_Conditional_4_Template, 7, 0, "div", 5);
-      \u0275\u0275elementStart(5, "app-popup-projection", 6);
-      \u0275\u0275listener("close", function LotoPointDualFormComponent_Template_app_popup_projection_close_5_listener() {
-        return ctx.closePrimaryTagGenerator();
-      });
-      \u0275\u0275elementStart(6, "app-tag-number-generator", 7);
-      \u0275\u0275listener("tagGenerated", function LotoPointDualFormComponent_Template_app_tag_number_generator_tagGenerated_6_listener($event) {
-        return ctx.onPrimaryTagGenerated($event);
-      })("cancelled", function LotoPointDualFormComponent_Template_app_tag_number_generator_cancelled_6_listener() {
-        return ctx.closePrimaryTagGenerator();
-      });
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(7, "app-popup-projection", 6);
-      \u0275\u0275listener("close", function LotoPointDualFormComponent_Template_app_popup_projection_close_7_listener() {
-        return ctx.closeCounterpartTagGenerator();
-      });
-      \u0275\u0275elementStart(8, "app-tag-number-generator", 7);
-      \u0275\u0275listener("tagGenerated", function LotoPointDualFormComponent_Template_app_tag_number_generator_tagGenerated_8_listener($event) {
-        return ctx.onCounterpartTagGenerated($event);
-      })("cancelled", function LotoPointDualFormComponent_Template_app_tag_number_generator_cancelled_8_listener() {
-        return ctx.closeCounterpartTagGenerator();
-      });
-      \u0275\u0275elementEnd()()();
-    }
-    if (rf & 2) {
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.isLoading() ? 1 : -1);
-      \u0275\u0275advance();
-      \u0275\u0275conditional(!ctx.isLoading() && ctx.isUnitSpecific() ? 2 : -1);
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.showManualSearch() ? 3 : -1);
-      \u0275\u0275advance();
-      \u0275\u0275conditional(!ctx.isUnitSpecific() ? 4 : -1);
-      \u0275\u0275advance();
-      \u0275\u0275property("isOpen", ctx.isPrimaryTagGeneratorOpen())("title", "Generate Tag Number (Unit " + ctx.sourceUnit() + ")")("size", "medium");
-      \u0275\u0275advance(2);
-      \u0275\u0275property("isOpen", ctx.isCounterpartTagGeneratorOpen())("title", "Generate Tag Number (Unit " + ctx.targetUnit() + ")")("size", "medium");
-    }
-  }, dependencies: [
-    CommonModule,
-    RfReactiveFormComponent,
-    RfLotoPointTableComponent,
-    ClipboardFormComponent,
-    TagNumberGeneratorComponent,
-    PopupProjectionComponent
-  ], styles: ["\n\n.dual-form-container[_ngcontent-%COMP%] {\n  position: relative;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: var(--secondary-background, #f5f5f5);\n}\n.loading-overlay[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(255, 255, 255, 0.9);\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 12px;\n  z-index: 10;\n}\n.loading-spinner[_ngcontent-%COMP%] {\n  width: 40px;\n  height: 40px;\n  border: 4px solid var(--border-color, #e0e0e0);\n  border-top-color: var(--primary-color, #2196F3);\n  border-radius: 50%;\n  animation: _ngcontent-%COMP%_spin 1s linear infinite;\n}\n@keyframes _ngcontent-%COMP%_spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n.dual-form-layout[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: 1fr auto 1fr;\n  gap: 0;\n  flex: 1;\n  overflow: hidden;\n  position: relative;\n  z-index: 0;\n}\n.form-panel[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  background: var(--primary-background, #ffffff);\n  overflow: hidden;\n  position: relative;\n  z-index: 0;\n}\n.primary-panel[_ngcontent-%COMP%] {\n  border-right: 1px solid var(--border-color, #e0e0e0);\n}\n.counterpart-panel[_ngcontent-%COMP%] {\n  border-left: 1px solid var(--border-color, #e0e0e0);\n  z-index: 0;\n}\n.counterpart-panel.is-new[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      to bottom,\n      rgba(76, 175, 80, 0.05) 0%,\n      transparent 100px);\n}\n.panel-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 12px 16px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-bottom: 2px solid rgba(0, 0, 0, 0.1);\n}\n.panel-title[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 16px;\n  font-weight: 600;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.panel-subtitle[_ngcontent-%COMP%] {\n  font-size: 12px;\n  font-weight: 400;\n  opacity: 0.8;\n}\n.new-badge[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  font-size: 10px;\n  font-weight: 700;\n  padding: 2px 6px;\n  border-radius: 4px;\n  text-transform: uppercase;\n}\n.saving-indicator[_ngcontent-%COMP%] {\n  font-size: 12px;\n  opacity: 0.8;\n  animation: _ngcontent-%COMP%_pulse 1s ease-in-out infinite;\n}\n@keyframes _ngcontent-%COMP%_pulse {\n  0%, 100% {\n    opacity: 0.5;\n  }\n  50% {\n    opacity: 1;\n  }\n}\n.panel-header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.change-counterpart-btn[_ngcontent-%COMP%] {\n  background: rgba(255, 255, 255, 0.2);\n  border: 1px solid rgba(255, 255, 255, 0.3);\n  color: white;\n  font-size: 12px;\n  padding: 4px 10px;\n  border-radius: 4px;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  white-space: nowrap;\n}\n.change-counterpart-btn[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.3);\n  border-color: rgba(255, 255, 255, 0.5);\n}\n.form-content[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  padding: 16px;\n  position: relative;\n  z-index: 0;\n}\n.panel-actions[_ngcontent-%COMP%] {\n  padding: 12px 16px;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #f5f5f5);\n  display: flex;\n  justify-content: flex-end;\n  gap: 8px;\n}\n.sync-controls[_ngcontent-%COMP%] {\n  width: 140px;\n  background: var(--secondary-background, #f5f5f5);\n  border-left: 1px solid var(--border-color, #e0e0e0);\n  border-right: 1px solid var(--border-color, #e0e0e0);\n  display: flex;\n  flex-direction: column;\n  padding: 12px 8px;\n  gap: 12px;\n  position: relative;\n  z-index: 0;\n}\n.sync-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 6px;\n  padding: 8px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-radius: 6px;\n  font-weight: 600;\n}\n.sync-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n}\n.sync-label[_ngcontent-%COMP%] {\n  font-size: 14px;\n}\n.sync-buttons[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n.sync-all-btn[_ngcontent-%COMP%] {\n  padding: 8px 12px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.sync-all-btn.sync-right[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n}\n.sync-all-btn.sync-right[_ngcontent-%COMP%]:hover {\n  background: #BBDEFB;\n}\n.sync-all-btn.sync-left[_ngcontent-%COMP%] {\n  background: #E8F5E9;\n  color: #2E7D32;\n}\n.sync-all-btn.sync-left[_ngcontent-%COMP%]:hover {\n  background: #C8E6C9;\n}\n.field-sync-list[_ngcontent-%COMP%] {\n  flex: 1;\n  overflow-y: auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.field-sync-row[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  padding: 4px;\n  border-radius: 4px;\n  background: var(--primary-background, #ffffff);\n  border: 1px solid var(--border-color, #e0e0e0);\n}\n.field-sync-row.different[_ngcontent-%COMP%] {\n  border-color: #FFA726;\n  background: #FFF3E0;\n}\n.field-sync-btn[_ngcontent-%COMP%] {\n  width: 24px;\n  height: 24px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  background: transparent;\n  color: var(--secondary-text, #666);\n  transition: all 0.2s ease;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n.field-sync-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.3;\n  cursor: not-allowed;\n}\n.field-sync-btn[_ngcontent-%COMP%]:not(:disabled):hover {\n  background: var(--primary-color, #2196F3);\n  color: white;\n}\n.field-name[_ngcontent-%COMP%] {\n  flex: 1;\n  font-size: 11px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.field-name.different[_ngcontent-%COMP%] {\n  color: #E65100;\n  font-weight: 600;\n}\n.dual-form-footer[_ngcontent-%COMP%] {\n  padding: 12px 24px;\n  background: var(--primary-background, #ffffff);\n  border-top: 2px solid var(--border-color, #e0e0e0);\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 12px;\n}\n.footer-left[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.footer-right[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n}\n.action-btn[_ngcontent-%COMP%] {\n  padding: 10px 20px;\n  border-radius: 6px;\n  cursor: pointer;\n  font-size: 14px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  border: 1px solid var(--border-color, #e0e0e0);\n  background: var(--secondary-background, #e5e5e5);\n  color: var(--primary-text, #333);\n}\n.action-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  transform: translateY(-1px);\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n}\n.action-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n  transform: none;\n}\n.save-btn[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.save-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.cancel-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: var(--primary-text, #333);\n}\n.cancel-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #d5d5d5;\n}\n.save-both-btn[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  border-color: #4CAF50;\n  min-width: 140px;\n}\n.save-both-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n  border-color: #43A047;\n}\n.delete-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: #c62828;\n  border-color: #c62828;\n}\n.delete-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #c62828;\n  color: white;\n  border-color: #c62828;\n}\n.delete-both-btn[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #e5e5e5);\n  color: #c62828;\n  border-color: #c62828;\n}\n.delete-both-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #c62828;\n  color: white;\n  border-color: #c62828;\n}\n.no-counterpart[_ngcontent-%COMP%], \n.not-unit-specific[_ngcontent-%COMP%] {\n  padding: 40px;\n  text-align: center;\n  color: var(--secondary-text, #666);\n}\n.no-counterpart[_ngcontent-%COMP%]   p[_ngcontent-%COMP%], \n.not-unit-specific[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  font-size: 14px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar {\n  width: 8px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-track, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-track {\n  background: var(--secondary-background, #f5f5f5);\n  border-radius: 4px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb {\n  background: var(--border-color, #e0e0e0);\n  border-radius: 4px;\n}\n.form-content[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover, \n.field-sync-list[_ngcontent-%COMP%]::-webkit-scrollbar-thumb:hover {\n  background: #bbb;\n}\n.form-content[_ngcontent-%COMP%]     .form-title {\n  display: none;\n}\n.form-content[_ngcontent-%COMP%]     .reactive-form-container {\n  padding: 0;\n}\n.form-content[_ngcontent-%COMP%]     .form-fields {\n  gap: 12px;\n}\n.counterpart-status[_ngcontent-%COMP%] {\n  padding: 6px 8px;\n  border-radius: 4px;\n  text-align: center;\n}\n.status-badge[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 600;\n  padding: 4px 8px;\n  border-radius: 4px;\n  display: inline-block;\n}\n.status-badge.linked[_ngcontent-%COMP%] {\n  background: #E8F5E9;\n  color: #2E7D32;\n  border: 1px solid #A5D6A7;\n}\n.status-badge.found[_ngcontent-%COMP%] {\n  background: #FFF3E0;\n  color: #E65100;\n  border: 1px solid #FFCC80;\n}\n.status-badge.suggested[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n  border: 1px solid #90CAF9;\n}\n.link-controls[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: center;\n}\n.link-btn[_ngcontent-%COMP%] {\n  padding: 6px 12px;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 12px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n}\n.link-btn.link[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n}\n.link-btn.link[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n}\n.link-btn.unlink[_ngcontent-%COMP%] {\n  background: #FF5722;\n  color: white;\n}\n.link-btn.unlink[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #E64A19;\n}\n.link-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n.linked-badge[_ngcontent-%COMP%] {\n  font-size: 14px;\n}\n.suggestion-badge[_ngcontent-%COMP%] {\n  background: #E3F2FD;\n  color: #1565C0;\n  font-size: 10px;\n  font-weight: 700;\n  padding: 2px 6px;\n  border-radius: 4px;\n}\n.counterpart-panel.is-linked[_ngcontent-%COMP%] {\n  border-left: 3px solid #4CAF50;\n}\n.counterpart-panel.is-suggestion[_ngcontent-%COMP%] {\n  border-left: 3px solid #2196F3;\n}\n.sync-controls-empty[_ngcontent-%COMP%] {\n  opacity: 0.6;\n}\n.sync-header.disabled[_ngcontent-%COMP%] {\n  background: var(--secondary-text, #999);\n}\n.sync-placeholder[_ngcontent-%COMP%] {\n  padding: 12px 8px;\n  text-align: center;\n  font-size: 11px;\n  color: var(--secondary-text, #666);\n}\n.counterpart-panel-empty[_ngcontent-%COMP%] {\n  background: var(--secondary-background, #f5f5f5);\n}\n.counterpart-options-inline[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 32px 24px;\n  text-align: center;\n  height: 100%;\n  min-height: 300px;\n}\n.options-icon[_ngcontent-%COMP%] {\n  width: 60px;\n  height: 60px;\n  border-radius: 50%;\n  background: var(--border-color, #e0e0e0);\n  color: var(--secondary-text, #666);\n  font-size: 32px;\n  font-weight: bold;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin-bottom: 16px;\n}\n.counterpart-options-inline[_ngcontent-%COMP%]   h4[_ngcontent-%COMP%] {\n  margin: 0 0 8px;\n  font-size: 16px;\n  color: var(--primary-text, #333);\n}\n.counterpart-options-inline[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  font-size: 13px;\n  color: var(--secondary-text, #666);\n}\n.options-buttons[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  margin: 16px 0;\n}\n.option-btn[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  padding: 16px 24px;\n  border: 2px solid var(--border-color, #e0e0e0);\n  border-radius: 8px;\n  background: var(--primary-background, #ffffff);\n  cursor: pointer;\n  font-size: 13px;\n  font-weight: 500;\n  transition: all 0.2s ease;\n  min-width: 120px;\n}\n.option-btn[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);\n}\n.option-btn[_ngcontent-%COMP%]   .btn-icon[_ngcontent-%COMP%] {\n  font-size: 24px;\n}\n.option-btn.create-btn[_ngcontent-%COMP%] {\n  border-color: #4CAF50;\n  color: #2E7D32;\n}\n.option-btn.create-btn[_ngcontent-%COMP%]:hover {\n  background: #E8F5E9;\n}\n.option-btn.search-btn[_ngcontent-%COMP%] {\n  border-color: #2196F3;\n  color: #1565C0;\n}\n.option-btn.search-btn[_ngcontent-%COMP%]:hover {\n  background: #E3F2FD;\n}\n.options-hint[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--secondary-text, #999);\n  font-style: italic;\n  line-height: 1.5;\n}\n.no-counterpart[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  margin: 0 0 16px;\n  color: var(--primary-text, #333);\n}\n.no-counterpart-options[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  align-items: center;\n  margin-top: 24px;\n}\n.no-counterpart-options[_ngcontent-%COMP%]   .action-btn[_ngcontent-%COMP%] {\n  min-width: 200px;\n}\n.create-btn[_ngcontent-%COMP%] {\n  background: #4CAF50;\n  color: white;\n  border-color: #4CAF50;\n}\n.create-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #43A047;\n  border-color: #43A047;\n}\n.search-btn[_ngcontent-%COMP%] {\n  background: #2196F3;\n  color: white;\n  border-color: #2196F3;\n}\n.search-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.manual-search-overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 100;\n}\n.manual-search-panel[_ngcontent-%COMP%] {\n  background: var(--primary-background, #ffffff);\n  border-radius: 8px;\n  max-width: 900px;\n  width: 90%;\n  max-height: 80vh;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n}\n.search-header[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 20px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n}\n.search-header[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n}\n.close-search-btn[_ngcontent-%COMP%] {\n  background: transparent;\n  border: none;\n  color: white;\n  font-size: 20px;\n  cursor: pointer;\n  padding: 4px 8px;\n  border-radius: 4px;\n  line-height: 1;\n}\n.close-search-btn[_ngcontent-%COMP%]:hover {\n  background: rgba(255, 255, 255, 0.2);\n}\n.search-instructions[_ngcontent-%COMP%] {\n  margin: 0;\n  padding: 12px 20px;\n  background: var(--secondary-background, #f5f5f5);\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n  border-bottom: 1px solid var(--border-color, #e0e0e0);\n}\n.search-table-container[_ngcontent-%COMP%] {\n  flex: 1;\n  min-height: 300px;\n  max-height: 400px;\n  overflow: hidden;\n  padding: 0;\n  display: flex;\n  flex-direction: column;\n}\n.search-table-container[_ngcontent-%COMP%]   app-rf-loto-point-table[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     .loto-point-table-container {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     app-table {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  height: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     .table-wrapper {\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n}\n.search-table-container[_ngcontent-%COMP%]     table {\n  width: 100%;\n}\n.search-table-container[_ngcontent-%COMP%]     tbody tr {\n  display: table-row;\n}\n.search-table-container[_ngcontent-%COMP%]     td, \n.search-table-container[_ngcontent-%COMP%]     th {\n  padding: 8px 12px;\n}\n.selected-info[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 12px 20px;\n  background: #E3F2FD;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n}\n.selected-label[_ngcontent-%COMP%] {\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n}\n.selected-info[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--primary-color, #2196F3);\n}\n.selected-desc[_ngcontent-%COMP%] {\n  color: var(--secondary-text, #666);\n  font-size: 13px;\n  flex: 1;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n.manual-search-actions[_ngcontent-%COMP%] {\n  padding: 16px 20px;\n  display: flex;\n  justify-content: flex-end;\n  gap: 12px;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  background: var(--primary-background, #ffffff);\n}\n.action-btn.use-btn[_ngcontent-%COMP%] {\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border-color: var(--primary-color, #2196F3);\n}\n.action-btn.use-btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  background: #1976D2;\n  border-color: #1976D2;\n}\n.action-btn.use-btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n.tag-generator-button[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  color: white;\n  border: none;\n  padding: 8px 16px;\n  border-radius: 6px;\n  font-size: 12px;\n  font-weight: 500;\n  cursor: pointer;\n  transition: all 0.2s ease;\n  white-space: nowrap;\n}\n.tag-generator-button[_ngcontent-%COMP%]:hover {\n  transform: translateY(-1px);\n  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);\n}\n.tag-generator-button[_ngcontent-%COMP%]:active {\n  transform: translateY(0);\n}\n/*# sourceMappingURL=loto-point-dual-form.component.css.map */"] });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LotoPointDualFormComponent, { className: "LotoPointDualFormComponent", filePath: "src/app/features/loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component.ts", lineNumber: 103 });
-})();
 
 // src/app/features/loto-points/refactored/rf-loto-point-page/rf-loto-point-page.component.ts
 var _c047 = () => ["tagNumber", "description", "specificLocation", "eqType", "isoPos", "normPos", "location", "zeroEnergy"];

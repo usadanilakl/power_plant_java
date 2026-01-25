@@ -11,6 +11,6 @@ export default `<!doctype html>
 <link rel="stylesheet" href="styles.css"></head>
 <body class="mat-typography" ngcm="">
   <app-root></app-root>
-<link rel="modulepreload" href="chunk-LCTRLMJA.js"><link rel="modulepreload" href="chunk-TXDUYLVM.js"><script src="polyfills.js" type="module"></script><script src="main.js" type="module"></script></body>
+<link rel="modulepreload" href="chunk-2DJQGDSD.js"><link rel="modulepreload" href="chunk-TXDUYLVM.js"><script src="polyfills.js" type="module"></script><script src="main.js" type="module"></script></body>
 </html>
 `;

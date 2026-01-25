@@ -9,6 +9,13 @@ interface ReviewItem {
   icon?: string;
 }
 
+interface ReviewSection {
+  title: string;
+  icon: string;
+  items: ReviewItem[];
+  cssClass?: string;
+}
+
 @Component({
   selector: 'app-wizard-review-step',
   standalone: true,
@@ -16,7 +23,7 @@ interface ReviewItem {
   template: `
     <div class="review-container">
       @for (section of reviewSections(); track section.title) {
-        <div class="review-section">
+        <div class="review-section" [class]="section.cssClass || ''">
           <h4 class="section-title">
             @if (section.icon) {
               <mat-icon>{{ section.icon }}</mat-icon>
@@ -80,6 +87,12 @@ interface ReviewItem {
       padding: 8px 0;
     }
 
+    /* Limit height for long LOTO points lists */
+    .loto-points-section .section-content {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
     .review-item {
       display: flex;
       justify-content: space-between;
@@ -133,7 +146,7 @@ export class WizardReviewStepComponent {
     const frameData = this.frame();
     if (!frameData) return [];
 
-    const sections: { title: string; icon: string; items: ReviewItem[] }[] = [];
+    const sections: ReviewSection[] = [];
     const entityData = frameData.entityData;
 
     // LOTO Standard section
@@ -156,6 +169,7 @@ export class WizardReviewStepComponent {
         sections.push({
           title: 'Included LOTO Points',
           icon: 'location_on',
+          cssClass: 'loto-points-section',
           items: std.lotoPoints.map((p: any, i: number) => ({
             label: `Point ${i + 1}`,
             value: p.tagNumber || p.description || `ID: ${p.id}`,

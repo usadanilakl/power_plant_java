@@ -18,7 +18,6 @@ import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
-import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
 import { PIDSymbol, PIDSymbolsService } from '../../../../../shared/image/refactored/services/pid-symbols.service';
 import { SyncUpdateService } from '../../../../../services/sync/sync-update.service';
 
@@ -31,7 +30,6 @@ import { SyncUpdateService } from '../../../../../services/sync/sync-update.serv
     LotoBuilderInfoWindowComponent,
     GuideDirective,
     ReactiveGuideDirective,
-    ContextualGuideDirective,
   ],
   templateUrl: './loto-builder-right-panel.component.html',
   styleUrl: './loto-builder-right-panel.component.css',

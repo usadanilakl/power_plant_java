@@ -913,7 +913,7 @@ h3[_ngcontent-ng-c3185598614] {
 }
 /*# sourceMappingURL=/engraver-manager.component.css.map */</style><style ng-app-id="ng">
 
-.wizard-overlay[_ngcontent-ng-c1981356277] {
+.wizard-overlay[_ngcontent-ng-c328623377] {
   position: fixed;
   top: 0;
   left: 0;
@@ -926,11 +926,11 @@ h3[_ngcontent-ng-c3185598614] {
   justify-content: center;
   pointer-events: none;
 }
-.wizard-overlay.minimized[_ngcontent-ng-c1981356277] {
+.wizard-overlay.minimized[_ngcontent-ng-c328623377] {
   background: transparent;
   pointer-events: none;
 }
-.wizard-dialog[_ngcontent-ng-c1981356277] {
+.wizard-dialog[_ngcontent-ng-c328623377] {
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -942,10 +942,10 @@ h3[_ngcontent-ng-c3185598614] {
   overflow: hidden;
   pointer-events: all;
 }
-.wizard-dialog.is-branch[_ngcontent-ng-c1981356277] {
+.wizard-dialog.is-branch[_ngcontent-ng-c328623377] {
   border: 2px solid #1976d2;
 }
-.wizard-overlay.minimized[_ngcontent-ng-c1981356277]   .wizard-dialog[_ngcontent-ng-c1981356277] {
+.wizard-overlay.minimized[_ngcontent-ng-c328623377]   .wizard-dialog[_ngcontent-ng-c328623377] {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -953,7 +953,7 @@ h3[_ngcontent-ng-c3185598614] {
   max-width: 300px;
   max-height: auto;
 }
-.dialog-header[_ngcontent-ng-c1981356277] {
+.dialog-header[_ngcontent-ng-c328623377] {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -962,47 +962,47 @@ h3[_ngcontent-ng-c3185598614] {
   border-bottom: 1px solid #e0e0e0;
   cursor: move;
 }
-.header-content[_ngcontent-ng-c1981356277] {
+.header-content[_ngcontent-ng-c328623377] {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.header-title[_ngcontent-ng-c1981356277] {
+.header-title[_ngcontent-ng-c328623377] {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.flow-icon[_ngcontent-ng-c1981356277] {
+.flow-icon[_ngcontent-ng-c328623377] {
   color: #1976d2;
 }
-.flow-name[_ngcontent-ng-c1981356277] {
+.flow-name[_ngcontent-ng-c328623377] {
   font-weight: 500;
   font-size: 16px;
 }
-.header-actions[_ngcontent-ng-c1981356277] {
+.header-actions[_ngcontent-ng-c328623377] {
   display: flex;
   gap: 4px;
 }
-.header-btn[_ngcontent-ng-c1981356277] {
+.header-btn[_ngcontent-ng-c328623377] {
   width: 32px;
   height: 32px;
   line-height: 32px;
 }
-.header-btn[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
+.header-btn[_ngcontent-ng-c328623377]   mat-icon[_ngcontent-ng-c328623377] {
   font-size: 20px;
   width: 20px;
   height: 20px;
 }
-.close-btn[_ngcontent-ng-c1981356277]:hover {
+.close-btn[_ngcontent-ng-c328623377]:hover {
   color: #d32f2f;
 }
-.dialog-content[_ngcontent-ng-c1981356277] {
+.dialog-content[_ngcontent-ng-c328623377] {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
   min-height: 300px;
 }
-.dialog-footer[_ngcontent-ng-c1981356277] {
+.dialog-footer[_ngcontent-ng-c328623377] {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1010,28 +1010,28 @@ h3[_ngcontent-ng-c3185598614] {
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
 }
-.footer-left[_ngcontent-ng-c1981356277], 
-.footer-right[_ngcontent-ng-c1981356277] {
+.footer-left[_ngcontent-ng-c328623377], 
+.footer-right[_ngcontent-ng-c328623377] {
   display: flex;
   gap: 8px;
 }
-.back-btn[_ngcontent-ng-c1981356277] {
+.back-btn[_ngcontent-ng-c328623377] {
   color: #666;
 }
-.skip-btn[_ngcontent-ng-c1981356277] {
+.skip-btn[_ngcontent-ng-c328623377] {
   color: #666;
 }
-button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
+button[_ngcontent-ng-c328623377]   mat-icon[_ngcontent-ng-c328623377] {
   margin-right: 4px;
 }
-.footer-right[_ngcontent-ng-c1981356277]   button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
+.footer-right[_ngcontent-ng-c328623377]   button[_ngcontent-ng-c328623377]   mat-icon[_ngcontent-ng-c328623377] {
   margin-right: 4px;
   margin-left: 0;
 }
-.spinning[_ngcontent-ng-c1981356277] {
-  animation: _ngcontent-ng-c1981356277_spin 1s linear infinite;
+.spinning[_ngcontent-ng-c328623377] {
+  animation: _ngcontent-ng-c328623377_spin 1s linear infinite;
 }
-@keyframes _ngcontent-ng-c1981356277_spin {
+@keyframes _ngcontent-ng-c328623377_spin {
   from {
     transform: rotate(0deg);
   }
@@ -1039,7 +1039,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
     transform: rotate(360deg);
   }
 }
-.minimized-info[_ngcontent-ng-c1981356277] {
+.minimized-info[_ngcontent-ng-c328623377] {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1047,7 +1047,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   cursor: pointer;
   color: #666;
 }
-.minimized-info[_ngcontent-ng-c1981356277]:hover {
+.minimized-info[_ngcontent-ng-c328623377]:hover {
   background: #f5f5f5;
 }
 /*# sourceMappingURL=/wizard-dialog.component.css.map */</style><style ng-app-id="ng">.mat-mdc-fab-base{-webkit-user-select:none;user-select:none;position:relative;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:56px;height:56px;padding:0;border:none;fill:currentColor;text-decoration:none;cursor:pointer;-moz-appearance:none;-webkit-appearance:none;overflow:visible;transition:box-shadow 280ms cubic-bezier(0.4, 0, 0.2, 1),opacity 15ms linear 30ms,transform 270ms 0ms cubic-bezier(0, 0, 0.2, 1);flex-shrink:0;-webkit-tap-highlight-color:rgba(0,0,0,0)}.mat-mdc-fab-base .mat-mdc-button-ripple,.mat-mdc-fab-base .mat-mdc-button-persistent-ripple,.mat-mdc-fab-base .mat-mdc-button-persistent-ripple::before{top:0;left:0;right:0;bottom:0;position:absolute;pointer-events:none;border-radius:inherit}.mat-mdc-fab-base .mat-mdc-button-ripple{overflow:hidden}.mat-mdc-fab-base .mat-mdc-button-persistent-ripple::before{content:"";opacity:0}.mat-mdc-fab-base .mdc-button__label,.mat-mdc-fab-base .mat-icon{z-index:1;position:relative}.mat-mdc-fab-base .mat-focus-indicator{top:0;left:0;right:0;bottom:0;position:absolute}.mat-mdc-fab-base:focus>.mat-focus-indicator::before{content:""}.mat-mdc-fab-base._mat-animation-noopable{transition:none !important;animation:none !important}.mat-mdc-fab-base::before{position:absolute;box-sizing:border-box;width:100%;height:100%;top:0;left:0;border:1px solid rgba(0,0,0,0);border-radius:inherit;content:"";pointer-events:none}.mat-mdc-fab-base[hidden]{display:none}.mat-mdc-fab-base::-moz-focus-inner{padding:0;border:0}.mat-mdc-fab-base:active,.mat-mdc-fab-base:focus{outline:none}.mat-mdc-fab-base:hover{cursor:pointer}.mat-mdc-fab-base>svg{width:100%}.mat-mdc-fab-base .mat-icon,.mat-mdc-fab-base .material-icons{transition:transform 180ms 90ms cubic-bezier(0, 0, 0.2, 1);fill:currentColor;will-change:transform}.mat-mdc-fab-base .mat-focus-indicator::before{margin:calc(calc(var(--mat-focus-indicator-border-width, 3px) + 2px)*-1)}.mat-mdc-fab-base[disabled],.mat-mdc-fab-base.mat-mdc-button-disabled{cursor:default;pointer-events:none}.mat-mdc-fab-base[disabled],.mat-mdc-fab-base[disabled]:focus,.mat-mdc-fab-base.mat-mdc-button-disabled,.mat-mdc-fab-base.mat-mdc-button-disabled:focus{box-shadow:none}.mat-mdc-fab-base.mat-mdc-button-disabled-interactive{pointer-events:auto}.mat-mdc-fab{background-color:var(--mdc-fab-container-color, var(--mat-sys-primary-container));border-radius:var(--mdc-fab-container-shape, var(--mat-sys-corner-large));color:var(--mat-fab-foreground-color, var(--mat-sys-on-primary-container, inherit));box-shadow:var(--mdc-fab-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-fab:hover{box-shadow:var(--mdc-fab-hover-container-elevation-shadow, var(--mat-sys-level4))}.mat-mdc-fab:focus{box-shadow:var(--mdc-fab-focus-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-fab:active,.mat-mdc-fab:focus:active{box-shadow:var(--mdc-fab-pressed-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-fab[disabled],.mat-mdc-fab.mat-mdc-button-disabled{cursor:default;pointer-events:none;color:var(--mat-fab-disabled-state-foreground-color, color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent));background-color:var(--mat-fab-disabled-state-container-color, color-mix(in srgb, var(--mat-sys-on-surface) 12%, transparent))}.mat-mdc-fab.mat-mdc-button-disabled-interactive{pointer-events:auto}.mat-mdc-fab .mat-mdc-button-touch-target{position:absolute;top:50%;height:48px;left:50%;width:48px;transform:translate(-50%, -50%);display:var(--mat-fab-touch-target-display, block)}.mat-mdc-fab .mat-ripple-element{background-color:var(--mat-fab-ripple-color, color-mix(in srgb, var(--mat-sys-on-primary-container) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%), transparent))}.mat-mdc-fab .mat-mdc-button-persistent-ripple::before{background-color:var(--mat-fab-state-layer-color, var(--mat-sys-on-primary-container))}.mat-mdc-fab.mat-mdc-button-disabled .mat-mdc-button-persistent-ripple::before{background-color:var(--mat-fab-disabled-state-layer-color)}.mat-mdc-fab:hover>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-hover-state-layer-opacity, var(--mat-sys-hover-state-layer-opacity))}.mat-mdc-fab.cdk-program-focused>.mat-mdc-button-persistent-ripple::before,.mat-mdc-fab.cdk-keyboard-focused>.mat-mdc-button-persistent-ripple::before,.mat-mdc-fab.mat-mdc-button-disabled-interactive:focus>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-focus-state-layer-opacity, var(--mat-sys-focus-state-layer-opacity))}.mat-mdc-fab:active>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-pressed-state-layer-opacity, var(--mat-sys-pressed-state-layer-opacity))}.mat-mdc-mini-fab{width:40px;height:40px;background-color:var(--mdc-fab-small-container-color, var(--mat-sys-primary-container));border-radius:var(--mdc-fab-small-container-shape, var(--mat-sys-corner-medium));color:var(--mat-fab-small-foreground-color, var(--mat-sys-on-primary-container, inherit));box-shadow:var(--mdc-fab-small-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-mini-fab:hover{box-shadow:var(--mdc-fab-small-hover-container-elevation-shadow, var(--mat-sys-level4))}.mat-mdc-mini-fab:focus{box-shadow:var(--mdc-fab-small-focus-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-mini-fab:active,.mat-mdc-mini-fab:focus:active{box-shadow:var(--mdc-fab-small-pressed-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-mini-fab[disabled],.mat-mdc-mini-fab.mat-mdc-button-disabled{cursor:default;pointer-events:none;color:var(--mat-fab-small-disabled-state-foreground-color, color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent));background-color:var(--mat-fab-small-disabled-state-container-color, color-mix(in srgb, var(--mat-sys-on-surface) 12%, transparent))}.mat-mdc-mini-fab.mat-mdc-button-disabled-interactive{pointer-events:auto}.mat-mdc-mini-fab .mat-mdc-button-touch-target{position:absolute;top:50%;height:48px;left:50%;width:48px;transform:translate(-50%, -50%);display:var(--mat-fab-small-touch-target-display)}.mat-mdc-mini-fab .mat-ripple-element{background-color:var(--mat-fab-small-ripple-color, color-mix(in srgb, var(--mat-sys-on-primary-container) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%), transparent))}.mat-mdc-mini-fab .mat-mdc-button-persistent-ripple::before{background-color:var(--mat-fab-small-state-layer-color, var(--mat-sys-on-primary-container))}.mat-mdc-mini-fab.mat-mdc-button-disabled .mat-mdc-button-persistent-ripple::before{background-color:var(--mat-fab-small-disabled-state-layer-color)}.mat-mdc-mini-fab:hover>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-small-hover-state-layer-opacity, var(--mat-sys-hover-state-layer-opacity))}.mat-mdc-mini-fab.cdk-program-focused>.mat-mdc-button-persistent-ripple::before,.mat-mdc-mini-fab.cdk-keyboard-focused>.mat-mdc-button-persistent-ripple::before,.mat-mdc-mini-fab.mat-mdc-button-disabled-interactive:focus>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-small-focus-state-layer-opacity, var(--mat-sys-focus-state-layer-opacity))}.mat-mdc-mini-fab:active>.mat-mdc-button-persistent-ripple::before{opacity:var(--mat-fab-small-pressed-state-layer-opacity, var(--mat-sys-pressed-state-layer-opacity))}.mat-mdc-extended-fab{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;border-radius:24px;padding-left:20px;padding-right:20px;width:auto;max-width:100%;line-height:normal;height:var(--mdc-extended-fab-container-height, 56px);border-radius:var(--mdc-extended-fab-container-shape, var(--mat-sys-corner-large));font-family:var(--mdc-extended-fab-label-text-font, var(--mat-sys-label-large-font));font-size:var(--mdc-extended-fab-label-text-size, var(--mat-sys-label-large-size));font-weight:var(--mdc-extended-fab-label-text-weight, var(--mat-sys-label-large-weight));letter-spacing:var(--mdc-extended-fab-label-text-tracking, var(--mat-sys-label-large-tracking));box-shadow:var(--mdc-extended-fab-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-extended-fab:hover{box-shadow:var(--mdc-extended-fab-hover-container-elevation-shadow, var(--mat-sys-level4))}.mat-mdc-extended-fab:focus{box-shadow:var(--mdc-extended-fab-focus-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-extended-fab:active,.mat-mdc-extended-fab:focus:active{box-shadow:var(--mdc-extended-fab-pressed-container-elevation-shadow, var(--mat-sys-level3))}.mat-mdc-extended-fab[disabled],.mat-mdc-extended-fab.mat-mdc-button-disabled{cursor:default;pointer-events:none}.mat-mdc-extended-fab[disabled],.mat-mdc-extended-fab[disabled]:focus,.mat-mdc-extended-fab.mat-mdc-button-disabled,.mat-mdc-extended-fab.mat-mdc-button-disabled:focus{box-shadow:none}.mat-mdc-extended-fab.mat-mdc-button-disabled-interactive{pointer-events:auto}[dir=rtl] .mat-mdc-extended-fab .mdc-button__label+.mat-icon,[dir=rtl] .mat-mdc-extended-fab .mdc-button__label+.material-icons,.mat-mdc-extended-fab>.mat-icon,.mat-mdc-extended-fab>.material-icons{margin-left:-8px;margin-right:12px}.mat-mdc-extended-fab .mdc-button__label+.mat-icon,.mat-mdc-extended-fab .mdc-button__label+.material-icons,[dir=rtl] .mat-mdc-extended-fab>.mat-icon,[dir=rtl] .mat-mdc-extended-fab>.material-icons{margin-left:12px;margin-right:-8px}.mat-mdc-extended-fab .mat-mdc-button-touch-target{width:100%}
@@ -1107,7 +1107,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
 }
 /*# sourceMappingURL=/loto.component.css.map */</style><style ng-app-id="ng">
 
-.layout-container[_ngcontent-ng-c3342727180] {
+.layout-container[_ngcontent-ng-c3930118923] {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -1117,7 +1117,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   position: relative;
   overflow: hidden;
 }
-.header[_ngcontent-ng-c3342727180] {
+.header[_ngcontent-ng-c3930118923] {
   position: relative;
   background-color: var(--header-background);
   color: var(--header-text);
@@ -1129,7 +1129,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   overflow: hidden;
   z-index: 100;
 }
-.header-content[_ngcontent-ng-c3342727180] {
+.header-content[_ngcontent-ng-c3930118923] {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -1138,7 +1138,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   flex: 1;
   position: relative;
 }
-.header-content[_ngcontent-ng-c3342727180]::after {
+.header-content[_ngcontent-ng-c3930118923]::after {
   content: "";
   position: absolute;
   top: 0;
@@ -1152,26 +1152,26 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
       var(--header-background));
   pointer-events: none;
 }
-.header-content[_ngcontent-ng-c3342727180]::-webkit-scrollbar {
+.header-content[_ngcontent-ng-c3930118923]::-webkit-scrollbar {
   display: none;
 }
-.header-content[_ngcontent-ng-c3342727180] {
+.header-content[_ngcontent-ng-c3930118923] {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.header-content[_ngcontent-ng-c3342727180]   h1[_ngcontent-ng-c3342727180] {
+.header-content[_ngcontent-ng-c3930118923]   h1[_ngcontent-ng-c3930118923] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin: 0;
 }
-.header-actions[_ngcontent-ng-c3342727180] {
+.header-actions[_ngcontent-ng-c3930118923] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
 }
-.auth-btn[_ngcontent-ng-c3342727180] {
+.auth-btn[_ngcontent-ng-c3930118923] {
   background-color: var(--accent-color);
   color: var(--header-text);
   border: none;
@@ -1181,16 +1181,16 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   font-weight: 500;
   transition: background-color 0.2s ease-in-out;
 }
-.auth-btn[_ngcontent-ng-c3342727180]:hover {
+.auth-btn[_ngcontent-ng-c3930118923]:hover {
   background-color: var(--accent-color-hover);
 }
-.content-wrapper[_ngcontent-ng-c3342727180] {
+.content-wrapper[_ngcontent-ng-c3930118923] {
   display: flex;
   flex: 1;
   overflow: hidden;
   position: relative;
 }
-.left-menu[_ngcontent-ng-c3342727180] {
+.left-menu[_ngcontent-ng-c3930118923] {
   background-color: var(--menu-background);
   flex-shrink: 0;
   overflow-y: auto;
@@ -1199,7 +1199,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   flex-direction: column;
   border-right: 1px solid var(--border-color);
 }
-.resizer[_ngcontent-ng-c3342727180] {
+.resizer[_ngcontent-ng-c3930118923] {
   width: 15px;
   cursor: col-resize;
   background-color: transparent;
@@ -1211,10 +1211,10 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   flex-shrink: 0;
   z-index: 10;
 }
-.resizer[_ngcontent-ng-c3342727180]:hover {
+.resizer[_ngcontent-ng-c3930118923]:hover {
   background-color: var(--accent-color-translucent);
 }
-.menu-toggle-btn[_ngcontent-ng-c3342727180] {
+.menu-toggle-btn[_ngcontent-ng-c3930118923] {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1233,52 +1233,52 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   transition: all 0.3s ease;
   z-index: 1002;
 }
-.menu-toggle-btn[_ngcontent-ng-c3342727180]:hover {
+.menu-toggle-btn[_ngcontent-ng-c3930118923]:hover {
   background-color: var(--accent-color);
   transform: translate(-50%, -50%) scale(1.1);
 }
-.arrow[_ngcontent-ng-c3342727180] {
+.arrow[_ngcontent-ng-c3930118923] {
   border: solid var(--primary-text);
   border-width: 0 2px 2px 0;
   display: inline-block;
   padding: 3px;
   transition: transform 0.3s ease;
 }
-.arrow[_ngcontent-ng-c3342727180]:not(.collapsed) {
+.arrow[_ngcontent-ng-c3930118923]:not(.collapsed) {
   transform: rotate(135deg);
 }
-.arrow.collapsed[_ngcontent-ng-c3342727180] {
+.arrow.collapsed[_ngcontent-ng-c3930118923] {
   transform: rotate(-45deg);
   margin-left: -2px;
 }
-.main-and-footer[_ngcontent-ng-c3342727180] {
+.main-and-footer[_ngcontent-ng-c3930118923] {
   display: flex;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
 }
-.main-content[_ngcontent-ng-c3342727180] {
+.main-content[_ngcontent-ng-c3930118923] {
   flex: 1;
   overflow: auto;
   padding: 1rem;
   background-color: var(--primary-background);
 }
-.footer-resizer[_ngcontent-ng-c3342727180] {
+.footer-resizer[_ngcontent-ng-c3930118923] {
   height: 5px;
   background-color: var(--border-color);
   cursor: row-resize;
   transition: background-color 0.3s ease;
 }
-.footer-resizer[_ngcontent-ng-c3342727180]:hover {
+.footer-resizer[_ngcontent-ng-c3930118923]:hover {
   background-color: var(--accent-color);
 }
-.footer[_ngcontent-ng-c3342727180] {
+.footer[_ngcontent-ng-c3930118923] {
   overflow: auto;
   background-color: var(--secondary-background);
   border-top: 1px solid var(--border-color);
   padding: 1rem;
 }
-.overlay[_ngcontent-ng-c3342727180] {
+.overlay[_ngcontent-ng-c3930118923] {
   position: fixed;
   top: 0;
   left: 0;
@@ -1291,23 +1291,23 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   z-index: 1000;
   pointer-events: none;
 }
-.overlay.active[_ngcontent-ng-c3342727180] {
+.overlay.active[_ngcontent-ng-c3930118923] {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
 }
 @supports (-webkit-touch-callout: none) {
-  .layout-container[_ngcontent-ng-c3342727180] {
+  .layout-container[_ngcontent-ng-c3930118923] {
     height: -webkit-fill-available;
   }
 }
 @media screen and (max-width: 768px) {
-  .layout-container[_ngcontent-ng-c3342727180] {
+  .layout-container[_ngcontent-ng-c3930118923] {
     min-height: 100vh;
     min-height: calc(var(--vh, 1vh) * 100);
     -webkit-overflow-scrolling: touch;
   }
-  .content-wrapper[_ngcontent-ng-c3342727180] {
+  .content-wrapper[_ngcontent-ng-c3930118923] {
     flex: 1;
     display: flex;
     overflow: hidden;
@@ -1315,14 +1315,14 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
-  .main-and-footer[_ngcontent-ng-c3342727180] {
+  .main-and-footer[_ngcontent-ng-c3930118923] {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     overscroll-behavior: contain;
   }
-  .main-content[_ngcontent-ng-c3342727180] {
+  .main-content[_ngcontent-ng-c3930118923] {
     flex: 1;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
@@ -1331,7 +1331,7 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
   }
 }
 @media (max-width: 768px) {
-  .left-menu[_ngcontent-ng-c3342727180] {
+  .left-menu[_ngcontent-ng-c3930118923] {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -1343,10 +1343,10 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2) !important;
     transition: transform 0.3s ease-in-out !important;
   }
-  .left-menu.active[_ngcontent-ng-c3342727180] {
+  .left-menu.active[_ngcontent-ng-c3930118923] {
     transform: translateX(0) !important;
   }
-  .resizer[_ngcontent-ng-c3342727180] {
+  .resizer[_ngcontent-ng-c3930118923] {
     width: 50px !important;
     cursor: default !important;
     background-color: transparent !important;
@@ -1357,49 +1357,49 @@ button[_ngcontent-ng-c1981356277]   mat-icon[_ngcontent-ng-c1981356277] {
     z-index: 1003 !important;
     transform: translateY(-50%) !important;
   }
-  .resizer[_ngcontent-ng-c3342727180]:hover {
+  .resizer[_ngcontent-ng-c3930118923]:hover {
     background-color: transparent !important;
   }
-  .menu-toggle-btn[_ngcontent-ng-c3342727180] {
+  .menu-toggle-btn[_ngcontent-ng-c3930118923] {
     position: static !important;
     transform: none !important;
     left: auto !important;
     top: auto !important;
   }
-  .menu-toggle-btn[_ngcontent-ng-c3342727180]:hover {
+  .menu-toggle-btn[_ngcontent-ng-c3930118923]:hover {
     transform: scale(1.1) !important;
   }
-  .left-menu.active[_ngcontent-ng-c3342727180]    ~ .resizer[_ngcontent-ng-c3342727180] {
+  .left-menu.active[_ngcontent-ng-c3930118923]    ~ .resizer[_ngcontent-ng-c3930118923] {
     left: calc(100% - 60px) !important;
   }
-  .main-and-footer[_ngcontent-ng-c3342727180] {
+  .main-and-footer[_ngcontent-ng-c3930118923] {
     width: 100%;
   }
-  .main-content[_ngcontent-ng-c3342727180] {
+  .main-content[_ngcontent-ng-c3930118923] {
     padding: 0.5rem;
   }
-  .header[_ngcontent-ng-c3342727180] {
+  .header[_ngcontent-ng-c3930118923] {
     padding: 0.75rem;
   }
-  .header-content[_ngcontent-ng-c3342727180]   h1[_ngcontent-ng-c3342727180] {
+  .header-content[_ngcontent-ng-c3930118923]   h1[_ngcontent-ng-c3930118923] {
     font-size: 1.25rem;
   }
-  .auth-btn[_ngcontent-ng-c3342727180] {
+  .auth-btn[_ngcontent-ng-c3930118923] {
     padding: 0.4rem 0.8rem;
     font-size: 0.9rem;
   }
 }
 @media (min-width: 769px) and (max-width: 1024px) {
-  .left-menu[_ngcontent-ng-c3342727180] {
+  .left-menu[_ngcontent-ng-c3930118923] {
     max-width: 350px;
   }
 }
 @media (max-width: 768px) {
-  body.menu-open[_ngcontent-ng-c3342727180] {
+  body.menu-open[_ngcontent-ng-c3930118923] {
     overflow: hidden;
   }
 }
-.clipboard-container[_ngcontent-ng-c3342727180] {
+.clipboard-container[_ngcontent-ng-c3930118923] {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -2101,378 +2101,6 @@ button.completed[_ngcontent-ng-c1184412316] {
 </style><style ng-app-id="ng">@media(forced-colors: active){.mat-mdc-button:not(.mdc-button--outlined),.mat-mdc-unelevated-button:not(.mdc-button--outlined),.mat-mdc-raised-button:not(.mdc-button--outlined),.mat-mdc-outlined-button:not(.mdc-button--outlined),.mat-mdc-icon-button.mat-mdc-icon-button,.mat-mdc-outlined-button .mdc-button__ripple{outline:solid 1px}}
 </style><style ng-app-id="ng">
 
-[_nghost-ng-c1347709916] {
-  display: contents;
-}
-.toggle-container[_ngcontent-ng-c1347709916] {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  z-index: 10001;
-}
-.guide-toggle-btn[_ngcontent-ng-c1347709916] {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: var(--primary-color, #1976d2);
-  color: white;
-  cursor: grab;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: background 0.3s ease, transform 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.guide-toggle-btn[_ngcontent-ng-c1347709916]:hover {
-  background: var(--primary-hover, #1565c0);
-  transform: scale(1.05);
-}
-.guide-toggle-btn[_ngcontent-ng-c1347709916]:active {
-  cursor: grabbing;
-}
-.guide-toggle-btn.active[_ngcontent-ng-c1347709916] {
-  background: var(--success-color, #4caf50);
-  animation: _ngcontent-ng-c1347709916_pulse-glow 2s infinite;
-}
-@keyframes _ngcontent-ng-c1347709916_pulse-glow {
-  0%, 100% {
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-  }
-  50% {
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.6);
-  }
-}
-.guide-toggle-btn[_ngcontent-ng-c1347709916]   mat-icon[_ngcontent-ng-c1347709916] {
-  font-size: 28px;
-  width: 28px;
-  height: 28px;
-}
-.contextual-panel[_ngcontent-ng-c1347709916] {
-  position: fixed;
-  top: 100px;
-  left: 24px;
-  width: 340px;
-  max-width: calc(100vw - 48px);
-  max-height: calc(100vh - 150px);
-  background: var(--surface-color, #ffffff);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  animation: _ngcontent-ng-c1347709916_slideIn 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  z-index: 10001;
-}
-@keyframes _ngcontent-ng-c1347709916_slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.contextual-panel.minimized[_ngcontent-ng-c1347709916] {
-  width: auto;
-  min-width: 180px;
-}
-.panel-header[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 8px 10px 14px;
-  background: var(--primary-color, #1976d2);
-  color: white;
-  cursor: grab;
-}
-.panel-header[_ngcontent-ng-c1347709916]:active {
-  cursor: grabbing;
-}
-.header-left[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.page-icon[_ngcontent-ng-c1347709916] {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-}
-.page-name[_ngcontent-ng-c1347709916] {
-  font-size: 14px;
-  font-weight: 500;
-}
-.header-actions[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.header-btn[_ngcontent-ng-c1347709916] {
-  width: 28px;
-  height: 28px;
-  line-height: 28px;
-  color: rgba(255, 255, 255, 0.9);
-}
-.header-btn[_ngcontent-ng-c1347709916]:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-}
-.header-btn[_ngcontent-ng-c1347709916]   mat-icon[_ngcontent-ng-c1347709916] {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-}
-.close-btn[_ngcontent-ng-c1347709916]:hover {
-  background: rgba(255, 0, 0, 0.2);
-}
-.panel-content[_ngcontent-ng-c1347709916] {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-.no-actions[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  color: var(--text-tertiary, #888);
-  font-size: 13px;
-}
-.no-actions[_ngcontent-ng-c1347709916]   mat-icon[_ngcontent-ng-c1347709916] {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-}
-.guide-section[_ngcontent-ng-c1347709916] {
-  border-bottom: 1px solid var(--border-light, #f0f0f0);
-}
-.guide-section[_ngcontent-ng-c1347709916]:last-child {
-  border-bottom: none;
-}
-.section-header[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s ease;
-}
-.section-header[_ngcontent-ng-c1347709916]:hover {
-  background: var(--hover-bg, #f5f5f5);
-}
-.section-header.expanded[_ngcontent-ng-c1347709916] {
-  background: var(--primary-light, #e3f2fd);
-}
-.section-icon[_ngcontent-ng-c1347709916] {
-  color: var(--primary-color, #1976d2);
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-}
-.section-title[_ngcontent-ng-c1347709916] {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #333);
-}
-.section-chevron[_ngcontent-ng-c1347709916] {
-  color: var(--text-tertiary, #888);
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-.section-content[_ngcontent-ng-c1347709916] {
-  padding: 0 0 8px 0;
-  animation: _ngcontent-ng-c1347709916_expandIn 0.2s ease;
-}
-@keyframes _ngcontent-ng-c1347709916_expandIn {
-  from {
-    opacity: 0;
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 500px;
-  }
-}
-.guide-subsection[_ngcontent-ng-c1347709916] {
-  margin-left: 12px;
-  border-left: 2px solid var(--border-light, #e0e0e0);
-}
-.subsection-header[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s ease;
-}
-.subsection-header[_ngcontent-ng-c1347709916]:hover {
-  background: var(--hover-bg, #fafafa);
-}
-.subsection-header.expanded[_ngcontent-ng-c1347709916] {
-  background: var(--primary-extra-light, #f3f9ff);
-}
-.subsection-icon[_ngcontent-ng-c1347709916] {
-  color: var(--text-secondary, #666);
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-.subsection-title[_ngcontent-ng-c1347709916] {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary, #555);
-}
-.subsection-chevron[_ngcontent-ng-c1347709916] {
-  color: var(--text-tertiary, #aaa);
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-.subsection-actions[_ngcontent-ng-c1347709916] {
-  padding: 4px 0 4px 16px;
-}
-.section-actions[_ngcontent-ng-c1347709916] {
-  padding: 4px 0 4px 8px;
-}
-.action-group[_ngcontent-ng-c1347709916] {
-  margin-bottom: 4px;
-}
-.group-header[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--primary-color, #1976d2);
-  letter-spacing: 0.5px;
-}
-.group-icon[_ngcontent-ng-c1347709916] {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
-}
-.group-actions[_ngcontent-ng-c1347709916] {
-  display: flex;
-  flex-direction: column;
-}
-.action-button[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s ease;
-  width: 100%;
-  border-radius: 6px;
-  margin: 1px 0;
-}
-.action-button[_ngcontent-ng-c1347709916]:hover, 
-.action-button.selected[_ngcontent-ng-c1347709916] {
-  background: var(--primary-light, #e3f2fd);
-}
-.action-button.has-execute[_ngcontent-ng-c1347709916]:hover {
-  background: var(--success-bg, #e8f5e9);
-}
-.action-icon[_ngcontent-ng-c1347709916] {
-  color: var(--primary-color, #1976d2);
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-.action-button.has-execute[_ngcontent-ng-c1347709916]   .action-icon[_ngcontent-ng-c1347709916] {
-  color: var(--success-color, #4caf50);
-}
-.action-text[_ngcontent-ng-c1347709916] {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.action-label[_ngcontent-ng-c1347709916] {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary, #333);
-}
-.action-description[_ngcontent-ng-c1347709916] {
-  font-size: 10px;
-  color: var(--text-tertiary, #888);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.action-arrow[_ngcontent-ng-c1347709916] {
-  color: var(--success-color, #4caf50);
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-.hint-bar[_ngcontent-ng-c1347709916] {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--warning-bg, #fff8e1);
-  border-top: 1px solid var(--border-color, #e0e0e0);
-  font-size: 12px;
-  color: var(--text-secondary, #666);
-}
-.hint-bar[_ngcontent-ng-c1347709916]   mat-icon[_ngcontent-ng-c1347709916] {
-  color: var(--warning-color, #f9a825);
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-@media (max-width: 480px) {
-  .toggle-container[_ngcontent-ng-c1347709916] {
-    bottom: 16px;
-    left: 16px;
-  }
-  .contextual-panel[_ngcontent-ng-c1347709916] {
-    top: auto;
-    bottom: 80px;
-    left: 16px;
-    width: calc(100vw - 32px);
-    max-height: 50vh;
-  }
-  .guide-toggle-btn[_ngcontent-ng-c1347709916] {
-    width: 48px;
-    height: 48px;
-  }
-  .guide-toggle-btn[_ngcontent-ng-c1347709916]   mat-icon[_ngcontent-ng-c1347709916] {
-    font-size: 24px;
-    width: 24px;
-    height: 24px;
-  }
-}
-/*# sourceMappingURL=/contextual-guide-panel.component.css.map */</style><style ng-app-id="ng">
-
 [_nghost-ng-c2108134260] {
   display: flex;
   flex-direction: column;
@@ -2617,15 +2245,15 @@ tr.selected[_ngcontent-ng-c2108134260]:hover {
 </style></head>
 <body class="mat-typography"><!--nghm--><script type="text/javascript" id="ng-event-dispatch-contract">(()=>{function p(t,n,r,o,e,i,f,m){return{eventType:t,event:n,targetElement:r,eic:o,timeStamp:e,eia:i,eirp:f,eiack:m}}function u(t){let n=[],r=e=>{n.push(e)};return{c:t,q:n,et:[],etc:[],d:r,h:e=>{r(p(e.type,e,e.target,t,Date.now()))}}}function s(t,n,r){for(let o=0;o<n.length;o++){let e=n[o];(r?t.etc:t.et).push(e),t.c.addEventListener(e,t.h,r)}}function c(t,n,r,o,e=window){let i=u(t);e._ejsas||(e._ejsas={}),e._ejsas[n]=i,s(i,r),s(i,o,!0)}window.__jsaction_bootstrap=c;})();
 </script><script>window.__jsaction_bootstrap(document.body,"ng",["click","mousedown","keydown","input","compositionstart","compositionend"],["blur"]);</script>
-  <app-root ng-version="19.2.5" _nghost-ng-c3298958394="" ngh="21" ng-server-context="ssg"><router-outlet _ngcontent-ng-c3298958394=""></router-outlet><app-loto _nghost-ng-c1481485715="" ngh="12"><app-main-layout _ngcontent-ng-c1481485715="" _nghost-ng-c3342727180="" ngh="8"><div _ngcontent-ng-c3342727180="" class="layout-container"><header _ngcontent-ng-c3342727180="" class="header"><div _ngcontent-ng-c3342727180="" class="header-content"><!--container--><h1 _ngcontent-ng-c3342727180="">Jackson Generation</h1><!--container--><app-router-menu _ngcontent-ng-c1481485715="" _nghost-ng-c3178853866="" ng-reflect-layout="row" ngh="9"><nav _ngcontent-ng-c3178853866="" class="router-menu row" ng-reflect-ng-class="row"><div _ngcontent-ng-c3178853866="" class="menu-container"><ul _ngcontent-ng-c3178853866="" class="primary-menu"><li _ngcontent-ng-c3178853866="" class="home-link"><a _ngcontent-ng-c3178853866="" routerlink="/" ng-reflect-router-link="/" href="/" jsaction="click:;">Home</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/file" href="/file" jsaction="click:;">Files</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link active"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/loto" href="/loto" jsaction="click:;">LOTO</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/permit-builder" href="/permit-builder" jsaction="click:;">Permits</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/form-designer" href="/form-designer" jsaction="click:;">Form Designer</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/backup" href="/backup" jsaction="click:;">Admin</a></li><!--container--></ul><ul _ngcontent-ng-c3178853866="" class="secondary-menu"><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto" href="/loto" class="active-link" jsaction="click:;">LOTO</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="create-loto-point:menu-item" ng-reflect-guide-message="Click here to navigate to LOTO" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-points" href="/loto-points" class="" jsaction="click:;">Loto Points</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-standard" href="/loto-standard" class="" jsaction="click:;">LOTO Standards</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-builder" href="/loto-builder" class="" jsaction="click:;">Loto Builder</a></li><!--container--></ul><!--container--></div><!--container--><!--container--><!--container--></nav></app-router-menu><!--ng-container--></div><div _ngcontent-ng-c3342727180="" class="header-actions"><app-sync-indicator _ngcontent-ng-c3342727180="" _nghost-ng-c990181552="" ngh="1"><div _ngcontent-ng-c990181552="" class="mat-mdc-tooltip-trigger sync-indicator disconnected" tabindex="0" ng-reflect-router-link="/sync-resync" ng-reflect-message="Server disconnected
-Click for " jsaction="click:;"><mat-icon _ngcontent-ng-c990181552="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0"> cloud_off </mat-icon><!--container--><!--container--></div><!--container--></app-sync-indicator><app-tour-trigger _ngcontent-ng-c3342727180="" _nghost-ng-c1184412316="" ngh="4"><button _ngcontent-ng-c1184412316="" mat-icon-button="" mattooltip="Help &amp; Tours" class="mat-mdc-menu-trigger mat-mdc-tooltip-trigger tour-trigger-btn mdc-icon-button mat-mdc-icon-button mat-unthemed mat-mdc-button-base" mat-ripple-loader-uninitialized="" mat-ripple-loader-class-name="mat-mdc-button-ripple" mat-ripple-loader-centered="" ng-reflect-message="Help &amp; Tours" ng-reflect-menu="[object Object]" aria-haspopup="menu" aria-expanded="false" ngh="2" jsaction="click:;mousedown:;keydown:;"><span class="mat-mdc-button-persistent-ripple mdc-icon-button__ripple"></span><mat-icon _ngcontent-ng-c1184412316="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">help_outline</mat-icon><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span></button><!--container--><mat-menu _ngcontent-ng-c1184412316="" class="" ngh="3"><!--container--></mat-menu></app-tour-trigger><app-theme-toggle _ngcontent-ng-c3342727180="" _nghost-ng-c3074088440="" ngh="5"><button _ngcontent-ng-c3074088440="" class="theme-toggle-button" jsaction="click:;"><span _ngcontent-ng-c3074088440="">🌙</span><!--bindings={
+  <app-root ng-version="19.2.5" _nghost-ng-c3298958394="" ngh="20" ng-server-context="ssg"><router-outlet _ngcontent-ng-c3298958394=""></router-outlet><app-loto _nghost-ng-c1481485715="" ngh="11"><app-main-layout _ngcontent-ng-c1481485715="" _nghost-ng-c3930118923="" ngh="7"><div _ngcontent-ng-c3930118923="" class="layout-container"><header _ngcontent-ng-c3930118923="" class="header"><div _ngcontent-ng-c3930118923="" class="header-content"><!--container--><h1 _ngcontent-ng-c3930118923="">Jackson Generation</h1><!--container--><app-router-menu _ngcontent-ng-c1481485715="" _nghost-ng-c3178853866="" ng-reflect-layout="row" ngh="8"><nav _ngcontent-ng-c3178853866="" class="router-menu row" ng-reflect-ng-class="row"><div _ngcontent-ng-c3178853866="" class="menu-container"><ul _ngcontent-ng-c3178853866="" class="primary-menu"><li _ngcontent-ng-c3178853866="" class="home-link"><a _ngcontent-ng-c3178853866="" routerlink="/" ng-reflect-router-link="/" href="/" jsaction="click:;">Home</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/file" href="/file" jsaction="click:;">Files</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link active"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/loto" href="/loto" jsaction="click:;">LOTO</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/permit-builder" href="/permit-builder" jsaction="click:;">Permits</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/form-designer" href="/form-designer" jsaction="click:;">Form Designer</a></li><li _ngcontent-ng-c3178853866="" class="menu-group-link"><a _ngcontent-ng-c3178853866="" ng-reflect-router-link="/backup" href="/backup" jsaction="click:;">Admin</a></li><!--container--></ul><ul _ngcontent-ng-c3178853866="" class="secondary-menu"><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto" href="/loto" class="active-link" jsaction="click:;">LOTO</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="create-loto-point:menu-item" ng-reflect-guide-message="Click here to navigate to LOTO" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-points" href="/loto-points" class="" jsaction="click:;">Loto Points</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-standard" href="/loto-standard" class="" jsaction="click:;">LOTO Standards</a></li><li _ngcontent-ng-c3178853866="" ng-reflect-app-guide="" ng-reflect-guide-message="" class="" jsaction="click:;"><a _ngcontent-ng-c3178853866="" routerlinkactive="active-link" ng-reflect-router-link-active="active-link" ng-reflect-router-link="/loto-builder" href="/loto-builder" class="" jsaction="click:;">Loto Builder</a></li><!--container--></ul><!--container--></div><!--container--><!--container--><!--container--></nav></app-router-menu><!--ng-container--></div><div _ngcontent-ng-c3930118923="" class="header-actions"><app-sync-indicator _ngcontent-ng-c3930118923="" _nghost-ng-c990181552="" ngh="1"><div _ngcontent-ng-c990181552="" class="mat-mdc-tooltip-trigger sync-indicator disconnected" tabindex="0" ng-reflect-router-link="/sync-resync" ng-reflect-message="Server disconnected
+Click for " jsaction="click:;"><mat-icon _ngcontent-ng-c990181552="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0"> cloud_off </mat-icon><!--container--><!--container--></div><!--container--></app-sync-indicator><app-tour-trigger _ngcontent-ng-c3930118923="" _nghost-ng-c1184412316="" ngh="4"><button _ngcontent-ng-c1184412316="" mat-icon-button="" mattooltip="Help &amp; Tours" class="mat-mdc-menu-trigger mat-mdc-tooltip-trigger tour-trigger-btn mdc-icon-button mat-mdc-icon-button mat-unthemed mat-mdc-button-base" mat-ripple-loader-uninitialized="" mat-ripple-loader-class-name="mat-mdc-button-ripple" mat-ripple-loader-centered="" ng-reflect-message="Help &amp; Tours" ng-reflect-menu="[object Object]" aria-haspopup="menu" aria-expanded="false" ngh="2" jsaction="click:;mousedown:;keydown:;"><span class="mat-mdc-button-persistent-ripple mdc-icon-button__ripple"></span><mat-icon _ngcontent-ng-c1184412316="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">help_outline</mat-icon><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span></button><!--container--><mat-menu _ngcontent-ng-c1184412316="" class="" ngh="3"><!--container--></mat-menu></app-tour-trigger><app-theme-toggle _ngcontent-ng-c3930118923="" _nghost-ng-c3074088440="" ngh="5"><button _ngcontent-ng-c3074088440="" class="theme-toggle-button" jsaction="click:;"><span _ngcontent-ng-c3074088440="">🌙</span><!--bindings={
   "ng-reflect-ng-if": "true"
 }--><!--bindings={
   "ng-reflect-ng-if": "false"
-}--></button></app-theme-toggle></div></header><div _ngcontent-ng-c3342727180="" class="content-wrapper"><!--container--><div _ngcontent-ng-c3342727180="" class="main-and-footer"><main _ngcontent-ng-c3342727180="" class="main-content"><router-outlet _ngcontent-ng-c1481485715=""></router-outlet><app-loto-lotobox-table ngh="11"><app-shared-table _nghost-ng-c2108134260="" ng-reflect-columns="[object Object],[object Object" ng-reflect-items="[object Object]" ng-reflect-click-callback="(item) =&gt; {
-    this.selectedI" ngh="10"><div _ngcontent-ng-c2108134260="" class="table-wrapper"><div _ngcontent-ng-c2108134260="" class="table-controls"><div _ngcontent-ng-c2108134260="" class="default-controls"><div _ngcontent-ng-c2108134260="" class="button-row"><button _ngcontent-ng-c2108134260="" jsaction="click:;">Delete Selected</button></div><div _ngcontent-ng-c2108134260="" class="search-row"><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" placeholder="Global Search..." class="search-input ng-untouched ng-pristine ng-valid" ng-reflect-model="" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></div></div></div><cdk-virtual-scroll-viewport _ngcontent-ng-c2108134260="" itemsize="50" class="cdk-virtual-scroll-viewport table-container cdk-virtual-scrollable cdk-virtual-scroll-orientation-vertical" ng-reflect-item-size="50" ngh="0"><div class="cdk-virtual-scroll-content-wrapper"><table _ngcontent-ng-c2108134260=""><thead _ngcontent-ng-c2108134260=""><tr _ngcontent-ng-c2108134260=""><th _ngcontent-ng-c2108134260="" jsaction="click:;"> ID <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><th _ngcontent-ng-c2108134260="" jsaction="click:;"> Box Number <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><th _ngcontent-ng-c2108134260="" jsaction="click:;"> LOTO Accessory Status <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><!--container--></tr><tr _ngcontent-ng-c2108134260=""><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter ID" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter Box Number" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter LOTO Accessory Status" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><!--container--></tr></thead><tbody _ngcontent-ng-c2108134260=""><!--bindings={
+}--></button></app-theme-toggle></div></header><div _ngcontent-ng-c3930118923="" class="content-wrapper"><!--container--><div _ngcontent-ng-c3930118923="" class="main-and-footer"><main _ngcontent-ng-c3930118923="" class="main-content"><router-outlet _ngcontent-ng-c1481485715=""></router-outlet><app-loto-lotobox-table ngh="10"><app-shared-table _nghost-ng-c2108134260="" ng-reflect-columns="[object Object],[object Object" ng-reflect-items="[object Object]" ng-reflect-click-callback="(item) =&gt; {
+    this.selectedI" ngh="9"><div _ngcontent-ng-c2108134260="" class="table-wrapper"><div _ngcontent-ng-c2108134260="" class="table-controls"><div _ngcontent-ng-c2108134260="" class="default-controls"><div _ngcontent-ng-c2108134260="" class="button-row"><button _ngcontent-ng-c2108134260="" jsaction="click:;">Delete Selected</button></div><div _ngcontent-ng-c2108134260="" class="search-row"><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" placeholder="Global Search..." class="search-input ng-untouched ng-pristine ng-valid" ng-reflect-model="" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></div></div></div><cdk-virtual-scroll-viewport _ngcontent-ng-c2108134260="" itemsize="50" class="cdk-virtual-scroll-viewport table-container cdk-virtual-scrollable cdk-virtual-scroll-orientation-vertical" ng-reflect-item-size="50" ngh="0"><div class="cdk-virtual-scroll-content-wrapper"><table _ngcontent-ng-c2108134260=""><thead _ngcontent-ng-c2108134260=""><tr _ngcontent-ng-c2108134260=""><th _ngcontent-ng-c2108134260="" jsaction="click:;"> ID <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><th _ngcontent-ng-c2108134260="" jsaction="click:;"> Box Number <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><th _ngcontent-ng-c2108134260="" jsaction="click:;"> LOTO Accessory Status <div _ngcontent-ng-c2108134260="" class="resizer"></div></th><!--container--></tr><tr _ngcontent-ng-c2108134260=""><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter ID" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter Box Number" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><th _ngcontent-ng-c2108134260=""><input _ngcontent-ng-c2108134260="" appcopypaste="" type="text" class="filter-input ng-untouched ng-pristine ng-valid" placeholder="Filter LOTO Accessory Status" value="" jsaction="input:;blur:;compositionstart:;compositionend:;click:;"></th><!--container--></tr></thead><tbody _ngcontent-ng-c2108134260=""><!--bindings={
   "ng-reflect-cdk-virtual-for-of": ""
-}--></tbody></table></div><div class="cdk-virtual-scroll-spacer"></div></cdk-virtual-scroll-viewport></div></app-shared-table><!--container--></app-loto-lotobox-table><!--container--><!--ng-container--></main><!--container--></div></div><div _ngcontent-ng-c3342727180="" class="clipboard-container"><app-clipboard _ngcontent-ng-c3342727180="" _nghost-ng-c450165409="" ngh="6"><div _ngcontent-ng-c450165409="" class="clipboard-wrapper"><div _ngcontent-ng-c450165409="" class="clipboard-icon-wrapper" style="right: 20px; bottom: 20px;" jsaction="mousedown:;click:;"><div _ngcontent-ng-c450165409="" class="mat-mdc-tooltip-trigger clipboard-icon-button" ng-reflect-message="Clipboard (0 items)"><mat-icon _ngcontent-ng-c450165409="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">assignment</mat-icon><!--bindings={
+}--></tbody></table></div><div class="cdk-virtual-scroll-spacer"></div></cdk-virtual-scroll-viewport></div></app-shared-table><!--container--></app-loto-lotobox-table><!--container--><!--ng-container--></main><!--container--></div></div><div _ngcontent-ng-c3930118923="" class="clipboard-container"><app-clipboard _ngcontent-ng-c3930118923="" _nghost-ng-c450165409="" ngh="6"><div _ngcontent-ng-c450165409="" class="clipboard-wrapper"><div _ngcontent-ng-c450165409="" class="clipboard-icon-wrapper" style="right: 20px; bottom: 20px;" jsaction="mousedown:;click:;"><div _ngcontent-ng-c450165409="" class="mat-mdc-tooltip-trigger clipboard-icon-button" ng-reflect-message="Clipboard (0 items)"><mat-icon _ngcontent-ng-c450165409="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">assignment</mat-icon><!--bindings={
   "ng-reflect-ng-if": "false"
 }--></div><!--container--></div><!--bindings={
   "ng-reflect-ng-if": "true"
@@ -2633,7 +2261,7 @@ Click for " jsaction="click:;"><mat-icon _ngcontent-ng-c990181552="" role="img" 
   "ng-reflect-ng-if": "false"
 }--><!--bindings={
   "ng-reflect-ng-if": "false"
-}--></div></app-clipboard></div><app-guide-menu _ngcontent-ng-c3342727180="" ngh="0"><app-contextual-guide-panel _nghost-ng-c1347709916="" ngh="7"><div _ngcontent-ng-c1347709916="" cdkdrag="" class="cdk-drag toggle-container"><button _ngcontent-ng-c1347709916="" cdkdraghandle="" class="mat-mdc-tooltip-trigger cdk-drag-handle guide-toggle-btn" ng-reflect-message="Enable Smart Helper" jsaction="click:;"><mat-icon _ngcontent-ng-c1347709916="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">help_outline</mat-icon></button><!--container--></div><!--container--><!--container--></app-contextual-guide-panel></app-guide-menu></div></app-main-layout></app-loto><!--container--><app-print-layout _ngcontent-ng-c3298958394="" ngh="13"><!--container--></app-print-layout><app-global-message _ngcontent-ng-c3298958394="" _nghost-ng-c4038518790="" ngh="14"><!--container--></app-global-message><app-global-context-menu _ngcontent-ng-c3298958394="" ngh="15"><!--container--></app-global-context-menu><app-qr-scanner _ngcontent-ng-c3298958394="" _nghost-ng-c3289982237="" ngh="16"><!--container--></app-qr-scanner><app-brady-printer-manager _ngcontent-ng-c3298958394="" _nghost-ng-c3185598614="" ngh="17"><!--container--></app-brady-printer-manager><app-engraver-manager _ngcontent-ng-c3298958394="" _nghost-ng-c3529731854="" ngh="18"><!--container--></app-engraver-manager><app-wizard-dialog _ngcontent-ng-c3298958394="" _nghost-ng-c1981356277="" ngh="19"><!--container--></app-wizard-dialog><button _ngcontent-ng-c3298958394="" mat-fab="" color="primary" mattooltip="Start Guide" class="mat-mdc-tooltip-trigger mat-mdc-menu-trigger guide-fab mdc-fab mat-mdc-fab-base mat-mdc-fab mat-primary mat-mdc-button-base" mat-ripple-loader-uninitialized="" mat-ripple-loader-class-name="mat-mdc-button-ripple" ng-reflect-color="primary" ng-reflect-message="Start Guide" ng-reflect-menu="[object Object]" aria-haspopup="menu" aria-expanded="false" ngh="20" jsaction="click:;mousedown:;keydown:;"><span class="mat-mdc-button-persistent-ripple mdc-fab__ripple"></span><mat-icon _ngcontent-ng-c3298958394="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">help_outline</mat-icon><span class="mdc-button__label"></span><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span></button><!--container--><mat-menu _ngcontent-ng-c3298958394="" ngh="3"><!--container--></mat-menu><!--container--></app-root>
-<link rel="modulepreload" href="chunk-LCTRLMJA.js"><link rel="modulepreload" href="chunk-TXDUYLVM.js"><script src="polyfills.js" type="module"></script><script src="main.js" type="module"></script>
+}--></div></app-clipboard></div></div></app-main-layout></app-loto><!--container--><app-print-layout _ngcontent-ng-c3298958394="" ngh="12"><!--container--></app-print-layout><app-global-message _ngcontent-ng-c3298958394="" _nghost-ng-c4038518790="" ngh="13"><!--container--></app-global-message><app-global-context-menu _ngcontent-ng-c3298958394="" ngh="14"><!--container--></app-global-context-menu><app-qr-scanner _ngcontent-ng-c3298958394="" _nghost-ng-c3289982237="" ngh="15"><!--container--></app-qr-scanner><app-brady-printer-manager _ngcontent-ng-c3298958394="" _nghost-ng-c3185598614="" ngh="16"><!--container--></app-brady-printer-manager><app-engraver-manager _ngcontent-ng-c3298958394="" _nghost-ng-c3529731854="" ngh="17"><!--container--></app-engraver-manager><app-wizard-dialog _ngcontent-ng-c3298958394="" _nghost-ng-c328623377="" ngh="18"><!--container--></app-wizard-dialog><button _ngcontent-ng-c3298958394="" mat-fab="" color="primary" mattooltip="Start Guide" class="mat-mdc-tooltip-trigger mat-mdc-menu-trigger guide-fab mdc-fab mat-mdc-fab-base mat-mdc-fab mat-primary mat-mdc-button-base" mat-ripple-loader-uninitialized="" mat-ripple-loader-class-name="mat-mdc-button-ripple" ng-reflect-color="primary" ng-reflect-message="Start Guide" ng-reflect-menu="[object Object]" aria-haspopup="menu" aria-expanded="false" ngh="19" jsaction="click:;mousedown:;keydown:;"><span class="mat-mdc-button-persistent-ripple mdc-fab__ripple"></span><mat-icon _ngcontent-ng-c3298958394="" role="img" class="mat-icon notranslate material-icons mat-ligature-font mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font" ngh="0">help_outline</mat-icon><span class="mdc-button__label"></span><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span></button><!--container--><mat-menu _ngcontent-ng-c3298958394="" ngh="3"><!--container--></mat-menu><!--container--></app-root>
+<link rel="modulepreload" href="chunk-2DJQGDSD.js"><link rel="modulepreload" href="chunk-TXDUYLVM.js"><script src="polyfills.js" type="module"></script><script src="main.js" type="module"></script>
 
-<script id="ng-state" type="application/json">{"2997496059":{"b":{"responseData":{"content":[],"pageable":{"pageNumber":0,"pageSize":100,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"last":true,"totalElements":0,"totalPages":0,"size":100,"number":0,"sort":{"empty":true,"sorted":false,"unsorted":true},"first":true,"numberOfElements":0,"empty":true},"message":"LotoBoxes retrieved successfully","timestamp":[2026,1,25,8,14,5,385292300]},"h":{},"s":200,"st":"OK","u":"http://localhost:8082/ng/loto-boxes/paginated","rt":"json"},"__nghData__":[{},{"c":{"0":[],"3":[],"4":[]},"n":{"2":"1f"},"t":{"3":"t2","4":"t3"}},{"n":{"2":"hfn2"}},{"t":{"0":"t4"},"c":{"0":[]}},{"n":{"1":"0fn","2":"1f"},"c":{"0":[]},"d":[5,6,7,8,9,11,12,13,14,15,16,17]},{"t":{"1":"t5","2":"t6"},"c":{"1":[{"i":"t5","r":1}],"2":[]}},{"t":{"1":"t9","2":"t11","3":"t12"},"c":{"1":[{"i":"t9","r":1,"c":{"1":[],"4":[]},"n":{"3":"2f"},"t":{"4":"t10"}}],"2":[],"3":[]}},{"c":{"0":[],"1":[],"4":[]},"n":{"3":"2f"},"t":{"4":"t13"}},{"t":{"3":"t0","4":"t1","11":"t7","16":"t8"},"c":{"3":[],"4":[{"i":"t1","r":1}],"11":[],"16":[]}},{"t":{"1":"t14","2":"t17","3":"t18"},"c":{"1":[{"i":"t14","r":1,"t":{"6":"t15","7":"t16"},"c":{"6":[{"i":"t15","r":1,"x":5}],"7":[{"i":"t16","r":1,"t":{"2":"t30"},"c":{"2":[{"i":"t30","r":1,"x":4}]}}]}}],"2":[],"3":[]}},{"n":{"10":"9f2"},"t":{"14":"t31","17":"t32","20":"t33"},"c":{"14":[{"i":"t31","r":1,"x":3}],"17":[{"i":"t32","r":1,"x":3}],"20":[]}},{"t":{"1":"t37"},"c":{"1":[]}},{"n":{"1":"0f4n3","5":"0f2nfnf2"},"d":[3,4],"e":{"1":1,"5":3},"c":{"6":[{"i":"c405569296","r":1}]}},{"t":{"0":"t22"},"c":{"0":[]}},{"t":{"0":"t23"},"c":{"0":[]}},{"t":{"0":"t24"},"c":{"0":[]}},{"t":{"0":"t25"},"c":{"0":[]}},{"t":{"0":"t26"},"c":{"0":[]}},{"t":{"0":"t27"},"c":{"0":[]}},{"t":{"0":"t28"},"c":{"0":[]}},{"n":{"2":"hfn2","5":"hfn3"}},{"c":{"0":[{"i":"c1481485715","r":1}],"8":[{"i":"t29","r":3,"n":{"1":"0fn","2":"1f"},"c":{"0":[]},"d":[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]}]},"t":{"8":"t29"}}]}</script></body></html>`;
+<script id="ng-state" type="application/json">{"2997496059":{"b":{"responseData":{"content":[],"pageable":{"pageNumber":0,"pageSize":100,"sort":{"empty":true,"sorted":false,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"last":true,"totalElements":72,"totalPages":1,"size":100,"number":0,"sort":{"empty":true,"sorted":false,"unsorted":true},"first":true,"numberOfElements":0,"empty":true},"message":"LotoBoxes retrieved successfully","timestamp":[2026,1,25,15,38,22,741783300]},"h":{},"s":200,"st":"OK","u":"http://localhost:8082/ng/loto-boxes/paginated","rt":"json"},"__nghData__":[{},{"c":{"0":[],"3":[],"4":[]},"n":{"2":"1f"},"t":{"3":"t2","4":"t3"}},{"n":{"2":"hfn2"}},{"t":{"0":"t4"},"c":{"0":[]}},{"n":{"1":"0fn","2":"1f"},"c":{"0":[]},"d":[5,6,7,8,9,11,12,13,14,15,16,17]},{"t":{"1":"t5","2":"t6"},"c":{"1":[{"i":"t5","r":1}],"2":[]}},{"t":{"1":"t9","2":"t11","3":"t12"},"c":{"1":[{"i":"t9","r":1,"c":{"1":[],"4":[]},"n":{"3":"2f"},"t":{"4":"t10"}}],"2":[],"3":[]}},{"t":{"3":"t0","4":"t1","11":"t7","16":"t8"},"c":{"3":[],"4":[{"i":"t1","r":1}],"11":[],"16":[]}},{"t":{"1":"t13","2":"t17","3":"t18"},"c":{"1":[{"i":"t13","r":1,"t":{"6":"t14","7":"t15"},"c":{"6":[{"i":"t14","r":1,"x":5}],"7":[{"i":"t15","r":1,"t":{"2":"t16"},"c":{"2":[{"i":"t16","r":1,"x":4}]}}]}}],"2":[],"3":[]}},{"n":{"10":"9f2"},"t":{"14":"t33","17":"t34","20":"t35"},"c":{"14":[{"i":"t33","r":1,"x":3}],"17":[{"i":"t34","r":1,"x":3}],"20":[]}},{"t":{"1":"t36"},"c":{"1":[]}},{"n":{"1":"0f4n3","5":"0f2nfnf2"},"d":[3,4],"e":{"1":1,"5":3},"c":{"6":[{"i":"c405569296","r":1}]}},{"t":{"0":"t25"},"c":{"0":[]}},{"t":{"0":"t26"},"c":{"0":[]}},{"t":{"0":"t27"},"c":{"0":[]}},{"t":{"0":"t28"},"c":{"0":[]}},{"t":{"0":"t29"},"c":{"0":[]}},{"t":{"0":"t30"},"c":{"0":[]}},{"t":{"0":"t31"},"c":{"0":[]}},{"n":{"2":"hfn2","5":"hfn3"}},{"c":{"0":[{"i":"c1481485715","r":1}],"8":[{"i":"t32","r":3,"n":{"1":"0fn","2":"1f"},"c":{"0":[]},"d":[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]}]},"t":{"8":"t32"}}]}</script></body></html>`;

@@ -59,8 +59,7 @@
        [guideTooltipOnly]="true"
        appReactiveGuide="loto-builder-full:image-viewer"
        reactiveGuideMessage="Right-click and drag to draw a rectangle around equipment"
-       [reactiveGuideTooltipOnly]="true"
-       appContextualGuide="contextual:image-viewer">
+       [reactiveGuideTooltipOnly]="true">
     @if (currentImageUrl()) {
       <app-interactive-image
         [imageUrl]="currentImageUrl()"
@@ -123,7 +122,6 @@
       (click)="builderState.toggleCarousel()"
       appReactiveGuide="loto-builder-full:build-loto-button"
       reactiveGuideMessage="Click to start LOTO building mode"
-      appContextualGuide="contextual:build-loto-button"
     >
       Build LOTO ({{ builderState.selectedLotoStandards().length }})
     </button>
@@ -133,7 +131,6 @@
       (click)="builderState.openLotoStandardsPopup()"
       appReactiveGuide="loto-builder-full:select-standards-button"
       reactiveGuideMessage="Click to select existing LOTO standards"
-      appContextualGuide="contextual:select-standards-button"
     >
       Select Standards
     </button>

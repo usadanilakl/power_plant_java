@@ -30,6 +30,7 @@ import { WizardValueSelectStepComponent } from '../steps/wizard-value-select-ste
 import { WizardZeroEnergyStepComponent } from '../steps/wizard-zero-energy-step.component';
 import { WizardEquipmentPickerStepComponent } from '../steps/wizard-equipment-picker-step.component';
 import { WizardLotoPointSelectorStepComponent } from '../steps/wizard-loto-point-selector-step.component';
+import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterpart-creation-step.component';
 
 @Component({
   selector: 'app-wizard-step-renderer',
@@ -55,6 +56,7 @@ import { WizardLotoPointSelectorStepComponent } from '../steps/wizard-loto-point
     WizardZeroEnergyStepComponent,
     WizardEquipmentPickerStepComponent,
     WizardLotoPointSelectorStepComponent,
+    WizardCounterpartCreationStepComponent,
   ],
   template: `
     @if (step()) {
@@ -206,6 +208,15 @@ import { WizardLotoPointSelectorStepComponent } from '../steps/wizard-loto-point
               <app-wizard-review-step
                 [step]="step()!"
                 [frame]="frame()!"
+              />
+            }
+
+            @case ('counterpart-creation') {
+              <app-wizard-counterpart-creation-step
+                [step]="step()!"
+                [frame]="frame()!"
+                (valueChange)="onValueChange($event)"
+                (stepComplete)="onCounterpartStepComplete()"
               />
             }
 
@@ -374,5 +385,9 @@ export class WizardStepRendererComponent {
       value: result.value,
     });
     this.stepComplete.emit(result);
+  }
+
+  onCounterpartStepComplete(): void {
+    this.stepComplete.emit({ counterpartCreated: true });
   }
 }

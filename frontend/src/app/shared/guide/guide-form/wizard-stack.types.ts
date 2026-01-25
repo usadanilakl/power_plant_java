@@ -49,6 +49,7 @@ export type WizardStepType =
   | 'table-selector'        // Select item(s) from a table
   | 'confirm'               // Yes/No decision point
   | 'review'                // Review all collected data before submit
+  | 'counterpart-creation'  // Create counterpart LOTO standard with missing LOTO point counterparts
   | 'complete';             // Success/completion screen
 
 // ============================================================================
