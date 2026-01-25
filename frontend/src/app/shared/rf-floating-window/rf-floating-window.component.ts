@@ -147,11 +147,26 @@ export class RfFloatingWindowComponent implements OnInit, OnDestroy {
     const deltaX = event.clientX - this.dragStartPos.x;
     const deltaY = event.clientY - this.dragStartPos.y;
 
-    const newPosition = {
-      x: this.windowStartPos.x + deltaX,
-      y: this.windowStartPos.y + deltaY,
-    };
+    let newX = this.windowStartPos.x + deltaX;
+    let newY = this.windowStartPos.y + deltaY;
 
+    // Constrain so header (with close button) stays accessible
+    // Keep at least 100px of header visible horizontally and top within viewport
+    const windowWidth = this.size().width;
+    const headerHeight = 50; // Approximate header height
+    const minVisibleWidth = 100; // Minimum visible header width for close button
+
+    // Prevent header from going above viewport
+    newY = Math.max(0, newY);
+
+    // Prevent window from going too far left (keep close button area visible)
+    newX = Math.max(-(windowWidth - minVisibleWidth), newX);
+
+    // Prevent window from going too far right
+    const viewportWidth = window.innerWidth;
+    newX = Math.min(viewportWidth - minVisibleWidth, newX);
+
+    const newPosition = { x: newX, y: newY };
     this.position.set(newPosition);
   };
 

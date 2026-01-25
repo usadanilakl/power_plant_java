@@ -98,6 +98,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .standard-item:hover {

@@ -12,8 +12,9 @@
   flex-direction: column;
   background: var(--primary-background, #ffffff);
   border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
+  border: 2px solid rgba(100, 100, 100, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: visible;
   min-width: 200px;
   min-height: 150px;
 }
@@ -72,90 +73,115 @@
 
 /* Edge handles */
 .resize-n {
-  top: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
+  top: -3px;
+  left: 12px;
+  right: 12px;
+  height: 8px;
   cursor: ns-resize;
 }
 
 .resize-s {
-  bottom: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
+  bottom: -3px;
+  left: 12px;
+  right: 12px;
+  height: 8px;
   cursor: ns-resize;
 }
 
 .resize-e {
-  right: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 6px;
+  right: -3px;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
   cursor: ew-resize;
 }
 
 .resize-w {
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 6px;
+  left: -3px;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
   cursor: ew-resize;
 }
 
 /* Corner handles */
 .resize-ne {
-  top: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
   cursor: nesw-resize;
 }
 
 .resize-nw {
-  top: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
+  top: -4px;
+  left: -4px;
+  width: 16px;
+  height: 16px;
   cursor: nwse-resize;
 }
 
 .resize-se {
-  bottom: 0;
-  right: 0;
-  width: 12px;
-  height: 12px;
+  bottom: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
   cursor: nwse-resize;
 }
 
 .resize-sw {
-  bottom: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
+  bottom: -4px;
+  left: -4px;
+  width: 16px;
+  height: 16px;
   cursor: nesw-resize;
 }
 
-/* Visual indicator on corner handles */
+/* Visual indicator on SE corner - the main resize grip */
 .resize-se::after {
   content: '';
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid rgba(0, 0, 0, 0.2);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  bottom: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  background:
+    linear-gradient(135deg,
+      transparent 30%,
+      rgba(100, 100, 100, 0.5) 30%,
+      rgba(100, 100, 100, 0.5) 40%,
+      transparent 40%,
+      transparent 50%,
+      rgba(100, 100, 100, 0.5) 50%,
+      rgba(100, 100, 100, 0.5) 60%,
+      transparent 60%,
+      transparent 70%,
+      rgba(100, 100, 100, 0.5) 70%,
+      rgba(100, 100, 100, 0.5) 80%,
+      transparent 80%
+    );
+  border-radius: 2px;
 }
 
 /* Hover states for resize handles */
 .resize-handle:hover {
-  background: rgba(25, 118, 210, 0.1);
+  background: rgba(25, 118, 210, 0.15);
 }
 
-.resize-se:hover::after,
-.resize-sw:hover::after,
-.resize-ne:hover::after,
-.resize-nw:hover::after {
-  border-color: rgba(25, 118, 210, 0.6);
+.resize-se:hover::after {
+  background:
+    linear-gradient(135deg,
+      transparent 30%,
+      rgba(25, 118, 210, 0.7) 30%,
+      rgba(25, 118, 210, 0.7) 40%,
+      transparent 40%,
+      transparent 50%,
+      rgba(25, 118, 210, 0.7) 50%,
+      rgba(25, 118, 210, 0.7) 60%,
+      transparent 60%,
+      transparent 70%,
+      rgba(25, 118, 210, 0.7) 70%,
+      rgba(25, 118, 210, 0.7) 80%,
+      transparent 80%
+    );
 }
