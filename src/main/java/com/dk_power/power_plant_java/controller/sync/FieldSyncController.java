@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
+import com.dk_power.power_plant_java.sevice.sync.FullSyncToServerService;
 import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class FieldSyncController {
     private final PeerRepository peerRepository;
     private final SyncConfig syncConfig;
     private final FileObjectSyncHandler fileObjectSyncHandler;
+    private final FullSyncToServerService fullSyncToServerService;
 
     /**
      * Exchange changes with a peer
@@ -436,6 +438,61 @@ public class FieldSyncController {
         status.put("syncServerUrl", syncConfig.getSyncServerUrl());
         status.put("queues", fileObjectSyncHandler.getQueueStats());
         return ResponseEntity.ok(status);
+    }
+
+    // ==================== FULL SYNC TO SERVER ====================
+
+    /**
+     * Start a full sync of all entities to the server.
+     * This is a one-time operation to populate the server with all existing data.
+     *
+     * POST /api/field-sync/full-sync/start
+     */
+    @PostMapping("/full-sync/start")
+    public ResponseEntity<Map<String, Object>> startFullSync() {
+        Map<String, Object> result = new HashMap<>();
+
+        if (!syncConfig.isServerSyncEnabled()) {
+            result.put("success", false);
+            result.put("message", "Server sync is not enabled");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        if (fullSyncToServerService.isInProgress()) {
+            result.put("success", false);
+            result.put("message", "Full sync is already in progress");
+            result.put("status", fullSyncToServerService.getStatus());
+            return ResponseEntity.ok(result);
+        }
+
+        try {
+            fullSyncToServerService.startFullSync();
+            result.put("success", true);
+            result.put("message", "Full sync started. Use /full-sync/status to monitor progress.");
+            result.put("status", fullSyncToServerService.getStatus());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed to start full sync: " + e.getMessage());
+            log.error("Failed to start full sync", e);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get the status of the current or last full sync operation.
+     *
+     * GET /api/field-sync/full-sync/status
+     */
+    @GetMapping("/full-sync/status")
+    public ResponseEntity<Map<String, Object>> getFullSyncStatus() {
+        Map<String, Object> result = new HashMap<>();
+
+        FullSyncToServerService.FullSyncStatus status = fullSyncToServerService.getStatus();
+        result.put("inProgress", fullSyncToServerService.isInProgress());
+        result.put("status", status);
+
+        return ResponseEntity.ok(result);
     }
 
     /**
