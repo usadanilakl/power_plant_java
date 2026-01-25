@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/menu/qa-menu/qa-menu.component.css"],
+  "sourcesContent": [".qa-popup {\n  position: fixed;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  background-color: rgba(0, 0, 0, 0.5);\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  z-index: 1000;\n}\n\n.qa-popup-content {\n  background-color: white;\n  padding: 20px;\n  border-radius: 5px;\n  max-width: 500px;\n  width: 90%;\n  max-height: 80vh;\n  overflow-y: auto;\n  position: relative;\n}\n\n.close-btn {\n  position: absolute;\n  top: 10px;\n  right: 10px;\n  background: none;\n  border: none;\n  font-size: 24px;\n  cursor: pointer;\n}\n\n.qa-links ul {\n  list-style-type: none;\n  padding-left: 0;\n}\n\n.qa-links li {\n  margin-bottom: 10px;\n}\n\n.qa-links a {\n  color: #007bff;\n  text-decoration: none;\n}\n\n.qa-links a:hover {\n  text-decoration: underline;\n}"],
+  "mappings": ";AAAA,CAAC;AACC,YAAU;AACV,OAAK;AACL,QAAM;AACN,SAAO;AACP,UAAQ;AACR,oBAAkB,KAAK,CAAC,EAAE,CAAC,EAAE,CAAC,EAAE;AAChC,WAAS;AACT,mBAAiB;AACjB,eAAa;AACb,WAAS;AACX;AAEA,CAAC;AACC,oBAAkB;AAClB,WAAS;AACT,iBAAe;AACf,aAAW;AACX,SAAO;AACP,cAAY;AACZ,cAAY;AACZ,YAAU;AACZ;AAEA,CAAC;AACC,YAAU;AACV,OAAK;AACL,SAAO;AACP,cAAY;AACZ,UAAQ;AACR,aAAW;AACX,UAAQ;AACV;AAEA,CAAC,SAAS;AACR,mBAAiB;AACjB,gBAAc;AAChB;AAEA,CALC,SAKS;AACR,iBAAe;AACjB;AAEA,CATC,SASS;AACR,SAAO;AACP,mBAAiB;AACnB;AAEA,CAdC,SAcS,CAAC;AACT,mBAAiB;AACnB;",
+  "names": []
+}

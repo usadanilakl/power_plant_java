@@ -36,6 +36,7 @@ public class SyncHealthChecker {
     private final SyncConfig syncConfig;
     private final JdbcTemplate jdbcTemplate;
     private final RestTemplate restTemplate;
+    private final EntityTableRegistry entityTableRegistry;
 
     @Value("${sync.server.url:}")
     private String syncServerUrl;
@@ -60,37 +61,6 @@ public class SyncHealthChecker {
 
     // Threshold for suggesting resync (after N consecutive out-of-sync checks)
     private static final int SUGGEST_RESYNC_THRESHOLD = 2;
-
-    // Map of entity type name (used by server) to table name (used by client)
-    // This ensures we're comparing the same entities on both sides
-    // Table names verified from @Table annotations in entity classes
-    private static final Map<String, String> ENTITY_TYPE_TO_TABLE = Map.ofEntries(
-        Map.entry("Category", "category"),
-        Map.entry("Value", "val_table"),        // @Table(name = "val_table")
-        Map.entry("FileObject", "file_object"),
-        Map.entry("Equipment", "equipment"),
-        Map.entry("LotoPoint", "loto_point"),
-        Map.entry("Loto", "loto"),
-        Map.entry("LotoStandard", "loto_standard"),
-        Map.entry("LotoSnapshot", "loto_snapshot"),
-        Map.entry("LotoBox", "loto_boxes"),      // @Table(name = "loto_boxes")
-        Map.entry("Lock", "lock"),               // Default table name (no @Table annotation)
-        Map.entry("ZeroEnergy", "zero_energy"),
-        Map.entry("HeatTrace", "heat_trace"),
-        Map.entry("Highlight", "highlight"),
-        Map.entry("ElectricalPanel", "electrical_panel"),
-        Map.entry("EqBreaker", "eq_breaker"),
-        Map.entry("HtPanel", "ht_panel"),
-        Map.entry("HtBreaker", "ht_breaker"),
-        Map.entry("User", "users"),              // @Table(name = "users")
-        Map.entry("EspDevice", "esp_devices"),   // @Table(name = "esp_devices")
-        Map.entry("LedStrip", "led_strips"),     // @Table(name = "led_strips")
-        Map.entry("SafeWork", "safe_work"),
-        Map.entry("HotWork", "hot_work"),        // @Table(name = "hot_work")
-        Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
-        Map.entry("WorkRequest", "work_request"), // @Table(name = "work_request")
-        Map.entry("DailyPermitPackage", "daily_permit_package")
-    );
 
     /**
      * Background job that runs every 5 minutes to check sync health.
@@ -156,7 +126,7 @@ public class SyncHealthChecker {
         Map<String, Long> entityCounts = new HashMap<>();
         long totalEntities = 0;
 
-        for (Map.Entry<String, String> entry : ENTITY_TYPE_TO_TABLE.entrySet()) {
+        for (Map.Entry<String, String> entry : entityTableRegistry.getEntityTypeToTableMap().entrySet()) {
             String entityType = entry.getKey();
             String tableName = entry.getValue();
             try {
@@ -257,7 +227,7 @@ public class SyncHealthChecker {
         long totalDiff = 0;
         List<String> mismatchedTypes = new ArrayList<>();
 
-        for (String entityType : ENTITY_TYPE_TO_TABLE.keySet()) {
+        for (String entityType : entityTableRegistry.getAllEntityTypes()) {
             long localCount = local.getEntityCounts().getOrDefault(entityType, 0L);
             long serverCount = server.getEntityCounts().getOrDefault(entityType, 0L);
 

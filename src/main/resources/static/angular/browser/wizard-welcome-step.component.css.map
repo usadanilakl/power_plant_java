@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;ef966698a55fe82fb5a3dfdc60669f63d5469a48b25b147abcb85233af88e024;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/steps/wizard-welcome-step.component.ts"],
+  "sourcesContent": ["\n    .welcome-container {\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      text-align: center;\n      padding: 20px;\n    }\n\n    .welcome-icon {\n      width: 80px;\n      height: 80px;\n      border-radius: 50%;\n      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      margin-bottom: 20px;\n    }\n\n    .welcome-icon mat-icon {\n      font-size: 40px;\n      width: 40px;\n      height: 40px;\n      color: #1976d2;\n    }\n\n    .welcome-content {\n      max-width: 400px;\n    }\n\n    .welcome-message {\n      color: #666;\n      line-height: 1.6;\n      margin: 0;\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,eAAa;AACb,cAAY;AACZ,WAAS;AACX;AAEA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,iBAAe;AACf;AAAA,IAAY;AAAA,MAAgB,MAAhB;AAAA,MAAwB,QAAQ,EAAhC;AAAA,MAAoC,QAAQ;AACxD,WAAS;AACT,eAAa;AACb,mBAAiB;AACjB,iBAAe;AACjB;AAEA,CAXC,aAWa;AACZ,aAAW;AACX,SAAO;AACP,UAAQ;AACR,SAAO;AACT;AAEA,CAAC;AACC,aAAW;AACb;AAEA,CAAC;AACC,SAAO;AACP,eAAa;AACb,UAAQ;AACV;",
+  "names": []
+}

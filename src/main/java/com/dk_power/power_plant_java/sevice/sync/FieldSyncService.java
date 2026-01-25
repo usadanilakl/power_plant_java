@@ -53,6 +53,7 @@ public class FieldSyncService {
     private final NgFileService ngFileService;
     private final FileRepo fileRepo;
     private final FileObjectSyncHandler fileObjectSyncHandler;
+    private final EntityTableRegistry entityTableRegistry;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -72,7 +73,8 @@ public class FieldSyncService {
             PlatformTransactionManager transactionManager,
             NgFileService ngFileService,
             FileRepo fileRepo,
-            FileObjectSyncHandler fileObjectSyncHandler) {
+            FileObjectSyncHandler fileObjectSyncHandler,
+            EntityTableRegistry entityTableRegistry) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -86,6 +88,7 @@ public class FieldSyncService {
         this.ngFileService = ngFileService;
         this.fileRepo = fileRepo;
         this.fileObjectSyncHandler = fileObjectSyncHandler;
+        this.entityTableRegistry = entityTableRegistry;
     }
 
     /**
@@ -594,7 +597,7 @@ public class FieldSyncService {
 
         return latestChanges.stream()
             .collect(Collectors.toMap(
-                fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
+                FieldChange::buildChangeKey,
                 fc -> fc,
                 (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b // Keep newer on conflict
             ));
@@ -679,7 +682,7 @@ public class FieldSyncService {
                 }
 
                 // Check if we should apply this change (LWW) using pre-fetched map
-                if (shouldApplyChangeBatched(change, latestChangesMap)) {
+                if (shouldApplyChange(change, latestChangesMap)) {
                     boolean applied = applyFieldChange(entity, change);
                     if (applied) {
                         modified = true;
@@ -705,43 +708,20 @@ public class FieldSyncService {
     }
 
     /**
-     * Determine if an incoming change should be applied based on LWW using pre-fetched map.
-     * This eliminates the N+1 query problem by using batch-loaded data.
+     * Determine if an incoming change should be applied based on Last-Writer-Wins (LWW).
+     * Uses pre-fetched map to eliminate N+1 query problem.
+     *
+     * @param incoming The incoming change to evaluate
+     * @param latestChangesMap Pre-fetched map of latest local changes (key: entityType:entityId:fieldName)
+     * @return true if the incoming change should be applied
      */
-    private boolean shouldApplyChangeBatched(FieldChange incoming, Map<String, FieldChange> latestChangesMap) {
-        String key = incoming.getEntityType() + ":" + incoming.getEntityId() + ":" + incoming.getFieldName();
+    private boolean shouldApplyChange(FieldChange incoming, Map<String, FieldChange> latestChangesMap) {
+        String key = incoming.buildChangeKey();
         FieldChange local = latestChangesMap.get(key);
 
         if (local == null) {
             return true; // No local change exists, apply incoming
         }
-
-        // If incoming is newer, apply it
-        if (incoming.getTimestamp().isAfter(local.getTimestamp())) {
-            return true;
-        }
-
-        // If timestamps are equal, use machine ID as tiebreaker (deterministic)
-        if (incoming.getTimestamp().equals(local.getTimestamp())) {
-            return incoming.getOriginMachineId().compareTo(local.getOriginMachineId()) > 0;
-        }
-
-        return false; // Local is newer
-    }
-
-    /**
-     * Determine if an incoming change should be applied based on LWW.
-     * Legacy method - use shouldApplyChangeBatched for batch operations.
-     */
-    private boolean shouldApplyChange(FieldChange incoming) {
-        Optional<FieldChange> localChange = fieldChangeRepository.findLatestChange(
-            incoming.getEntityType(), incoming.getEntityId(), incoming.getFieldName());
-
-        if (localChange.isEmpty()) {
-            return true; // No local change exists, apply incoming
-        }
-
-        FieldChange local = localChange.get();
 
         // If incoming is newer, apply it
         if (incoming.getTimestamp().isAfter(local.getTimestamp())) {
@@ -1071,42 +1051,10 @@ public class FieldSyncService {
 
     /**
      * Get the database table name for an entity type.
-     * Handles entities with custom @Table annotations.
+     * Delegates to EntityTableRegistry for centralized mapping.
      */
     private String getTableName(String entityType) {
-        // Handle specific entity types with custom table names from @Table annotations
-        switch (entityType) {
-            case "FileObject":
-                return "file_object";
-            case "Value":
-                // Value entity uses @Table(name = "val_table")
-                return "val_table";
-            case "Category":
-                return "category";
-            case "Equipment":
-                return "equipment";
-            case "LotoPoint":
-                return "loto_point";
-            case "User":
-                return "users";
-            case "Role":
-                return "roles";
-            case "LotoBox":
-                return "loto_boxes";
-            case "ConfinedSpace":
-                return "confined_space";
-            case "HotWork":
-                return "hot_work";
-            case "WorkRequest":
-                return "work_request";
-            case "EspDevice":
-                return "esp_devices";
-            case "LedStrip":
-                return "led_strips";
-            default:
-                // Convert CamelCase to snake_case for other entities
-                return entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
-        }
+        return entityTableRegistry.getTableName(entityType);
     }
 
     /**

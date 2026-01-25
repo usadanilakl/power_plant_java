@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/multi-select-searchable-dropdown/multi-select-searchable-dropdown.component.css"],
+  "sourcesContent": [".multi-select-container {\r\n  font-family: Arial, sans-serif;\r\n  width: 100%;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.multi-select-container > label {\r\n  display: block;\r\n  margin-bottom: 5px;\r\n  font-weight: bold;\r\n}\r\n\r\n.selected-options {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 5px;\r\n  margin-bottom: 10px;\r\n}\r\n\r\n.selected-option {\r\n  background-color: #e0e0e0;\r\n  padding: 5px 10px;\r\n  border-radius: 15px;\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\n.selected-option button {\r\n  background: none;\r\n  border: none;\r\n  cursor: pointer;\r\n  margin-left: 5px;\r\n}"],
+  "mappings": ";AAAA,CAAC;AACC,eAAa,KAAK,EAAE;AACpB,SAAO;AACP,iBAAe;AACjB;AAEA,CANC,uBAMuB,EAAE;AACxB,WAAS;AACT,iBAAe;AACf,eAAa;AACf;AAEA,CAAC;AACC,WAAS;AACT,aAAW;AACX,OAAK;AACL,iBAAe;AACjB;AAEA,CAAC;AACC,oBAAkB;AAClB,WAAS,IAAI;AACb,iBAAe;AACf,WAAS;AACT,eAAa;AACf;AAEA,CARC,gBAQgB;AACf,cAAY;AACZ,UAAQ;AACR,UAAQ;AACR,eAAa;AACf;",
+  "names": []
+}

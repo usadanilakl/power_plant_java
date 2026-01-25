@@ -116,6 +116,29 @@ public class FieldChange {
         return syncedToMachines.contains("|" + machineId + "|");
     }
 
+    /**
+     * Build a unique key for this change for conflict resolution.
+     * Format: entityType:entityId:fieldName
+     *
+     * @return The change key
+     */
+    public String buildChangeKey() {
+        return entityType + ":" + entityId + ":" + fieldName;
+    }
+
+    /**
+     * Build a unique key for conflict resolution from components.
+     * Format: entityType:entityId:fieldName
+     *
+     * @param entityType The entity type
+     * @param entityId   The entity ID
+     * @param fieldName  The field name
+     * @return The change key
+     */
+    public static String buildChangeKey(String entityType, Long entityId, String fieldName) {
+        return entityType + ":" + entityId + ":" + fieldName;
+    }
+
     @Override
     public String toString() {
         return "FieldChange{" +

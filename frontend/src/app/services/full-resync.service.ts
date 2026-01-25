@@ -150,6 +150,31 @@ export interface PartialSyncResult {
   changesApplied: number;
 }
 
+// Full Sync to Server interfaces
+export interface FullSyncToServerStatus {
+  startTime: string | null;
+  endTime: string | null;
+  phase: string;
+  currentEntityType: string | null;
+  totalEntities: number;
+  entitiesSent: number;
+  entitiesFailed: number;
+  filesQueued: number;
+  success: boolean;
+  errors: string[];
+}
+
+export interface FullSyncToServerResponse {
+  success: boolean;
+  message: string;
+  status: FullSyncToServerStatus;
+}
+
+export interface FullSyncToServerStatusResponse {
+  inProgress: boolean;
+  status: FullSyncToServerStatus;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -342,6 +367,29 @@ export class FullResyncService {
   executePartialSync(date: string, force: boolean = false): Observable<PartialSyncResult> {
     return this.http.post<PartialSyncResult>(
       `${this.baseUrl}/partial-sync/execute?date=${date}&force=${force}`, {}
+    );
+  }
+
+  // ==================== FULL SYNC TO SERVER METHODS ====================
+
+  private fieldSyncUrl = `${environment.baseApiUrl}/api/field-sync`;
+
+  /**
+   * Start a full sync of all entities from client to server.
+   * This is a one-time operation to populate the server with all existing data.
+   */
+  startFullSyncToServer(): Observable<FullSyncToServerResponse> {
+    return this.http.post<FullSyncToServerResponse>(
+      `${this.fieldSyncUrl}/full-sync/start`, {}
+    );
+  }
+
+  /**
+   * Get the status of the current or last full sync to server operation.
+   */
+  getFullSyncToServerStatus(): Observable<FullSyncToServerStatusResponse> {
+    return this.http.get<FullSyncToServerStatusResponse>(
+      `${this.fieldSyncUrl}/full-sync/status`
     );
   }
 }

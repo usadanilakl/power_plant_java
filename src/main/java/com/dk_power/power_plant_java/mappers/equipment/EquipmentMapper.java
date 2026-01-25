@@ -341,7 +341,7 @@ public class EquipmentMapper implements BaseMapper {
         }
 
         System.out.println("file link: " + dto.getMainFile());
-        FileObject byFileLink = fileService.getByFileLink(dto.getMainFile());
+//        FileObject byFileLink = fileService.getByFileLink(dto.getMainFile());
 
 
         // Set fields from BaseEquipmentDto

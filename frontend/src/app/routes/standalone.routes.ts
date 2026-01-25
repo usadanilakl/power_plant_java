@@ -6,6 +6,7 @@ import { AdminFunctionalitiesComponent } from '../pages/admin/admin-functionalit
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncTestingComponent } from '../features/sync-testing/sync-testing.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
+import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -14,5 +15,6 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'admin', component: AdminFunctionalitiesComponent },
   { path: 'sync', component: SyncMonitorComponent },
   { path: 'sync-test', component: SyncTestingComponent },
-  { path: 'sync-resync', component: SyncResyncComponent }
+  { path: 'sync-resync', component: SyncResyncComponent },
+  { path: 'full-sync-to-server', component: FullSyncToServerComponent }
 ];

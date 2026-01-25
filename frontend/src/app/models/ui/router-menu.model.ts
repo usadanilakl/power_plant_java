@@ -64,6 +64,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/sync', label: 'Sync Monitor' },
             { route: '/sync-test', label: 'Sync Test' },
             { route: '/sync-resync', label: 'Sync Resync' },
+            { route: '/full-sync-to-server', label: 'Full Sync to Server' },
             { route: '/admin', label: 'Admin' }
         ]
     }

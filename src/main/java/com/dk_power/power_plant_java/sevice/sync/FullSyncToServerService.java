@@ -43,7 +43,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -193,9 +192,11 @@ public class FullSyncToServerService {
         AtomicLong totalSent = new AtomicLong(0);
         AtomicLong totalFailed = new AtomicLong(0);
 
-        for (EntitySyncConfig config : ENTITY_SYNC_ORDER) {
+        for (int i = 0; i < ENTITY_SYNC_ORDER.size(); i++) {
+            EntitySyncConfig config = ENTITY_SYNC_ORDER.get(i);
             currentStatus.setPhase("Syncing " + config.entityType);
             currentStatus.setCurrentEntityType(config.entityType);
+            currentStatus.setLastCompletedPage(-1); // Reset page tracking for new entity type
 
             try {
                 SyncResult result = syncEntityType(config);
@@ -203,6 +204,7 @@ public class FullSyncToServerService {
                 totalFailed.addAndGet(result.failedCount);
                 currentStatus.setEntitiesSent(totalSent.get());
                 currentStatus.setEntitiesFailed(totalFailed.get());
+                currentStatus.setLastCompletedEntityIndex(i); // Track completed entity type
 
                 log.info("Synced {}: {} sent, {} failed",
                     config.entityType, result.sentCount, result.failedCount);
@@ -270,6 +272,7 @@ public class FullSyncToServerService {
         long sentCount = 0;
         long failedCount = 0;
         int page = 0;
+        int batchIndex = 0;
         List<FieldChange> batchChanges = new ArrayList<>();
 
         while (true) {
@@ -292,11 +295,20 @@ public class FullSyncToServerService {
                         BatchSendResult result = sendBatch(batchChanges);
                         sentCount += result.sent;
                         failedCount += result.failed;
+
+                        // Track failed batches for potential retry
+                        if (result.failed > 0 && result.errorMessage != null) {
+                            currentStatus.recordFailedBatch(config.entityType, page, batchIndex, result.errorMessage);
+                        }
+
                         batchChanges.clear();
+                        batchIndex++;
                     }
                 }
             }
 
+            // Update progress tracking
+            currentStatus.setLastCompletedPage(page);
             page++;
 
             // Safety check
@@ -311,6 +323,10 @@ public class FullSyncToServerService {
             BatchSendResult result = sendBatch(batchChanges);
             sentCount += result.sent;
             failedCount += result.failed;
+
+            if (result.failed > 0 && result.errorMessage != null) {
+                currentStatus.recordFailedBatch(config.entityType, page, batchIndex, result.errorMessage);
+            }
         }
 
         return new SyncResult(sentCount, failedCount);
@@ -366,7 +382,7 @@ public class FullSyncToServerService {
      */
     private BatchSendResult sendBatch(List<FieldChange> changes) {
         if (changes.isEmpty()) {
-            return new BatchSendResult(0, 0);
+            return new BatchSendResult(0, 0, null);
         }
 
         try {
@@ -394,15 +410,16 @@ public class FullSyncToServerService {
 
             Map<String, Object> body = response.getBody();
             if (body != null && Boolean.TRUE.equals(body.get("success"))) {
-                return new BatchSendResult(changes.size(), 0);
+                currentStatus.recordSuccessfulBatch();
+                return new BatchSendResult(changes.size(), 0, null);
             } else {
                 String error = body != null ? String.valueOf(body.get("errorMessage")) : "Unknown error";
                 log.warn("Batch send failed: {}", error);
-                return new BatchSendResult(0, changes.size());
+                return new BatchSendResult(0, changes.size(), error);
             }
         } catch (Exception e) {
             log.error("Error sending batch to server: {}", e.getMessage());
-            return new BatchSendResult(0, changes.size());
+            return new BatchSendResult(0, changes.size(), e.getMessage());
         }
     }
 
@@ -605,8 +622,41 @@ public class FullSyncToServerService {
         private boolean success;
         private List<String> errors = new ArrayList<>();
 
+        // Batch tracking for resume capability
+        private int lastCompletedEntityIndex = -1;  // Index in ENTITY_SYNC_ORDER
+        private int lastCompletedPage = -1;         // Last page that was fully sent
+        private int totalBatchesSent = 0;
+        private int totalBatchesFailed = 0;
+        private List<FailedBatch> failedBatches = new ArrayList<>();
+
         public void addError(String error) {
             errors.add(error);
+        }
+
+        public void recordFailedBatch(String entityType, int page, int batchIndex, String error) {
+            failedBatches.add(new FailedBatch(entityType, page, batchIndex, error, Instant.now()));
+            totalBatchesFailed++;
+        }
+
+        public void recordSuccessfulBatch() {
+            totalBatchesSent++;
+        }
+    }
+
+    @Data
+    public static class FailedBatch {
+        private final String entityType;
+        private final int page;
+        private final int batchIndex;
+        private final String error;
+        private final Instant failedAt;
+
+        public FailedBatch(String entityType, int page, int batchIndex, String error, Instant failedAt) {
+            this.entityType = entityType;
+            this.page = page;
+            this.batchIndex = batchIndex;
+            this.error = error;
+            this.failedAt = failedAt;
         }
     }
 
@@ -614,5 +664,5 @@ public class FullSyncToServerService {
 
     private record SyncResult(long sentCount, long failedCount) {}
 
-    private record BatchSendResult(int sent, int failed) {}
+    private record BatchSendResult(int sent, int failed, String errorMessage) {}
 }
