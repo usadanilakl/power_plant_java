@@ -26,6 +26,7 @@ export class EquipmentPage extends BasePage {
   static readonly TEST_VENDOR = 'Equipment-Test-Vendor';
   static readonly TEST_VENDOR_ALIAS = 'ETV';
   static readonly TEST_FILE_NAME = 'equipment-test-file';
+  static readonly TEST_FILE_NAME_U2 = 'equipment-test-file-u2';
 
   constructor(page: Page) {
     super(page);
@@ -128,6 +129,67 @@ export class EquipmentPage extends BasePage {
     await this.lotoBuilder.submitFileForm();
 
     return EquipmentPage.TEST_FILE_NAME;
+  }
+
+  /**
+   * Ensure the second test file (U2) exists. If it already exists, skip creation.
+   * Returns the file name. Uses same vendor and file type as U1.
+   */
+  async ensureSecondTestFileExists(): Promise<{ fileName: string; vendorName: string; fileTypeName: string }> {
+    await this.lotoBuilder.switchToTreeView();
+    await this.lotoBuilder.selectFileTypeCategory('pid');
+
+    // Check if test vendor exists in the menu
+    const vendorExists = await this.lotoBuilder.isVendorInLeftMenu(EquipmentPage.TEST_VENDOR);
+
+    if (vendorExists) {
+      // Check if second test file exists under the vendor
+      const fileExists = await this.lotoBuilder.isFileInVendorDropdown(
+        EquipmentPage.TEST_VENDOR,
+        EquipmentPage.TEST_FILE_NAME_U2
+      );
+
+      if (fileExists) {
+        console.log(`Second test file "${EquipmentPage.TEST_FILE_NAME_U2}" already exists under vendor "${EquipmentPage.TEST_VENDOR}". Skipping creation.`);
+        return {
+          fileName: EquipmentPage.TEST_FILE_NAME_U2,
+          vendorName: EquipmentPage.TEST_VENDOR,
+          fileTypeName: EquipmentPage.TEST_FILE_TYPE,
+        };
+      }
+    }
+
+    // File doesn't exist, create it
+    console.log(`Creating second test file "${EquipmentPage.TEST_FILE_NAME_U2}" with vendor "${EquipmentPage.TEST_VENDOR}"...`);
+    await this.createSecondTestFile();
+
+    return {
+      fileName: EquipmentPage.TEST_FILE_NAME_U2,
+      vendorName: EquipmentPage.TEST_VENDOR,
+      fileTypeName: EquipmentPage.TEST_FILE_TYPE,
+    };
+  }
+
+  /**
+   * Create the second test file (U2) with fixed name, using existing vendor and file type
+   */
+  async createSecondTestFile(): Promise<string> {
+    await this.lotoBuilder.clickAddNewFile();
+
+    // Select existing file type
+    await this.lotoBuilder.selectFileType(EquipmentPage.TEST_FILE_TYPE);
+
+    // Select existing vendor
+    await this.lotoBuilder.selectVendor(EquipmentPage.TEST_VENDOR);
+
+    // Upload file with fixed name for U2
+    await this.lotoBuilder.uploadFile('1.pdf');
+    await this.lotoBuilder.fillFileName(EquipmentPage.TEST_FILE_NAME_U2);
+    await this.lotoBuilder.fillFileNumber(EquipmentPage.TEST_FILE_NAME_U2);
+
+    await this.lotoBuilder.submitFileForm();
+
+    return EquipmentPage.TEST_FILE_NAME_U2;
   }
 
   async createFileWithNewVendorAndFileType(

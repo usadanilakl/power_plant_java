@@ -170,7 +170,13 @@ export class RfLotoPointFormComponent {
           // Only do this once to prevent infinite loops
           this.draftCheckDone.set(true);
           this.draftDialogShownForSession.set(true);
-          this.stateService.setSelectedItem(draftData);
+          // Preserve equipmentList from current entity (e.g., pending equipment from shape drawing)
+          const draftWithEquipment = new LotoPointDto({
+            ...draftData,
+            equipmentList: currentEntity?.equipmentList || draftData.equipmentList || [],
+            equipmentIdList: currentEntity?.equipmentIdList || draftData.equipmentIdList || [],
+          });
+          this.stateService.setSelectedItem(draftWithEquipment);
         }
       } else {
         // No draft - store the original server version and mark session as checked

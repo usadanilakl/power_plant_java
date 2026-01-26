@@ -626,6 +626,9 @@ export class LotoBuilderPage extends BasePage {
    * Valid options: 'pid', 'elect', 'ht panel', 'iso' (or display names: 'PID', 'Electrical', 'Heat Trace', 'Isometrics')
    */
   async selectFileTypeCategory(category: 'pid' | 'elect' | 'ht panel' | 'iso' | string) {
+    // Ensure no popup overlays are blocking before interacting with file type buttons
+    await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+
     await this.switchToTreeView();
     // Map display names to internal names if needed
     const categoryMap: Record<string, string> = {

@@ -83,7 +83,9 @@
         <div class="form-content">
           <app-rf-loto-point-form
             [entityInput]="lotoPoint() || undefined"
+            [externalSaveMode]="!!pendingEquipment()"
             (formValueChange)="onFormValueChange($event)"
+            (formSubmit)="onFormSubmit($event)"
           ></app-rf-loto-point-form>
         </div>
       }
