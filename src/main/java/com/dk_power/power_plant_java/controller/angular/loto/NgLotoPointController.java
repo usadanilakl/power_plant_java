@@ -582,7 +582,7 @@ public class NgLotoPointController {
             @RequestBody Map<String, Object> requestBody) {
         try {
             @SuppressWarnings("unchecked")
-            List<Integer> sourceIdsRaw = (List<Integer>) requestBody.get("sourceEquipmentIds");
+            List<?> sourceIdsRaw = (List<?>) requestBody.get("sourceEquipmentIds");
             String sourceUnit = (String) requestBody.get("sourceUnit");
 
             if (sourceUnit == null || (!sourceUnit.equals("01") && !sourceUnit.equals("02"))) {
@@ -590,9 +590,12 @@ public class NgLotoPointController {
                         new NgApiResponse<>(null, "sourceUnit must be '01' or '02'"));
             }
 
-            // Convert Integer list to Long list
+            // Convert Number list to Long list (handles both Integer and Long from JSON)
             List<Long> sourceEquipmentIds = sourceIdsRaw != null
-                    ? sourceIdsRaw.stream().map(Integer::longValue).toList()
+                    ? sourceIdsRaw.stream()
+                        .filter(id -> id instanceof Number)
+                        .map(id -> ((Number) id).longValue())
+                        .toList()
                     : new ArrayList<>();
 
             List<EquipmentDto> counterpartEquipment = ngZeroEnergyService.lookupCounterpartEquipment(
@@ -601,6 +604,53 @@ public class NgLotoPointController {
             NgApiResponse<List<EquipmentDto>> response = new NgApiResponse<>(
                     counterpartEquipment,
                     "Counterpart equipment retrieved successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Look up counterpart LOTO points for ZeroEnergy transfer.
+     *
+     * Transfer logic:
+     * For each source LOTO point ID:
+     * 1. Find the LOTO point entity
+     * 2. Find the LOTO point's counterpart for the other unit
+     * 3. Return full LotoPointDto
+     *
+     * @param requestBody Contains sourceLotoPointIds (list of LOTO point IDs) and sourceUnit ("01" or "02")
+     * @return List of counterpart LotoPointDto objects
+     */
+    @PostMapping("/lookup-counterpart-loto-points")
+    public ResponseEntity<NgApiResponse<List<LotoPointDto>>> lookupCounterpartLotoPoints(
+            @RequestBody Map<String, Object> requestBody) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<?> sourceIdsRaw = (List<?>) requestBody.get("sourceLotoPointIds");
+            String sourceUnit = (String) requestBody.get("sourceUnit");
+
+            if (sourceUnit == null || (!sourceUnit.equals("01") && !sourceUnit.equals("02"))) {
+                return ResponseEntity.badRequest().body(
+                        new NgApiResponse<>(null, "sourceUnit must be '01' or '02'"));
+            }
+
+            // Convert Number list to Long list (handles both Integer and Long from JSON)
+            List<Long> sourceLotoPointIds = sourceIdsRaw != null
+                    ? sourceIdsRaw.stream()
+                        .filter(id -> id instanceof Number)
+                        .map(id -> ((Number) id).longValue())
+                        .toList()
+                    : new ArrayList<>();
+
+            List<LotoPointDto> counterpartLotoPoints = ngLotoPointService.lookupCounterpartLotoPoints(
+                    sourceLotoPointIds, sourceUnit);
+
+            NgApiResponse<List<LotoPointDto>> response = new NgApiResponse<>(
+                    counterpartLotoPoints,
+                    "Counterpart LOTO points retrieved successfully"
             );
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {

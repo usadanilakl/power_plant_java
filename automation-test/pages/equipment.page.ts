@@ -126,6 +126,9 @@ export class EquipmentPage extends BasePage {
     await this.lotoBuilder.fillFileName(EquipmentPage.TEST_FILE_NAME);
     await this.lotoBuilder.fillFileNumber(EquipmentPage.TEST_FILE_NAME);
 
+    // Select Override option in case file already exists from previous runs
+    await this.lotoBuilder.selectOverrideOption();
+
     await this.lotoBuilder.submitFileForm();
 
     return EquipmentPage.TEST_FILE_NAME;
@@ -182,10 +185,13 @@ export class EquipmentPage extends BasePage {
     // Select existing vendor
     await this.lotoBuilder.selectVendor(EquipmentPage.TEST_VENDOR);
 
-    // Upload file with fixed name for U2
-    await this.lotoBuilder.uploadFile('1.pdf');
+    // Upload file with fixed name for U2 (use different source file than U1)
+    await this.lotoBuilder.uploadFile('2.pdf');
     await this.lotoBuilder.fillFileName(EquipmentPage.TEST_FILE_NAME_U2);
     await this.lotoBuilder.fillFileNumber(EquipmentPage.TEST_FILE_NAME_U2);
+
+    // Select Override option in case file already exists from previous runs
+    await this.lotoBuilder.selectOverrideOption();
 
     await this.lotoBuilder.submitFileForm();
 
@@ -210,6 +216,107 @@ export class EquipmentPage extends BasePage {
     const fileName = await this.lotoBuilder.uploadFileWithUniqueName(testFileName, uniqueSuffix);
     await this.lotoBuilder.submitFileForm();
     return fileName;
+  }
+
+  /**
+   * Create a test file with a custom name using existing vendor and file type.
+   * Creates vendor and file type if they don't exist (without creating default file).
+   * Useful for iteration tests that need unique files for each run.
+   * @param customFileName - The custom file name to use
+   * @param pdfFile - The PDF file to upload ('1.pdf' or '2.pdf')
+   * @param maxRetries - Maximum number of retry attempts (default 2)
+   */
+  async createTestFileWithCustomName(customFileName: string, pdfFile: string = '1.pdf', maxRetries: number = 2): Promise<{ fileName: string; vendorName: string; fileTypeName: string }> {
+    await this.lotoBuilder.switchToTreeView();
+    await this.lotoBuilder.selectFileTypeCategory('pid');
+
+    // Try to create the file with retries
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`Creating test file "${customFileName}" with vendor "${EquipmentPage.TEST_VENDOR}" (attempt ${attempt}/${maxRetries})...`);
+
+      // Close any lingering popups
+      await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+      await this.lotoBuilder.clickAddNewFile();
+
+      // Wait for file form to appear
+      await this.page.locator('app-rf-file-form').waitFor({ state: 'visible', timeout: 10000 });
+
+      // Check if file type exists, create if not (similar to createTestFile)
+      const fileTypeExists = await this.lotoBuilder.isFileTypeOptionVisible(EquipmentPage.TEST_FILE_TYPE);
+      if (!fileTypeExists) {
+        console.log(`File type "${EquipmentPage.TEST_FILE_TYPE}" not found, creating...`);
+        await this.lotoBuilder.clickAddNewFileType();
+        await this.lotoBuilder.fillValueForm({
+          name: EquipmentPage.TEST_FILE_TYPE,
+          alias: EquipmentPage.TEST_FILE_TYPE_ALIAS,
+        });
+        await this.lotoBuilder.saveValueForm();
+      } else {
+        await this.lotoBuilder.selectFileType(EquipmentPage.TEST_FILE_TYPE);
+      }
+
+      // Check if vendor exists, create if not (similar to createTestFile)
+      const vendorExists = await this.lotoBuilder.isVendorOptionVisible(EquipmentPage.TEST_VENDOR);
+      if (!vendorExists) {
+        console.log(`Vendor "${EquipmentPage.TEST_VENDOR}" not found, creating...`);
+        await this.lotoBuilder.clickAddNewVendor();
+        await this.lotoBuilder.fillValueForm({
+          name: EquipmentPage.TEST_VENDOR,
+          alias: EquipmentPage.TEST_VENDOR_ALIAS,
+        });
+        await this.lotoBuilder.saveValueForm();
+      } else {
+        await this.lotoBuilder.selectVendor(EquipmentPage.TEST_VENDOR);
+      }
+
+      // Upload file with custom name
+      await this.lotoBuilder.uploadFile(pdfFile);
+
+      // Wait for file info to appear (indicates successful upload)
+      const fileInfo = this.page.locator('app-rf-file-form .file-info, app-rf-file-form .uploaded-file');
+      const uploadSuccess = await fileInfo.isVisible({ timeout: 10000 }).catch(() => false);
+      if (!uploadSuccess) {
+        console.log(`File upload attempt ${attempt} may have failed - retrying...`);
+        // Close the form and retry
+        const closeBtn = this.page.locator('.popup-overlay button').filter({ hasText: /×|close|cancel/i }).first();
+        if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await closeBtn.click();
+        }
+        await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await this.page.waitForTimeout(1000);
+        continue;
+      }
+
+      await this.lotoBuilder.fillFileName(customFileName);
+      await this.lotoBuilder.fillFileNumber(customFileName);
+
+      // Select Override option in case file already exists
+      await this.lotoBuilder.selectOverrideOption();
+
+      await this.lotoBuilder.submitFileForm();
+
+      // Verify the file was created by checking if it appears in the tree
+      await this.page.waitForTimeout(1000);
+      await this.lotoBuilder.switchToTreeView();
+      await this.lotoBuilder.selectFileTypeCategory('pid');
+
+      const fileCreated = await this.lotoBuilder.isFileInVendorDropdown(EquipmentPage.TEST_VENDOR, customFileName);
+      if (fileCreated) {
+        console.log(`File "${customFileName}" created successfully`);
+        return {
+          fileName: customFileName,
+          vendorName: EquipmentPage.TEST_VENDOR,
+          fileTypeName: EquipmentPage.TEST_FILE_TYPE,
+        };
+      }
+
+      console.log(`File "${customFileName}" not found in tree after attempt ${attempt} - retrying...`);
+      await this.page.waitForTimeout(1000);
+    }
+
+    // If we get here, all retries failed
+    throw new Error(`Failed to create file "${customFileName}" after ${maxRetries} attempts`);
   }
 
   async openFileInViewer(vendorName: string, fileName: string, fileTypeCategory: string = 'pid') {

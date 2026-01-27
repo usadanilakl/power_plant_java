@@ -28,15 +28,16 @@ Form elements: /home/dk-power/IdeaProjects/power_plant_java/automation-test/test
     2. Create first pair of LOTO points (01-dualA/02-dualA) using dual form:
        - Draw shape on U1 file for primary
        - Fill basic fields (tag, description, dropdowns)
+       - Sync all fields
        - Add equipment to counterpart on U2 file
        - Skip zero energy for this pair
        - Submit both units
     3. Create second pair of LOTO points (01-dualB/02-dualB) using dual form:
        - Draw shape on U1 file for primary (different area)
        - Fill basic fields
-       - Add zero energy using existing phrase
+       - Add zero energy using existing phrase (or create new if non present)
        - Reference first pair LOTO points for zero energy equipment
+       - Sync all fields - zero energy will sync too - it should use the same phrase but get counterpart equipment.
        - Add equipment to counterpart on U2 file
-       - Add zero energy equipment for counterpart (reference first counterpart)
        - Submit both units
     4. Verify all 4 LOTO points were created successfully

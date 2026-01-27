@@ -399,4 +399,25 @@ export class RfLotoPointApiService {
       }
     );
   }
+
+  /**
+   * Look up counterpart LOTO points for ZeroEnergy transfer.
+   * For each source LOTO point ID, finds the counterpart LOTO point for the target unit.
+   *
+   * @param sourceLotoPointIds List of LOTO point IDs from the source unit
+   * @param sourceUnit The source unit prefix ("01" or "02")
+   * @returns Observable with list of counterpart LotoPointDto objects
+   */
+  lookupCounterpartLotoPoints(
+    sourceLotoPointIds: number[],
+    sourceUnit: string
+  ): Observable<SpringApiResponse<LotoPointDto[]>> {
+    return this.http.post<SpringApiResponse<LotoPointDto[]>>(
+      `${this.apiUrl}/lookup-counterpart-loto-points`,
+      {
+        sourceLotoPointIds,
+        sourceUnit
+      }
+    );
+  }
 }

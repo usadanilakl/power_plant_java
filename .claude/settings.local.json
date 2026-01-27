@@ -31,7 +31,8 @@
       "Bash(xargs basename:*)",
       "Bash(~/.nvm/versions/node/*/bin/npx)",
       "Bash(ng build:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(npx playwright test:*)"
     ]
   }
 }

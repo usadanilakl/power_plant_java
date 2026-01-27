@@ -464,6 +464,92 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * Look up counterpart LOTO points for ZeroEnergy transfer.
+     *
+     * Transfer logic:
+     * For each source LOTO point ID:
+     * 1. Find the LOTO point entity
+     * 2. Find the LOTO point's counterpart for the other unit (via counterpartId or tag number)
+     * 3. Return full LotoPointDto
+     *
+     * @param sourceLotoPointIds List of LOTO point IDs from the source unit
+     * @param sourceUnit The source unit prefix ("01" or "02")
+     * @return List of counterpart LotoPointDto for the target unit
+     */
+    public List<LotoPointDto> lookupCounterpartLotoPoints(List<Long> sourceLotoPointIds, String sourceUnit) {
+        if (sourceLotoPointIds == null || sourceLotoPointIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String targetUnit = "01".equals(sourceUnit) ? "02" : "01";
+        List<LotoPointDto> counterpartLotoPoints = new ArrayList<>();
+
+        for (Long lotoPointId : sourceLotoPointIds) {
+            if (lotoPointId == null || lotoPointId <= 0) {
+                continue;
+            }
+
+            try {
+                // Step 1: Find the source LOTO point
+                Optional<LotoPoint> sourceLotoPointOpt = findById(lotoPointId);
+                if (sourceLotoPointOpt.isEmpty()) {
+                    System.out.println("LOTO point not found for ID: " + lotoPointId);
+                    continue;
+                }
+                LotoPoint sourceLotoPoint = sourceLotoPointOpt.get();
+
+                // Step 2: Find the counterpart LOTO point
+                LotoPoint counterpartLotoPoint = findCounterpartLotoPointEntity(sourceLotoPoint, targetUnit);
+                if (counterpartLotoPoint == null) {
+                    System.out.println("No counterpart LOTO point found for: " + sourceLotoPoint.getTagNumber());
+                    continue;
+                }
+
+                // Step 3: Convert to DTO and add to list
+                LotoPointDto counterpartDto = toDto(counterpartLotoPoint);
+                counterpartLotoPoints.add(counterpartDto);
+                System.out.println("Mapped LOTO point " + lotoPointId + " -> " + counterpartLotoPoint.getId());
+
+            } catch (Exception e) {
+                System.out.println("Error looking up counterpart for LOTO point ID " + lotoPointId + ": " + e.getMessage());
+            }
+        }
+
+        return counterpartLotoPoints;
+    }
+
+    /**
+     * Finds the counterpart LOTO point entity for the target unit.
+     * First checks counterpartId, then searches by tag number pattern.
+     */
+    private LotoPoint findCounterpartLotoPointEntity(LotoPoint sourceLotoPoint, String targetUnit) {
+        // First, check if counterpartId is set
+        if (sourceLotoPoint.getCounterpartId() != null) {
+            LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(sourceLotoPoint.getCounterpartId());
+            if (counterpart != null) {
+                return counterpart;
+            }
+        }
+
+        // If no counterpartId, search by tag number pattern
+        String sourceTag = sourceLotoPoint.getTagNumber();
+        if (sourceTag == null || sourceTag.length() < 2) {
+            return null;
+        }
+
+        // Convert tag: 01XXX -> 02XXX or 02XXX -> 01XXX
+        String counterpartTag = targetUnit + sourceTag.substring(2);
+
+        // Search by tag number
+        List<LotoPoint> results = lotoPointRepo.findByTagNumber(counterpartTag);
+        if (results != null && !results.isEmpty()) {
+            return results.get(0);
+        }
+
+        return null;
+    }
+
+    /**
      * Generate a counterpart DTO from a source LotoPoint with transformed data.
      */
     private LotoPointDto generateCounterpartDto(LotoPoint source, String fromUnit, String toUnit) {

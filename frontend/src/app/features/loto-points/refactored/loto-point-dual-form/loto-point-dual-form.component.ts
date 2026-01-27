@@ -169,8 +169,8 @@ export class LotoPointDualFormComponent {
   // Track which fields are different between forms
   differentFields = signal<Set<SyncableField>>(new Set());
 
-  // Expose syncable fields for template
-  readonly syncableFields: SyncableField[] = SYNCABLE_FIELDS.filter(f => f !== 'tagNumber');
+  // Expose syncable fields for template (including tagNumber for sync)
+  readonly syncableFields: SyncableField[] = SYNCABLE_FIELDS;
 
   // Computed: Check if primary tag or unit starts with 01 or 02
   isUnitSpecific = computed(() => {
@@ -459,6 +459,7 @@ export class LotoPointDualFormComponent {
    * Handle primary form value changes
    */
   onPrimaryValueChange(values: LotoPointDto): void {
+    console.log('[onPrimaryValueChange] values.zeroEnergy:', JSON.stringify(values.zeroEnergy, null, 2));
     this.currentPrimaryValues.set(values);
     this.updateDifferentFields();
   }
@@ -511,14 +512,19 @@ export class LotoPointDualFormComponent {
     const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
     const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
 
+    console.log('[syncFieldToCounterpart] field:', field);
+    console.log('[syncFieldToCounterpart] primary.zeroEnergy:', primary?.zeroEnergy);
+
     if (!primary || !counterpart) return;
 
     if (field === 'zeroEnergy') {
       // Handle async zeroEnergy sync
+      console.log('[syncFieldToCounterpart] Starting zeroEnergy sync from primary to counterpart');
       this.isLoading.set(true);
       this.counterpartService.syncZeroEnergy(primary, counterpart, this.sourceUnit(), this.destroyRef)
         .pipe(
           tap((updated) => {
+            console.log('[syncFieldToCounterpart] Sync complete, updated.zeroEnergy:', updated.zeroEnergy);
             this.currentCounterpartValues.set(updated);
             this.counterpartLotoPoint.set(updated);
             this.updateDifferentFields();

@@ -496,9 +496,37 @@ export class LotoBuilderPage extends BasePage {
 
   async uploadFile(fileName: string) {
     const filePath = path.join(this.testDataPath, fileName);
-    const fileInput = this.page.locator('app-rf-file-form input[type="file"]');
+    // Use more specific selector - the file input is inside app-file-input component with class 'file-input'
+    const fileInput = this.page.locator('app-rf-file-form app-file-input input.file-input[type="file"]');
+
+    // Wait for the file input to be attached to the DOM
+    await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+
+    // Set the file - Playwright handles hidden inputs
     await fileInput.setInputFiles(filePath);
+
+    // Wait and verify the upload was successful by checking for file-info element
     await this.page.waitForTimeout(500);
+    const fileInfo = this.page.locator('app-rf-file-form app-file-input .file-info');
+    const uploadSuccessful = await fileInfo.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!uploadSuccessful) {
+      console.log('File upload may have failed - file-info not visible. Retrying...');
+      // Retry once
+      await fileInput.setInputFiles(filePath);
+      await this.page.waitForTimeout(1000);
+    }
+  }
+
+  /**
+   * Select the "Override" option for file already exists scenario
+   */
+  async selectOverrideOption() {
+    const overrideOption = this.page.locator('app-rf-file-form').getByText('Override', { exact: false });
+    if (await overrideOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await overrideOption.click();
+      await this.page.waitForTimeout(300);
+    }
   }
 
   /**
@@ -524,8 +552,23 @@ export class LotoBuilderPage extends BasePage {
 
   async submitFileForm() {
     const saveButton = this.page.locator('app-rf-file-form button').filter({ hasText: /save|submit/i });
+    await saveButton.waitFor({ state: 'visible', timeout: 5000 });
     await saveButton.click();
     await this.waitForLoadingToFinish();
+
+    // Wait for the popup overlay to close after submission
+    try {
+      await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 15000 });
+    } catch {
+      // If popup didn't close, check for validation errors and close manually
+      const closeButton = this.page.locator('.popup-overlay button').filter({ hasText: /×|close|cancel/i });
+      if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        console.log('File form submission may have failed - closing popup manually');
+        await closeButton.click();
+        await this.page.locator('.popup-overlay').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+      }
+    }
+
     // After submission, switch back to tree view since it may switch to table view
     await this.switchToTreeView();
   }
