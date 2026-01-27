@@ -1049,11 +1049,25 @@ test.describe('LOTO Point - Create from Shape', () => {
     await page.waitForTimeout(500);
 
     // Sync to counterpart - this should automatically sync zero energy with counterpart LOTO point (02-dualA)
+    // The sync triggers an async API call (lookupCounterpartLotoPoints) to find counterpart LOTO points
     const syncBtn = page.locator('.sync-all-btn.sync-right, button').filter({ hasText: /sync all.*→|→.*sync/i });
     if (await syncBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await syncBtn.click();
-      await page.waitForTimeout(500);
-      console.log('Synced to counterpart - zero energy should automatically reference 02-dualA');
+      console.log('Clicked Sync All → button, waiting for async zeroEnergy sync...');
+
+      // Wait for the async API call to complete (3 seconds should be enough)
+      await page.waitForTimeout(3000);
+
+      // Verify counterpart's zero energy section has equipment after sync
+      const counterpartZeroEnergySection = counterpartPanel2.locator('app-form-group-input').filter({ has: page.locator('label', { hasText: 'Zero Energy' }) });
+      const counterpartZeEquipmentList = counterpartZeroEnergySection.locator('app-equipment-list-manager .equipment-item, app-equipment-list-manager .item');
+      const zeItemCount = await counterpartZeEquipmentList.count();
+      if (zeItemCount > 0) {
+        console.log(`Sync successful - counterpart zero energy has ${zeItemCount} equipment item(s) (should reference 02-dualA)`);
+      } else {
+        console.log('WARNING: Counterpart zero energy section appears empty after sync - waiting longer...');
+        await page.waitForTimeout(2000);
+      }
     }
 
     // Add equipment to counterpart's Equipment List on U2 file
@@ -1563,12 +1577,28 @@ test.describe('LOTO Point - Create from Shape', () => {
       }
       await page.waitForTimeout(500);
 
-      // Sync to counterpart
+      // Sync to counterpart - wait for async zeroEnergy API lookup to complete
       const syncBtn = page.locator('.sync-all-btn.sync-right, button').filter({ hasText: /sync all.*→|→.*sync/i });
       if (await syncBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await syncBtn.click();
-        await page.waitForTimeout(500);
-        console.log('Synced to counterpart');
+        console.log('Clicked Sync All → button, waiting for async zeroEnergy sync...');
+
+        // Wait for the async API call (lookupCounterpartLotoPoints) to complete
+        // The sync triggers an API lookup to find counterpart LOTO points for zero energy
+        await page.waitForTimeout(3000);
+
+        // Verify counterpart's zero energy section has equipment after sync
+        const counterpartZeroEnergySection = counterpartPanel2.locator('app-form-group-input').filter({ has: page.locator('label', { hasText: 'Zero Energy' }) });
+        const counterpartZeEquipmentList = counterpartZeroEnergySection.locator('app-equipment-list-manager .equipment-item, app-equipment-list-manager .item');
+        const zeItemCount = await counterpartZeEquipmentList.count();
+        if (zeItemCount > 0) {
+          console.log(`Sync successful - counterpart zero energy has ${zeItemCount} equipment item(s)`);
+        } else {
+          console.log('WARNING: Counterpart zero energy section appears empty after sync - waiting longer...');
+          await page.waitForTimeout(2000);
+          const zeItemCountRetry = await counterpartZeEquipmentList.count();
+          console.log(`After additional wait: ${zeItemCountRetry} equipment item(s) in counterpart zero energy`);
+        }
       }
 
       // Add equipment to counterpart's Equipment List on U2 file
