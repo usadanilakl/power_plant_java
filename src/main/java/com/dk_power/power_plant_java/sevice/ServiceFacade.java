@@ -7,12 +7,14 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -31,7 +33,8 @@ public class ServiceFacade {
             @Lazy LotoPointService lotoPointService,
             @Lazy CategoryService categoryService,
             @Lazy ValueService valueService,
-            @Lazy FileService fileService
+            @Lazy FileService fileService,
+            @Lazy ZeroEnergyService zeroEnergyService
     ) {
 
         serviceMap.put(Equipment.class.getSimpleName(), equipmentService);
@@ -39,6 +42,7 @@ public class ServiceFacade {
         serviceMap.put(Category.class.getSimpleName(), categoryService);
         serviceMap.put(Value.class.getSimpleName(), valueService);
         serviceMap.put(FileObject.class.getSimpleName(), fileService);
+        serviceMap.put(ZeroEnergy.class.getSimpleName(), zeroEnergyService);
     }
 
     public <T extends BaseAuditEntity> CrudService getService(String entityClass) {
