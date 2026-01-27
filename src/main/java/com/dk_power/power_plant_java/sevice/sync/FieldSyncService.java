@@ -369,6 +369,9 @@ public class FieldSyncService {
         // Collect broadcasts to send AFTER transaction commits
         List<Runnable> pendingBroadcasts = new ArrayList<>();
 
+        // Collect failed ManyToOne references for retry in third pass
+        List<FailedManyToOneReference> failedManyToOneRefs = new ArrayList<>();
+
         // FIRST PASS: Process non-ManyToMany changes (creates entities first)
         for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
             String entityType = entityEntry.getKey();
@@ -382,7 +385,7 @@ public class FieldSyncService {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
                 totalApplied += applied;
 
                 // Queue broadcast for after transaction commits
@@ -423,7 +426,8 @@ public class FieldSyncService {
                     Long entityId = idEntry.getKey();
                     List<FieldChange> changes = idEntry.getValue();
 
-                    int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
+                    // Pass null for failedManyToOneRefs - ManyToMany uses different logic
+                    int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, null);
                     totalApplied += applied;
 
                     if (applied > 0) {
@@ -432,6 +436,38 @@ public class FieldSyncService {
                         final List<FieldChange> changeList = new ArrayList<>(changes);
                         pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
                     }
+                }
+            }
+        }
+
+        // THIRD PASS: Retry failed ManyToOne references now that all entities should exist
+        if (!failedManyToOneRefs.isEmpty()) {
+            entityManager.flush(); // Ensure all entities are persisted before retry
+            log.debug("Third pass: retrying {} failed ManyToOne references", failedManyToOneRefs.size());
+
+            for (FailedManyToOneReference failedRef : failedManyToOneRefs) {
+                try {
+                    // Re-fetch the referenced entity - it should exist now
+                    Object referencedEntity = entityManager.find(failedRef.field.getType(), failedRef.referencedId);
+
+                    if (referencedEntity != null) {
+                        failedRef.field.setAccessible(true);
+                        failedRef.field.set(failedRef.entity, referencedEntity);
+                        saveIncomingChange(failedRef.change);
+                        totalApplied++;
+                        log.debug("Retry succeeded: set {}.{} -> entity #{}",
+                            failedRef.entity.getClass().getSimpleName(),
+                            failedRef.change.getFieldName(),
+                            failedRef.referencedId);
+                    } else {
+                        log.warn("Retry failed: referenced entity {}#{} still not found",
+                            failedRef.field.getType().getSimpleName(), failedRef.referencedId);
+                    }
+                } catch (Exception e) {
+                    log.error("Error retrying ManyToOne reference {}.{}: {}",
+                        failedRef.entity.getClass().getSimpleName(),
+                        failedRef.change.getFieldName(),
+                        e.getMessage());
                 }
             }
         }
@@ -606,10 +642,14 @@ public class FieldSyncService {
     /**
      * Apply changes to a single entity using LWW per field with pre-fetched latest changes.
      * This version uses a pre-populated map to avoid N+1 queries.
+     *
+     * @param failedManyToOneRefs Optional list to collect failed ManyToOne references for retry.
+     *                            Pass null to skip collection (e.g., during retry pass).
      */
     @SuppressWarnings("unchecked")
     private int applyEntityChangesBatched(String entityType, Long entityId, List<FieldChange> changes,
-                                          Map<String, FieldChange> latestChangesMap) {
+                                          Map<String, FieldChange> latestChangesMap,
+                                          List<FailedManyToOneReference> failedManyToOneRefs) {
         int appliedCount = 0;
 
         try {
@@ -633,7 +673,8 @@ public class FieldSyncService {
                 for (FieldChange change : changes) {
                     if (!"_entity_".equals(change.getFieldName()) &&
                         !"deleted".equals(change.getFieldName())) {
-                        applyFieldChange(entity, change);
+                        // Pass null for failedManyToOneRefs - no retry needed for deleted entities
+                        applyFieldChange(entity, change, null);
                         saveIncomingChange(change);
                         appliedCount++;
                     }
@@ -683,7 +724,7 @@ public class FieldSyncService {
 
                 // Check if we should apply this change (LWW) using pre-fetched map
                 if (shouldApplyChange(change, latestChangesMap)) {
-                    boolean applied = applyFieldChange(entity, change);
+                    boolean applied = applyFieldChange(entity, change, failedManyToOneRefs);
                     if (applied) {
                         modified = true;
                         appliedCount++;
@@ -737,9 +778,16 @@ public class FieldSyncService {
     }
 
     /**
-     * Apply a single field change to an entity
+     * Apply a single field change to an entity.
+     *
+     * @param entity The entity to apply the change to
+     * @param change The field change to apply
+     * @param failedManyToOneRefs Optional list to collect failed ManyToOne references for retry.
+     *                            Pass null to skip collection (e.g., during retry pass).
+     * @return true if the change was applied successfully
      */
-    private boolean applyFieldChange(BaseIdEntity entity, FieldChange change) {
+    private boolean applyFieldChange(BaseIdEntity entity, FieldChange change,
+                                     List<FailedManyToOneReference> failedManyToOneRefs) {
         try {
             Field field = findField(entity.getClass(), change.getFieldName());
             if (field == null) {
@@ -764,6 +812,38 @@ public class FieldSyncService {
             }
 
             field.setAccessible(true);
+
+            // For ManyToOne relationships, check if referenced entity exists
+            if ("ManyToOne".equals(change.getRelationshipType()) && change.getNewValue() != null
+                    && !"null".equals(change.getNewValue())) {
+                String cleanedJson = change.getNewValue().replace("\"", "").trim();
+                if (!cleanedJson.isEmpty()) {
+                    try {
+                        Long referencedId = Long.parseLong(cleanedJson);
+                        Object referencedEntity = entityManager.find(field.getType(), referencedId);
+
+                        if (referencedEntity != null) {
+                            field.set(entity, referencedEntity);
+                            return true;
+                        } else {
+                            // Referenced entity not found - collect for retry if list provided
+                            if (failedManyToOneRefs != null) {
+                                failedManyToOneRefs.add(new FailedManyToOneReference(entity, change, field, referencedId));
+                                log.debug("ManyToOne reference {}#{} not found yet - queued for retry",
+                                    field.getType().getSimpleName(), referencedId);
+                            } else {
+                                log.warn("Related entity {}#{} not found - may not be synced yet",
+                                    field.getType().getSimpleName(), referencedId);
+                            }
+                            return false;
+                        }
+                    } catch (NumberFormatException e) {
+                        log.warn("Could not parse relationship ID from '{}' for type {}",
+                            change.getNewValue(), field.getType().getSimpleName());
+                        return false;
+                    }
+                }
+            }
 
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
 
@@ -1104,6 +1184,24 @@ public class FieldSyncService {
     private String truncate(String s) {
         if (s == null) return "null";
         return s.length() > 50 ? s.substring(0, 47) + "..." : s;
+    }
+
+    /**
+     * Tracks a ManyToOne field change that failed because the referenced entity wasn't found.
+     * Used for retry in the third pass after all entities are created.
+     */
+    private static class FailedManyToOneReference {
+        final BaseIdEntity entity;
+        final FieldChange change;
+        final Field field;
+        final Long referencedId;
+
+        FailedManyToOneReference(BaseIdEntity entity, FieldChange change, Field field, Long referencedId) {
+            this.entity = entity;
+            this.change = change;
+            this.field = field;
+            this.referencedId = referencedId;
+        }
     }
 
     /**
