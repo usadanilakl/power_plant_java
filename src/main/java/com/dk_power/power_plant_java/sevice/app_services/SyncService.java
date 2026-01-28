@@ -29,6 +29,7 @@ public class SyncService {
         syncEntity("FileObject", serviceFacade.getService("FileObject"));
         syncEntity("Equipment", serviceFacade.getService("Equipment"));
         syncEntity("LotoPoint", serviceFacade.getService("LotoPoint"));
+        syncEntity("LotoStandard", serviceFacade.getService("LotoStandard"));
     }
 
     public<T extends BaseIdEntity> void saveSyncItems(List<T> changes) {

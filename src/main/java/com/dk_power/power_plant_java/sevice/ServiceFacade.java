@@ -5,7 +5,9 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -31,7 +33,8 @@ public class ServiceFacade {
             @Lazy CategoryService categoryService,
             @Lazy ValueService valueService,
             @Lazy FileService fileService,
-            @Lazy ZeroEnergyService zeroEnergyService
+            @Lazy ZeroEnergyService zeroEnergyService,
+            @Lazy NgLotoStandardService ngLotoStandardService
     ) {
         serviceMap.put(Equipment.class.getSimpleName(), equipmentService);
         serviceMap.put(LotoPoint.class.getSimpleName(), lotoPointService);
@@ -39,6 +42,7 @@ public class ServiceFacade {
         serviceMap.put(Value.class.getSimpleName(), valueService);
         serviceMap.put(FileObject.class.getSimpleName(), fileService);
         serviceMap.put(ZeroEnergy.class.getSimpleName(), zeroEnergyService);
+        serviceMap.put(LotoStandard.class.getSimpleName(), ngLotoStandardService);
     }
 
     public SyncableService getService(String entityClass) {
