@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.config;
 import com.dk_power.power_plant_java.sevice.sync.EntityStateCapture;
 import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import com.dk_power.power_plant_java.sevice.sync.FieldChangeTracker;
+import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +22,14 @@ public class EntityListenerConfig {
 
     private final FieldChangeTracker fieldChangeTracker;
     private final EntityStateCapture entityStateCapture;
+    private final SyncContext syncContext;
 
     @PostConstruct
     public void init() {
         // Inject Spring beans into the static entity listener
         FieldChangeEntityListener.setFieldChangeTracker(fieldChangeTracker);
         FieldChangeEntityListener.setEntityStateCapture(entityStateCapture);
+        FieldChangeEntityListener.setSyncContext(syncContext);
         log.info("Field change tracking initialized for entity listener");
     }
 }

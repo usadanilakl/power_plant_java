@@ -22,6 +22,7 @@ public class FieldChangeEntityListener {
 
     private static FieldChangeTracker fieldChangeTracker;
     private static EntityStateCapture entityStateCapture;
+    private static SyncContext syncContext;
 
     // Static setter for Spring to inject dependencies
     public static void setFieldChangeTracker(FieldChangeTracker tracker) {
@@ -30,6 +31,10 @@ public class FieldChangeEntityListener {
 
     public static void setEntityStateCapture(EntityStateCapture capture) {
         entityStateCapture = capture;
+    }
+
+    public static void setSyncContext(SyncContext context) {
+        syncContext = context;
     }
 
     /**
@@ -44,10 +49,15 @@ public class FieldChangeEntityListener {
     }
 
     /**
-     * Track changes after entity is persisted (new entity)
+     * Track changes after entity is persisted (new entity).
+     * Skips during sync to prevent re-broadcasting incoming changes.
      */
     @PostPersist
     public void postPersist(Object entity) {
+        // Skip change tracking during sync - incoming changes should not be re-tracked
+        if (syncContext != null && syncContext.isSyncing()) {
+            return;
+        }
         if (fieldChangeTracker != null && entity instanceof BaseIdEntity) {
             try {
                 BaseIdEntity baseEntity = (BaseIdEntity) entity;
@@ -64,9 +74,14 @@ public class FieldChangeEntityListener {
     /**
      * Track changes after entity is updated.
      * Compares the original database values (captured in @PreUpdate) with current values.
+     * Skips during sync to prevent re-broadcasting incoming changes.
      */
     @PostUpdate
     public void postUpdate(Object entity) {
+        // Skip change tracking during sync - incoming changes should not be re-tracked
+        if (syncContext != null && syncContext.isSyncing()) {
+            return;
+        }
         if (fieldChangeTracker != null && entityStateCapture != null && entity instanceof BaseIdEntity) {
             try {
                 BaseIdEntity newState = (BaseIdEntity) entity;

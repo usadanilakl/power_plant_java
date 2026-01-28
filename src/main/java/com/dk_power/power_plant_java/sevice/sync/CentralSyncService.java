@@ -338,6 +338,10 @@ public class CentralSyncService {
 
         // First, check how many changes the server has for us
         long pendingCount = getPendingChangeCountFromServer();
+        if (pendingCount < 0) {
+            // Server is unreachable - propagate as error so circuit breaker works
+            throw new RuntimeException("Server unreachable - cannot get pending change count");
+        }
         if (pendingCount == 0) {
             log.debug("No incoming changes from server");
             return result;
@@ -389,6 +393,8 @@ public class CentralSyncService {
 
     /**
      * Get the count of pending changes from server.
+     * Returns -1 if the server is unreachable, so callers can distinguish
+     * "no changes" from "server is down".
      */
     private long getPendingChangeCountFromServer() {
         try {
@@ -408,7 +414,7 @@ public class CentralSyncService {
             return body != null ? body.getOrDefault("count", 0L) : 0L;
         } catch (Exception e) {
             log.warn("Failed to get pending change count: {}", e.getMessage());
-            return 0L;
+            return -1L;
         }
     }
 

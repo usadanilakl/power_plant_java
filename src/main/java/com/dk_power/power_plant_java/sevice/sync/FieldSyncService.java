@@ -916,6 +916,13 @@ public class FieldSyncService {
      * Apply a ManyToMany relationship change by directly manipulating the join table.
      * This avoids cascade issues that occur when using JPA collections.
      *
+     * IMPORTANT: Before inserting into the join table, we verify that each referenced
+     * entity actually exists in the target table. This prevents FK constraint violations
+     * when SSE broadcasts split entities across multiple batches - the ManyToMany pass
+     * might reference entities that haven't been received yet. Without this check,
+     * FK violations mark the Hibernate transaction as rollback-only, which causes
+     * ALL entities in the batch to be lost (not just the failed ManyToMany insert).
+     *
      * @param entity the entity being updated
      * @param field the ManyToMany field
      * @param change the field change containing the new value (list of IDs)
@@ -964,8 +971,19 @@ public class FieldSyncService {
                 .setParameter("ownerId", ownerId)
                 .executeUpdate();
 
-            // Insert new entries
-            for (Long relatedId : newIds) {
+            // Filter newIds to only include entities that actually exist in the target table.
+            // This prevents FK constraint violations when referenced entities haven't been
+            // received yet (e.g., they're in the next SSE batch).
+            List<Long> existingIds = filterExistingIds(field, newIds);
+
+            if (existingIds.size() < newIds.size()) {
+                log.warn("ManyToMany {}.{}: {} of {} referenced entities not found yet, skipping those",
+                    entity.getClass().getSimpleName(), change.getFieldName(),
+                    newIds.size() - existingIds.size(), newIds.size());
+            }
+
+            // Insert only entries that reference existing entities
+            for (Long relatedId : existingIds) {
                 entityManager.createNativeQuery(
                     "INSERT INTO " + tableName + " (" + ownerColumn + ", " + inverseColumn + ") VALUES (:ownerId, :relatedId)")
                     .setParameter("ownerId", ownerId)
@@ -973,8 +991,9 @@ public class FieldSyncService {
                     .executeUpdate();
             }
 
-            log.debug("Applied ManyToMany {}.{}: {} entries in join table {}",
-                entity.getClass().getSimpleName(), change.getFieldName(), newIds.size(), tableName);
+            log.debug("Applied ManyToMany {}.{}: {} entries in join table {} ({} requested)",
+                entity.getClass().getSimpleName(), change.getFieldName(),
+                existingIds.size(), tableName, newIds.size());
             return true;
 
         } catch (Exception e) {
@@ -982,6 +1001,66 @@ public class FieldSyncService {
                 entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Filter a list of entity IDs to only include those that exist in the target table.
+     * Uses the field's generic type parameter to determine the target entity type,
+     * then queries the target table to check existence.
+     *
+     * @param field the ManyToMany collection field (e.g., Set<FileObject>)
+     * @param ids the IDs to check
+     * @return list of IDs that exist in the target table
+     */
+    @SuppressWarnings("unchecked")
+    private List<Long> filterExistingIds(Field field, List<Long> ids) {
+        if (ids.isEmpty()) {
+            return ids;
+        }
+
+        // Resolve target entity type from collection's generic type parameter
+        Class<?> targetType = resolveCollectionElementType(field);
+        if (targetType == null) {
+            log.warn("Could not resolve target type for ManyToMany field {}, inserting without existence check",
+                field.getName());
+            return ids;
+        }
+
+        String targetTable = entityTableRegistry.getTableName(targetType.getSimpleName());
+        if (targetTable == null) {
+            log.warn("No table mapping for {}, inserting without existence check", targetType.getSimpleName());
+            return ids;
+        }
+
+        // Batch query to find which IDs exist
+        List<?> foundRows = entityManager.createNativeQuery(
+            "SELECT id FROM " + targetTable + " WHERE id IN :ids")
+            .setParameter("ids", ids)
+            .getResultList();
+
+        Set<Long> foundIds = foundRows.stream()
+            .map(o -> ((Number) o).longValue())
+            .collect(Collectors.toSet());
+
+        return ids.stream()
+            .filter(foundIds::contains)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Resolve the element type of a collection field's generic type parameter.
+     * For example, Set<FileObject> returns FileObject.class.
+     */
+    private Class<?> resolveCollectionElementType(Field field) {
+        java.lang.reflect.Type genericType = field.getGenericType();
+        if (genericType instanceof java.lang.reflect.ParameterizedType) {
+            java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) genericType;
+            java.lang.reflect.Type[] typeArgs = pt.getActualTypeArguments();
+            if (typeArgs.length > 0 && typeArgs[0] instanceof Class) {
+                return (Class<?>) typeArgs[0];
+            }
+        }
+        return null;
     }
 
     /**

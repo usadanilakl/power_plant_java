@@ -70,10 +70,10 @@ public class ServerSseClient {
     private final AtomicLong totalEventsReceived = new AtomicLong(0);
     private final AtomicLong totalChangesApplied = new AtomicLong(0);
 
-    private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
+    private static final int MAX_RECONNECT_DELAY_SECONDS = 15;
     private static final int BASE_RECONNECT_DELAY_SECONDS = 2;
-    private static final int CIRCUIT_BREAKER_THRESHOLD = 10;
-    private static final int CIRCUIT_BREAKER_RESET_DELAY_MINUTES = 5;
+    private static final int CIRCUIT_BREAKER_THRESHOLD = 30;
+    private static final int CIRCUIT_BREAKER_RESET_DELAY_MINUTES = 2;
 
     private volatile HttpURLConnection currentConnection;
     private volatile Instant lastSuccessfulConnection;
