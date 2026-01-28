@@ -4,15 +4,23 @@ import com.dk_power.power_plant_java.dto.permits.LotoSnapshotDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoSnapshot;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
+import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 
 @Component
 @RequiredArgsConstructor
-public class LotoSnapshotMapper {
+public class LotoSnapshotMapper implements BaseMapper {
+    private final ModelMapper modelMapper;
+
+    @Override
+    public ModelMapper getMapper() {
+        return modelMapper;
+    }
     private final LotoRepo lotoRepo;
     private final LotoSnapshotRepo lotoSnapshotRepo;
     public LotoSnapshotDto convertToDto(LotoSnapshot snapshot) {

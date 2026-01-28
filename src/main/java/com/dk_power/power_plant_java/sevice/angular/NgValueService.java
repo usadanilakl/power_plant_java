@@ -7,12 +7,15 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.util.Util;
-import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,20 +26,77 @@ import java.util.Optional;
 
 @Service
 @Transactional
-public class NgValueService {
+public class NgValueService implements NgCrudService<Value, ValueDto, ValueRepo, ValueMapper> {
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
+    private final ValueMapper valueMapper;
     private final NgEquipmentService equipmentService;
     private final NgFileService fileService;
     private final NgLotoPointService lotoPointService;
+    private final SessionFactory sessionFactory;
+    private final EntityManager entityManager;
 
-    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService) {
+    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, ValueMapper valueMapper,
+                          NgEquipmentService equipmentService, @Lazy NgFileService fileService,
+                          NgLotoPointService lotoPointService, SessionFactory sessionFactory,
+                          EntityManager entityManager) {
         this.categoryRepo = categoryRepo;
         this.valueRepo = valueRepo;
+        this.valueMapper = valueMapper;
         this.equipmentService = equipmentService;
         this.fileService = fileService;
         this.lotoPointService = lotoPointService;
+        this.sessionFactory = sessionFactory;
+        this.entityManager = entityManager;
     }
+
+    // ========== NgCrudService Implementation ==========
+
+    @Override
+    public ValueRepo getRepo() {
+        return valueRepo;
+    }
+
+    @Override
+    public ValueMapper getMapper() {
+        return valueMapper;
+    }
+
+    @Override
+    public SessionFactory getSessionFactory() {
+        return sessionFactory;
+    }
+
+    @Override
+    public ValueDto getDto() {
+        return new ValueDto();
+    }
+
+    @Override
+    public Value getEntity() {
+        return new Value();
+    }
+
+    @Override
+    public Value toEntity(ValueDto dto) {
+        return valueMapper.convertToEntity(dto);
+    }
+
+    @Override
+    public ValueDto toDto(Value entity) {
+        return valueMapper.convertToDto(entity);
+    }
+
+    @Override
+    public Class<Value> getEntityClass() {
+        return Value.class;
+    }
+
+    public EntityManager getEntityManager() {
+        return entityManager;
+    }
+
+    // ========== Original Methods ==========
 
     // Create
     public Value createValue(Long categoryId, Value value) {
