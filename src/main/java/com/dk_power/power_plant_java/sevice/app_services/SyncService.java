@@ -5,7 +5,7 @@ import com.dk_power.power_plant_java.entities.SyncStatus;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.repository.SyncStatusRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
-import com.dk_power.power_plant_java.sevice.base_services.CrudService;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,7 +39,8 @@ public class SyncService {
         }
     }
 
-    private <T extends BaseIdEntity, S extends CrudService> void syncEntity(String entityName, S service) {
+    @SuppressWarnings("unchecked")
+    private <T extends BaseIdEntity, S extends SyncableService> void syncEntity(String entityName, S service) {
         SyncStatus status = syncStatusRepository.findById(entityName)
             .orElse(new SyncStatus(entityName, LocalDateTime.of(2000, 1, 1, 0, 0)));
 
@@ -71,7 +72,8 @@ public class SyncService {
     //PAGINATION AND LIMITATION
     private static final int BATCH_SIZE = 1000; // Adjust this value based on your needs
 
-    private <T extends BaseIdEntity, S extends CrudService> void syncEntityPaginated(String entityName, S service) {
+    @SuppressWarnings("unchecked")
+    private <T extends BaseIdEntity, S extends SyncableService> void syncEntityPaginated(String entityName, S service) {
         SyncStatus status = syncStatusRepository.findById(entityName)
                 .orElse(new SyncStatus(entityName, LocalDateTime.MIN));
         LocalDateTime untilBeforeSync = LocalDateTime.now();

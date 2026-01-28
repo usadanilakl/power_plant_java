@@ -84,7 +84,7 @@ public class NgFileRestController {
 //        log.info("Received request for file with id: {}", id);
         try {
             long startTime = System.currentTimeMillis();
-            Optional<FileDto> fileDtoOptional = ngFileService.findById(id);
+            Optional<FileDto> fileDtoOptional = ngFileService.findDtoById(id);
             long endTime = System.currentTimeMillis();
 //            log.info("Time taken to fetch file: {} ms", endTime - startTime);
 

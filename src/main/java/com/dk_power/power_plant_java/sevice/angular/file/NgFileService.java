@@ -137,7 +137,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return complexSearch(sc, page, size, "fileNumber", "asc", false);
     }
 
-    public Optional<FileDto> findById(Long id) {
+    public Optional<FileDto> findDtoById(Long id) {
         Optional<FileObject> byId = fileRepo.findById(id);
         return byId.map(this::toDto);
     }

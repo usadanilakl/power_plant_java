@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import jakarta.persistence.criteria.Predicate;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
@@ -14,16 +15,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Transactional
 public interface NgCrudService<
         E extends BaseIdEntity,
         D,
         R extends BaseRepository<E>,
-        M extends BaseMapper> extends FlexibleQueryInterface, ProjectionQueryInterface<E> {
+        M extends BaseMapper> extends FlexibleQueryInterface, ProjectionQueryInterface<E>, SyncableService<E> {
 
     R getRepo();
 
@@ -91,6 +94,14 @@ public interface NgCrudService<
 
     default E save(E entity) {
         return getRepo().save(entity);
+    }
+
+    default E saveAndFlush(E entity) {
+        return getRepo().saveAndFlush(entity);
+    }
+
+    default void deleteById(Long id) {
+        getRepo().deleteById(id);
     }
 
     default E save(D dto) {
@@ -316,6 +327,36 @@ public interface NgCrudService<
             }
         }
         return result;
+    }
 
+    // Synchronization methods
+    default List<E> getAllSince(LocalDateTime since) {
+        return getRepo().findAllByDateModifiedAfter(since);
+    }
+
+    default void processSyncItem(E item) {
+        if (item == null || item.getId() == null) {
+            return;
+        }
+        getRepo().saveAndFlush(item);
+    }
+
+    default void processSyncItems(List<E> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        items.forEach(this::processSyncItem);
+    }
+
+    default Page<E> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable) {
+        return getRepo().findAllByDateModifiedAfterOrderByDateModifiedAsc(lastSyncTime, pageable);
+    }
+
+    default Page<E> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable) {
+        return getRepo().findAllByDateModifiedBetween(since, until, pageable);
+    }
+
+    default Optional<E> findById(Long id) {
+        return getRepo().findById(id);
     }
 }

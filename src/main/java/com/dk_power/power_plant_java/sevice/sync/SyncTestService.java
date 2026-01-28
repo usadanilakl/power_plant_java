@@ -8,7 +8,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
-import com.dk_power.power_plant_java.sevice.base_services.CrudService;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -462,12 +462,13 @@ public class SyncTestService {
 
         log.info("Testing sync for existing {} entities (field: {}, revert: {})", entityType, fieldName, revertAfter);
 
-        CrudService<BaseAuditEntity, ?, ?, ?> service = serviceFacade.getService(entityType);
+        SyncableService service = serviceFacade.getService(entityType);
         if (service == null) {
             return new TestResult(false, "Unknown entity type: " + entityType, 0, 0, 0,
                 getTestDataCount(), getPendingChangesCount());
         }
 
+        @SuppressWarnings("unchecked")
         List<BaseAuditEntity> entities = service.getAll();
         if (entities.isEmpty()) {
             return new TestResult(true, "No " + entityType + " entities found to test", 0,
@@ -575,25 +576,26 @@ public class SyncTestService {
     /**
      * Get entity counts for display.
      */
+    @SuppressWarnings("rawtypes")
     public Map<String, Long> getExistingEntityCounts() {
         Map<String, Long> counts = new HashMap<>();
 
         try {
-            CrudService<?, ?, ?, ?> equipmentService = serviceFacade.getService("Equipment");
+            SyncableService equipmentService = serviceFacade.getService("Equipment");
             counts.put("Equipment", equipmentService != null ? (long) equipmentService.getAll().size() : 0L);
         } catch (Exception e) {
             counts.put("Equipment", 0L);
         }
 
         try {
-            CrudService<?, ?, ?, ?> lotoPointService = serviceFacade.getService("LotoPoint");
+            SyncableService lotoPointService = serviceFacade.getService("LotoPoint");
             counts.put("LotoPoint", lotoPointService != null ? (long) lotoPointService.getAll().size() : 0L);
         } catch (Exception e) {
             counts.put("LotoPoint", 0L);
         }
 
         try {
-            CrudService<?, ?, ?, ?> fileService = serviceFacade.getService("FileObject");
+            SyncableService fileService = serviceFacade.getService("FileObject");
             counts.put("FileObject", fileService != null ? (long) fileService.getAll().size() : 0L);
         } catch (Exception e) {
             counts.put("FileObject", 0L);

@@ -21,7 +21,7 @@ public interface CrudService<
         E extends BaseIdEntity,
         D,
         R extends BaseRepository<E>,
-        M extends BaseMapper> {
+        M extends BaseMapper> extends SyncableService<E> {
     E getEntity();
 
     D getDto();
@@ -74,6 +74,14 @@ public interface CrudService<
 
     default E save(E entity) {
         return getRepo().save(entity);
+    }
+
+    default E saveAndFlush(E entity) {
+        return getRepo().saveAndFlush(entity);
+    }
+
+    default void deleteById(Long id) {
+        getRepo().deleteById(id);
     }
 
     default E save(D dto) {

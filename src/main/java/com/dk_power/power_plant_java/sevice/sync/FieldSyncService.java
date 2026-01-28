@@ -9,7 +9,7 @@ import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
-import com.dk_power.power_plant_java.sevice.base_services.CrudService;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -653,7 +653,7 @@ public class FieldSyncService {
         int appliedCount = 0;
 
         try {
-            CrudService service = serviceFacade.getService(entityType);
+            SyncableService service = serviceFacade.getService(entityType);
             if (service == null) {
                 log.warn("No service found for entity type: {}", entityType);
                 return 0;
@@ -682,7 +682,7 @@ public class FieldSyncService {
 
                 // Now apply soft delete
                 entity.setDeleted(true);
-                service.getRepo().save(entity);
+                service.save(entity);
                 saveIncomingChange(changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.DELETE)
                     .findFirst().orElse(null));
@@ -737,7 +737,7 @@ public class FieldSyncService {
             }
 
             if (modified) {
-                service.getRepo().save(entity);
+                service.save(entity);
                 log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
             }
 
@@ -937,7 +937,7 @@ public class FieldSyncService {
      * Uses reflection to create instance and set ID via native SQL to preserve the ID from origin.
      */
     @SuppressWarnings("unchecked")
-    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, CrudService service) {
+    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
         try {
             // Get the entity class from service
             BaseIdEntity templateEntity = (BaseIdEntity) service.getEntity();
@@ -951,7 +951,7 @@ public class FieldSyncService {
             // For now, we'll set the ID and use saveAndFlush with GenerationType.IDENTITY workaround
 
             // First save without ID to get a placeholder
-            newEntity = (BaseIdEntity) service.getRepo().saveAndFlush(newEntity);
+            newEntity = (BaseIdEntity) service.saveAndFlush(newEntity);
 
             // Now update to the correct ID using native query if IDs don't match
             if (!entityId.equals(newEntity.getId())) {
@@ -986,7 +986,7 @@ public class FieldSyncService {
                 } catch (Exception e) {
                     log.error("Failed to update entity ID for {}#{}: {}", entityType, entityId, e.getMessage());
                     // Rollback - delete the temp entity
-                    service.getRepo().deleteById(tempId);
+                    service.deleteById(tempId);
                     return null;
                 }
             }
