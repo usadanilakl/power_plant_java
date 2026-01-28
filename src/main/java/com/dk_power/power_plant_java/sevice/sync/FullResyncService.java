@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.sevice.app_services.H2BackupService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,7 +29,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -57,6 +57,7 @@ public class FullResyncService {
     private final RestTemplate restTemplate;
     private final JdbcTemplate jdbcTemplate;
     private final SyncHealthChecker syncHealthChecker;
+    private final FieldSyncService fieldSyncService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -90,6 +91,7 @@ public class FullResyncService {
     // File manifest cache
     private static final String MANIFEST_FILENAME = "file_manifest.json";
     private static final String BACKUP_METADATA_FILENAME = "backup_metadata.json";
+
 
     // ==================== BACKUP CREATION ====================
 
@@ -1302,8 +1304,9 @@ public class FullResyncService {
                 return new PartialSyncResult(false, "Sync server URL not configured", null, 0);
             }
 
-            // Phase 1: Fetch and apply field changes
-            currentResyncStatus.setPhase("Fetching field changes since " + date);
+            // Phase 1: Fetch FieldChange records and apply via FieldSyncService
+            // This is the SAME code path as real-time sync (CentralSyncService)
+            currentResyncStatus.setPhase("Fetching changes since " + date);
             int changesApplied = fetchAndApplyFieldChanges(date);
             log.info("Applied {} field changes from partial sync", changesApplied);
 
@@ -1355,7 +1358,8 @@ public class FullResyncService {
     }
 
     /**
-     * Fetch field changes from the server since a specific date and apply them locally.
+     * Fetch FieldChange records from server and apply via FieldSyncService.
+     * This uses the SAME code path as real-time sync (CentralSyncService → FieldSyncService).
      */
     private int fetchAndApplyFieldChanges(String date) {
         int totalApplied = 0;
@@ -1370,150 +1374,28 @@ public class FullResyncService {
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
 
-            ResponseEntity<List<FieldChangeDto>> response = restTemplate.exchange(
+            ResponseEntity<List<FieldChange>> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers),
-                new ParameterizedTypeReference<List<FieldChangeDto>>() {});
+                new ParameterizedTypeReference<List<FieldChange>>() {});
 
-            List<FieldChangeDto> changes = response.getBody();
+            List<FieldChange> changes = response.getBody();
             if (changes == null || changes.isEmpty()) {
                 break;
             }
 
-            // Apply each change
-            for (FieldChangeDto change : changes) {
-                try {
-                    applyFieldChange(change);
-                    totalApplied++;
-                } catch (Exception e) {
-                    log.warn("Failed to apply change for {}/{}: {}",
-                        change.getEntityType(), change.getEntityId(), e.getMessage());
-                }
-            }
+            // Apply via FieldSyncService - SAME code path as real-time sync
+            int applied = fieldSyncService.applyIncomingChanges(changes);
+            totalApplied += applied;
+
+            log.debug("Applied {}/{} changes from page {}", applied, changes.size(), page);
 
             // Check if there are more pages
             String hasMoreHeader = response.getHeaders().getFirst("X-Has-More");
             hasMore = "true".equalsIgnoreCase(hasMoreHeader);
             page++;
-
-            log.debug("Applied {} changes from page {}", changes.size(), page - 1);
         }
 
         return totalApplied;
-    }
-
-    /**
-     * Apply a single field change to the local database.
-     */
-    @Transactional
-    private void applyFieldChange(FieldChangeDto change) {
-        String tableName = getTableNameForEntityType(change.getEntityType());
-        if (tableName == null) {
-            log.warn("Unknown entity type: {}", change.getEntityType());
-            return;
-        }
-
-        String fieldColumn = camelToSnakeCase(change.getFieldName());
-
-        if ("CREATE".equals(change.getChangeType())) {
-            // For CREATE, we need to check if the entity exists first
-            String checkSql = "SELECT COUNT(*) FROM " + tableName + " WHERE id = ?";
-            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, change.getEntityId());
-
-            if (count == null || count == 0) {
-                // Entity doesn't exist - this might be a new entity from another client
-                log.debug("Entity {}/{} doesn't exist locally, skipping CREATE field change",
-                    change.getEntityType(), change.getEntityId());
-                return;
-            }
-        }
-
-        if ("DELETE".equals(change.getChangeType())) {
-            // For DELETE, mark entity as deleted
-            String updateSql = "UPDATE " + tableName + " SET deleted = true WHERE id = ?";
-            jdbcTemplate.update(updateSql, change.getEntityId());
-        } else {
-            // For UPDATE/CREATE, update the specific field
-            String updateSql = "UPDATE " + tableName + " SET " + fieldColumn + " = ? WHERE id = ?";
-            Object value = convertValueForDb(change.getNewValue(), change.getFieldName());
-            jdbcTemplate.update(updateSql, value, change.getEntityId());
-        }
-    }
-
-    /**
-     * Get the database table name for an entity type.
-     */
-    private String getTableNameForEntityType(String entityType) {
-        return switch (entityType) {
-            case "Category" -> "category";
-            case "Value" -> "val_table";
-            case "FileObject" -> "file_object";
-            case "Equipment" -> "equipment";
-            case "LotoPoint" -> "loto_point";
-            case "Loto" -> "loto";
-            case "LotoStandard" -> "loto_standard";
-            case "LotoSnapshot" -> "loto_snapshot";
-            case "LotoBox" -> "loto_boxes";
-            case "Lock" -> "lock";
-            case "ZeroEnergy" -> "zero_energy";
-            case "HeatTrace" -> "heat_trace";
-            case "Highlight" -> "highlight";
-            case "ElectricalPanel" -> "electrical_panel";
-            case "EqBreaker" -> "eq_breaker";
-            case "HtPanel" -> "ht_panel";
-            case "HtBreaker" -> "ht_breaker";
-            case "User" -> "users";
-            case "EspDevice" -> "esp_devices";
-            case "LedStrip" -> "led_strips";
-            case "SafeWork" -> "safe_work";
-            case "HotWork" -> "hot_work";
-            case "ConfinedSpace" -> "confined_space";
-            case "WorkRequest" -> "work_request";
-            case "DailyPermitPackage" -> "daily_permit_package";
-            default -> null;
-        };
-    }
-
-    /**
-     * Convert a string value from the field change to the appropriate database type.
-     */
-    private Object convertValueForDb(String value, String fieldName) {
-        if (value == null || "null".equals(value)) {
-            return null;
-        }
-
-        // Handle timestamps
-        if (fieldName.toLowerCase().contains("time") ||
-            fieldName.toLowerCase().contains("date") ||
-            fieldName.toLowerCase().contains("created") ||
-            fieldName.toLowerCase().contains("updated")) {
-            try {
-                return Instant.parse(value);
-            } catch (Exception e) {
-                // Try parsing as LocalDateTime
-                try {
-                    return LocalDateTime.parse(value);
-                } catch (Exception ex) {
-                    return value;
-                }
-            }
-        }
-
-        // Handle booleans
-        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-            return Boolean.parseBoolean(value);
-        }
-
-        // Handle numbers
-        try {
-            if (value.contains(".")) {
-                return Double.parseDouble(value);
-            } else {
-                return Long.parseLong(value);
-            }
-        } catch (NumberFormatException e) {
-            // Return as string
-            return value;
-        }
     }
 
     // ==================== STATUS GETTERS ====================
@@ -1716,18 +1598,4 @@ public class FullResyncService {
         private final int changesApplied;
     }
 
-    @Data
-    public static class FieldChangeDto {
-        private String id;
-        private String entityType;
-        private Long entityId;
-        private String fieldName;
-        private String oldValue;
-        private String newValue;
-        private Instant timestamp;
-        private String originMachineId;
-        private String originMachineName;
-        private String changeType;  // CREATE, UPDATE, DELETE
-        private String relationshipType;
-    }
 }

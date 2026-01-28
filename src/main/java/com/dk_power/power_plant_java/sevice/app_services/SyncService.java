@@ -23,13 +23,38 @@ public class SyncService {
     private final SyncStatusRepository syncStatusRepository;
     private final ServiceFacade serviceFacade;
 
+    private static final String[] ENTITY_NAMES = {
+        "Category", "Value", "FileObject", "Equipment",
+        "LotoPoint", "LotoStandard", "ZeroEnergy"
+    };
+
     public void syncAll() {
-        syncEntity("Category", serviceFacade.getService("Category"));
-        syncEntity("Value", serviceFacade.getService("Value"));
-        syncEntity("FileObject", serviceFacade.getService("FileObject"));
-        syncEntity("Equipment", serviceFacade.getService("Equipment"));
-        syncEntity("LotoPoint", serviceFacade.getService("LotoPoint"));
-        syncEntity("LotoStandard", serviceFacade.getService("LotoStandard"));
+        for (String entityName : ENTITY_NAMES) {
+            syncEntity(entityName, serviceFacade.getService(entityName));
+        }
+    }
+
+    /**
+     * Fetch entities from the server since the given date and apply them locally via JPA.
+     * Used by partial resync to pull missing data through the same path as real-time sync.
+     *
+     * @return total number of entities applied
+     */
+    @SuppressWarnings("unchecked")
+    public int syncFromServer(LocalDateTime since) {
+        int total = 0;
+        for (String entityName : ENTITY_NAMES) {
+            SyncableService service = serviceFacade.getService(entityName);
+            if (service == null) continue;
+
+            List<? extends BaseIdEntity> serverChanges = getChangesFromServer(entityName, since);
+            if (serverChanges != null && !serverChanges.isEmpty()) {
+                service.processSyncItems(serverChanges);
+                total += serverChanges.size();
+                System.out.println(serverChanges.size() + " entities received from server for " + entityName);
+            }
+        }
+        return total;
     }
 
     public<T extends BaseIdEntity> void saveSyncItems(List<T> changes) {
