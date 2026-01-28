@@ -647,13 +647,14 @@ public class FieldSyncService {
      *                            Pass null to skip collection (e.g., during retry pass).
      */
     @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private int applyEntityChangesBatched(String entityType, Long entityId, List<FieldChange> changes,
                                           Map<String, FieldChange> latestChangesMap,
                                           List<FailedManyToOneReference> failedManyToOneRefs) {
         int appliedCount = 0;
 
         try {
-            NgCrudService<?, ?, ?, ?> service = serviceFacade.getService(entityType);
+            NgCrudService service = serviceFacade.getService(entityType);
             if (service == null) {
                 log.warn("No service found for entity type: {}", entityType);
                 return 0;
@@ -936,8 +937,8 @@ public class FieldSyncService {
      * Create a new entity from sync with the specified ID.
      * Uses reflection to create instance and set ID via native SQL to preserve the ID from origin.
      */
-    @SuppressWarnings("unchecked")
-    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, NgCrudService<?, ?, ?, ?> service) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, NgCrudService service) {
         try {
             // Get the entity class from service
             BaseIdEntity templateEntity = (BaseIdEntity) service.getEntity();
