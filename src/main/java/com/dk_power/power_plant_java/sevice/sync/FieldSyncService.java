@@ -372,10 +372,14 @@ public class FieldSyncService {
         // Collect failed ManyToOne references for retry in third pass
         List<FailedManyToOneReference> failedManyToOneRefs = new ArrayList<>();
 
-        // FIRST PASS: Process non-ManyToMany changes (creates entities first)
-        for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
-            String entityType = entityEntry.getKey();
-            Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
+        // FIRST PASS: Process non-ManyToMany changes in SYNC_ORDER (dependency order)
+        // This ensures base entities (Category, Value, FileObject) are created before
+        // entities that reference them (Equipment, LotoPoint), preventing ManyToOne failures.
+        for (String entityType : entityTableRegistry.getSyncOrder()) {
+            Map<Long, List<FieldChange>> changesById = changesByEntity.get(entityType);
+            if (changesById == null || changesById.isEmpty()) {
+                continue; // No changes for this entity type
+            }
 
             // Batch fetch latest changes for all entities of this type (eliminates N+1)
             List<Long> entityIds = new ArrayList<>(changesById.keySet());
@@ -391,6 +395,34 @@ public class FieldSyncService {
                 // Queue broadcast for after transaction commits
                 if (applied > 0) {
                     // Capture values for lambda
+                    final String type = entityType;
+                    final Long id = entityId;
+                    final List<FieldChange> changeList = new ArrayList<>(changes);
+                    pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
+                }
+            }
+        }
+
+        // Process any entity types not in SYNC_ORDER (edge case)
+        Set<String> processedTypes = new HashSet<>(entityTableRegistry.getSyncOrder());
+        for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
+            String entityType = entityEntry.getKey();
+            if (processedTypes.contains(entityType)) {
+                continue; // Already processed in ordered pass
+            }
+
+            Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
+            List<Long> entityIds = new ArrayList<>(changesById.keySet());
+            Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
+
+            for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
+                Long entityId = idEntry.getKey();
+                List<FieldChange> changes = idEntry.getValue();
+
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
+                totalApplied += applied;
+
+                if (applied > 0) {
                     final String type = entityType;
                     final Long id = entityId;
                     final List<FieldChange> changeList = new ArrayList<>(changes);
@@ -440,7 +472,10 @@ public class FieldSyncService {
             }
         }
 
-        // THIRD PASS: Retry failed ManyToOne references now that all entities should exist
+        // THIRD PASS: Retry failed ManyToOne references now that all entities should exist.
+        // IMPORTANT: Entities stored in failedManyToOneRefs may have been DETACHED by
+        // entityManager.clear() calls during createEntityFromSync(). We must re-load them
+        // from the database to get a managed instance before modifying and saving.
         if (!failedManyToOneRefs.isEmpty()) {
             entityManager.flush(); // Ensure all entities are persisted before retry
             log.debug("Third pass: retrying {} failed ManyToOne references", failedManyToOneRefs.size());
@@ -451,21 +486,38 @@ public class FieldSyncService {
                     Object referencedEntity = entityManager.find(failedRef.field.getType(), failedRef.referencedId);
 
                     if (referencedEntity != null) {
+                        // Re-load the owning entity to get a MANAGED instance.
+                        // The original failedRef.entity may be detached due to entityManager.clear()
+                        // calls in createEntityFromSync(). Setting a field on a detached entity
+                        // via reflection does NOT persist the change.
+                        String entityType = failedRef.change.getEntityType();
+                        SyncableService service = serviceFacade.getService(entityType);
+                        if (service == null) {
+                            log.warn("No service for {} - cannot retry ManyToOne reference", entityType);
+                            continue;
+                        }
+
+                        BaseIdEntity managedEntity = (BaseIdEntity) service.getEntityById(failedRef.entity.getId());
+                        if (managedEntity == null) {
+                            log.warn("Could not re-load {}#{} for ManyToOne retry",
+                                entityType, failedRef.entity.getId());
+                            continue;
+                        }
+
                         failedRef.field.setAccessible(true);
-                        failedRef.field.set(failedRef.entity, referencedEntity);
+                        failedRef.field.set(managedEntity, referencedEntity);
+                        service.save(managedEntity);
                         saveIncomingChange(failedRef.change);
                         totalApplied++;
                         log.debug("Retry succeeded: set {}.{} -> entity #{}",
-                            failedRef.entity.getClass().getSimpleName(),
-                            failedRef.change.getFieldName(),
-                            failedRef.referencedId);
+                            entityType, failedRef.change.getFieldName(), failedRef.referencedId);
                     } else {
                         log.warn("Retry failed: referenced entity {}#{} still not found",
                             failedRef.field.getType().getSimpleName(), failedRef.referencedId);
                     }
                 } catch (Exception e) {
                     log.error("Error retrying ManyToOne reference {}.{}: {}",
-                        failedRef.entity.getClass().getSimpleName(),
+                        failedRef.change.getEntityType(),
                         failedRef.change.getFieldName(),
                         e.getMessage());
                 }
@@ -934,64 +986,60 @@ public class FieldSyncService {
 
     /**
      * Create a new entity from sync with the specified ID.
-     * Uses reflection to create instance and set ID via native SQL to preserve the ID from origin.
+     *
+     * Uses native SQL INSERT to directly create the entity with the target ID,
+     * avoiding the ID generator entirely. This prevents ID collisions when multiple
+     * entities are created in the same sync batch.
+     *
+     * The previous approach (save with auto-generated ID, then UPDATE to target ID)
+     * caused collisions because the ID generator's sequence wasn't aware of the
+     * target IDs being used.
      */
     @SuppressWarnings("unchecked")
     private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
         try {
-            // Get the entity class from service
-            BaseIdEntity templateEntity = (BaseIdEntity) service.getEntity();
-            Class<?> entityClass = templateEntity.getClass();
-
-            // Create new instance
-            BaseIdEntity newEntity = (BaseIdEntity) entityClass.getDeclaredConstructor().newInstance();
-
-            // We need to save with the specific ID from the source system
-            // This requires using native SQL or a special repository method
-            // For now, we'll set the ID and use saveAndFlush with GenerationType.IDENTITY workaround
-
-            // First save without ID to get a placeholder
-            newEntity = (BaseIdEntity) service.saveAndFlush(newEntity);
-
-            // Now update to the correct ID using native query if IDs don't match
-            if (!entityId.equals(newEntity.getId())) {
-                // Use the repository to update the ID - this is tricky with JPA
-                // We need to delete and re-insert, or use native SQL
-                Long tempId = newEntity.getId();
-
-                // For now, we'll use a workaround: update all references
-                // This assumes the entity was just created and has no relationships yet
-                try {
-                    // Determine table name - handle common cases
-                    String tableName = getTableName(entityType);
-
-                    // Use EntityManager to execute native query (works with Spring's transaction management)
-                    int updated = entityManager.createNativeQuery(
-                        "UPDATE " + tableName + " SET id = :newId WHERE id = :oldId")
-                        .setParameter("newId", entityId)
-                        .setParameter("oldId", tempId)
-                        .executeUpdate();
-
-                    if (updated == 0) {
-                        log.warn("No rows updated when changing ID from {} to {} for {}", tempId, entityId, entityType);
-                    }
-
-                    entityManager.flush();
-                    entityManager.clear(); // Clear cache to reload with new ID
-
-                    // Reload entity with correct ID
-                    newEntity = (BaseIdEntity) service.getEntityById(entityId);
-
-                    log.debug("Updated entity ID from {} to {} for {}", tempId, entityId, entityType);
-                } catch (Exception e) {
-                    log.error("Failed to update entity ID for {}#{}: {}", entityType, entityId, e.getMessage());
-                    // Rollback - delete the temp entity
-                    service.deleteById(tempId);
-                    return null;
-                }
+            // First check if entity already exists (might have been created earlier in this batch
+            // or in a previous sync)
+            BaseIdEntity existing = (BaseIdEntity) service.getEntityById(entityId);
+            if (existing != null) {
+                log.debug("Entity {}#{} already exists, returning existing", entityType, entityId);
+                return existing;
             }
 
+            // Get the table name for native SQL
+            String tableName = getTableName(entityType);
+
+            // Insert directly with the target ID using native SQL.
+            // This bypasses the ID generator entirely, avoiding collision issues.
+            // We only insert the ID and let subsequent field changes populate the rest.
+            // Include required columns: id, object_type, deleted, date_created, date_modified
+            int inserted = entityManager.createNativeQuery(
+                "INSERT INTO " + tableName + " (id, object_type, deleted, date_created, date_modified) " +
+                "VALUES (:id, :objectType, false, :now, :now)")
+                .setParameter("id", entityId)
+                .setParameter("objectType", entityType)
+                .setParameter("now", java.time.LocalDateTime.now())
+                .executeUpdate();
+
+            if (inserted == 0) {
+                log.error("Failed to insert entity {}#{} via native SQL", entityType, entityId);
+                return null;
+            }
+
+            entityManager.flush();
+            entityManager.clear(); // Clear cache to load the newly inserted entity
+
+            // Load the entity via JPA for further operations
+            BaseIdEntity newEntity = (BaseIdEntity) service.getEntityById(entityId);
+
+            if (newEntity == null) {
+                log.error("Entity {}#{} was inserted but could not be loaded", entityType, entityId);
+                return null;
+            }
+
+            log.debug("Created entity {}#{} via direct INSERT", entityType, entityId);
             return newEntity;
+
         } catch (Exception e) {
             log.error("Failed to create entity {} with ID {}: {}", entityType, entityId, e.getMessage(), e);
             return null;

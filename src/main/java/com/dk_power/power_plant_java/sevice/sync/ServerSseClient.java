@@ -8,6 +8,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,17 @@ public class ServerSseClient {
     private final ObjectMapper objectMapper;
     private final FileRepo fileRepo;
     private final FileObjectSyncHandler fileObjectSyncHandler;
+    private final ApplicationContext applicationContext;
+
+    // Lazily fetched to avoid circular dependency with CentralSyncService
+    private CentralSyncService centralSyncService;
+
+    private CentralSyncService getCentralSyncService() {
+        if (centralSyncService == null) {
+            centralSyncService = applicationContext.getBean(CentralSyncService.class);
+        }
+        return centralSyncService;
+    }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -231,6 +243,7 @@ public class ServerSseClient {
         try {
             if ("connected".equals(eventType)) {
                 log.info("SSE: Connected to server - {}", data);
+                onSseConnected(data);
                 return;
             }
 
@@ -253,6 +266,36 @@ public class ServerSseClient {
 
         } catch (Exception e) {
             log.error("Error processing SSE event '{}': {}", eventType, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Called when SSE connection is (re)established.
+     * Triggers a full sync to catch up on any changes missed while disconnected.
+     * This handles: client came online, server restarted, network recovered.
+     */
+    private void onSseConnected(String data) {
+        try {
+            CentralSyncService centralSync = getCentralSyncService();
+            if (centralSync != null) {
+                // Reset circuit breaker - server is clearly reachable
+                centralSync.resetCircuitBreaker();
+
+                // Trigger sync on separate thread to not block SSE event processing
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(1000); // Brief delay to let SSE stabilize
+                        log.info("SSE connected - triggering sync to catch up on missed changes");
+                        centralSync.syncWithServer();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (Exception e) {
+                        log.error("Error during post-SSE-connect sync: {}", e.getMessage());
+                    }
+                }, "sse-reconnect-sync").start();
+            }
+        } catch (Exception e) {
+            log.warn("Could not trigger sync after SSE connection: {}", e.getMessage());
         }
     }
 

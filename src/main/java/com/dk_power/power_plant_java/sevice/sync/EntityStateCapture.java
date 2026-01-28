@@ -50,6 +50,12 @@ public class EntityStateCapture {
             return;
         }
 
+        // Skip state capture during sync - we don't need to track changes for incoming sync
+        // This significantly reduces log noise and improves performance during batch sync
+        if (syncContext.isSyncing()) {
+            return;
+        }
+
         try {
             // Get the original values from Hibernate's persistence context
             Map<String, Object> originalValues = getOriginalValues(entity);

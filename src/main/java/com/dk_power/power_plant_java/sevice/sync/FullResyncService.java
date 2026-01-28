@@ -1383,6 +1383,11 @@ public class FullResyncService {
                 break;
             }
 
+            // Log entity types received for diagnostics
+            Map<String, Long> entityTypeCounts = changes.stream()
+                .collect(Collectors.groupingBy(FieldChange::getEntityType, Collectors.counting()));
+            log.info("Received {} changes on page {}: {}", changes.size(), page, entityTypeCounts);
+
             // Apply via FieldSyncService - SAME code path as real-time sync
             int applied = fieldSyncService.applyIncomingChanges(changes);
             totalApplied += applied;

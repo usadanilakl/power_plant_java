@@ -515,11 +515,13 @@ public class CentralSyncService {
     }
 
     /**
-     * Reset consecutive failure counter (e.g., after manual intervention).
+     * Reset consecutive failure counter and mark server as available.
+     * Called when server connectivity is confirmed (e.g., SSE connection established).
      */
     public void resetCircuitBreaker() {
         consecutiveFailures.set(0);
-        log.info("Circuit breaker reset");
+        serverAvailable = true;
+        log.info("Circuit breaker reset - server marked as available");
     }
 
     // DTOs
