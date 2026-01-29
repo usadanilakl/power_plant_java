@@ -994,6 +994,18 @@ public class FieldSyncService {
             log.debug("Applied ManyToMany {}.{}: {} entries in join table {} ({} requested)",
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 existingIds.size(), tableName, newIds.size());
+
+            // Only return true (which triggers saveIncomingChange) if ALL referenced entities
+            // were found. If some were filtered out, return false so this change is NOT recorded
+            // in the local FieldChange log. This allows the periodic sync to retry and apply
+            // the complete ManyToMany relationship once all entities exist.
+            // Without this, saveIncomingChange creates a local record that causes shouldApplyChange()
+            // to skip the incoming change during periodic sync ("local change is newer or equal").
+            if (existingIds.size() < newIds.size()) {
+                log.info("ManyToMany {}.{}: incomplete apply ({}/{} entities), NOT saving change record - periodic sync will retry",
+                    entity.getClass().getSimpleName(), change.getFieldName(), existingIds.size(), newIds.size());
+                return false;
+            }
             return true;
 
         } catch (Exception e) {

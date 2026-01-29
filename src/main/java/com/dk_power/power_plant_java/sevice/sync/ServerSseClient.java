@@ -18,10 +18,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,6 +75,17 @@ public class ServerSseClient {
     private static final int BASE_RECONNECT_DELAY_SECONDS = 2;
     private static final int CIRCUIT_BREAKER_THRESHOLD = 30;
     private static final int CIRCUIT_BREAKER_RESET_DELAY_MINUTES = 2;
+
+    // SSE event buffering: accumulate rapid SSE batches and process as a single batch.
+    // The server broadcasts changes in batches of ~100. When entities span batches,
+    // cross-batch ManyToMany/ManyToOne references fail because the referenced entity
+    // isn't created yet. By buffering all batches from a "wave" and processing together,
+    // all entities are available during reference resolution.
+    private static final long SSE_BUFFER_DELAY_MS = 2000; // 2 seconds after last event
+    private final List<FieldChange> sseChangeBuffer = Collections.synchronizedList(new ArrayList<>());
+    private final ScheduledExecutorService bufferScheduler = Executors.newSingleThreadScheduledExecutor(
+        r -> { Thread t = new Thread(r, "sse-buffer-flush"); t.setDaemon(true); return t; });
+    private volatile ScheduledFuture<?> bufferFlushTask;
 
     private volatile HttpURLConnection currentConnection;
     private volatile Instant lastSuccessfulConnection;
@@ -302,8 +314,13 @@ public class ServerSseClient {
     /**
      * Handle incoming sync changes from SSE.
      *
-     * CRITICAL: This method uses SyncContext to prevent infinite loops.
-     * When we apply these changes, the entity listeners should NOT broadcast them back.
+     * Instead of processing each SSE batch immediately, changes are buffered and
+     * processed together after a short delay (debounce). This prevents cross-batch
+     * reference failures when the server splits changes across multiple SSE events.
+     *
+     * For example, if Equipment references FileObject but they're in different SSE
+     * batches, processing them separately would fail the ManyToMany/ManyToOne links.
+     * By buffering and processing together, all entities are available during linking.
      */
     private void handleSyncEvent(String data) {
         try {
@@ -330,21 +347,63 @@ public class ServerSseClient {
             List<FieldChange> changes = objectMapper.convertValue(changesObj,
                 new TypeReference<List<FieldChange>>() {});
 
-            log.info("SSE: Received {} changes from {}", changes.size(), originMachineId);
+            log.info("SSE: Received {} changes from {} - buffering for batch processing",
+                changes.size(), originMachineId);
 
-            // Apply changes within sync context to prevent infinite loop
-            // SyncContext.isSyncing() will return true, so entity listeners won't broadcast
-            syncContext.startSync();
-            try {
-                int applied = fieldSyncService.applyIncomingChanges(changes);
-                totalChangesApplied.addAndGet(applied);
-                log.info("SSE: Applied {} of {} changes from {}", applied, changes.size(), originMachineId);
-            } finally {
-                syncContext.endSync();
-            }
+            // Add to buffer instead of processing immediately
+            sseChangeBuffer.addAll(changes);
+
+            // Schedule/reschedule the buffer flush (debounce pattern)
+            // Each new event resets the timer, so rapid batches are accumulated
+            scheduleBufferFlush();
 
         } catch (Exception e) {
             log.error("Error handling sync event: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Schedule (or reschedule) the buffer flush with a debounce delay.
+     * If another SSE event arrives before the delay expires, the timer is reset.
+     */
+    private void scheduleBufferFlush() {
+        // Cancel previous scheduled flush
+        if (bufferFlushTask != null && !bufferFlushTask.isDone()) {
+            bufferFlushTask.cancel(false);
+        }
+
+        // Schedule new flush after delay
+        bufferFlushTask = bufferScheduler.schedule(
+            this::flushChangeBuffer, SSE_BUFFER_DELAY_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Process all buffered SSE changes as a single batch.
+     * This ensures cross-batch entity references (ManyToMany, ManyToOne) resolve
+     * correctly because all entities from all SSE batches are processed together.
+     */
+    private void flushChangeBuffer() {
+        List<FieldChange> changes;
+        synchronized (sseChangeBuffer) {
+            if (sseChangeBuffer.isEmpty()) {
+                return;
+            }
+            changes = new ArrayList<>(sseChangeBuffer);
+            sseChangeBuffer.clear();
+        }
+
+        log.info("SSE: Processing {} buffered changes as single batch", changes.size());
+
+        // Apply all buffered changes within sync context
+        syncContext.startSync();
+        try {
+            int applied = fieldSyncService.applyIncomingChanges(changes);
+            totalChangesApplied.addAndGet(applied);
+            log.info("SSE: Applied {} of {} buffered changes", applied, changes.size());
+        } catch (Exception e) {
+            log.error("Error processing buffered SSE changes: {}", e.getMessage(), e);
+        } finally {
+            syncContext.endSync();
         }
     }
 
@@ -446,6 +505,7 @@ public class ServerSseClient {
     public void shutdown() {
         stop();
         executor.shutdownNow();
+        bufferScheduler.shutdownNow();
     }
 
     /**
