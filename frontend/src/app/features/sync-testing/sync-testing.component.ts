@@ -10,13 +10,10 @@ import {
   TestRun,
   TestTypes
 } from '../../services/sync-test.service';
-import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
-import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
-
 @Component({
   selector: 'app-sync-testing',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './sync-testing.component.html',
   styleUrls: ['./sync-testing.component.css']
 })

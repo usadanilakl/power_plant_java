@@ -48,11 +48,32 @@ public class SyncConfig {
     @Value("${sync.server.enabled:false}")
     private boolean syncServerEnabled;
 
+    // Runtime toggle - allows enabling/disabling sync without restart
+    // Defaults to true so sync works normally on startup when syncServerEnabled=true
+    private volatile boolean syncRuntimeEnabled = true;
+
     /**
      * Check if central server sync is enabled and configured.
+     * Checks both the config property AND the runtime toggle.
      */
     public boolean isServerSyncEnabled() {
+        return syncServerEnabled && syncRuntimeEnabled && syncServerUrl != null && !syncServerUrl.isEmpty();
+    }
+
+    /**
+     * Check if sync is configured (ignoring runtime toggle).
+     * Used to know if sync CAN be enabled.
+     */
+    public boolean isServerSyncConfigured() {
         return syncServerEnabled && syncServerUrl != null && !syncServerUrl.isEmpty();
+    }
+
+    public boolean isSyncRuntimeEnabled() {
+        return syncRuntimeEnabled;
+    }
+
+    public void setSyncRuntimeEnabled(boolean enabled) {
+        this.syncRuntimeEnabled = enabled;
     }
 
     private static final String MACHINE_ID_FILE = "./machine-id.properties";

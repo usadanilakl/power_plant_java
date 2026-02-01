@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/app.component.css"],
-  "sourcesContent": [".guide-fab {\n  position: fixed;\n  bottom: 24px;\n  right: 24px;\n  z-index: 999;\n}\n"],
-  "mappings": ";AAAA,CAAC;AACC,YAAU;AACV,UAAQ;AACR,SAAO;AACP,WAAS;AACX;",
-  "names": []
-}

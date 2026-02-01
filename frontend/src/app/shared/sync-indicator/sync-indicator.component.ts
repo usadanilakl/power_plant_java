@@ -1,42 +1,143 @@
-import { Component, inject, OnDestroy, OnInit, signal, computed, PLATFORM_ID } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal, computed, PLATFORM_ID, ElementRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatBadgeModule } from '@angular/material/badge';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
-import { SyncStatusService, SyncHealthStatusType } from '../../services/sync-status.service';
+import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
 
 /**
  * Sync status indicator component for the header.
- * Shows SSE connection status, sync health status, and provides quick access to sync status page.
+ * Shows sync server status, sync health, and provides a popover with
+ * detailed status, sync toggle, and quick actions.
+ *
+ * State priority (highest to lowest):
+ * 1. Sync disabled (grey) - runtime toggle is off
+ * 2. Server unavailable (red) - serverAvailable=false from backend status
+ * 3. Connected + health state:
+ *    - OUT_OF_SYNC (red)
+ *    - POSSIBLY_OUT_OF_SYNC (orange)
+ *    - IN_SYNC / UNKNOWN (green)
  */
 @Component({
   selector: 'app-sync-indicator',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, MatTooltipModule, MatBadgeModule],
+  imports: [CommonModule, MatIconModule, MatTooltipModule, MatSlideToggleModule, MatButtonModule, MatDividerModule, FormsModule],
   template: `
-    <div class="sync-indicator"
-         [routerLink]="['/sync-resync']"
-         [class.connected]="connectionState() === 'connected' && syncHealthState() === 'IN_SYNC'"
-         [class.connecting]="connectionState() === 'connecting'"
-         [class.disconnected]="connectionState() === 'disconnected'"
-         [class.out-of-sync]="syncHealthState() === 'OUT_OF_SYNC'"
-         [class.possibly-out-of-sync]="syncHealthState() === 'POSSIBLY_OUT_OF_SYNC'"
-         [matTooltip]="tooltipText()">
-      <mat-icon [class.pulse]="connectionState() === 'connecting' || syncHealthState() === 'OUT_OF_SYNC'">
-        {{ iconName() }}
-      </mat-icon>
-      @if (recentUpdateCount() > 0) {
-        <span class="update-badge">{{ recentUpdateCount() }}</span>
-      }
-      @if (syncHealthState() === 'OUT_OF_SYNC' || syncHealthState() === 'POSSIBLY_OUT_OF_SYNC') {
-        <span class="warning-indicator" [class.error]="syncHealthState() === 'OUT_OF_SYNC'">!</span>
+    <div class="sync-indicator-wrapper">
+      <div class="sync-indicator"
+           (click)="onIconClick($event)"
+           [class]="iconClass()"
+           [matTooltip]="popoverOpen() ? '' : tooltipText()">
+        <mat-icon [class.pulse]="shouldPulse()">
+          {{ iconName() }}
+        </mat-icon>
+        @if (recentUpdateCount() > 0) {
+          <span class="update-badge">{{ recentUpdateCount() > 99 ? '99+' : recentUpdateCount() }}</span>
+        }
+        @if (showWarningBadge()) {
+          <span class="warning-indicator" [class.error]="syncHealthState() === 'OUT_OF_SYNC'">!</span>
+        }
+      </div>
+
+      @if (popoverOpen()) {
+        <div class="sync-popover"
+             [style.top.px]="popoverTop()"
+             [style.right.px]="popoverRight()"
+             (click)="$event.stopPropagation()">
+          <div class="popover-header">
+            <span class="popover-title">Sync Status</span>
+            <mat-icon class="popover-close" (click)="closePopover()">close</mat-icon>
+          </div>
+
+          <div class="popover-body">
+            <!-- Status Row -->
+            <div class="status-row">
+              <mat-icon [class]="statusIconClass()">{{ iconName() }}</mat-icon>
+              <div class="status-text">
+                <span class="status-label">{{ statusLabel() }}</span>
+                <span class="status-detail">{{ statusDetail() }}</span>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Info Grid -->
+            <div class="info-grid">
+              @if (syncStatus()) {
+                <div class="info-item">
+                  <span class="info-label">Mode</span>
+                  <span class="info-value">{{ syncStatus()?.syncMode || 'N/A' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Pending</span>
+                  <span class="info-value">{{ syncStatus()?.pendingServerChanges ?? 0 }}</span>
+                </div>
+              }
+              @if (recentUpdateCount() > 0) {
+                <div class="info-item">
+                  <span class="info-label">Recent Updates</span>
+                  <span class="info-value">{{ recentUpdateCount() }}</span>
+                </div>
+              }
+            </div>
+
+            @if (suggestResync()) {
+              <div class="resync-suggestion">
+                @if (suggestedSyncDate()) {
+                  Resync recommended from {{ suggestedSyncDate() }}
+                } @else {
+                  Full resync recommended
+                }
+              </div>
+            }
+
+            <mat-divider></mat-divider>
+
+            <!-- Sync Toggle -->
+            <div class="toggle-row">
+              <span class="toggle-label">Sync Enabled</span>
+              <mat-slide-toggle
+                [checked]="syncEnabled()"
+                [disabled]="togglingSync()"
+                (change)="onSyncToggle($event.checked)">
+              </mat-slide-toggle>
+            </div>
+
+            @if (!syncEnabled()) {
+              <div class="disabled-warning">
+                Sync is off. Local changes will not be shared.
+              </div>
+            }
+
+            <mat-divider></mat-divider>
+
+            <!-- Actions -->
+            <div class="popover-actions">
+              <button mat-button (click)="syncNow()" [disabled]="!syncEnabled() || syncingNow()">
+                <mat-icon>sync</mat-icon>
+                {{ syncingNow() ? 'Syncing...' : 'Sync Now' }}
+              </button>
+              <button mat-button (click)="goToDashboard()">
+                <mat-icon>dashboard</mat-icon>
+                Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
       }
     </div>
   `,
   styles: [`
+    .sync-indicator-wrapper {
+      position: relative;
+    }
+
     .sync-indicator {
       display: flex;
       align-items: center;
@@ -52,37 +153,20 @@ import { SyncStatusService, SyncHealthStatusType } from '../../services/sync-sta
       background-color: rgba(255, 255, 255, 0.1);
     }
 
-    .sync-indicator.connected mat-icon {
-      color: #4caf50; /* Green */
-    }
-
-    .sync-indicator.connecting mat-icon {
-      color: #ff9800; /* Orange */
-    }
-
-    .sync-indicator.disconnected mat-icon {
-      color: #f44336; /* Red */
-    }
-
-    .sync-indicator.out-of-sync mat-icon {
-      color: #f44336; /* Red */
-    }
-
-    .sync-indicator.possibly-out-of-sync mat-icon {
-      color: #ff9800; /* Orange */
-    }
+    .sync-indicator.state-connected mat-icon { color: #4caf50; }
+    .sync-indicator.state-connecting mat-icon { color: #ff9800; }
+    .sync-indicator.state-disconnected mat-icon { color: #f44336; }
+    .sync-indicator.state-disabled mat-icon { color: #9e9e9e; }
+    .sync-indicator.state-out-of-sync mat-icon { color: #f44336; }
+    .sync-indicator.state-possibly-out-of-sync mat-icon { color: #ff9800; }
 
     .pulse {
       animation: pulse 1.5s ease-in-out infinite;
     }
 
     @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
     .update-badge {
@@ -120,102 +204,255 @@ import { SyncStatusService, SyncHealthStatusType } from '../../services/sync-sta
       background-color: #f44336;
       animation: pulse 1s ease-in-out infinite;
     }
+
+    /* Popover */
+    .sync-popover {
+      position: fixed;
+      width: 300px;
+      background: var(--card-background, #fff);
+      color: var(--primary-text, #333);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+    }
+
+    .popover-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .popover-close {
+      cursor: pointer;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      opacity: 0.6;
+    }
+
+    .popover-close:hover { opacity: 1; }
+
+    .popover-body {
+      padding: 12px 16px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .status-row mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+
+    .status-row .icon-green { color: #4caf50; }
+    .status-row .icon-orange { color: #ff9800; }
+    .status-row .icon-red { color: #f44336; }
+    .status-row .icon-grey { color: #9e9e9e; }
+
+    .status-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .status-label {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .status-detail {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.5;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .resync-suggestion {
+      background: rgba(255, 152, 0, 0.1);
+      border-left: 3px solid #ff9800;
+      padding: 8px 12px;
+      font-size: 12px;
+      margin: 8px 0;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 0;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .disabled-warning {
+      background: rgba(244, 67, 54, 0.1);
+      border-left: 3px solid #f44336;
+      padding: 8px 12px;
+      font-size: 12px;
+      margin: 4px 0 8px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .popover-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .popover-actions button {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    .popover-actions mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+    }
   `]
 })
 export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
   private syncStatusService = inject(SyncStatusService);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
+  private elementRef = inject(ElementRef);
   private subscriptions: Subscription[] = [];
   private isBrowser: boolean;
+  private documentClickListener: ((e: MouseEvent) => void) | null = null;
 
   // Signals for reactive state
-  connectionState = signal<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  serverAvailable = signal<boolean | null>(null); // null = unknown/not loaded yet
+  sseConnected = signal<boolean>(false);
   syncHealthState = signal<SyncHealthStatusType>('UNKNOWN');
   syncHealthMessage = signal<string>('');
   suggestResync = signal<boolean>(false);
   suggestedSyncDate = signal<string | null>(null);
   recentUpdateCount = signal<number>(0);
+  syncEnabled = signal<boolean>(true);
+  syncStatus = signal<SyncStatus | null>(null);
+  popoverOpen = signal<boolean>(false);
+  togglingSync = signal<boolean>(false);
+  syncingNow = signal<boolean>(false);
   private updateTimer: any = null;
+  private statusPollTimer: any = null;
 
-  // Computed values
-  iconName = computed(() => {
+  // Computed: determine the effective visual state
+  // Uses serverAvailable from backend /api/field-sync/status (NOT frontend SSE connection state)
+  effectiveState = computed(() => {
+    if (!this.syncEnabled()) return 'disabled' as const;
+
+    const available = this.serverAvailable();
+    // If we haven't loaded status yet, show connecting
+    if (available === null) return 'connecting' as const;
+    // If remote sync server is not available, show disconnected
+    if (!available) return 'disconnected' as const;
+
+    // Server is available — check health
     const health = this.syncHealthState();
-    const connection = this.connectionState();
+    if (health === 'OUT_OF_SYNC') return 'out-of-sync' as const;
+    if (health === 'POSSIBLY_OUT_OF_SYNC') return 'possibly-out-of-sync' as const;
+    return 'connected' as const;
+  });
 
-    // Prioritize sync health status for icon
-    if (health === 'OUT_OF_SYNC') {
-      return 'sync_problem';
-    }
-    if (health === 'POSSIBLY_OUT_OF_SYNC') {
-      return 'sync';
-    }
-
-    // Fall back to connection state
-    switch (connection) {
-      case 'connected': return 'cloud_done';
-      case 'connecting': return 'cloud_sync';
+  iconName = computed(() => {
+    switch (this.effectiveState()) {
+      case 'disabled': return 'sync_disabled';
       case 'disconnected': return 'cloud_off';
+      case 'connecting': return 'cloud_sync';
+      case 'out-of-sync': return 'sync_problem';
+      case 'possibly-out-of-sync': return 'sync';
+      case 'connected': return 'cloud_done';
+    }
+  });
+
+  iconClass = computed(() => `state-${this.effectiveState()}`);
+
+  shouldPulse = computed(() => {
+    const state = this.effectiveState();
+    return state === 'connecting' || state === 'out-of-sync';
+  });
+
+  showWarningBadge = computed(() => {
+    const health = this.syncHealthState();
+    return this.syncEnabled() && this.serverAvailable() === true &&
+      (health === 'OUT_OF_SYNC' || health === 'POSSIBLY_OUT_OF_SYNC');
+  });
+
+  statusLabel = computed(() => {
+    switch (this.effectiveState()) {
+      case 'disabled': return 'Sync Disabled';
+      case 'disconnected': return 'Server Unavailable';
+      case 'connecting': return 'Checking...';
+      case 'out-of-sync': return 'Out of Sync';
+      case 'possibly-out-of-sync': return 'Possibly Out of Sync';
+      case 'connected': return 'All Up to Date';
+    }
+  });
+
+  statusDetail = computed(() => {
+    const state = this.effectiveState();
+    if (state === 'disabled') return 'Toggle sync on to resume synchronization';
+    if (state === 'disconnected') return 'Cannot reach sync server';
+    if (state === 'connecting') return 'Checking sync server status...';
+    const msg = this.syncHealthMessage();
+    if (msg && (state === 'out-of-sync' || state === 'possibly-out-of-sync')) return msg;
+    if (state === 'connected') return 'Connected and synchronized';
+    return '';
+  });
+
+  statusIconClass = computed(() => {
+    switch (this.effectiveState()) {
+      case 'disabled': return 'icon-grey';
+      case 'disconnected':
+      case 'out-of-sync': return 'icon-red';
+      case 'connecting':
+      case 'possibly-out-of-sync': return 'icon-orange';
+      case 'connected': return 'icon-green';
     }
   });
 
   tooltipText = computed(() => {
-    const updates = this.recentUpdateCount();
-    const state = this.connectionState();
-    const health = this.syncHealthState();
-    const healthMessage = this.syncHealthMessage();
-    const shouldSuggestResync = this.suggestResync();
-    const syncDate = this.suggestedSyncDate();
-
-    let statusText = '';
-
-    // Sync health status takes priority
-    switch (health) {
-      case 'IN_SYNC':
-        statusText = 'Data is in sync';
-        break;
-      case 'POSSIBLY_OUT_OF_SYNC':
-        statusText = 'Possibly out of sync';
-        if (healthMessage) {
-          statusText += `\n${healthMessage}`;
-        }
-        break;
-      case 'OUT_OF_SYNC':
-        statusText = 'OUT OF SYNC!';
-        if (healthMessage) {
-          statusText += `\n${healthMessage}`;
-        }
-        break;
-      case 'UNKNOWN':
-        // Fall back to connection state
-        switch (state) {
-          case 'connected':
-            statusText = 'Connected to server';
-            break;
-          case 'connecting':
-            statusText = 'Connecting...';
-            break;
-          case 'disconnected':
-            statusText = 'Server disconnected';
-            break;
-        }
-        break;
-    }
-
-    // Add sync suggestion if available
-    if (shouldSuggestResync) {
-      if (syncDate) {
-        statusText += `\n⚠️ Sync recommended from ${syncDate}`;
-      } else {
-        statusText += `\n⚠️ Full resync recommended`;
-      }
-    }
-
-    if (updates > 0) {
-      statusText += `\n${updates} recent update${updates > 1 ? 's' : ''}`;
-    }
-
-    return statusText + '\nClick for details';
+    return this.statusLabel();
   });
 
   constructor() {
@@ -228,12 +465,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     // Start polling for sync health check (every 60 seconds)
     this.syncStatusService.startHealthCheckPolling(60000);
 
-    // Subscribe to connection state
-    this.subscriptions.push(
-      this.syncUpdateService.connectionState$.subscribe(state => {
-        this.connectionState.set(state);
-      })
-    );
+    // Load initial sync toggle state
+    this.loadSyncToggleState();
+
+    // Poll status every 15 seconds for accurate server availability
+    this.startStatusPolling();
 
     // Subscribe to sync health check updates
     this.subscriptions.push(
@@ -263,6 +499,110 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
         }
       })
     );
+
+    // Add document click listener for closing popover
+    this.documentClickListener = (event: MouseEvent) => {
+      if (this.popoverOpen() && !this.elementRef.nativeElement.contains(event.target)) {
+        this.popoverOpen.set(false);
+      }
+    };
+    document.addEventListener('click', this.documentClickListener);
+  }
+
+  popoverTop = signal<number>(0);
+  popoverRight = signal<number>(0);
+
+  onIconClick(event: MouseEvent): void {
+    event.stopPropagation();
+    // Calculate position before toggling
+    const rect = this.elementRef.nativeElement.getBoundingClientRect();
+    this.popoverTop.set(rect.bottom + 4);
+    this.popoverRight.set(window.innerWidth - rect.right);
+    this.popoverOpen.update(open => !open);
+    if (this.popoverOpen()) {
+      this.loadSyncStatus();
+      this.loadSyncToggleState();
+    }
+  }
+
+  closePopover(): void {
+    this.popoverOpen.set(false);
+  }
+
+  onSyncToggle(enabled: boolean): void {
+    this.togglingSync.set(true);
+    this.syncStatusService.setSyncToggle(enabled).subscribe({
+      next: (res) => {
+        this.syncEnabled.set(res.enabled);
+        this.togglingSync.set(false);
+        if (!res.enabled) {
+          this.serverAvailable.set(null);
+        }
+        // Refresh status after toggle
+        setTimeout(() => this.loadSyncStatus(), 2000);
+      },
+      error: () => {
+        this.togglingSync.set(false);
+      }
+    });
+  }
+
+  syncNow(): void {
+    this.syncingNow.set(true);
+    this.syncStatusService.triggerSync().subscribe({
+      next: () => {
+        this.syncingNow.set(false);
+        this.loadSyncStatus();
+      },
+      error: () => {
+        this.syncingNow.set(false);
+      }
+    });
+  }
+
+  goToDashboard(): void {
+    this.closePopover();
+    this.router.navigate(['/sync']);
+  }
+
+  private loadSyncToggleState(): void {
+    this.syncStatusService.getSyncToggle().subscribe({
+      next: (state) => {
+        this.syncEnabled.set(state.enabled);
+      },
+      error: () => {}
+    });
+  }
+
+  private loadSyncStatus(): void {
+    this.syncStatusService.fetchStatus().subscribe({
+      next: (status) => {
+        if (status) {
+          this.syncStatus.set(status);
+          // Update serverAvailable from backend status endpoint
+          // This reflects whether the REMOTE sync server is reachable
+          if (status.serverAvailable !== undefined) {
+            this.serverAvailable.set(status.serverAvailable);
+          } else if (status.serverSyncEnabled === false) {
+            // Sync not enabled in config
+            this.serverAvailable.set(false);
+          }
+        }
+      },
+      error: () => {
+        // Can't even reach local backend
+        this.serverAvailable.set(false);
+      }
+    });
+  }
+
+  private startStatusPolling(): void {
+    // Initial load
+    this.loadSyncStatus();
+    // Poll every 15 seconds for responsive server availability detection
+    this.statusPollTimer = setInterval(() => {
+      this.loadSyncStatus();
+    }, 15000);
   }
 
   private incrementUpdateCount(): void {
@@ -271,12 +611,9 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   }
 
   private scheduleCountReset(): void {
-    // Clear existing timer
     if (this.updateTimer) {
       clearTimeout(this.updateTimer);
     }
-
-    // Reset count after 30 seconds of no activity
     this.updateTimer = setTimeout(() => {
       this.recentUpdateCount.set(0);
     }, 30000);
@@ -286,8 +623,10 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     if (this.isBrowser) {
       this.syncStatusService.stopHealthCheckPolling();
-      if (this.updateTimer) {
-        clearTimeout(this.updateTimer);
+      if (this.updateTimer) clearTimeout(this.updateTimer);
+      if (this.statusPollTimer) clearInterval(this.statusPollTimer);
+      if (this.documentClickListener) {
+        document.removeEventListener('click', this.documentClickListener);
       }
     }
   }

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;66d4d947d25806cc5a3c26bb4d58001675b13aa9ffbccc8920c4914343c59311;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/wizard-dialog/wizard-step-renderer.component.ts"],
-  "sourcesContent": ["\n    .step-container {\n      display: flex;\n      flex-direction: column;\n      gap: 20px;\n    }\n\n    .step-header {\n      text-align: center;\n      padding-bottom: 16px;\n      border-bottom: 1px solid #eee;\n    }\n\n    .step-title {\n      margin: 0 0 8px 0;\n      font-size: 20px;\n      font-weight: 500;\n      color: #333;\n    }\n\n    .step-description {\n      margin: 0;\n      color: #666;\n      font-size: 14px;\n      line-height: 1.5;\n    }\n\n    .step-content {\n      min-height: 150px;\n    }\n\n    .unknown-step {\n      padding: 20px;\n      background: #fff3e0;\n      border-radius: 8px;\n      text-align: center;\n      color: #e65100;\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,OAAK;AACP;AAEA,CAAC;AACC,cAAY;AACZ,kBAAgB;AAChB,iBAAe,IAAI,MAAM;AAC3B;AAEA,CAAC;AACC,UAAQ,EAAE,EAAE,IAAI;AAChB,aAAW;AACX,eAAa;AACb,SAAO;AACT;AAEA,CAAC;AACC,UAAQ;AACR,SAAO;AACP,aAAW;AACX,eAAa;AACf;AAEA,CAAC;AACC,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,cAAY;AACZ,iBAAe;AACf,cAAY;AACZ,SAAO;AACT;",
-  "names": []
-}

@@ -15,6 +15,29 @@ export interface SyncStatus {
   activePeers: Peer[];
   peerCount: number;
   totalChangesTracked: number;
+  // Server sync fields
+  serverSyncEnabled?: boolean;
+  syncRuntimeEnabled?: boolean;
+  serverSyncConfigured?: boolean;
+  syncServerUrl?: string;
+  serverAvailable?: boolean;
+  sseConnected?: boolean;
+  pendingServerChanges?: number;
+  syncMode?: 'SERVER' | 'PEER_TO_PEER';
+  realtimeEnabled?: boolean;
+}
+
+export interface SyncToggleState {
+  enabled: boolean;
+  configured: boolean;
+  effectivelyEnabled: boolean;
+}
+
+export interface SyncToggleResponse {
+  success: boolean;
+  enabled: boolean;
+  effectivelyEnabled: boolean;
+  message: string;
 }
 
 export interface Peer {
@@ -251,6 +274,27 @@ export class SyncStatusService {
     return this.http.post<SyncHealthCheckResult>(`${this.resyncApiUrl}/sync-health/check`, {}).pipe(
       tap(health => this.syncHealthSubject.next(health))
     );
+  }
+
+  /**
+   * Get current sync toggle state
+   */
+  getSyncToggle(): Observable<SyncToggleState> {
+    return this.http.get<SyncToggleState>(`${this.apiUrl}/sync-toggle`);
+  }
+
+  /**
+   * Set sync toggle state (enable/disable sync at runtime)
+   */
+  setSyncToggle(enabled: boolean): Observable<SyncToggleResponse> {
+    return this.http.post<SyncToggleResponse>(`${this.apiUrl}/sync-toggle`, { enabled });
+  }
+
+  /**
+   * Get detailed sync metrics
+   */
+  getSyncMetrics(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/metrics`);
   }
 }
 

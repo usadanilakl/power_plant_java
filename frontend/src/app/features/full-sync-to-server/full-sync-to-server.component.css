@@ -6,18 +6,18 @@
 
 h2 {
   margin-bottom: 8px;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .description {
-  color: #666;
+  color: var(--secondary-text);
   margin-bottom: 20px;
 }
 
 /* Warning Banner */
 .warning-banner {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
+  background-color: var(--warning-background);
+  border: 1px solid rgba(255, 193, 7, 0.3);
   color: #856404;
   padding: 12px 16px;
   border-radius: 6px;
@@ -35,26 +35,26 @@ h2 {
 }
 
 .message-success {
-  background-color: #d4edda;
-  border: 1px solid #c3e6cb;
+  background-color: var(--success-background);
+  border: 1px solid rgba(40, 167, 69, 0.3);
   color: #155724;
 }
 
 .message-error {
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
+  background-color: var(--error-background);
+  border: 1px solid rgba(220, 53, 69, 0.3);
   color: #721c24;
 }
 
 .message-info {
-  background-color: #d1ecf1;
-  border: 1px solid #bee5eb;
-  color: #0c5460;
+  background-color: rgba(77, 171, 247, 0.15);
+  border: 1px solid rgba(77, 171, 247, 0.3);
+  color: var(--accent-color);
 }
 
 .message-warning {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
+  background-color: var(--warning-background);
+  border: 1px solid rgba(255, 193, 7, 0.3);
   color: #856404;
 }
 
@@ -73,15 +73,15 @@ h2 {
 
 /* Card Styles */
 .card {
-  background: white;
+  background: var(--card-background);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
 }
 
 .card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -90,25 +90,27 @@ h2 {
 .card-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .card-body {
   padding: 20px;
+  color: var(--primary-text);
 }
 
 /* Buttons */
 .refresh-btn {
   padding: 6px 14px;
-  border: 1px solid #ddd;
-  background: #f8f9fa;
+  border: 1px solid var(--border-color);
+  background: var(--secondary-background);
+  color: var(--primary-text);
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #e9ecef;
+  background: var(--border-color);
 }
 
 .refresh-btn:disabled {
@@ -118,7 +120,7 @@ h2 {
 
 .start-btn {
   padding: 12px 24px;
-  background: #007bff;
+  background: var(--accent-color);
   color: white;
   border: none;
   border-radius: 6px;
@@ -128,11 +130,11 @@ h2 {
 }
 
 .start-btn:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--accent-color-hover);
 }
 
 .start-btn:disabled {
-  background: #6c757d;
+  background: var(--disabled-background);
   cursor: not-allowed;
 }
 
@@ -146,11 +148,12 @@ h2 {
 .info-row {
   display: flex;
   gap: 10px;
+  color: var(--primary-text);
 }
 
 .info-row label {
   font-weight: 600;
-  color: #666;
+  color: var(--secondary-text);
   min-width: 120px;
 }
 
@@ -161,28 +164,28 @@ h2 {
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
-  background: #e9ecef;
-  color: #495057;
+  background: var(--secondary-background);
+  color: var(--primary-text);
 }
 
 .phase-success {
-  background: #d4edda;
+  background: var(--success-background);
   color: #155724;
 }
 
 .phase-error {
-  background: #f8d7da;
+  background: var(--error-background);
   color: #721c24;
 }
 
 .phase-progress {
-  background: #cce5ff;
-  color: #004085;
+  background: rgba(77, 171, 247, 0.15);
+  color: var(--accent-color);
 }
 
 /* Progress Section */
 .progress-section {
-  background: #f8f9fa;
+  background: var(--secondary-background);
   padding: 16px;
   border-radius: 6px;
 }
@@ -192,11 +195,13 @@ h2 {
   justify-content: space-between;
   margin-bottom: 8px;
   font-weight: 500;
+  color: var(--primary-text);
 }
 
 .progress-bar {
   height: 20px;
-  background: #e9ecef;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -212,7 +217,7 @@ h2 {
   justify-content: space-between;
   margin-top: 8px;
   font-size: 13px;
-  color: #666;
+  color: var(--secondary-text);
 }
 
 /* Stats Grid */
@@ -223,7 +228,7 @@ h2 {
 }
 
 .stat-item {
-  background: #f8f9fa;
+  background: var(--secondary-background);
   padding: 16px;
   border-radius: 6px;
   text-align: center;
@@ -232,14 +237,14 @@ h2 {
 .stat-item label {
   display: block;
   font-size: 13px;
-  color: #666;
+  color: var(--secondary-text);
   margin-bottom: 4px;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .stat-value.success {
@@ -253,26 +258,26 @@ h2 {
 /* Time Info */
 .time-info {
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
 }
 
 /* Errors Section */
 .errors-section {
-  background: #fff5f5;
+  background: var(--error-background);
   padding: 16px;
   border-radius: 6px;
-  border: 1px solid #f5c6cb;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .errors-section h4 {
   margin: 0 0 10px 0;
-  color: #721c24;
+  color: #dc3545;
 }
 
 .error-list {
   margin: 0;
   padding-left: 20px;
-  color: #721c24;
+  color: #dc3545;
   font-size: 13px;
 }
 
@@ -285,7 +290,7 @@ h2 {
 .no-status {
   padding: 20px;
   text-align: center;
-  color: #666;
+  color: var(--secondary-text);
 }
 
 /* Action Section */
@@ -296,8 +301,8 @@ h2 {
 
 .in-progress-note {
   text-align: center;
-  color: #0c5460;
-  background: #d1ecf1;
+  color: var(--accent-color);
+  background: rgba(77, 171, 247, 0.15);
   padding: 10px;
   border-radius: 6px;
   margin-top: 16px;
@@ -318,7 +323,7 @@ h2 {
 }
 
 .dialog {
-  background: white;
+  background: var(--card-background);
   padding: 24px;
   border-radius: 8px;
   max-width: 500px;
@@ -328,16 +333,16 @@ h2 {
 
 .dialog h3 {
   margin: 0 0 16px 0;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .dialog p {
-  color: #666;
+  color: var(--secondary-text);
   margin-bottom: 12px;
 }
 
 .dialog-warning {
-  background: #fff3cd;
+  background: var(--warning-background);
   color: #856404;
   padding: 12px;
   border-radius: 4px;
@@ -352,19 +357,20 @@ h2 {
 
 .cancel-btn {
   padding: 10px 20px;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .cancel-btn:hover {
-  background: #f8f9fa;
+  background: var(--secondary-background);
 }
 
 .confirm-btn {
   padding: 10px 20px;
-  background: #007bff;
+  background: var(--accent-color);
   color: white;
   border: none;
   border-radius: 4px;
@@ -372,5 +378,5 @@ h2 {
 }
 
 .confirm-btn:hover {
-  background: #0056b3;
+  background: var(--accent-color-hover);
 }

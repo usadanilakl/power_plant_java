@@ -83,9 +83,8 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     defaultRoute: '/backup',
     items: [
       { title: 'Backup', description: 'Backup and restore data', icon: 'backup', route: '/backup', color: '#8e44ad' },
-      { title: 'Sync Monitor', description: 'Monitor sync status', icon: 'sync', route: '/sync', color: '#27ae60' },
-      { title: 'Sync Test', description: 'Test synchronization', icon: 'science', route: '/sync-test', color: '#2980b9' },
-      { title: 'Sync Resync', description: 'Full resynchronization', icon: 'sync_problem', route: '/sync-resync', color: '#e67e22' },
+      { title: 'Sync Dashboard', description: 'Monitor sync status & recovery', icon: 'sync', route: '/sync', color: '#27ae60' },
+      { title: 'Sync Admin', description: 'Testing & full sync to server', icon: 'science', route: '/sync-admin', color: '#2980b9' },
       { title: 'Admin', description: 'Admin settings', icon: 'admin_panel_settings', route: '/admin', color: '#c0392b' }
     ]
   }

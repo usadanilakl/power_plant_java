@@ -1,8 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
-import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import {
   SyncStatusService,
   SyncStatus,
@@ -14,7 +12,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-sync-monitor',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterMenuComponent, MainLayoutComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './sync-monitor.component.html',
   styleUrls: ['./sync-monitor.component.css']
 })

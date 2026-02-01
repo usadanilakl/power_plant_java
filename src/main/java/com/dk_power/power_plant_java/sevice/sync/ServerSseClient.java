@@ -469,10 +469,12 @@ public class ServerSseClient {
 
     /**
      * Stop the SSE client.
+     * After stopping, startSseConnection() can be called to restart.
      */
     public void stop() {
         log.info("Stopping SSE client...");
         shouldReconnect.set(false);
+        running.set(false);
         closeConnection();
     }
 

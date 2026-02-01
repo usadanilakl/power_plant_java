@@ -10,21 +10,21 @@
 
 h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--primary-text);
 }
 
 /* Cards */
 .card {
-  background: #fff;
+  background: var(--card-background);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow);
   padding: 20px;
   margin-bottom: 20px;
 }
 
 .card h3 {
   margin: 0 0 15px 0;
-  color: #333;
+  color: var(--primary-text);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -42,21 +42,21 @@ h2 {
 }
 
 .message-banner.success {
-  background: #d4edda;
+  background: var(--success-background);
   color: #155724;
-  border: 1px solid #c3e6cb;
+  border: 1px solid rgba(40, 167, 69, 0.3);
 }
 
 .message-banner.error {
-  background: #f8d7da;
+  background: var(--error-background);
   color: #721c24;
-  border: 1px solid #f5c6cb;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .message-banner.info {
-  background: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+  background: rgba(77, 171, 247, 0.15);
+  color: var(--accent-color);
+  border: 1px solid rgba(77, 171, 247, 0.3);
 }
 
 .close-btn {
@@ -80,19 +80,19 @@ h2 {
 
 .info-item .label {
   font-size: 12px;
-  color: #666;
+  color: var(--secondary-text);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 
 .info-item .value {
   font-size: 16px;
-  color: #333;
+  color: var(--primary-text);
   font-weight: 500;
 }
 
 .info-item .value.highlight {
-  color: #007bff;
+  color: var(--accent-color);
   font-size: 20px;
 }
 
@@ -126,21 +126,22 @@ h2 {
 }
 
 .btn-primary {
-  background: #007bff;
+  background: var(--accent-color);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--accent-color-hover);
 }
 
 .btn-secondary {
-  background: #6c757d;
-  color: white;
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #545b62;
+  background: var(--border-color);
 }
 
 .btn-small {
@@ -150,7 +151,7 @@ h2 {
 
 /* Register Peer Form */
 .register-peer .help-text {
-  color: #666;
+  color: var(--secondary-text);
   font-size: 13px;
   margin-bottom: 15px;
 }
@@ -169,20 +170,22 @@ h2 {
 
 .form-group label {
   font-size: 12px;
-  color: #666;
+  color: var(--secondary-text);
   margin-bottom: 4px;
 }
 
 .form-group input {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background: var(--card-background);
+  color: var(--primary-text);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--accent-color);
 }
 
 /* Data Tables */
@@ -195,19 +198,20 @@ h2 {
 .data-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--primary-text);
 }
 
 .data-table th {
-  background: #f8f9fa;
+  background: var(--secondary-background);
   font-weight: 600;
-  color: #333;
+  color: var(--secondary-text);
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .data-table tbody tr:hover {
-  background: #f8f9fa;
+  background: var(--secondary-background);
 }
 
 .monospace {
@@ -225,22 +229,22 @@ h2 {
 }
 
 .status-online {
-  background: #d4edda;
+  background: var(--success-background);
   color: #155724;
 }
 
 .status-syncing {
-  background: #fff3cd;
+  background: var(--warning-background);
   color: #856404;
 }
 
 .status-offline {
-  background: #e2e3e5;
-  color: #383d41;
+  background: var(--secondary-background);
+  color: var(--secondary-text);
 }
 
 .status-error {
-  background: #f8d7da;
+  background: var(--error-background);
   color: #721c24;
 }
 
@@ -253,17 +257,17 @@ h2 {
 }
 
 .change-create {
-  background: #d4edda;
+  background: var(--success-background);
   color: #155724;
 }
 
 .change-update {
-  background: #cce5ff;
-  color: #004085;
+  background: rgba(77, 171, 247, 0.15);
+  color: var(--accent-color);
 }
 
 .change-delete {
-  background: #f8d7da;
+  background: var(--error-background);
   color: #721c24;
 }
 
@@ -283,22 +287,22 @@ h2 {
 .empty-state {
   padding: 30px;
   text-align: center;
-  color: #666;
-  background: #f8f9fa;
+  color: var(--secondary-text);
+  background: var(--secondary-background);
   border-radius: 4px;
 }
 
 /* Loading */
 .loading {
   text-align: center;
-  color: #666;
+  color: var(--secondary-text);
 }
 
 /* Error State */
 .error-state {
   text-align: center;
-  background: #fff5f5;
-  border: 1px solid #f5c6cb;
+  background: var(--error-background);
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 /* Responsive */

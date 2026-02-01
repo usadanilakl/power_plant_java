@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
 import com.dk_power.power_plant_java.sevice.sync.FullSyncToServerService;
 import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
+import com.dk_power.power_plant_java.sevice.sync.ServerSseClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,7 @@ public class FieldSyncController {
     private final SyncConfig syncConfig;
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final FullSyncToServerService fullSyncToServerService;
+    private final ServerSseClient serverSseClient;
 
     /**
      * Exchange changes with a peer
@@ -171,6 +173,8 @@ public class FieldSyncController {
 
         // Server sync status
         status.put("serverSyncEnabled", syncConfig.isServerSyncEnabled());
+        status.put("syncRuntimeEnabled", syncConfig.isSyncRuntimeEnabled());
+        status.put("serverSyncConfigured", syncConfig.isServerSyncConfigured());
         status.put("syncServerUrl", syncConfig.getSyncServerUrl());
         if (syncConfig.isServerSyncEnabled()) {
             status.put("serverAvailable", centralSyncService.isServerAvailable());
@@ -411,6 +415,65 @@ public class FieldSyncController {
             result.put("message", "Failed: " + e.getMessage());
         }
 
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get sync toggle state.
+     * GET /api/field-sync/sync-toggle
+     */
+    @GetMapping("/sync-toggle")
+    public ResponseEntity<Map<String, Object>> getSyncToggle() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("enabled", syncConfig.isSyncRuntimeEnabled());
+        result.put("configured", syncConfig.isServerSyncConfigured());
+        result.put("effectivelyEnabled", syncConfig.isServerSyncEnabled());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Toggle sync on or off at runtime.
+     * POST /api/field-sync/sync-toggle
+     * Body: { "enabled": true/false }
+     */
+    @PostMapping("/sync-toggle")
+    public ResponseEntity<Map<String, Object>> setSyncToggle(@RequestBody Map<String, Object> request) {
+        Map<String, Object> result = new HashMap<>();
+        Boolean enabled = (Boolean) request.get("enabled");
+
+        if (enabled == null) {
+            result.put("success", false);
+            result.put("message", "'enabled' field is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        if (!syncConfig.isServerSyncConfigured()) {
+            result.put("success", false);
+            result.put("message", "Server sync is not configured (sync.server.enabled=false or no URL)");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        boolean wasEnabled = syncConfig.isServerSyncEnabled();
+        syncConfig.setSyncRuntimeEnabled(enabled);
+        boolean isNowEnabled = syncConfig.isServerSyncEnabled();
+
+        log.info("Sync toggle changed: {} -> {} (runtime={})", wasEnabled, isNowEnabled, enabled);
+
+        // Handle SSE connection based on toggle state
+        if (!wasEnabled && isNowEnabled) {
+            // Turning ON: reconnect SSE and trigger sync
+            serverSseClient.startSseConnection();
+            log.info("Sync enabled - SSE connection started");
+        } else if (wasEnabled && !isNowEnabled) {
+            // Turning OFF: disconnect SSE
+            serverSseClient.stop();
+            log.info("Sync disabled - SSE connection stopped");
+        }
+
+        result.put("success", true);
+        result.put("enabled", enabled);
+        result.put("effectivelyEnabled", isNowEnabled);
+        result.put("message", isNowEnabled ? "Sync enabled" : "Sync disabled");
         return ResponseEntity.ok(result);
     }
 

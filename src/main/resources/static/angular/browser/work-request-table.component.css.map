@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/work-request/work-request-table/work-request-table.component.css"],
-  "sourcesContent": [":host {\r\n  display: flex;\r\n  flex-direction: column;\r\n  flex: 1;\r\n  min-height: 0;\r\n  overflow: auto;\r\n}\r\n\r\n.table-wrapper {\r\n  flex: 1 1 auto;\r\n  display: flex;\r\n  flex-direction: column;\r\n  min-height: 0;\r\n  height: 100%; /* Add this line */\r\n  overflow: auto;\r\n}"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACZ;AAEA,CAAC;AACC,QAAM,EAAE,EAAE;AACV,WAAS;AACT,kBAAgB;AAChB,cAAY;AACZ,UAAQ;AACR,YAAU;AACZ;",
-  "names": []
-}

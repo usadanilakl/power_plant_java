@@ -15,13 +15,10 @@ import {
   PartialSyncPreview,
   PartialSyncResult
 } from '../../services/full-resync.service';
-import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
-import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
-
 @Component({
   selector: 'app-sync-resync',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule],
   templateUrl: './sync-resync.component.html',
   styleUrls: ['./sync-resync.component.css']
 })

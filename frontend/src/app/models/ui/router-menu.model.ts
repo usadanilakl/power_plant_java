@@ -61,10 +61,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/backup',
         items: [
             { route: '/backup', label: 'Backup' },
-            { route: '/sync', label: 'Sync Monitor' },
-            { route: '/sync-test', label: 'Sync Test' },
-            { route: '/sync-resync', label: 'Sync Resync' },
-            { route: '/full-sync-to-server', label: 'Full Sync to Server' },
+            { route: '/sync', label: 'Sync Dashboard' },
+            { route: '/sync-admin', label: 'Sync Admin' },
             { route: '/admin', label: 'Admin' }
         ]
     }
@@ -84,7 +82,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/scheduler', label: 'Scheduler' },
     { route: '/permit-builder', label: 'Permit Builder' },
     { route: '/form-designer', label: 'Form Designer' },
-    { route: '/sync', label: 'Sync Monitor' }
+    { route: '/sync', label: 'Sync Dashboard' }
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
