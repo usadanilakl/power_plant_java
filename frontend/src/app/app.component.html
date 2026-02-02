@@ -8,30 +8,3 @@
 
 <!-- Wizard Dialog -->
 <app-wizard-dialog />
-
-<!-- Guide FAB Button -->
-@if (!wizardService.isActive()) {
-  <button
-    mat-fab
-    color="primary"
-    class="guide-fab"
-    [matMenuTriggerFor]="guideMenu"
-    matTooltip="Start Guide"
-  >
-    <mat-icon>help_outline</mat-icon>
-  </button>
-  <mat-menu #guideMenu="matMenu">
-    <button mat-menu-item (click)="startGuide('build-standard')">
-      <mat-icon>playlist_add</mat-icon>
-      <span>Build LOTO Standard</span>
-    </button>
-    <button mat-menu-item (click)="startGuide('add-loto-point')">
-      <mat-icon>add_location</mat-icon>
-      <span>Add LOTO Point</span>
-    </button>
-    <button mat-menu-item (click)="startGuide('upload-file')">
-      <mat-icon>upload_file</mat-icon>
-      <span>Upload File</span>
-    </button>
-  </mat-menu>
-}

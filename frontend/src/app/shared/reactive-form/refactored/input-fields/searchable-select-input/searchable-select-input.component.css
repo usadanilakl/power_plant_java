@@ -3,20 +3,6 @@
   pointer-events: none !important; /* Let clicks pass through */
 }
 
-::ng-deep .cdk-overlay-container {
-  z-index: 999999 !important;
-}
-
-::ng-deep .cdk-overlay-pane {
-  z-index: 1000000 !important;
-  pointer-events: auto !important; /* Enable clicks on the pane */
-}
-
-::ng-deep .cdk-overlay-backdrop {
-  z-index: 999998 !important;
-  pointer-events: none !important; /* Let clicks pass through to close on outside click */
-}
-
 .dropdown-container {
   position: relative;
   width: 100%;
