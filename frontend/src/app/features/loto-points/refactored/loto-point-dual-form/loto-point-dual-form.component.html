@@ -31,46 +31,57 @@
             [showSubmitButton]="false"
             (formValueChange)="onPrimaryValueChange($event)"
           >
-            <ng-container extra-buttons>
-              <button
-                type="button"
-                class="tag-generator-button"
-                (click)="openPrimaryTagGenerator()"
-                title="Generate New Tag Number">
-                Generate Tag
-              </button>
-              <app-clipboard-form
-                [entityType]="'LotoPoint'"
-                [initialEntity]="initialPrimaryEntity()"
-                [currentEntity]="currentPrimaryValues() || primaryLotoPoint()"
-                [hasValidData]="hasValidData"
-                [getItemSummary]="getItemSummary"
-                [clipboardFormatter]="clipboardFormatter"
-                [excludeIdOnPaste]="true"
-                (itemSelected)="onPrimaryClipboardItemSelected($event)"
-              ></app-clipboard-form>
-            </ng-container>
           </app-rf-reactive-form>
         </div>
 
         <div class="panel-actions">
-          <button
-            class="action-btn save-btn"
-            (click)="savePrimary()"
-            [disabled]="isSavingPrimary() || isSavingBoth()"
-          >
-            Save Unit {{ sourceUnit() }}
-          </button>
-          @if (canDeletePrimary()) {
+          <div class="panel-actions-row">
             <button
-              class="action-btn delete-btn"
-              (click)="deletePrimary()"
-              [disabled]="isDeletingPrimary() || isDeletingBoth()"
-              title="Delete this LOTO point"
+              type="button"
+              class="action-btn tag-gen-btn"
+              (click)="openPrimaryTagGenerator()"
+              title="Generate Tag Number"
             >
-              @if (isDeletingPrimary()) { Deleting... } @else { Delete }
+              Generate Tag
             </button>
-          }
+            <button
+              type="button"
+              class="action-btn desc-gen-btn"
+              (click)="openPrimaryDescriptionGenerator()"
+              title="Generate Description"
+            >
+              Generate Desc
+            </button>
+            <app-clipboard-form
+              [entityType]="'LotoPoint'"
+              [initialEntity]="initialPrimaryEntity()"
+              [currentEntity]="currentPrimaryValues() || primaryLotoPoint()"
+              [hasValidData]="hasValidData"
+              [getItemSummary]="getItemSummary"
+              [clipboardFormatter]="clipboardFormatter"
+              [excludeIdOnPaste]="true"
+              (itemSelected)="onPrimaryClipboardItemSelected($event)"
+            ></app-clipboard-form>
+          </div>
+          <div class="panel-actions-row">
+            <button
+              class="action-btn save-btn"
+              (click)="savePrimary()"
+              [disabled]="isSavingPrimary() || isSavingBoth()"
+            >
+              Save Unit {{ sourceUnit() }}
+            </button>
+            @if (canDeletePrimary()) {
+              <button
+                class="action-btn delete-btn"
+                (click)="deletePrimary()"
+                [disabled]="isDeletingPrimary() || isDeletingBoth()"
+                title="Delete this LOTO point"
+              >
+                @if (isDeletingPrimary()) { Deleting... } @else { Delete }
+              </button>
+            }
+          </div>
         </div>
       </div>
 
@@ -224,46 +235,57 @@
               [showSubmitButton]="false"
               (formValueChange)="onCounterpartValueChange($event)"
             >
-              <ng-container extra-buttons>
-                <button
-                  type="button"
-                  class="tag-generator-button"
-                  (click)="openCounterpartTagGenerator()"
-                  title="Generate New Tag Number">
-                  Generate Tag
-                </button>
-                <app-clipboard-form
-                  [entityType]="'LotoPoint'"
-                  [initialEntity]="initialCounterpartEntity()"
-                  [currentEntity]="currentCounterpartValues() || counterpartLotoPoint()!"
-                  [hasValidData]="hasValidData"
-                  [getItemSummary]="getItemSummary"
-                  [clipboardFormatter]="clipboardFormatter"
-                  [excludeIdOnPaste]="true"
-                  (itemSelected)="onCounterpartClipboardItemSelected($event)"
-                ></app-clipboard-form>
-              </ng-container>
             </app-rf-reactive-form>
           </div>
 
           <div class="panel-actions">
-            <button
-              class="action-btn save-btn"
-              (click)="saveCounterpart()"
-              [disabled]="isSavingCounterpart() || isSavingBoth()"
-            >
-              {{ isCounterpartNew() ? 'Create' : 'Save' }} Unit {{ targetUnit() }}
-            </button>
-            @if (canDeleteCounterpart()) {
+            <div class="panel-actions-row">
               <button
-                class="action-btn delete-btn"
-                (click)="deleteCounterpart()"
-                [disabled]="isDeletingCounterpart() || isDeletingBoth()"
-                title="Delete this LOTO point"
+                type="button"
+                class="action-btn tag-gen-btn"
+                (click)="openCounterpartTagGenerator()"
+                title="Generate Tag Number"
               >
-                @if (isDeletingCounterpart()) { Deleting... } @else { Delete }
+                Generate Tag
               </button>
-            }
+              <button
+                type="button"
+                class="action-btn desc-gen-btn"
+                (click)="openCounterpartDescriptionGenerator()"
+                title="Generate Description"
+              >
+                Generate Desc
+              </button>
+              <app-clipboard-form
+                [entityType]="'LotoPoint'"
+                [initialEntity]="initialCounterpartEntity()"
+                [currentEntity]="currentCounterpartValues() || counterpartLotoPoint()!"
+                [hasValidData]="hasValidData"
+                [getItemSummary]="getItemSummary"
+                [clipboardFormatter]="clipboardFormatter"
+                [excludeIdOnPaste]="true"
+                (itemSelected)="onCounterpartClipboardItemSelected($event)"
+              ></app-clipboard-form>
+            </div>
+            <div class="panel-actions-row">
+              <button
+                class="action-btn save-btn"
+                (click)="saveCounterpart()"
+                [disabled]="isSavingCounterpart() || isSavingBoth()"
+              >
+                {{ isCounterpartNew() ? 'Create' : 'Save' }} Unit {{ targetUnit() }}
+              </button>
+              @if (canDeleteCounterpart()) {
+                <button
+                  class="action-btn delete-btn"
+                  (click)="deleteCounterpart()"
+                  [disabled]="isDeletingCounterpart() || isDeletingBoth()"
+                  title="Delete this LOTO point"
+                >
+                  @if (isDeletingCounterpart()) { Deleting... } @else { Delete }
+                </button>
+              }
+            </div>
           </div>
         </div>
       } @else {
@@ -414,5 +436,26 @@
       (tagGenerated)="onCounterpartTagGenerated($event)"
       (cancelled)="closeCounterpartTagGenerator()">
     </app-tag-number-generator>
+  </app-popup-projection>
+
+  <!-- Description Generator Popups -->
+  <app-popup-projection
+    [isOpen]="isPrimaryDescriptionGeneratorOpen()"
+    [title]="'Generate Description (Unit ' + sourceUnit() + ')'"
+    [size]="'medium'"
+    (close)="closePrimaryDescriptionGenerator()">
+    <app-naming-convention
+      (nameGenerated)="onPrimaryDescriptionGenerated($event)">
+    </app-naming-convention>
+  </app-popup-projection>
+
+  <app-popup-projection
+    [isOpen]="isCounterpartDescriptionGeneratorOpen()"
+    [title]="'Generate Description (Unit ' + targetUnit() + ')'"
+    [size]="'medium'"
+    (close)="closeCounterpartDescriptionGenerator()">
+    <app-naming-convention
+      (nameGenerated)="onCounterpartDescriptionGenerated($event)">
+    </app-naming-convention>
   </app-popup-projection>
 </div>

@@ -79,6 +79,10 @@ export class RfLotoPointFormComponent {
   // External save mode - when true, formSubmit emits instead of calling stateService
   externalSaveMode = input<boolean>(false);
 
+  // Whether to show the reactive form's action bar (submit + extra buttons)
+  // Set to false when parent component provides its own action buttons
+  showFormActions = input<boolean>(true);
+
   // Output for form value changes (passthrough from reactive form)
   formValueChange = output<LotoPointDto>();
 

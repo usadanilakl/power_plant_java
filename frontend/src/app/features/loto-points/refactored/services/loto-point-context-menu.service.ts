@@ -32,12 +32,12 @@ export class LotoPointContextMenuService extends ContextMenuService {
         icon: '👁️',
         action: (item) => this.handleViewDetails(item),
       },
-      {
-        id: 'edit',
-        label: 'Edit',
-        icon: '✏️',
-        action: (item) => this.handleEdit(item),
-      },
+      // {
+      //   id: 'edit',
+      //   label: 'Edit',
+      //   icon: '✏️',
+      //   action: (item) => this.handleEdit(item),
+      // },
       {
         id: 'clipboard',
         label: 'Add to Clipboard',
@@ -69,12 +69,12 @@ export class LotoPointContextMenuService extends ContextMenuService {
         action: (item) => this.handleDelete(item),
       },
       // Custom LOTO Point actions
-      {
-        id:'inspect',
-        label: 'Inspect',
-        icon: '🔍',
-        action: (item) => this.handleInspect(item),
-      },
+      // {
+      //   id:'inspect',
+      //   label: 'Inspect',
+      //   icon: '🔍',
+      //   action: (item) => this.handleInspect(item),
+      // },
       {
         id: 'divider3',
         label: '',
@@ -93,12 +93,12 @@ export class LotoPointContextMenuService extends ContextMenuService {
         divider: true,
         action: () => {},
       },
-      {
-        id: 'release',
-        label: 'Release',
-        icon: '🔓',
-        action: (item) => this.handleRelease(item),
-      },
+      // {
+      //   id: 'release',
+      //   label: 'Release',
+      //   icon: '🔓',
+      //   action: (item) => this.handleRelease(item),
+      // },
     ];
   }
 

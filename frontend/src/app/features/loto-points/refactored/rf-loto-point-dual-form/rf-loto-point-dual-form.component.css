@@ -154,12 +154,52 @@
 }
 
 .panel-actions {
-  padding: 12px 16px;
+  padding: 8px 16px;
   border-top: 1px solid var(--border-color, #e0e0e0);
   background: var(--secondary-background, #f5f5f5);
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.panel-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.panel-actions-row:last-child {
+  justify-content: flex-end;
+}
+
+.tag-gen-btn {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.tag-gen-btn:hover:not(:disabled) {
+  background: #218838;
+  border-color: #218838;
+}
+
+.desc-gen-btn {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+.desc-gen-btn:hover:not(:disabled) {
+  background: #1565c0;
+  border-color: #1565c0;
+}
+
+.panel-actions-row app-clipboard-form {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 /* Sync Controls (Center) */

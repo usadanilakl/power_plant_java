@@ -29,6 +29,7 @@ import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
+import { NamingConventionComponent } from '../../../tag-number/naming-convention/naming-convention.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { ConfirmationService } from '../../../../services/ui/confirmation.service';
@@ -76,6 +77,7 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
     RfLotoPointTableComponent,
     ClipboardFormComponent,
     TagNumberGeneratorComponent,
+    NamingConventionComponent,
     PopupProjectionComponent,
   ],
   providers: [
@@ -993,6 +995,52 @@ export class LotoPointDualFormComponent {
     this.currentCounterpartValues.set(updated);
     this.counterpartLotoPoint.set(updated);
     this.closeCounterpartTagGenerator();
+    this.updateDifferentFields();
+  }
+
+  // ========== Description Generator ==========
+
+  isPrimaryDescriptionGeneratorOpen = signal<boolean>(false);
+  isCounterpartDescriptionGeneratorOpen = signal<boolean>(false);
+
+  openPrimaryDescriptionGenerator(): void {
+    this.isPrimaryDescriptionGeneratorOpen.set(true);
+  }
+
+  closePrimaryDescriptionGenerator(): void {
+    this.isPrimaryDescriptionGeneratorOpen.set(false);
+  }
+
+  onPrimaryDescriptionGenerated(description: string): void {
+    const current = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const updated = new LotoPointDto({
+      ...current,
+      description: description,
+    });
+    this.currentPrimaryValues.set(updated);
+    this.closePrimaryDescriptionGenerator();
+    this.updateDifferentFields();
+  }
+
+  openCounterpartDescriptionGenerator(): void {
+    this.isCounterpartDescriptionGeneratorOpen.set(true);
+  }
+
+  closeCounterpartDescriptionGenerator(): void {
+    this.isCounterpartDescriptionGeneratorOpen.set(false);
+  }
+
+  onCounterpartDescriptionGenerated(description: string): void {
+    const current = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!current) return;
+
+    const updated = new LotoPointDto({
+      ...current,
+      description: description,
+    });
+    this.currentCounterpartValues.set(updated);
+    this.counterpartLotoPoint.set(updated);
+    this.closeCounterpartDescriptionGenerator();
     this.updateDifferentFields();
   }
 
