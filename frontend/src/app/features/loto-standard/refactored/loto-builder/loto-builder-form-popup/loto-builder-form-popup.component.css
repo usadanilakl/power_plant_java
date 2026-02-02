@@ -18,7 +18,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 800px;
-  max-height: 90vh;
+  height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -176,9 +176,20 @@
 /* Content */
 .form-content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 24px;
   background: var(--secondary-background, #f5f5f5);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.form-content app-rf-loto-point-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Dual form content - no padding, let dual form handle layout */

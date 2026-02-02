@@ -1,13 +1,22 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .form-container {
   width: 100%;
   min-width: 90vw;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  flex: 1;
   padding: 0;
   overflow: hidden;
   box-sizing: border-box;
   position: relative;
+  min-height: 0;
 }
 
 .draft-dialog {
@@ -121,6 +130,14 @@
   display: flex;
   flex-direction: column;
   overflow: visible; /* Allow context menu to escape - individual sections handle their own scrolling */
+}
+
+.slide-content app-rf-reactive-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Carousel Arrow Controls */

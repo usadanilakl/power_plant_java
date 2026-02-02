@@ -38,6 +38,10 @@
   max-width: 90vw;
 }
 
+.popup-full-height {
+  height: 90vh;
+}
+
 .popup-header {
   flex-shrink: 0;
   padding: 20px;
@@ -79,4 +83,11 @@
   overflow-y: auto;
   min-height: 0;
   border-top: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* When fullHeight is set, popup-body constrains children instead of scrolling */
+.popup-full-height .popup-body {
+  overflow: hidden;
 }

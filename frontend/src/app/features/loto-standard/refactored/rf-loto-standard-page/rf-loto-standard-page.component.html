@@ -20,6 +20,7 @@
 <app-rf-popup-projection
   [isOpen]="stateService.isLotoStandardFormOpen()"
   [size]="'auto'"
+  [fullHeight]="true"
   (close)="stateService.closeForm()"
 >
   <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>
@@ -28,6 +29,7 @@
 <!-- LOTO Point Form Popup -->
 <app-rf-popup-projection
   [isOpen]="lotoPointStateService.isLotoPointFormOpen()"
+  [fullHeight]="true"
   (close)="lotoPointStateService.closeForm()"
 >
   <app-rf-loto-point-form [fieldsInput]="lotoPointStateService.formFields()"></app-rf-loto-point-form>
@@ -36,6 +38,7 @@
 <!-- File Form Popup -->
 <app-rf-popup-projection
   [isOpen]="fileStateService.isFileFormOpen()"
+  [fullHeight]="true"
   (close)="fileStateService.closeForm()"
 >
   <app-rf-file-form></app-rf-file-form>

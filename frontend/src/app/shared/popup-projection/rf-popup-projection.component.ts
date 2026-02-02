@@ -13,6 +13,7 @@ export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterVi
   @Input() isOpen: boolean = false;
   @Input() title: string = '';
   @Input() size: 'small' | 'medium' | 'large' | 'auto' = 'auto';
+  @Input() fullHeight: boolean = false;
   @Input() zIndex: number = 10000;  // Default z-index, can be overridden for nested popups
   @Output() close = new EventEmitter<void>();
 

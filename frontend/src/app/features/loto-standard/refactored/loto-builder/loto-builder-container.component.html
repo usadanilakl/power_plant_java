@@ -59,6 +59,7 @@
 <!-- File Form Popup -->
 <app-rf-popup-projection
   [isOpen]="fileStateService.isFileFormOpen()"
+  [fullHeight]="true"
   (close)="fileStateService.closeForm()"
 >
   <app-rf-file-form></app-rf-file-form>

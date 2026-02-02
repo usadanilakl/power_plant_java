@@ -22,6 +22,7 @@
 
 <app-rf-popup-projection
   [isOpen]="stateService.isFileFormOpen()"
+  [fullHeight]="true"
   (close)="stateService.closeForm()"
 >
   <app-rf-file-form></app-rf-file-form>

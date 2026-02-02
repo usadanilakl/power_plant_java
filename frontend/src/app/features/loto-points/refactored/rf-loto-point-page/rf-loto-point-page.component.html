@@ -20,6 +20,7 @@
 @if (!isUnitSpecific()) {
   <app-rf-popup-projection
     [isOpen]="stateService.isLotoPointFormOpen()"
+    [fullHeight]="true"
     (close)="stateService.closeForm()"
   >
     <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
@@ -31,6 +32,7 @@
   <app-rf-popup-projection
     [isOpen]="true"
     [size]="'large'"
+    [fullHeight]="true"
     (close)="stateService.closeForm()"
   >
     <app-loto-point-dual-form
