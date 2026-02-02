@@ -21,7 +21,7 @@ export interface DraggableWindow {
   providedIn: 'root'
 })
 export class DraggableWindowService {
-  private baseZIndex = 10000;
+  private baseZIndex = 500;
   private maxZIndex = signal<number>(this.baseZIndex);
 
   private windows = signal<Map<string, DraggableWindow>>(new Map());
@@ -70,7 +70,8 @@ export class DraggableWindowService {
   }
 
   /**
-   * Bring a window to the front (highest z-index)
+   * Bring a window to the front (highest z-index).
+   * Capped below context menu / modal z-index levels.
    */
   bringToFront(id: string): number {
     const currentWindows = this.windows();
@@ -80,7 +81,19 @@ export class DraggableWindowService {
       return this.baseZIndex;
     }
 
-    const newZIndex = this.maxZIndex() + 1;
+    let newZIndex = this.maxZIndex() + 1;
+    // Reset if approaching overlay/context-menu z-index territory
+    if (newZIndex > 9000) {
+      newZIndex = this.baseZIndex + 1;
+      // Re-normalize all windows
+      currentWindows.forEach((w, wId) => {
+        if (wId !== id) {
+          const updatedWindows = new Map(this.windows());
+          updatedWindows.set(wId, { ...w, zIndex: this.baseZIndex });
+          this.windows.set(updatedWindows);
+        }
+      });
+    }
     this.maxZIndex.set(newZIndex);
 
     const updatedWindow = { ...window, zIndex: newZIndex };

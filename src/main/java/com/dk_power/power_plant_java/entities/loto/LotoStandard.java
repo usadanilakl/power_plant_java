@@ -53,7 +53,12 @@ public class LotoStandard extends BaseAuditEntity {
             return new LinkedHashMap<>();
         }
         try {
-            return objectMapper.readValue(lotoPointOrder, new TypeReference<Map<String, Integer>>() {
+            String json = lotoPointOrder;
+            // Fix double-serialized JSON (escaped quotes stored in DB)
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return objectMapper.readValue(json, new TypeReference<Map<String, Integer>>() {
             });
         } catch (IOException e) {
             e.printStackTrace();

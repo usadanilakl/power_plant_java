@@ -129,6 +129,12 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
             if (!standard.getLotoPoints().contains(lotoPoint)) {
                 standard.addLotoPoint(lotoPoint);
                 lotoPoint.addLotoStandard(standard);
+
+                // Update lotoPointOrder to place new point at the end
+                Map<String, Integer> orderMap = standard.getLotoPointOrder();
+                int maxOrder = orderMap.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+                orderMap.put(lotoPoint.getId().toString(), maxOrder + 1);
+                standard.setLotoPointOrder(orderMap);
             }
 
             LotoStandard savedStandard = save(standard);

@@ -7,6 +7,7 @@ import { RfLotoPointStateService } from "./rf-loto-point-state.service";
 import { RfLotoPointApiService } from "./rf-loto-point-api.service";
 import { map } from "rxjs";
 import { BradyPrinterModalService } from "../../../../shared/brady-printer-manager/brady-printer-modal.service";
+import { EngraverModalService } from "../../../../shared/engraver-manager/engraver-modal.service";
 import { ConfirmationService } from "../../../../services/ui/confirmation.service";
 
 @Injectable({
@@ -16,6 +17,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoPointStateService);
   private apiService = inject(RfLotoPointApiService);
   private bradyModalService = inject(BradyPrinterModalService);
+  private engraverModalService = inject(EngraverModalService);
   private confirmationService = inject(ConfirmationService);
 
   constructor() {
@@ -88,6 +90,12 @@ export class LotoPointContextMenuService extends ContextMenuService {
         action: (item) => this.handlePrint(item),
       },
       {
+        id: 'engrave',
+        label: 'Engrave',
+        icon: '⚙️',
+        action: (item) => this.handleEngrave(item),
+      },
+      {
         id: 'divider4',
         label: '',
         divider: true,
@@ -140,6 +148,10 @@ export class LotoPointContextMenuService extends ContextMenuService {
 
     private handleInspect(_item: LotoPointDto): void {
       // Implement inspect logic
+    }
+
+    private handleEngrave(item: LotoPointDto): void {
+      this.engraverModalService.openWithItems([item]);
     }
 
     private handlePrint(item: LotoPointDto): void {

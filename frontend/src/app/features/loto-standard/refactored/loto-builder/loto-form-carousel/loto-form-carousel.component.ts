@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal, DestroyRef } from '@angular/core';
+import { Component, computed, inject, input, output, signal, DestroyRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SimpleLotoFormComponent } from '../simple-loto-form/simple-loto-form.component';
@@ -15,7 +15,7 @@ import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-win
   templateUrl: './loto-form-carousel.component.html',
   styleUrl: './loto-form-carousel.component.css',
 })
-export class LotoFormCarouselComponent {
+export class LotoFormCarouselComponent implements OnInit {
   // Services
   private apiService = inject(RfLotoStandardApiService);
   private messageService = inject(GlobalMessageService);
@@ -36,6 +36,7 @@ export class LotoFormCarouselComponent {
   standardCancelled = output<{ index: number }>();
   addNewRequested = output<void>();
   close = output<void>();
+  activeIndexChanged = output<number>();
 
   // Internal state
   activeIndex = signal<number>(0);
@@ -56,12 +57,17 @@ export class LotoFormCarouselComponent {
 
   canGoNext = computed(() => this.activeIndex() < this.totalCount() - 1);
 
+  ngOnInit(): void {
+    this.activeIndexChanged.emit(this.activeIndex());
+  }
+
   /**
    * Navigate to previous form
    */
   goToPrevious(): void {
     if (this.canGoPrevious()) {
       this.activeIndex.update(index => index - 1);
+      this.activeIndexChanged.emit(this.activeIndex());
     }
   }
 
@@ -71,6 +77,7 @@ export class LotoFormCarouselComponent {
   goToNext(): void {
     if (this.canGoNext()) {
       this.activeIndex.update(index => index + 1);
+      this.activeIndexChanged.emit(this.activeIndex());
     }
   }
 
@@ -80,6 +87,7 @@ export class LotoFormCarouselComponent {
   goToIndex(index: number): void {
     if (index >= 0 && index < this.totalCount()) {
       this.activeIndex.set(index);
+      this.activeIndexChanged.emit(this.activeIndex());
     }
   }
 

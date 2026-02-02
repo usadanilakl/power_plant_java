@@ -47,7 +47,7 @@ export class RfFloatingWindowComponent implements OnInit, OnDestroy {
   // Internal state
   isDragging = signal<boolean>(false);
   isResizing = signal<boolean>(false);
-  currentZIndex = signal<number>(10000);
+  currentZIndex = signal<number>(500);
   position = signal<WindowPosition>({ x: 100, y: 100 });
   size = signal<WindowSize>({ width: 400, height: 300 });
 
