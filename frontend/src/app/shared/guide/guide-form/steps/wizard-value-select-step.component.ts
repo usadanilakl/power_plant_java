@@ -65,13 +65,13 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
       align-items: center;
       gap: 12px;
       padding: 16px;
-      background: #e8f5e9;
+      background: var(--success-background, #e8f5e9);
       border-radius: 8px;
-      border: 1px solid #c8e6c9;
+      border: 1px solid var(--border-color, #c8e6c9);
     }
 
     .preview-icon {
-      color: #4caf50;
+      color: var(--accent-color, #4caf50);
       font-size: 24px;
       width: 24px;
       height: 24px;
@@ -86,18 +86,18 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
 
     .preview-label {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .preview-name {
       font-weight: 600;
       font-size: 14px;
-      color: #2e7d32;
+      color: var(--primary-text, #2e7d32);
     }
 
     .preview-alias {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .required-hint {
@@ -105,10 +105,10 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
       align-items: center;
       gap: 8px;
       padding: 12px;
-      background: #fff3e0;
+      background: var(--warning-background, #fff3e0);
       border-radius: 6px;
       font-size: 13px;
-      color: #e65100;
+      color: var(--primary-text, #e65100);
     }
 
     .required-hint mat-icon {

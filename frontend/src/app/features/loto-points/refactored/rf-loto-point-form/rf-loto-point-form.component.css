@@ -93,7 +93,7 @@
 .slide-content app-rf-reactive-form {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .file-viewer-section {
@@ -171,6 +171,30 @@
 }
 
 .tag-generator-button:active {
+  transform: translateY(0);
+}
+
+.description-generator-button {
+  padding: 10px 16px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.description-generator-button:hover {
+  background-color: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.description-generator-button:active {
   transform: translateY(0);
 }
 

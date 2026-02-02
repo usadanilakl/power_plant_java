@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, output } from '@angular/core';
 import { RfValueSelectComponent } from '../../values/refactored/components/rf-value-select/rf-value-select.component';
 import { RfValueDto } from '../../values/refactored/models/rf-value.model';
 
@@ -10,6 +10,8 @@ import { RfValueDto } from '../../values/refactored/models/rf-value.model';
   styleUrl: './naming-convention.component.css'
 })
 export class NamingConventionComponent {
+  nameGenerated = output<string>();
+
   // Tab state
   activeTab = signal<'valve' | 'breaker'>('valve');
 
@@ -97,6 +99,13 @@ export class NamingConventionComponent {
     const name = this.builtName();
     if (name) {
       navigator.clipboard.writeText(name);
+    }
+  }
+
+  useBuiltName() {
+    const name = this.builtName();
+    if (name) {
+      this.nameGenerated.emit(name);
     }
   }
 }

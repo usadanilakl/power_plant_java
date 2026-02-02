@@ -524,9 +524,10 @@ export class WizardZeroEnergyStepComponent {
 
   onAddNewPhrase(): void {
     // Branch to create-value flow for zeroEnergyTemplate category
+    // Use dotted path so completeBranch stores result under entityData.zeroEnergy.zeroEnergyTemplate
     this.branchRequest.emit({
       flowType: 'create-value',
-      field: 'zeroEnergyTemplate',
+      field: 'zeroEnergy.zeroEnergyTemplate',
       initialData: { categoryName: 'zeroEnergyTemplate' },
     });
   }

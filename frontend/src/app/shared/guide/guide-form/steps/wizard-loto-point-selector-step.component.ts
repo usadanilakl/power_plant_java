@@ -288,7 +288,7 @@ interface GuidedSearchFilters {
     }
 
     .selected-section {
-      background: #e8f5e9;
+      background: var(--success-background, #e8f5e9);
       border-radius: 8px;
       padding: 12px;
     }
@@ -298,12 +298,8 @@ interface GuidedSearchFilters {
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
-      color: #2e7d32;
+      color: var(--primary-text, #2e7d32);
       font-weight: 500;
-    }
-
-    .selected-header mat-icon {
-      color: #4caf50;
     }
 
     .selected-list {
@@ -319,9 +315,9 @@ interface GuidedSearchFilters {
       align-items: center;
       justify-content: space-between;
       padding: 8px 12px;
-      background: white;
+      background: var(--card-background, white);
       border-radius: 6px;
-      border: 1px solid #c8e6c9;
+      border: 1px solid var(--border-color, #c8e6c9);
       min-width: 0;
       gap: 8px;
     }
@@ -338,7 +334,7 @@ interface GuidedSearchFilters {
     .item-tag {
       font-weight: 600;
       font-family: monospace;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -346,7 +342,7 @@ interface GuidedSearchFilters {
 
     .item-desc {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -356,13 +352,13 @@ interface GuidedSearchFilters {
       margin: 0 0 4px 0;
       font-size: 16px;
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .section-subtitle {
       margin: 0 0 16px 0;
       font-size: 13px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .strategy-cards {
@@ -375,15 +371,16 @@ interface GuidedSearchFilters {
       cursor: pointer;
       transition: all 0.2s;
       border: 2px solid transparent;
+      background: var(--card-background, white);
     }
 
     .strategy-card:hover {
-      border-color: #1976d2;
+      border-color: var(--accent-color, #1976d2);
       transform: translateX(4px);
     }
 
     .strategy-card.guided-card {
-      border-color: #e0e0e0;
+      border-color: var(--border-color, #e0e0e0);
     }
 
     .strategy-card.guided-card.expanded {
@@ -406,7 +403,8 @@ interface GuidedSearchFilters {
       font-size: 32px;
       width: 32px;
       height: 32px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
+      flex-shrink: 0;
     }
 
     .strategy-icon.active {
@@ -422,22 +420,24 @@ interface GuidedSearchFilters {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
 
     .strategy-label {
       font-weight: 500;
       font-size: 15px;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .strategy-desc {
       font-size: 13px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .arrow-icon {
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
       opacity: 0.5;
+      flex-shrink: 0;
     }
 
     .strategy-card:hover .arrow-icon {
@@ -447,8 +447,8 @@ interface GuidedSearchFilters {
     /* Guided Filters */
     .guided-filters {
       padding: 16px;
-      border-top: 1px solid #e0e0e0;
-      background: #fffbf0;
+      border-top: 1px solid var(--border-color, #e0e0e0);
+      background: var(--secondary-background, #fffbf0);
     }
 
     .filter-hint {
@@ -464,12 +464,13 @@ interface GuidedSearchFilters {
       font-size: 18px;
       width: 18px;
       height: 18px;
+      flex-shrink: 0;
     }
 
     .filter-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 16px 12px;
     }
 
     .filter-grid .tag-field {
@@ -486,11 +487,22 @@ interface GuidedSearchFilters {
 
     .filter-grid .value-select-field {
       width: 100%;
+      min-height: 56px;
+      overflow: visible;
     }
 
     .filter-grid .value-select-field app-rf-value-select {
       display: block;
       width: 100%;
+    }
+
+    :host ::ng-deep .filter-grid .value-select-field .mat-mdc-form-field {
+      width: 100%;
+    }
+
+    :host ::ng-deep .filter-grid .value-select-field .mdc-floating-label {
+      overflow: visible;
+      text-overflow: clip;
     }
 
     .filter-actions {
@@ -508,7 +520,7 @@ interface GuidedSearchFilters {
     /* Search Results */
     .search-results {
       margin-top: 16px;
-      border-top: 1px solid #e0e0e0;
+      border-top: 1px solid var(--border-color, #e0e0e0);
       padding-top: 16px;
     }
 
@@ -522,7 +534,7 @@ interface GuidedSearchFilters {
     .results-count {
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .no-results {
@@ -531,19 +543,32 @@ interface GuidedSearchFilters {
       justify-content: center;
       gap: 8px;
       padding: 24px;
-      color: #999;
+      color: var(--secondary-text, #999);
       font-size: 14px;
-    }
-
-    .no-results mat-icon {
-      color: #ccc;
     }
 
     .results-list {
       max-height: 300px;
       overflow-y: auto;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-color, #e0e0e0);
       border-radius: 8px;
+    }
+
+    :host ::ng-deep .results-list .mat-mdc-list-option {
+      height: auto !important;
+      min-height: 56px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+    }
+
+    :host ::ng-deep .results-list .mat-mdc-list-option:last-child {
+      border-bottom: none;
+    }
+
+    :host ::ng-deep .results-list .mdc-list-item__primary-text {
+      white-space: normal;
+      overflow: visible;
+      width: 100%;
     }
 
     .result-item {
@@ -551,13 +576,14 @@ interface GuidedSearchFilters {
       flex-direction: column;
       gap: 2px;
       min-width: 0;
-      overflow: hidden;
+      width: 100%;
+      padding: 4px 0;
     }
 
     .result-tag {
       font-weight: 600;
       font-family: monospace;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
       font-size: 14px;
       white-space: nowrap;
       overflow: hidden;
@@ -566,7 +592,7 @@ interface GuidedSearchFilters {
 
     .result-desc {
       font-size: 13px;
-      color: #333;
+      color: var(--primary-text, #333);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -574,7 +600,7 @@ interface GuidedSearchFilters {
 
     .result-meta {
       font-size: 11px;
-      color: #888;
+      color: var(--secondary-text, #888);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -585,7 +611,7 @@ interface GuidedSearchFilters {
       align-items: flex-start;
       gap: 12px;
       padding: 12px 16px;
-      background: #fff8e1;
+      background: var(--warning-background, #fff8e1);
       border-radius: 8px;
       border-left: 4px solid #ffc107;
     }
@@ -597,7 +623,7 @@ interface GuidedSearchFilters {
 
     .quick-search-hint span {
       font-size: 13px;
-      color: #5d4037;
+      color: var(--primary-text, #5d4037);
       line-height: 1.5;
     }
 
@@ -610,7 +636,7 @@ interface GuidedSearchFilters {
 
     .helper-label {
       font-size: 13px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .helper-buttons {

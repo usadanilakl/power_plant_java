@@ -54,6 +54,13 @@
                 title="Generate New Tag Number">
                 Generate Tag Number
               </button>
+              <button
+                type="button"
+                class="description-generator-button"
+                (click)="openDescriptionGenerator()"
+                title="Generate Description">
+                Generate Description
+              </button>
               @if (canDelete()) {
                 <button
                   type="button"
@@ -108,7 +115,7 @@
 </div>
 
 <!-- Tag Number Generator Popup -->
-<app-popup-projection
+<app-rf-popup-projection
   [isOpen]="isTagGeneratorOpen()"
   [title]="'Generate New Tag Number'"
   [size]="'medium'"
@@ -117,5 +124,16 @@
     (tagGenerated)="onTagGenerated($event)"
     (cancelled)="closeTagGenerator()">
   </app-tag-number-generator>
-</app-popup-projection>
+</app-rf-popup-projection>
+
+<!-- Description Generator Popup -->
+<app-rf-popup-projection
+  [isOpen]="isDescriptionGeneratorOpen()"
+  [title]="'Generate Description'"
+  [size]="'medium'"
+  (close)="closeDescriptionGenerator()">
+  <app-naming-convention
+    (nameGenerated)="onDescriptionGenerated($event)">
+  </app-naming-convention>
+</app-rf-popup-projection>
 

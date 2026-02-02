@@ -19,7 +19,8 @@ import { ClipboardService } from '../../../../shared/clipboard/clipboard.service
 import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
-import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
+import { NamingConventionComponent } from '../../../tag-number/naming-convention/naming-convention.component';
+import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { LotoPointFileViewerComponent } from '../loto-point-file-viewer/loto-point-file-viewer.component';
 
 type LotoPointFieldName = keyof LotoPointDto;
@@ -31,7 +32,8 @@ type LotoPointFieldName = keyof LotoPointDto;
     ClipboardFormComponent,
     DraftComparisonDialogComponent,
     TagNumberGeneratorComponent,
-    PopupProjectionComponent,
+    NamingConventionComponent,
+    RfPopupProjectionComponent,
     LotoPointFileViewerComponent
   ],
   templateUrl: './rf-loto-point-form.component.html',
@@ -48,6 +50,9 @@ export class RfLotoPointFormComponent {
 
   // Tag number generator state
   isTagGeneratorOpen = signal<boolean>(false);
+
+  // Description generator state
+  isDescriptionGeneratorOpen = signal<boolean>(false);
 
   // Carousel state
   currentSlide = signal<number>(0);
@@ -423,6 +428,26 @@ export class RfLotoPointFormComponent {
       this.stateService.setSelectedItem(updatedEntity);
       this.closeTagGenerator();
     }
+  }
+
+  //===========================DESCRIPTION GENERATOR===========================
+  openDescriptionGenerator(): void {
+    this.isDescriptionGeneratorOpen.set(true);
+  }
+
+  closeDescriptionGenerator(): void {
+    this.isDescriptionGeneratorOpen.set(false);
+  }
+
+  onDescriptionGenerated(description: string): void {
+    const currentEntity = this.entity();
+    const updatedEntity = new LotoPointDto({
+      ...currentEntity,
+      description: description
+    });
+
+    this.stateService.setSelectedItem(updatedEntity);
+    this.closeDescriptionGenerator();
   }
 
   //===========================DELETE===========================

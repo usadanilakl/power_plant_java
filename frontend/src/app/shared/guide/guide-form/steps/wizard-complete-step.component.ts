@@ -30,7 +30,7 @@ import { WizardStep } from '../wizard-stack.types';
       width: 100px;
       height: 100px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+      background: var(--success-background, #c8e6c9);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -42,11 +42,11 @@ import { WizardStep } from '../wizard-stack.types';
       font-size: 60px;
       width: 60px;
       height: 60px;
-      color: #2e7d32;
+      color: var(--primary-text, #2e7d32);
     }
 
     .success-message {
-      color: #666;
+      color: var(--secondary-text, #666);
       font-size: 14px;
       margin: 0;
     }

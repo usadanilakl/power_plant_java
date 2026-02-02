@@ -114,7 +114,7 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
 
     .generator-tab {
       padding: 16px;
-      background: #fafafa;
+      background: var(--secondary-background, #fafafa);
       border-radius: 8px;
     }
 
@@ -128,12 +128,12 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
       gap: 8px;
       margin-top: 12px;
       padding: 12px;
-      background: #e3f2fd;
+      background: var(--accent-color-shadow, rgba(0, 123, 255, 0.15));
       border-radius: 6px;
     }
 
     .preview-label {
-      color: #666;
+      color: var(--secondary-text, #666);
       font-size: 13px;
     }
 
@@ -141,7 +141,7 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
       font-weight: 600;
       font-family: monospace;
       font-size: 14px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .generated-result {
@@ -149,9 +149,9 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
       align-items: center;
       gap: 12px;
       padding: 16px;
-      background: #e8f5e9;
+      background: var(--success-background, #e8f5e9);
       border-radius: 8px;
-      border: 1px solid #c8e6c9;
+      border: 1px solid var(--border-color, #c8e6c9);
     }
 
     .success-icon {
@@ -170,14 +170,14 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
 
     .result-label {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .result-value {
       font-weight: 600;
       font-family: monospace;
       font-size: 16px;
-      color: #2e7d32;
+      color: var(--primary-text, #2e7d32);
     }
   `],
 })

@@ -64,6 +64,7 @@
                 [value]="builtName()"
                 (input)="onBuiltNameInput($any($event.target).value)">
               @if (builtName()) {
+                <button class="use-name-btn" (click)="useBuiltName()" title="Use this name">Use This Name</button>
                 <button class="clear-btn" (click)="resetBuilder()" title="Clear">X</button>
                 <button class="copy-btn small" (click)="copyBuiltName()" title="Copy to clipboard">
                   <span class="copy-icon">📋</span>

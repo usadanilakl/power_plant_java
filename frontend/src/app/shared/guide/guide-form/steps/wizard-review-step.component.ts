@@ -59,7 +59,7 @@ interface ReviewSection {
     }
 
     .review-section {
-      background: #f9f9f9;
+      background: var(--secondary-background, #f9f9f9);
       border-radius: 8px;
       overflow: hidden;
     }
@@ -70,17 +70,17 @@ interface ReviewSection {
       gap: 8px;
       margin: 0;
       padding: 12px 16px;
-      background: #f0f0f0;
+      background: var(--hover-color, #f0f0f0);
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .section-title mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .section-content {
@@ -98,7 +98,7 @@ interface ReviewSection {
       justify-content: space-between;
       align-items: flex-start;
       padding: 8px 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border-color, #eee);
     }
 
     .review-item:last-child {
@@ -106,20 +106,20 @@ interface ReviewSection {
     }
 
     .item-label {
-      color: #666;
+      color: var(--secondary-text, #666);
       font-size: 13px;
     }
 
     .item-value {
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
       text-align: right;
       max-width: 60%;
       word-break: break-word;
     }
 
     .item-value.empty {
-      color: #999;
+      color: var(--secondary-text, #999);
       font-style: italic;
       font-weight: normal;
     }
@@ -127,14 +127,14 @@ interface ReviewSection {
     .empty-review {
       text-align: center;
       padding: 40px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .empty-review mat-icon {
       font-size: 48px;
       width: 48px;
       height: 48px;
-      color: #ccc;
+      color: var(--disabled-background, #ccc);
     }
   `],
 })

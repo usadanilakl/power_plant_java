@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -18,7 +18,7 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatExpansionModule,
+    MatTabsModule,
     MatIconModule,
     MatButtonModule,
     MatChipsModule,
@@ -26,66 +26,83 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
   ],
   template: `
     <div class="description-step">
-      <!-- Main Description Input -->
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Description</mat-label>
-        <textarea
-          matInput
-          [(ngModel)]="description"
-          (ngModelChange)="onDescriptionChange($event)"
-          [placeholder]="'Enter description'"
-          [maxlength]="maxLength()"
-          [required]="step().descriptionConfig?.required ?? false"
-          rows="4"
-        ></textarea>
-        @if (maxLength()) {
-          <mat-hint align="end">{{ description().length }} / {{ maxLength() }}</mat-hint>
-        }
-      </mat-form-field>
+      <mat-tab-group
+        [(selectedIndex)]="activeTab"
+        class="description-tabs"
+        animationDuration="200ms"
+      >
+        <!-- Manual Entry Tab -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">edit</mat-icon>
+            Manual Entry
+          </ng-template>
+          <div class="tab-content">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea
+                matInput
+                [(ngModel)]="description"
+                (ngModelChange)="onDescriptionChange($event)"
+                [placeholder]="'Enter description'"
+                [maxlength]="maxLength()"
+                [required]="step().descriptionConfig?.required ?? false"
+                rows="4"
+              ></textarea>
+              @if (maxLength()) {
+                <mat-hint align="end">{{ description().length }} / {{ maxLength() }}</mat-hint>
+              }
+              <mat-hint>Enter the description directly or use the generator tab</mat-hint>
+            </mat-form-field>
 
-      <!-- Quick Keywords Chips -->
-      <div class="quick-keywords">
-        <span class="quick-label">Quick add:</span>
-        <mat-chip-listbox class="keyword-chips" aria-label="Quick keywords">
-          @for (keyword of quickKeywords; track keyword) {
-            <mat-chip-option
-              (click)="appendKeyword(keyword)"
-              [selectable]="false"
-            >
-              {{ keyword }}
-            </mat-chip-option>
-          }
-        </mat-chip-listbox>
-      </div>
-
-      <!-- Naming Convention Panel -->
-      @if (showNamingConvention()) {
-        <mat-expansion-panel class="naming-panel">
-          <mat-expansion-panel-header>
-            <mat-panel-title>
-              <mat-icon class="panel-icon">build</mat-icon>
-              Build from Naming Convention
-            </mat-panel-title>
-            <mat-panel-description>
-              Use predefined keywords to build description
-            </mat-panel-description>
-          </mat-expansion-panel-header>
-
-          <div class="naming-content">
-            <app-naming-convention />
-
-            <div class="naming-actions">
-              <button mat-stroked-button (click)="clearDescription()">
-                <mat-icon>clear</mat-icon>
-                Clear
-              </button>
+            <!-- Quick Keywords Chips -->
+            <div class="quick-keywords">
+              <span class="quick-label">Quick add:</span>
+              <mat-chip-listbox class="keyword-chips" aria-label="Quick keywords">
+                @for (keyword of quickKeywords; track keyword) {
+                  <mat-chip-option
+                    (click)="appendKeyword(keyword)"
+                    [selectable]="false"
+                  >
+                    {{ keyword }}
+                  </mat-chip-option>
+                }
+              </mat-chip-listbox>
             </div>
           </div>
-        </mat-expansion-panel>
+        </mat-tab>
+
+        <!-- Generator Tab -->
+        @if (showGenerator()) {
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="tab-icon">auto_fix_high</mat-icon>
+              Generate
+            </ng-template>
+            <div class="tab-content generator-tab">
+              <app-naming-convention
+                (nameGenerated)="onNameGenerated($event)"
+              />
+            </div>
+          </mat-tab>
+        }
+      </mat-tab-group>
+
+      @if (generatedDescription()) {
+        <div class="generated-result">
+          <mat-icon class="success-icon">check_circle</mat-icon>
+          <div class="result-info">
+            <span class="result-label">Generated Description:</span>
+            <span class="result-value">{{ generatedDescription() }}</span>
+          </div>
+          <button mat-icon-button (click)="clearGenerated()" matTooltip="Clear">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
       }
 
       <!-- Preview Section -->
-      @if (description()) {
+      @if (description() && !generatedDescription()) {
         <div class="preview-section">
           <span class="preview-label">Preview:</span>
           <span class="preview-value">{{ description() }}</span>
@@ -98,6 +115,27 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+
+    .description-tabs {
+      min-height: 200px;
+    }
+
+    .tab-icon {
+      margin-right: 8px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .tab-content {
+      padding: 20px 0;
+    }
+
+    .generator-tab {
+      padding: 16px;
+      background: var(--secondary-background, #fafafa);
+      border-radius: 8px;
     }
 
     .full-width {
@@ -113,7 +151,7 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
 
     .quick-label {
       font-size: 13px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .keyword-chips {
@@ -122,30 +160,39 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
       gap: 4px;
     }
 
-    .naming-panel {
-      margin-top: 8px;
+    .generated-result {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--success-background, #e8f5e9);
+      border-radius: 8px;
+      border: 1px solid var(--border-color, #c8e6c9);
     }
 
-    .panel-icon {
-      margin-right: 8px;
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      color: #1976d2;
+    .success-icon {
+      color: #4caf50;
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
     }
 
-    .naming-content {
+    .result-info {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 4px;
     }
 
-    .naming-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #eee;
+    .result-label {
+      font-size: 12px;
+      color: var(--secondary-text, #666);
+    }
+
+    .result-value {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--primary-text, #2e7d32);
     }
 
     .preview-section {
@@ -153,14 +200,14 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
       flex-direction: column;
       gap: 8px;
       padding: 16px;
-      background: #f5f5f5;
+      background: var(--secondary-background, #f5f5f5);
       border-radius: 8px;
-      border-left: 3px solid #1976d2;
+      border-left: 3px solid var(--accent-color, #1976d2);
     }
 
     .preview-label {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -168,7 +215,7 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
     .preview-value {
       font-size: 14px;
       line-height: 1.5;
-      color: #333;
+      color: var(--primary-text, #333);
       word-wrap: break-word;
     }
   `],
@@ -179,7 +226,9 @@ export class WizardDescriptionStepComponent {
 
   valueChange = output<StepDataPayload>();
 
+  activeTab = 0;
   description = signal<string>('');
+  generatedDescription = signal<string | null>(null);
 
   // Common keywords for quick addition
   quickKeywords = [
@@ -187,9 +236,9 @@ export class WizardDescriptionStepComponent {
     'INLET', 'OUTLET', 'BYPASS', 'UPSTREAM', 'DOWNSTREAM'
   ];
 
-  showNamingConvention = computed(() => {
+  showGenerator = computed(() => {
     const config = this.step().descriptionConfig;
-    return config?.showNamingConvention !== false;
+    return config?.showGenerator !== false;
   });
 
   maxLength = computed(() => {
@@ -197,10 +246,8 @@ export class WizardDescriptionStepComponent {
   });
 
   constructor() {
-    // React to currentValue changes (including initial value after input binding)
     effect(() => {
       const initial = this.currentValue();
-      // Set the value (including empty string) - only skip if truly not provided
       const newValue = initial ?? '';
       if (this.description() !== newValue) {
         this.description.set(newValue);
@@ -209,6 +256,7 @@ export class WizardDescriptionStepComponent {
   }
 
   onDescriptionChange(value: string): void {
+    this.generatedDescription.set(null);
     this.emitValue(value);
   }
 
@@ -216,11 +264,28 @@ export class WizardDescriptionStepComponent {
     const current = this.description().trim();
     const newValue = current ? `${current} ${keyword}` : keyword;
     this.description.set(newValue);
+    this.generatedDescription.set(null);
     this.emitValue(newValue);
+  }
+
+  onNameGenerated(name: string): void {
+    this.generatedDescription.set(name);
+    this.description.set(name);
+    this.emitValue(name);
+
+    // Switch to manual tab to show the generated value
+    this.activeTab = 0;
+  }
+
+  clearGenerated(): void {
+    this.generatedDescription.set(null);
+    this.description.set('');
+    this.emitValue('');
   }
 
   clearDescription(): void {
     this.description.set('');
+    this.generatedDescription.set(null);
     this.emitValue('');
   }
 

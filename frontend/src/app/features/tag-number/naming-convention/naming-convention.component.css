@@ -215,6 +215,22 @@
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
 }
 
+.use-name-btn {
+  background: var(--primary-color, #3498db);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+.use-name-btn:hover {
+  background: var(--primary-color-dark, #2980b9);
+}
+
 .clear-btn {
   background: #e74c3c;
   color: white;

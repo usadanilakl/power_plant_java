@@ -48,15 +48,16 @@ import { WizardStep } from '../wizard-stack.types';
 
     .option-card {
       padding: 20px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--border-color, #e0e0e0);
       border-radius: 12px;
       cursor: pointer;
       transition: all 0.2s ease;
+      background: var(--card-background, white);
     }
 
     .option-card:hover {
-      border-color: #1976d2;
-      background: #f5f9ff;
+      border-color: var(--accent-color, #1976d2);
+      background: var(--hover-color, #f5f9ff);
     }
 
     .option-header {
@@ -73,7 +74,7 @@ import { WizardStep } from '../wizard-stack.types';
     }
 
     .no-icon {
-      color: #9e9e9e;
+      color: var(--secondary-text, #9e9e9e);
       font-size: 28px;
       width: 28px;
       height: 28px;
@@ -82,11 +83,12 @@ import { WizardStep } from '../wizard-stack.types';
     .option-label {
       font-size: 18px;
       font-weight: 500;
+      color: var(--primary-text, inherit);
     }
 
     .option-description {
       margin: 12px 0 0 40px;
-      color: #666;
+      color: var(--secondary-text, #666);
       font-size: 14px;
       line-height: 1.5;
     }

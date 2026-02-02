@@ -24,7 +24,7 @@ import { WizardBranchRequest, StepDataPayload, WizardEntityData } from '../wizar
 import { RfLotoStandardApiService } from '../../../../features/loto-standard/refactored/services/rf-loto-standard-api.service';
 import { RfLotoStandardStateService } from '../../../../features/loto-standard/refactored/services/rf-loto-standard-state.service';
 import { RfLotoPointApiService } from '../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
-import { RfValueApiService } from '../../../../features/values/refactored/services/rf-value-api.service';
+import { RfValueService } from '../../../../features/values/refactored/services/rf-value.service';
 import { RfFileApiService } from '../../../../features/files/refactored/services/rf-file-api.service';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -250,9 +250,10 @@ import { FileDto } from '../../../../models/file/file.model';
     }
 
     .wizard-dialog {
-      background: white;
+      background: var(--card-background, #ffffff);
+      color: var(--primary-text, #212529);
       border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--card-shadow, 0 8px 32px rgba(0, 0, 0, 0.2));
       width: 600px;
       max-width: 90vw;
       max-height: 85vh;
@@ -263,7 +264,7 @@ import { FileDto } from '../../../../models/file/file.model';
     }
 
     .wizard-dialog.is-branch {
-      border: 2px solid #1976d2;
+      border: 2px solid var(--accent-color, #1976d2);
     }
 
     .wizard-overlay.minimized .wizard-dialog {
@@ -280,8 +281,8 @@ import { FileDto } from '../../../../models/file/file.model';
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      background: #f5f5f5;
-      border-bottom: 1px solid #e0e0e0;
+      background: var(--secondary-background, #f5f5f5);
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
       cursor: move;
     }
 
@@ -298,12 +299,13 @@ import { FileDto } from '../../../../models/file/file.model';
     }
 
     .flow-icon {
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .flow-name {
       font-weight: 500;
       font-size: 16px;
+      color: var(--primary-text, #212529);
     }
 
     .header-actions {
@@ -315,6 +317,7 @@ import { FileDto } from '../../../../models/file/file.model';
       width: 32px;
       height: 32px;
       line-height: 32px;
+      color: var(--secondary-text, #495057);
     }
 
     .header-btn mat-icon {
@@ -332,6 +335,7 @@ import { FileDto } from '../../../../models/file/file.model';
       padding: 24px;
       overflow-y: auto;
       min-height: 300px;
+      background: var(--card-background, #ffffff);
     }
 
     .dialog-footer {
@@ -339,8 +343,8 @@ import { FileDto } from '../../../../models/file/file.model';
       align-items: center;
       justify-content: space-between;
       padding: 16px;
-      border-top: 1px solid #e0e0e0;
-      background: #fafafa;
+      border-top: 1px solid var(--border-color, #e0e0e0);
+      background: var(--secondary-background, #fafafa);
     }
 
     .footer-left, .footer-right {
@@ -349,11 +353,11 @@ import { FileDto } from '../../../../models/file/file.model';
     }
 
     .back-btn {
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .skip-btn {
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     button mat-icon {
@@ -380,11 +384,11 @@ import { FileDto } from '../../../../models/file/file.model';
       justify-content: space-between;
       padding: 8px 16px;
       cursor: pointer;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .minimized-info:hover {
-      background: #f5f5f5;
+      background: var(--hover-color, #f5f5f5);
     }
   `],
 })
@@ -393,7 +397,7 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
   private lotoStandardApi = inject(RfLotoStandardApiService);
   private lotoStandardStateService = inject(RfLotoStandardStateService);
   private lotoPointApi = inject(RfLotoPointApiService);
-  private valueApi = inject(RfValueApiService);
+  private valueService = inject(RfValueService);
   private fileApi = inject(RfFileApiService);
   private destroyRef = inject(DestroyRef);
 
@@ -672,15 +676,28 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
 
     const categoryAlias = data.value.categoryAlias || data.value.categoryName || '';
     const valueName = data.value.name || '';
-    const valueAlias = data.value.alias;
+    let valueAlias = data.value.alias;
 
     if (!categoryAlias || !valueName) {
       throw new Error('Category alias and value name are required');
     }
 
-    // RfValueApiService.createValue(categoryAlias, valueName, valueAlias?)
+    // For zeroEnergyTemplate, the alias must be stored as structured JSON
+    // matching the ZeroEnergyPhrase format used by the regular form
+    if (categoryAlias === 'zeroEnergyTemplate' && valueAlias) {
+      const rawText = valueAlias;
+      const segments = this.parseZeroEnergyPhrase(rawText);
+      const phraseData = {
+        name: valueName,
+        rawText,
+        segments,
+      };
+      valueAlias = JSON.stringify(phraseData);
+    }
+
+    // Use RfValueService (not API directly) so the cache is updated
     const savedValue = await firstValueFrom(
-      this.valueApi.createValue(categoryAlias, valueName, valueAlias)
+      this.valueService.createValue(categoryAlias, valueName, valueAlias)
     );
 
     if (!savedValue?.id) {
@@ -688,7 +705,37 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
     }
 
     this.savedEntityId.set(savedValue.id);
-    console.log('Value saved successfully:', savedValue.id);
+
+    // Refresh the category cache so the new value appears in dropdowns
+    this.valueService.refreshCategory(categoryAlias);
+  }
+
+  /**
+   * Parse zero energy phrase text into segments with placeholders.
+   * Matches the parsing logic in ZeroEnergyPhraseBuilderComponent.
+   */
+  private parseZeroEnergyPhrase(text: string): { type: string; content: string; placeholderIndex?: number }[] {
+    if (!text) return [];
+
+    const segments: { type: string; content: string; placeholderIndex?: number }[] = [];
+    const regex = /\[([^\]]+)\]/g;
+    let lastIndex = 0;
+    let match;
+    let placeholderIndex = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', content: text.substring(lastIndex, match.index) });
+      }
+      segments.push({ type: 'placeholder', content: match[1], placeholderIndex: placeholderIndex++ });
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      segments.push({ type: 'text', content: text.substring(lastIndex) });
+    }
+
+    return segments;
   }
 
   private async saveFile(data: WizardEntityData): Promise<void> {

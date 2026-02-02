@@ -23,9 +23,9 @@ import { WizardHint } from '../wizard-stack.types';
       flex-direction: column;
       gap: 8px;
       padding: 16px;
-      background: #f9f9f9;
+      background: var(--secondary-background, #f9f9f9);
       border-radius: 8px;
-      border-left: 3px solid #1976d2;
+      border-left: 3px solid var(--accent-color, #1976d2);
     }
 
     .hint-item {
@@ -45,7 +45,7 @@ import { WizardHint } from '../wizard-stack.types';
     }
 
     .hint-item.info .hint-icon {
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .hint-item.tip .hint-icon {
@@ -61,7 +61,7 @@ import { WizardHint } from '../wizard-stack.types';
     }
 
     .hint-message {
-      color: #555;
+      color: var(--secondary-text, #555);
     }
   `],
 })

@@ -228,3 +228,23 @@ tr.reactive-guide-highlight,
 .reactive-guide-active {
   z-index: 10 !important;
 }
+
+/* Dark theme support */
+.dark-theme {
+  --reactive-guide-highlight-color: #4dabf7;
+  --reactive-guide-pulse-color: rgba(77, 171, 247, 0.3);
+}
+
+.dark-theme .reactive-guide-tooltip {
+  background: #0f172a;
+  border-left-color: var(--reactive-guide-highlight-color);
+}
+
+.dark-theme .reactive-guide-tooltip-arrow {
+  border-top-color: #0f172a;
+}
+
+.dark-theme .reactive-guide-tooltip-below .reactive-guide-tooltip-arrow {
+  border-bottom-color: #0f172a;
+  border-top-color: transparent;
+}

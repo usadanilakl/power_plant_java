@@ -34,29 +34,35 @@ export const CREATE_VALUE_FLOW: WizardFlow = {
       ],
     },
 
-    // Step 2: Alias (Optional)
+    // Step 2: Phrase Builder (for zeroEnergyTemplate category only)
     {
-      id: 'value-alias',
-      type: 'text-input',
-      title: 'Alias (Optional)',
-      description: 'Enter an optional alias or full name.',
-      inputConfig: {
+      id: 'phrase-builder',
+      type: 'phrase-builder',
+      title: 'Build Verification Phrase',
+      description: 'Type the verification phrase and insert placeholders for equipment tags.',
+      phraseBuilderConfig: {
         fieldName: 'alias',
-        placeholder: 'e.g., Motor Operated Valve',
-        required: false,
-        maxLength: 200,
+        placeholder: 'e.g., Verify that [tag1] is open and [tag2] shows zero pressure',
+        maxLength: 500,
+        required: true,
       },
-      isOptional: true,
+      // Only show for zero energy phrases
+      skipCondition: (frame) => frame.entityData.value?.categoryName !== 'zeroEnergyTemplate',
       hints: [
         {
-          message: 'Alias provides a longer description for clarity.',
+          message: 'Use "Add Tag Placeholder" to insert [tag1], [tag2], etc. for equipment references.',
           icon: 'info',
           type: 'info',
         },
         {
-          message: 'Example: Name = "MV", Alias = "Motor Operated Valve"',
+          message: 'Example: "Verify that [tag1] is closed and [tag2] reads zero PSI"',
           icon: 'text_snippet',
           type: 'example',
+        },
+        {
+          message: 'Placeholders will be replaced with actual equipment tag numbers when the phrase is used.',
+          icon: 'lightbulb',
+          type: 'tip',
         },
       ],
     },

@@ -32,7 +32,7 @@ import { WizardStep } from '../wizard-stack.types';
       width: 80px;
       height: 80px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      background: var(--accent-color-shadow, rgba(0, 123, 255, 0.15));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -43,7 +43,7 @@ import { WizardStep } from '../wizard-stack.types';
       font-size: 40px;
       width: 40px;
       height: 40px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .welcome-content {
@@ -51,7 +51,7 @@ import { WizardStep } from '../wizard-stack.types';
     }
 
     .welcome-message {
-      color: #666;
+      color: var(--secondary-text, #666);
       line-height: 1.6;
       margin: 0;
     }

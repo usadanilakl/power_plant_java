@@ -40,6 +40,7 @@ export type WizardStepType =
   | 'form-section'          // Group of form fields rendered together
   | 'tag-number'            // Tag number with manual input + generator tabs
   | 'description-builder'   // Description with naming convention keywords
+  | 'phrase-builder'        // Text input with placeholder insertion for building zero energy phrases
   | 'zero-energy'           // Zero energy phrase selection + equipment mapping
   | 'equipment-picker'      // P&ID viewer with browse, select, and draw capabilities
   | 'file-upload'           // Drag-drop file upload
@@ -129,6 +130,15 @@ export interface WizardStep {
   descriptionConfig?: {
     fieldName: string;              // Default: 'description'
     showNamingConvention?: boolean; // Show naming convention panel (default: true)
+    showGenerator?: boolean;        // Show naming convention generator tab (default: true)
+    maxLength?: number;
+    required?: boolean;
+  };
+
+  // For phrase-builder steps (zero energy phrase text with placeholders)
+  phraseBuilderConfig?: {
+    fieldName: string;              // Field to store the phrase text (e.g., 'alias')
+    placeholder?: string;
     maxLength?: number;
     required?: boolean;
   };

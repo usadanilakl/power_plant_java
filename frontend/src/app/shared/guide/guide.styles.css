@@ -257,7 +257,8 @@ tr.guide-active.guide-pulse {
 
 /* ===== Dark Mode Support ===== */
 
-[data-theme='dark'] {
+[data-theme='dark'],
+.dark-theme {
   --guide-primary: #60a5fa;
   --guide-primary-bright: #93c5fd;
   --guide-primary-vivid: #3b82f6;
@@ -284,4 +285,140 @@ tr.guide-active.guide-pulse {
 
 .loto-finder-dialog-panel .mat-mdc-dialog-surface {
   padding: 0;
+}
+
+/* ===== Wizard Dialog Theme Integration ===== */
+
+/*
+ * Material overlay panels (dropdowns, selects, menus, autocomplete)
+ * render in the CDK overlay container outside the component tree,
+ * so they need global dark-theme styles.
+ */
+.dark-theme .mat-mdc-select-panel,
+.dark-theme .mat-mdc-autocomplete-panel {
+  background: var(--card-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-select-panel .mat-mdc-option,
+.dark-theme .mat-mdc-autocomplete-panel .mat-mdc-option {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-select-panel .mat-mdc-option:hover,
+.dark-theme .mat-mdc-autocomplete-panel .mat-mdc-option:hover {
+  background: var(--hover-color, rgba(65, 65, 133, 0.15)) !important;
+}
+
+.dark-theme .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected,
+.dark-theme .mat-mdc-autocomplete-panel .mat-mdc-option.mdc-list-item--selected {
+  background: var(--accent-color-shadow, rgba(77, 171, 247, 0.25)) !important;
+}
+
+.dark-theme .mat-mdc-menu-panel {
+  background: var(--card-background, #2c2c2c) !important;
+}
+
+.dark-theme .mat-mdc-menu-item {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-menu-item:hover {
+  background: var(--hover-color, rgba(65, 65, 133, 0.15)) !important;
+}
+
+/* Dialog surface in dark mode */
+.dark-theme .mat-mdc-dialog-surface {
+  background: var(--card-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+/* Form field labels and inputs in dark mode within wizard */
+.dark-theme .mat-mdc-text-field-wrapper {
+  background-color: var(--card-background, #2c2c2c) !important;
+}
+
+.dark-theme .mat-mdc-form-field .mdc-text-field--outlined .mdc-notched-outline__leading,
+.dark-theme .mat-mdc-form-field .mdc-text-field--outlined .mdc-notched-outline__notch,
+.dark-theme .mat-mdc-form-field .mdc-text-field--outlined .mdc-notched-outline__trailing {
+  border-color: var(--border-color, #424242) !important;
+}
+
+.dark-theme .mat-mdc-form-field .mdc-floating-label {
+  color: var(--secondary-text, #b0b0b0) !important;
+}
+
+.dark-theme .mat-mdc-form-field .mat-mdc-input-element {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-form-field .mat-mdc-select-value-text {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-form-field .mat-mdc-select-arrow {
+  color: var(--secondary-text, #b0b0b0) !important;
+}
+
+/* Chips in dark mode */
+.dark-theme .mat-mdc-chip {
+  background: var(--secondary-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+/* Selection list in dark mode */
+.dark-theme .mat-mdc-selection-list {
+  background: var(--card-background, #2c2c2c);
+}
+
+.dark-theme .mat-mdc-list-option {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-mdc-list-option:hover {
+  background: var(--hover-color, rgba(65, 65, 133, 0.15)) !important;
+}
+
+/* Expansion panel in dark mode */
+.dark-theme .mat-expansion-panel {
+  background: var(--card-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-expansion-panel-header-title {
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+.dark-theme .mat-expansion-panel-header-description {
+  color: var(--secondary-text, #b0b0b0) !important;
+}
+
+/* Tab group in dark mode */
+.dark-theme .mat-mdc-tab-group {
+  background: var(--card-background, #2c2c2c);
+}
+
+.dark-theme .mat-mdc-tab .mdc-tab__text-label {
+  color: var(--secondary-text, #b0b0b0) !important;
+}
+
+.dark-theme .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+  color: var(--accent-color, #4dabf7) !important;
+}
+
+/* Mat card in dark mode */
+.dark-theme .mat-mdc-card {
+  background: var(--card-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
+}
+
+/* Divider */
+.dark-theme .mat-divider {
+  border-top-color: var(--border-color, #424242) !important;
+}
+
+/* Tooltip */
+.dark-theme .mat-mdc-tooltip .mdc-tooltip__surface {
+  background: var(--secondary-background, #2c2c2c) !important;
+  color: var(--primary-text, #e0e0e0) !important;
 }

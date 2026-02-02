@@ -311,6 +311,8 @@ type DisplayMode = 'table' | 'menu';
       max-width: 1400px;
       height: 85vh;
       max-height: 900px;
+      background: var(--card-background, white);
+      color: var(--primary-text, #212529);
     }
 
     .dialog-header {
@@ -318,8 +320,8 @@ type DisplayMode = 'table' | 'menu';
       align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
-      border-bottom: 1px solid #e0e0e0;
-      background: #fafafa;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+      background: var(--secondary-background, #fafafa);
     }
 
     .dialog-header h2 {
@@ -329,10 +331,11 @@ type DisplayMode = 'table' | 'menu';
       margin: 0;
       font-size: 20px;
       font-weight: 500;
+      color: var(--primary-text, #212529);
     }
 
     .dialog-header mat-icon {
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .header-actions {
@@ -343,17 +346,17 @@ type DisplayMode = 'table' | 'menu';
 
     .selection-count {
       font-size: 14px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
       font-weight: 500;
       padding: 4px 12px;
-      background: #e3f2fd;
+      background: var(--accent-color-shadow, rgba(0, 123, 255, 0.15));
       border-radius: 16px;
     }
 
     /* Help Panel */
     .help-panel {
-      background: #fff8e1;
-      border-bottom: 1px solid #ffe082;
+      background: var(--warning-background, #fff8e1);
+      border-bottom: 1px solid var(--border-color, #ffe082);
     }
 
     .help-panel mat-expansion-panel {
@@ -380,10 +383,10 @@ type DisplayMode = 'table' | 'menu';
     }
 
     .help-section {
-      background: white;
+      background: var(--card-background, white);
       padding: 12px;
       border-radius: 8px;
-      border: 1px solid #ffe082;
+      border: 1px solid var(--border-color, #ffe082);
     }
 
     .help-section h4 {
@@ -392,20 +395,20 @@ type DisplayMode = 'table' | 'menu';
       gap: 8px;
       margin: 0 0 8px 0;
       font-size: 14px;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .help-section h4 mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .help-section p {
       margin: 4px 0;
       font-size: 12px;
-      color: #555;
+      color: var(--secondary-text, #555);
       line-height: 1.4;
     }
 
@@ -414,8 +417,8 @@ type DisplayMode = 'table' | 'menu';
       align-items: center;
       justify-content: space-between;
       padding: 8px 16px;
-      background: #e8f5e9;
-      border-bottom: 1px solid #c8e6c9;
+      background: var(--success-background, #e8f5e9);
+      border-bottom: 1px solid var(--border-color, #c8e6c9);
     }
 
     .dialog-content {
@@ -429,7 +432,7 @@ type DisplayMode = 'table' | 'menu';
       flex-direction: column;
       min-width: 300px;
       max-width: 600px;
-      border-right: 1px solid #e0e0e0;
+      border-right: 1px solid var(--border-color, #e0e0e0);
     }
 
     .panel-tabs {
@@ -437,8 +440,8 @@ type DisplayMode = 'table' | 'menu';
       align-items: center;
       gap: 4px;
       padding: 8px;
-      background: #f5f5f5;
-      border-bottom: 1px solid #e0e0e0;
+      background: var(--secondary-background, #f5f5f5);
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
     }
 
     .tab-btn {
@@ -451,16 +454,16 @@ type DisplayMode = 'table' | 'menu';
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
-      color: #666;
+      color: var(--secondary-text, #666);
       transition: all 0.2s;
     }
 
     .tab-btn:hover {
-      background: #e0e0e0;
+      background: var(--hover-color, #e0e0e0);
     }
 
     .tab-btn.active {
-      background: #1976d2;
+      background: var(--accent-color, #1976d2);
       color: white;
     }
 
@@ -478,21 +481,23 @@ type DisplayMode = 'table' | 'menu';
 
     .mode-toggle button {
       opacity: 0.6;
+      color: var(--secondary-text, #666);
     }
 
     .mode-toggle button.active {
       opacity: 1;
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
     }
 
     .panel-content {
       flex: 1;
       overflow: auto;
+      background: var(--card-background, white);
     }
 
     .divider {
       width: 6px;
-      background: #e0e0e0;
+      background: var(--border-color, #e0e0e0);
       cursor: col-resize;
       display: flex;
       align-items: center;
@@ -501,13 +506,13 @@ type DisplayMode = 'table' | 'menu';
     }
 
     .divider:hover, .divider.active {
-      background: #1976d2;
+      background: var(--accent-color, #1976d2);
     }
 
     .divider-handle {
       width: 2px;
       height: 40px;
-      background: #999;
+      background: var(--secondary-text, #999);
       border-radius: 2px;
     }
 
@@ -522,6 +527,7 @@ type DisplayMode = 'table' | 'menu';
       flex-direction: column;
       min-width: 400px;
       overflow: hidden;
+      background: var(--card-background, white);
     }
 
     .viewer-header {
@@ -529,25 +535,25 @@ type DisplayMode = 'table' | 'menu';
       align-items: center;
       justify-content: space-between;
       padding: 8px 16px;
-      background: #f5f5f5;
-      border-bottom: 1px solid #e0e0e0;
+      background: var(--secondary-background, #f5f5f5);
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
     }
 
     .file-name {
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .file-hint {
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
       font-style: italic;
     }
 
     .viewer-content {
       flex: 1;
       overflow: auto;
-      background: #fafafa;
+      background: var(--secondary-background, #fafafa);
     }
 
     .empty-viewer {
@@ -556,7 +562,7 @@ type DisplayMode = 'table' | 'menu';
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #999;
+      color: var(--secondary-text, #999);
       text-align: center;
       gap: 8px;
     }
@@ -565,13 +571,13 @@ type DisplayMode = 'table' | 'menu';
       font-size: 64px;
       width: 64px;
       height: 64px;
-      color: #ddd;
+      color: var(--disabled-background, #ddd);
     }
 
     .empty-viewer p {
       margin: 0;
       font-size: 16px;
-      color: #666;
+      color: var(--secondary-text, #666);
     }
 
     .empty-viewer > span {
@@ -584,9 +590,9 @@ type DisplayMode = 'table' | 'menu';
       gap: 8px;
       margin-top: 16px;
       padding: 12px 20px;
-      background: #fff8e1;
+      background: var(--warning-background, #fff8e1);
       border-radius: 8px;
-      border: 1px solid #ffe082;
+      border: 1px solid var(--border-color, #ffe082);
     }
 
     .empty-hint mat-icon {
@@ -598,7 +604,7 @@ type DisplayMode = 'table' | 'menu';
 
     .empty-hint span {
       font-size: 13px;
-      color: #5d4037;
+      color: var(--primary-text, #5d4037);
     }
 
     .table-placeholder {
@@ -607,7 +613,7 @@ type DisplayMode = 'table' | 'menu';
       align-items: center;
       justify-content: center;
       padding: 60px 20px;
-      color: #999;
+      color: var(--secondary-text, #999);
       text-align: center;
       gap: 16px;
     }
@@ -616,7 +622,7 @@ type DisplayMode = 'table' | 'menu';
       font-size: 48px;
       width: 48px;
       height: 48px;
-      color: #ddd;
+      color: var(--disabled-background, #ddd);
     }
 
     .table-placeholder p {
@@ -628,7 +634,7 @@ type DisplayMode = 'table' | 'menu';
       justify-content: flex-end;
       gap: 12px;
       padding: 16px 20px;
-      background: #fafafa;
+      background: var(--secondary-background, #fafafa);
     }
 
     .finder-dialog.resizing {

@@ -18,12 +18,17 @@ html, body{
   overflow: hidden;
 }
 
+/* Ensure CDK overlays (dropdowns, selects) appear above popup dialogs */
+.cdk-overlay-container {
+  z-index: 10001 !important;
+}
+
 /* Consistent styling for labels across all form components */
 label {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
-  color: #333;
+  color: var(--primary-text, #333);
 }
 
 /* Consistent styling for inputs across all form components */

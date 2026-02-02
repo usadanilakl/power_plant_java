@@ -34,7 +34,7 @@ interface BreadcrumbItem {
       display: flex;
       align-items: center;
       font-size: 12px;
-      color: #666;
+      color: var(--secondary-text, #666);
       margin-bottom: 4px;
     }
 
@@ -43,7 +43,7 @@ interface BreadcrumbItem {
       width: 14px;
       height: 14px;
       margin: 0 2px;
-      color: #999;
+      color: var(--secondary-text, #999);
     }
 
     .breadcrumb-item {
@@ -52,7 +52,7 @@ interface BreadcrumbItem {
     }
 
     .breadcrumb-item.active {
-      color: #1976d2;
+      color: var(--accent-color, #1976d2);
       font-weight: 500;
     }
 
@@ -61,8 +61,8 @@ interface BreadcrumbItem {
     }
 
     .breadcrumb-item.clickable:hover {
-      background: #e3f2fd;
-      color: #1976d2;
+      background: var(--accent-color-shadow, rgba(0, 123, 255, 0.15));
+      color: var(--accent-color, #1976d2);
     }
   `],
 })

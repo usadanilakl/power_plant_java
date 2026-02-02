@@ -76,14 +76,7 @@
 
 .popup-body {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   min-height: 0;
-  display: flex;
   border-top: 1px solid #e0e0e0;
-}
-
-.popup-body > * {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
 }

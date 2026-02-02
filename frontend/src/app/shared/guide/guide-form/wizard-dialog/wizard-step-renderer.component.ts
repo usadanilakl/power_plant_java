@@ -30,6 +30,7 @@ import { WizardValueSelectStepComponent } from '../steps/wizard-value-select-ste
 import { WizardZeroEnergyStepComponent } from '../steps/wizard-zero-energy-step.component';
 import { WizardEquipmentPickerStepComponent } from '../steps/wizard-equipment-picker-step.component';
 import { WizardLotoPointSelectorStepComponent } from '../steps/wizard-loto-point-selector-step.component';
+import { WizardPhraseBuilderStepComponent } from '../steps/wizard-phrase-builder-step.component';
 import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterpart-creation-step.component';
 
 @Component({
@@ -56,6 +57,7 @@ import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterp
     WizardZeroEnergyStepComponent,
     WizardEquipmentPickerStepComponent,
     WizardLotoPointSelectorStepComponent,
+    WizardPhraseBuilderStepComponent,
     WizardCounterpartCreationStepComponent,
   ],
   template: `
@@ -179,6 +181,14 @@ import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterp
               />
             }
 
+            @case ('phrase-builder') {
+              <app-wizard-phrase-builder-step
+                [step]="step()!"
+                [currentValue]="getCurrentValue(step()?.phraseBuilderConfig?.fieldName)"
+                (valueChange)="onValueChange($event)"
+              />
+            }
+
             @case ('zero-energy') {
               <app-wizard-zero-energy-step
                 [step]="step()!"
@@ -253,19 +263,19 @@ import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterp
     .step-header {
       text-align: center;
       padding-bottom: 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border-color, #eee);
     }
 
     .step-title {
       margin: 0 0 8px 0;
       font-size: 20px;
       font-weight: 500;
-      color: #333;
+      color: var(--primary-text, #333);
     }
 
     .step-description {
       margin: 0;
-      color: #666;
+      color: var(--secondary-text, #666);
       font-size: 14px;
       line-height: 1.5;
     }
@@ -276,10 +286,10 @@ import { WizardCounterpartCreationStepComponent } from '../steps/wizard-counterp
 
     .unknown-step {
       padding: 20px;
-      background: #fff3e0;
+      background: var(--warning-background, #fff3e0);
       border-radius: 8px;
       text-align: center;
-      color: #e65100;
+      color: var(--primary-text, #e65100);
     }
   `],
 })
