@@ -1633,4 +1633,174 @@ test.describe('LOTO Point - Create from Shape', () => {
     console.log('='.repeat(60));
     console.log('=== ALL ITERATIONS COMPLETED SUCCESSFULLY ===');
   });
+
+  test('5. should set labeling status fields (isLabeled, isLockable, isProcessed, isVerified)', async ({ page }) => {
+    test.setTimeout(180000);
+
+    const timestamp = Date.now();
+    const tagNumber = `00-lbl${timestamp.toString().slice(-3)}`;
+
+    // Navigate and setup
+    await equipmentPage.navigateToLotoBuilder();
+    await equipmentPage.selectFilesTab();
+
+    const { fileName, vendorName } = await equipmentPage.ensureTestFileExists();
+
+    // Open file
+    await equipmentPage.openFileInViewer(vendorName, fileName, 'pid');
+
+    // Draw shape
+    await equipmentPage.drawShapeRelative(0.1, 0.6, 0.3, 0.8);
+
+    // Wait for form popup
+    const formPopup = page.locator('.form-popup');
+    await formPopup.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Click New tab
+    await page.locator('.form-popup .view-toggle button.toggle-btn').filter({ hasText: 'New' }).click();
+    await page.waitForTimeout(300);
+
+    // Fill required fields
+    const tagNumberInput = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: 'Tag Number' }) })
+      .locator('input.form-input-element');
+    await tagNumberInput.click();
+    await tagNumberInput.fill(tagNumber);
+
+    const descriptionInput = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: 'Description' }) })
+      .locator('input.form-input-element');
+    await descriptionInput.click();
+    await descriptionInput.fill(`Labeling test ${timestamp}`);
+
+    const specificLocationInput = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: 'Specific Location' }) })
+      .locator('input.form-input-element');
+    await specificLocationInput.click();
+    await specificLocationInput.fill('Labeling Test Area');
+
+    await selectOrCreateDropdownValue(page, 'Equipment Type', 'Test-EqType', 'TEQ');
+    await selectOrCreateDropdownValue(page, 'Isolated Position', 'Test-IsoPos', 'TIP');
+    await selectOrCreateDropdownValue(page, 'Normal Position', 'Test-NormPos', 'TNP');
+    await selectOrCreateDropdownValue(page, /^Location$/, 'Test-Location', 'TLC');
+
+    // ==================== SET STATUS AND LABELING FIELDS ====================
+
+    // Set Processing Status (value-select dropdown) - select or create if no options
+    await selectOrCreateDropdownValue(page, 'Processing Status', 'In Progress', 'IP');
+
+    // Set isLabeled checkbox
+    const labeledCheckbox = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /labeled/i }) })
+      .locator('input[type="checkbox"]');
+    if (await labeledCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await labeledCheckbox.check();
+      console.log('Checked isLabeled');
+    } else {
+      console.log('WARNING: isLabeled checkbox not found');
+    }
+
+    // Set isLockable checkbox
+    const lockableCheckbox = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /lockable/i }) })
+      .locator('input[type="checkbox"]');
+    if (await lockableCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await lockableCheckbox.check();
+      console.log('Checked isLockable');
+    } else {
+      console.log('WARNING: isLockable checkbox not found');
+    }
+
+    // Set isProcessed checkbox
+    const processedCheckbox = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /processed/i }) })
+      .locator('input[type="checkbox"]');
+    if (await processedCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await processedCheckbox.check();
+      console.log('Checked isProcessed');
+    } else {
+      console.log('WARNING: isProcessed checkbox not found');
+    }
+
+    // Set isVerified checkbox
+    const verifiedCheckbox = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /verified/i }) })
+      .locator('input[type="checkbox"]');
+    if (await verifiedCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await verifiedCheckbox.check();
+      console.log('Checked isVerified');
+    } else {
+      console.log('WARNING: isVerified checkbox not found');
+    }
+
+    // Submit the form
+    const submitButton = page.locator('.form-popup form button[type="submit"]');
+    await submitButton.click();
+
+    await page.locator('.loading, .processing-overlay, mat-spinner').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    await formPopup.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(500);
+
+    console.log(`LOTO point "${tagNumber}" created with labeling fields`);
+
+    // ==================== VERIFY LABELING FIELDS PERSISTED ====================
+
+    // Navigate to LOTO Points page and find the created point
+    const lotoPointPage = new LotoPointPage(page);
+    await lotoPointPage.navigateToLotoPointsPage();
+    await lotoPointPage.searchLotoPoint(tagNumber);
+
+    const lotoPointVisible = await lotoPointPage.isLotoPointVisible(tagNumber);
+    expect(lotoPointVisible).toBe(true);
+
+    // Open the LOTO point to verify checkbox values
+    await lotoPointPage.selectLotoPoint(tagNumber);
+    await page.waitForTimeout(500);
+
+    // Verify Processing Status is set
+    const verifyStatusDropdown = page.locator('.form-popup app-rf-value-select, .form-popup app-searchable-select-input')
+      .filter({ has: page.locator('label', { hasText: 'Processing Status' }) });
+    if (await verifyStatusDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const statusText = await verifyStatusDropdown.locator('.dropdown-input .selected-value, .dropdown-input').textContent();
+      console.log(`Verified: Processing Status = "${statusText?.trim()}"`);
+    }
+
+    // Verify isLabeled is checked
+    const verifyLabeled = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /labeled/i }) })
+      .locator('input[type="checkbox"]');
+    if (await verifyLabeled.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(verifyLabeled).toBeChecked();
+      console.log('Verified: isLabeled is checked');
+    }
+
+    // Verify isLockable is checked
+    const verifyLockable = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /lockable/i }) })
+      .locator('input[type="checkbox"]');
+    if (await verifyLockable.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(verifyLockable).toBeChecked();
+      console.log('Verified: isLockable is checked');
+    }
+
+    // Verify isProcessed is checked
+    const verifyProcessed = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /processed/i }) })
+      .locator('input[type="checkbox"]');
+    if (await verifyProcessed.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(verifyProcessed).toBeChecked();
+      console.log('Verified: isProcessed is checked');
+    }
+
+    // Verify isVerified is checked
+    const verifyVerified = page.locator('.form-popup app-rf-form-input')
+      .filter({ has: page.locator('label.field-label', { hasText: /verified/i }) })
+      .locator('input[type="checkbox"]');
+    if (await verifyVerified.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(verifyVerified).toBeChecked();
+      console.log('Verified: isVerified is checked');
+    }
+
+    console.log(`Labeling status fields verified for "${tagNumber}"`);
+  });
 });

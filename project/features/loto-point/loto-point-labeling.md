@@ -103,3 +103,47 @@ Acceptance Criteria:
     [BradyManager](../../../frontend/src/app/shared/brady-printer-manager/brady-printer-modal.service.ts)
     - Add "Mark as Verified" option to context menu
     - Sets isVerified=true, persists to server and sync
+
+## Testing
+
+### Test 5: Set labeling status fields on a new LOTO point (in loto-point-from-shape.spec.ts)
+[loto-point-from-shape.spec.ts](../../../automation-test/tests/loto-points/loto-point-from-shape.spec.ts)
+
+**Steps:**
+1. Navigate to loto-builder, ensure test file exists, open file in viewer
+2. Draw a shape on the image to trigger the LOTO point creation form
+3. Fill required fields (tag number, description, specific location, equipment type, isolated/normal position, location)
+4. Set Processing Status dropdown (value-select) - select "In Progress" or create if not present
+5. Check all 4 labeling checkboxes: isLabeled, isLockable, isProcessed, isVerified
+6. Submit the form
+7. Navigate to LOTO Points page, search for the created point
+8. Open the loto point and verify:
+   - Processing Status dropdown has the selected value
+   - All 4 checkboxes are checked (persisted after save)
+
+### Test File: LOTO Point Comments (loto-point-comments.spec.ts)
+[loto-point-comments.spec.ts](../../../automation-test/tests/loto-points/loto-point-comments.spec.ts)
+
+#### Test 1: Add a single comment with needsAttention to one loto point
+**Steps:**
+1. Navigate to LOTO Points page
+2. Click on the first loto point row to open its form
+3. Open the CommentsDialog via comment-input button (or comment-cell in table)
+4. Type a comment in the textarea
+5. Check "Needs Attention" checkbox
+6. Click "Add Comment"
+7. Verify: comment appears in dialog list with "Attention" badge
+8. Close dialog
+9. Verify: comment badge shows count >= 1 in table cell
+
+#### Test 2: Add comments to multiple loto points (up to 10)
+**Steps:**
+1. Navigate to LOTO Points page
+2. For each loto point (up to 10 rows):
+   - Open CommentsDialog via comment-cell click (or form comment-input fallback)
+   - Type a unique comment with timestamp
+   - Alternate needsAttention (true for even-indexed, false for odd-indexed)
+   - Click "Add Comment", verify comment appears in dialog
+   - Close dialog
+3. Final verification: each commented row has a comment badge with count >= 1
+

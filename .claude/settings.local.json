@@ -33,7 +33,8 @@
       "Bash(ng build:*)",
       "Bash(head:*)",
       "Bash(npx playwright test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(wc:*)"
     ]
   }
 }
