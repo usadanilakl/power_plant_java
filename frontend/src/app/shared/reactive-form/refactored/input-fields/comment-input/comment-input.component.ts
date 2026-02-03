@@ -16,8 +16,10 @@ import { CommentDto } from '../../../../../models/base/comment.model';
           <label>{{ label }}</label>
         </div>
       }
-      <div class="comment-preview" (click)="openDialog()">
-        @if (latestComment()) {
+      <div class="comment-preview" [class.disabled]="!canOpenDialog()" (click)="openDialog()">
+        @if (!canOpenDialog()) {
+          <span class="no-comments">Save first to enable comments</span>
+        } @else if (latestComment()) {
           <div class="latest-comment">
             <span class="comment-author">{{ latestComment()!.createdBy }}</span>
             <span class="comment-text">{{ latestComment()!.content }}</span>
@@ -25,7 +27,7 @@ import { CommentDto } from '../../../../../models/base/comment.model';
         } @else {
           <span class="no-comments">No comments</span>
         }
-        <button type="button" class="open-dialog-btn" (click)="openDialog(); $event.stopPropagation()">
+        <button type="button" class="open-dialog-btn" [disabled]="!canOpenDialog()" (click)="openDialog(); $event.stopPropagation()">
           {{ commentCount() > 0 ? commentCount() + ' comment' + (commentCount() > 1 ? 's' : '') : 'Add comment' }}
         </button>
       </div>
@@ -101,9 +103,20 @@ import { CommentDto } from '../../../../../models/base/comment.model';
       white-space: nowrap;
     }
 
-    .open-dialog-btn:hover {
+    .open-dialog-btn:hover:not(:disabled) {
       background: var(--primary-color, #1976d2);
       color: white;
+    }
+
+    .open-dialog-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .comment-preview.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      border-style: dashed;
     }
   `],
   providers: [
@@ -148,8 +161,15 @@ export class CommentInputComponent implements ControlValueAccessor {
     });
   }
 
+  canOpenDialog(): boolean {
+    return !!(this.entityType && this.entityId);
+  }
+
   openDialog(): void {
-    if (!this.entityType || !this.entityId) return;
+    if (!this.entityType || !this.entityId) {
+      console.warn('[CommentInput] Cannot open dialog - entityType:', this.entityType, 'entityId:', this.entityId);
+      return;
+    }
     this.dialogService.open(this.entityType, this.entityId);
     this.onTouched();
   }

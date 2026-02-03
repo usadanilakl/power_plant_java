@@ -5,17 +5,19 @@ import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-project
 import { CommentService } from '../../services/comment.service';
 import { CommentDto } from '../../models/base/comment.model';
 import { CommentsDialogService } from './comments-dialog.service';
+import { RfValueSelectComponent } from '../../features/values/refactored/components/rf-value-select/rf-value-select.component';
+import { ValueDto } from '../../models/value.model';
 
 @Component({
   selector: 'app-comments-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, RfPopupProjectionComponent],
+  imports: [CommonModule, FormsModule, RfPopupProjectionComponent, RfValueSelectComponent],
   template: `
     @if (dialogService.isVisible()) {
       <app-rf-popup-projection
         [isOpen]="true"
         [title]="'Comments - ' + dialogService.entityType() + ' #' + dialogService.entityId()"
-        [zIndex]="10001"
+        [zIndex]="20000"
         (close)="close()"
       >
         <div class="comments-dialog-content">
@@ -27,6 +29,15 @@ import { CommentsDialogService } from './comments-dialog.service';
               class="comment-textarea"
               rows="3"
             ></textarea>
+            <div class="new-comment-row">
+              <app-rf-value-select
+                [categoryAlias]="'commentType'"
+                [label]="'Type'"
+                [canManageValues]="true"
+                [ngModel]="newCommentTypeId"
+                (ngModelChange)="newCommentTypeId = $event"
+              ></app-rf-value-select>
+            </div>
             <div class="new-comment-actions">
               <label class="checkbox-label">
                 <input type="checkbox" [(ngModel)]="newNeedsAttention" />
@@ -42,14 +53,32 @@ import { CommentsDialogService } from './comments-dialog.service';
             </div>
           </div>
 
+          <!-- Filter & Search toolbar -->
+          <div class="filter-toolbar">
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search comments..."
+              [(ngModel)]="searchQuery"
+            />
+            <select class="filter-select" [(ngModel)]="filterTypeId">
+              <option [ngValue]="null">All Types</option>
+              @for (type of uniqueCommentTypes(); track type.id) {
+                <option [ngValue]="type.id">{{ type.name }}</option>
+              }
+            </select>
+          </div>
+
           <!-- Comments list -->
           <div class="comments-list">
             @if (isLoading()) {
               <div class="loading">Loading comments...</div>
-            } @else if (comments().length === 0) {
-              <div class="empty-state">No comments yet</div>
+            } @else if (filteredComments().length === 0) {
+              <div class="empty-state">
+                {{ comments().length === 0 ? 'No comments yet' : 'No comments match your filters' }}
+              </div>
             } @else {
-              @for (comment of comments(); track comment.id) {
+              @for (comment of filteredComments(); track comment.id) {
                 <div class="comment-item" [class.needs-attention]="comment.needsAttention" [class.resolved]="comment.isResolved">
                   <div class="comment-header">
                     <span class="comment-author">{{ comment.createdBy }}</span>
@@ -58,10 +87,10 @@ import { CommentsDialogService } from './comments-dialog.service';
                       <span class="comment-type-badge">{{ comment.commentType.name }}</span>
                     }
                     @if (comment.needsAttention && !comment.isResolved) {
-                      <span class="attention-badge">⚠ Attention</span>
+                      <span class="attention-badge">Attention</span>
                     }
                     @if (comment.isResolved) {
-                      <span class="resolved-badge">✓ Resolved</span>
+                      <span class="resolved-badge">Resolved</span>
                     }
                   </div>
 
@@ -119,6 +148,10 @@ import { CommentsDialogService } from './comments-dialog.service';
       box-sizing: border-box;
     }
 
+    .new-comment-row {
+      margin-top: 8px;
+    }
+
     .new-comment-actions {
       display: flex;
       justify-content: space-between;
@@ -132,6 +165,31 @@ import { CommentsDialogService } from './comments-dialog.service';
       gap: 6px;
       font-size: 13px;
       cursor: pointer;
+    }
+
+    .filter-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--border-color, #ddd);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .filter-select {
+      padding: 6px 10px;
+      border: 1px solid var(--border-color, #ddd);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--bg-color, #fff);
+      min-width: 120px;
     }
 
     .comments-list {
@@ -285,8 +343,45 @@ export class CommentsDialogComponent {
   editContent = '';
   newCommentContent = '';
   newNeedsAttention = false;
+  newCommentTypeId: number | null = null;
+
+  // Filter & search state
+  searchQuery = '';
+  filterTypeId: number | null = null;
+
+  // Unique comment types from loaded comments for the filter dropdown
+  uniqueCommentTypes = computed(() => {
+    const types = new Map<number, ValueDto>();
+    for (const comment of this.comments()) {
+      if (comment.commentType?.id) {
+        types.set(comment.commentType.id, comment.commentType);
+      }
+    }
+    return Array.from(types.values());
+  });
+
+  // Filtered comments based on search + type filter
+  filteredComments = computed(() => {
+    let result = this.comments();
+
+    if (this.filterTypeId) {
+      result = result.filter(c => c.commentType?.id === this.filterTypeId);
+    }
+
+    const query = this.searchQuery?.trim().toLowerCase();
+    if (query) {
+      result = result.filter(c =>
+        c.content.toLowerCase().includes(query) ||
+        c.createdBy?.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  });
 
   private loadEffect = this.dialogService.onOpen$.subscribe(() => {
+    this.searchQuery = '';
+    this.filterTypeId = null;
     this.loadComments();
   });
 
@@ -314,12 +409,19 @@ export class CommentsDialogComponent {
     if (!content) return;
 
     this.isSubmitting.set(true);
-    const comment = new CommentDto({
+    const commentData: any = {
       content,
       entityType: this.dialogService.entityType(),
       entityId: this.dialogService.entityId(),
       needsAttention: this.newNeedsAttention,
-    });
+    };
+
+    // Include selected comment type if provided
+    if (this.newCommentTypeId) {
+      commentData.commentType = new ValueDto({ id: this.newCommentTypeId });
+    }
+
+    const comment = new CommentDto(commentData);
 
     this.commentService.createComment(comment).subscribe({
       next: (response) => {
@@ -328,6 +430,7 @@ export class CommentsDialogComponent {
         }
         this.newCommentContent = '';
         this.newNeedsAttention = false;
+        this.newCommentTypeId = null;
         this.isSubmitting.set(false);
       },
       error: () => {

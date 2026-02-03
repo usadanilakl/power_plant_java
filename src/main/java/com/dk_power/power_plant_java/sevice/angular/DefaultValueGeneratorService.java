@@ -134,4 +134,11 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Location", "Switchyard", "SY");
         ngValueService.createValue("Location", "Control Room", "CR");
     }
+
+    public void generateCommentTypes(){
+        ngValueService.createValue("Comment Type", "General", "GEN");
+        ngValueService.createValue("Comment Type", "Correction Needed", "COR");
+        ngValueService.createValue("Comment Type", "Note", "NOTE");
+        ngValueService.createValue("Comment Type", "QA", "QA");
+    }
 }

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.base_dtos.CommentDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import org.modelmapper.ModelMapper;
@@ -54,6 +55,12 @@ public class CommentMapper implements BaseMapper {
 
         if (source.getCommentType() != null && source.getCommentType().getId() != null) {
             entity.setCommentType(valueService.getEntityById(source.getCommentType().getId()));
+        } else {
+            // Default to "General" comment type when none provided
+            ValueDto generalType = valueService.getValueFromCategory("Comment Type", "General");
+            if (generalType != null && generalType.getId() != null) {
+                entity.setCommentType(valueService.getEntityById(generalType.getId()));
+            }
         }
 
         return entity;

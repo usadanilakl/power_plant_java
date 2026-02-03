@@ -26,6 +26,34 @@ Comment Entity Fields:
 
 # Implementation
 
+Full flow:
+
+### Creating a Comment
+1. User clicks comment button in form (`CommentInputComponent`) or table cell (`CommentCellComponent`)
+2. Component calls `CommentsDialogService.open(entityType, entityId)` which sets visibility signal to true
+3. `CommentsDialogComponent` (mounted globally in `app.component.html`) renders via `@if (dialogService.isVisible())`
+4. The dialog subscribes to `onOpen$` and calls `loadComments()` to fetch existing comments
+5. User types content, optionally checks "Needs Attention", clicks "Add Comment"
+6. `CommentDto.toJson()` produces `{ id: null, content, entityType, entityId, needsAttention, isResolved }`
+   - `commentType` is omitted when its id is 0/null to avoid Jackson ObjectId conflicts
+7. `CommentService.createComment()` sends `POST /ng/comments` with the JSON body
+8. `NgCommentController.create()` → `NgCommentService` → `CommentMapper` converts DTO to entity → `CommentRepo.save()` persists to DB
+9. Response returns the saved `CommentDto` with auto-generated id, createdBy (from SecurityContext), timestamps
+10. Frontend prepends the new comment to the `comments()` signal array — UI updates immediately
+
+### Fetching Comments
+1. `CommentCellComponent` / `CommentInputComponent` call `loadPreview()` on `ngOnChanges`
+2. `CommentService.getCommentsForEntity(entityType, entityId)` → `GET /ng/comments/{entityType}/{entityId}`
+3. Backend queries `CommentRepo.findByEntityTypeAndEntityId()`, returns ordered list
+4. Frontend maps response to `CommentDto[]`, sets `latestComment()` and `commentCount()` signals
+5. Cell/input renders preview text + badge count
+
+### Key Design Points
+- **Fully decoupled**: Entity services/repos have zero knowledge of comments. No FK, no join, no comment field on entities.
+- **Polymorphic reference**: `entityType + entityId` is the link. Any entity can have comments.
+- **Frontend-driven**: Comment components independently fetch from the Comment API — entity API responses don't include comments.
+- **Single global dialog**: One `<app-comments-dialog>` in `app.component.html` serves all entities via `CommentsDialogService`.
+
 ## Backend
 
 1. Create Comment entity (extends BaseAuditEntity, implements Referenceable)
@@ -50,7 +78,7 @@ Comment Entity Fields:
     - POST /ng/comments
     - PUT /ng/comments/{id}
     - DELETE /ng/comments/{id}
-7. Create "CommentType" category in Value/Category system for comment types
+7. Create "CommentType" category in Value/Category system for comment types and add General (GEN) value [](../../../src/main/java/com/dk_power/power_plant_java/sevice/angular/DefaultValueGeneratorService.java)
 
 ## Frontend
 
@@ -62,6 +90,10 @@ Comment Entity Fields:
     - Inputs: entityType (string), entityId (number)
     - Displays full comment history with timestamps, authors, types
     - Provides add/edit/resolve comment functionality
+    - Provides a way to select new comment type (using [](../../../frontend/src/app/features/values/refactored/components/rf-value-select/rf-value-select.component.ts))
+    - Provides a way to filter existing comments by type (within entity comments)
+    - Provides a way to search for comments (within entity entity comments)
+10.1 Create Comment (Log) page — see [log.md](log.md)
 11. Create comment-input for reactive form (new input type, follows existing input pattern)
     [input-fields/](../../../frontend/src/app/shared/reactive-form/refactored/input-fields/)
     [form-builder.service.ts](../../../frontend/src/app/shared/reactive-form/refactored/services/form-builder.service.ts)
