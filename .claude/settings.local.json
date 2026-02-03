@@ -32,7 +32,8 @@
       "Bash(~/.nvm/versions/node/*/bin/npx)",
       "Bash(ng build:*)",
       "Bash(head:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(grep:*)"
     ]
   }
 }

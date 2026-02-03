@@ -19,6 +19,9 @@ public class LotoPointSummaryDto {
     private String tagNumber;
     private String description;
     private Boolean isVerified;
+    private Boolean isLabeled;
+    private Boolean isLockable;
+    private Boolean isProcessed;
 
     // Fields for grouping
     private String equipmentType;    // First equipment's type name

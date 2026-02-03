@@ -36,6 +36,9 @@ export interface LotoPointModel extends BaseModel {
   location: ValueDto | null;
   eqType: ValueDto | null;
   counterpartId: number | null;
+  isLabeled: boolean | null;
+  isLockable: boolean | null;
+  isProcessed: boolean | null;
 }
 
 export interface LotoPointFormField {
@@ -73,6 +76,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   location: ValueDto | null;
   eqType: ValueDto | null;
   counterpartId: number | null;
+  isLabeled: boolean | null;
+  isLockable: boolean | null;
+  isProcessed: boolean | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -109,6 +115,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.location = super.setNestedObjectById(data.location, new ValueDto());
     this.eqType = super.setNestedObjectById(data.eqType, new ValueDto());
     this.counterpartId = data.counterpartId ?? null;
+    this.isLabeled = data.isLabeled ?? null;
+    this.isLockable = data.isLockable ?? null;
+    this.isProcessed = data.isProcessed ?? null;
   }
 
   // Serialization method
@@ -146,6 +155,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       location: this.location?.toJson() || null,
       eqType: this.eqType?.toJson() || null,
       counterpartId: this.counterpartId || null,
+      isLabeled: this.isLabeled ?? false,
+      isLockable: this.isLockable ?? false,
+      isProcessed: this.isProcessed ?? false,
     };
   }
 
@@ -230,6 +242,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         : new ValueDto(),
       eqType: json.eqType ? ValueDto.fromJson(json.eqType) : new ValueDto(),
       counterpartId: json.counterpartId || null,
+      isLabeled: json.isLabeled ?? false,
+      isLockable: json.isLockable ?? false,
+      isProcessed: json.isProcessed ?? false,
     });
   }
 
@@ -421,6 +436,36 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: dto.counterpartId?.toString() || null,
       },
+      isLabeled: {
+        name: 'isLabeled',
+        label: 'Labeled',
+        type: 'select',
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: dto.isLabeled?.toString(),
+      },
+      isLockable: {
+        name: 'isLockable',
+        label: 'Lockable',
+        type: 'select',
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: dto.isLockable?.toString(),
+      },
+      isProcessed: {
+        name: 'isProcessed',
+        label: 'Processed',
+        type: 'select',
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: dto.isProcessed?.toString(),
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -558,6 +603,33 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         header: 'Counterpart ID',
         accessorKey: 'counterpartId',
       },
+      isLabeled: {
+        id: 'isLabeled',
+        header: 'Labeled',
+        accessorFn: (item: LotoPointDto) => (item.isLabeled ? 'Yes' : 'No'),
+        conditionalStyling: (item: any, column: Column) =>
+          item.isLabeled
+            ? { 'background-color': '#90EE90' }
+            : { 'background-color': '#FFCCCB' },
+      },
+      isLockable: {
+        id: 'isLockable',
+        header: 'Lockable',
+        accessorFn: (item: LotoPointDto) => (item.isLockable ? 'Yes' : 'No'),
+        conditionalStyling: (item: any, column: Column) =>
+          item.isLockable
+            ? { 'background-color': '#90EE90' }
+            : { 'background-color': '#FFCCCB' },
+      },
+      isProcessed: {
+        id: 'isProcessed',
+        header: 'Processed',
+        accessorFn: (item: LotoPointDto) => (item.isProcessed ? 'Yes' : 'No'),
+        conditionalStyling: (item: any, column: Column) =>
+          item.isProcessed
+            ? { 'background-color': '#90EE90' }
+            : { 'background-color': '#FFCCCB' },
+      },
     };
 
     return fields.map((fieldName) => allColumns[fieldName]);
@@ -588,6 +660,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'isVerified',
       'zeroEnergyMethod',
       'counterpartId',
+      'isLabeled',
+      'isLockable',
+      'isProcessed',
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }

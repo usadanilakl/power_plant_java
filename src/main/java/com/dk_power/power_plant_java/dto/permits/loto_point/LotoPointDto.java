@@ -57,5 +57,8 @@ public class LotoPointDto extends BaseDto {
     private ValueDto location;
     private ValueDto eqType;
     private Long counterpartId;
+    private Boolean isLabeled = false;
+    private Boolean isLockable = false;
+    private Boolean isProcessed = false;
 
 }

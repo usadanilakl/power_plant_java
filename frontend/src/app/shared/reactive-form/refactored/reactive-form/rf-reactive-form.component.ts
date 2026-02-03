@@ -18,6 +18,7 @@ import { EquipmentListManagerComponent } from '../input-fields/equipment-list-ma
 import { RfValueSelectComponent } from '../../../../features/values/refactored/components/rf-value-select/rf-value-select.component';
 import { RfMultiValueSelectComponent } from '../../../../features/values/refactored/components/rf-multi-value-select/rf-multi-value-select.component';
 import { FileInputComponent } from '../input-fields/file-input/file-input.component';
+import { CommentInputComponent } from '../input-fields/comment-input/comment-input.component';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
@@ -43,6 +44,7 @@ import { GuideDirective } from '../../../guide/guide.directive';
     RfValueSelectComponent,
     RfMultiValueSelectComponent,
     FileInputComponent,
+    CommentInputComponent,
     GuideDirective,
   ],
   templateUrl: './rf-reactive-form.component.html',

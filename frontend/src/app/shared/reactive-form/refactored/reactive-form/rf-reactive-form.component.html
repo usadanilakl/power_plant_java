@@ -136,6 +136,14 @@
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-multi-value-select>
+        } @case('comment'){
+        <app-comment-input
+          [label]="field.label"
+          [entityType]="field.commentContext?.entityType ?? ''"
+          [entityId]="field.commentContext?.entityId ?? 0"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-comment-input>
         } @default {
         <app-rf-form-input
           [label]="field.label"

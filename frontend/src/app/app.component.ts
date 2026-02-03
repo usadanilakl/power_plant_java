@@ -7,6 +7,7 @@ import { QrScannerComponent } from "./shared/qr-code/qr-scanner/qr-scanner.compo
 import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/brady-printer-manager.component";
 import { EngraverManagerComponent } from "./shared/engraver-manager/engraver-manager.component";
 import { WizardDialogComponent } from "./shared/guide/guide-form";
+import { CommentsDialogComponent } from "./shared/comments-dialog/comments-dialog.component";
 
 @Component({
   selector: 'app-root',
@@ -20,6 +21,7 @@ import { WizardDialogComponent } from "./shared/guide/guide-form";
     BradyPrinterManagerComponent,
     EngraverManagerComponent,
     WizardDialogComponent,
+    CommentsDialogComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

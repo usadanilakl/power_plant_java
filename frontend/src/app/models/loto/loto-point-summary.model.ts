@@ -9,6 +9,9 @@ export interface LotoPointSummaryModel extends BaseModel {
   tagNumber: string;
   description: string;
   isVerified: boolean;
+  isLabeled: boolean;
+  isLockable: boolean;
+  isProcessed: boolean;
 
   // Grouping fields
   equipmentType: string;
@@ -27,6 +30,9 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
   name!: string;
   objectType!: string;
   isVerified!: boolean;
+  isLabeled!: boolean;
+  isLockable!: boolean;
+  isProcessed!: boolean;
 
   tagNumber!: string;
   description!: string;
@@ -43,6 +49,9 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
     this.name = data.name ?? '';
     this.objectType = data.objectType ?? 'LotoPointSummary';
     this.isVerified = data.isVerified ?? false;
+    this.isLabeled = data.isLabeled ?? false;
+    this.isLockable = data.isLockable ?? false;
+    this.isProcessed = data.isProcessed ?? false;
 
     this.tagNumber = data.tagNumber ?? '';
     this.description = data.description ?? '';
@@ -65,6 +74,9 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
       name: json.name || json.tagNumber || '',
       objectType: json.objectType || 'LotoPointSummary',
       isVerified: json.isVerified ?? false,
+      isLabeled: json.isLabeled ?? false,
+      isLockable: json.isLockable ?? false,
+      isProcessed: json.isProcessed ?? false,
       tagNumber: json.tagNumber || '',
       description: json.description || '',
       equipmentType: json.equipmentType || '',
@@ -83,6 +95,9 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
       name: this.name,
       objectType: this.objectType,
       isVerified: this.isVerified,
+      isLabeled: this.isLabeled,
+      isLockable: this.isLockable,
+      isProcessed: this.isProcessed,
       tagNumber: this.tagNumber,
       description: this.description,
       equipmentType: this.equipmentType,

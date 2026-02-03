@@ -1,4 +1,5 @@
 import {
+  AfterViewInit,
   Component,
   DestroyRef,
   inject,
@@ -8,6 +9,8 @@ import {
   signal,
   effect,
   computed,
+  viewChild,
+  TemplateRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
@@ -28,18 +31,19 @@ import { TableUtilService } from '../../../../shared/table/refactored/services/t
 import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/loto-point-bulk-edit-form.component';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { RfLotoPointClickService } from './rf-loto-point-click.service';
+import { CommentCellComponent } from '../../../../shared/comments-dialog/comment-cell.component';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, LotoPointBulkEditFormComponent],
+  imports: [CommonModule, TableComponent, LotoPointBulkEditFormComponent, CommentCellComponent],
   // providers: [
   //   { provide: TableClickService, useClass: RfLotoPointClickService }
   // ],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })
-export class RfLotoPointTableComponent implements OnInit {
+export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   private apiService = inject(RfLotoPointApiService);
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
@@ -69,6 +73,9 @@ export class RfLotoPointTableComponent implements OnInit {
   rowDoubleClickedEvent = output<LotoPointDto>();
   /** Emitted when bulk edit is applied - parent should refresh data if using inputItems */
   bulkEditAppliedEvent = output<LotoPointDto[]>();
+
+  // Template refs
+  commentCellTemplate = viewChild<TemplateRef<any>>('commentCellTemplate');
 
   // State
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
@@ -104,8 +111,30 @@ export class RfLotoPointTableComponent implements OnInit {
     // Initialize columns whenever fieldsToDisplay changes
     effect(() => {
       const fields = this.fieldsToDisplay();
-      this.columns.set(this.mapperService.toTableColumns(fields));
+      const cols = this.mapperService.toTableColumns(fields);
+      // Assign comment cell template if available
+      const template = this.commentCellTemplate();
+      if (template) {
+        const commentCol = cols.find(c => c.id === 'comment');
+        if (commentCol) {
+          commentCol.template = template;
+        }
+      }
+      this.columns.set(cols);
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Assign comment cell template to the comment column if it exists
+    const template = this.commentCellTemplate();
+    if (template) {
+      const cols = this.columns();
+      const commentCol = cols.find(c => c.id === 'comment');
+      if (commentCol) {
+        commentCol.template = template;
+        this.columns.set([...cols]);
+      }
+    }
   }
 
   ngOnInit(): void {

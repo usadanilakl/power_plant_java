@@ -31,6 +31,9 @@ export class LotoPointIdDto extends BaseDto {
   location: number | null;
   eqType: number | null;
   counterpartId: number | null;
+  isLabeled: boolean | null;
+  isLockable: boolean | null;
+  isProcessed: boolean | null;
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
     // console.log('Creating LotoPointIdDto',data);
@@ -62,6 +65,9 @@ export class LotoPointIdDto extends BaseDto {
     this.location = data.location ?? null;
     this.eqType = data.eqType ?? null;
     this.counterpartId = data.counterpartId ?? null;
+    this.isLabeled = data.isLabeled ?? null;
+    this.isLockable = data.isLockable ?? null;
+    this.isProcessed = data.isProcessed ?? null;
   }
 
 
@@ -137,6 +143,9 @@ export class LotoPointIdDto extends BaseDto {
       location: this.location,
       eqType: this.eqType,
       counterpartId: this.counterpartId,
+      isLabeled: this.isLabeled,
+      isLockable: this.isLockable,
+      isProcessed: this.isProcessed,
     };
   }
 
@@ -174,6 +183,9 @@ export class LotoPointIdDto extends BaseDto {
       location: json.location,
       eqType: json.eqType,
       counterpartId: json.counterpartId,
+      isLabeled: json.isLabeled ?? false,
+      isLockable: json.isLockable ?? false,
+      isProcessed: json.isProcessed ?? false,
     });
   }
 }

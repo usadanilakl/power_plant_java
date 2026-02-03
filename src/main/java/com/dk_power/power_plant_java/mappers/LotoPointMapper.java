@@ -121,6 +121,9 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getEqType()!=null) dto.setEqType(valueService.convertToDto(entity.getEqType()));
         if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         if(entity.getCounterpartId()!=null) dto.setCounterpartId(entity.getCounterpartId());
+        if(entity.getIsLabeled()!=null) dto.setIsLabeled(entity.getIsLabeled());
+        if(entity.getIsLockable()!=null) dto.setIsLockable(entity.getIsLockable());
+        if(entity.getIsProcessed()!=null) dto.setIsProcessed(entity.getIsProcessed());
         dto.setObjectType(entity.getObjectType());
         return dto;
     }
@@ -198,6 +201,9 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getEqType()!=null) dto.setEqType(valueService.getDtoById(entity.getEqType()));
         if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         if(entity.getCounterpartId()!=null) dto.setCounterpartId(entity.getCounterpartId());
+        if(entity.getIsLabeled()!=null) dto.setIsLabeled(entity.getIsLabeled());
+        if(entity.getIsLockable()!=null) dto.setIsLockable(entity.getIsLockable());
+        if(entity.getIsProcessed()!=null) dto.setIsProcessed(entity.getIsProcessed());
         return dto;
     }
 
@@ -245,6 +251,9 @@ public class LotoPointMapper implements BaseMapper{
         if(dto.getEqType()!=null) entity.setEqType(valueService.convertToEntity(dto.getEqType()));
         if(dto.getRelatedLotoPointIds()!=null) entity.setRelatedLotoPointIds(dto.getRelatedLotoPointIds());
         if(dto.getCounterpartId()!=null) entity.setCounterpartId(dto.getCounterpartId());
+        if(dto.getIsLabeled()!=null) entity.setIsLabeled(dto.getIsLabeled());
+        if(dto.getIsLockable()!=null) entity.setIsLockable(dto.getIsLockable());
+        if(dto.getIsProcessed()!=null) entity.setIsProcessed(dto.getIsProcessed());
         return entity;
     }
 
@@ -293,6 +302,9 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getFileIds() != null) lotoPoint.setFileIds(dto.getFileIds());
         if (dto.getConflictStatus() != null) lotoPoint.setConflictStatus(dto.getConflictStatus());
         if(dto.getZeroEnergyMethod()!=null) lotoPoint.setZeroEnergyMethod(dto.getZeroEnergyMethod());
+        if(dto.getIsLabeled()!=null) lotoPoint.setIsLabeled(dto.getIsLabeled());
+        if(dto.getIsLockable()!=null) lotoPoint.setIsLockable(dto.getIsLockable());
+        if(dto.getIsProcessed()!=null) lotoPoint.setIsProcessed(dto.getIsProcessed());
 
         // DO NOT set equipmentList here - it's the non-owning side
         // Equipment relationships are managed in processLotoPoint via the owning side (Equipment)
@@ -360,8 +372,9 @@ public class LotoPointMapper implements BaseMapper{
         if(lotoPoint.getCounterpartId()!=null) dto.setCounterpartId(lotoPoint.getCounterpartId());
 
         dto.setObjectType(lotoPoint.getObjectType());
-
-
+        if(lotoPoint.getIsLabeled()!=null) dto.setIsLabeled(lotoPoint.getIsLabeled());
+        if(lotoPoint.getIsLockable()!=null) dto.setIsLockable(lotoPoint.getIsLockable());
+        if(lotoPoint.getIsProcessed()!=null) dto.setIsProcessed(lotoPoint.getIsProcessed());
 
         return dto;
     }

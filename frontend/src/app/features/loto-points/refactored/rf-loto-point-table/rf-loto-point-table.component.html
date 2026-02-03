@@ -13,6 +13,14 @@
     </div>
   }
 
+  <!-- Comment cell template for table column -->
+  <ng-template #commentCellTemplate let-item>
+    <app-comment-cell
+      [entityType]="'LotoPoint'"
+      [entityId]="item.id">
+    </app-comment-cell>
+  </ng-template>
+
   <!-- Table component -->
   <app-table
     #tableComponent

@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
@@ -20,6 +21,7 @@ import com.dk_power.power_plant_java.repository.esp.LedStripRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.*;
 import com.dk_power.power_plant_java.repository.permits.*;
+import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,6 +100,7 @@ public class FullSyncToServerService {
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final WorkRequestRepo workRequestRepo;
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
+    private final CommentRepo commentRepo;
 
     // Sync state
     private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
@@ -123,6 +126,7 @@ public class FullSyncToServerService {
     private static final List<EntitySyncConfig> ENTITY_SYNC_ORDER = List.of(
         new EntitySyncConfig("Category", Category.class),
         new EntitySyncConfig("Value", Value.class),
+        new EntitySyncConfig("Comment", Comment.class),
         new EntitySyncConfig("User", User.class),
         new EntitySyncConfig("FileObject", FileObject.class),
         new EntitySyncConfig("Equipment", Equipment.class),
@@ -233,6 +237,7 @@ public class FullSyncToServerService {
         Map<String, Long> counts = new LinkedHashMap<>();
         counts.put("Category", categoryRepo.count());
         counts.put("Value", valueRepo.count());
+        counts.put("Comment", commentRepo.count());
         counts.put("User", userRepo.count());
         counts.put("FileObject", fileRepo.count());
         counts.put("Equipment", equipmentRepo.count());
@@ -489,6 +494,7 @@ public class FullSyncToServerService {
             case "ConfinedSpace" -> confinedSpaceRepo;
             case "WorkRequest" -> workRequestRepo;
             case "DailyPermitPackage" -> dailyPermitPackageRepo;
+            case "Comment" -> commentRepo;
             default -> null;
         };
     }

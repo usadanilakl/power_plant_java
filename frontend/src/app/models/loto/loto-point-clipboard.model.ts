@@ -38,6 +38,9 @@ export class LotoPointClipboardItem implements ILotoPointClipboard {
   eqType: ValueDto | null = null;
   zeroEnergy: ZeroEnergyModel | null = null;
   counterpartId: number | null = null;
+  isLabeled: boolean | null = null;
+  isLockable: boolean | null = null;
+  isProcessed: boolean | null = null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     Object.assign(this, data);

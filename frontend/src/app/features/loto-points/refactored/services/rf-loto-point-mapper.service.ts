@@ -59,6 +59,7 @@ export class LotoPointMapperService {
       'normPos',
       'zeroEnergy',
       'equipmentList',
+      'comment' as any,
     ]
   ): Column[] {
     const allColumns: { [key in keyof LotoPointDto]?: Column } = {
@@ -300,11 +301,63 @@ export class LotoPointMapperService {
         filterable: true,
         sortable: true,
       },
+      isLabeled: {
+        id: 'isLabeled',
+        header: 'Labeled',
+        accessorFn: (item: LotoPointDto) => (item.isLabeled ? 'Yes' : 'No'),
+        width: 80,
+        filterable: true,
+        sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          item.isLabeled
+            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
+            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+      },
+      isLockable: {
+        id: 'isLockable',
+        header: 'Lockable',
+        accessorFn: (item: LotoPointDto) => (item.isLockable ? 'Yes' : 'No'),
+        width: 80,
+        filterable: true,
+        sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          item.isLockable
+            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
+            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+      },
+      isProcessed: {
+        id: 'isProcessed',
+        header: 'Processed',
+        accessorFn: (item: LotoPointDto) => (item.isProcessed ? 'Yes' : 'No'),
+        width: 80,
+        filterable: true,
+        sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          item.isProcessed
+            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
+            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+      },
     };
 
-    return fields
+    const result = fields
       .map((fieldName) => allColumns[fieldName])
       .filter((column): column is Column => column !== undefined);
+
+    // Add comment column if requested (not a LotoPointDto key, so handled separately)
+    if (fields.includes('comment' as any)) {
+      const commentColumn: Column = {
+        id: 'comment',
+        header: 'Comments',
+        accessorFn: () => '',
+        width: 120,
+        filterable: false,
+        sortable: false,
+      };
+      const commentIndex = fields.indexOf('comment' as any);
+      result.splice(commentIndex, 0, commentColumn);
+    }
+
+    return result;
   }
 
   /**
@@ -332,7 +385,8 @@ export class LotoPointMapperService {
       'equipmentList',
       'zeroEnergy',
       'relatedLotoPointIds',
-      'equipmentIdList'
+      'equipmentIdList',
+      'comment' as any,
     ]
   ): RfFormField[] {
     const allFields: { [key in keyof LotoPointDto]?: RfFormField} = {
@@ -566,9 +620,63 @@ export class LotoPointMapperService {
         },
         guideId: 'create-loto-point:field-equipmentList',
         guideMessage: 'Manage the equipment associated with this LOTO point',
-      }
+      },
+      isLabeled: {
+        name: 'isLabeled',
+        label: 'Labeled',
+        type: 'checkbox',
+        initialValue: lotoPoint.isLabeled ?? false,
+        guideId: 'create-loto-point:field-isLabeled',
+        guideMessage: 'Indicates if this LOTO point has been labeled',
+      },
+      isLockable: {
+        name: 'isLockable',
+        label: 'Lockable',
+        type: 'checkbox',
+        initialValue: lotoPoint.isLockable ?? false,
+        guideId: 'create-loto-point:field-isLockable',
+        guideMessage: 'Indicates if this LOTO point is lockable',
+      },
+      isProcessed: {
+        name: 'isProcessed',
+        label: 'Processed',
+        type: 'checkbox',
+        initialValue: lotoPoint.isProcessed ?? false,
+        guideId: 'create-loto-point:field-isProcessed',
+        guideMessage: 'Indicates if this LOTO point has been processed',
+      },
+      isVerified: {
+        name: 'isVerified',
+        label: 'Verified',
+        type: 'checkbox',
+        initialValue: lotoPoint.isVerified ?? false,
+        guideId: 'create-loto-point:field-isVerified',
+        guideMessage: 'Indicates if this LOTO point has been verified',
+      },
 
     };
+
+    // Add comment field (not a LotoPointDto key, so added separately)
+    if (fields.includes('comment' as any)) {
+      const commentField: RfFormField = {
+        name: 'comment',
+        label: 'Comments',
+        type: 'comment',
+        commentContext: {
+          entityType: 'LotoPoint',
+          entityId: lotoPoint.id || 0,
+        },
+        guideId: 'create-loto-point:field-comment',
+        guideMessage: 'Add or view comments for this LOTO point',
+      };
+      const result = fields
+        .map((fieldName) => allFields[fieldName])
+        .filter((field): field is RfFormField => field !== undefined);
+      // Insert comment field at the position where 'comment' appears in fields
+      const commentIndex = fields.indexOf('comment' as any);
+      result.splice(commentIndex, 0, commentField);
+      return result;
+    }
 
     return fields
       .map((fieldName) => allFields[fieldName])
@@ -636,6 +744,9 @@ export class LotoPointMapperService {
       normPos: lotoPoint.normPos?.id,
       zeroEnergyMethod: lotoPoint.zeroEnergyMethod,
       isVerified: lotoPoint.isVerified,
+      isLabeled: lotoPoint.isLabeled,
+      isLockable: lotoPoint.isLockable,
+      isProcessed: lotoPoint.isProcessed,
       fileIds: this.parseFileIds(lotoPoint.fileIds),
     };
 

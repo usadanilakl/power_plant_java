@@ -126,7 +126,8 @@ export interface RfFormField {
     | 'equipment-browser'
     | 'equipment-shape-drawer'
     | 'equipment-list-manager'
-    | 'zero-energy-phrase-builder';
+    | 'zero-energy-phrase-builder'
+    | 'comment';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select and multi-value-select types
@@ -174,6 +175,12 @@ export interface RfFormField {
 
   // Context for equipment-list-manager
   context?: EquipmentListManagerContext;
+
+  // Context for comment input
+  commentContext?: {
+    entityType: string;
+    entityId: number;
+  };
 
   // Guide system support
   guideId?: string;         // Guide identifier in format "guideId:stepId"

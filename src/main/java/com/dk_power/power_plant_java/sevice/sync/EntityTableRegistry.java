@@ -59,7 +59,10 @@ public class EntityTableRegistry {
         Map.entry("HotWork", "hot_work"),          // @Table(name = "hot_work")
         Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
         Map.entry("WorkRequest", "work_request"),  // @Table(name = "work_request")
-        Map.entry("DailyPermitPackage", "daily_permit_package")
+        Map.entry("DailyPermitPackage", "daily_permit_package"),
+
+        // Comments
+        Map.entry("Comment", "comment")
     );
 
     /**
@@ -69,6 +72,7 @@ public class EntityTableRegistry {
     public static final List<String> SYNC_ORDER = List.of(
         "Category",
         "Value",
+        "Comment",
         "User",
         "FileObject",
         "Equipment",
