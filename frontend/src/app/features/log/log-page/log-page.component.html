@@ -1,0 +1,11 @@
+<app-main-layout
+  [isBottomMenuEnabled]="false"
+  [isSideMenuEnabled]="false"
+>
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+</app-main-layout>

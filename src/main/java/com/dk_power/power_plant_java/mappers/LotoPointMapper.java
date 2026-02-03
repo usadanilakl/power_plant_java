@@ -124,6 +124,7 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getIsLabeled()!=null) dto.setIsLabeled(entity.getIsLabeled());
         if(entity.getIsLockable()!=null) dto.setIsLockable(entity.getIsLockable());
         if(entity.getIsProcessed()!=null) dto.setIsProcessed(entity.getIsProcessed());
+        if(entity.getProcessingStatus()!=null) dto.setProcessingStatus(valueService.convertToDto(entity.getProcessingStatus()));
         dto.setObjectType(entity.getObjectType());
         return dto;
     }
@@ -204,6 +205,7 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getIsLabeled()!=null) dto.setIsLabeled(entity.getIsLabeled());
         if(entity.getIsLockable()!=null) dto.setIsLockable(entity.getIsLockable());
         if(entity.getIsProcessed()!=null) dto.setIsProcessed(entity.getIsProcessed());
+        if(entity.getProcessingStatus()!=null) dto.setProcessingStatus(valueService.getDtoById(entity.getProcessingStatus()));
         return dto;
     }
 
@@ -254,6 +256,7 @@ public class LotoPointMapper implements BaseMapper{
         if(dto.getIsLabeled()!=null) entity.setIsLabeled(dto.getIsLabeled());
         if(dto.getIsLockable()!=null) entity.setIsLockable(dto.getIsLockable());
         if(dto.getIsProcessed()!=null) entity.setIsProcessed(dto.getIsProcessed());
+        if(dto.getProcessingStatus()!=null) entity.setProcessingStatus(valueService.convertToEntity(dto.getProcessingStatus()));
         return entity;
     }
 
@@ -305,6 +308,7 @@ public class LotoPointMapper implements BaseMapper{
         if(dto.getIsLabeled()!=null) lotoPoint.setIsLabeled(dto.getIsLabeled());
         if(dto.getIsLockable()!=null) lotoPoint.setIsLockable(dto.getIsLockable());
         if(dto.getIsProcessed()!=null) lotoPoint.setIsProcessed(dto.getIsProcessed());
+        if(dto.getProcessingStatus()!=null) lotoPoint.setProcessingStatus(valueService.findById(dto.getProcessingStatus()).orElse(null));
 
         // DO NOT set equipmentList here - it's the non-owning side
         // Equipment relationships are managed in processLotoPoint via the owning side (Equipment)
@@ -375,6 +379,7 @@ public class LotoPointMapper implements BaseMapper{
         if(lotoPoint.getIsLabeled()!=null) dto.setIsLabeled(lotoPoint.getIsLabeled());
         if(lotoPoint.getIsLockable()!=null) dto.setIsLockable(lotoPoint.getIsLockable());
         if(lotoPoint.getIsProcessed()!=null) dto.setIsProcessed(lotoPoint.getIsProcessed());
+        if(lotoPoint.getProcessingStatus()!=null) dto.setProcessingStatus(lotoPoint.getProcessingStatus().getId());
 
         return dto;
     }

@@ -140,7 +140,7 @@ Default columns: `['content', 'entityType', 'entityId', 'commentType', 'needsAtt
 - Handles `onSearch()` → calls `apiService.search(criteria)`
 - Handles `onLoadMore()` → increments page, appends results
 - Handles `onTableSortChanged()` → resets page, re-queries
-- Renders `<app-rf-table>` with columns from mapper
+- Renders `<app-table>` with columns from mapper
 
 ### 8. Create LogDbTableComponent (DI wrapper)
 [log-db-table/log-db-table.component.ts](../../../frontend/src/app/features/log/log-db-table/log-db-table.component.ts)

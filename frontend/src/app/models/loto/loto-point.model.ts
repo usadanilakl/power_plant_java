@@ -39,6 +39,7 @@ export interface LotoPointModel extends BaseModel {
   isLabeled: boolean | null;
   isLockable: boolean | null;
   isProcessed: boolean | null;
+  processingStatus: ValueDto | null;
 }
 
 export interface LotoPointFormField {
@@ -79,6 +80,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   isLabeled: boolean | null;
   isLockable: boolean | null;
   isProcessed: boolean | null;
+  processingStatus: ValueDto | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -118,6 +120,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.isLabeled = data.isLabeled ?? null;
     this.isLockable = data.isLockable ?? null;
     this.isProcessed = data.isProcessed ?? null;
+    this.processingStatus = super.setNestedObjectById(data.processingStatus, new ValueDto());
   }
 
   // Serialization method
@@ -158,6 +161,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isLabeled: this.isLabeled ?? false,
       isLockable: this.isLockable ?? false,
       isProcessed: this.isProcessed ?? false,
+      processingStatus: this.processingStatus?.toJson() || null,
     };
   }
 
@@ -245,6 +249,9 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isLabeled: json.isLabeled ?? false,
       isLockable: json.isLockable ?? false,
       isProcessed: json.isProcessed ?? false,
+      processingStatus: json.processingStatus
+        ? ValueDto.fromJson(json.processingStatus)
+        : null,
     });
   }
 
@@ -466,6 +473,13 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         ],
         initialValue: dto.isProcessed?.toString(),
       },
+      processingStatus: {
+        name: 'processingStatus',
+        label: 'Processing Status',
+        type: 'select',
+        options: [],
+        initialValue: dto.processingStatus?.id || null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -630,6 +644,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
             ? { 'background-color': '#90EE90' }
             : { 'background-color': '#FFCCCB' },
       },
+      processingStatus: {
+        id: 'processingStatus',
+        header: 'Status',
+        accessorKey: 'processingStatus.name',
+      },
     };
 
     return fields.map((fieldName) => allColumns[fieldName]);
@@ -663,6 +682,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'isLabeled',
       'isLockable',
       'isProcessed',
+      'processingStatus',
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -707,6 +727,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       location: this.location?.id || null,
       eqType: this.eqType?.id || null,
       counterpartId: this.counterpartId || null,
+      processingStatus: this.processingStatus?.id || null,
     });
   }
   toOption(): Option {

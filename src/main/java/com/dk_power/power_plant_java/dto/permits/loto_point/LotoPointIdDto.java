@@ -42,4 +42,5 @@ public class LotoPointIdDto extends BaseDto {
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
     private Boolean isProcessed = false;
+    private Long processingStatus;
 }

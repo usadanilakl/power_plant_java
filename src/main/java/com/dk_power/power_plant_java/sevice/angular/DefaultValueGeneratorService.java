@@ -135,6 +135,12 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Location", "Control Room", "CR");
     }
 
+    public void generateProcessingStatusValues(){
+        ngValueService.createValue("Processing Status", "Not Processed", "NP");
+        ngValueService.createValue("Processing Status", "In Progress", "IP");
+        ngValueService.createValue("Processing Status", "Verified", "VRF");
+    }
+
     public void generateCommentTypes(){
         ngValueService.createValue("Comment Type", "General", "GEN");
         ngValueService.createValue("Comment Type", "Correction Needed", "COR");

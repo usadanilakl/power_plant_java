@@ -41,6 +41,7 @@ export class LotoPointClipboardItem implements ILotoPointClipboard {
   isLabeled: boolean | null = null;
   isLockable: boolean | null = null;
   isProcessed: boolean | null = null;
+  processingStatus: ValueDto | null = null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     Object.assign(this, data);

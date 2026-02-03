@@ -4,10 +4,14 @@ import com.dk_power.power_plant_java.dto.base_dtos.CommentDto;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.mappers.CommentMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
+import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,5 +76,21 @@ public class NgCommentService implements NgCrudService<Comment, CommentDto, Comm
                 .stream()
                 .map(commentMapper::convertToDto)
                 .toList();
+    }
+
+    public List<String> getUniqueValuesOfColumn(String column) {
+        return this.getUniqueValuesOfColumn(commentRepo, column);
+    }
+
+    public Page<String> getFilteredUniqueValuesOfColumn2(
+            String columnName, SearchCriteria searchCriteria, int page, int pageSize, boolean andLogic) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        return getFilteredUniqueValuesOfColumn(
+                entityManager, commentRepo, Comment.class, columnName, searchCriteria, pageable, andLogic);
+    }
+
+    @Override
+    public List<String> getGlobalSearchColumns() {
+        return List.of("content", "entityType", "createdBy");
     }
 }

@@ -56,6 +56,14 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         ]
     },
     {
+        label: 'Log',
+        icon: 'forum',
+        defaultRoute: '/log',
+        items: [
+            { route: '/log', label: 'System Log' }
+        ]
+    },
+    {
         label: 'Admin',
         icon: 'admin_panel_settings',
         defaultRoute: '/backup',

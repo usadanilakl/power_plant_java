@@ -47,6 +47,9 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Boolean isProcessed;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
+    @ManyToOne()
+    @JoinColumn(name = "processing_status_id")
+    private Value processingStatus;
     private String fileIds;
     private String equipmentIds;
     @ManyToOne()

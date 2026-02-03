@@ -8,6 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.dk_power.power_plant_java.dto.SearchCriteria;
+import org.springframework.data.domain.Page;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,6 +19,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NgCommentController {
     private final NgCommentService ngCommentService;
+
+    @GetMapping("/paginated")
+    public ResponseEntity<NgApiResponse<Page<CommentDto>>> getPaginated(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<CommentDto> paginatedComments = ngCommentService.getAll(page - 1, pageSize);
+            NgApiResponse<Page<CommentDto>> response = new NgApiResponse<>(paginatedComments, "Comments retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 
     @GetMapping("/{entityType}/{entityId}")
     public ResponseEntity<NgApiResponse<List<CommentDto>>> getCommentsForEntity(
@@ -72,6 +89,69 @@ public class NgCommentController {
             CommentDto result = ngCommentService.toDto(saved);
             NgApiResponse<CommentDto> response = new NgApiResponse<>(result, "Comment updated successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<NgApiResponse<Page<CommentDto>>> search(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<CommentDto> searchResults = null;
+
+            if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
+                String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "dateCreated";
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "desc";
+                searchResults = ngCommentService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+            } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
+                String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "dateCreated";
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "desc";
+                searchResults = ngCommentService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+            } else if (criteria.getType().equals(SearchCriteria.SearchType.SORT) && criteria.getSortColumn() != null) {
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "desc";
+                searchResults = ngCommentService.complexSearch(criteria, page - 1, pageSize, criteria.getSortColumn(), sortDirection, true);
+            }
+
+            NgApiResponse<Page<CommentDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/unique-values/{column}")
+    public ResponseEntity<NgApiResponse<List<String>>> getUniqueValues(@PathVariable String column) {
+        try {
+            List<String> uniqueValues = ngCommentService.getUniqueValuesOfColumn(column);
+            NgApiResponse<List<String>> response = new NgApiResponse<>(uniqueValues, "Unique values retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/unique-values/{column}/filtered")
+    public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValues(
+            @PathVariable String column,
+            @RequestBody SearchCriteria searchCriteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize,
+            @RequestParam(defaultValue = "false") boolean andLogicEnabled) {
+        try {
+            Page<String> uniqueValues = ngCommentService.getFilteredUniqueValuesOfColumn2(
+                    column, searchCriteria, page, pageSize, andLogicEnabled);
+            NgApiResponse<Page<String>> response = new NgApiResponse<>(uniqueValues, "Filtered unique values retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

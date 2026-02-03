@@ -76,6 +76,16 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     ]
   },
   {
+    label: 'Log',
+    description: 'View all system comments and activity',
+    icon: 'forum',
+    color: '#607d8b',
+    defaultRoute: '/log',
+    items: [
+      { title: 'System Log', description: 'View all comments across the system', icon: 'forum', route: '/log', color: '#607d8b' }
+    ]
+  },
+  {
     label: 'Admin',
     description: 'System administration and synchronization',
     icon: 'admin_panel_settings',

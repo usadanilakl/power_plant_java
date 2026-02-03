@@ -27,6 +27,13 @@
   --success-background: #c8e6c9;
   --error-background: #ffcdd2;
   --warning-background: #ffeb3b;
+
+  /* Status Colors */
+  --status-incomplete: #fff3e0;
+  --status-not-processed: #eceff1;
+  --status-in-progress: #e3f2fd;
+  --status-complete: #e8f5e9;
+  --status-attention: #fce4ec;
 }
 
 /* Dark Theme */
@@ -58,6 +65,13 @@
   --success-background: #2e7d32;
   --error-background: #c62828;
   --warning-background: #ff9800;
+
+  /* Status Colors */
+  --status-incomplete: #4e342e;
+  --status-not-processed: #37474f;
+  --status-in-progress: #1a237e;
+  --status-complete: #1b5e20;
+  --status-attention: #b71c1c;
 }
 
 

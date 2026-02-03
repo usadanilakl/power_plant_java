@@ -49,7 +49,7 @@ export class LotoPointMapperService {
    */
   toTableColumns(
     fields: (keyof LotoPointDto)[] = [
-      'isVerified',
+      'processingStatus',
       'tagNumber',
       'description',
       'specificLocation',
@@ -57,6 +57,8 @@ export class LotoPointMapperService {
       'eqType',
       'isoPos',
       'normPos',
+      'isLabeled',
+      'isLockable',
       'zeroEnergy',
       'equipmentList',
       'comment' as any,
@@ -71,17 +73,21 @@ export class LotoPointMapperService {
         filterable: true,
         sortable: true,
       },
-      isVerified: {
-        id: 'isVerified',
-        header: 'Verified',
-        accessorFn: (item: LotoPointDto) => (item.isVerified ? 'Yes' : 'No'),
-        width: 80,
+      processingStatus: {
+        id: 'processingStatus',
+        header: 'Status',
+        accessorKey: 'processingStatus.name',
+        formFieldKey: 'processingStatus',
+        accessorFn: (item: LotoPointDto) => item.processingStatus?.name || 'N/A',
+        width: 120,
         filterable: true,
         sortable: true,
-        conditionalStyling: (item: any, column: Column) =>
-          item.isVerified
-            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
-            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+        conditionalStyling: (item: any, column: Column) => {
+          const alias = item.processingStatus?.alias;
+          if (alias === 'VRF') return { 'background-color': 'var(--status-complete)' };
+          if (alias === 'IP') return { 'background-color': 'var(--status-in-progress)' };
+          return { 'background-color': 'var(--status-not-processed)' };
+        },
       },
       tagNumber: {
         id: 'tagNumber',
@@ -90,10 +96,10 @@ export class LotoPointMapperService {
         width: 200,
         filterable: true,
         sortable: true,
-        // conditionalStyling: (item: any, column: Column) =>
-        //   !item.tagNumber
-        //     ? { 'background-color': 'var(--error-background, #c8e6c9)' }
-        //     : { 'background-color': 'var(--success-background, #ffcdd2)' },
+        conditionalStyling: (item: any, column: Column) =>
+          !item.tagNumber
+            ? { 'background-color': 'var(--status-incomplete)' }
+            : { 'background-color': '' },
       },
       description: {
         id: 'description',
@@ -102,6 +108,10 @@ export class LotoPointMapperService {
         width: 250,
         filterable: true,
         sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          !item.description
+            ? { 'background-color': 'var(--status-incomplete)' }
+            : { 'background-color': '' },
       },
       specificLocation: {
         id: 'specificLocation',
@@ -110,6 +120,10 @@ export class LotoPointMapperService {
         width: 180,
         filterable: true,
         sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          !item.specificLocation
+            ? { 'background-color': 'var(--status-incomplete)' }
+            : { 'background-color': '' },
       },
       unit: {
         id: 'unit',
@@ -144,6 +158,10 @@ export class LotoPointMapperService {
         width: 150,
         filterable: true,
         sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          !item.isoPos?.id
+            ? { 'background-color': 'var(--status-incomplete)' }
+            : { 'background-color': '' },
       },
       normPos: {
         id: 'normPos',
@@ -154,6 +172,10 @@ export class LotoPointMapperService {
         width: 150,
         filterable: true,
         sortable: true,
+        conditionalStyling: (item: any, column: Column) =>
+          !item.normPos?.id
+            ? { 'background-color': 'var(--status-incomplete)' }
+            : { 'background-color': '' },
       },
       zeroEnergyMethod: {
         id: 'zeroEnergyMethod',
@@ -310,8 +332,8 @@ export class LotoPointMapperService {
         sortable: true,
         conditionalStyling: (item: any, column: Column) =>
           item.isLabeled
-            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
-            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+            ? { 'background-color': 'var(--status-complete)' }
+            : { 'background-color': 'var(--status-incomplete)' },
       },
       isLockable: {
         id: 'isLockable',
@@ -322,20 +344,8 @@ export class LotoPointMapperService {
         sortable: true,
         conditionalStyling: (item: any, column: Column) =>
           item.isLockable
-            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
-            : { 'background-color': 'var(--error-background, #ffcdd2)' },
-      },
-      isProcessed: {
-        id: 'isProcessed',
-        header: 'Processed',
-        accessorFn: (item: LotoPointDto) => (item.isProcessed ? 'Yes' : 'No'),
-        width: 80,
-        filterable: true,
-        sortable: true,
-        conditionalStyling: (item: any, column: Column) =>
-          item.isProcessed
-            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
-            : { 'background-color': 'var(--error-background, #ffcdd2)' },
+            ? { 'background-color': 'var(--status-complete)' }
+            : { 'background-color': 'var(--status-incomplete)' },
       },
     };
 
@@ -384,6 +394,9 @@ export class LotoPointMapperService {
       'generalLocation',
       'equipmentList',
       'zeroEnergy',
+      'isLabeled',
+      'isLockable',
+      'processingStatus',
       'relatedLotoPointIds',
       'equipmentIdList',
       'comment' as any,
@@ -637,21 +650,15 @@ export class LotoPointMapperService {
         guideId: 'create-loto-point:field-isLockable',
         guideMessage: 'Indicates if this LOTO point is lockable',
       },
-      isProcessed: {
-        name: 'isProcessed',
-        label: 'Processed',
-        type: 'checkbox',
-        initialValue: lotoPoint.isProcessed ?? false,
-        guideId: 'create-loto-point:field-isProcessed',
-        guideMessage: 'Indicates if this LOTO point has been processed',
-      },
-      isVerified: {
-        name: 'isVerified',
-        label: 'Verified',
-        type: 'checkbox',
-        initialValue: lotoPoint.isVerified ?? false,
-        guideId: 'create-loto-point:field-isVerified',
-        guideMessage: 'Indicates if this LOTO point has been verified',
+      processingStatus: {
+        name: 'processingStatus',
+        label: 'Processing Status',
+        type: 'value-select',
+        categoryAlias: 'processingStatus',
+        canManageValues: true,
+        initialValue: lotoPoint.processingStatus?.id || null,
+        guideId: 'create-loto-point:field-processingStatus',
+        guideMessage: 'Select the processing status for this LOTO point',
       },
 
     };
