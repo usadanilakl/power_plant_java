@@ -114,12 +114,12 @@ Acceptance Criteria:
 2. Draw a shape on the image to trigger the LOTO point creation form
 3. Fill required fields (tag number, description, specific location, equipment type, isolated/normal position, location)
 4. Set Processing Status dropdown (value-select) - select "In Progress" or create if not present
-5. Check all 4 labeling checkboxes: isLabeled, isLockable, isProcessed, isVerified
+5. Check labeling checkboxes: isLabeled, isLockable
 6. Submit the form
 7. Navigate to LOTO Points page, search for the created point
 8. Open the loto point and verify:
    - Processing Status dropdown has the selected value
-   - All 4 checkboxes are checked (persisted after save)
+   - isLabeled and isLockable checkboxes are checked (persisted after save)
 
 ### Test File: LOTO Point Comments (loto-point-comments.spec.ts)
 [loto-point-comments.spec.ts](../../../automation-test/tests/loto-points/loto-point-comments.spec.ts)
@@ -127,23 +127,22 @@ Acceptance Criteria:
 #### Test 1: Add a single comment with needsAttention to one loto point
 **Steps:**
 1. Navigate to LOTO Points page
-2. Click on the first loto point row to open its form
-3. Open the CommentsDialog via comment-input button (or comment-cell in table)
-4. Type a comment in the textarea
+2. Right-click first row → "View Details" to open the loto point form
+3. Click `.open-dialog-btn` in `app-comment-input` to open CommentsDialog
+4. Type a comment in `.comment-textarea`
 5. Check "Needs Attention" checkbox
-6. Click "Add Comment"
-7. Verify: comment appears in dialog list with "Attention" badge
-8. Close dialog
-9. Verify: comment badge shows count >= 1 in table cell
+6. Click "Add Comment" button
+7. Verify: comment appears in `.comment-item` list with `.attention-badge`
+8. Close dialog and form
 
 #### Test 2: Add comments to multiple loto points (up to 10)
 **Steps:**
 1. Navigate to LOTO Points page
 2. For each loto point (up to 10 rows):
-   - Open CommentsDialog via comment-cell click (or form comment-input fallback)
+   - Right-click row → "View Details" to open the form
+   - Click `.open-dialog-btn` in `app-comment-input` to open CommentsDialog
    - Type a unique comment with timestamp
    - Alternate needsAttention (true for even-indexed, false for odd-indexed)
    - Click "Add Comment", verify comment appears in dialog
-   - Close dialog
-3. Final verification: each commented row has a comment badge with count >= 1
+   - Close dialog and form
 

@@ -117,17 +117,7 @@ export class LotoPointDualFormComponent {
 
   // Inputs
   primaryLotoPoint = input.required<LotoPointDto>();
-  fieldsToDisplay = input<(keyof LotoPointDto)[]>([
-    'tagNumber',
-    'description',
-    'specificLocation',
-    'eqType',
-    'isoPos',
-    'normPos',
-    'location',
-    'zeroEnergy',
-    'equipmentList',
-  ]);
+  fieldsToDisplay = input<(keyof LotoPointDto)[]>();
 
   // Outputs
   @Output() primarySaved = new EventEmitter<LotoPointDto>();
@@ -182,14 +172,20 @@ export class LotoPointDualFormComponent {
   // Computed: Form fields for primary
   primaryFields = computed(() => {
     const entity = this.currentPrimaryValues() || this.primaryLotoPoint();
-    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
+    const fields = this.fieldsToDisplay();
+    return fields
+      ? this.mapperService.toFormFields(entity, fields)
+      : this.mapperService.toFormFields(entity);
   });
 
   // Computed: Form fields for counterpart
   counterpartFields = computed(() => {
     const entity = this.currentCounterpartValues() || this.counterpartLotoPoint();
     if (!entity) return [];
-    return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
+    const fields = this.fieldsToDisplay();
+    return fields
+      ? this.mapperService.toFormFields(entity, fields)
+      : this.mapperService.toFormFields(entity);
   });
 
   constructor() {

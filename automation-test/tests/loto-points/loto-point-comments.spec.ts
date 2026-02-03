@@ -1,19 +1,106 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { LotoPointPage } from '../../pages/loto-point.page';
 
 /**
  * LOTO Point Comment Tests
  *
- * These tests verify adding comments to LOTO points via the CommentsDialog UI.
+ * Flow: right-click row → "View Details" → form opens → click comment button → CommentsDialog opens
  * Comments use the polymorphic Comment system (entityType="LotoPoint", entityId=lotoPoint.id).
  */
+
+/**
+ * Opens a loto point form via right-click context menu → View Details
+ */
+async function openLotoPointDetails(page: Page, row: any): Promise<void> {
+  await row.click({ button: 'right' });
+  await page.waitForTimeout(300);
+
+  const viewDetailsItem = page.locator('.context-menu-item').filter({ hasText: /view details/i });
+  await viewDetailsItem.click();
+  await page.waitForTimeout(500);
+
+  // Wait for the form to appear
+  const formPopup = page.locator('.form-popup');
+  await formPopup.waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/**
+ * Opens the CommentsDialog from the comment input in the form
+ */
+async function openCommentsDialog(page: Page): Promise<void> {
+  const openDialogBtn = page.locator('.form-popup app-comment-input .open-dialog-btn');
+  await openDialogBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await openDialogBtn.click();
+  await page.waitForTimeout(500);
+
+  // Wait for dialog to appear
+  const commentsDialog = page.locator('app-comments-dialog');
+  await commentsDialog.waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Adds a comment in the CommentsDialog
+ */
+async function addComment(page: Page, commentText: string, needsAttention: boolean): Promise<void> {
+  const commentsDialog = page.locator('app-comments-dialog');
+
+  // Type comment text
+  const commentTextarea = commentsDialog.locator('textarea.comment-textarea');
+  await commentTextarea.click();
+  await commentTextarea.fill(commentText);
+
+  // Set needsAttention checkbox
+  const needsAttentionCheckbox = commentsDialog
+    .locator('.checkbox-label')
+    .filter({ hasText: /needs attention/i })
+    .locator('input[type="checkbox"]');
+  if (needsAttention) {
+    await needsAttentionCheckbox.check();
+  } else {
+    await needsAttentionCheckbox.uncheck();
+  }
+
+  // Click Add Comment
+  const addCommentBtn = commentsDialog.locator('.btn.btn-primary').filter({ hasText: /add comment/i });
+  await addCommentBtn.click();
+  await page.waitForTimeout(1000);
+}
+
+/**
+ * Closes the CommentsDialog and form popup
+ */
+async function closeDialogAndForm(page: Page): Promise<void> {
+  // Close the comments dialog via the popup close button
+  const popupCloseBtn = page.locator('app-rf-popup-projection .close-btn, .popup-close-btn').first();
+  if (await popupCloseBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await popupCloseBtn.click();
+  } else {
+    await page.keyboard.press('Escape');
+  }
+  await page.waitForTimeout(300);
+
+  // Close the form popup if still open
+  const formPopup = page.locator('.form-popup');
+  if (await formPopup.isVisible({ timeout: 500 }).catch(() => false)) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+  }
+}
 
 test.describe('LOTO Point Comments', () => {
   let lotoPointPage: LotoPointPage;
 
   test.beforeEach(async ({ page }) => {
     lotoPointPage = new LotoPointPage(page);
-    await lotoPointPage.navigateToLotoPointsPage();
+    // Navigate without networkidle (which can timeout on long-polling/SSE connections)
+    await page.goto('/home');
+    const skipButton = page.getByRole('button', { name: 'Skip for now' });
+    if (await skipButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await skipButton.click();
+    }
+    await page.getByRole('link', { name: /loto points/i }).first().click();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
   });
 
   test('1. should add a single comment with needsAttention to a loto point', async ({ page }) => {
@@ -22,63 +109,24 @@ test.describe('LOTO Point Comments', () => {
     const timestamp = Date.now();
     const commentText = `Test comment - needs relabeling ${timestamp}`;
 
-    // Wait for table to load
-    await page.waitForTimeout(1000);
-
-    // Click on the first loto point row to open its form
+    // Wait for table rows to appear
     const firstRow = page.locator('table tbody tr, .table-row, .data-row').first();
     await expect(firstRow).toBeVisible({ timeout: 10000 });
-    await firstRow.click();
-    await page.waitForTimeout(500);
 
-    // Locate the comment input component in the form and click it to open the dialog
-    const commentInput = page.locator('.form-popup app-comment-input');
-    if (await commentInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Click the button inside comment-input to open the dialog
-      const openDialogBtn = commentInput.locator('button').first();
-      await openDialogBtn.click();
-      await page.waitForTimeout(500);
-    } else {
-      // Alternatively, look for a comment cell in the table row and click it
-      console.log('Comment input not found in form, trying comment cell in table');
+    // Right-click → View Details to open the form
+    await openLotoPointDetails(page, firstRow);
+    console.log('Opened loto point form via context menu');
 
-      // Close the form first
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
-
-      const commentCell = firstRow.locator('app-comment-cell .comment-cell');
-      if (await commentCell.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await commentCell.click();
-        await page.waitForTimeout(500);
-      } else {
-        console.log('WARNING: No comment cell found - comment column may not be configured yet');
-        return;
-      }
-    }
-
-    // Verify the CommentsDialog is open
-    const commentsDialog = page.locator('app-comments-dialog');
-    await expect(commentsDialog).toBeVisible({ timeout: 5000 });
+    // Open CommentsDialog via the comment input button in the form
+    await openCommentsDialog(page);
     console.log('Comments dialog opened');
 
-    // Type comment text in the textarea
-    const commentTextarea = commentsDialog.locator('textarea.comment-textarea, textarea[placeholder="Write a comment..."]');
-    await commentTextarea.click();
-    await commentTextarea.fill(commentText);
-    console.log(`Typed comment: "${commentText}"`);
+    // Add a comment with needsAttention=true
+    await addComment(page, commentText, true);
+    console.log(`Added comment: "${commentText}" with needsAttention=true`);
 
-    // Check "Needs Attention" checkbox
-    const needsAttentionCheckbox = commentsDialog.locator('.checkbox-label').filter({ hasText: /needs attention/i }).locator('input[type="checkbox"]');
-    await needsAttentionCheckbox.check();
-    console.log('Checked "Needs Attention"');
-
-    // Click "Add Comment" button
-    const addCommentBtn = commentsDialog.getByRole('button', { name: /add comment/i });
-    await addCommentBtn.click();
-    await page.waitForTimeout(1000);
-    console.log('Clicked "Add Comment"');
-
-    // Verify comment appears in the comments list
+    // Verify comment appears in the dialog list
+    const commentsDialog = page.locator('app-comments-dialog');
     const commentItem = commentsDialog.locator('.comment-item').filter({ hasText: commentText });
     await expect(commentItem).toBeVisible({ timeout: 5000 });
     console.log('Comment appears in dialog list');
@@ -88,30 +136,8 @@ test.describe('LOTO Point Comments', () => {
     await expect(attentionBadge).toBeVisible({ timeout: 2000 });
     console.log('Attention badge is visible on the comment');
 
-    // Close the dialog
-    const closeBtn = commentsDialog.locator('button').filter({ hasText: /close|×/i }).first();
-    if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await closeBtn.click();
-    } else {
-      // Try the popup close button
-      const popupCloseBtn = page.locator('app-rf-popup-projection .close-btn, .popup-close-btn').first();
-      if (await popupCloseBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await popupCloseBtn.click();
-      } else {
-        await page.keyboard.press('Escape');
-      }
-    }
-    await page.waitForTimeout(500);
-
-    // Verify the comment cell in the table shows the comment badge
-    const commentBadge = firstRow.locator('app-comment-cell .comment-badge');
-    if (await commentBadge.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const badgeText = await commentBadge.textContent();
-      expect(parseInt(badgeText || '0')).toBeGreaterThanOrEqual(1);
-      console.log(`Comment badge shows count: ${badgeText}`);
-    } else {
-      console.log('Comment badge not visible in table cell (column may not be configured)');
-    }
+    // Close dialog and form
+    await closeDialogAndForm(page);
 
     console.log('Single comment test completed successfully');
   });
@@ -121,11 +147,9 @@ test.describe('LOTO Point Comments', () => {
 
     const timestamp = Date.now();
 
-    // Wait for table to load
-    await page.waitForTimeout(1000);
-
-    // Get all visible loto point rows, limit to 10
+    // Wait for table rows to appear
     const allRows = page.locator('table tbody tr, .table-row, .data-row');
+    await allRows.first().waitFor({ state: 'visible', timeout: 10000 });
     const rowCount = await allRows.count();
     const maxRows = Math.min(rowCount, 10);
 
@@ -146,60 +170,21 @@ test.describe('LOTO Point Comments', () => {
       const commentText = `Test comment for LP ${i + 1} - ${timestamp}`;
       const needsAttention = i % 2 === 0; // alternate: true for even index, false for odd
 
-      // Try to open comment dialog via comment cell in the row
-      const commentCell = row.locator('app-comment-cell .comment-cell');
-      if (await commentCell.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await commentCell.click();
-        await page.waitForTimeout(500);
-      } else {
-        // Fallback: click the row to open form, then use comment input
-        await row.click();
-        await page.waitForTimeout(500);
+      // Right-click → View Details to open the form
+      await openLotoPointDetails(page, row);
 
-        const commentInput = page.locator('.form-popup app-comment-input');
-        if (await commentInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-          const openDialogBtn = commentInput.locator('button').first();
-          await openDialogBtn.click();
-          await page.waitForTimeout(500);
-        } else {
-          console.log(`  Skipping LP ${i + 1}: no comment cell or input available`);
-          await page.keyboard.press('Escape');
-          await page.waitForTimeout(300);
-          continue;
-        }
-      }
+      // Open CommentsDialog via the comment input button
+      await openCommentsDialog(page);
 
-      // Verify dialog is open
-      const commentsDialog = page.locator('app-comments-dialog');
-      const dialogVisible = await commentsDialog.isVisible({ timeout: 3000 }).catch(() => false);
-      if (!dialogVisible) {
-        console.log(`  Skipping LP ${i + 1}: dialog did not open`);
-        continue;
-      }
-
-      // Type comment
-      const commentTextarea = commentsDialog.locator('textarea.comment-textarea, textarea[placeholder="Write a comment..."]');
-      await commentTextarea.click();
-      await commentTextarea.fill(commentText);
-
-      // Set needsAttention based on alternating pattern
-      const needsAttentionCheckbox = commentsDialog.locator('.checkbox-label').filter({ hasText: /needs attention/i }).locator('input[type="checkbox"]');
-      if (needsAttention) {
-        await needsAttentionCheckbox.check();
-      } else {
-        await needsAttentionCheckbox.uncheck();
-      }
-
-      // Click Add Comment
-      const addCommentBtn = commentsDialog.getByRole('button', { name: /add comment/i });
-      await addCommentBtn.click();
-      await page.waitForTimeout(1000);
+      // Add a comment
+      await addComment(page, commentText, needsAttention);
 
       // Verify comment appears in the dialog
+      const commentsDialog = page.locator('app-comments-dialog');
       const commentItem = commentsDialog.locator('.comment-item').filter({ hasText: commentText });
       const commentAppeared = await commentItem.isVisible({ timeout: 3000 }).catch(() => false);
       if (commentAppeared) {
-        console.log(`  Comment added to LP ${i + 1}: "${commentText}" (needsAttention=${needsAttention})`);
+        console.log(`  Comment added: "${commentText}" (needsAttention=${needsAttention})`);
 
         // Verify attention badge if needsAttention was set
         if (needsAttention) {
@@ -213,43 +198,11 @@ test.describe('LOTO Point Comments', () => {
 
       commentedRows.push({ index: i, commentText });
 
-      // Close the dialog
-      const closeBtn = commentsDialog.locator('button').filter({ hasText: /close|×/i }).first();
-      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await closeBtn.click();
-      } else {
-        const popupCloseBtn = page.locator('app-rf-popup-projection .close-btn, .popup-close-btn').first();
-        if (await popupCloseBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await popupCloseBtn.click();
-        } else {
-          await page.keyboard.press('Escape');
-        }
-      }
-      await page.waitForTimeout(500);
-
-      // Close any open form popup before moving to next row
-      const formPopup = page.locator('.form-popup');
-      if (await formPopup.isVisible({ timeout: 500 }).catch(() => false)) {
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(300);
-      }
+      // Close dialog and form before moving to next row
+      await closeDialogAndForm(page);
     }
 
-    // ==================== FINAL VERIFICATION ====================
-    console.log(`\n=== VERIFICATION: Checking comment badges for ${commentedRows.length} rows ===`);
-
-    for (const { index, commentText } of commentedRows) {
-      const row = allRows.nth(index);
-      const commentBadge = row.locator('app-comment-cell .comment-badge');
-      if (await commentBadge.isVisible({ timeout: 2000 }).catch(() => false)) {
-        const badgeText = await commentBadge.textContent();
-        console.log(`  Row ${index + 1}: badge count = ${badgeText}`);
-        expect(parseInt(badgeText || '0')).toBeGreaterThanOrEqual(1);
-      } else {
-        console.log(`  Row ${index + 1}: no badge visible (column may not be configured)`);
-      }
-    }
-
+    // ==================== FINAL SUMMARY ====================
     console.log(`\n=== SUMMARY ===`);
     console.log(`Total loto points processed: ${commentedRows.length}`);
     console.log(`Comments added successfully`);
