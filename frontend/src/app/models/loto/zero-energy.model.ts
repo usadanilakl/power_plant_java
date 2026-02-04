@@ -12,6 +12,7 @@ export interface ZeroEnergyModel extends BaseModel {
 export interface ZeroEnergyIdModel extends Omit<ZeroEnergyModel, 'zeroEnergyTemplate' | 'templateEquipment'> {
   zeroEnergyTemplateId: number | null;
   templateEquipmentIds: number[];
+  editShared?: boolean;
 }
 
 export class ZeroEnergyDto extends BaseDto implements ZeroEnergyModel {

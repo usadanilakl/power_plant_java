@@ -315,16 +315,18 @@ public class LotoPointMapper implements BaseMapper{
 
         // Handle ZeroEnergy - if nested object exists, process it; otherwise use ID
         if (dto.getZeroEnergy() != null) {
-            // Process the nested ZeroEnergy object
-            ZeroEnergy zeroEnergy =
-                zeroEnergyService.findOrCreate(dto.getZeroEnergy());
+            ZeroEnergy zeroEnergy;
+            if (Boolean.TRUE.equals(dto.getZeroEnergy().getEditShared())
+                    && dto.getZeroEnergy().getId() != null) {
+                // Edit the shared ZeroEnergy record in-place
+                zeroEnergy = zeroEnergyService.updateShared(dto.getZeroEnergy());
+            } else {
+                // Default: find-or-create (deduplication)
+                zeroEnergy = zeroEnergyService.findOrCreate(dto.getZeroEnergy());
+            }
             lotoPoint.setZeroEnergy(zeroEnergy);
         } else if (dto.getZeroEnergyId() != null) {
-            System.out.println("Using existing ZeroEnergy by ID: " + dto.getZeroEnergyId());
-            // Use existing ZeroEnergy by ID
             lotoPoint.setZeroEnergy(zeroEnergyService.getEntityById(dto.getZeroEnergyId()));
-        } else {
-            System.out.println("No ZeroEnergy data provided");
         }
 
         if(dto.getLocation()!=null) lotoPoint.setLocation(valueService.getEntityById(dto.getLocation()));

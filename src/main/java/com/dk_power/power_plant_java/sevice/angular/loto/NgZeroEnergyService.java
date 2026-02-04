@@ -6,10 +6,12 @@ import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.mappers.ZeroEnergyMapper;
+import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.ZeroEnergyRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.FuzzySearchService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
+import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
@@ -32,10 +34,12 @@ import java.util.stream.Collectors;
 @Transactional
 public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergyDto, ZeroEnergyRepo, ZeroEnergyMapper> {
     private final ZeroEnergyRepo zeroEnergyRepo;
+    private final LotoPointRepo lotoPointRepo;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final ZeroEnergyMapper zeroEnergyMapper;
     private final FuzzySearchService fuzzySearchService;
+    private final ValueService valueService;
     @Lazy
     private final NgEquipmentService ngEquipmentService;
 
@@ -496,6 +500,55 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         }
 
         return null;
+    }
+
+    /**
+     * Returns the number of LotoPoints referencing the given ZeroEnergy.
+     */
+    public long getUsageCount(Long zeroEnergyId) {
+        if (zeroEnergyId == null) {
+            return 0;
+        }
+        return lotoPointRepo.countByZeroEnergyId(zeroEnergyId);
+    }
+
+    /**
+     * Updates a shared ZeroEnergy record in-place. All LotoPoints referencing
+     * this record will see the updated template/equipment/method.
+     *
+     * If the new combination matches another existing ZeroEnergy, merges by
+     * reassigning all referencing LotoPoints to the match and deleting this record.
+     *
+     * @param idDto The updated ZeroEnergy data (must have a valid ID)
+     * @return The updated (or merged) ZeroEnergy entity
+     */
+    @Transactional
+    public ZeroEnergy updateShared(ZeroEnergyIdDto idDto) {
+        ZeroEnergy existing = getEntityById(idDto.getId());
+
+        Long newTemplateId = idDto.getZeroEnergyTemplateId();
+        String newEquipmentIds = sortAndJoinIds(normalizeEquipmentIds(idDto.getTemplateEquipmentIds()));
+
+        // Check if this new combination already exists as a different record
+        Optional<ZeroEnergy> duplicate = zeroEnergyRepo.findByTemplateAndEquipmentIds(newTemplateId, newEquipmentIds);
+        if (duplicate.isPresent() && !duplicate.get().getId().equals(existing.getId())) {
+            // Merge: move all LotoPoints from existing to duplicate, then delete existing
+            lotoPointRepo.reassignZeroEnergy(existing.getId(), duplicate.get().getId());
+            zeroEnergyRepo.deleteById(existing.getId());
+            return duplicate.get();
+        }
+
+        // Update in-place
+        if (newTemplateId != null) {
+            existing.setZeroEnergyTemplate(valueService.findById(newTemplateId).orElse(null));
+        }
+        existing.setNormalizedEquipmentIds(idDto.getTemplateEquipmentIds());
+
+        // Rebuild method string via mapper (parses template JSON and substitutes equipment tags)
+        ZeroEnergy rebuilt = zeroEnergyMapper.convertIdDtoToEntity(idDto);
+        existing.setMethod(rebuilt.getMethod());
+
+        return zeroEnergyRepo.save(existing);
     }
 
     /**

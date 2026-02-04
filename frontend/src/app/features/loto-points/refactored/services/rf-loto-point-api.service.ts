@@ -380,6 +380,15 @@ export class RfLotoPointApiService {
   }
 
   /**
+   * Get the usage count for a ZeroEnergy record (how many LotoPoints reference it).
+   */
+  getZeroEnergyUsageCount(zeroEnergyId: number): Observable<SpringApiResponse<number>> {
+    return this.http.get<SpringApiResponse<number>>(
+      `${this.apiUrl}/zero-energy/${zeroEnergyId}/usage-count`
+    );
+  }
+
+  /**
    * Look up counterpart equipment for ZeroEnergy transfer.
    * For each source equipment ID, finds the counterpart equipment for the target unit.
    *

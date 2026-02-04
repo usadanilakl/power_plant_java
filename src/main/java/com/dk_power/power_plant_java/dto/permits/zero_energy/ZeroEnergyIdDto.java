@@ -12,4 +12,5 @@ public class ZeroEnergyIdDto extends BaseDto {
     private String method;
     private Long zeroEnergyTemplateId;
     private List<Long> templateEquipmentIds;
+    private Boolean editShared;
 }

@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
+import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -23,17 +24,20 @@ public class ZeroEnergyMapper implements BaseMapper {
     private final NgZeroEnergyService zeroEnergyService;
     private final LotoPointService lotoPointService;
     private final NgEquipmentService equipmentService;
+    private final EquipmentMapper equipmentMapper;
 
     public ZeroEnergyMapper(ModelMapper modelMapper,
                             ValueService valueService,
                             @Lazy NgZeroEnergyService zeroEnergyService,
                             @Lazy LotoPointService lotoPointService,
-                            @Lazy NgEquipmentService equipmentService) {
+                            @Lazy NgEquipmentService equipmentService,
+                            @Lazy EquipmentMapper equipmentMapper) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.zeroEnergyService = zeroEnergyService;
         this.lotoPointService = lotoPointService;
         this.equipmentService = equipmentService;
+        this.equipmentMapper = equipmentMapper;
     }
 
     /**
@@ -73,7 +77,7 @@ public class ZeroEnergyMapper implements BaseMapper {
                 List<EquipmentDto> equipmentDtos = new ArrayList<>();
                 for (Long equipmentId : entity.getTemplateEquipmentIds()) {
                     equipmentService.findById(equipmentId).ifPresent(equipment -> {
-                        equipmentDtos.add(equipmentService.toDto(equipment));
+                        equipmentDtos.add(equipmentMapper.convertToDtoLight(equipment));
                     });
                 }
 

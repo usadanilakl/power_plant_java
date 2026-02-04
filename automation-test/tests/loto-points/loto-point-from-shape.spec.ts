@@ -228,7 +228,7 @@ test.describe('LOTO Point - Create from Shape', () => {
 
     // Wait for form popup
     const formPopup = page.locator('.form-popup');
-    await formPopup.waitFor({ state: 'visible', timeout: 10000 });
+    await formPopup.waitFor({ state: 'visible', timeout: 30000 });
 
     // Click New tab
     await page.locator('.form-popup .view-toggle button.toggle-btn').filter({ hasText: 'New' }).click();

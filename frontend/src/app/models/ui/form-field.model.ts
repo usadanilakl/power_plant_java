@@ -127,7 +127,8 @@ export interface RfFormField {
     | 'equipment-shape-drawer'
     | 'equipment-list-manager'
     | 'zero-energy-phrase-builder'
-    | 'comment';
+    | 'comment'
+    | 'hidden';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select and multi-value-select types
@@ -173,8 +174,8 @@ export interface RfFormField {
     value: any;
   };
 
-  // Context for equipment-list-manager
-  context?: EquipmentListManagerContext;
+  // Context for equipment-list-manager and form groups
+  context?: EquipmentListManagerContext & { [key: string]: any };
 
   // Context for comment input
   commentContext?: {

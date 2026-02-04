@@ -20,21 +20,22 @@ async function openLotoPointDetails(page: Page, row: any): Promise<void> {
   await page.waitForTimeout(500);
 
   // Wait for the form to appear
-  const formPopup = page.locator('.form-popup');
-  await formPopup.waitFor({ state: 'visible', timeout: 10000 });
+  // The popup-overlay is reparented to document.body by RfPopupProjectionComponent,
+  // so it is NOT a descendant of app-rf-popup-projection in the DOM.
+  await page.getByRole('heading', { name: 'Loto Point Form' }).waitFor({ state: 'visible', timeout: 30000 });
 }
 
 /**
  * Opens the CommentsDialog from the comment input in the form
  */
 async function openCommentsDialog(page: Page): Promise<void> {
-  const openDialogBtn = page.locator('.form-popup app-comment-input .open-dialog-btn');
+  const openDialogBtn = page.getByRole('button', { name: 'Add comment' });
   await openDialogBtn.waitFor({ state: 'visible', timeout: 5000 });
   await openDialogBtn.click();
   await page.waitForTimeout(500);
 
-  // Wait for dialog to appear
-  const commentsDialog = page.locator('app-comments-dialog');
+  // Wait for dialog to appear - the comments dialog content is inside a popup reparented to body
+  const commentsDialog = page.locator('.comments-dialog-content');
   await commentsDialog.waitFor({ state: 'visible', timeout: 5000 });
 }
 
@@ -42,7 +43,7 @@ async function openCommentsDialog(page: Page): Promise<void> {
  * Adds a comment in the CommentsDialog
  */
 async function addComment(page: Page, commentText: string, needsAttention: boolean): Promise<void> {
-  const commentsDialog = page.locator('app-comments-dialog');
+  const commentsDialog = page.locator('.comments-dialog-content');
 
   // Type comment text
   const commentTextarea = commentsDialog.locator('textarea.comment-textarea');
@@ -70,18 +71,22 @@ async function addComment(page: Page, commentText: string, needsAttention: boole
  * Closes the CommentsDialog and form popup
  */
 async function closeDialogAndForm(page: Page): Promise<void> {
-  // Close the comments dialog via the popup close button
-  const popupCloseBtn = page.locator('app-rf-popup-projection .close-btn, .popup-close-btn').first();
-  if (await popupCloseBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await popupCloseBtn.click();
-  } else {
-    await page.keyboard.press('Escape');
-  }
-  await page.waitForTimeout(300);
+  // Close the comments dialog - find the close button in the popup that contains comments
+  // Both popups are reparented to body, so use the popup-overlay structure directly
+  const overlays = page.locator('body > .popup-overlay');
+  const overlayCount = await overlays.count();
 
-  // Close the form popup if still open
-  const formPopup = page.locator('.form-popup');
-  if (await formPopup.isVisible({ timeout: 500 }).catch(() => false)) {
+  // Close overlays from last to first (topmost first)
+  for (let i = overlayCount - 1; i >= 0; i--) {
+    const closeBtn = overlays.nth(i).locator('.close-button');
+    if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await closeBtn.click();
+      await page.waitForTimeout(300);
+    }
+  }
+
+  // Fallback: if any overlay is still visible, press Escape
+  if (await overlays.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
   }
@@ -126,7 +131,7 @@ test.describe('LOTO Point Comments', () => {
     console.log(`Added comment: "${commentText}" with needsAttention=true`);
 
     // Verify comment appears in the dialog list
-    const commentsDialog = page.locator('app-comments-dialog');
+    const commentsDialog = page.locator('.comments-dialog-content');
     const commentItem = commentsDialog.locator('.comment-item').filter({ hasText: commentText });
     await expect(commentItem).toBeVisible({ timeout: 5000 });
     console.log('Comment appears in dialog list');
@@ -180,7 +185,7 @@ test.describe('LOTO Point Comments', () => {
       await addComment(page, commentText, needsAttention);
 
       // Verify comment appears in the dialog
-      const commentsDialog = page.locator('app-comments-dialog');
+      const commentsDialog = page.locator('.comments-dialog-content');
       const commentItem = commentsDialog.locator('.comment-item').filter({ hasText: commentText });
       const commentAppeared = await commentItem.isVisible({ timeout: 3000 }).catch(() => false);
       if (commentAppeared) {

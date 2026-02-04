@@ -11,12 +11,42 @@
   background-color: var(--secondary-background);
 }
 
+.form-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
 .form-group-label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.75rem;
   font-size: 1rem;
   color: var(--primary-text);
+  margin-bottom: 0;
+}
+
+.edit-shared-btn {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background: var(--primary-background);
+  color: var(--accent-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-shared-btn:hover {
+  background: var(--accent-color);
+  color: white;
+}
+
+.edit-shared-btn.active {
+  background: var(--status-attention);
+  color: white;
+  border-color: var(--status-attention);
 }
 
 .form-group-fields {

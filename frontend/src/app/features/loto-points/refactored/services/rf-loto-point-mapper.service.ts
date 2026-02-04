@@ -563,6 +563,9 @@ export class LotoPointMapperService {
       type: 'group',
       guideId: 'create-loto-point:field-zeroEnergy',
       guideMessage: 'Configure zero energy verification settings',
+      context: {
+        zeroEnergyId: lotoPoint.zeroEnergy?.id || null,
+      },
       fields: [
         {
           name: 'zeroEnergyTemplate',
@@ -586,6 +589,12 @@ export class LotoPointMapperService {
             requireLotoPointForDrawn: true,  // Require LOTO point creation when drawing new equipment
             requireLotoPointForUnassociated: true,  // Require LOTO point creation for equipment without association
           },
+        },
+        {
+          name: 'editShared',
+          label: '',
+          type: 'hidden',
+          initialValue: false,
         },
       ],
     },
@@ -788,7 +797,8 @@ export class LotoPointMapperService {
       apiModel.zeroEnergy = {
         id: validZeroEnergyId,
         zeroEnergyTemplateId: validTemplateId,
-        templateEquipmentIds: equipmentIds.length > 0 ? equipmentIds : null
+        templateEquipmentIds: equipmentIds.length > 0 ? equipmentIds : null,
+        editShared: (lotoPoint.zeroEnergy as any).editShared || false,
       };
     }
 

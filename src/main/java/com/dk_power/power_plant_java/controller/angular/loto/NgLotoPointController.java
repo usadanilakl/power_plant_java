@@ -399,6 +399,19 @@ public class NgLotoPointController {
     }
 
     /**
+     * Returns how many LotoPoints reference the given ZeroEnergy record.
+     */
+    @GetMapping("/zero-energy/{id}/usage-count")
+    public ResponseEntity<NgApiResponse<Long>> getZeroEnergyUsageCount(@PathVariable Long id) {
+        try {
+            long count = ngZeroEnergyService.getUsageCount(id);
+            return ResponseEntity.ok(new NgApiResponse<>(count, "Usage count retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Migration endpoint to populate the method field for all existing ZeroEnergy records.
      * This should be called once after deploying the change to persist the method field.
      */

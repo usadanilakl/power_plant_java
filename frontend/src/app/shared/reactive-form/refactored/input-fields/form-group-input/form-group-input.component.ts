@@ -1,12 +1,14 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { RfFormField } from '../../../../../models/ui/form-field.model';
 import { SearchableSelectInputComponent } from '../searchable-select-input/searchable-select-input.component';
 import { EquipmentBrowserInputComponent } from '../equipment-browser-input/equipment-browser-input.component';
 import { EquipmentListManagerComponent } from '../equipment-list-manager/equipment-list-manager.component';
 import { RfValueSelectComponent } from '../../../../../features/values/refactored/components/rf-value-select/rf-value-select.component';
 import { ZeroEnergyPhraseBuilderComponent } from '../zero-energy-phrase-builder/zero-energy-phrase-builder.component';
+import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
 
 @Component({
   selector: 'app-form-group-input',
@@ -28,6 +30,12 @@ export class FormGroupInputComponent {
   fields = input<RfFormField[]>([]);
   formGroup = input.required<FormGroup>();
   layout = input<'row' | 'column' | 'grid'>('column');
+  context = input<any>(null);
+
+  // Edit for All state
+  editSharedEnabled = signal(false);
+
+  private lotoPointApi = inject(RfLotoPointApiService);
 
   // Helper to get field options
   getFieldOptions = computed(() => {
@@ -60,6 +68,30 @@ export class FormGroupInputComponent {
     if (templateEquipmentControl && event.templateEquipment) {
       templateEquipmentControl.setValue(event.templateEquipment);
       templateEquipmentControl.markAsDirty();
+    }
+  }
+
+  // Toggle "Edit for All" mode - fetches usage count and shows confirmation
+  async onEditForAllClick(): Promise<void> {
+    if (this.editSharedEnabled()) {
+      this.editSharedEnabled.set(false);
+      this.getFormControl('editShared')?.setValue(false);
+      return;
+    }
+
+    const id = this.context()?.zeroEnergyId;
+    if (!id) return;
+
+    try {
+      const response = await firstValueFrom(this.lotoPointApi.getZeroEnergyUsageCount(id));
+      const count = response.responseData;
+
+      if (confirm(`This zero energy is shared by ${count} LOTO point(s). Changes will affect all of them. Continue?`)) {
+        this.editSharedEnabled.set(true);
+        this.getFormControl('editShared')?.setValue(true);
+      }
+    } catch (e) {
+      console.error('Failed to fetch zero energy usage count', e);
     }
   }
 }
