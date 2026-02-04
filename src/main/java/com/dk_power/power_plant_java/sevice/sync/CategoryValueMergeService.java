@@ -168,7 +168,7 @@ public class CategoryValueMergeService {
 
                 List<?> affected = service.refactorValues(duplicate, canonical);
                 if (!affected.isEmpty()) {
-                    log.debug("Re-pointed {} {} entities from Value #{} to #{}",
+                    log.info("Re-pointed {} {} entities from Value #{} to #{}",
                         affected.size(), entityType, duplicate.getId(), canonical.getId());
                 }
             } catch (Exception e) {

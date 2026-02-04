@@ -220,16 +220,19 @@ public interface NgCrudService<
                 try {
                     if (field.getType().equals(Value.class)) {
                         Value fieldValue = (Value) field.get(entity);
-                        if (fieldValue != null && fieldValue.equals(oldValue)) {
+                        if (fieldValue != null && fieldValue.getId() != null
+                                && fieldValue.getId().equals(oldValue.getId())) {
                             field.set(entity, newValue);
                             entityChanged = true;
                         }
                     } else if (Collection.class.isAssignableFrom(field.getType())) {
                         Collection<?> collection = (Collection<?>) field.get(entity);
-                        if (collection != null && collection.contains(oldValue)) {
-                            // Create a mutable copy to handle immutable collections
+                        if (collection != null) {
                             List<Object> mutableList = new ArrayList<>(collection);
-                            if (mutableList.remove(oldValue)) {
+                            boolean removed = mutableList.removeIf(item ->
+                                    item instanceof Value v && v.getId() != null
+                                            && v.getId().equals(oldValue.getId()));
+                            if (removed) {
                                 mutableList.add(newValue);
                                 field.set(entity, mutableList);
                                 entityChanged = true;
