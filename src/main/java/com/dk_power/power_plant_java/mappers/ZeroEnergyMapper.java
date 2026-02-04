@@ -5,7 +5,6 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
-import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -15,82 +14,108 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class ZeroEnergyMapper implements BaseMapper {
+    /**
+     * Tracks ZeroEnergy IDs currently being converted to prevent infinite recursion.
+     * Cycle: LotoPoint → ZeroEnergy → Equipment → LotoPoint → ZeroEnergy → ...
+     */
+    private static final ThreadLocal<Set<Long>> CONVERTING_IDS = ThreadLocal.withInitial(HashSet::new);
+
     private final ModelMapper modelMapper;
     private final ValueService valueService;
     private final NgZeroEnergyService zeroEnergyService;
     private final LotoPointService lotoPointService;
     private final NgEquipmentService equipmentService;
-    private final EquipmentMapper equipmentMapper;
 
     public ZeroEnergyMapper(ModelMapper modelMapper,
                             ValueService valueService,
                             @Lazy NgZeroEnergyService zeroEnergyService,
                             @Lazy LotoPointService lotoPointService,
-                            @Lazy NgEquipmentService equipmentService,
-                            @Lazy EquipmentMapper equipmentMapper) {
+                            @Lazy NgEquipmentService equipmentService) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.zeroEnergyService = zeroEnergyService;
         this.lotoPointService = lotoPointService;
         this.equipmentService = equipmentService;
-        this.equipmentMapper = equipmentMapper;
     }
 
     /**
      * Converts ZeroEnergy entity to ZeroEnergyDto with full object references.
+     * Uses ThreadLocal cycle detection to prevent infinite recursion when
+     * equipment references a loto point that references this same zero energy.
      */
     public ZeroEnergyDto convertToDto(ZeroEnergy entity) {
         if (entity == null) {
             return null;
         }
 
-        ZeroEnergyDto dto = new ZeroEnergyDto();
-
-        // Base fields
-        if (entity.getId() != null) dto.setId(entity.getId());
-        if (entity.getName() != null) dto.setName(entity.getName());
-        if (entity.getNote() != null) dto.setNote(entity.getNote());
-        if (entity.getDeleted() != null) dto.setDeleted(entity.getDeleted());
-        if (entity.getCreatedBy() != null) dto.setCreatedBy(entity.getCreatedBy());
-        if (entity.getObjectType() != null) dto.setObjectType(entity.getObjectType());
-        if (entity.getDataServiceItemId() != null) dto.setDataServiceItemId(entity.getDataServiceItemId());
-        if (entity.getRefactorNotes() != null) dto.setRefactorNotes(entity.getRefactorNotes());
-        if (entity.getDateCreated() != null) dto.setDateCreated(entity.getDateCreated());
-        if (entity.getDateModified() != null) dto.setDateModified(entity.getDateModified());
-
-        // ZeroEnergy specific fields
-        if (entity.getZeroEnergyTemplate() != null) {
-            dto.setZeroEnergyTemplate(valueService.convertToDto(entity.getZeroEnergyTemplate()));
+        // Cycle detection: if we're already converting this ZeroEnergy, return minimal DTO
+        Set<Long> currentlyConverting = CONVERTING_IDS.get();
+        if (entity.getId() != null && !currentlyConverting.add(entity.getId())) {
+            ZeroEnergyDto minimalDto = new ZeroEnergyDto();
+            minimalDto.setId(entity.getId());
+            if (entity.getMethod() != null) minimalDto.setMethod(entity.getMethod());
+            if (entity.getTemplateEquipmentIds() != null) {
+                minimalDto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
+            }
+            return minimalDto;
         }
 
-        // Set template equipment IDs
-        if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
-            List<Long> list = entity.getTemplateEquipmentIds().stream().filter(e -> e != 0).toList();
-            if(!list.isEmpty()){
-                dto.setTemplateEquipmentIds(new ArrayList<>(list));
+        try {
+            ZeroEnergyDto dto = new ZeroEnergyDto();
 
-                // Load equipment by IDs
-                List<EquipmentDto> equipmentDtos = new ArrayList<>();
-                for (Long equipmentId : entity.getTemplateEquipmentIds()) {
-                    equipmentService.findById(equipmentId).ifPresent(equipment -> {
-                        equipmentDtos.add(equipmentMapper.convertToDtoLight(equipment));
-                    });
+            // Base fields
+            if (entity.getId() != null) dto.setId(entity.getId());
+            if (entity.getName() != null) dto.setName(entity.getName());
+            if (entity.getNote() != null) dto.setNote(entity.getNote());
+            if (entity.getDeleted() != null) dto.setDeleted(entity.getDeleted());
+            if (entity.getCreatedBy() != null) dto.setCreatedBy(entity.getCreatedBy());
+            if (entity.getObjectType() != null) dto.setObjectType(entity.getObjectType());
+            if (entity.getDataServiceItemId() != null) dto.setDataServiceItemId(entity.getDataServiceItemId());
+            if (entity.getRefactorNotes() != null) dto.setRefactorNotes(entity.getRefactorNotes());
+            if (entity.getDateCreated() != null) dto.setDateCreated(entity.getDateCreated());
+            if (entity.getDateModified() != null) dto.setDateModified(entity.getDateModified());
+
+            // ZeroEnergy specific fields
+            if (entity.getZeroEnergyTemplate() != null) {
+                dto.setZeroEnergyTemplate(valueService.convertToDto(entity.getZeroEnergyTemplate()));
+            }
+
+            // Set template equipment IDs
+            if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
+                List<Long> list = entity.getTemplateEquipmentIds().stream().filter(e -> e != 0).toList();
+                if(!list.isEmpty()){
+                    dto.setTemplateEquipmentIds(new ArrayList<>(list));
+
+                    // Load equipment by IDs (full conversion - cycle detected above prevents infinite recursion)
+                    List<EquipmentDto> equipmentDtos = new ArrayList<>();
+                    for (Long equipmentId : entity.getTemplateEquipmentIds()) {
+                        equipmentService.findById(equipmentId).ifPresent(equipment -> {
+                            equipmentDtos.add(equipmentService.toDto(equipment));
+                        });
+                    }
+
+                    dto.setTemplateEquipment(equipmentDtos);
                 }
+            }
 
-                dto.setTemplateEquipment(equipmentDtos);
+            // Use the persisted method field directly (already resolved and stored in DB)
+            if (entity.getMethod() != null) {
+                dto.setMethod(entity.getMethod());
+            }
+
+            return dto;
+        } finally {
+            currentlyConverting.remove(entity.getId());
+            if (currentlyConverting.isEmpty()) {
+                CONVERTING_IDS.remove();
             }
         }
-
-        // Use the persisted method field directly (already resolved and stored in DB)
-        if (entity.getMethod() != null) {
-            dto.setMethod(entity.getMethod());
-        }
-
-        return dto;
     }
 
     /**
