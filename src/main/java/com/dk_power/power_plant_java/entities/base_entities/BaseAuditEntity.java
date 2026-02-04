@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.entities.base_entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
@@ -54,7 +55,7 @@ public boolean equals(Object obj) {
     if (this == obj) {
         return true;
     }
-    if (obj == null || getClass() != obj.getClass()) {
+    if (obj == null || Hibernate.getClass(this) != Hibernate.getClass(obj)) {
         return false;
     }
     BaseAuditEntity otherEntity = (BaseAuditEntity) obj;

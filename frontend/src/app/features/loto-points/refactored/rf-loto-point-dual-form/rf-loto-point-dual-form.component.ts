@@ -118,6 +118,9 @@ export class RfLotoPointDualFormComponent {
     'location',
     'zeroEnergy',
     'equipmentList',
+    'isLabeled',
+    'isLockable',
+    'processingStatus',
   ]);
 
   // Outputs

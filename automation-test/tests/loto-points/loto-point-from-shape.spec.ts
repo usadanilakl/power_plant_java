@@ -212,13 +212,14 @@ test.describe('LOTO Point - Create from Shape', () => {
 
     const timestamp = Date.now();
     const tagNumber = `00-full${timestamp.toString().slice(-3)}`;
+    const uniqueFileName = `loto-full-test-${timestamp.toString().slice(-6)}`;
 
     // Navigate and setup
     await equipmentPage.navigateToLotoBuilder();
     await equipmentPage.selectFilesTab();
 
-    // Ensure test file exists
-    const { fileName, vendorName } = await equipmentPage.ensureTestFileExists();
+    // Create a unique file for this test run to avoid sync conflicts between clients
+    const { fileName, vendorName } = await equipmentPage.createTestFileWithCustomName(uniqueFileName);
 
     // Open file
     await equipmentPage.openFileInViewer(vendorName, fileName, 'pid');
