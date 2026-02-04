@@ -54,10 +54,16 @@ All changes synced:
 
 This works because:
 - The merge operations are **normal JPA field updates** — `FieldChangeEntityListener` creates FieldChange records automatically.
-- The merge runs **outside SyncContext** (after `endSync()` is called), so changes are treated as local changes and synced to all other clients.
+- The merge **clears SyncContext** before running, so changes are treated as local changes and synced to all other clients (see SyncContext clearing below).
 - After all clients receive the merge changes, every machine has the **same canonical IDs** for every entity. No ongoing remapping needed.
 - The merge is **idempotent** — running it multiple times produces no additional changes if duplicates are already resolved.
 - Deterministic canonical selection (lower ID wins) means if two machines both detect and merge the same duplicates independently, they converge to the same result.
+
+### SyncContext clearing
+
+The merge is triggered from `FieldSyncService.applyIncomingChanges()` inside an `afterCommit()` callback. At that point, the thread's `SyncContext.isSyncing()` is still `true` (because `syncContext.endSync()` hasn't been called yet — it runs in the `finally` block of `CentralSyncService.applyIncomingChanges()`, which is after `transactionTemplate.execute()` returns, which is after `afterCommit()` fires).
+
+If `isSyncing()` is true, `FieldChangeEntityListener` skips creating FieldChange records — this prevents dedup soft-deletes from being tracked and synced. To fix this, `CategoryValueMergeService.mergeIfDuplicatesExist()` temporarily clears SyncContext at the start and restores it at the end. This allows the entity listener to fire normally for all dedup changes.
 
 ## Downstream entity handling
 

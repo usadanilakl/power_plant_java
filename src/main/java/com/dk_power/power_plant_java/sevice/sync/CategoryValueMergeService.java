@@ -23,23 +23,38 @@ public class CategoryValueMergeService {
 
     private final ServiceFacade serviceFacade;
     private final EntityTableRegistry entityTableRegistry;
+    private final SyncContext syncContext;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     /**
      * Detect and merge duplicate Categories and Values.
-     * Called after a sync batch is applied.
-     * Runs outside SyncContext so changes are tracked and synced.
+     * Called after a sync batch is applied (in afterCommit callback).
+     *
+     * IMPORTANT: This method temporarily clears SyncContext because it runs
+     * on the sync thread where isSyncing() is still true. Dedup changes are
+     * LOCAL changes that must be tracked by FieldChangeEntityListener and
+     * synced to other machines. Without clearing, the listener skips them.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void mergeIfDuplicatesExist() {
-        int mergedCategories = mergeCategories();
-        int mergedValues = mergeValues();
+        boolean wasSyncing = syncContext.isSyncing();
+        if (wasSyncing) {
+            syncContext.endSync();
+        }
+        try {
+            int mergedCategories = mergeCategories();
+            int mergedValues = mergeValues();
 
-        if (mergedCategories > 0 || mergedValues > 0) {
-            log.info("Merge complete: {} categories, {} values deduplicated",
-                mergedCategories, mergedValues);
+            if (mergedCategories > 0 || mergedValues > 0) {
+                log.info("Merge complete: {} categories, {} values deduplicated",
+                    mergedCategories, mergedValues);
+            }
+        } finally {
+            if (wasSyncing) {
+                syncContext.startSync();
+            }
         }
     }
 

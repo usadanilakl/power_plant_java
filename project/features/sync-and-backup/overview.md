@@ -169,3 +169,6 @@ spring.servlet.multipart.max-request-size=200MB
 | [full-resync.md](full-resync.md) | Disaster recovery via database replacement, safety mechanisms |
 | [partial-resync.md](partial-resync.md) | Date-based recovery using the same pipeline as real-time sync |
 | [full-sync-to-server.md](full-sync-to-server.md) | Server bootstrapping, bulk entity push, field handling |
+| [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration |
+| [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure |
+| [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
