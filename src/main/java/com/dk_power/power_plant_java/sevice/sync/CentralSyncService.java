@@ -172,13 +172,17 @@ public class CentralSyncService {
 
         // Circuit breaker: if too many consecutive failures, back off
         if (consecutiveFailures.get() >= MAX_CONSECUTIVE_FAILURES) {
-            log.warn("Too many consecutive sync failures ({}), backing off", consecutiveFailures.get());
-            // Reset after some failures to allow retry
-            if (consecutiveFailures.get() > MAX_CONSECUTIVE_FAILURES * 2) {
+            int failures = consecutiveFailures.incrementAndGet();
+            // Self-healing: after enough blocked attempts, reset and retry
+            if (failures > MAX_CONSECUTIVE_FAILURES * 2) {
+                log.info("Circuit breaker self-healing after {} failures, retrying sync", failures);
                 consecutiveFailures.set(0);
+                // Fall through to attempt sync
+            } else {
+                log.warn("Too many consecutive sync failures ({}), backing off", failures);
+                syncing.set(false); // Release the lock we acquired
+                return new SyncResult(false, "Circuit breaker open - too many failures", 0, 0, 0);
             }
-            syncing.set(false); // Release the lock we acquired
-            return new SyncResult(false, "Circuit breaker open - too many failures", 0, 0, 0);
         }
 
         // syncing is already true from compareAndSet above

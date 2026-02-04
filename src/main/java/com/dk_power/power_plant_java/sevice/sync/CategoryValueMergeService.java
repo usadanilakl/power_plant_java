@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -153,10 +155,9 @@ public class CategoryValueMergeService {
      * Re-point all references from duplicate Value to canonical Value
      * across all registered entity types.
      *
-     * Uses each service's refactorValues() method which handles
-     * reflection-based field discovery and update.
-     * Each updated entity triggers FieldChangeEntityListener,
-     * so changes sync to all other clients automatically.
+     * Uses direct JPQL queries via this service's EntityManager to find and
+     * update entities referencing the duplicate Value. Each updated entity
+     * triggers FieldChangeEntityListener on flush, so changes sync automatically.
      */
     private void refactorAllReferences(Value duplicate, Value canonical) {
         for (String entityType : entityTableRegistry.getSyncOrder()) {
@@ -166,10 +167,58 @@ public class CategoryValueMergeService {
                 SyncableService<?> service = serviceFacade.getService(entityType);
                 if (service == null) continue;
 
-                List<?> affected = service.refactorValues(duplicate, canonical);
-                if (!affected.isEmpty()) {
+                // Get actual entity class from service
+                Class<?> entityClass = service.getEntity().getClass();
+
+                // Find all Value-typed fields via reflection on the class hierarchy
+                List<Field> valueFields = new ArrayList<>();
+                Class<?> cls = entityClass;
+                while (cls != null && !cls.equals(Object.class)) {
+                    for (Field field : cls.getDeclaredFields()) {
+                        if (field.getType().equals(Value.class)) {
+                            valueFields.add(field);
+                        }
+                    }
+                    cls = cls.getSuperclass();
+                }
+
+                if (valueFields.isEmpty()) continue;
+
+                // Build JPQL to find entities referencing the duplicate Value
+                StringBuilder jpql = new StringBuilder("SELECT e FROM ")
+                        .append(entityType).append(" e WHERE ");
+                for (int i = 0; i < valueFields.size(); i++) {
+                    if (i > 0) jpql.append(" OR ");
+                    jpql.append("e.").append(valueFields.get(i).getName()).append(".id = :dupId");
+                }
+
+                List<?> entities = entityManager.createQuery(jpql.toString())
+                        .setParameter("dupId", duplicate.getId())
+                        .getResultList();
+
+                if (entities.isEmpty()) continue;
+
+                // Update each entity's Value fields from duplicate to canonical
+                int updated = 0;
+                for (Object entity : entities) {
+                    boolean changed = false;
+                    for (Field field : valueFields) {
+                        field.setAccessible(true);
+                        Value fieldValue = (Value) field.get(entity);
+                        if (fieldValue != null && duplicate.getId().equals(fieldValue.getId())) {
+                            field.set(entity, canonical);
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        entityManager.merge(entity);
+                        updated++;
+                    }
+                }
+
+                if (updated > 0) {
                     log.info("Re-pointed {} {} entities from Value #{} to #{}",
-                        affected.size(), entityType, duplicate.getId(), canonical.getId());
+                            updated, entityType, duplicate.getId(), canonical.getId());
                 }
             } catch (Exception e) {
                 log.warn("Error re-pointing {} references: {}", entityType, e.getMessage());
