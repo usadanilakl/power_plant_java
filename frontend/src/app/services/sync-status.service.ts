@@ -374,4 +374,15 @@ export interface SyncHealthCheckResult {
   lastSuccessfulSyncTime: string | null; // When was the last successful sync
   recommendation: string | null;       // Human-readable recommendation message
   consecutiveOutOfSyncCount: number;   // How many consecutive checks were out of sync
+  autoResyncState: AutoResyncState | null; // Current auto-resync escalation state
+}
+
+export interface AutoResyncState {
+  escalationLevel: number;
+  lastAttemptTime: string | null;
+  lastAttemptSuccess: boolean;
+  lastAttemptDate: string | null;
+  lastAttemptMessage: string | null;
+  autoResyncExhausted: boolean;
+  autoResyncInProgress: boolean;
 }

@@ -199,9 +199,10 @@ private int mergeCategoriesByName(String name) {
             valueRepo.save(value);
         }
 
-        // Soft-delete the duplicate Category
+        // Soft-delete via JPA merge so FieldChangeEntityListener fires
         duplicate.setDeleted(true);
-        categoryRepo.save(duplicate);
+        entityManager.merge(duplicate);
+        entityManager.flush();
         merged++;
 
         log.info("Category merge: '{}' ID={} merged into ID={}, {} values re-pointed",
@@ -238,9 +239,10 @@ private int mergeValuesByNameAndCategory(String name, Long categoryId) {
         Value duplicate = values.get(i);
         refactorAllReferences(duplicate, canonical);
 
-        // Soft-delete the duplicate Value
+        // Soft-delete via JPA merge so FieldChangeEntityListener fires
         duplicate.setDeleted(true);
-        valueRepo.save(duplicate);
+        entityManager.merge(duplicate);
+        entityManager.flush();
         merged++;
 
         log.info("Value merge: '{}' (cat={}) ID={} merged into ID={}",
@@ -356,7 +358,7 @@ When a duplicate Value under the "Vendor" or "File Type" category is merged, fil
 
 **Both machines merge simultaneously**: If Machine A and Machine B both detect duplicates and run the merge independently, they both pick the same canonical ID (lower ID wins — deterministic). Both produce the same changes (re-point to same canonical, delete same duplicate). When these changes cross-sync, LWW resolves them — identical changes with similar timestamps produce the same end state.
 
-**Deleted entities**: Duplicate detection filters by `deleted = false`. Soft-deleted entities are excluded from merges.
+**Deleted entities**: Duplicate detection filters by `deleted = false`. Soft-deleted entities are excluded from merges. Soft-deletes are performed via JPA merge (not native SQL) so that `FieldChangeEntityListener` fires and creates FieldChange records — this ensures the deletion syncs to other machines and prevents permanent count mismatches in the health checker.
 
 **Case sensitivity**: Duplicate detection uses `LOWER(name)` for case-insensitive matching, consistent with `Category.getValueByName()`.
 

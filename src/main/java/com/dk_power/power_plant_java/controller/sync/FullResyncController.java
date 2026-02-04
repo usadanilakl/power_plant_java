@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.sync;
 
+import com.dk_power.power_plant_java.sevice.sync.AutoResyncService;
 import com.dk_power.power_plant_java.sevice.sync.FullResyncService;
 import com.dk_power.power_plant_java.sevice.sync.FullResyncService.*;
 import com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker;
@@ -29,6 +30,7 @@ public class FullResyncController {
 
     private final FullResyncService fullResyncService;
     private final SyncHealthChecker syncHealthChecker;
+    private final AutoResyncService autoResyncService;
 
     /**
      * Get current sync health status.
@@ -191,5 +193,25 @@ public class FullResyncController {
         } else {
             return ResponseEntity.badRequest().body(result);
         }
+    }
+
+    // ==================== AUTO-RESYNC ENDPOINTS ====================
+
+    /**
+     * Get current auto-resync state (escalation level, last attempt, etc.).
+     */
+    @GetMapping("/auto-resync/state")
+    public ResponseEntity<AutoResyncService.AutoResyncState> getAutoResyncState() {
+        return ResponseEntity.ok(autoResyncService.getCurrentState());
+    }
+
+    /**
+     * Reset auto-resync state. Use when the user wants to retry automatic
+     * resync after exhaustion, or after a manual resync.
+     */
+    @PostMapping("/auto-resync/reset")
+    public ResponseEntity<Map<String, String>> resetAutoResyncState() {
+        autoResyncService.resetState();
+        return ResponseEntity.ok(Map.of("message", "Auto-resync state reset"));
     }
 }

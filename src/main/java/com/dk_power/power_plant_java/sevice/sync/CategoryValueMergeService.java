@@ -84,13 +84,11 @@ public class CategoryValueMergeService {
                 entityManager.merge(value);
             }
 
-            // Use native SQL to soft-delete — @Where(clause = "deleted = false") on Category
-            // prevents JPA from updating entities that have deleted=true
-            entityManager.createNativeQuery(
-                "UPDATE category SET deleted = true WHERE id = :id")
-                .setParameter("id", duplicate.getId())
-                .executeUpdate();
-            entityManager.detach(duplicate);
+            // Soft-delete via JPA so FieldChangeEntityListener fires and creates
+            // a FieldChange record — this ensures the deletion syncs to other machines.
+            duplicate.setDeleted(true);
+            entityManager.merge(duplicate);
+            entityManager.flush();
             merged++;
 
             log.info("Category merge: '{}' ID={} merged into ID={}, {} values re-pointed",
@@ -135,13 +133,11 @@ public class CategoryValueMergeService {
             Value duplicate = values.get(i);
             refactorAllReferences(duplicate, canonical);
 
-            // Use native SQL to soft-delete — @Where(clause = "deleted = false") on Value
-            // prevents JPA from updating entities that have deleted=true
-            entityManager.createNativeQuery(
-                "UPDATE val_table SET deleted = true WHERE id = :id")
-                .setParameter("id", duplicate.getId())
-                .executeUpdate();
-            entityManager.detach(duplicate);
+            // Soft-delete via JPA so FieldChangeEntityListener fires and creates
+            // a FieldChange record — this ensures the deletion syncs to other machines.
+            duplicate.setDeleted(true);
+            entityManager.merge(duplicate);
+            entityManager.flush();
             merged++;
 
             log.info("Value merge: '{}' (cat={}) ID={} merged into ID={}",

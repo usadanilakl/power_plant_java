@@ -370,6 +370,16 @@ export class FullResyncService {
     );
   }
 
+  // ==================== AUTO-RESYNC METHODS ====================
+
+  /**
+   * Reset auto-resync state. Use when the user wants to retry automatic
+   * resync after exhaustion, or after a manual resync.
+   */
+  resetAutoResyncState(): Observable<any> {
+    return this.http.post(`${this.baseUrl}/auto-resync/reset`, {});
+  }
+
   // ==================== FULL SYNC TO SERVER METHODS ====================
 
   private fieldSyncUrl = `${environment.baseApiUrl}/api/field-sync`;

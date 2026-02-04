@@ -11,6 +11,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+
 import java.nio.file.*;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -56,6 +59,11 @@ public class SyncHealthChecker {
     // Track last successful sync date (when status was IN_SYNC)
     private final AtomicReference<Instant> lastSuccessfulSyncTime = new AtomicReference<>(null);
 
+    // Lazy-injected to avoid circular dependency (AutoResyncService depends on this)
+    @Autowired
+    @Lazy
+    private AutoResyncService autoResyncService;
+
     // Track how many consecutive OUT_OF_SYNC checks have occurred
     private int consecutiveOutOfSyncCount = 0;
 
@@ -97,7 +105,21 @@ public class SyncHealthChecker {
             // Track last successful sync and consecutive failures
             updateSyncTracking(result);
 
+            // Attach auto-resync state for frontend visibility
+            if (autoResyncService != null) {
+                result.setAutoResyncState(autoResyncService.getCurrentState());
+            }
+
             currentHealth.set(result);
+
+            // Trigger auto-resync evaluation
+            try {
+                if (autoResyncService != null) {
+                    autoResyncService.evaluateAndTrigger(result);
+                }
+            } catch (Exception e) {
+                log.debug("Auto-resync evaluation failed: {}", e.getMessage());
+            }
 
             // Log if out of sync
             if (result.getSyncStatus() == SyncStatus.OUT_OF_SYNC) {
@@ -416,6 +438,7 @@ public class SyncHealthChecker {
         private Instant lastSuccessfulSyncTime;     // When was the last successful sync
         private String recommendation;              // Human-readable recommendation message
         private int consecutiveOutOfSyncCount;      // How many consecutive checks were out of sync
+        private AutoResyncService.AutoResyncState autoResyncState; // Current auto-resync escalation state
     }
 
     @Data

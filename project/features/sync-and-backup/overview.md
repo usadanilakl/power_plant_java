@@ -13,8 +13,9 @@ Multi-machine synchronization system that keeps entity data and physical files c
 | 5 | Full disaster recovery | Downloads H2 backup, replaces entire database | [full-resync.md](full-resync.md) |
 | 6 | Bootstrap / repopulate sync server | Converts all local entities to FieldChange records, pushes to server | [full-sync-to-server.md](full-sync-to-server.md) |
 | 7 | Physical file sync | Upload/download queue via sync server file storage | [file-sync.md](file-sync.md) |
+| 8 | Automatic resync on health check failure | Escalating partial resyncs triggered by background health checker | [auto-resync.md](auto-resync.md) |
 
-Scenarios 1–4 all converge on the same code path: `FieldSyncService.applyIncomingChanges()`.
+Scenarios 1–4 and 8 all converge on the same code path: `FieldSyncService.applyIncomingChanges()`.
 
 # Architecture
 

@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
 import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
+import { FullResyncService } from '../../services/full-resync.service';
 
 /**
  * Sync status indicator component for the header.
@@ -87,10 +88,23 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
               }
             </div>
 
-            @if (suggestResync()) {
+            @if (autoResyncInProgress()) {
+              <div class="resync-suggestion auto-resync-active">
+                <mat-icon class="spin">sync</mat-icon>
+                Auto-resync in progress (attempt {{ autoResyncLevel() + 1 }} of 5)...
+              </div>
+            } @else if (autoResyncExhausted()) {
+              <div class="resync-suggestion auto-resync-failed">
+                Automatic resync attempts exhausted. Manual full resync recommended.
+                <div class="resync-actions">
+                  <button mat-stroked-button color="warn" (click)="goToDashboard()">Full Resync</button>
+                  <button mat-stroked-button (click)="resetAutoResync()">Retry Auto</button>
+                </div>
+              </div>
+            } @else if (suggestResync()) {
               <div class="resync-suggestion">
                 @if (suggestedSyncDate()) {
-                  Resync recommended from {{ suggestedSyncDate() }}
+                  Auto-resync will attempt from {{ suggestedSyncDate() }}
                 } @else {
                   Full resync recommended
                 }
@@ -310,6 +324,35 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
       border-radius: 0 4px 4px 0;
     }
 
+    .resync-suggestion.auto-resync-active {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .resync-suggestion.auto-resync-active .spin {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      animation: spin 1.5s linear infinite;
+    }
+
+    .resync-suggestion.auto-resync-failed {
+      background: rgba(244, 67, 54, 0.1);
+      border-left-color: #f44336;
+    }
+
+    .resync-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
     .toggle-row {
       display: flex;
       align-items: center;
@@ -353,6 +396,7 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
 export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
   private syncStatusService = inject(SyncStatusService);
+  private fullResyncService = inject(FullResyncService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
@@ -367,6 +411,9 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   syncHealthMessage = signal<string>('');
   suggestResync = signal<boolean>(false);
   suggestedSyncDate = signal<string | null>(null);
+  autoResyncInProgress = signal<boolean>(false);
+  autoResyncExhausted = signal<boolean>(false);
+  autoResyncLevel = signal<number>(0);
   recentUpdateCount = signal<number>(0);
   syncEnabled = signal<boolean>(true);
   syncStatus = signal<SyncStatus | null>(null);
@@ -479,6 +526,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
           this.syncHealthMessage.set(health.message || '');
           this.suggestResync.set(health.suggestResync || false);
           this.suggestedSyncDate.set(health.suggestedSyncDate || null);
+          if (health.autoResyncState) {
+            this.autoResyncInProgress.set(health.autoResyncState.autoResyncInProgress);
+            this.autoResyncExhausted.set(health.autoResyncState.autoResyncExhausted);
+            this.autoResyncLevel.set(health.autoResyncState.escalationLevel);
+          }
         }
       })
     );
@@ -563,6 +615,13 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   goToDashboard(): void {
     this.closePopover();
     this.router.navigate(['/sync']);
+  }
+
+  resetAutoResync(): void {
+    this.fullResyncService.resetAutoResyncState().subscribe(() => {
+      this.autoResyncExhausted.set(false);
+      this.autoResyncLevel.set(0);
+    });
   }
 
   private loadSyncToggleState(): void {
