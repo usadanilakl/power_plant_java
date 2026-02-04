@@ -54,6 +54,7 @@ public class FieldSyncService {
     private final FileRepo fileRepo;
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final EntityTableRegistry entityTableRegistry;
+    private final CategoryValueMergeService categoryValueMergeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -74,7 +75,8 @@ public class FieldSyncService {
             NgFileService ngFileService,
             FileRepo fileRepo,
             FileObjectSyncHandler fileObjectSyncHandler,
-            EntityTableRegistry entityTableRegistry) {
+            EntityTableRegistry entityTableRegistry,
+            CategoryValueMergeService categoryValueMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -89,6 +91,7 @@ public class FieldSyncService {
         this.fileRepo = fileRepo;
         this.fileObjectSyncHandler = fileObjectSyncHandler;
         this.entityTableRegistry = entityTableRegistry;
+        this.categoryValueMergeService = categoryValueMergeService;
     }
 
     /**
@@ -551,6 +554,15 @@ public class FieldSyncService {
                             log.error("Value name change transaction failed: {}", e.getMessage(), e);
                         }
                     }
+
+                    // Merge duplicate Categories and Values created by independent clients
+                    try {
+                        transactionTemplate.executeWithoutResult(status -> {
+                            categoryValueMergeService.mergeIfDuplicatesExist();
+                        });
+                    } catch (Exception e) {
+                        log.error("Category/Value merge failed: {}", e.getMessage(), e);
+                    }
                 }
             });
         } else {
@@ -566,6 +578,13 @@ public class FieldSyncService {
             // Handle Value name changes (delete old Vendor/FileType folders)
             if (!valueNameChanges.isEmpty()) {
                 handleValueNameChangesForFileStructure(valueNameChanges);
+            }
+
+            // Merge duplicate Categories and Values created by independent clients
+            try {
+                categoryValueMergeService.mergeIfDuplicatesExist();
+            } catch (Exception e) {
+                log.error("Category/Value merge failed: {}", e.getMessage(), e);
             }
         }
 

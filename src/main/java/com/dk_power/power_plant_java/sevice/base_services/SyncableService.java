@@ -1,10 +1,12 @@
 package com.dk_power.power_plant_java.sevice.base_services;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -34,4 +36,8 @@ public interface SyncableService<E extends BaseIdEntity> {
     Page<E> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable);
 
     Page<E> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable);
+
+    default List<E> refactorValues(Value oldValue, Value newValue) {
+        return new ArrayList<>();
+    }
 }
