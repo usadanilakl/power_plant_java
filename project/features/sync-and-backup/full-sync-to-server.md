@@ -52,6 +52,7 @@ SafeWork → HotWork → ConfinedSpace → WorkRequest → DailyPermitPackage
 ## Field handling
 
 - Uses reflection with caching to introspect entity fields.
+- Each page of entities is read within a `TransactionTemplate` block to keep entities managed. This is required because `@ManyToMany` defaults to `FetchType.LAZY` — without an active persistence context, accessing lazy collections via reflection throws `LazyInitializationException`.
 - Excludes system fields: `id`, `dateCreated`, `dateModified`, `hibernateLazyInitializer`, etc.
 - Skips `@Transient` and `@JsonIgnore` fields.
 - Skips reverse `@OneToMany` relationships to avoid duplication.

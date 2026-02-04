@@ -37,6 +37,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
@@ -73,6 +74,7 @@ public class FullSyncToServerService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final FileObjectSyncHandler fileObjectSyncHandler;
+    private final TransactionTemplate transactionTemplate;
 
     // Repositories for all syncable entities
     private final CategoryRepo categoryRepo;
@@ -310,40 +312,55 @@ public class FullSyncToServerService {
         List<FieldChange> batchChanges = new ArrayList<>();
 
         while (true) {
-            // Read a page of entities
-            Pageable pageable = PageRequest.of(page, PAGE_SIZE);
-            Page<?> entityPage = repo.findAll(pageable);
+            // Read a page of entities and create FieldChanges within a transaction.
+            // This is critical: @ManyToMany defaults to FetchType.LAZY, so accessing
+            // lazy collections via reflection requires an active persistence context.
+            // Without a transaction, entities are detached after findAll() returns,
+            // and lazy loading throws LazyInitializationException (silently caught).
+            final Pageable pageable = PageRequest.of(page, PAGE_SIZE);
+            final int currentPage = page;
+            List<FieldChange> pageChanges = transactionTemplate.execute(status -> {
+                status.setRollbackOnly(); // Read-only — no writes needed
+                Page<?> entityPage = repo.findAll(pageable);
 
-            if (entityPage.isEmpty()) {
+                if (entityPage.isEmpty()) {
+                    return Collections.<FieldChange>emptyList();
+                }
+
+                List<FieldChange> result = new ArrayList<>();
+                for (Object entity : entityPage.getContent()) {
+                    if (entity instanceof BaseIdEntity baseEntity) {
+                        result.addAll(createFieldChangesForEntity(config.entityType, baseEntity));
+                    }
+                }
+                return result;
+            });
+
+            if (pageChanges == null || pageChanges.isEmpty()) {
                 break;
             }
 
-            // Create FieldChanges for each entity
-            for (Object entity : entityPage.getContent()) {
-                if (entity instanceof BaseIdEntity baseEntity) {
-                    List<FieldChange> changes = createFieldChangesForEntity(config.entityType, baseEntity);
-                    for (FieldChange change : changes) {
-                        if ("ManyToMany".equals(change.getRelationshipType())) {
-                            deferredManyToMany.add(change);
-                        } else {
-                            batchChanges.add(change);
-                        }
+            // Separate ManyToMany changes for deferred sending
+            for (FieldChange change : pageChanges) {
+                if ("ManyToMany".equals(change.getRelationshipType())) {
+                    deferredManyToMany.add(change);
+                } else {
+                    batchChanges.add(change);
+                }
+
+                // Send batch when it reaches size limit
+                if (batchChanges.size() >= BATCH_SIZE) {
+                    BatchSendResult result = sendBatch(batchChanges);
+                    sentCount += result.sent;
+                    failedCount += result.failed;
+
+                    // Track failed batches for potential retry
+                    if (result.failed > 0 && result.errorMessage != null) {
+                        currentStatus.recordFailedBatch(config.entityType, currentPage, batchIndex, result.errorMessage);
                     }
 
-                    // Send batch when it reaches size limit
-                    if (batchChanges.size() >= BATCH_SIZE) {
-                        BatchSendResult result = sendBatch(batchChanges);
-                        sentCount += result.sent;
-                        failedCount += result.failed;
-
-                        // Track failed batches for potential retry
-                        if (result.failed > 0 && result.errorMessage != null) {
-                            currentStatus.recordFailedBatch(config.entityType, page, batchIndex, result.errorMessage);
-                        }
-
-                        batchChanges.clear();
-                        batchIndex++;
-                    }
+                    batchChanges.clear();
+                    batchIndex++;
                 }
             }
 
