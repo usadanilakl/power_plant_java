@@ -144,6 +144,19 @@ sync.compaction.enabled=true            # Keep only latest change per field
 | ServerEntitySyncService | Applies changes to mirror entity tables on server |
 | ClientInfo entity | Tracks machineId, lastSeen, lastSyncTime, status (ONLINE/OFFLINE/SYNCING) |
 
+## File deletion safety
+
+When file-related fields change (fileNumber, fileType, vendor, extension), the sync handler deletes old files at the previous path. Three layers of protection prevent false deletion:
+
+1. **Path comparison** — `deleteOldFilesAfterPathChanges()` compares old and new folder paths before deleting. If paths are identical (e.g., dedup re-points vendor FK to a different Value with the same name), deletion is skipped entirely.
+
+2. **Active FileObject guard** — Before deleting any file, `findActiveOwner(fileNumber, folderPath)` checks whether a non-deleted FileObject still references the file at that path. If the file is owned by an active entity, deletion is skipped and the file is queued for upload to the server instead.
+   [FileObjectSyncHandler](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/FileObjectSyncHandler.java)
+
+3. **Upload recovery** — FAILED file uploads are reset to PENDING on application startup and periodically every 5 minutes (`recoverFailedUploads()`). This ensures files eventually reach the server even after extended outages.
+
+The `deleteOldFoldersAfterDownload()` method uses selective per-file deletion rather than recursive directory deletion, applying the same `findActiveOwner()` guard to each file individually. Empty directories are cleaned up only after all files have been processed.
+
 ## Known issues (resolved)
 
 **ManyToOne references lost in batch sync** — Equipment reference in ZeroEnergy lost after partial sync. Root cause: entities processed in random HashMap order + Pass 3 operated on detached entities after `entityManager.clear()`. Fix: SYNC_ORDER processing + Pass 3 re-loads managed entity and explicitly saves.

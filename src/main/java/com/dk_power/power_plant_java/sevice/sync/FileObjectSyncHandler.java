@@ -391,6 +391,15 @@ public class FileObjectSyncHandler {
                     log.info("Found {} files to delete in {} for fileNumber {}",
                         oldFiles.size(), oldFolderPath, oldFileNumber);
 
+                    // Safety guard: check if the file still belongs to an active FileObject
+                    FileObject owner = findActiveOwner(oldFileNumber, oldFolder);
+                    if (owner != null) {
+                        log.warn("Files at {} belong to active FileObject #{}, skipping deletion and queueing upload",
+                            oldFolderPath, owner.getId());
+                        queueFileUpload(owner);
+                        continue; // Don't delete — file is still needed
+                    }
+
                     for (File oldFile : oldFiles) {
                         try {
                             Files.deleteIfExists(oldFile.toPath());
@@ -456,39 +465,48 @@ public class FileObjectSyncHandler {
 
             try {
                 Path path = Paths.get(trimmedPath);
-                if (Files.exists(path)) {
-                    // Delete directory recursively
-                    deleteDirectoryRecursively(path);
-                    log.info("Deleted old folder after download: {}", path);
-
-                    // Clean up empty parent directories
-                    cleanupEmptyDirectories(path.getParent());
-                } else {
+                if (!Files.exists(path)) {
                     log.debug("Old folder no longer exists (already deleted?): {}", path);
+                    continue;
+                }
+
+                // Selective deletion: check each file before deleting to protect
+                // files that belong to active FileObjects
+                boolean skippedAny = false;
+                try (var stream = Files.walk(path)) {
+                    List<Path> files = stream
+                        .filter(Files::isRegularFile)
+                        .collect(java.util.stream.Collectors.toList());
+
+                    for (Path file : files) {
+                        String fileName = file.getFileName().toString();
+                        // Extract fileNumber: strip extension and revision suffix
+                        String baseName = fileName.replaceAll("(-rev\\d+)?\\.[^.]+$", "");
+
+                        FileObject owner = findActiveOwner(baseName, trimmedPath);
+                        if (owner != null) {
+                            log.warn("File {} in old folder belongs to active FileObject #{}, skipping and queueing upload",
+                                fileName, owner.getId());
+                            queueFileUpload(owner);
+                            skippedAny = true;
+                        } else {
+                            Files.deleteIfExists(file);
+                            log.info("Deleted old file after download: {}", file);
+                        }
+                    }
+                }
+
+                // Only clean up directories if all files were deleted
+                if (!skippedAny) {
+                    cleanupEmptyDirectories(path);
+                } else {
+                    // Still try to clean up empty subdirectories
+                    cleanupEmptyDirectories(path);
                 }
             } catch (Exception e) {
-                log.warn("Failed to delete old folder {}: {}", trimmedPath, e.getMessage());
+                log.warn("Failed to process old folder {}: {}", trimmedPath, e.getMessage());
             }
         }
-    }
-
-    /**
-     * Delete a directory recursively.
-     */
-    private void deleteDirectoryRecursively(Path directory) throws IOException {
-        if (!Files.exists(directory)) {
-            return;
-        }
-
-        Files.walk(directory)
-            .sorted(Comparator.reverseOrder())
-            .forEach(path -> {
-                try {
-                    Files.delete(path);
-                } catch (IOException e) {
-                    log.warn("Failed to delete {}: {}", path, e.getMessage());
-                }
-            });
     }
 
     /**
@@ -518,6 +536,34 @@ public class FileObjectSyncHandler {
             log.debug("Could not parse Value ID '{}', using as-is", valueIdStr);
             return valueIdStr;
         }
+    }
+
+    /**
+     * Check if a file belongs to an active (non-deleted) FileObject at its current path.
+     * Used as a safety guard before deleting files during sync operations.
+     *
+     * @param fileNumber the file number extracted from the file being deleted
+     * @param folderPath the relative folder path (e.g., "uploads/pdf/Manuals/Acme")
+     * @return the FileObject if active and path matches, null otherwise
+     */
+    private FileObject findActiveOwner(String fileNumber, String folderPath) {
+        if (fileNumber == null || folderPath == null) return null;
+
+        FileObject fo = fileRepo.findByFileNumber(fileNumber);
+        if (fo == null) return null; // @Where filters deleted=false
+
+        // Check if any of the FileObject's current extension folders match
+        for (String ext : fo.getExtensionsArray()) {
+            try {
+                String currentFolder = fo.buildFolder(ext.trim());
+                if (currentFolder != null && currentFolder.equals(folderPath)) {
+                    return fo;
+                }
+            } catch (Exception e) {
+                // buildFolder can NPE if fileType/vendor is null
+            }
+        }
+        return null;
     }
 
     /**

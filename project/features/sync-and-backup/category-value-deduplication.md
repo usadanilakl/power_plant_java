@@ -65,6 +65,14 @@ The merge is triggered from `FieldSyncService.applyIncomingChanges()` inside an 
 
 If `isSyncing()` is true, `FieldChangeEntityListener` skips creating FieldChange records — this prevents dedup soft-deletes from being tracked and synced. To fix this, `CategoryValueMergeService.mergeIfDuplicatesExist()` temporarily clears SyncContext at the start and restores it at the end. This allows the entity listener to fire normally for all dedup changes.
 
+### File deletion safety
+
+When dedup re-points FileObject FK references (vendor/fileType), the file sync handler has three layers of protection against false file deletion:
+
+1. **Path comparison**: Skips deletion when old path == new path (same Value name, different ID). This is the most common dedup case.
+2. **FileObject guard**: Before deleting any file, `findActiveOwner()` checks if an active (non-deleted) FileObject still references it at that path. If yes, skips deletion and queues the file for upload to the server instead.
+3. **Upload recovery**: FAILED upload tasks are periodically reset and retried (every 5 minutes), ensuring files eventually reach the server even if initial uploads failed while the server was offline.
+
 ## Downstream entity handling
 
 When a duplicate Value is merged into the canonical Value, **all 25 FK columns across 11 entity types** that reference `val_table` must be checked and re-pointed. The existing `refactorValues(Value oldValue, Value newValue)` method in `NgCrudService` already handles this — it uses reflection to find all `@ManyToOne` fields of type `Value` on any entity and updates them.
