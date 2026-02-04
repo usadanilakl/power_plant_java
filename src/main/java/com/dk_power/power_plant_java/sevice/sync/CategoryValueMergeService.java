@@ -2,8 +2,6 @@ package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
-import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import jakarta.persistence.EntityManager;
@@ -20,8 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryValueMergeService {
 
-    private final CategoryRepo categoryRepo;
-    private final ValueRepo valueRepo;
     private final ServiceFacade serviceFacade;
     private final EntityTableRegistry entityTableRegistry;
 
@@ -82,11 +78,16 @@ public class CategoryValueMergeService {
 
             for (Value value : values) {
                 value.setCategory(canonical);
-                valueRepo.save(value);
+                entityManager.merge(value);
             }
 
-            duplicate.setDeleted(true);
-            categoryRepo.save(duplicate);
+            // Use native SQL to soft-delete — @Where(clause = "deleted = false") on Category
+            // prevents JPA from updating entities that have deleted=true
+            entityManager.createNativeQuery(
+                "UPDATE category SET deleted = true WHERE id = :id")
+                .setParameter("id", duplicate.getId())
+                .executeUpdate();
+            entityManager.detach(duplicate);
             merged++;
 
             log.info("Category merge: '{}' ID={} merged into ID={}, {} values re-pointed",
@@ -131,8 +132,13 @@ public class CategoryValueMergeService {
             Value duplicate = values.get(i);
             refactorAllReferences(duplicate, canonical);
 
-            duplicate.setDeleted(true);
-            valueRepo.save(duplicate);
+            // Use native SQL to soft-delete — @Where(clause = "deleted = false") on Value
+            // prevents JPA from updating entities that have deleted=true
+            entityManager.createNativeQuery(
+                "UPDATE val_table SET deleted = true WHERE id = :id")
+                .setParameter("id", duplicate.getId())
+                .executeUpdate();
+            entityManager.detach(duplicate);
             merged++;
 
             log.info("Value merge: '{}' (cat={}) ID={} merged into ID={}",

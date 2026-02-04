@@ -140,3 +140,28 @@ Both client-side and sync server require explicit registration of the new Commen
     - Add CommentRepository to constructor injection
     - Add "Comment" case to createEntity() switch
     - Add "Comment" case to getRepository() switch
+
+## Real-Time Updates
+
+Comments are a separate entity from their parent entities (LotoPoint, Equipment, etc.).
+When a comment is created/updated/deleted, the parent entity's SSE event does NOT fire — only a `Comment` SSE event fires.
+This means comment cells and the log page need their own update mechanism.
+
+### How it works
+
+`CommentsDialogService` acts as the central hub for comment change notifications:
+
+1. **Local mutations** (same client): After any comment create/edit/delete/resolve in `CommentsDialogComponent`,
+   `dialogService.emitCommentChanged(entityType, entityId)` is called with the parent entity reference.
+   This allows targeted reload — only the matching `CommentCellComponent` refreshes.
+
+2. **Cross-client updates** (SSE): `CommentsDialogService` subscribes to `SyncUpdateService.getEntityTypeUpdates$('Comment')`.
+   When a Comment SSE event arrives, it extracts parent entity info (`entityType`, `entityId` fields) from the
+   `changes` array when available (CREATE events). For UPDATE/DELETE events where parent info isn't in changes,
+   it broadcasts `null` to reload all visible cells.
+
+3. **Consumers**:
+   - `CommentCellComponent` subscribes to `commentChanged$` and calls `loadPreview()` when matching or on broadcast.
+   - `LogTableComponent` subscribes to `commentChanged$` and reloads its paginated data.
+
+All subscriptions are debounced (300ms) to batch rapid changes and use `takeUntilDestroyed` for cleanup.

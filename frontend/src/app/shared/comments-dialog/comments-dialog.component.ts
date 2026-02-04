@@ -432,6 +432,7 @@ export class CommentsDialogComponent {
         this.newNeedsAttention = false;
         this.newCommentTypeId = null;
         this.isSubmitting.set(false);
+        this.dialogService.emitCommentChanged(this.dialogService.entityType(), this.dialogService.entityId());
       },
       error: () => {
         this.isSubmitting.set(false);
@@ -459,6 +460,7 @@ export class CommentsDialogComponent {
           );
         }
         this.cancelEdit();
+        this.dialogService.emitCommentChanged(this.dialogService.entityType(), this.dialogService.entityId());
       }
     });
   }
@@ -472,6 +474,7 @@ export class CommentsDialogComponent {
             list.map(c => c.id === comment.id ? CommentDto.fromJson(response.responseData) : c)
           );
         }
+        this.dialogService.emitCommentChanged(this.dialogService.entityType(), this.dialogService.entityId());
       }
     });
   }
@@ -480,6 +483,7 @@ export class CommentsDialogComponent {
     this.commentService.deleteComment(comment.id).subscribe({
       next: () => {
         this.comments.update(list => list.filter(c => c.id !== comment.id));
+        this.dialogService.emitCommentChanged(this.dialogService.entityType(), this.dialogService.entityId());
       }
     });
   }

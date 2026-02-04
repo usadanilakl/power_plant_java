@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import java.util.Set;
 @Setter
 @Audited
 @Entity
+@Where(clause = "deleted = false")
 @EntityListeners(FieldChangeEntityListener.class)
 public class Category extends BaseAuditEntity {
     public Category(String name) {

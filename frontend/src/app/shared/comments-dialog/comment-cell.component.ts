@@ -1,5 +1,6 @@
-import { Component, inject, Input, OnChanges, signal } from '@angular/core';
+import { Component, inject, Input, OnChanges, DestroyRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommentService } from '../../services/comment.service';
 import { CommentDto } from '../../models/base/comment.model';
 import { CommentsDialogService } from './comments-dialog.service';
@@ -61,9 +62,24 @@ export class CommentCellComponent implements OnChanges {
 
   private commentService = inject(CommentService);
   private dialogService = inject(CommentsDialogService);
+  private destroyRef = inject(DestroyRef);
 
   latestComment = signal<CommentDto | null>(null);
   commentCount = signal(0);
+
+  constructor() {
+    // Subscribe to comment changes (local mutations + SSE from other clients)
+    this.dialogService.commentChanged$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        // Reload if: broadcast (null) OR matching entity
+        if (!event || (event.entityType === this.entityType && event.entityId === this.entityId)) {
+          if (this.entityType && this.entityId) {
+            this.loadPreview();
+          }
+        }
+      });
+  }
 
   ngOnChanges(): void {
     if (this.entityType && this.entityId) {

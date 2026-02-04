@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { LogApiService } from '../services/log-api.service';
 import { LogStateService } from '../services/log-state.service';
 import { LogMapperService } from '../services/log-mapper.service';
+import { CommentsDialogService } from '../../../shared/comments-dialog/comments-dialog.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -29,6 +30,7 @@ export class LogTableComponent implements OnInit {
   private apiService = inject(LogApiService);
   protected stateService = inject(LogStateService);
   private mapperService = inject(LogMapperService);
+  private dialogService = inject(CommentsDialogService);
   private destroyRef = inject(DestroyRef);
 
   tableId = input<string>('log-table');
@@ -49,6 +51,11 @@ export class LogTableComponent implements OnInit {
 
   constructor() {
     this.columns.set(this.mapperService.toTableColumns());
+
+    // Subscribe to comment changes (local mutations + SSE from other clients)
+    this.dialogService.commentChanged$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadCurrentData());
   }
 
   ngOnInit(): void {
@@ -212,5 +219,11 @@ export class LogTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  private reloadCurrentData(): void {
+    this.stateService.clearItems();
+    this.stateService.resetPage();
+    this.loadInitialData();
   }
 }
