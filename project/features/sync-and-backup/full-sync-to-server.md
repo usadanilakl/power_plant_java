@@ -34,9 +34,11 @@ Use full sync to server when:
 4. **Phase 2 — Entity sync**: iterates through each entity type in dependency order:
     - Reads entities in pages (500 per page).
     - `createFieldChangesForEntity()` converts each entity into synthetic FieldChange records using reflection.
+    - ManyToMany field changes are **deferred** to Phase 2b (not sent with their parent entity).
     - Batches records (100 per batch) for memory safety.
     - `sendBatch()` posts each batch to server via `POST /api/sync/exchange` with `fullSync: true` flag.
-5. **Phase 3 — File upload**: `queueFilesForUpload()` registers all FileObject entities for upload via `FileObjectSyncHandler` (see [file-sync.md](file-sync.md)).
+5. **Phase 2b — ManyToMany relationships**: sends all deferred ManyToMany changes after every entity type has been created on the server. This ensures referenced entities exist before join table entries are attempted (e.g., Equipment.lotoPoints references LotoPoint entities that are created in a later entity type batch).
+6. **Phase 3 — File upload**: `queueFilesForUpload()` registers all FileObject entities for upload via `FileObjectSyncHandler` (see [file-sync.md](file-sync.md)).
 
 ## Entity processing order (26 types)
 

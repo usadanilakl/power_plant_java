@@ -193,8 +193,13 @@ public class FullSyncToServerService {
         log.info("Total entities to sync: {}", totalEntities);
 
         // Phase 2: Sync each entity type in order
+        // ManyToMany changes are deferred to a final pass to ensure all referenced
+        // entities exist on the server before join table entries are attempted.
+        // Without this, Equipment.lotoPoints changes arrive before LotoPoint entities,
+        // causing the server to silently drop the join table entries.
         AtomicLong totalSent = new AtomicLong(0);
         AtomicLong totalFailed = new AtomicLong(0);
+        List<FieldChange> deferredManyToManyChanges = new ArrayList<>();
 
         for (int i = 0; i < ENTITY_SYNC_ORDER.size(); i++) {
             EntitySyncConfig config = ENTITY_SYNC_ORDER.get(i);
@@ -203,7 +208,7 @@ public class FullSyncToServerService {
             currentStatus.setLastCompletedPage(-1); // Reset page tracking for new entity type
 
             try {
-                SyncResult result = syncEntityType(config);
+                SyncResult result = syncEntityType(config, deferredManyToManyChanges);
                 totalSent.addAndGet(result.sentCount);
                 totalFailed.addAndGet(result.failedCount);
                 currentStatus.setEntitiesSent(totalSent.get());
@@ -216,6 +221,28 @@ public class FullSyncToServerService {
                 log.error("Error syncing {}: {}", config.entityType, e.getMessage());
                 currentStatus.addError(config.entityType + ": " + e.getMessage());
             }
+        }
+
+        // Phase 2b: Send deferred ManyToMany changes now that all entities exist on server
+        if (!deferredManyToManyChanges.isEmpty()) {
+            currentStatus.setPhase("Syncing ManyToMany relationships");
+            log.info("Sending {} deferred ManyToMany changes", deferredManyToManyChanges.size());
+
+            for (int i = 0; i < deferredManyToManyChanges.size(); i += BATCH_SIZE) {
+                List<FieldChange> batch = new ArrayList<>(
+                    deferredManyToManyChanges.subList(i, Math.min(i + BATCH_SIZE, deferredManyToManyChanges.size())));
+                BatchSendResult result = sendBatch(batch);
+                totalSent.addAndGet(result.sent);
+                totalFailed.addAndGet(result.failed);
+                currentStatus.setEntitiesSent(totalSent.get());
+                currentStatus.setEntitiesFailed(totalFailed.get());
+
+                if (result.failed > 0 && result.errorMessage != null) {
+                    currentStatus.recordFailedBatch("ManyToMany", 0, i / BATCH_SIZE, result.errorMessage);
+                }
+            }
+
+            log.info("ManyToMany sync complete: {} changes sent", deferredManyToManyChanges.size());
         }
 
         // Phase 3: Queue files for upload
@@ -266,8 +293,10 @@ public class FullSyncToServerService {
 
     /**
      * Sync a single entity type to the server.
+     * ManyToMany field changes are added to deferredManyToMany instead of being sent immediately,
+     * ensuring all referenced entities exist on the server before join table entries are attempted.
      */
-    private SyncResult syncEntityType(EntitySyncConfig config) {
+    private SyncResult syncEntityType(EntitySyncConfig config, List<FieldChange> deferredManyToMany) {
         JpaRepository<?, Long> repo = getRepositoryForType(config.entityType);
         if (repo == null) {
             log.warn("No repository found for type: {}", config.entityType);
@@ -293,7 +322,13 @@ public class FullSyncToServerService {
             for (Object entity : entityPage.getContent()) {
                 if (entity instanceof BaseIdEntity baseEntity) {
                     List<FieldChange> changes = createFieldChangesForEntity(config.entityType, baseEntity);
-                    batchChanges.addAll(changes);
+                    for (FieldChange change : changes) {
+                        if ("ManyToMany".equals(change.getRelationshipType())) {
+                            deferredManyToMany.add(change);
+                        } else {
+                            batchChanges.add(change);
+                        }
+                    }
 
                     // Send batch when it reaches size limit
                     if (batchChanges.size() >= BATCH_SIZE) {
