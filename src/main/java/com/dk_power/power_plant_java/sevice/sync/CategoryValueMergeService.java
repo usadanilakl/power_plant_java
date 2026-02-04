@@ -9,6 +9,7 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public class CategoryValueMergeService {
      * Called after a sync batch is applied.
      * Runs outside SyncContext so changes are tracked and synced.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void mergeIfDuplicatesExist() {
         int mergedCategories = mergeCategories();
         int mergedValues = mergeValues();
