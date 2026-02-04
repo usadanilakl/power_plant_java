@@ -104,9 +104,15 @@ public class ZeroEnergyMapper implements BaseMapper {
                 }
             }
 
-            // Use the persisted method field directly (already resolved and stored in DB)
+            // Use the persisted method field, re-resolving if it contains unresolved placeholders
             if (entity.getMethod() != null) {
-                dto.setMethod(entity.getMethod());
+                if (entity.getMethod().contains("[tag")) {
+                    // Method has unresolved placeholders - rebuild it
+                    String resolved = buildResolvedMethod(entity);
+                    dto.setMethod(resolved != null ? resolved : entity.getMethod());
+                } else {
+                    dto.setMethod(entity.getMethod());
+                }
             }
 
             return dto;
@@ -187,11 +193,8 @@ public class ZeroEnergyMapper implements BaseMapper {
                 return null;
             }
 
-            // Get equipment IDs and load equipment entities
-            java.util.List<Long> equipmentIds = new ArrayList<>();
-            if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
-                equipmentIds = new ArrayList<>(entity.getTemplateEquipmentIds());
-            }
+            // Get equipment IDs in storage order (order must match placeholder indices in template)
+            java.util.List<Long> equipmentIds = entity.getOrderedTemplateEquipmentIds();
 
             // Load equipment entities to get tag numbers
             java.util.Map<Integer, String> placeholderToTagNumber = new java.util.HashMap<>();

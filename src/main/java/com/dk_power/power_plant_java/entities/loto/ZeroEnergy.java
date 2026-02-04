@@ -66,6 +66,22 @@ public class ZeroEnergy extends BaseAuditEntity {
     }
 
     /**
+     * Gets template equipment IDs as an ordered List, preserving storage order.
+     * Use this when placeholder index mapping matters (e.g., method resolution).
+     */
+    @Transient
+    public java.util.List<Long> getOrderedTemplateEquipmentIds() {
+        if (templateEquipmentIds == null || templateEquipmentIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        return java.util.Arrays.stream(templateEquipmentIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
      * Sets template equipment IDs from a Set.
      */
     public void setTemplateEquipmentIds(java.util.Set<Long> equipmentIds) {
