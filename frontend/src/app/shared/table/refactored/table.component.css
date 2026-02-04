@@ -74,7 +74,7 @@
 .table {
   border-collapse: collapse;
   font-size: 14px;
-  table-layout: auto;
+  table-layout: fixed;
   width: auto;
 }
 
