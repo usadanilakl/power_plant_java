@@ -556,10 +556,9 @@ public class FieldSyncService {
                     }
 
                     // Merge duplicate Categories and Values created by independent clients
+                    // Called directly — @Transactional on the service method handles the transaction
                     try {
-                        transactionTemplate.executeWithoutResult(status -> {
-                            categoryValueMergeService.mergeIfDuplicatesExist();
-                        });
+                        categoryValueMergeService.mergeIfDuplicatesExist();
                     } catch (Exception e) {
                         log.error("Category/Value merge failed: {}", e.getMessage(), e);
                     }
