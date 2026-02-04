@@ -96,6 +96,12 @@ public class FileObjectSyncHandler {
             log.info("Reset {} stuck file sync tasks to PENDING status", resetCount);
         }
 
+        // Reset FAILED upload tasks on startup (server may now be reachable)
+        int resetFailed = pendingFileSyncRepository.resetFailedUploads(Instant.now());
+        if (resetFailed > 0) {
+            log.info("Reset {} failed file upload tasks to PENDING status (will retry)", resetFailed);
+        }
+
         // Clean up old completed tasks (older than 24 hours)
         int cleanedCount = pendingFileSyncRepository.deleteCompletedBefore(
             Instant.now().minus(24, ChronoUnit.HOURS));
@@ -360,6 +366,21 @@ public class FileObjectSyncHandler {
                     trimmedExt,
                     oldFileType != null ? oldFileType : "",
                     oldVendor != null ? oldVendor : "");
+
+                // Build new folder path for comparison
+                String newFolder = String.format("%s/%s/%s/%s",
+                    baseLink,
+                    trimmedExt,
+                    currentFileType != null ? currentFileType : "",
+                    currentVendor != null ? currentVendor : "");
+
+                // Skip deletion if paths haven't actually changed
+                // This happens when Value FK changes but names are identical (e.g., dedup
+                // re-points vendor from Value#20 to Value#10, both named "Acme")
+                if (oldFolder.equals(newFolder) && Objects.equals(oldFileNumber, currentFileNumber)) {
+                    log.debug("Path unchanged for extension {} (same name, different ID), skipping deletion", trimmedExt);
+                    continue;
+                }
 
                 Path oldFolderPath = Paths.get(projectRootPath, oldFolder);
 
@@ -808,6 +829,46 @@ public class FileObjectSyncHandler {
             } finally {
                 inProgressDownloads.remove(taskKey);
             }
+        }
+    }
+
+    /**
+     * Periodically recover FAILED upload tasks.
+     * If the file still exists on disk and the FileObject is active, reset to PENDING for retry.
+     * This handles the case where uploads exhausted retries while the server was offline.
+     */
+    @Scheduled(fixedDelay = 300000, initialDelay = 60000) // every 5 minutes, start after 1 minute
+    @Transactional
+    public void recoverFailedUploads() {
+        if (!syncConfig.isServerSyncEnabled()) {
+            return;
+        }
+
+        List<PendingFileSync> failedUploads = pendingFileSyncRepository
+            .findByDirectionAndStatusIn(SyncDirection.UPLOAD, List.of(SyncStatus.FAILED));
+
+        if (failedUploads.isEmpty()) {
+            return;
+        }
+
+        int recovered = 0;
+        for (PendingFileSync task : failedUploads) {
+            FileObject fo = fileRepo.findById(task.getEntityId()).orElse(null);
+            if (fo != null && !Boolean.TRUE.equals(fo.getDeleted()) && !getAllPhysicalFiles(fo).isEmpty()) {
+                task.setStatus(SyncStatus.PENDING);
+                task.setRetryCount(0);
+                task.setNextRetryTime(Instant.now());
+                pendingFileSyncRepository.save(task);
+                recovered++;
+            } else {
+                // FileObject or physical files no longer exist — clean up
+                task.markCompleted();
+                pendingFileSyncRepository.save(task);
+            }
+        }
+
+        if (recovered > 0) {
+            log.info("Recovered {} failed file upload tasks for retry", recovered);
         }
     }
 

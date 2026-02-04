@@ -83,4 +83,17 @@ public interface PendingFileSyncRepository extends JpaRepository<PendingFileSync
      * Count pending tasks by direction.
      */
     long countByDirectionAndStatusIn(SyncDirection direction, List<SyncStatus> statuses);
+
+    /**
+     * Find tasks by direction and status (for recovery of FAILED tasks).
+     */
+    List<PendingFileSync> findByDirectionAndStatusIn(SyncDirection direction, List<SyncStatus> statuses);
+
+    /**
+     * Reset FAILED upload tasks back to PENDING (for retry after server becomes reachable).
+     */
+    @Modifying
+    @Query("UPDATE PendingFileSync p SET p.status = 'PENDING', p.retryCount = 0, p.nextRetryTime = :now " +
+           "WHERE p.status = 'FAILED' AND p.direction = 'UPLOAD'")
+    int resetFailedUploads(@Param("now") Instant now);
 }
