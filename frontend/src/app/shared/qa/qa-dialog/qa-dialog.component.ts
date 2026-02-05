@@ -62,7 +62,7 @@ import { QaService } from '../../../services/qa/qa.service';
 
     .qa-text {
       line-height: 1.6;
-      color: var(--text-primary, #333);
+      color: var(--primary-text, #333);
     }
 
     .qa-images {
@@ -77,6 +77,12 @@ import { QaService } from '../../../services/qa/qa.service';
       border: 1px solid var(--border-color, #e0e0e0);
     }
 
+    .qa-video {
+      background: var(--secondary-background, #f0f2f5);
+      border-radius: 4px;
+      padding: 8px;
+    }
+
     .qa-video-player {
       width: 100%;
       border-radius: 4px;
@@ -85,7 +91,7 @@ import { QaService } from '../../../services/qa/qa.service';
     .qa-files h3 {
       margin: 0 0 8px 0;
       font-size: 0.95em;
-      color: var(--text-secondary, #666);
+      color: var(--secondary-text, #666);
     }
 
     .qa-files ul {

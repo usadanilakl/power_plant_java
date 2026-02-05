@@ -65,14 +65,23 @@ body.dragging {
   cursor: pointer;
   color: var(--accent-color, #007bff);
   vertical-align: middle;
+  animation: qa-bounce 1.5s ease-in-out 3;
 }
 
 .qa-icon:hover {
   color: var(--accent-color-hover, #0056b3);
+  animation: none;
 }
 
 .qa-icon .material-icons {
   font-size: 18px;
+}
+
+@keyframes qa-bounce {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+  50% { transform: translateY(0); }
+  70% { transform: translateY(-2px); }
 }
 
 @media print {

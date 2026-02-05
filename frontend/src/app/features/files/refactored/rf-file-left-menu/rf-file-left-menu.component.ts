@@ -11,12 +11,13 @@ import { RfToggleMenuComponent } from "../../../../shared/menu/refactored/rf-tog
 import { FileContextMenuService } from '../services/file-context-menu.service';
 import { RfFileStateService } from '../services/rf-file-state.service';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
+import { QaDirective } from '../../../../shared/qa/qa.directive';
 import { tap } from 'rxjs';
 
 @Component({
   selector: 'app-rf-file-left-menu',
   standalone: true,
-  imports: [CommonModule, RfToggleMenuComponent, RfMultiUploadComponent],
+  imports: [CommonModule, RfToggleMenuComponent, RfMultiUploadComponent, QaDirective],
   templateUrl: './rf-file-left-menu.component.html',
   styleUrl: './rf-file-left-menu.component.css',
 })

@@ -25,7 +25,12 @@
                 "glob": "**/*",
                 "input": "public"
               },
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "../qa-data",
+                "output": "/qa-data"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/azure-blue.css",
