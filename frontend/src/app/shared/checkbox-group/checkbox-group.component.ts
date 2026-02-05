@@ -1,8 +1,8 @@
-import { Component, Input, forwardRef, input } from '@angular/core';
+import { Component, Input, forwardRef, inject, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Question } from '../../models/ui/question.model';
-import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { Option } from '../../models/option.model';
+import { QaService } from '../../services/qa/qa.service';
 
 @Component({
   selector: 'app-checkbox-group',
@@ -16,13 +16,12 @@ import { Option } from '../../models/option.model';
       multi: true
     }
   ],
-  imports: [QaMenuComponent]
 })
 export class CheckboxGroupComponent implements ControlValueAccessor {
+  qaService = inject(QaService);
   @Input() label: string = '';
   @Input() options: Option[] = [];
-  question = input<Question | null>(null)
-  showPopup = false;
+  question = input<Question | null>(null);
 
   value: any = {};
   mode: 'object' | 'array' = 'object';
@@ -88,12 +87,9 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
     this.onChange(this.value);
   }
 
-  openPopup() {
-    this.showPopup = true;
-  }
-
-  closePopup() {
-    this.showPopup = false;
+  onQaClick(): void {
+    const q = this.question();
+    if (q) this.qaService.openDialog(q);
   }
 
   isBoolean(value: any): boolean {

@@ -57,6 +57,24 @@ body.dragging {
   -ms-user-select: none;
 }
 
+/* QA Help System - icon shown next to components when QA mode is enabled */
+.qa-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  cursor: pointer;
+  color: var(--accent-color, #007bff);
+  vertical-align: middle;
+}
+
+.qa-icon:hover {
+  color: var(--accent-color-hover, #0056b3);
+}
+
+.qa-icon .material-icons {
+  font-size: 18px;
+}
+
 @media print {
   /* Remove default browser print margins */
   /* @page {

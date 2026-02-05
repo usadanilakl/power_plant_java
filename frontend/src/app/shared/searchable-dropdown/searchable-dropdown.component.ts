@@ -4,8 +4,8 @@ import { Option } from '../../models/option.model';
 import { Observable, Subscription, take } from 'rxjs';
 import { Question } from '../../models/ui/question.model';
 import { MatIconModule } from '@angular/material/icon';
-import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { CopyPasteDirective } from '../../directives/copy-paste.directive';
+import { QaService } from '../../services/qa/qa.service';
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -19,16 +19,16 @@ import { CopyPasteDirective } from '../../directives/copy-paste.directive';
       multi: true
     }
   ],
-  imports: [MatIconModule, QaMenuComponent, CopyPasteDirective]
+  imports: [MatIconModule, CopyPasteDirective]
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
+  qaService = inject(QaService);
 
   @Input() label: string = '';
   @Input() options: Option[] | Observable<Option[]> = [];
   @Input() closeOnSelect = true;
   categoryName = input<string>('');
-  question = input<Question | null>(null)
-  showPopup = false;
+  question = input<Question | null>(null);
 
   @Output() valueChange = new EventEmitter<any>();
   addNewOption = output<string>();
@@ -155,12 +155,9 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
     this.editOption.emit(this.categoryName());
   }
 
-  openPopup() {
-    this.showPopup = true;
-  }
-
-  closePopup() {
-    this.showPopup = false;
+  onQaClick(): void {
+    const q = this.question();
+    if (q) this.qaService.openDialog(q);
   }
 
 }

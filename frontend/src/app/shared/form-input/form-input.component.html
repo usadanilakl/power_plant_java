@@ -2,23 +2,16 @@
   @if (label && label!=='') {
   <div class="label-container">
     <label>{{ label }}</label>
-    @if (question()) {
-      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+    @if (question() && qaService.isQaMode()) {
+      <span class="qa-icon" (click)="onQaClick()" title="Click for help">
         <span class="material-icons">help</span>
       </span>
     }
   </div>
   }
-    <input 
-      [type]="type" 
-      [value]="value" 
+    <input
+      [type]="type"
+      [value]="value"
       (input)="onInputChange($event)"
       class="form-input-element">
 </div>
-
-  @if(showPopup){
-    <app-qa-menu
-      [question]="question()"
-      (closePopupEvent)="closePopup()">
-    </app-qa-menu>
-  }

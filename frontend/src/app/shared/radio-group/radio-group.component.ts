@@ -1,16 +1,16 @@
 
-import { Component, Input, forwardRef, input } from '@angular/core';
+import { Component, Input, forwardRef, inject, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Question } from '../../models/ui/question.model';
-import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
+import { QaService } from '../../services/qa/qa.service';
 
 @Component({
   selector: 'app-radio-group',
   templateUrl: './radio-group.component.html',
   styleUrls: ['./radio-group.component.css'],
   standalone: true,
-  imports: [CommonModule, QaMenuComponent],
+  imports: [CommonModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -20,11 +20,11 @@ import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
   ]
 })
 export class RadioGroupComponent implements ControlValueAccessor {
+  qaService = inject(QaService);
   @Input() label: string = '';
   @Input() options: { value: any, label: string }[] = [];
   @Input() name: string = '';
-  question = input<Question | null>(null)
-  showPopup = false;
+  question = input<Question | null>(null);
 
   value: any;
 
@@ -49,11 +49,8 @@ export class RadioGroupComponent implements ControlValueAccessor {
     this.onTouched();
   }
 
-  openPopup() {
-    this.showPopup = true;
-  }
-
-  closePopup() {
-    this.showPopup = false;
+  onQaClick(): void {
+    const q = this.question();
+    if (q) this.qaService.openDialog(q);
   }
 }

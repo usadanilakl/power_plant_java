@@ -1,8 +1,8 @@
-import { Component, Input, Output, EventEmitter, forwardRef, ViewEncapsulation, input } from '@angular/core';
+import { Component, Input, Output, EventEmitter, forwardRef, ViewEncapsulation, input, inject } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { Question } from '../../models/ui/question.model';
 import { CommonModule } from '@angular/common';
+import { QaService } from '../../services/qa/qa.service';
 
 @Component({
   selector: 'app-form-input',
@@ -17,16 +17,16 @@ import { CommonModule } from '@angular/common';
       multi: true
     }
   ],
-  imports: [QaMenuComponent, CommonModule]
+  imports: [CommonModule]
 })
 export class FormInputComponent implements ControlValueAccessor {
+  qaService = inject(QaService);
   @Input() label: string = '';
   @Input() type: string = 'text';
   @Input() value: any = '';
   @Input() customStyle: { [key: string]: any } = {};
   @Output() valueChange = new EventEmitter<any>();
-  question = input<Question | null>(null)
-  showPopup = false;
+  question = input<Question | null>(null);
 
   onChange: any = () => {};
   onTouched: any = () => {};
@@ -68,11 +68,8 @@ export class FormInputComponent implements ControlValueAccessor {
     this.valueChange.emit(this.value);
   }
 
-  openPopup() {
-    this.showPopup = true;
-  }
-
-  closePopup() {
-    this.showPopup = false;
+  onQaClick(): void {
+    const q = this.question();
+    if (q) this.qaService.openDialog(q);
   }
 }

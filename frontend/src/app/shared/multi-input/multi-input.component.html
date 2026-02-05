@@ -3,8 +3,8 @@
 <div class="multi-input-container">
   <div class="label-container">
     <label>{{ label }}</label>
-    @if (question()) {
-      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+    @if (question() && qaService.isQaMode()) {
+      <span class="qa-icon" (click)="onQaClick()" title="Click for help">
         <span class="material-icons">help</span>
       </span>
     }
@@ -26,10 +26,4 @@
     <button type="button" (click)="addValue()">Add</button>
   </div>
 
-  @if(showPopup){
-    <app-qa-menu
-      [question]="question()"
-      (closePopupEvent)="closePopup()">
-    </app-qa-menu>
-  }
 

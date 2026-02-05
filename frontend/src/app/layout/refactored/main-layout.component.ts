@@ -6,10 +6,11 @@ import { ClipboardComponent } from "../../shared/clipboard/clipboard.component";
 import { TourTriggerComponent } from "../../shared/tour/tour-trigger.component";
 import { SyncIndicatorComponent } from "../../shared/sync-indicator/sync-indicator.component";
 import { GuideTriggerComponent } from "../../shared/guide/guide-trigger/guide-trigger.component";
+import { QaToggleComponent } from "../../shared/qa/qa-toggle/qa-toggle.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

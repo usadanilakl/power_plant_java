@@ -1,14 +1,14 @@
-import { Component, EventEmitter, Input, Output, forwardRef, input } from '@angular/core';
+import { Component, EventEmitter, Input, Output, forwardRef, inject, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Question } from '../../models/ui/question.model';
-import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { CopyPasteDirective } from '../../directives/copy-paste.directive'
+import { QaService } from '../../services/qa/qa.service';
 
 @Component({
   selector: 'app-multi-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, QaMenuComponent, CopyPasteDirective],
+  imports: [CommonModule, FormsModule, CopyPasteDirective],
   templateUrl: `./multi-input.component.html`,
   styleUrls: ['./multi-input.component.css'],
   providers: [
@@ -20,10 +20,10 @@ import { CopyPasteDirective } from '../../directives/copy-paste.directive'
   ]
 })
 export class MultiInputComponent implements ControlValueAccessor {
+  qaService = inject(QaService);
   @Input() label: string = '';
   @Input() type: string = 'text';
-  question = input<Question | null>(null)
-  showPopup = false;
+  question = input<Question | null>(null);
   
   @Output() valuesChange = new EventEmitter<any[]>();
 
@@ -78,11 +78,8 @@ export class MultiInputComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
-  openPopup() {
-    this.showPopup = true;
-  }
-
-  closePopup() {
-    this.showPopup = false;
+  onQaClick(): void {
+    const q = this.question();
+    if (q) this.qaService.openDialog(q);
   }
 }
