@@ -367,7 +367,7 @@ test.describe('File Operations Sync', () => {
   // ==================== TEST 10: Clear Server, Full Sync to Server ====================
 
   test('10. should clear server data and full-sync from client', async () => {
-    test.setTimeout(180000); // Full sync can take time for large datasets
+    test.setTimeout(360000); // Full sync syncs ALL entities, can take several minutes
 
     // Wait for previous sync to propagate
     await e2ePage.page.waitForTimeout(3000);
@@ -383,12 +383,12 @@ test.describe('File Operations Sync', () => {
     }
     console.log(`Cleared server data: ${JSON.stringify(clearResult)}`);
 
-    // Step 2: Start full sync to server
+    // Step 2: Start full sync to server (syncs ALL entities, not just test data)
     const fullSync = await e2ePage.startFullSyncToServer();
     console.log(`Full sync started: ${JSON.stringify(fullSync)}`);
 
-    // Step 3: Wait for full sync to complete
-    const syncStatus = await e2ePage.waitForFullSyncComplete(150000);
+    // Step 3: Wait for full sync to complete — poll with progress logging
+    const syncStatus = await e2ePage.waitForFullSyncComplete(300000);
     console.log(`Full sync completed: phase=${syncStatus.phase}, success=${syncStatus.success}, sent=${syncStatus.entitiesSent}, failed=${syncStatus.entitiesFailed}`);
 
     // Step 4: Wait for propagation

@@ -450,21 +450,33 @@ export class SyncE2EPage {
       `${this.clientBackendUrl}/api/field-sync/full-sync/status`
     );
     expect(response.ok()).toBeTruthy();
-    return response.json();
+    const wrapper = await response.json();
+    // Response is { inProgress: boolean, status: { phase, ... } }
+    return wrapper;
   }
 
   async waitForFullSyncComplete(timeoutMs: number = 120000): Promise<any> {
     const start = Date.now();
+    let lastLogTime = 0;
     while (Date.now() - start < timeoutMs) {
-      const status = await this.getFullSyncStatus();
-      // FullSyncStatus uses 'phase' not 'status'
-      const phase = (status.phase || '').toLowerCase();
-      if (phase === 'complete' || phase.startsWith('failed') || status.endTime != null) {
-        return status;
+      const wrapper = await this.getFullSyncStatus();
+      const inner = wrapper.status || {};
+      const phase = (inner.phase || '').toLowerCase();
+      if (!wrapper.inProgress && (phase === 'complete' || phase.startsWith('failed') || inner.endTime != null)) {
+        return inner;
+      }
+      // Log progress every 10 seconds
+      const elapsed = Date.now() - start;
+      if (elapsed - lastLogTime >= 10000) {
+        console.log(`Full sync progress: phase=${inner.phase}, entity=${inner.currentEntityType}, sent=${inner.entitiesSent}/${inner.totalEntities}, elapsed=${Math.round(elapsed / 1000)}s`);
+        lastLogTime = elapsed;
       }
       await this.page.waitForTimeout(2000);
     }
-    throw new Error(`Full sync to server did not complete within ${timeoutMs}ms`);
+    // Get final status before throwing
+    const finalWrapper = await this.getFullSyncStatus();
+    const finalInner = finalWrapper.status || {};
+    throw new Error(`Full sync to server did not complete within ${timeoutMs}ms. Last phase: ${finalInner.phase}, sent: ${finalInner.entitiesSent}/${finalInner.totalEntities}`);
   }
 
   // ==================== SYNC SERVER TEST UTILITIES ====================
