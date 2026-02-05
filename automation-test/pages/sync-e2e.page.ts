@@ -457,7 +457,9 @@ export class SyncE2EPage {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const status = await this.getFullSyncStatus();
-      if (status.status === 'COMPLETED' || status.status === 'FAILED' || status.status === 'IDLE') {
+      // FullSyncStatus uses 'phase' not 'status'
+      const phase = (status.phase || '').toLowerCase();
+      if (phase === 'complete' || phase.startsWith('failed') || status.endTime != null) {
         return status;
       }
       await this.page.waitForTimeout(2000);
@@ -481,7 +483,10 @@ export class SyncE2EPage {
       `${this.syncServerUrl}/api/test/e2e/clear-by-prefix/${prefix}`,
       { timeout: 30000 }
     );
-    expect(response.ok()).toBeTruthy();
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(`Clear server data failed with status ${response.status()}: ${body}`);
+    }
     return response.json();
   }
 
