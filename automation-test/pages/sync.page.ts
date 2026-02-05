@@ -1,18 +1,18 @@
 import { Page, expect } from '@playwright/test';
 import { BasePage } from './base.page';
+import { config } from '../test.config';
 
 /**
  * Page object for Sync/Resync functionality
  */
 export class SyncPage extends BasePage {
-  // Default URLs - can be overridden via environment variables
   readonly syncServerUrl: string;
   readonly clientBackendUrl: string;
 
   constructor(page: Page) {
     super(page);
-    this.syncServerUrl = process.env.SYNC_SERVER_URL || 'http://localhost:8090';
-    this.clientBackendUrl = process.env.CLIENT_BACKEND_URL || 'http://localhost:8080';
+    this.syncServerUrl = config.syncServerUrl;
+    this.clientBackendUrl = config.clientBackendUrl;
   }
 
   // ==================== NAVIGATION ====================
@@ -110,7 +110,6 @@ export class SyncPage extends BasePage {
     const response = await this.page.request.post(
       `${this.clientBackendUrl}/api/resync/partial-sync/execute?date=${date}&force=${force}`
     );
-    expect(response.ok()).toBeTruthy();
     return response.json();
   }
 
@@ -258,6 +257,328 @@ export class SyncPage extends BasePage {
    */
   async waitForErrorMessage() {
     await this.page.locator('.message-error').waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  // ==================== SYNC TEST SERVICE API (/api/sync-test/*) ====================
+
+  /**
+   * Generate bulk test data.
+   * POST /api/sync-test/generate?count=N&testType=TYPE
+   */
+  async generateTestData(count: number = 100, testType: string = 'BULK_CREATE'): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/generate?count=${count}&testType=${testType}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Generate mixed changes (creates, updates, deletes).
+   * POST /api/sync-test/generate/mixed
+   */
+  async generateMixedTestData(creates: number = 100, updates: number = 50, deletes: number = 25): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/generate/mixed?creates=${creates}&updates=${updates}&deletes=${deletes}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Trigger sync and measure performance.
+   * POST /api/sync-test/sync
+   */
+  async triggerTestSync(): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/sync`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Run full test cycle: generate -> sync -> verify.
+   * POST /api/sync-test/full-cycle
+   */
+  async runFullTestCycle(count: number = 100, testType: string = 'BULK_CREATE'): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/full-cycle?count=${count}&testType=${testType}`,
+      { timeout: 30000 }
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Test sync with existing Equipment entities.
+   * POST /api/sync-test/test/equipment
+   */
+  async testEquipmentSync(revert: boolean = true): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/test/equipment?revert=${revert}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Test sync with existing LotoPoint entities.
+   * POST /api/sync-test/test/loto-points
+   */
+  async testLotoPointSync(revert: boolean = true): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/test/loto-points?revert=${revert}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Test sync with existing FileObject entities.
+   * POST /api/sync-test/test/file-objects
+   */
+  async testFileObjectSync(revert: boolean = true): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/test/file-objects?revert=${revert}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Test all existing entity types (Equipment, LotoPoint, FileObject).
+   * POST /api/sync-test/test/all-entities
+   */
+  async testAllEntitiesSync(revert: boolean = true): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/test/all-entities?revert=${revert}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Test any entity type by name.
+   * POST /api/sync-test/test/entity
+   */
+  async testEntitySync(type: string, field: string, revert: boolean = true): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/sync-test/test/entity?type=${type}&field=${field}&revert=${revert}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Clear all synthetic test data.
+   * DELETE /api/sync-test/clear
+   */
+  async clearSyncTestData(): Promise<any> {
+    const response = await this.page.request.delete(
+      `${this.clientBackendUrl}/api/sync-test/clear`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get current test metrics.
+   * GET /api/sync-test/metrics
+   */
+  async getSyncTestMetrics(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/sync-test/metrics`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get test run history.
+   * GET /api/sync-test/history
+   */
+  async getSyncTestHistory(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/sync-test/history`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get current sync test status.
+   * GET /api/sync-test/status
+   */
+  async getSyncTestStatus(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/sync-test/status`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  // ==================== FIELD SYNC API (/api/field-sync/*) ====================
+
+  /**
+   * Trigger field sync manually.
+   * POST /api/field-sync/trigger
+   */
+  async triggerFieldSync(): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/field-sync/trigger`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get field sync status (machineId, syncMode, serverAvailable, sseConnected, etc.)
+   * GET /api/field-sync/status
+   */
+  async getFieldSyncStatus(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/field-sync/status`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get field sync metrics (consecutiveFailures, totalChangesInDb, etc.)
+   * GET /api/field-sync/metrics
+   */
+  async getFieldSyncMetrics(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/field-sync/metrics`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Set sync toggle (enable/disable sync at runtime).
+   * POST /api/field-sync/sync-toggle
+   */
+  async setSyncToggle(enabled: boolean): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/field-sync/sync-toggle`,
+      { data: { enabled }, timeout: 30000 }
+    );
+    return response.json();
+  }
+
+  /**
+   * Get sync toggle state.
+   * GET /api/field-sync/sync-toggle
+   */
+  async getSyncToggle(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/field-sync/sync-toggle`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Reset circuit breaker manually.
+   * POST /api/field-sync/reset-circuit-breaker
+   */
+  async resetCircuitBreaker(): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/field-sync/reset-circuit-breaker`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Start full sync of all entities to server (bootstrap).
+   * POST /api/field-sync/full-sync/start
+   */
+  async startFullSyncToServer(): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/field-sync/full-sync/start`
+    );
+    return response.json();
+  }
+
+  /**
+   * Get status of current or last full sync to server.
+   * GET /api/field-sync/full-sync/status
+   */
+  async getFullSyncToServerStatus(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/field-sync/full-sync/status`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Get file sync status and queue information.
+   * GET /api/field-sync/file-sync/status
+   */
+  async getFileSyncStatus(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/field-sync/file-sync/status`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  // ==================== AUTO-RESYNC API (/api/resync/*) ====================
+
+  /**
+   * Get current auto-resync state (escalation level, last attempt, etc.).
+   * GET /api/resync/auto-resync/state
+   */
+  async getAutoResyncState(): Promise<any> {
+    const response = await this.page.request.get(
+      `${this.clientBackendUrl}/api/resync/auto-resync/state`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Reset auto-resync state (retry after exhaustion).
+   * POST /api/resync/auto-resync/reset
+   */
+  async resetAutoResyncState(): Promise<any> {
+    const response = await this.page.request.post(
+      `${this.clientBackendUrl}/api/resync/auto-resync/reset`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  // ==================== POLLING HELPERS ====================
+
+  /**
+   * Poll health check until sync status matches expected value.
+   */
+  async waitForSyncStatus(expected: string, timeoutMs: number = 30000): Promise<any> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const health = await this.getSyncHealthCheck();
+      if (health.syncStatus === expected) return health;
+      await this.page.waitForTimeout(2000);
+    }
+    throw new Error(`Sync status did not reach '${expected}' within ${timeoutMs}ms`);
+  }
+
+  /**
+   * Poll until pending changes reach 0.
+   */
+  async waitForPendingChangesZero(timeoutMs: number = 30000): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const status = await this.getSyncTestStatus();
+      if (status.pendingChanges === 0) return true;
+      await this.page.waitForTimeout(1000);
+    }
+    return false;
   }
 
   // ==================== VERIFICATION HELPERS ====================

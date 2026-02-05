@@ -21,6 +21,21 @@
     "test:loto-builder": "playwright test tests/files/loto-builder-file.spec.ts",
     "test:loto-builder:headed": "playwright test tests/files/loto-builder-file.spec.ts --headed",
 
+    "test:sync": "playwright test tests/sync/",
+    "test:sync:headed": "playwright test tests/sync/ --headed",
+    "test:sync-health": "playwright test tests/sync/sync-health.spec.ts",
+    "test:entity-sync": "playwright test tests/sync/entity-sync.spec.ts",
+    "test:bulk-sync": "playwright test tests/sync/bulk-sync.spec.ts",
+    "test:circuit-breaker": "playwright test tests/sync/circuit-breaker.spec.ts",
+    "test:auto-resync": "playwright test tests/sync/auto-resync.spec.ts",
+    "test:full-sync": "playwright test tests/sync/full-sync-to-server.spec.ts",
+    "test:partial-sync": "playwright test tests/sync/partial-sync.spec.ts",
+    "test:sync-e2e": "playwright test tests/sync/sync-entity-creation.spec.ts tests/sync/sync-relationship-preservation.spec.ts tests/sync/sync-deduplication.spec.ts",
+    "test:sync-stress": "playwright test tests/sync/sync-stress-volume.spec.ts tests/sync/sync-stress-concurrency.spec.ts",
+    "test:sync-dedup": "playwright test tests/sync/sync-deduplication.spec.ts",
+    "test:sync-concurrency": "playwright test tests/sync/sync-stress-concurrency.spec.ts",
+    "test:sync-files": "playwright test tests/sync/sync-file-operations.spec.ts",
+
     "test:one": "playwright test --headed -g",
 
     "codegen": "playwright codegen http://localhost:4200"

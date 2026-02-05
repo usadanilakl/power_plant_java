@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from './test.config';
 
 /**
  * Playwright configuration for Power Plant Java E2E tests
@@ -16,7 +17,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:4200',
+    baseURL: config.frontendUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',

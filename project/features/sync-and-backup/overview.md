@@ -172,3 +172,23 @@ spring.servlet.multipart.max-request-size=200MB
 | [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration |
 | [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
+
+# E2E Test Coverage
+
+All tests: `cd automation-test && npm run test:sync`
+
+| Test file | Covers | Scenario |
+|-----------|--------|----------|
+| [sync-health.spec.ts](../../../automation-test/tests/sync/sync-health.spec.ts) | Health monitoring, IN_SYNC/OUT_OF_SYNC detection | 1, 2, 3 |
+| [entity-sync.spec.ts](../../../automation-test/tests/sync/entity-sync.spec.ts) | Real entity sync round-trip (Equipment, LotoPoint, FileObject) | 1 |
+| [bulk-sync.spec.ts](../../../automation-test/tests/sync/bulk-sync.spec.ts) | Synthetic data pipeline, performance | 1 |
+| [circuit-breaker.spec.ts](../../../automation-test/tests/sync/circuit-breaker.spec.ts) | Circuit breaker, SSE toggle, reconnection | 2, 3 |
+| [auto-resync.spec.ts](../../../automation-test/tests/sync/auto-resync.spec.ts) | Auto-resync escalation state | 8 |
+| [partial-sync.spec.ts](../../../automation-test/tests/sync/partial-sync.spec.ts) | Partial sync from date | 4 |
+| [full-sync-to-server.spec.ts](../../../automation-test/tests/sync/full-sync-to-server.spec.ts) | Server bootstrap | 6 |
+| [two-client-sync.spec.ts](../../../automation-test/tests/sync/two-client-sync.spec.ts) | Two-client propagation (optional, needs SECOND_CLIENT_URL) | 1, 2 |
+| [sync-entity-creation.spec.ts](../../../automation-test/tests/sync/sync-entity-creation.spec.ts) | Real entity graph seeding + sync round-trip (Categories, Values, Equipment, LotoPoints, LotoStandards) | 1 |
+| [sync-relationship-preservation.spec.ts](../../../automation-test/tests/sync/sync-relationship-preservation.spec.ts) | ManyToMany, ManyToOne, lotoPointOrder JSON preservation through sync | 1 |
+| [sync-deduplication.spec.ts](../../../automation-test/tests/sync/sync-deduplication.spec.ts) | Category/Value dedup after sync — merge, re-point, downstream entity update | 1 |
+| [sync-stress-volume.spec.ts](../../../automation-test/tests/sync/sync-stress-volume.spec.ts) | Volume stress: 1000+ LotoStandards with relationships (`SYNC_STRESS_SCALE` env var) | 1 |
+| [sync-stress-concurrency.spec.ts](../../../automation-test/tests/sync/sync-stress-concurrency.spec.ts) | Concurrent client simulation: 10/50/100 clients via direct HTTP to sync server | 1 |

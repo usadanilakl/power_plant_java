@@ -88,3 +88,14 @@ The sync indicator popover ([sync-indicator.component.ts](../../../frontend/src/
 ## Related fix: Category/Value deduplication sync
 
 The deduplication service ([CategoryValueMergeService.java](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/CategoryValueMergeService.java)) soft-deletes duplicate entities via JPA merge (not native SQL) so that the `FieldChangeEntityListener` fires and creates `FieldChange` records. This ensures soft-deletes are synced to other machines, preventing permanent count mismatches.
+
+## E2E Tests
+
+Test file: [auto-resync.spec.ts](../../../automation-test/tests/sync/auto-resync.spec.ts) | Run: `cd automation-test && npm run test:auto-resync`
+
+| Scenario | Test |
+|----------|------|
+| State retrieval | should return auto-resync state |
+| State reset | should reset auto-resync state |
+| OUT_OF_SYNC tracking | should track consecutive out-of-sync checks |
+| IN_SYNC recovery | should recover when sync state is restored |

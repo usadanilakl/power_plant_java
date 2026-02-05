@@ -61,7 +61,7 @@ public class CategoryValueMergeService {
     @SuppressWarnings("unchecked")
     private int mergeCategories() {
         List<Object[]> duplicates = entityManager.createNativeQuery(
-            "SELECT name, COUNT(*) FROM category WHERE deleted = false " +
+            "SELECT LOWER(name), COUNT(*) FROM category WHERE deleted = false " +
             "GROUP BY LOWER(name) HAVING COUNT(*) > 1")
             .getResultList();
 

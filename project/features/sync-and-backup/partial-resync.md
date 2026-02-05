@@ -53,3 +53,21 @@ Use partial sync when:
 | Full resync | Database replacement | Disaster recovery, corruption |
 
 All types except full resync use the same `applyIncomingChanges()` pipeline, ensuring consistent behavior.
+
+## E2E Tests
+
+Test file: [partial-sync.spec.ts](../../../automation-test/tests/sync/partial-sync.spec.ts) | Run: `cd automation-test && npm run test:partial-sync`
+
+| Scenario | Test |
+|----------|------|
+| Create backdated test data | should create backdated field changes on sync server |
+| Multi-date test data | should create test data at multiple dates |
+| Clear test data by date | should be able to clear test data for specific date |
+| Available dates retrieval | should retrieve available sync dates from client |
+| Preview partial sync | should preview changes for a specific date |
+| Full sync flow via API | should sync data from specific date via API |
+| Force sync (skip safety) | should handle force sync for large deletions |
+| Invalid date handling | should handle invalid date gracefully |
+| Server unavailable | should handle sync server unavailable |
+| Health check endpoints | should return sync health status / detailed check / force check |
+| Complete E2E verification | complete partial sync verification flow |

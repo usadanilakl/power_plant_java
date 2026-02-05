@@ -79,3 +79,13 @@ When adding a new entity type to the project, register it in FullSyncToServerSer
 - Add the entity's repository to the constructor.
 - Add the entity type name to the `getRepositoryForType()` switch.
 - Ensure the entity is also registered in [EntityTableRegistry](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/EntityTableRegistry.java) and [ServiceFacade](../../../src/main/java/com/dk_power/power_plant_java/sevice/ServiceFacade.java) (see [field-based-sync.md](field-based-sync.md) for full sync registration checklist).
+
+## E2E Tests
+
+Test file: [full-sync-to-server.spec.ts](../../../automation-test/tests/sync/full-sync-to-server.spec.ts) | Run: `cd automation-test && npm run test:full-sync`
+
+| Scenario | Test |
+|----------|------|
+| Status check | should return status of last full sync operation |
+| Start full sync | should start full sync to server |
+| File sync status | should return file sync queue information |

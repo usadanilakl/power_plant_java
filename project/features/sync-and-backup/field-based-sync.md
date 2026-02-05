@@ -157,6 +157,45 @@ When file-related fields change (fileNumber, fileType, vendor, extension), the s
 
 The `deleteOldFoldersAfterDownload()` method uses selective per-file deletion rather than recursive directory deletion, applying the same `findActiveOwner()` guard to each file individually. Empty directories are cleaned up only after all files have been processed.
 
+## Self-Sustaining E2E Tests
+
+Backend infrastructure for creating real entity graphs, syncing them, and verifying relationships survive the round-trip.
+
+### Backend Components
+
+| Component | Purpose |
+|-----------|---------|
+| [SyncE2ETestService](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/SyncE2ETestService.java) | Seeds entity graphs (Categories → Values → Equipment → LotoPoints → LotoStandards), verifies, cleans up |
+| [SyncE2ETestController](../../../src/main/java/com/dk_power/power_plant_java/controller/sync/SyncE2ETestController.java) | REST endpoints: `/api/sync-e2e/seed`, `/seed/dedup`, `/seed/bulk`, `/verify/{prefix}`, `/cleanup/{prefix}` |
+
+### Seed Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/sync-e2e/seed` | Create full entity graph with all relationship types |
+| POST | `/api/sync-e2e/seed/dedup` | Create duplicate Categories/Values for dedup testing |
+| POST | `/api/sync-e2e/seed/bulk?count=N` | Bulk-create N LotoStandards with relationships |
+| GET | `/api/sync-e2e/verify/{prefix}` | Return all entities + relationships for a test prefix |
+| DELETE | `/api/sync-e2e/cleanup/{prefix}` | Soft-delete all entities by prefix |
+| DELETE | `/api/sync-e2e/cleanup/all` | Clean up all `SYNC_E2E_*` entities |
+
+### How Seeding Works
+
+1. All entity names prefixed with test prefix (e.g., `SYNC_E2E_1738700000_Valve`) for cleanup isolation
+2. Entities created via JPA repositories → `FieldChangeEntityListener` fires automatically → FieldChange records created
+3. Cleanup uses soft-delete (`deleted=true`) → triggers sync propagation of deletions
+4. `@Where(clause = "deleted=false")` makes deleted entities invisible to the application
+
+### Test Files
+
+| Test file | What it proves |
+|-----------|---------------|
+| [sync-entity-creation.spec.ts](../../../automation-test/tests/sync/sync-entity-creation.spec.ts) | Real entities sync through full pipeline |
+| [sync-relationship-preservation.spec.ts](../../../automation-test/tests/sync/sync-relationship-preservation.spec.ts) | ManyToMany, ManyToOne, JSON fields survive sync |
+| [sync-deduplication.spec.ts](../../../automation-test/tests/sync/sync-deduplication.spec.ts) | CategoryValueMergeService works after sync |
+| [sync-stress-volume.spec.ts](../../../automation-test/tests/sync/sync-stress-volume.spec.ts) | Volume at 1000+ entities with relationships |
+| [sync-stress-concurrency.spec.ts](../../../automation-test/tests/sync/sync-stress-concurrency.spec.ts) | Server handles 100 concurrent clients |
+
 ## Known issues (resolved)
 
 **ManyToOne references lost in batch sync** — Equipment reference in ZeroEnergy lost after partial sync. Root cause: entities processed in random HashMap order + Pass 3 operated on detached entities after `entityManager.clear()`. Fix: SYNC_ORDER processing + Pass 3 re-loads managed entity and explicitly saves.
@@ -166,3 +205,71 @@ The `deleteOldFoldersAfterDownload()` method uses selective per-file deletion ra
 **ServiceFacade missing entity types** — only 7 of 24 types registered, changes for unregistered types silently dropped. Fix: all 22 syncable types registered.
 
 **SSE reconnection did not trigger sync** — `"connected"` event was only logged, no sync triggered. Fix: `onSseConnected()` resets circuit breaker + triggers `syncWithServer()`.
+
+## E2E Tests
+
+All sync E2E tests are located in [automation-test/tests/sync/](../../../automation-test/tests/sync/). Run all: `cd automation-test && npm run test:sync`
+
+### Health Monitoring
+
+Test file: [sync-health.spec.ts](../../../automation-test/tests/sync/sync-health.spec.ts) | Run: `npm run test:sync-health`
+
+| Scenario | Test |
+|----------|------|
+| Health status fields returned | should return health status with all required fields |
+| Field-sync health endpoint | should return field-sync health with machineId |
+| Entity counts non-zero | should return non-zero entity counts |
+| Forced health check freshness | should return fresh checkTime on forced check |
+| IN_SYNC detection | should report IN_SYNC when counts match |
+| OUT_OF_SYNC detection | should detect status change after adding server-only test data |
+| Metrics structure | should return metrics with sync information |
+
+### Entity Sync Verification
+
+Test file: [entity-sync.spec.ts](../../../automation-test/tests/sync/entity-sync.spec.ts) | Run: `npm run test:entity-sync`
+
+| Scenario | Test |
+|----------|------|
+| Equipment round-trip sync | should sync Equipment entities and revert |
+| LotoPoint round-trip sync | should sync LotoPoint entities and revert |
+| FileObject round-trip sync | should sync FileObject entities and revert |
+| All entity types combined | should sync all entity types together and revert |
+| Custom entity+field | should sync specific entity type and field |
+| Client-server count match | should have matching counts between client and server |
+
+### Bulk Sync Performance
+
+Test file: [bulk-sync.spec.ts](../../../automation-test/tests/sync/bulk-sync.spec.ts) | Run: `npm run test:bulk-sync`
+
+| Scenario | Test |
+|----------|------|
+| BULK_CREATE generation | should generate BULK_CREATE changes |
+| BULK_UPDATE generation | should generate BULK_UPDATE changes |
+| MIXED generation | should generate MIXED changes |
+| Sync to server | should sync generated data to server |
+| Full cycle (generate+sync+verify) | should run full cycle end-to-end |
+| Metrics populated | should return test metrics |
+| Cleanup | should clear all synthetic test data |
+| Performance threshold | should sync 100 changes within performance threshold |
+
+### Circuit Breaker and Sync Toggle
+
+Test file: [circuit-breaker.spec.ts](../../../automation-test/tests/sync/circuit-breaker.spec.ts) | Run: `npm run test:circuit-breaker`
+
+| Scenario | Test |
+|----------|------|
+| Healthy metrics | should report healthy metrics with no consecutive failures |
+| SSE connected | should show SSE connected in status |
+| Circuit breaker reset | should reset circuit breaker via API |
+| Disable sync toggle | should disable sync via toggle |
+| Re-enable sync toggle | should re-enable sync via toggle |
+| Sync after re-enable | should sync successfully after re-enable |
+
+### Two-Client Sync (optional)
+
+Test file: [two-client-sync.spec.ts](../../../automation-test/tests/sync/two-client-sync.spec.ts) | Requires `SECOND_CLIENT_URL` env var
+
+| Scenario | Test |
+|----------|------|
+| A→B propagation | should propagate Equipment change from client A to client B |
+| Both synced | should show both clients as synced after changes |

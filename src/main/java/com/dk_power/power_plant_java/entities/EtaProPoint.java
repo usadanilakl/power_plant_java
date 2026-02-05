@@ -19,6 +19,6 @@ public class EtaProPoint {
     @ElementCollection
     @CollectionTable(name = "etapro_point_data", joinColumns = @JoinColumn(name = "etapro_point_id"))
     @MapKeyColumn(name = "date_time")
-    @Column(name = "value")
+    @Column(name = "\"value\"")
     private Map<LocalDateTime, Long> data;
 }
