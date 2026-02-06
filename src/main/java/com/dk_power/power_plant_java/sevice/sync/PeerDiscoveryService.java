@@ -53,7 +53,11 @@ public class PeerDiscoveryService {
             listenSocket.setSoTimeout(5000); // 5 second timeout for graceful shutdown
 
             running = true;
-            listenerExecutor = Executors.newSingleThreadExecutor();
+            listenerExecutor = Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "peer-discovery-listener");
+                t.setDaemon(true); // Daemon thread won't block JVM shutdown
+                return t;
+            });
             listenerExecutor.submit(this::listenForPeers);
 
             log.info("Peer discovery initialized on port {}", syncConfig.getDiscoveryPort());
@@ -71,15 +75,24 @@ public class PeerDiscoveryService {
         log.info("Shutting down peer discovery service...");
         running = false;
 
-        if (broadcastSocket != null && !broadcastSocket.isClosed()) {
-            broadcastSocket.close();
-        }
+        // Close sockets first to unblock any waiting receive() calls
         if (listenSocket != null && !listenSocket.isClosed()) {
             listenSocket.close();
         }
+        if (broadcastSocket != null && !broadcastSocket.isClosed()) {
+            broadcastSocket.close();
+        }
         if (listenerExecutor != null) {
             listenerExecutor.shutdownNow();
+            try {
+                if (!listenerExecutor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                    log.debug("Peer discovery executor did not terminate in time");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
+        log.info("Peer discovery service shutdown complete");
     }
 
     /**

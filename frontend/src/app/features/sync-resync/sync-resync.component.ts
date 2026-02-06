@@ -14,7 +14,9 @@ import {
   PartialSyncDatesResponse,
   PartialSyncPreview,
   PartialSyncResult,
-  FailedSyncItem
+  FailedSyncItem,
+  FileSyncResult,
+  FileSyncStats
 } from '../../services/full-resync.service';
 @Component({
   selector: 'app-sync-resync',
@@ -62,6 +64,12 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   failedItemsLoading = false;
   showFailedItems = false;
   retryingAll = false;
+
+  // Files-only sync state
+  filesSyncLoading = false;
+  filesSyncResult: FileSyncResult | null = null;
+  showFilesSyncConfirm = false;
+  forceFilesSync = false;
 
   constructor(
     private resyncService: FullResyncService,
@@ -325,9 +333,29 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   }
 
   // Utility methods
-  formatTimestamp(timestamp: string | null): string {
+  formatTimestamp(timestamp: any): string {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleString();
+
+    let date: Date;
+
+    // Handle different timestamp formats from Java Instant serialization
+    if (typeof timestamp === 'number') {
+      // Epoch seconds - convert to milliseconds
+      // Check if it's seconds (small number) or already milliseconds (large number)
+      date = timestamp < 10000000000
+        ? new Date(timestamp * 1000)  // Seconds
+        : new Date(timestamp);         // Milliseconds
+    } else if (typeof timestamp === 'object' && timestamp.epochSecond) {
+      // Object format: {epochSecond: number, nano: number}
+      date = new Date(timestamp.epochSecond * 1000);
+    } else if (typeof timestamp === 'string') {
+      // ISO-8601 string
+      date = new Date(timestamp);
+    } else {
+      return 'Invalid date';
+    }
+
+    return date.toLocaleString();
   }
 
   formatFileSize(bytes: number): string {
@@ -626,5 +654,72 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
         this.showMessage('Retry all failed: ' + err.message, 'error');
       }
     });
+  }
+
+  // ==================== FILES-ONLY SYNC METHODS ====================
+
+  /**
+   * Show confirmation for files-only sync
+   */
+  confirmFilesSync(): void {
+    this.forceFilesSync = false;
+    this.showFilesSyncConfirm = true;
+  }
+
+  /**
+   * Show confirmation for force files-only sync
+   */
+  confirmForceFilesSync(): void {
+    this.forceFilesSync = true;
+    this.showFilesSyncConfirm = true;
+  }
+
+  /**
+   * Cancel files-only sync confirmation
+   */
+  cancelFilesSyncConfirm(): void {
+    this.showFilesSyncConfirm = false;
+    this.forceFilesSync = false;
+  }
+
+  /**
+   * Execute files-only sync
+   */
+  executeFilesSync(): void {
+    this.showFilesSyncConfirm = false;
+    this.filesSyncLoading = true;
+    this.filesSyncResult = null;
+    this.showMessage('Starting files-only sync...', 'info');
+
+    this.resyncService.executeFilesSync(this.forceFilesSync, 3).subscribe({
+      next: (result) => {
+        this.filesSyncLoading = false;
+        this.filesSyncResult = result;
+        if (result.success) {
+          this.showMessage(result.message, 'success');
+        } else {
+          this.showMessage(result.message, 'warning');
+        }
+        this.loadHealth();
+        this.loadSyncHealthCheck();
+      },
+      error: (err) => {
+        this.filesSyncLoading = false;
+        this.showMessage('Files sync failed: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  /**
+   * Get files sync confirmation message
+   */
+  getFilesSyncConfirmMessage(): string {
+    if (this.forceFilesSync) {
+      return 'WARNING: Force files sync will skip deletion safety checks and may delete many files. ' +
+             'This only syncs files - database is not affected. Are you sure?';
+    }
+    return 'Are you sure you want to sync files only? ' +
+           'This will download missing files and delete extra local files. ' +
+           'Database is not affected.';
   }
 }

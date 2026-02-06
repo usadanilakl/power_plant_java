@@ -150,6 +150,21 @@ export interface PartialSyncResult {
   changesApplied: number;
 }
 
+// Files-only sync interfaces
+export interface FileSyncStats {
+  filesDownloaded: number;
+  filesFailed: number;
+  filesDeleted: number;
+  failedFiles: string[];
+}
+
+export interface FileSyncResult {
+  success: boolean;
+  message: string;
+  comparison: FileComparisonResult | null;
+  stats: FileSyncStats | null;
+}
+
 // Full Sync to Server interfaces
 export interface FullSyncToServerStatus {
   startTime: string | null;
@@ -384,6 +399,32 @@ export class FullResyncService {
    */
   forceSyncHealthCheck(): Observable<SyncHealthCheckResult> {
     return this.http.post<SyncHealthCheckResult>(`${this.baseUrl}/sync-health/check`, {});
+  }
+
+  // ==================== FILES-ONLY SYNC METHODS ====================
+
+  /**
+   * Preview files-only sync.
+   * Compares local files with server and returns what would change.
+   */
+  previewFilesSync(): Observable<FileComparisonResult> {
+    return this.http.get<FileComparisonResult>(`${this.baseUrl}/files-sync/preview`);
+  }
+
+  /**
+   * Execute files-only sync.
+   * Downloads missing files from server and optionally deletes extra local files.
+   * Does NOT touch the database - only syncs files.
+   *
+   * Includes retry logic for failed downloads.
+   *
+   * @param force If true, skip deletion safety checks
+   * @param maxRetries Maximum retry attempts for failed downloads (default 3)
+   */
+  executeFilesSync(force: boolean = false, maxRetries: number = 3): Observable<FileSyncResult> {
+    return this.http.post<FileSyncResult>(
+      `${this.baseUrl}/files-sync/execute?force=${force}&maxRetries=${maxRetries}`, {}
+    );
   }
 
   // ==================== PARTIAL SYNC METHODS ====================

@@ -117,6 +117,66 @@ After H2 restore:
 | FullResyncService | Server: `service/FullResyncService.java` | Creates H2 backup, exports entities |
 | FullResyncController | Server: `controller/FullResyncController.java` | REST endpoints for clients |
 
+## Files-Only Sync
+
+Sometimes only files are out of sync while the database is correct. The **files-only sync** feature syncs files from the server without touching the database.
+
+Use cases:
+- File mismatch detected but database is correct
+- Need to fix file sync without database reset
+- Partial resync applied but file sync failed
+
+### Features
+
+1. **Retry logic** — failed downloads are retried up to 3 times (configurable)
+2. **Detailed reporting** — shows exactly which files succeeded, failed, or were deleted
+3. **Same safety checks** — deletion thresholds apply (can be bypassed with `force=true`)
+
+### API endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/resync/files-sync/preview` | GET | Preview file changes (same as full resync preview) |
+| `/api/resync/files-sync/execute` | POST | Execute files-only sync |
+| `/api/resync/files-sync/execute?force=true&maxRetries=3` | POST | Execute with options |
+
+### Response
+
+The files-sync endpoint returns a `FileSyncResult` with detailed stats:
+
+```json
+{
+  "success": true,
+  "message": "Files sync complete: 45 downloaded, 0 failed, 3 deleted, 1200 unchanged",
+  "comparison": { ... },
+  "stats": {
+    "filesDownloaded": 45,
+    "filesFailed": 0,
+    "filesDeleted": 3,
+    "failedFiles": []
+  }
+}
+```
+
+If `filesFailed > 0`, the response includes a list of failed file paths for troubleshooting.
+
+### Implementation
+
+The files-only sync flow:
+
+1. Client calls `GET /api/resync/files/path-manifest` to get server file list
+2. Client compares local files against manifest by path and SHA-256 checksum
+3. For each missing/changed file, downloads from `GET /api/resync/files/permanent/{path}`
+4. Failed downloads are retried with exponential backoff (1s, 2s, 3s delays)
+5. Extra local files are deleted (subject to safety check)
+6. Result returned with detailed statistics
+
+**URL encoding**: File paths with special characters (spaces, parentheses, etc.) are URL-encoded during download. The server handles multi-pass decoding for double-encoded paths and falls back to the original path if decoding fails.
+
+Example: `Gas (Vendor)` → `Gas%20%28Vendor%29`
+
+See: [FullResyncService.syncFilesOnly()](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/FullResyncService.java)
+
 ## Client REST endpoints
 
 | Endpoint | Method | Purpose |
@@ -125,6 +185,9 @@ After H2 restore:
 | `/api/resync/preview` | GET | Preview resync without changes |
 | `/api/resync/start` | POST | Start full resync |
 | `/api/resync/start?force=true` | POST | Start resync, skip safety checks |
+| `/api/resync/files-sync/preview` | GET | Preview files-only sync |
+| `/api/resync/files-sync/execute` | POST | Start files-only sync |
+| `/api/resync/files-sync/execute?force=true` | POST | Files-only sync, skip safety |
 | `/api/resync/status` | GET | Get current resync progress |
 | `/api/backup/start` | POST | Create full backup |
 | `/api/backup/status` | GET | Get current backup progress |
@@ -164,7 +227,9 @@ spring.datasource.url=jdbc:h2:file:./data/syncdb
 spring.datasource.username=sa
 spring.datasource.password=password
 spring.jpa.hibernate.ddl-auto=update
-sync.files.storage-path=./file-storage
+sync.files.storage-path=./file-storage            # Hash-based temp storage (auto-cleaned)
+sync.files.permanent-storage-path=./permanent-storage  # Path-based mirror (never auto-cleaned)
+sync.files.permanent-storage-enabled=true         # Enable permanent storage for resync
 sync.backup.storage-path=./backup-storage
 ```
 
@@ -177,3 +242,14 @@ sync.backup.storage-path=./backup-storage
 **Resync blocked by safety check** — too many files would be deleted. Review via preview endpoint, then use `force=true` if safe.
 
 **Files not syncing after resync** — physical files are synced separately from the database. Check file manifest exists on server, files exist in server storage, and client has write permissions.
+
+**File mismatch after full/partial resync** — some files may fail to download due to network issues or server errors. Use the **Files-Only Sync** feature to retry file downloads:
+1. Go to Sync & Recovery page
+2. Click "Preview File Changes" to see what's missing
+3. Click "Sync Files Only" to download missing files (includes automatic retry)
+4. Check the result for any failed files
+
+**Many files failed to download** — the files-sync feature retries failed downloads automatically (default 3 times). If files still fail:
+1. Check server logs for errors on those specific files
+2. Verify files exist in server's permanent storage
+3. Try running files-sync again with higher retry count: `?maxRetries=5`

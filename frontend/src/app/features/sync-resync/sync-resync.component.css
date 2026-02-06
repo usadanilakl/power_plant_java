@@ -511,6 +511,115 @@ h2 {
   font-style: italic;
 }
 
+/* Files-Only Sync Card */
+.files-sync-card {
+  border-left: 4px solid #17a2b8;
+}
+
+.files-sync-description {
+  color: var(--secondary-text);
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.files-sync-result {
+  margin-bottom: 20px;
+}
+
+.files-sync-result h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--primary-text);
+}
+
+.files-sync-result .result-summary {
+  padding: 16px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.files-sync-result .result-success {
+  background-color: var(--success-background);
+  border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.files-sync-result .result-warning {
+  background-color: var(--warning-background);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.files-sync-result .result-summary p {
+  margin: 0 0 12px 0;
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+.files-sync-result .result-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.files-sync-result .stat-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.files-sync-result .stat-label {
+  font-size: 12px;
+  color: var(--secondary-text);
+}
+
+.files-sync-result .stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.files-sync-result .stat-value.success {
+  color: #28a745;
+}
+
+.files-sync-result .stat-value.error {
+  color: #dc3545;
+}
+
+.files-sync-result .failed-files-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.files-sync-result .failed-files-list h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #dc3545;
+}
+
+.files-sync-result .failed-files-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.files-sync-result .failed-files-list li {
+  font-size: 12px;
+  color: #dc3545;
+  padding: 4px 0;
+  word-break: break-all;
+}
+
+.files-sync-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 /* Actions Card */
 .action-buttons {
   display: flex;

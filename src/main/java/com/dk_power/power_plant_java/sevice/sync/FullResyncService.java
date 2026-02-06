@@ -427,7 +427,7 @@ public class FullResyncService {
      * The script runs independently and will restart the application.
      */
     private void scheduleExternalRestart() {
-        new Thread(() -> {
+        Thread restartThread = new Thread(() -> {
             try {
                 // Give time for the response to be sent
                 Thread.sleep(2000);
@@ -471,7 +471,9 @@ public class FullResyncService {
             } catch (Exception e) {
                 log.error("Failed to execute restart script: {}. Manual restart required.", e.getMessage());
             }
-        }).start();
+        }, "restart-scheduler");
+        restartThread.setDaemon(true); // Daemon so it doesn't block shutdown
+        restartThread.start();
     }
 
     /**
@@ -1133,12 +1135,9 @@ public class FullResyncService {
         for (PathBasedManifestEntry entry : serverFiles) {
             if (entry.getRelativePath() != null) {
                 // Path from permanent storage is already normalized (e.g., "uploads/pdf/P&ID/ABB/P123.pdf")
-                // We need to extract just the part after "uploads/" for local comparison
+                // We need to extract just the part after uploads dir for local comparison
                 String serverPath = entry.getRelativePath().replace('\\', '/');
-                String localPath = serverPath;
-                if (serverPath.startsWith("uploads/")) {
-                    localPath = serverPath.substring(8); // Remove "uploads/" prefix
-                }
+                String localPath = stripUploadsPrefix(serverPath);
                 serverFileMap.put(localPath.toLowerCase(), entry);
             }
         }
@@ -1172,11 +1171,8 @@ public class FullResyncService {
             if (!localFiles.contains(normalizedPath)) {
                 // File missing locally
                 FileManifestEntry downloadEntry = new FileManifestEntry();
-                // Extract local relative path from server path
-                String relativePath = serverEntry.getRelativePath();
-                if (relativePath.startsWith("uploads/")) {
-                    relativePath = relativePath.substring(8);
-                }
+                // Extract local relative path from server path (strip uploads dir prefix)
+                String relativePath = stripUploadsPrefix(serverEntry.getRelativePath());
                 downloadEntry.setRelativePath(relativePath);
                 downloadEntry.setChecksum(serverEntry.getFileHash());
                 downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
@@ -1190,10 +1186,7 @@ public class FullResyncService {
                     String localChecksum = computeChecksum(localFile);
                     if (!localChecksum.equalsIgnoreCase(serverEntry.getFileHash())) {
                         FileManifestEntry downloadEntry = new FileManifestEntry();
-                        String relativePath = serverEntry.getRelativePath();
-                        if (relativePath.startsWith("uploads/")) {
-                            relativePath = relativePath.substring(8);
-                        }
+                        String relativePath = stripUploadsPrefix(serverEntry.getRelativePath());
                         downloadEntry.setRelativePath(relativePath);
                         downloadEntry.setChecksum(serverEntry.getFileHash());
                         downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
@@ -1205,10 +1198,7 @@ public class FullResyncService {
                 } catch (Exception e) {
                     // Error reading file - need to download
                     FileManifestEntry downloadEntry = new FileManifestEntry();
-                    String relativePath = serverEntry.getRelativePath();
-                    if (relativePath.startsWith("uploads/")) {
-                        relativePath = relativePath.substring(8);
-                    }
+                    String relativePath = stripUploadsPrefix(serverEntry.getRelativePath());
                     downloadEntry.setRelativePath(relativePath);
                     downloadEntry.setChecksum(serverEntry.getFileHash());
                     downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
@@ -1276,6 +1266,242 @@ public class FullResyncService {
         }
 
         return false;
+    }
+
+    // ==================== FILES-ONLY SYNC ====================
+
+    /**
+     * Perform a files-only sync from the sync server.
+     * This compares local files with the server manifest and downloads/deletes as needed.
+     * Does NOT touch the database - only syncs files.
+     *
+     * Includes retry logic for failed downloads.
+     *
+     * @param skipDeletionCheck If true, skip the deletion safety check
+     * @param maxRetries Maximum number of retries for failed downloads (default 3)
+     * @return FileSyncResult with detailed information about the operation
+     */
+    public FileSyncResult syncFilesOnly(boolean skipDeletionCheck, int maxRetries) {
+        if (!resyncInProgress.compareAndSet(false, true)) {
+            return new FileSyncResult(false, "Sync already in progress", null);
+        }
+
+        currentResyncStatus = new ResyncStatus();
+        currentResyncStatus.setStartTime(Instant.now());
+        currentResyncStatus.setPhase("Starting files-only sync");
+
+        try {
+            if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+                return new FileSyncResult(false, "Sync server URL not configured", null);
+            }
+
+            // Phase 1: Compare files with server
+            currentResyncStatus.setPhase("Comparing files with server");
+            log.info("Starting files-only sync - comparing with server");
+
+            FileComparisonResult comparison = compareLocalWithServer();
+            currentResyncStatus.setTotalFiles(comparison.getTotalBackupFiles());
+
+            log.info("File comparison: {} to download, {} to delete, {} unchanged",
+                comparison.getFilesToDownload().size(),
+                comparison.getFilesToDelete().size(),
+                comparison.getUnchangedFiles().size());
+
+            // Phase 2: Safety check for deletions
+            if (!skipDeletionCheck && !comparison.getFilesToDelete().isEmpty()) {
+                DeletionSafetyResult safetyResult = checkDeletionSafety(comparison);
+                if (!safetyResult.isSafe()) {
+                    currentResyncStatus.setPhase("Blocked by safety check");
+                    return new FileSyncResult(false, safetyResult.getMessage(), comparison);
+                }
+            }
+
+            // Phase 3: Download files from server with retry logic
+            currentResyncStatus.setPhase("Downloading files");
+            FileSyncStats stats = downloadFilesWithRetry(comparison, maxRetries);
+
+            // Phase 4: Delete extra local files
+            currentResyncStatus.setPhase("Deleting extra files");
+            int deleted = 0;
+            if (!comparison.getFilesToDelete().isEmpty()) {
+                deleted = deleteExtraFilesWithTracking(comparison);
+            }
+            stats.setFilesDeleted(deleted);
+
+            currentResyncStatus.setPhase("Complete");
+            currentResyncStatus.setEndTime(Instant.now());
+            currentResyncStatus.setSuccess(true);
+
+            // Record successful sync for health tracking
+            syncHealthChecker.recordSuccessfulSync();
+
+            String message = String.format(
+                "Files sync complete: %d downloaded, %d failed, %d deleted, %d unchanged",
+                stats.getFilesDownloaded(), stats.getFilesFailed(),
+                stats.getFilesDeleted(), comparison.getUnchangedFiles().size());
+
+            log.info(message);
+            if (!stats.getFailedFiles().isEmpty()) {
+                log.warn("Failed to download {} files: {}",
+                    stats.getFailedFiles().size(),
+                    stats.getFailedFiles().subList(0, Math.min(5, stats.getFailedFiles().size())));
+            }
+
+            return new FileSyncResult(stats.getFilesFailed() == 0, message, comparison, stats);
+
+        } catch (Exception e) {
+            log.error("Files-only sync failed: {}", e.getMessage(), e);
+            currentResyncStatus.setPhase("Failed: " + e.getMessage());
+            currentResyncStatus.setSuccess(false);
+            return new FileSyncResult(false, "Files sync failed: " + e.getMessage(), null);
+        } finally {
+            resyncInProgress.set(false);
+        }
+    }
+
+    /**
+     * Download files with retry logic.
+     * Attempts to download each file up to maxRetries times before marking as failed.
+     */
+    private FileSyncStats downloadFilesWithRetry(FileComparisonResult comparison, int maxRetries) {
+        FileSyncStats stats = new FileSyncStats();
+        Path uploadsPath = getUploadsPath();
+
+        List<FileManifestEntry> toDownload = new ArrayList<>(comparison.getFilesToDownload());
+        List<FileManifestEntry> failedFirst = new ArrayList<>();
+
+        int processed = 0;
+
+        // First pass
+        for (FileManifestEntry entry : toDownload) {
+            boolean success = downloadSingleFile(entry, uploadsPath);
+            if (success) {
+                stats.incrementDownloaded();
+            } else {
+                failedFirst.add(entry);
+            }
+            processed++;
+            currentResyncStatus.setProcessedFiles(processed);
+
+            if (processed % 50 == 0) {
+                log.info("Downloaded {}/{} files, {} failed so far",
+                    stats.getFilesDownloaded(), toDownload.size(), failedFirst.size());
+            }
+        }
+
+        // Retry failed files
+        if (!failedFirst.isEmpty() && maxRetries > 0) {
+            log.info("Retrying {} failed downloads (max {} retries)", failedFirst.size(), maxRetries);
+
+            List<FileManifestEntry> stillFailed = new ArrayList<>(failedFirst);
+
+            for (int retry = 1; retry <= maxRetries && !stillFailed.isEmpty(); retry++) {
+                log.info("Retry attempt {} for {} files", retry, stillFailed.size());
+
+                // Wait a bit before retry
+                try {
+                    Thread.sleep(1000L * retry);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                List<FileManifestEntry> retryFailed = new ArrayList<>();
+                for (FileManifestEntry entry : stillFailed) {
+                    boolean success = downloadSingleFile(entry, uploadsPath);
+                    if (success) {
+                        stats.incrementDownloaded();
+                    } else {
+                        retryFailed.add(entry);
+                    }
+                }
+                stillFailed = retryFailed;
+            }
+
+            // Record final failures
+            for (FileManifestEntry failed : stillFailed) {
+                stats.addFailedFile(failed.getRelativePath());
+            }
+        } else {
+            // No retries - just record failures
+            for (FileManifestEntry failed : failedFirst) {
+                stats.addFailedFile(failed.getRelativePath());
+            }
+        }
+
+        return stats;
+    }
+
+    /**
+     * Download a single file from the server.
+     * Returns true if successful, false otherwise.
+     */
+    private boolean downloadSingleFile(FileManifestEntry entry, Path uploadsPath) {
+        try {
+            String url;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            // Prefer permanent storage endpoint if available
+            if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
+                String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
+                    .replace("+", "%20")
+                    .replace("%2F", "/");
+                url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+            } else if (entry.getServerId() != null) {
+                url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+            } else {
+                log.warn("No download path for file: {}", entry.getRelativePath());
+                return false;
+            }
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("Failed to download {}: HTTP {}", entry.getRelativePath(), response.getStatusCode());
+                return false;
+            }
+
+            byte[] fileContent = response.getBody();
+            if (fileContent == null || fileContent.length == 0) {
+                log.warn("Empty content received for file: {}", entry.getRelativePath());
+                return false;
+            }
+
+            Path destPath = uploadsPath.resolve(entry.getRelativePath());
+            Files.createDirectories(destPath.getParent());
+            Files.write(destPath, fileContent);
+
+            return true;
+
+        } catch (Exception e) {
+            log.warn("Failed to download file {}: {}", entry.getRelativePath(), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Delete extra files and return count of deleted files.
+     */
+    private int deleteExtraFilesWithTracking(FileComparisonResult comparison) {
+        Path uploadsPath = getUploadsPath();
+        int deleted = 0;
+
+        for (String relativePath : comparison.getFilesToDelete()) {
+            Path filePath = uploadsPath.resolve(relativePath);
+            try {
+                if (Files.deleteIfExists(filePath)) {
+                    deleted++;
+                    deleteEmptyParentDirectories(filePath.getParent(), uploadsPath);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete {}: {}", filePath, e.getMessage());
+            }
+        }
+
+        log.info("Deleted {} extra local files", deleted);
+        return deleted;
     }
 
     // ==================== PARTIAL SYNC ====================
@@ -1503,6 +1729,33 @@ public class FullResyncService {
         return filesPath;
     }
 
+    /**
+     * Strip the uploads directory prefix from a server path.
+     * Server paths may be like "uploads-prod/pdf/file.pdf" and we need just "pdf/file.pdf".
+     * Handles both the configured filesRootPath name and generic "uploads" prefix.
+     */
+    private String stripUploadsPrefix(String serverPath) {
+        if (serverPath == null || serverPath.isEmpty()) {
+            return serverPath;
+        }
+
+        // Get the uploads directory name from filesRootPath
+        String uploadsDirName = Paths.get(filesRootPath).getFileName().toString();
+
+        // Try to strip the configured uploads dir name first (e.g., "uploads-prod/")
+        if (serverPath.startsWith(uploadsDirName + "/")) {
+            return serverPath.substring(uploadsDirName.length() + 1);
+        }
+
+        // Fallback: try generic "uploads/" prefix
+        if (serverPath.startsWith("uploads/")) {
+            return serverPath.substring(8);
+        }
+
+        // No prefix found, return as-is
+        return serverPath;
+    }
+
     private String computeChecksum(Path file) throws IOException {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -1681,6 +1934,47 @@ public class FullResyncService {
         private final String message;
         private final FileComparisonResult fileComparison;
         private final int changesApplied;
+    }
+
+    // Files-only sync DTOs
+
+    @Data
+    public static class FileSyncResult {
+        private final boolean success;
+        private final String message;
+        private final FileComparisonResult comparison;
+        private FileSyncStats stats;
+
+        public FileSyncResult(boolean success, String message, FileComparisonResult comparison) {
+            this.success = success;
+            this.message = message;
+            this.comparison = comparison;
+            this.stats = null;
+        }
+
+        public FileSyncResult(boolean success, String message, FileComparisonResult comparison, FileSyncStats stats) {
+            this.success = success;
+            this.message = message;
+            this.comparison = comparison;
+            this.stats = stats;
+        }
+    }
+
+    @Data
+    public static class FileSyncStats {
+        private int filesDownloaded = 0;
+        private int filesFailed = 0;
+        private int filesDeleted = 0;
+        private List<String> failedFiles = new ArrayList<>();
+
+        public void incrementDownloaded() {
+            filesDownloaded++;
+        }
+
+        public void addFailedFile(String path) {
+            filesFailed++;
+            failedFiles.add(path);
+        }
     }
 
 }

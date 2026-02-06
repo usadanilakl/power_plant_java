@@ -224,14 +224,16 @@ public class CentralSyncService {
             if (pendingSyncRequest.compareAndSet(true, false)) {
                 log.info("Processing pending sync request");
                 // Use async to avoid stack overflow with recursive calls
-                new Thread(() -> {
+                Thread pendingSyncThread = new Thread(() -> {
                     try {
                         Thread.sleep(200);
                         syncWithServer();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                }).start();
+                }, "pending-sync");
+                pendingSyncThread.setDaemon(true); // Daemon so it doesn't block shutdown
+                pendingSyncThread.start();
             }
         }
 

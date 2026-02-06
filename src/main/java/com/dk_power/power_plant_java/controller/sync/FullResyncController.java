@@ -137,6 +137,51 @@ public class FullResyncController {
         return ResponseEntity.ok(syncHealthChecker.checkNow());
     }
 
+    // ==================== FILES-ONLY SYNC ENDPOINTS ====================
+
+    /**
+     * Preview files-only sync.
+     * Compares local files with server and returns what would change.
+     */
+    @GetMapping("/files-sync/preview")
+    public ResponseEntity<FileComparisonResult> previewFilesSync() {
+        if (fullResyncService.isResyncInProgress()) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("Files-only sync preview requested");
+        return ResponseEntity.ok(fullResyncService.previewResync());
+    }
+
+    /**
+     * Execute files-only sync.
+     * Downloads missing files from server and optionally deletes extra local files.
+     * Does NOT touch the database - only syncs files.
+     *
+     * Includes retry logic for failed downloads.
+     *
+     * @param force If true, skip deletion safety checks
+     * @param maxRetries Maximum retry attempts for failed downloads (default 3)
+     */
+    @PostMapping("/files-sync/execute")
+    public ResponseEntity<FullResyncService.FileSyncResult> executeFilesSync(
+            @RequestParam(defaultValue = "false") boolean force,
+            @RequestParam(defaultValue = "3") int maxRetries) {
+
+        if (fullResyncService.isResyncInProgress()) {
+            return ResponseEntity.badRequest()
+                .body(new FullResyncService.FileSyncResult(false, "Sync already in progress", null));
+        }
+
+        log.info("Files-only sync requested (force={}, maxRetries={})", force, maxRetries);
+        FullResyncService.FileSyncResult result = fullResyncService.syncFilesOnly(force, maxRetries);
+
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
     // ==================== PARTIAL SYNC ENDPOINTS ====================
 
     /**

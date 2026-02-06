@@ -398,6 +398,99 @@
         </div>
       </div>
 
+      <!-- Files-Only Sync Card -->
+      <div class="card files-sync-card">
+        <div class="card-header">
+          <h3>Files-Only Sync</h3>
+        </div>
+        <div class="card-body">
+          <p class="files-sync-description">
+            Sync only files from the server without touching the database.
+            Use this when you have a file mismatch but the database is correct.
+            Includes automatic retry for failed downloads.
+          </p>
+
+          <!-- Files Sync Result -->
+          <div class="files-sync-result" *ngIf="filesSyncResult">
+            <h4>Sync Result</h4>
+            <div class="result-summary" [ngClass]="filesSyncResult.success ? 'result-success' : 'result-warning'">
+              <p>{{ filesSyncResult.message }}</p>
+              <div class="result-stats" *ngIf="filesSyncResult.stats">
+                <div class="stat-item">
+                  <span class="stat-label">Downloaded:</span>
+                  <span class="stat-value success">{{ filesSyncResult.stats.filesDownloaded }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Failed:</span>
+                  <span class="stat-value" [class.error]="filesSyncResult.stats.filesFailed > 0">{{ filesSyncResult.stats.filesFailed }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Deleted:</span>
+                  <span class="stat-value">{{ filesSyncResult.stats.filesDeleted }}</span>
+                </div>
+              </div>
+              <div class="failed-files-list" *ngIf="filesSyncResult.stats?.failedFiles?.length">
+                <h5>Failed Downloads (first 10):</h5>
+                <ul>
+                  <li *ngFor="let file of (filesSyncResult.stats?.failedFiles ?? []).slice(0, 10)">{{ file }}</li>
+                  <li *ngIf="(filesSyncResult.stats?.failedFiles?.length ?? 0) > 10">
+                    ... and {{ (filesSyncResult.stats?.failedFiles?.length ?? 0) - 10 }} more
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" (click)="filesSyncResult = null">Clear Result</button>
+          </div>
+
+          <div class="files-sync-actions">
+            <button
+              class="btn btn-primary"
+              (click)="loadPreview()"
+              [disabled]="loading || previewLoading || isOperationInProgress() || filesSyncLoading">
+              {{ previewLoading ? 'Loading...' : 'Preview File Changes' }}
+            </button>
+            <button
+              class="btn btn-warning"
+              (click)="confirmFilesSync()"
+              [disabled]="loading || isOperationInProgress() || filesSyncLoading">
+              {{ filesSyncLoading ? 'Syncing...' : 'Sync Files Only' }}
+            </button>
+            <button
+              class="btn btn-danger btn-sm"
+              (click)="confirmForceFilesSync()"
+              [disabled]="loading || isOperationInProgress() || filesSyncLoading">
+              Force (Skip Safety)
+            </button>
+          </div>
+
+          <div class="action-notes">
+            <p><strong>Sync Files Only:</strong> Downloads missing files and deletes extra local files. Database is NOT modified.</p>
+            <p><strong>Force:</strong> Skips the safety check that prevents deleting too many files at once.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Sync Confirmation Dialog -->
+      <div class="dialog-overlay" *ngIf="showFilesSyncConfirm" (click)="cancelFilesSyncConfirm()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Confirm Files Sync</h3>
+          </div>
+          <div class="dialog-body">
+            <p>{{ getFilesSyncConfirmMessage() }}</p>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-secondary" (click)="cancelFilesSyncConfirm()">Cancel</button>
+            <button
+              class="btn"
+              [ngClass]="forceFilesSync ? 'btn-danger' : 'btn-warning'"
+              (click)="executeFilesSync()">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Actions Card -->
       <div class="card actions-card">
         <div class="card-header">
