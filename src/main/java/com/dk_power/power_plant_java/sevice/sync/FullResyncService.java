@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.sevice.app_services.H2BackupService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -58,6 +60,7 @@ public class FullResyncService {
     private final JdbcTemplate jdbcTemplate;
     private final SyncHealthChecker syncHealthChecker;
     private final FieldSyncService fieldSyncService;
+    private final FileRepo fileRepo;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -672,21 +675,32 @@ public class FullResyncService {
 
     /**
      * Download files from sync server.
+     * Uses permanent storage endpoint if permanentPath is available, otherwise falls back to serverId.
      */
     private void downloadFilesFromServer(FileComparisonResult comparison) throws IOException {
         Path uploadsPath = getUploadsPath();
         int downloaded = 0;
 
         for (FileManifestEntry entry : comparison.getFilesToDownload()) {
-            if (entry.getServerId() == null) {
-                log.warn("No server ID for file: {}", entry.getRelativePath());
-                continue;
-            }
-
             try {
-                String url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                String url;
                 HttpHeaders headers = new HttpHeaders();
                 headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+                // Prefer permanent storage endpoint if available
+                if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
+                    // URL encode the path to handle spaces and special characters
+                    String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
+                        .replace("+", "%20")  // URLEncoder uses + for spaces, we want %20
+                        .replace("%2F", "/"); // Keep forward slashes unencoded
+                    url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+                } else if (entry.getServerId() != null) {
+                    // Fall back to hash-based storage (legacy)
+                    url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                } else {
+                    log.warn("No download path for file: {}", entry.getRelativePath());
+                    continue;
+                }
 
                 ResponseEntity<byte[]> response = restTemplate.exchange(
                     url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
@@ -1092,62 +1106,56 @@ public class FullResyncService {
     }
 
     /**
-     * Compare local files with sync server's file manifest.
+     * Compare local files with sync server's path-based file manifest.
+     * Uses the permanent storage manifest for accurate path matching.
      */
     private FileComparisonResult compareLocalWithServer() {
         FileComparisonResult result = new FileComparisonResult();
 
-        // Get file manifest from server
-        String url = syncServerUrl + "/api/resync/files/manifest";
+        // Use new path-based manifest endpoint from permanent storage
+        String url = syncServerUrl + "/api/resync/files/path-manifest";
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
 
-        ResponseEntity<List<ServerFileManifestEntry>> response = restTemplate.exchange(
+        ResponseEntity<List<PathBasedManifestEntry>> response = restTemplate.exchange(
             url, HttpMethod.GET, new HttpEntity<>(headers),
-            new ParameterizedTypeReference<List<ServerFileManifestEntry>>() {});
+            new ParameterizedTypeReference<List<PathBasedManifestEntry>>() {});
 
-        List<ServerFileManifestEntry> serverFiles = response.getBody();
+        List<PathBasedManifestEntry> serverFiles = response.getBody();
         if (serverFiles == null) {
             serverFiles = new ArrayList<>();
         }
 
         result.setTotalBackupFiles(serverFiles.size());
 
-        // Build map of server files by their original path
-        Map<String, ServerFileManifestEntry> serverFileMap = new HashMap<>();
-        for (ServerFileManifestEntry entry : serverFiles) {
-            if (entry.getOriginalPath() != null) {
-                // Normalize path - extract relative path after uploads directory
-                String normalizedPath = entry.getOriginalPath().replace('\\', '/');
-                // Find the uploads directory marker and extract everything after it
-                int uploadsIndex = normalizedPath.indexOf("/uploads/");
-                if (uploadsIndex >= 0) {
-                    // Skip past "/uploads/" (9 chars)
-                    normalizedPath = normalizedPath.substring(uploadsIndex + 9);
-                } else if (normalizedPath.indexOf("/uploads-") >= 0) {
-                    // Handle uploads-test, uploads-dev, uploads-prod
-                    int idx = normalizedPath.indexOf("/uploads-");
-                    int slashAfter = normalizedPath.indexOf('/', idx + 1);
-                    if (slashAfter >= 0) {
-                        normalizedPath = normalizedPath.substring(slashAfter + 1);
-                    }
-                } else if (normalizedPath.startsWith("uploads/")) {
-                    normalizedPath = normalizedPath.substring(8);
+        // Build map of server files by relative path (already normalized in path-based manifest)
+        Map<String, PathBasedManifestEntry> serverFileMap = new HashMap<>();
+        for (PathBasedManifestEntry entry : serverFiles) {
+            if (entry.getRelativePath() != null) {
+                // Path from permanent storage is already normalized (e.g., "uploads/pdf/P&ID/ABB/P123.pdf")
+                // We need to extract just the part after "uploads/" for local comparison
+                String serverPath = entry.getRelativePath().replace('\\', '/');
+                String localPath = serverPath;
+                if (serverPath.startsWith("uploads/")) {
+                    localPath = serverPath.substring(8); // Remove "uploads/" prefix
                 }
-                serverFileMap.put(normalizedPath, entry);
+                serverFileMap.put(localPath.toLowerCase(), entry);
             }
         }
 
         // Scan local files
         Path uploadsPath = getUploadsPath();
         Set<String> localFiles = new HashSet<>();
+        Map<String, String> localFileOriginalCase = new HashMap<>(); // Track original case
 
         if (Files.exists(uploadsPath)) {
             try (Stream<Path> walk = Files.walk(uploadsPath)) {
                 walk.filter(Files::isRegularFile)
                     .forEach(file -> {
                         String relativePath = uploadsPath.relativize(file).toString().replace('\\', '/');
-                        localFiles.add(relativePath);
+                        String lowerPath = relativePath.toLowerCase();
+                        localFiles.add(lowerPath);
+                        localFileOriginalCase.put(lowerPath, relativePath);
                     });
             } catch (IOException e) {
                 log.error("Error scanning local files: {}", e.getMessage());
@@ -1157,49 +1165,70 @@ public class FullResyncService {
         result.setTotalLocalFiles(localFiles.size());
 
         // Compare - files on server but not local (need to download)
-        for (Map.Entry<String, ServerFileManifestEntry> entry : serverFileMap.entrySet()) {
-            String relativePath = entry.getKey();
-            ServerFileManifestEntry serverEntry = entry.getValue();
+        for (Map.Entry<String, PathBasedManifestEntry> entry : serverFileMap.entrySet()) {
+            String normalizedPath = entry.getKey();
+            PathBasedManifestEntry serverEntry = entry.getValue();
 
-            if (!localFiles.contains(relativePath)) {
+            if (!localFiles.contains(normalizedPath)) {
                 // File missing locally
                 FileManifestEntry downloadEntry = new FileManifestEntry();
+                // Extract local relative path from server path
+                String relativePath = serverEntry.getRelativePath();
+                if (relativePath.startsWith("uploads/")) {
+                    relativePath = relativePath.substring(8);
+                }
                 downloadEntry.setRelativePath(relativePath);
                 downloadEntry.setChecksum(serverEntry.getFileHash());
-                downloadEntry.setSize(serverEntry.getFileSize());
-                downloadEntry.setServerId(serverEntry.getId());
+                downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
+                downloadEntry.setPermanentPath(serverEntry.getRelativePath()); // Full path for download
                 result.getFilesToDownload().add(downloadEntry);
             } else {
                 // File exists - check checksum
-                Path localFile = uploadsPath.resolve(relativePath);
+                String originalCasePath = localFileOriginalCase.get(normalizedPath);
+                Path localFile = uploadsPath.resolve(originalCasePath);
                 try {
                     String localChecksum = computeChecksum(localFile);
-                    if (!localChecksum.equals(serverEntry.getFileHash())) {
+                    if (!localChecksum.equalsIgnoreCase(serverEntry.getFileHash())) {
                         FileManifestEntry downloadEntry = new FileManifestEntry();
+                        String relativePath = serverEntry.getRelativePath();
+                        if (relativePath.startsWith("uploads/")) {
+                            relativePath = relativePath.substring(8);
+                        }
                         downloadEntry.setRelativePath(relativePath);
                         downloadEntry.setChecksum(serverEntry.getFileHash());
-                        downloadEntry.setSize(serverEntry.getFileSize());
-                        downloadEntry.setServerId(serverEntry.getId());
+                        downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
+                        downloadEntry.setPermanentPath(serverEntry.getRelativePath());
                         result.getFilesToDownload().add(downloadEntry);
                     } else {
-                        result.getUnchangedFiles().add(relativePath);
+                        result.getUnchangedFiles().add(originalCasePath);
                     }
                 } catch (Exception e) {
                     // Error reading file - need to download
                     FileManifestEntry downloadEntry = new FileManifestEntry();
+                    String relativePath = serverEntry.getRelativePath();
+                    if (relativePath.startsWith("uploads/")) {
+                        relativePath = relativePath.substring(8);
+                    }
                     downloadEntry.setRelativePath(relativePath);
                     downloadEntry.setChecksum(serverEntry.getFileHash());
-                    downloadEntry.setSize(serverEntry.getFileSize());
-                    downloadEntry.setServerId(serverEntry.getId());
+                    downloadEntry.setSize(serverEntry.getFileSize() != null ? serverEntry.getFileSize() : 0);
+                    downloadEntry.setPermanentPath(serverEntry.getRelativePath());
                     result.getFilesToDownload().add(downloadEntry);
                 }
             }
         }
 
         // Find files to delete (local files not on server)
-        for (String localFile : localFiles) {
-            if (!serverFileMap.containsKey(localFile)) {
-                result.getFilesToDelete().add(localFile);
+        // Apply safety check: don't delete if an active FileObject owns the file
+        for (String localFileLower : localFiles) {
+            if (!serverFileMap.containsKey(localFileLower)) {
+                String originalCasePath = localFileOriginalCase.get(localFileLower);
+                // Safety check: verify no active FileObject owns this file
+                if (!hasActiveFileObject(originalCasePath)) {
+                    result.getFilesToDelete().add(originalCasePath);
+                } else {
+                    log.debug("Skipping deletion of {} - active FileObject exists", originalCasePath);
+                }
             }
         }
 
@@ -1209,6 +1238,44 @@ public class FullResyncService {
             result.getUnchangedFiles().size());
 
         return result;
+    }
+
+    /**
+     * Check if a file path belongs to an active (non-deleted) FileObject.
+     * This is a safety guard before deleting files during resync.
+     *
+     * @param relativePath The relative path like "pdf/P&ID/ABB/P123.pdf"
+     * @return true if an active FileObject owns this file
+     */
+    private boolean hasActiveFileObject(String relativePath) {
+        if (relativePath == null || relativePath.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // Extract fileNumber from path
+            Path path = Paths.get(relativePath);
+            String fileName = path.getFileName().toString();
+            int lastDot = fileName.lastIndexOf('.');
+            String fileNumber = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+
+            // Remove revision suffix if present (e.g., "P123-rev1" -> "P123")
+            fileNumber = fileNumber.replaceAll("-rev\\d+$", "");
+
+            // Check if there's a non-deleted FileObject with this fileNumber
+            FileObject fo = fileRepo.findByFileNumber(fileNumber);
+            if (fo != null && !Boolean.TRUE.equals(fo.getDeleted())) {
+                // Verify the path actually matches by checking the file's expected location
+                String foPath = fo.getFileLink();
+                if (foPath != null && relativePath.toLowerCase().contains(fileNumber.toLowerCase())) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error checking for active FileObject for {}: {}", relativePath, e.getMessage());
+        }
+
+        return false;
     }
 
     // ==================== PARTIAL SYNC ====================
@@ -1467,7 +1534,8 @@ public class FullResyncService {
         private String checksum;
         private long size;
         private Instant lastModified;
-        private Long serverId;  // ID on sync server for downloading
+        private Long serverId;  // ID on sync server for downloading (hash-based storage)
+        private String permanentPath;  // Path in permanent storage for downloading
     }
 
     @Data
@@ -1571,6 +1639,18 @@ public class FullResyncService {
         private String storagePath;
         private String originalPath;
         private Instant uploadedAt;
+    }
+
+    /**
+     * DTO for path-based manifest entry from permanent storage.
+     * Used for file comparison during resync - indexed by client-relative path.
+     */
+    @Data
+    public static class PathBasedManifestEntry {
+        private String relativePath;    // e.g., "uploads/pdf/P&ID/ABB/P123.pdf"
+        private String fileHash;        // SHA-256 hash
+        private Long fileSize;          // bytes
+        private Instant lastModified;
     }
 
     // Partial sync DTOs

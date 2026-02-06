@@ -2,15 +2,17 @@ import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subject, interval } from 'rxjs';
 import { takeUntil, switchMap } from 'rxjs/operators';
+import { FormsModule } from '@angular/forms';
 import {
   FullResyncService,
   FullSyncToServerStatus,
-  FullSyncToServerStatusResponse
+  FullSyncToServerStatusResponse,
+  BulkExportStats
 } from '../../services/full-resync.service';
 @Component({
   selector: 'app-full-sync-to-server',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './full-sync-to-server.component.html',
   styleUrls: ['./full-sync-to-server.component.css']
 })
@@ -29,6 +31,12 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
   messageType: 'success' | 'error' | 'info' | 'warning' = 'info';
   showConfirmDialog = false;
 
+  // Sync method selection
+  syncMethod: 'BULK_EXPORT' | 'FIELD_CHANGES' = 'BULK_EXPORT';
+  forceOverwrite = false;
+  bulkExportStats: BulkExportStats | null = null;
+  statsLoading = false;
+
   constructor(
     private resyncService: FullResyncService,
     @Inject(PLATFORM_ID) platformId: Object
@@ -39,6 +47,7 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (this.isBrowser) {
       this.loadStatus();
+      this.loadBulkExportStats();
     }
   }
 
@@ -100,7 +109,25 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
 
   confirmStartSync(): void {
     this.showConfirmDialog = false;
-    this.startFullSync();
+    if (this.syncMethod === 'BULK_EXPORT') {
+      this.startBulkExportSync();
+    } else {
+      this.startFullSync();
+    }
+  }
+
+  loadBulkExportStats(): void {
+    this.statsLoading = true;
+    this.resyncService.getBulkExportStats().subscribe({
+      next: (stats) => {
+        this.bulkExportStats = stats;
+        this.statsLoading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load bulk export stats:', err);
+        this.statsLoading = false;
+      }
+    });
   }
 
   startFullSync(): void {
@@ -113,7 +140,7 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
         if (response.success) {
           this.syncStatus = response.status;
           this.inProgress = true;
-          this.showMessage('Full sync started. Monitoring progress...', 'info');
+          this.showMessage('Full sync started (FieldChange method). Monitoring progress...', 'info');
           this.startPolling();
         } else {
           this.showMessage(response.message, 'error');
@@ -122,6 +149,30 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.startLoading = false;
         console.error('Failed to start sync:', err);
+        this.showMessage('Failed to start sync: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  startBulkExportSync(): void {
+    this.startLoading = true;
+    this.message = '';
+
+    this.resyncService.startBulkExportSync(this.forceOverwrite).subscribe({
+      next: (response) => {
+        this.startLoading = false;
+        if (response.success) {
+          this.syncStatus = response.status;
+          this.inProgress = true;
+          this.showMessage('Bulk export sync started (fast method). Monitoring progress...', 'info');
+          this.startPolling();
+        } else {
+          this.showMessage(response.message, 'error');
+        }
+      },
+      error: (err) => {
+        this.startLoading = false;
+        console.error('Failed to start bulk export sync:', err);
         this.showMessage('Failed to start sync: ' + (err.error?.message || err.message), 'error');
       }
     });
@@ -153,7 +204,7 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
   }
 
   getPhaseClass(): string {
-    if (!this.syncStatus) return '';
+    if (!this.syncStatus || !this.syncStatus.phase) return '';
     const phase = this.syncStatus.phase.toLowerCase();
     if (phase.includes('complete')) return 'phase-success';
     if (phase.includes('failed') || phase.includes('error')) return 'phase-error';

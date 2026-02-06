@@ -14,7 +14,11 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
-    path: 'sync',
+    path: 'sync/**',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'full-sync-to-server',
     renderMode: RenderMode.Client
   },
   {

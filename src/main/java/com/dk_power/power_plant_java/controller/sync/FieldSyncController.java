@@ -558,6 +558,77 @@ public class FieldSyncController {
         return ResponseEntity.ok(result);
     }
 
+    // ==================== BULK EXPORT (FAST FULL SYNC) ====================
+
+    /**
+     * Get export statistics before starting bulk export.
+     * Shows entity counts and file stats to estimate export size.
+     *
+     * GET /api/field-sync/full-sync/bulk/stats
+     */
+    @GetMapping("/full-sync/bulk/stats")
+    public ResponseEntity<Map<String, Object>> getBulkExportStats() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            FullSyncToServerService.BulkExportStats stats = fullSyncToServerService.getBulkExportStats();
+            result.put("success", true);
+            result.put("totalEntities", stats.totalEntities());
+            result.put("totalJoinRecords", stats.totalJoinRecords());
+            result.put("fileCount", stats.fileCount());
+            result.put("totalFileSize", stats.totalFileSize());
+            result.put("totalFileSizeMB", String.format("%.2f", stats.totalFileSize() / (1024.0 * 1024.0)));
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed to get stats: " + e.getMessage());
+            log.error("Failed to get bulk export stats", e);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Start a fast bulk export sync to the server.
+     * This creates an H2 database export + files ZIP and uploads both.
+     * Much faster than the FieldChange approach (2-5 minutes vs 30-60 minutes).
+     *
+     * POST /api/field-sync/full-sync/bulk/start
+     *
+     * @param force If true, overwrite existing data on server
+     */
+    @PostMapping("/full-sync/bulk/start")
+    public ResponseEntity<Map<String, Object>> startBulkExportSync(
+            @RequestParam(defaultValue = "false") boolean force) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (!syncConfig.isServerSyncEnabled()) {
+            result.put("success", false);
+            result.put("message", "Server sync is not enabled");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        if (fullSyncToServerService.isInProgress()) {
+            result.put("success", false);
+            result.put("message", "Full sync is already in progress");
+            result.put("status", fullSyncToServerService.getStatus());
+            return ResponseEntity.ok(result);
+        }
+
+        try {
+            fullSyncToServerService.startFullSyncViaBulkExport(force);
+            result.put("success", true);
+            result.put("message", "Bulk export sync started (force=" + force + "). Use /full-sync/status to monitor progress.");
+            result.put("method", "BULK_EXPORT");
+            result.put("status", fullSyncToServerService.getStatus());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed to start bulk export sync: " + e.getMessage());
+            log.error("Failed to start bulk export sync", e);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     /**
      * Manually register a peer (bypasses UDP discovery)
      * POST /api/field-sync/peers/register

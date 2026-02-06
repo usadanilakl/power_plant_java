@@ -70,7 +70,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         items: [
             { route: '/backup', label: 'Backup' },
             { route: '/sync', label: 'Sync Dashboard' },
-            { route: '/sync-admin', label: 'Sync Admin' },
+            { route: '/full-sync-to-server', label: 'Full Sync to Server' },
             { route: '/admin', label: 'Admin' }
         ]
     }

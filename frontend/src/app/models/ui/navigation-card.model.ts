@@ -94,7 +94,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     items: [
       { title: 'Backup', description: 'Backup and restore data', icon: 'backup', route: '/backup', color: '#8e44ad' },
       { title: 'Sync Dashboard', description: 'Monitor sync status & recovery', icon: 'sync', route: '/sync', color: '#27ae60' },
-      { title: 'Sync Admin', description: 'Testing & full sync to server', icon: 'science', route: '/sync-admin', color: '#2980b9' },
+      { title: 'Full Sync to Server', description: 'Full sync to server', icon: 'cloud_upload', route: '/full-sync-to-server', color: '#2980b9' },
       { title: 'Admin', description: 'Admin settings', icon: 'admin_panel_settings', route: '/admin', color: '#c0392b' }
     ]
   }

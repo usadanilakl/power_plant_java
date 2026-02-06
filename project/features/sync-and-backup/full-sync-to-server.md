@@ -2,10 +2,12 @@
 
 One-time bulk upload of all existing client data to the sync server. Used to bootstrap a new sync server or re-populate it after data loss.
 
-1. Converts all local entities into synthetic FieldChange "CREATE" records and sends them to the server.
-2. Processes 26+ entity types in strict dependency order.
-3. Queues all physical files for upload via the existing file sync mechanism.
-4. Safe to run multiple times — server deduplicates via Last-Writer-Wins logic.
+**Two sync methods are available:**
+
+| Method | Speed | Use Case |
+|--------|-------|----------|
+| **Bulk Export** (recommended) | 2-5 minutes | Fast transfer of complete database + files as ZIP archives |
+| **FieldChange** (fallback) | 30-60 minutes | Incremental transfer via synthetic FieldChanges |
 
 Acceptance Criteria:
 1. User triggers full sync to server — all local entities and files are sent to the sync server.
@@ -25,6 +27,46 @@ Use full sync to server when:
 
 # Implementation
 
+## Method 1: Bulk Export (Recommended)
+
+The fast bulk export method creates a temporary H2 database backup and files archive, then uploads both to the server in a single operation.
+
+### Bulk export flow
+
+1. User triggers via `FullSyncToServerService.startFullSyncViaBulkExport(force)`.
+2. **Phase 1 — Safety check**: calls server `/api/resync/import/safety-check` to verify server is empty or force is enabled.
+3. **Phase 2 — Database export**: `ClientDataExportService.createExportBackup()` creates a temporary H2 database, copies all entity data table-by-table, and produces a ZIP archive.
+4. **Phase 3 — Files archive**: `BulkFileExportService.createFilesArchive()` creates a ZIP of all files from the uploads directory.
+5. **Phase 4 — Upload**: posts both archives to server `/api/resync/import/full` endpoint.
+
+### Core services (Bulk Export)
+
+| Service | Purpose |
+|---------|---------|
+| [ClientDataExportService](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/ClientDataExportService.java) | Creates temporary H2 database with entity data |
+| [BulkFileExportService](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/BulkFileExportService.java) | Creates ZIP archive of all files |
+| [BulkImportService](sync-server.md) (server) | Imports H2 backup + files archive on server side |
+
+### API endpoints (Client)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/field-sync/full-sync/bulk/stats` | GET | Get export statistics before starting |
+| `/api/field-sync/full-sync/bulk/start?force=false` | POST | Start bulk export sync |
+
+### API endpoints (Server)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/resync/import/safety-check?force=false` | GET | Check if server is safe for import |
+| `/api/resync/import/database` | POST | Import database backup only |
+| `/api/resync/import/files` | POST | Import files archive only |
+| `/api/resync/import/full` | POST | Import both database + files |
+
+---
+
+## Method 2: FieldChange Sync (Fallback)
+
 ## Full sync flow
 
 1. User triggers via `FullSyncToServerService.startFullSync()`.
@@ -39,6 +81,12 @@ Use full sync to server when:
     - `sendBatch()` posts each batch to server via `POST /api/sync/exchange` with `fullSync: true` flag.
 5. **Phase 2b — ManyToMany relationships**: sends all deferred ManyToMany changes after every entity type has been created on the server. This ensures referenced entities exist before join table entries are attempted (e.g., Equipment.lotoPoints references LotoPoint entities that are created in a later entity type batch).
 6. **Phase 3 — File upload**: `queueFilesForUpload()` registers all FileObject entities for upload via `FileObjectSyncHandler` (see [file-sync.md](file-sync.md)).
+
+## ManyToMany failure handling
+
+If a ManyToMany relationship references an entity that doesn't exist on the server (e.g., due to a failed batch or orphaned reference), the server tracks the failure in the `failed_sync_item` table instead of rolling back the entire transaction. See [sync-server.md#failed-sync-item-tracking](sync-server.md#failed-sync-item-tracking) for recovery options.
+
+The server's `ServerEntitySyncService.applyChangesToMirror()` uses `REQUIRES_NEW` transaction propagation, so ManyToMany failures don't affect FieldChange persistence — the sync is considered successful even if some mirror relationships fail.
 
 ## Entity processing order (26 types)
 

@@ -48,6 +48,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 /**
  * Service for performing a full sync of all entities from client to server.
  *
@@ -75,6 +79,8 @@ public class FullSyncToServerService {
     private final RestTemplate restTemplate;
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final TransactionTemplate transactionTemplate;
+    private final ClientDataExportService clientDataExportService;
+    private final BulkFileExportService bulkFileExportService;
 
     // Repositories for all syncable entities
     private final CategoryRepo categoryRepo;
@@ -109,8 +115,12 @@ public class FullSyncToServerService {
     private volatile FullSyncStatus currentStatus = new FullSyncStatus();
 
     // Configuration
-    private static final int BATCH_SIZE = 100; // Small batches for safety
+    private static final int BATCH_SIZE = 500; // Larger batches for better throughput (~5x fewer HTTP requests)
     private static final int PAGE_SIZE = 500;  // For reading from DB
+
+    // Chunked upload configuration
+    private static final long CHUNK_SIZE = 100 * 1024 * 1024; // 100MB chunks
+    private static final long CHUNKED_UPLOAD_THRESHOLD = 500 * 1024 * 1024; // Use chunked for files > 500MB
 
     // Field cache for performance
     private static final ConcurrentHashMap<Class<?>, List<CachedFieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
@@ -155,7 +165,15 @@ public class FullSyncToServerService {
     );
 
     /**
-     * Start a full sync to the server asynchronously.
+     * Sync method enum for choosing between FieldChange and Bulk Export approaches.
+     */
+    public enum SyncMethod {
+        FIELD_CHANGES,  // Existing - slow but incremental
+        BULK_EXPORT     // New - fast full transfer
+    }
+
+    /**
+     * Start a full sync to the server asynchronously using FieldChange method.
      * Returns immediately with the sync ID.
      */
     @Async
@@ -182,6 +200,503 @@ public class FullSyncToServerService {
     }
 
     /**
+     * Start a fast bulk export sync to the server.
+     * Creates H2 database export + files ZIP and uploads both to server.
+     * Much faster than FieldChange approach (2-5 minutes vs 30-60 minutes).
+     *
+     * @param force If true, overwrite existing server data
+     */
+    @Async
+    public void startFullSyncViaBulkExport(boolean force) {
+        if (!syncInProgress.compareAndSet(false, true)) {
+            log.warn("Full sync already in progress");
+            return;
+        }
+
+        currentStatus = new FullSyncStatus();
+        currentStatus.setStartTime(Instant.now());
+        currentStatus.setPhase("Initializing bulk export");
+        currentStatus.setSyncMethod("BULK_EXPORT");
+
+        try {
+            performBulkExportSync(force);
+        } catch (Exception e) {
+            log.error("Bulk export sync failed: {}", e.getMessage(), e);
+            currentStatus.setPhase("Failed: " + e.getMessage());
+            currentStatus.setSuccess(false);
+        } finally {
+            currentStatus.setEndTime(Instant.now());
+            syncInProgress.set(false);
+        }
+    }
+
+    /**
+     * Perform bulk export sync - create database and files exports, then upload.
+     */
+    private void performBulkExportSync(boolean force) {
+        log.info("Starting bulk export sync to server: {}", syncConfig.getSyncServerUrl());
+
+        try {
+            // Phase 1: Check server safety
+            currentStatus.setPhase("Checking server safety");
+            if (!checkServerImportSafety(force)) {
+                currentStatus.setPhase("Failed: Server has existing data and force=false");
+                currentStatus.setSuccess(false);
+                return;
+            }
+
+            // Phase 2: Create database export
+            currentStatus.setPhase("Creating database export");
+            log.info("Creating H2 database export...");
+            byte[] dbBackup = clientDataExportService.createExportBackup();
+            log.info("Database export created: {} bytes", dbBackup.length);
+
+            // Phase 3: Create files archive
+            currentStatus.setPhase("Creating files archive");
+            log.info("Creating files archive...");
+            BulkFileExportService.FileStats fileStats = bulkFileExportService.getFileStats();
+            currentStatus.setTotalEntities(fileStats.getFileCount());
+
+            byte[] filesZip = bulkFileExportService.createFilesArchive();
+            log.info("Files archive created: {} bytes ({} files)",
+                filesZip.length, fileStats.getFileCount());
+
+            // Phase 4: Upload database first (usually small)
+            currentStatus.setPhase("Uploading database to server");
+            log.info("Uploading database export to server ({} bytes)...", dbBackup.length);
+            BulkImportResult dbResult = uploadDatabaseOnly(dbBackup, force);
+            if (!dbResult.success()) {
+                currentStatus.setPhase("Failed: " + dbResult.message());
+                currentStatus.setSuccess(false);
+                log.error("Database upload failed: {}", dbResult.message());
+                return;
+            }
+            log.info("Database uploaded: {} entities", dbResult.entitiesImported());
+
+            // Phase 5: Upload files (use chunked if large)
+            BulkImportResult filesResult;
+            if (filesZip.length > CHUNKED_UPLOAD_THRESHOLD) {
+                log.info("Files archive is {} bytes (>{} threshold), using chunked upload",
+                    filesZip.length, CHUNKED_UPLOAD_THRESHOLD);
+                currentStatus.setPhase("Uploading files (chunked)");
+                filesResult = uploadFilesChunked(filesZip, force);
+            } else {
+                log.info("Files archive is {} bytes, using regular upload", filesZip.length);
+                currentStatus.setPhase("Uploading files to server");
+                filesResult = uploadFilesOnly(filesZip, force);
+            }
+
+            // Combine results
+            BulkImportResult result = new BulkImportResult(
+                filesResult.success(),
+                filesResult.message(),
+                dbResult.entitiesImported(),
+                filesResult.filesImported(),
+                dbResult.durationMs() + filesResult.durationMs()
+            );
+
+            if (result.success()) {
+                currentStatus.setPhase("Complete");
+                currentStatus.setSuccess(true);
+                currentStatus.setEntitiesSent(result.entitiesImported());
+                currentStatus.setFilesQueued((int) result.filesImported());
+                log.info("Bulk export sync complete: {} entities, {} files in {}ms",
+                    result.entitiesImported(), result.filesImported(), result.durationMs());
+            } else {
+                currentStatus.setPhase("Failed: " + result.message());
+                currentStatus.setSuccess(false);
+                log.error("Bulk export upload failed: {}", result.message());
+            }
+
+        } catch (Exception e) {
+            log.error("Bulk export sync error: {}", e.getMessage(), e);
+            currentStatus.setPhase("Failed: " + e.getMessage());
+            currentStatus.setSuccess(false);
+            throw new RuntimeException("Bulk export sync failed", e);
+        }
+    }
+
+    /**
+     * Check if server is safe for import (empty or force enabled).
+     */
+    private boolean checkServerImportSafety(boolean force) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/safety-check?force=" + force;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> body = response.getBody();
+            if (body != null) {
+                Boolean safe = (Boolean) body.get("safe");
+                String message = (String) body.get("message");
+                log.info("Server safety check: safe={}, message={}", safe, message);
+                return Boolean.TRUE.equals(safe);
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Safety check failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Upload database and files exports to server.
+     */
+    private BulkImportResult uploadBulkExport(byte[] dbBackup, byte[] filesZip, boolean force) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/full?force=" + force;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            // Create multipart request
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("database", new ByteArrayResource(dbBackup) {
+                @Override
+                public String getFilename() {
+                    return "database.zip";
+                }
+            });
+            body.add("files", new ByteArrayResource(filesZip) {
+                @Override
+                public String getFilename() {
+                    return "files.zip";
+                }
+            });
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                boolean success = Boolean.TRUE.equals(responseBody.get("success"));
+                String message = (String) responseBody.get("message");
+                long entitiesImported = responseBody.get("entitiesImported") != null ?
+                    ((Number) responseBody.get("entitiesImported")).longValue() : 0;
+                long filesImported = responseBody.get("filesImported") != null ?
+                    ((Number) responseBody.get("filesImported")).longValue() : 0;
+                long durationMs = responseBody.get("durationMs") != null ?
+                    ((Number) responseBody.get("durationMs")).longValue() : 0;
+
+                return new BulkImportResult(success, message, entitiesImported, filesImported, durationMs);
+            }
+
+            return new BulkImportResult(false, "Empty response from server", 0, 0, 0);
+
+        } catch (Exception e) {
+            log.error("Upload failed: {}", e.getMessage());
+            return new BulkImportResult(false, "Upload failed: " + e.getMessage(), 0, 0, 0);
+        }
+    }
+
+    /**
+     * Upload only the database backup to the server.
+     */
+    private BulkImportResult uploadDatabaseOnly(byte[] dbBackup, boolean force) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/database?force=" + force;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new ByteArrayResource(dbBackup) {
+                @Override
+                public String getFilename() {
+                    return "database.zip";
+                }
+            });
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                boolean success = Boolean.TRUE.equals(responseBody.get("success"));
+                String message = (String) responseBody.get("message");
+                long entitiesImported = responseBody.get("entitiesImported") != null ?
+                    ((Number) responseBody.get("entitiesImported")).longValue() : 0;
+                long durationMs = responseBody.get("durationMs") != null ?
+                    ((Number) responseBody.get("durationMs")).longValue() : 0;
+
+                return new BulkImportResult(success, message, entitiesImported, 0, durationMs);
+            }
+
+            return new BulkImportResult(false, "Empty response from server", 0, 0, 0);
+        } catch (Exception e) {
+            log.error("Database upload failed: {}", e.getMessage());
+            return new BulkImportResult(false, "Database upload failed: " + e.getMessage(), 0, 0, 0);
+        }
+    }
+
+    /**
+     * Upload only the files archive to the server (for small archives).
+     */
+    private BulkImportResult uploadFilesOnly(byte[] filesZip, boolean force) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/files";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new ByteArrayResource(filesZip) {
+                @Override
+                public String getFilename() {
+                    return "files.zip";
+                }
+            });
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                boolean success = Boolean.TRUE.equals(responseBody.get("success"));
+                String message = (String) responseBody.get("message");
+                long filesImported = responseBody.get("filesImported") != null ?
+                    ((Number) responseBody.get("filesImported")).longValue() : 0;
+                long durationMs = responseBody.get("durationMs") != null ?
+                    ((Number) responseBody.get("durationMs")).longValue() : 0;
+
+                return new BulkImportResult(success, message, 0, filesImported, durationMs);
+            }
+
+            return new BulkImportResult(false, "Empty response from server", 0, 0, 0);
+        } catch (Exception e) {
+            log.error("Files upload failed: {}", e.getMessage());
+            return new BulkImportResult(false, "Files upload failed: " + e.getMessage(), 0, 0, 0);
+        }
+    }
+
+    /**
+     * Upload files using chunked upload for large archives (>500MB).
+     * This allows uploading files of any size without hitting memory or request limits.
+     */
+    private BulkImportResult uploadFilesChunked(byte[] filesZip, boolean force) {
+        String uploadId = null;
+        try {
+            int totalChunks = (int) Math.ceil((double) filesZip.length / CHUNK_SIZE);
+            log.info("Starting chunked upload: {} bytes in {} chunks", filesZip.length, totalChunks);
+
+            // Phase 1: Initialize chunked upload
+            currentStatus.setPhase("Initializing chunked upload");
+            ChunkedUploadInit initResult = initChunkedUpload(filesZip.length, totalChunks);
+            if (!initResult.success()) {
+                return new BulkImportResult(false, "Failed to init chunked upload: " + initResult.message(), 0, 0, 0);
+            }
+            uploadId = initResult.uploadId();
+            log.info("Chunked upload initialized: uploadId={}", uploadId);
+
+            // Phase 2: Upload each chunk
+            for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                currentStatus.setPhase(String.format("Uploading chunk %d/%d", chunkIndex + 1, totalChunks));
+
+                int offset = (int) (chunkIndex * CHUNK_SIZE);
+                int length = (int) Math.min(CHUNK_SIZE, filesZip.length - offset);
+                byte[] chunkData = new byte[length];
+                System.arraycopy(filesZip, offset, chunkData, 0, length);
+
+                ChunkedUploadChunkResult chunkResult = uploadChunk(uploadId, chunkIndex, chunkData);
+                if (!chunkResult.success()) {
+                    log.error("Chunk {} upload failed: {}", chunkIndex, chunkResult.message());
+                    cancelChunkedUpload(uploadId);
+                    return new BulkImportResult(false, "Chunk upload failed: " + chunkResult.message(), 0, 0, 0);
+                }
+
+                log.info("Chunk {}/{} uploaded successfully", chunkIndex + 1, totalChunks);
+            }
+
+            // Phase 3: Complete the upload and process
+            currentStatus.setPhase("Completing chunked upload");
+            return completeChunkedUpload(uploadId);
+
+        } catch (Exception e) {
+            log.error("Chunked upload error: {}", e.getMessage(), e);
+            if (uploadId != null) {
+                try {
+                    cancelChunkedUpload(uploadId);
+                } catch (Exception cancelEx) {
+                    log.warn("Failed to cancel upload {}: {}", uploadId, cancelEx.getMessage());
+                }
+            }
+            return new BulkImportResult(false, "Chunked upload failed: " + e.getMessage(), 0, 0, 0);
+        }
+    }
+
+    /**
+     * Initialize a chunked upload session on the server.
+     */
+    private ChunkedUploadInit initChunkedUpload(long totalSize, int totalChunks) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/files/init" +
+                "?totalSize=" + totalSize + "&totalChunks=" + totalChunks;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> body = response.getBody();
+            if (body != null) {
+                String uploadId = (String) body.get("uploadId");
+                long chunkSize = body.get("chunkSize") != null ?
+                    ((Number) body.get("chunkSize")).longValue() : CHUNK_SIZE;
+                return new ChunkedUploadInit(true, uploadId, chunkSize, null);
+            }
+
+            return new ChunkedUploadInit(false, null, 0, "Empty response");
+        } catch (Exception e) {
+            log.error("Init chunked upload failed: {}", e.getMessage());
+            return new ChunkedUploadInit(false, null, 0, e.getMessage());
+        }
+    }
+
+    /**
+     * Upload a single chunk to the server.
+     */
+    private ChunkedUploadChunkResult uploadChunk(String uploadId, int chunkIndex, byte[] chunkData) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/files/chunk";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("uploadId", uploadId);
+            body.add("chunkIndex", String.valueOf(chunkIndex));
+            body.add("chunk", new ByteArrayResource(chunkData) {
+                @Override
+                public String getFilename() {
+                    return "chunk-" + chunkIndex + ".bin";
+                }
+            });
+
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                boolean success = Boolean.TRUE.equals(responseBody.get("success"));
+                String message = (String) responseBody.get("message");
+                int chunksReceived = responseBody.get("chunksReceived") != null ?
+                    ((Number) responseBody.get("chunksReceived")).intValue() : 0;
+                return new ChunkedUploadChunkResult(success, message, chunksReceived);
+            }
+
+            return new ChunkedUploadChunkResult(false, "Empty response", 0);
+        } catch (Exception e) {
+            log.error("Upload chunk {} failed: {}", chunkIndex, e.getMessage());
+            return new ChunkedUploadChunkResult(false, e.getMessage(), 0);
+        }
+    }
+
+    /**
+     * Complete the chunked upload and trigger server-side processing.
+     */
+    private BulkImportResult completeChunkedUpload(String uploadId) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/files/complete?uploadId=" + uploadId;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                boolean success = Boolean.TRUE.equals(responseBody.get("success"));
+                String message = (String) responseBody.get("message");
+                long filesImported = responseBody.get("filesImported") != null ?
+                    ((Number) responseBody.get("filesImported")).longValue() : 0;
+                long durationMs = responseBody.get("durationMs") != null ?
+                    ((Number) responseBody.get("durationMs")).longValue() : 0;
+
+                return new BulkImportResult(success, message, 0, filesImported, durationMs);
+            }
+
+            return new BulkImportResult(false, "Empty response from server", 0, 0, 0);
+        } catch (Exception e) {
+            log.error("Complete chunked upload failed: {}", e.getMessage());
+            return new BulkImportResult(false, "Complete failed: " + e.getMessage(), 0, 0, 0);
+        }
+    }
+
+    /**
+     * Cancel a chunked upload session.
+     */
+    private void cancelChunkedUpload(String uploadId) {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/import/files/cancel?uploadId=" + uploadId;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+            log.info("Cancelled chunked upload: {}", uploadId);
+        } catch (Exception e) {
+            log.warn("Failed to cancel chunked upload {}: {}", uploadId, e.getMessage());
+        }
+    }
+
+    /**
+     * Get export statistics without performing the export.
+     * Useful for UI display before starting.
+     */
+    public BulkExportStats getBulkExportStats() {
+        try {
+            ClientDataExportService.ExportStats dbStats = clientDataExportService.getExportStats();
+            BulkFileExportService.FileStats fileStats = bulkFileExportService.getFileStats();
+
+            return new BulkExportStats(
+                dbStats.getTotalEntities(),
+                dbStats.getTotalJoinRecords(),
+                fileStats.getFileCount(),
+                fileStats.getTotalSize()
+            );
+        } catch (Exception e) {
+            log.error("Failed to get export stats: {}", e.getMessage());
+            return new BulkExportStats(0, 0, 0, 0);
+        }
+    }
+
+    /**
      * Main sync logic - iterates through all entity types and sends to server.
      */
     private void performFullSync() {
@@ -199,7 +714,8 @@ public class FullSyncToServerService {
         // entities exist on the server before join table entries are attempted.
         // Without this, Equipment.lotoPoints changes arrive before LotoPoint entities,
         // causing the server to silently drop the join table entries.
-        AtomicLong totalSent = new AtomicLong(0);
+        AtomicLong totalEntitiesProcessed = new AtomicLong(0);
+        AtomicLong totalChangesSent = new AtomicLong(0);
         AtomicLong totalFailed = new AtomicLong(0);
         List<FieldChange> deferredManyToManyChanges = new ArrayList<>();
 
@@ -211,14 +727,16 @@ public class FullSyncToServerService {
 
             try {
                 SyncResult result = syncEntityType(config, deferredManyToManyChanges);
-                totalSent.addAndGet(result.sentCount);
+                totalEntitiesProcessed.addAndGet(result.entitiesProcessed);
+                totalChangesSent.addAndGet(result.changesSent);
                 totalFailed.addAndGet(result.failedCount);
-                currentStatus.setEntitiesSent(totalSent.get());
+                currentStatus.setEntitiesSent(totalEntitiesProcessed.get());
+                currentStatus.setChangesSent(totalChangesSent.get());
                 currentStatus.setEntitiesFailed(totalFailed.get());
                 currentStatus.setLastCompletedEntityIndex(i); // Track completed entity type
 
-                log.info("Synced {}: {} sent, {} failed",
-                    config.entityType, result.sentCount, result.failedCount);
+                log.info("Synced {}: {} entities ({} changes), {} failed",
+                    config.entityType, result.entitiesProcessed, result.changesSent, result.failedCount);
             } catch (Exception e) {
                 log.error("Error syncing {}: {}", config.entityType, e.getMessage());
                 currentStatus.addError(config.entityType + ": " + e.getMessage());
@@ -234,10 +752,9 @@ public class FullSyncToServerService {
                 List<FieldChange> batch = new ArrayList<>(
                     deferredManyToManyChanges.subList(i, Math.min(i + BATCH_SIZE, deferredManyToManyChanges.size())));
                 BatchSendResult result = sendBatch(batch);
-                totalSent.addAndGet(result.sent);
+                totalChangesSent.addAndGet(result.sent);
                 totalFailed.addAndGet(result.failed);
-                currentStatus.setEntitiesSent(totalSent.get());
-                currentStatus.setEntitiesFailed(totalFailed.get());
+                currentStatus.setChangesSent(totalChangesSent.get());
 
                 if (result.failed > 0 && result.errorMessage != null) {
                     currentStatus.recordFailedBatch("ManyToMany", 0, i / BATCH_SIZE, result.errorMessage);
@@ -255,8 +772,8 @@ public class FullSyncToServerService {
         // Complete
         currentStatus.setPhase("Complete");
         currentStatus.setSuccess(true);
-        log.info("Full sync complete: {} entities sent, {} failed, {} files queued",
-            totalSent.get(), totalFailed.get(), filesQueued);
+        log.info("Full sync complete: {} entities ({} changes) sent, {} failed, {} files queued",
+            totalEntitiesProcessed.get(), totalChangesSent.get(), totalFailed.get(), filesQueued);
     }
 
     /**
@@ -302,10 +819,11 @@ public class FullSyncToServerService {
         JpaRepository<?, Long> repo = getRepositoryForType(config.entityType);
         if (repo == null) {
             log.warn("No repository found for type: {}", config.entityType);
-            return new SyncResult(0, 0);
+            return new SyncResult(0, 0, 0);
         }
 
-        long sentCount = 0;
+        long entitiesProcessed = 0;
+        long changesSent = 0;
         long failedCount = 0;
         int page = 0;
         int batchIndex = 0;
@@ -319,6 +837,9 @@ public class FullSyncToServerService {
             // and lazy loading throws LazyInitializationException (silently caught).
             final Pageable pageable = PageRequest.of(page, PAGE_SIZE);
             final int currentPage = page;
+
+            // Use array to capture entity count from lambda
+            final long[] pageEntityCount = {0};
             List<FieldChange> pageChanges = transactionTemplate.execute(status -> {
                 status.setRollbackOnly(); // Read-only — no writes needed
                 Page<?> entityPage = repo.findAll(pageable);
@@ -327,6 +848,7 @@ public class FullSyncToServerService {
                     return Collections.<FieldChange>emptyList();
                 }
 
+                pageEntityCount[0] = entityPage.getNumberOfElements();
                 List<FieldChange> result = new ArrayList<>();
                 for (Object entity : entityPage.getContent()) {
                     if (entity instanceof BaseIdEntity baseEntity) {
@@ -340,6 +862,8 @@ public class FullSyncToServerService {
                 break;
             }
 
+            entitiesProcessed += pageEntityCount[0];
+
             // Separate ManyToMany changes for deferred sending
             for (FieldChange change : pageChanges) {
                 if ("ManyToMany".equals(change.getRelationshipType())) {
@@ -351,7 +875,7 @@ public class FullSyncToServerService {
                 // Send batch when it reaches size limit
                 if (batchChanges.size() >= BATCH_SIZE) {
                     BatchSendResult result = sendBatch(batchChanges);
-                    sentCount += result.sent;
+                    changesSent += result.sent;
                     failedCount += result.failed;
 
                     // Track failed batches for potential retry
@@ -378,7 +902,7 @@ public class FullSyncToServerService {
         // Send remaining changes
         if (!batchChanges.isEmpty()) {
             BatchSendResult result = sendBatch(batchChanges);
-            sentCount += result.sent;
+            changesSent += result.sent;
             failedCount += result.failed;
 
             if (result.failed > 0 && result.errorMessage != null) {
@@ -386,7 +910,7 @@ public class FullSyncToServerService {
             }
         }
 
-        return new SyncResult(sentCount, failedCount);
+        return new SyncResult(entitiesProcessed, changesSent, failedCount);
     }
 
     /**
@@ -674,11 +1198,13 @@ public class FullSyncToServerService {
         private String phase;
         private String currentEntityType;
         private long totalEntities;
-        private long entitiesSent;
+        private long entitiesSent;        // Actual entities processed
+        private long changesSent;          // FieldChange records sent (multiple per entity)
         private long entitiesFailed;
         private int filesQueued;
         private boolean success;
         private List<String> errors = new ArrayList<>();
+        private String syncMethod = "FIELD_CHANGES";  // FIELD_CHANGES or BULK_EXPORT
 
         // Batch tracking for resume capability
         private int lastCompletedEntityIndex = -1;  // Index in ENTITY_SYNC_ORDER
@@ -720,7 +1246,47 @@ public class FullSyncToServerService {
 
     private record EntitySyncConfig(String entityType, Class<?> entityClass) {}
 
-    private record SyncResult(long sentCount, long failedCount) {}
+    private record SyncResult(long entitiesProcessed, long changesSent, long failedCount) {}
 
     private record BatchSendResult(int sent, int failed, String errorMessage) {}
+
+    /**
+     * Result of bulk import operation from server.
+     */
+    public record BulkImportResult(
+        boolean success,
+        String message,
+        long entitiesImported,
+        long filesImported,
+        long durationMs
+    ) {}
+
+    /**
+     * Statistics for bulk export before starting.
+     */
+    public record BulkExportStats(
+        long totalEntities,
+        long totalJoinRecords,
+        int fileCount,
+        long totalFileSize
+    ) {}
+
+    /**
+     * Result of chunked upload initialization.
+     */
+    private record ChunkedUploadInit(
+        boolean success,
+        String uploadId,
+        long chunkSize,
+        String message
+    ) {}
+
+    /**
+     * Result of uploading a single chunk.
+     */
+    private record ChunkedUploadChunkResult(
+        boolean success,
+        String message,
+        int chunksReceived
+    ) {}
 }

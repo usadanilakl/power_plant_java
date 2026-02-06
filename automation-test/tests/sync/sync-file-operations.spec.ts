@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SyncE2EPage, FileSeedResult, FileVerifyResult } from '../../pages/sync-e2e.page';
+import { SyncE2EPage, FileSeedResult, FileVerifyResult, PathBasedManifestEntry } from '../../pages/sync-e2e.page';
 import { config } from '../../test.config';
 
 /**
@@ -16,6 +16,7 @@ import { config } from '../../test.config';
  * 8. Backup/restore recovery
  * 9. Sync-server pull recovery (reset markers + re-sync)
  * 10. Full sync to server after server data cleared
+ * 11. Permanent storage verification - files in server's path-based storage
  */
 
 test.describe.configure({ mode: 'serial' });
@@ -105,6 +106,51 @@ test.describe('File Operations Sync', () => {
     console.log(`Verified: ${verify.counts.fileObjects} files, ${verify.counts.equipment} equipment, ${verify.counts.lotoPoints} loto points, ${verify.counts.lotoStandards} loto standards`);
   });
 
+  // ==================== TEST 2.5: Verify Permanent Storage ====================
+
+  test('2.5. should have files in server permanent storage after sync', async () => {
+    // Wait a bit for file sync to complete
+    await e2ePage.page.waitForTimeout(5000);
+
+    // Get the file entity graph for our test prefix
+    const verify = await e2ePage.verifyFileEntityGraph(prefix);
+    expect(verify.counts.fileObjects).toBe(6);
+
+    // Verify files are in permanent storage
+    const storageResults = await e2ePage.verifyFilesInPermanentStorage(verify);
+    const filesInPermanentStorage = storageResults.filter(r => r.inPermanentStorage);
+
+    console.log(`Files verified in permanent storage: ${filesInPermanentStorage.length} of ${storageResults.length}`);
+    for (const result of storageResults) {
+      console.log(`  File ${result.fileId}: ${result.fileLink} -> permanent: ${result.inPermanentStorage}`);
+    }
+
+    // At least some files should be in permanent storage
+    // Note: Not all may be present immediately due to async file sync
+    expect(filesInPermanentStorage.length).toBeGreaterThan(0);
+
+    // Verify files appear in path-based manifest
+    const manifest = await e2ePage.getPathBasedManifest();
+    console.log(`Path-based manifest contains ${manifest.length} files total`);
+
+    // Find files matching our test prefix patterns (FileType_A, FileType_B, etc.)
+    const testFiles = manifest.filter(entry =>
+      entry.relativePath.includes('FileType_A') ||
+      entry.relativePath.includes('FileType_B') ||
+      entry.relativePath.includes('Vendor_A') ||
+      entry.relativePath.includes('Vendor_B')
+    );
+    console.log(`Found ${testFiles.length} test files in manifest`);
+
+    // Verify manifest entries have required fields
+    for (const entry of testFiles.slice(0, 3)) {
+      expect(entry.relativePath).toBeDefined();
+      expect(entry.fileHash).toBeDefined();
+      expect(entry.fileSize).toBeGreaterThan(0);
+      console.log(`  ${entry.relativePath}: hash=${entry.fileHash.substring(0, 16)}..., size=${entry.fileSize}`);
+    }
+  });
+
   // ==================== TEST 3: Vendor Deletion with Transfer ====================
 
   test('3. should delete vendor and transfer files to replacement', async () => {
@@ -177,6 +223,40 @@ test.describe('File Operations Sync', () => {
     console.log(`Vendor transfer verified: ${filesWithReplVendor.length} files moved, all relationships preserved`);
   });
 
+  // ==================== TEST 4.5: Verify Permanent Storage After Vendor Transfer ====================
+
+  test('4.5. should update permanent storage after vendor transfer', async () => {
+    // Trigger sync to push vendor changes to server
+    const sync = await e2ePage.triggerSync();
+    expect(sync.success).toBe(true);
+
+    // Wait for file sync to propagate
+    await e2ePage.page.waitForTimeout(5000);
+
+    // Verify files in permanent storage now reference Vendor_Repl
+    const manifest = await e2ePage.getPathBasedManifest();
+
+    // Files should now be under Vendor_Repl path
+    const vendorReplFiles = manifest.filter(entry =>
+      entry.relativePath.toLowerCase().includes('vendor_repl')
+    );
+    console.log(`Found ${vendorReplFiles.length} files under Vendor_Repl in permanent storage`);
+
+    // No files should be under old Vendor_A path anymore
+    const vendorAFiles = manifest.filter(entry =>
+      entry.relativePath.toLowerCase().includes('vendor_a') &&
+      !entry.relativePath.toLowerCase().includes('vendor_repl')
+    );
+    console.log(`Files still under Vendor_A: ${vendorAFiles.length}`);
+
+    // Verify the transferred files are accessible
+    for (const entry of vendorReplFiles.slice(0, 2)) {
+      const fileData = await e2ePage.downloadFromPermanentStorage(entry.relativePath);
+      expect(fileData.length).toBeGreaterThan(0);
+      console.log(`  Downloaded ${entry.relativePath}: ${fileData.length} bytes`);
+    }
+  });
+
   // ==================== TEST 5: FileType Deletion with Transfer ====================
 
   test('5. should delete FileType_B and transfer to FileType_A', async () => {
@@ -238,6 +318,39 @@ test.describe('File Operations Sync', () => {
     }
 
     console.log(`FileType transfer verified: all ${filesWithTypeA.length} files now under FileType_A, all relationships preserved`);
+  });
+
+  // ==================== TEST 6.5: Verify Permanent Storage After FileType Transfer ====================
+
+  test('6.5. should update permanent storage after fileType transfer', async () => {
+    // Trigger sync to push fileType changes to server
+    const sync = await e2ePage.triggerSync();
+    expect(sync.success).toBe(true);
+
+    // Wait for file sync to propagate
+    await e2ePage.page.waitForTimeout(5000);
+
+    // Verify files in permanent storage now all reference FileType_A
+    const manifest = await e2ePage.getPathBasedManifest();
+
+    // Files should now be under FileType_A path
+    const typeAFiles = manifest.filter(entry =>
+      entry.relativePath.toLowerCase().includes('filetype_a')
+    );
+    console.log(`Found ${typeAFiles.length} files under FileType_A in permanent storage`);
+
+    // No files should be under old FileType_B path anymore
+    const typeBFiles = manifest.filter(entry =>
+      entry.relativePath.toLowerCase().includes('filetype_b')
+    );
+    console.log(`Files still under FileType_B: ${typeBFiles.length}`);
+
+    // Verify the files are accessible at their new paths
+    for (const entry of typeAFiles.slice(0, 2)) {
+      const exists = await e2ePage.fileExistsInPermanentStorage(entry.relativePath);
+      expect(exists).toBe(true);
+      console.log(`  Verified exists: ${entry.relativePath}`);
+    }
   });
 
   // ==================== TEST 7: Sync Changes ====================

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { SyncPage } from '../../pages/sync.page';
+import { SyncPage, PathBasedManifestEntry } from '../../pages/sync.page';
+import { config } from '../../test.config';
 
 /**
  * Full Sync to Server (Bootstrap) Tests
@@ -89,6 +90,82 @@ test.describe('Full Sync to Server (Bootstrap)', () => {
       expect(fileSyncStatus.enabled).toBeDefined();
 
       console.log('File sync status:', JSON.stringify(fileSyncStatus));
+    });
+  });
+
+  test.describe('Permanent Storage (Path-Based Manifest)', () => {
+    test('should retrieve path-based file manifest from server', async () => {
+      const manifest = await syncPage.getPathBasedManifest();
+
+      expect(manifest).toBeDefined();
+      expect(Array.isArray(manifest)).toBe(true);
+
+      console.log(`Path-based manifest contains ${manifest.length} files`);
+
+      // If there are files, verify structure
+      if (manifest.length > 0) {
+        const sample = manifest[0];
+        expect(sample.relativePath).toBeDefined();
+        expect(sample.fileHash).toBeDefined();
+        expect(sample.fileSize).toBeDefined();
+        expect(sample.lastModified).toBeDefined();
+
+        console.log('Sample entry:', JSON.stringify(sample));
+
+        // Log summary by directory
+        const byDir = manifest.reduce((acc, entry) => {
+          const parts = entry.relativePath.split('/');
+          const dir = parts.length > 2 ? parts.slice(0, 3).join('/') : parts[0];
+          acc[dir] = (acc[dir] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.log('Files by directory:', JSON.stringify(byDir));
+      }
+    });
+
+    test('should be able to download file from permanent storage', async () => {
+      const manifest = await syncPage.getPathBasedManifest();
+
+      if (manifest.length === 0) {
+        console.log('No files in permanent storage - skipping download test');
+        test.skip();
+        return;
+      }
+
+      // Try to download the first file
+      const entry = manifest[0];
+      const exists = await syncPage.fileExistsInPermanentStorage(entry.relativePath);
+      expect(exists).toBe(true);
+
+      const fileData = await syncPage.downloadFromPermanentStorage(entry.relativePath);
+      expect(fileData).toBeDefined();
+      expect(fileData.length).toBeGreaterThan(0);
+
+      console.log(`Downloaded ${entry.relativePath}: ${fileData.length} bytes (expected ${entry.fileSize})`);
+      expect(fileData.length).toBe(entry.fileSize);
+    });
+
+    test('should find files by path pattern', async () => {
+      const manifest = await syncPage.getPathBasedManifest();
+
+      if (manifest.length === 0) {
+        console.log('No files in permanent storage - skipping pattern test');
+        test.skip();
+        return;
+      }
+
+      // Find PDF files
+      const pdfFiles = await syncPage.findFilesInManifest(/\.pdf$/i);
+      console.log(`Found ${pdfFiles.length} PDF files`);
+
+      // Find files in uploads directory
+      const uploadFiles = await syncPage.findFilesInManifest('uploads');
+      console.log(`Found ${uploadFiles.length} files under uploads/`);
+
+      // Verify pattern matching works
+      for (const entry of pdfFiles.slice(0, 3)) {
+        expect(entry.relativePath.toLowerCase()).toContain('.pdf');
+      }
     });
   });
 });

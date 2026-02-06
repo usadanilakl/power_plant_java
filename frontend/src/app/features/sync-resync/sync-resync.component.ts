@@ -13,7 +13,8 @@ import {
   SyncHealthCheckResult,
   PartialSyncDatesResponse,
   PartialSyncPreview,
-  PartialSyncResult
+  PartialSyncResult,
+  FailedSyncItem
 } from '../../services/full-resync.service';
 @Component({
   selector: 'app-sync-resync',
@@ -55,6 +56,13 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   showPartialSyncConfirm = false;
   forcePartialSync = false;
 
+  // Failed sync items state
+  failedSyncItems: (FailedSyncItem & { retrying?: boolean; dismissing?: boolean })[] = [];
+  failedSyncItemsCount = 0;
+  failedItemsLoading = false;
+  showFailedItems = false;
+  retryingAll = false;
+
   constructor(
     private resyncService: FullResyncService,
     @Inject(PLATFORM_ID) platformId: Object
@@ -67,6 +75,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       this.loadHealth();
       this.loadStatus();
       this.loadSyncHealthCheck();
+      this.loadFailedSyncItemsCount();
       this.startAutoRefresh();
 
       // Subscribe to restart progress
@@ -514,5 +523,108 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     const changeCount = this.partialSyncPreview?.changeCount || 'unknown';
     return `Are you sure you want to perform a partial sync from ${this.selectedPartialSyncDate}? ` +
            `This will apply ${changeCount} changes and sync files.`;
+  }
+
+  // ==================== FAILED SYNC ITEMS METHODS ====================
+
+  /**
+   * Load count of failed sync items (for badge display)
+   */
+  loadFailedSyncItemsCount(): void {
+    this.resyncService.getFailedSyncItemsCount().subscribe({
+      next: (response) => {
+        this.failedSyncItemsCount = response.count;
+      },
+      error: (err) => console.debug('Could not load failed items count:', err.message)
+    });
+  }
+
+  /**
+   * Load all failed sync items
+   */
+  loadFailedSyncItems(): void {
+    this.failedItemsLoading = true;
+    this.resyncService.getFailedSyncItems().subscribe({
+      next: (items) => {
+        this.failedSyncItems = items;
+        this.failedSyncItemsCount = items.length;
+        this.failedItemsLoading = false;
+      },
+      error: (err) => {
+        this.failedItemsLoading = false;
+        this.showMessage('Failed to load failed sync items: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Toggle visibility of failed items section
+   */
+  toggleFailedItems(): void {
+    this.showFailedItems = !this.showFailedItems;
+    if (this.showFailedItems && this.failedSyncItems.length === 0) {
+      this.loadFailedSyncItems();
+    }
+  }
+
+  /**
+   * Retry a specific failed sync item
+   */
+  retryFailedItem(item: FailedSyncItem & { retrying?: boolean }): void {
+    item.retrying = true;
+    this.resyncService.retryFailedItem(item.id).subscribe({
+      next: (result) => {
+        item.retrying = false;
+        if (result.success) {
+          this.showMessage('Successfully retried relationship', 'success');
+          // Remove from list
+          this.failedSyncItems = this.failedSyncItems.filter(i => i.id !== item.id);
+          this.failedSyncItemsCount = this.failedSyncItems.length;
+        } else {
+          this.showMessage('Retry failed: ' + result.message, 'warning');
+        }
+      },
+      error: (err) => {
+        item.retrying = false;
+        this.showMessage('Retry failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Dismiss a failed sync item
+   */
+  dismissFailedItem(item: FailedSyncItem & { dismissing?: boolean }): void {
+    item.dismissing = true;
+    this.resyncService.dismissFailedItem(item.id).subscribe({
+      next: () => {
+        // Remove from list
+        this.failedSyncItems = this.failedSyncItems.filter(i => i.id !== item.id);
+        this.failedSyncItemsCount = this.failedSyncItems.length;
+        this.showMessage('Item dismissed', 'info');
+      },
+      error: (err) => {
+        item.dismissing = false;
+        this.showMessage('Failed to dismiss: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Retry all failed sync items
+   */
+  retryAllFailedItems(): void {
+    this.retryingAll = true;
+    this.resyncService.retryAllFailedItems().subscribe({
+      next: (result) => {
+        this.retryingAll = false;
+        this.showMessage(`Retried ${result.retried} items, ${result.failed} still failing`, 'info');
+        this.loadFailedSyncItems(); // Reload the list
+      },
+      error: (err) => {
+        this.retryingAll = false;
+        this.showMessage('Retry all failed: ' + err.message, 'error');
+      }
+    });
   }
 }

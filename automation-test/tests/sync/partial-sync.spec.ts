@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SyncPage } from '../../pages/sync.page';
+import { SyncPage, PathBasedManifestEntry } from '../../pages/sync.page';
 import { config } from '../../test.config';
 
 /**
@@ -288,6 +288,85 @@ test.describe('Partial Sync Integration Tests', () => {
 
       console.log(`Forced health check at ${healthCheck.checkTime}: ${healthCheck.syncStatus}`);
     });
+  });
+});
+
+test.describe('Partial Sync File Comparison', () => {
+  /**
+   * Tests that verify file sync during partial sync uses path-based manifest
+   */
+  let syncPage: SyncPage;
+
+  test.beforeEach(async ({ page }) => {
+    syncPage = new SyncPage(page);
+  });
+
+  test('partial sync preview should include file comparison metrics', async () => {
+    // Get available dates
+    const dates = await syncPage.getAvailableSyncDates();
+    if (!dates.availableDates || dates.availableDates.length === 0) {
+      console.log('No available dates for partial sync - skipping');
+      test.skip();
+      return;
+    }
+
+    const testDate = dates.availableDates[0];
+    const preview = await syncPage.previewPartialSync(testDate);
+
+    expect(preview).toBeDefined();
+    expect(preview.changeCount).toBeDefined();
+    expect(preview.filesToDownload).toBeDefined();
+    expect(preview.filesToDelete).toBeDefined();
+
+    console.log(`Preview for ${testDate}:`);
+    console.log(`  Changes: ${preview.changeCount}`);
+    console.log(`  Files to download: ${preview.filesToDownload}`);
+    console.log(`  Files to delete: ${preview.filesToDelete}`);
+  });
+
+  test('path-based manifest should be accessible during partial sync', async () => {
+    // Verify we can get the path-based manifest that's used for file comparison
+    const manifest = await syncPage.getPathBasedManifest();
+
+    expect(manifest).toBeDefined();
+    expect(Array.isArray(manifest)).toBe(true);
+
+    console.log(`Server has ${manifest.length} files in permanent storage for comparison`);
+
+    // Verify manifest entries have all required fields for comparison
+    if (manifest.length > 0) {
+      const sample = manifest[0];
+      expect(sample.relativePath).toBeDefined();
+      expect(sample.fileHash).toBeDefined(); // SHA-256 for comparison
+      expect(sample.fileSize).toBeDefined();
+
+      console.log(`Sample: ${sample.relativePath}`);
+      console.log(`  Hash: ${sample.fileHash.substring(0, 32)}...`);
+      console.log(`  Size: ${sample.fileSize} bytes`);
+    }
+  });
+
+  test('file comparison should use path normalization', async () => {
+    const manifest = await syncPage.getPathBasedManifest();
+
+    if (manifest.length === 0) {
+      console.log('No files in manifest - skipping path normalization test');
+      test.skip();
+      return;
+    }
+
+    // Check that paths are normalized (forward slashes, lowercase-safe)
+    for (const entry of manifest.slice(0, 10)) {
+      // Paths should use forward slashes
+      expect(entry.relativePath).not.toContain('\\');
+      // Paths should start with expected prefix (uploads/)
+      expect(
+        entry.relativePath.startsWith('uploads/') ||
+        entry.relativePath.startsWith('uploads\\')
+      ).toBe(true);
+
+      console.log(`  Path: ${entry.relativePath}`);
+    }
   });
 });
 

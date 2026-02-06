@@ -722,6 +722,110 @@ h2 {
   100% { transform: rotate(360deg); }
 }
 
+/* Failed Sync Items Card */
+.failed-items-card {
+  border-left: 4px solid #ffc107;
+}
+
+.failed-items-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.failed-items-card .card-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.failed-items-card .header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.failed-items-description {
+  color: var(--secondary-text);
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.failed-items-actions {
+  margin-bottom: 16px;
+}
+
+.failed-items-table {
+  overflow-x: auto;
+}
+
+.failed-items-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.failed-items-table th,
+.failed-items-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.failed-items-table th {
+  background-color: var(--secondary-background);
+  font-weight: 600;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.failed-items-table td {
+  color: var(--primary-text);
+}
+
+.failed-items-table .action-cell {
+  white-space: nowrap;
+}
+
+.failed-items-table .action-cell .btn {
+  margin-right: 4px;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.no-items-message {
+  background-color: var(--success-background);
+  padding: 20px;
+  border-radius: 4px;
+  text-align: center;
+  color: #155724;
+}
+
+.no-items-message p {
+  margin: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .action-buttons {
@@ -735,5 +839,14 @@ h2 {
 
   .preview-summary {
     flex-direction: column;
+  }
+
+  .failed-items-table {
+    font-size: 12px;
+  }
+
+  .failed-items-table th,
+  .failed-items-table td {
+    padding: 8px;
   }
 }

@@ -30,10 +30,22 @@ uploads/jpg/P&ID/ABB/P123-001.jpg
 uploads/jpg/P&ID/ABB/P123-001-rev1.jpg  (revision)
 ```
 
-Server storage uses SHA-256 hash as filename:
-```
-./file-storage/FileObject/{entityId}/{sha256-hash}.{extension}
-```
+## Server storage
+
+The sync server maintains **two parallel storage systems**:
+
+1. **Hash-based storage** (`./file-storage/`) — Temporary relay storage
+   - Path: `./file-storage/FileObject/{entityId}/{sha256-hash}.{extension}`
+   - Used for real-time sync between clients
+   - Automatically cleaned up after all clients sync or 90 days
+   - Deduplicated by SHA-256 hash
+
+2. **Path-based permanent storage** (`./permanent-storage/`) — Permanent mirror
+   - Path: `./permanent-storage/uploads/{extension}/{fileType}/{vendor}/{fileNumber}.{extension}`
+   - Mirrors the exact client file structure
+   - Never automatically cleaned up
+   - Used as authoritative source for full/partial resync
+   - When FileObject is deleted, file is removed from permanent storage
 
 # Implementation
 
@@ -139,6 +151,8 @@ project.root=${user.dir}
 ### Sync Server (application.properties)
 ```properties
 sync.files.storage-path=./file-storage
+sync.files.permanent-storage-path=./permanent-storage  # Permanent mirror storage
+sync.files.permanent-storage-enabled=true              # Enable permanent storage
 sync.files.max-file-size=104857600           # 100MB max
 sync.files.retention-days=90                 # Max retention (hard limit)
 sync.files.min-retention-days=7              # Min retention (grace period)
@@ -154,3 +168,40 @@ Check file sync status:
 GET /api/field-sync/file-sync/status
 ```
 Returns queue counts: pendingUploads, pendingDownloads, inProgressUploads, inProgressDownloads.
+
+## Bulk file export/import
+
+For fast full sync TO server, files can be exported as a single ZIP archive and imported in bulk:
+
+### Bulk export (Client side)
+
+`BulkFileExportService` creates a ZIP archive of all files in the uploads directory:
+
+```java
+byte[] filesZip = bulkFileExportService.createFilesArchive();
+FileManifest manifest = bulkFileExportService.createManifest();  // checksums
+FileStats stats = bulkFileExportService.getFileStats();  // count + size
+```
+
+The archive preserves the directory structure (`uploads/ext/type/vendor/file.ext`).
+
+See: [BulkFileExportService](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/BulkFileExportService.java)
+
+### Bulk import (Server side)
+
+`BulkImportService.importFilesArchive()` extracts the ZIP to permanent storage:
+
+```java
+ImportResult result = bulkImportService.importFilesArchive(filesData, machineId);
+```
+
+The server extracts files directly to the permanent storage path, preserving directory structure. This is much faster than uploading files individually (1 HTTP request vs thousands).
+
+See: [BulkImportService](../../../../../../sync-server/src/main/java/com/dk_power/sync_server/service/BulkImportService.java)
+
+### API endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/resync/import/files` | POST | Import files archive (server) |
+| `/api/resync/import/full` | POST | Import database + files together (server) |

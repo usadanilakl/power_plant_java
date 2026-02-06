@@ -77,10 +77,27 @@ Use the preview endpoint (`GET /api/resync/preview`) to review what will change 
 
 ## File comparison
 
-Files are compared using MD5 checksums and categorized as:
+During resync, files are compared using the **path-based manifest** from permanent storage:
+
+1. Client requests manifest: `GET /api/resync/files/path-manifest`
+2. Server walks permanent storage directory and returns files by their client-relative path
+3. Client compares local files by path (case-insensitive) and SHA-256 checksum
+
+Files are categorized as:
 - **To Download** — missing locally or checksum mismatch.
-- **To Delete** — exists locally but not on server.
+- **To Delete** — exists locally but not on server (with safety check).
 - **Unchanged** — exists on both with matching checksum.
+
+**Safety guard for deletions:**
+- Before deleting a local file, client checks if an active (non-deleted) FileObject owns it
+- If yes, the file is skipped from deletion even if not on server
+- This prevents data loss from timing issues during sync
+
+Downloads use the permanent storage endpoint:
+```
+GET /api/resync/files/permanent/{relative-path}
+```
+Example: `GET /api/resync/files/permanent/uploads/pdf/P%26ID/ABB/P123.pdf`
 
 ## Post-resync behavior
 
@@ -119,8 +136,10 @@ After H2 restore:
 | `/api/resync/health` | GET | Server health status |
 | `/api/resync/database/h2-backup` | GET | Download H2 backup ZIP |
 | `/api/resync/database/export` | GET | Export all entities as JSON |
-| `/api/resync/files/manifest` | GET | Get file manifest (checksums + paths) |
-| `/api/resync/files/{id}` | GET | Download specific file |
+| `/api/resync/files/manifest` | GET | Get file manifest (hash-based storage) |
+| `/api/resync/files/path-manifest` | GET | Get file manifest (permanent storage, path-based) |
+| `/api/resync/files/{id}` | GET | Download specific file by ID (hash-based) |
+| `/api/resync/files/permanent/**` | GET | Download file by path (permanent storage) |
 
 ## Configuration
 

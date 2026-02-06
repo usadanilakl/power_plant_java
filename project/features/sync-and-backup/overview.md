@@ -51,6 +51,7 @@ Frontend Change → Backend → Local H2 DB → Sync Server → SSE Broadcast �
 7. **Exponential backoff** — SSE reconnect delays: 2s → 4s → 8s → 16s → 32s → 60s max.
 8. **Per-client change tracking** — server tracks `syncedToMachines` per FieldChange using `|MACHINE_ID|` delimiter format.
 9. **Batched processing** — all sync operations use pagination (default 500 per batch).
+10. **Failed sync item tracking** — ManyToMany failures are tracked in `failed_sync_item` table for visibility and retry, rather than rolling back entire transactions.
 
 ## Entity dependency order (SYNC_ORDER)
 
@@ -169,7 +170,7 @@ spring.servlet.multipart.max-request-size=200MB
 | [full-resync.md](full-resync.md) | Disaster recovery via database replacement, safety mechanisms |
 | [partial-resync.md](partial-resync.md) | Date-based recovery using the same pipeline as real-time sync |
 | [full-sync-to-server.md](full-sync-to-server.md) | Server bootstrapping, bulk entity push, field handling |
-| [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration |
+| [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration, failed sync item tracking |
 | [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
 

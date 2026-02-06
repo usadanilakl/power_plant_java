@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SyncPage } from '../../pages/sync.page';
+import { SyncPage, PathBasedManifestEntry } from '../../pages/sync.page';
 import { config } from '../../test.config';
 
 /**
@@ -97,6 +97,70 @@ test.describe('Auto-Resync Escalation', () => {
       // State should reflect clean status
       const state = await syncPage.getAutoResyncState();
       console.log('State after recovery:', JSON.stringify(state));
+    });
+  });
+
+  test.describe('File Sync State During Auto-Resync', () => {
+    test('should have access to server file manifest for comparison', async () => {
+      // Auto-resync uses the same file comparison as partial sync
+      // Verify the path-based manifest is available
+      const manifest = await syncPage.getPathBasedManifest();
+
+      expect(manifest).toBeDefined();
+      expect(Array.isArray(manifest)).toBe(true);
+
+      console.log(`Server permanent storage contains ${manifest.length} files`);
+
+      // During auto-resync, this manifest is used to compare with local files
+      if (manifest.length > 0) {
+        const sample = manifest[0];
+        expect(sample.relativePath).toBeDefined();
+        expect(sample.fileHash).toBeDefined();
+        console.log(`Sample file: ${sample.relativePath} (${sample.fileSize} bytes)`);
+      }
+    });
+
+    test('should include file sync status in health check', async () => {
+      const health = await syncPage.forceSyncHealthCheck();
+
+      expect(health).toBeDefined();
+      expect(health.syncStatus).toBeDefined();
+
+      console.log('Health check during auto-resync verification:');
+      console.log(`  Sync status: ${health.syncStatus}`);
+      console.log(`  Entity difference: ${health.entityDifference}`);
+      console.log(`  Server reachable: ${health.serverReachable}`);
+
+      // File sync status should be available
+      const fileSyncStatus = await syncPage.getFileSyncStatus();
+      expect(fileSyncStatus).toBeDefined();
+
+      console.log('File sync status:');
+      console.log(`  Enabled: ${fileSyncStatus.enabled}`);
+      console.log(`  Queue size: ${fileSyncStatus.queueSize || 0}`);
+    });
+
+    test('should be able to verify dual storage consistency', async () => {
+      // Get file manifest
+      const manifest = await syncPage.getPathBasedManifest();
+
+      if (manifest.length === 0) {
+        console.log('No files in permanent storage - skipping dual storage test');
+        test.skip();
+        return;
+      }
+
+      // Take a sample file and verify it exists in permanent storage
+      const sample = manifest[0];
+      const exists = await syncPage.fileExistsInPermanentStorage(sample.relativePath);
+
+      expect(exists).toBe(true);
+      console.log(`Verified ${sample.relativePath} exists in permanent storage`);
+
+      // The file should be downloadable
+      const fileData = await syncPage.downloadFromPermanentStorage(sample.relativePath);
+      expect(fileData.length).toBe(sample.fileSize);
+      console.log(`Downloaded and verified size: ${fileData.length} bytes`);
     });
   });
 });

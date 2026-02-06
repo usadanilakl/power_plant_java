@@ -596,4 +596,90 @@ export class SyncPage extends BasePage {
       filesToDelete: parseInt(deleteCountText || '0'),
     };
   }
+
+  // ==================== PERMANENT STORAGE API (SYNC SERVER) ====================
+
+  /**
+   * Get path-based file manifest from sync server's permanent storage.
+   * GET /api/resync/files/path-manifest
+   */
+  async getPathBasedManifest(): Promise<PathBasedManifestEntry[]> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/path-manifest`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Check if a file exists in permanent storage on sync server.
+   * GET /api/resync/files/permanent/{relativePath}
+   */
+  async fileExistsInPermanentStorage(relativePath: string): Promise<boolean> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${relativePath}`,
+      { failOnStatusCode: false }
+    );
+    return response.ok();
+  }
+
+  /**
+   * Download a file from permanent storage on sync server.
+   * GET /api/resync/files/permanent/{relativePath}
+   */
+  async downloadFromPermanentStorage(relativePath: string): Promise<Buffer> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${relativePath}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.body();
+  }
+
+  /**
+   * Verify file exists in both hash-based and permanent storage.
+   * Returns { hashBased: boolean, permanent: boolean }
+   */
+  async verifyFileInDualStorage(
+    fileId: number,
+    permanentRelativePath: string
+  ): Promise<{ hashBased: boolean; permanent: boolean }> {
+    // Check hash-based storage
+    const hashResponse = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/${fileId}`,
+      { failOnStatusCode: false }
+    );
+
+    // Check permanent storage
+    const permResponse = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${permanentRelativePath}`,
+      { failOnStatusCode: false }
+    );
+
+    return {
+      hashBased: hashResponse.ok(),
+      permanent: permResponse.ok(),
+    };
+  }
+
+  /**
+   * Get file manifest entries that match a specific path pattern.
+   */
+  async findFilesInManifest(pathPattern: string | RegExp): Promise<PathBasedManifestEntry[]> {
+    const manifest = await this.getPathBasedManifest();
+    return manifest.filter(entry => {
+      if (typeof pathPattern === 'string') {
+        return entry.relativePath.includes(pathPattern);
+      }
+      return pathPattern.test(entry.relativePath);
+    });
+  }
+}
+
+// ==================== TYPE DEFINITIONS ====================
+
+export interface PathBasedManifestEntry {
+  relativePath: string;
+  fileHash: string;
+  fileSize: number;
+  lastModified: string;
 }

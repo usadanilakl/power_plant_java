@@ -31,11 +31,12 @@ Client A makes change
 | Service | Role |
 |---------|------|
 | `SyncService` | Core sync logic: exchange, LWW conflict resolution, change compaction, cleanup |
-| `ServerEntitySyncService` | Applies FieldChanges to mirror entity tables, entity counts for health stats |
+| `ServerEntitySyncService` | Applies FieldChanges to mirror entity tables, tracks failed ManyToMany relationships, entity counts for health stats, deletes files from permanent storage on FileObject delete |
 | `SseEmitterService` | Manages SSE connections, broadcasts changes to connected clients |
-| `FileStorageService` | Stores/retrieves uploaded files, provides file manifests |
+| `FileStorageService` | Stores/retrieves uploaded files in dual storage (hash-based temp + path-based permanent) |
 | `BackupStorageService` | H2 database backup storage and retrieval |
-| `FullResyncService` | Database export (JSON/ZIP), file manifest generation |
+| `FullResyncService` | Database export (JSON/ZIP), file manifest generation (hash-based and path-based) |
+| `BulkImportService` | **NEW**: Imports H2 backup + files archive from client for fast full sync TO server |
 
 ## Sync exchange flow
 
@@ -64,6 +65,26 @@ The server maintains a full mirror of all client entity tables. When FieldChange
 
 Entity counts from mirror tables are used for health-stats (filtered by `deleted = false` to match client-side counting).
 
+## Failed sync item tracking
+
+When applying ManyToMany relationships (e.g., `Equipment.lotoPoints`), foreign key constraint violations can occur if the related entity doesn't exist on the server. These failures are now tracked in the `failed_sync_item` table for visibility and retry.
+
+**Transaction isolation**: `ServerEntitySyncService.applyChangesToMirror()` uses `@Transactional(propagation = REQUIRES_NEW)` to run in an independent transaction. This ensures that ManyToMany failures don't roll back the entire sync operation — FieldChange records are still persisted even if some mirror updates fail.
+
+**Failed item structure**:
+- `entityType` / `entityId` — the owner entity (e.g., Equipment #123)
+- `fieldName` — the ManyToMany field (e.g., "lotoPoints")
+- `relatedEntityType` / `relatedEntityId` — the missing entity (e.g., LotoPoint #21002)
+- `errorMessage` — the constraint violation message
+- `failedAt` — timestamp of failure
+- `resolved` — whether the item has been retried or dismissed
+
+**Recovery workflow**:
+1. Run full sync to server to ensure all entities exist
+2. View failed items via `GET /api/sync/failed`
+3. Retry individual items or use "Retry All" to attempt all at once
+4. Successfully retried items are marked resolved and removed from the list
+
 # REST Endpoints
 
 ## SyncController (`/api/sync`)
@@ -85,6 +106,11 @@ Entity counts from mirror tables are used for health-stats (filtered by `deleted
 | GET | `/partial-sync/available-dates` | Dates with field change history |
 | GET | `/partial-sync/count?date=yyyy-MM-dd` | Count of changes since date |
 | GET | `/partial-sync/changes?date=...&page=0&size=500` | Paginated changes since date |
+| GET | `/failed` | List unresolved failed ManyToMany sync items |
+| GET | `/failed/count` | Count of unresolved failed items |
+| POST | `/failed/{id}/retry` | Retry a specific failed item |
+| DELETE | `/failed/{id}` | Dismiss (mark as resolved) a failed item |
+| POST | `/failed/retry-all` | Retry all failed items |
 
 All endpoints that identify clients use `X-Machine-Id` and `X-Machine-Name` headers.
 
@@ -110,10 +136,16 @@ SSE event types:
 | GET | `/database/json` | Full database export as JSON |
 | GET | `/database/zip` | Full database export as ZIP |
 | GET | `/database/h2-backup` | H2 database backup as ZIP (recommended for full resync) |
-| GET | `/files/manifest` | File manifest with checksums |
-| GET | `/files/{fileId}` | Download file by ID |
+| GET | `/files/manifest` | File manifest with checksums (hash-based storage) |
+| GET | `/files/path-manifest` | Path-based file manifest from permanent storage |
+| GET | `/files/{fileId}` | Download file by ID (hash-based storage) |
+| GET | `/files/permanent/**` | Download file by path from permanent storage |
 | GET | `/files/entity/{entityType}/{entityId}/{fileName}` | Download file by entity path |
 | GET | `/files/entity/{entityType}/{entityId}` | List files for an entity |
+| GET | `/import/safety-check?force=false` | **NEW**: Check if it's safe to import (mirror tables empty or force enabled) |
+| POST | `/import/database` | **NEW**: Import H2 database backup from client |
+| POST | `/import/files` | **NEW**: Import files archive from client |
+| POST | `/import/full` | **NEW**: Combined import of database + files (fast full sync TO server) |
 
 # Configuration
 
@@ -123,8 +155,12 @@ SSE event types:
 | `sync.batch.size` | 500 | Max changes per batch in exchange/paginated endpoints |
 | `sync.compaction.enabled` | true | Compact repeated field updates (keep only latest per field) |
 | `sync.cleanup.cron` | `0 0 3 * * ?` | Cron schedule for old change cleanup (3 AM daily) |
-| `sync.file.storage.path` | `file-storage` | Directory for uploaded file storage |
-| `sync.backup.storage.path` | `backup-storage` | Directory for H2 backup storage |
+| `sync.files.storage-path` | `file-storage` | Directory for hash-based file storage (temporary) |
+| `sync.files.permanent-storage-path` | `permanent-storage` | Directory for path-based permanent file storage |
+| `sync.files.permanent-storage-enabled` | true | Enable permanent file storage that mirrors client structure |
+| `sync.backup.storage-path` | `backup-storage` | Directory for H2 backup storage |
+| `sync.import.temp-dir` | `${java.io.tmpdir}/sync-import` | **NEW**: Temp directory for bulk import operations |
+| `sync.import.max-file-size` | 524288000 | **NEW**: Maximum import archive size (500MB default) |
 
 # Change compaction
 

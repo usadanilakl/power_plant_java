@@ -153,6 +153,86 @@
         </div>
       </div>
 
+      <!-- Failed Sync Items Card -->
+      <div class="card failed-items-card" *ngIf="failedSyncItemsCount > 0 || showFailedItems">
+        <div class="card-header">
+          <h3>
+            Failed Sync Items
+            <span class="badge badge-warning" *ngIf="failedSyncItemsCount > 0">{{ failedSyncItemsCount }}</span>
+          </h3>
+          <div class="header-actions">
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="toggleFailedItems()">
+              {{ showFailedItems ? 'Hide' : 'Show' }}
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              (click)="loadFailedSyncItems()"
+              [disabled]="failedItemsLoading">
+              {{ failedItemsLoading ? 'Loading...' : 'Refresh' }}
+            </button>
+          </div>
+        </div>
+        <div class="card-body" *ngIf="showFailedItems">
+          <p class="failed-items-description">
+            These ManyToMany relationships failed during sync because the related entity didn't exist on the server.
+            You can retry them after running a full sync, or dismiss if they're no longer needed.
+          </p>
+
+          <div class="failed-items-actions" *ngIf="failedSyncItems.length > 0">
+            <button
+              class="btn btn-warning btn-sm"
+              (click)="retryAllFailedItems()"
+              [disabled]="retryingAll">
+              {{ retryingAll ? 'Retrying...' : 'Retry All' }}
+            </button>
+          </div>
+
+          <div class="failed-items-table" *ngIf="failedSyncItems.length > 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>Field</th>
+                  <th>Related</th>
+                  <th>Failed At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of failedSyncItems">
+                  <td>{{ item.entityType }} #{{ item.entityId }}</td>
+                  <td>{{ item.fieldName }}</td>
+                  <td>{{ item.relatedEntityType }} #{{ item.relatedEntityId }}</td>
+                  <td>{{ formatTimestamp(item.failedAt) }}</td>
+                  <td class="action-cell">
+                    <button
+                      class="btn btn-primary btn-xs"
+                      (click)="retryFailedItem(item)"
+                      [disabled]="item.retrying"
+                      title="Retry this relationship">
+                      {{ item.retrying ? '...' : 'Retry' }}
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-xs"
+                      (click)="dismissFailedItem(item)"
+                      [disabled]="item.dismissing"
+                      title="Dismiss (mark as resolved)">
+                      {{ item.dismissing ? '...' : 'Dismiss' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="no-items-message" *ngIf="failedSyncItems.length === 0 && !failedItemsLoading">
+            <p>No failed sync items.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Progress Card (shown during operations) -->
       <div class="card progress-card" *ngIf="isOperationInProgress()">
         <div class="card-header">

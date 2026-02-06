@@ -1,150 +1,190 @@
-    <div class="container">
-      <h2>Full Sync to Server</h2>
-      <p class="description">
-        This operation syncs all entities and files from this client to the central sync server.
-        Use this for initial server population or disaster recovery.
-      </p>
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1>Full Sync to Server</h1>
+    <p class="page-description">
+      Sync all entities and files from this client to the central sync server.
+      Use for initial server population or disaster recovery.
+    </p>
+  </div>
 
-      <!-- Message Banner -->
-      <div *ngIf="message" class="message" [ngClass]="'message-' + messageType">
-        {{ message }}
-        <button class="close-btn" (click)="clearMessage()">&times;</button>
+  <div class="page-content">
+    <!-- Message Banner -->
+    <div *ngIf="message" class="message" [ngClass]="'message-' + messageType">
+      {{ message }}
+      <button class="close-btn" (click)="clearMessage()">&times;</button>
+    </div>
+
+    <!-- Warning Banner -->
+    <div class="warning-banner">
+      <strong>Warning:</strong> This operation will send ALL entities from this client's database
+      to the sync server. It may take a significant amount of time depending on the size of your database.
+      This should typically only be run once for initial setup or during recovery.
+    </div>
+
+    <!-- Sync Status Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Sync Status</h3>
+        <button class="refresh-btn" (click)="loadStatus()" [disabled]="loading">
+          {{ loading ? 'Loading...' : 'Refresh' }}
+        </button>
       </div>
+      <div class="card-body">
+        <div *ngIf="loading && !syncStatus" class="loading">Loading status...</div>
 
-      <!-- Warning Banner -->
-      <div class="warning-banner">
-        <strong>Warning:</strong> This operation will send ALL entities from this client's database
-        to the sync server. It may take a significant amount of time depending on the size of your database.
-        This should typically only be run once for initial setup or during recovery.
-      </div>
+        <div *ngIf="syncStatus" class="status-info">
+          <!-- Current Phase -->
+          <div class="info-row">
+            <label>Current Phase:</label>
+            <span class="phase-badge" [ngClass]="getPhaseClass()">
+              {{ syncStatus.phase || 'Not Started' }}
+            </span>
+          </div>
 
-      <!-- Sync Status Card -->
-      <div class="card">
-        <div class="card-header">
-          <h3>Sync Status</h3>
-          <button class="refresh-btn" (click)="loadStatus()" [disabled]="loading">
-            {{ loading ? 'Loading...' : 'Refresh' }}
-          </button>
-        </div>
-        <div class="card-body">
-          <div *ngIf="loading && !syncStatus" class="loading">Loading status...</div>
+          <!-- Progress Bar (only show when in progress) -->
+          <div *ngIf="inProgress" class="progress-section">
+            <div class="progress-header">
+              <span>Progress</span>
+              <span>{{ getProgressPercentage() }}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
+            </div>
+            <div class="progress-details">
+              <span>{{ syncStatus.entitiesSent | number }} of {{ syncStatus.totalEntities | number }} entities sent</span>
+              <span *ngIf="syncStatus.currentEntityType">Currently syncing: {{ syncStatus.currentEntityType }}</span>
+            </div>
+          </div>
 
-          <div *ngIf="syncStatus" class="status-info">
-            <!-- Current Phase -->
-            <div class="info-row">
-              <label>Current Phase:</label>
-              <span class="phase-badge" [ngClass]="getPhaseClass()">
-                {{ syncStatus.phase || 'Not Started' }}
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-item">
+              <label>Total Entities</label>
+              <span class="stat-value">{{ syncStatus.totalEntities | number }}</span>
+            </div>
+            <div class="stat-item">
+              <label>Entities Sent</label>
+              <span class="stat-value success">{{ syncStatus.entitiesSent | number }}</span>
+            </div>
+            <div class="stat-item">
+              <label>Changes Sent</label>
+              <span class="stat-value">{{ syncStatus.changesSent | number }}</span>
+            </div>
+            <div class="stat-item">
+              <label>Entities Failed</label>
+              <span class="stat-value" [class.error]="syncStatus.entitiesFailed > 0">
+                {{ syncStatus.entitiesFailed | number }}
               </span>
             </div>
-
-            <!-- Progress Bar (only show when in progress) -->
-            <div *ngIf="inProgress" class="progress-section">
-              <div class="progress-header">
-                <span>Progress</span>
-                <span>{{ getProgressPercentage() }}%</span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
-              </div>
-              <div class="progress-details">
-                <span>{{ syncStatus.entitiesSent | number }} of {{ syncStatus.totalEntities | number }} entities sent</span>
-                <span *ngIf="syncStatus.currentEntityType">Currently syncing: {{ syncStatus.currentEntityType }}</span>
-              </div>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-              <div class="stat-item">
-                <label>Total Entities</label>
-                <span class="stat-value">{{ syncStatus.totalEntities | number }}</span>
-              </div>
-              <div class="stat-item">
-                <label>Entities Sent</label>
-                <span class="stat-value success">{{ syncStatus.entitiesSent | number }}</span>
-              </div>
-              <div class="stat-item">
-                <label>Entities Failed</label>
-                <span class="stat-value" [class.error]="syncStatus.entitiesFailed > 0">
-                  {{ syncStatus.entitiesFailed | number }}
-                </span>
-              </div>
-              <div class="stat-item">
-                <label>Files Queued</label>
-                <span class="stat-value">{{ syncStatus.filesQueued | number }}</span>
-              </div>
-            </div>
-
-            <!-- Time Info -->
-            <div class="time-info">
-              <div class="info-row">
-                <label>Started:</label>
-                <span>{{ formatDate(syncStatus.startTime) }}</span>
-              </div>
-              <div class="info-row" *ngIf="syncStatus.endTime">
-                <label>Completed:</label>
-                <span>{{ formatDate(syncStatus.endTime) }}</span>
-              </div>
-            </div>
-
-            <!-- Errors -->
-            <div *ngIf="syncStatus.errors && syncStatus.errors.length > 0" class="errors-section">
-              <h4>Errors ({{ syncStatus.errors.length }})</h4>
-              <ul class="error-list">
-                <li *ngFor="let error of syncStatus.errors">{{ error }}</li>
-              </ul>
+            <div class="stat-item">
+              <label>Files Queued</label>
+              <span class="stat-value">{{ syncStatus.filesQueued | number }}</span>
             </div>
           </div>
 
-          <div *ngIf="!loading && !syncStatus" class="no-status">
-            No sync has been performed yet.
+          <!-- Time Info -->
+          <div class="time-info">
+            <div class="info-row">
+              <label>Started:</label>
+              <span>{{ formatDate(syncStatus.startTime) }}</span>
+            </div>
+            <div class="info-row" *ngIf="syncStatus.endTime">
+              <label>Completed:</label>
+              <span>{{ formatDate(syncStatus.endTime) }}</span>
+            </div>
+          </div>
+
+          <!-- Errors -->
+          <div *ngIf="syncStatus.errors && syncStatus.errors.length > 0" class="errors-section">
+            <h4>Errors ({{ syncStatus.errors.length }})</h4>
+            <ul class="error-list">
+              <li *ngFor="let error of syncStatus.errors">{{ error }}</li>
+            </ul>
           </div>
         </div>
-      </div>
 
-      <!-- Start Sync Card -->
-      <div class="card">
-        <div class="card-header">
-          <h3>Start Full Sync</h3>
-        </div>
-        <div class="card-body">
-          <p>
-            Click the button below to start syncing all entities from this client to the server.
-            The sync runs in the background and you can monitor progress above.
-          </p>
-
-          <div class="action-section">
-            <button
-              class="start-btn"
-              (click)="showStartConfirmation()"
-              [disabled]="inProgress || startLoading">
-              <span *ngIf="startLoading">Starting...</span>
-              <span *ngIf="!startLoading && inProgress">Sync In Progress...</span>
-              <span *ngIf="!startLoading && !inProgress">Start Full Sync to Server</span>
-            </button>
-          </div>
-
-          <div *ngIf="inProgress" class="in-progress-note">
-            A sync is currently in progress. Please wait for it to complete.
-          </div>
-        </div>
-      </div>
-
-      <!-- Confirmation Dialog -->
-      <div *ngIf="showConfirmDialog" class="dialog-overlay">
-        <div class="dialog">
-          <h3>Confirm Full Sync</h3>
-          <p>
-            Are you sure you want to start a full sync to the server?
-          </p>
-          <p class="dialog-warning">
-            This will send <strong>all entities</strong> from this client's database to the sync server.
-            This operation may take several minutes depending on the size of your database.
-          </p>
-          <div class="dialog-actions">
-            <button class="cancel-btn" (click)="cancelConfirmation()">Cancel</button>
-            <button class="confirm-btn" (click)="confirmStartSync()">Yes, Start Sync</button>
-          </div>
+        <div *ngIf="!loading && !syncStatus" class="no-status">
+          No sync has been performed yet.
         </div>
       </div>
     </div>
+
+    <!-- Start Sync Card -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Start Full Sync</h3>
+      </div>
+      <div class="card-body">
+        <!-- Method Selection -->
+        <div class="method-selection">
+          <h4>Select Sync Method</h4>
+          <div class="method-options">
+            <label class="method-option" [class.selected]="syncMethod === 'BULK_EXPORT'">
+              <input type="radio" name="syncMethod" value="BULK_EXPORT" [(ngModel)]="syncMethod">
+              <div class="method-info">
+                <strong>Fast Export (Recommended)</strong>
+                <p>Creates a database export + files archive and uploads to server.</p>
+                <div *ngIf="bulkExportStats" class="method-stats">
+                  <span>{{ bulkExportStats.totalEntities | number }} entities</span>
+                  <span>{{ bulkExportStats.fileCount | number }} files ({{ bulkExportStats.totalFileSizeMB }} MB)</span>
+                </div>
+                <div *ngIf="statsLoading" class="method-stats"><span>Loading stats...</span></div>
+              </div>
+            </label>
+            <label class="method-option" [class.selected]="syncMethod === 'FIELD_CHANGES'">
+              <input type="radio" name="syncMethod" value="FIELD_CHANGES" [(ngModel)]="syncMethod">
+              <div class="method-info">
+                <strong>FieldChange Sync (Fallback)</strong>
+                <p>Sends individual field changes in batches. Slower but incremental.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Force Overwrite Option (for Bulk Export) -->
+        <div *ngIf="syncMethod === 'BULK_EXPORT'" class="force-option">
+          <label>
+            <input type="checkbox" [(ngModel)]="forceOverwrite">
+            <span>Force overwrite server data</span>
+          </label>
+          <p class="option-hint">Enable if the server already has data you want to replace.</p>
+        </div>
+
+        <div class="action-section">
+          <button
+            class="start-btn"
+            (click)="showStartConfirmation()"
+            [disabled]="inProgress || startLoading">
+            <span *ngIf="startLoading">Starting...</span>
+            <span *ngIf="!startLoading && inProgress">Sync In Progress...</span>
+            <span *ngIf="!startLoading && !inProgress">
+              {{ syncMethod === 'BULK_EXPORT' ? 'Start Fast Export Sync' : 'Start FieldChange Sync' }}
+            </span>
+          </button>
+        </div>
+
+        <div *ngIf="inProgress" class="in-progress-note">
+          A sync is currently in progress. Please wait for it to complete.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Dialog -->
+  <div *ngIf="showConfirmDialog" class="dialog-overlay">
+    <div class="dialog">
+      <h3>Confirm Full Sync</h3>
+      <p>
+        Are you sure you want to start a full sync to the server?
+      </p>
+      <p class="dialog-warning">
+        This will send <strong>all entities</strong> from this client's database to the sync server.
+        This operation may take several minutes depending on the size of your database.
+      </p>
+      <div class="dialog-actions">
+        <button class="cancel-btn" (click)="cancelConfirmation()">Cancel</button>
+        <button class="confirm-btn" (click)="confirmStartSync()">Yes, Start Sync</button>
+      </div>
+    </div>
+  </div>
+</div>

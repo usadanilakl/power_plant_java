@@ -124,8 +124,8 @@ public class WebConfigurer implements WebMvcConfigurer {
         connectionManager.setDefaultMaxPerRoute(20); // Max connections per route
 
         RequestConfig requestConfig = RequestConfig.custom()
-            .setConnectionRequestTimeout(Timeout.ofSeconds(30))
-            .setResponseTimeout(Timeout.ofMinutes(5)) // Allow longer for large sync transfers
+            .setConnectionRequestTimeout(Timeout.ofSeconds(60))
+            .setResponseTimeout(Timeout.ofMinutes(15)) // Allow longer for large bulk exports (1GB+)
             .build();
 
         HttpClient httpClient = HttpClientBuilder.create()

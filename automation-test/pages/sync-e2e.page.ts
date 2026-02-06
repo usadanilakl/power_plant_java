@@ -518,4 +518,125 @@ export class SyncE2EPage {
   static generatePrefix(testName: string): string {
     return `SYNC_E2E_${Date.now()}_${testName}`;
   }
+
+  // ==================== PERMANENT STORAGE VERIFICATION ====================
+
+  /**
+   * Get path-based file manifest from sync server's permanent storage.
+   * GET /api/resync/files/path-manifest
+   */
+  async getPathBasedManifest(): Promise<PathBasedManifestEntry[]> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/path-manifest`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.json();
+  }
+
+  /**
+   * Check if a file exists in permanent storage on sync server.
+   * Returns true if file exists, false otherwise.
+   */
+  async fileExistsInPermanentStorage(relativePath: string): Promise<boolean> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${relativePath}`,
+      { failOnStatusCode: false }
+    );
+    return response.ok();
+  }
+
+  /**
+   * Download a file from permanent storage on sync server.
+   * GET /api/resync/files/permanent/{relativePath}
+   */
+  async downloadFromPermanentStorage(relativePath: string): Promise<Buffer> {
+    const response = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${relativePath}`
+    );
+    expect(response.ok()).toBeTruthy();
+    return response.body();
+  }
+
+  /**
+   * Verify file exists in both hash-based and permanent storage.
+   * Returns { hashBased: boolean, permanent: boolean }
+   */
+  async verifyFileInDualStorage(
+    fileId: number,
+    permanentRelativePath: string
+  ): Promise<{ hashBased: boolean; permanent: boolean }> {
+    // Check hash-based storage
+    const hashResponse = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/${fileId}`,
+      { failOnStatusCode: false }
+    );
+
+    // Check permanent storage
+    const permResponse = await this.page.request.get(
+      `${this.syncServerUrl}/api/resync/files/permanent/${permanentRelativePath}`,
+      { failOnStatusCode: false }
+    );
+
+    return {
+      hashBased: hashResponse.ok(),
+      permanent: permResponse.ok(),
+    };
+  }
+
+  /**
+   * Find files in manifest matching a path pattern (string or regex).
+   */
+  async findFilesInManifest(pathPattern: string | RegExp): Promise<PathBasedManifestEntry[]> {
+    const manifest = await this.getPathBasedManifest();
+    return manifest.filter(entry => {
+      if (typeof pathPattern === 'string') {
+        return entry.relativePath.toLowerCase().includes(pathPattern.toLowerCase());
+      }
+      return pathPattern.test(entry.relativePath);
+    });
+  }
+
+  /**
+   * Verify files from FileVerifyResult are in permanent storage.
+   * Returns list of files with their permanent storage status.
+   */
+  async verifyFilesInPermanentStorage(fileVerify: FileVerifyResult): Promise<Array<{
+    fileId: number;
+    fileLink: string | null;
+    inPermanentStorage: boolean;
+  }>> {
+    const results: Array<{
+      fileId: number;
+      fileLink: string | null;
+      inPermanentStorage: boolean;
+    }> = [];
+
+    for (const fo of fileVerify.fileObjects) {
+      if (!fo.fileLink) {
+        results.push({ fileId: fo.id, fileLink: null, inPermanentStorage: false });
+        continue;
+      }
+
+      // Extract relative path from fileLink (e.g., /uploads/pdf/FileType_A/Vendor_A/1234.pdf)
+      const relativePath = fo.fileLink.startsWith('/uploads/')
+        ? fo.fileLink.substring(1) // Remove leading slash
+        : fo.fileLink.startsWith('uploads/')
+          ? fo.fileLink
+          : `uploads${fo.fileLink}`;
+
+      const inPermanentStorage = await this.fileExistsInPermanentStorage(relativePath);
+      results.push({ fileId: fo.id, fileLink: fo.fileLink, inPermanentStorage });
+    }
+
+    return results;
+  }
+}
+
+// ==================== ADDITIONAL TYPE DEFINITIONS ====================
+
+export interface PathBasedManifestEntry {
+  relativePath: string;
+  fileHash: string;
+  fileSize: number;
+  lastModified: string;
 }

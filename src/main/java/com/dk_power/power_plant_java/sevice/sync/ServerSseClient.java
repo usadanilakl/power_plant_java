@@ -63,9 +63,14 @@ public class ServerSseClient {
         return centralSyncService;
     }
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "sse-client");
+        t.setDaemon(true); // Daemon thread won't block JVM shutdown
+        return t;
+    });
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean shouldReconnect = new AtomicBoolean(true);
+    private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
     private final AtomicInteger reconnectAttempts = new AtomicInteger(0);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
     private final AtomicLong totalEventsReceived = new AtomicLong(0);
@@ -130,12 +135,13 @@ public class ServerSseClient {
      * Main connection loop with automatic reconnection and circuit breaker.
      */
     private void connectAndListen() {
-        while (shouldReconnect.get()) {
+        while (shouldReconnect.get() && !shuttingDown.get()) {
             // Circuit breaker check
             if (isCircuitBreakerOpen()) {
                 log.warn("Circuit breaker is open, waiting before retry...");
                 try {
                     Thread.sleep(CIRCUIT_BREAKER_RESET_DELAY_MINUTES * 60 * 1000L);
+                    if (shuttingDown.get()) break;
                     resetCircuitBreaker();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -150,17 +156,19 @@ public class ServerSseClient {
                 // Connection ended normally (server closed it)
                 consecutiveFailures.set(0);
             } catch (Exception e) {
-                log.warn("SSE connection error: {}", e.getMessage());
-                int failures = consecutiveFailures.incrementAndGet();
-                if (failures >= CIRCUIT_BREAKER_THRESHOLD) {
-                    circuitBreakerOpenedAt = Instant.now();
-                    log.error("Circuit breaker opened after {} consecutive failures", failures);
+                if (!shuttingDown.get()) {
+                    log.warn("SSE connection error: {}", e.getMessage());
+                    int failures = consecutiveFailures.incrementAndGet();
+                    if (failures >= CIRCUIT_BREAKER_THRESHOLD) {
+                        circuitBreakerOpenedAt = Instant.now();
+                        log.error("Circuit breaker opened after {} consecutive failures", failures);
+                    }
                 }
             } finally {
                 running.set(false);
             }
 
-            if (shouldReconnect.get() && !isCircuitBreakerOpen()) {
+            if (shouldReconnect.get() && !shuttingDown.get() && !isCircuitBreakerOpen()) {
                 int delay = calculateReconnectDelay();
                 log.info("Reconnecting to SSE in {} seconds...", delay);
                 try {
@@ -231,14 +239,16 @@ public class ServerSseClient {
             StringBuilder dataBuilder = new StringBuilder();
 
             String line;
-            while ((line = reader.readLine()) != null && shouldReconnect.get()) {
+            while ((line = reader.readLine()) != null && shouldReconnect.get() && !shuttingDown.get()) {
                 if (line.startsWith("event:")) {
                     eventType = line.substring(6).trim();
                 } else if (line.startsWith("data:")) {
                     dataBuilder.append(line.substring(5).trim());
                 } else if (line.isEmpty() && dataBuilder.length() > 0) {
                     // End of event - process it
-                    processEvent(eventType, dataBuilder.toString());
+                    if (!shuttingDown.get()) {
+                        processEvent(eventType, dataBuilder.toString());
+                    }
                     eventType = null;
                     dataBuilder.setLength(0);
                 }
@@ -287,24 +297,32 @@ public class ServerSseClient {
      * This handles: client came online, server restarted, network recovered.
      */
     private void onSseConnected(String data) {
+        if (shuttingDown.get()) {
+            return; // Don't start new work during shutdown
+        }
+
         try {
             CentralSyncService centralSync = getCentralSyncService();
             if (centralSync != null) {
                 // Reset circuit breaker - server is clearly reachable
                 centralSync.resetCircuitBreaker();
 
-                // Trigger sync on separate thread to not block SSE event processing
-                new Thread(() -> {
+                // Trigger sync on separate daemon thread to not block SSE event processing
+                Thread syncThread = new Thread(() -> {
                     try {
                         Thread.sleep(1000); // Brief delay to let SSE stabilize
-                        log.info("SSE connected - triggering sync to catch up on missed changes");
-                        centralSync.syncWithServer();
+                        if (!shuttingDown.get()) {
+                            log.info("SSE connected - triggering sync to catch up on missed changes");
+                            centralSync.syncWithServer();
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     } catch (Exception e) {
                         log.error("Error during post-SSE-connect sync: {}", e.getMessage());
                     }
-                }, "sse-reconnect-sync").start();
+                }, "sse-reconnect-sync");
+                syncThread.setDaemon(true); // Daemon thread won't block JVM shutdown
+                syncThread.start();
             }
         } catch (Exception e) {
             log.warn("Could not trigger sync after SSE connection: {}", e.getMessage());
@@ -383,6 +401,11 @@ public class ServerSseClient {
      * correctly because all entities from all SSE batches are processed together.
      */
     private void flushChangeBuffer() {
+        if (shuttingDown.get()) {
+            log.debug("Skipping buffer flush during shutdown");
+            return;
+        }
+
         List<FieldChange> changes;
         synchronized (sseChangeBuffer) {
             if (sseChangeBuffer.isEmpty()) {
@@ -505,9 +528,29 @@ public class ServerSseClient {
      */
     @PreDestroy
     public void shutdown() {
+        log.info("SSE client shutdown initiated");
+        shuttingDown.set(true);
         stop();
+
+        // Force close connection to unblock any blocking reads
+        closeConnection();
+
+        // Shutdown executors
         executor.shutdownNow();
         bufferScheduler.shutdownNow();
+
+        // Wait briefly for threads to terminate
+        try {
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                log.debug("SSE executor did not terminate in time (daemon thread will be killed on JVM exit)");
+            }
+            if (!bufferScheduler.awaitTermination(1, TimeUnit.SECONDS)) {
+                log.debug("Buffer scheduler did not terminate in time");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        log.info("SSE client shutdown complete");
     }
 
     /**

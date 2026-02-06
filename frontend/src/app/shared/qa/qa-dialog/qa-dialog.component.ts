@@ -19,19 +19,22 @@ import { QaService } from '../../../services/qa/qa.service';
             <div class="qa-text" [innerHTML]="content.text"></div>
           }
 
-          @if (content.images?.length) {
-            <div class="qa-images">
-              @for (img of content.images; track img) {
-                <img [src]="img" alt="Help illustration" class="qa-image" />
+          @if (content.media?.length) {
+            <div class="qa-media-list">
+              @for (item of content.media; track $index) {
+                <div class="qa-media-item">
+                  @if (item.type === 'image') {
+                    <img [src]="item.url" alt="Help illustration" class="qa-image" />
+                  } @else if (item.type === 'video') {
+                    <video controls [src]="item.url" class="qa-video-player">
+                      Your browser does not support the video tag.
+                    </video>
+                  }
+                  @if (item.caption) {
+                    <div class="qa-media-caption" [innerHTML]="item.caption"></div>
+                  }
+                </div>
               }
-            </div>
-          }
-
-          @if (content.videoUrl) {
-            <div class="qa-video">
-              <video controls [src]="content.videoUrl" class="qa-video-player">
-                Your browser does not support the video tag.
-              </video>
             </div>
           }
 
@@ -65,27 +68,38 @@ import { QaService } from '../../../services/qa/qa.service';
       color: var(--primary-text, #333);
     }
 
-    .qa-images {
+    .qa-media-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 20px;
+    }
+
+    .qa-media-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: var(--secondary-background, #f8f9fa);
+      border-radius: 6px;
+      border: 1px solid var(--border-color, #e0e0e0);
     }
 
     .qa-image {
       max-width: 100%;
       border-radius: 4px;
-      border: 1px solid var(--border-color, #e0e0e0);
-    }
-
-    .qa-video {
-      background: var(--secondary-background, #f0f2f5);
-      border-radius: 4px;
-      padding: 8px;
     }
 
     .qa-video-player {
       width: 100%;
       border-radius: 4px;
+    }
+
+    .qa-media-caption {
+      font-size: 0.9em;
+      color: var(--secondary-text, #666);
+      line-height: 1.5;
+      padding: 8px 0 0 0;
+      border-top: 1px solid var(--border-color, #e0e0e0);
     }
 
     .qa-files h3 {

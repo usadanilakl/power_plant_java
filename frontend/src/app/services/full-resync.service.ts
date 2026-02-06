@@ -157,7 +157,8 @@ export interface FullSyncToServerStatus {
   phase: string;
   currentEntityType: string | null;
   totalEntities: number;
-  entitiesSent: number;
+  entitiesSent: number;      // Actual entities processed
+  changesSent: number;        // FieldChange records sent (multiple per entity)
   entitiesFailed: number;
   filesQueued: number;
   success: boolean;
@@ -173,6 +174,49 @@ export interface FullSyncToServerResponse {
 export interface FullSyncToServerStatusResponse {
   inProgress: boolean;
   status: FullSyncToServerStatus;
+}
+
+// Bulk Export (Fast Full Sync) interfaces
+export interface BulkExportStats {
+  success: boolean;
+  totalEntities: number;
+  totalJoinRecords: number;
+  fileCount: number;
+  totalFileSize: number;
+  totalFileSizeMB: string;
+  message?: string;
+}
+
+export interface BulkExportResponse {
+  success: boolean;
+  message: string;
+  method: string;
+  status: FullSyncToServerStatus;
+}
+
+// Failed Sync Item interfaces
+export interface FailedSyncItem {
+  id: number;
+  entityType: string;
+  entityId: number;
+  fieldName: string;
+  relatedEntityType: string;
+  relatedEntityId: number;
+  errorMessage: string | null;
+  failedAt: string;
+  resolved: boolean;
+}
+
+export interface FailedSyncRetryResult {
+  success: boolean;
+  message: string;
+}
+
+export interface FailedSyncRetryAllResult {
+  success: boolean;
+  retried: number;
+  failed: number;
+  total: number;
 }
 
 @Injectable({
@@ -400,6 +444,74 @@ export class FullResyncService {
   getFullSyncToServerStatus(): Observable<FullSyncToServerStatusResponse> {
     return this.http.get<FullSyncToServerStatusResponse>(
       `${this.fieldSyncUrl}/full-sync/status`
+    );
+  }
+
+  // ==================== BULK EXPORT (FAST FULL SYNC) METHODS ====================
+
+  /**
+   * Get statistics about what would be exported in a bulk export.
+   * Useful for showing the user what will be synced before starting.
+   */
+  getBulkExportStats(): Observable<BulkExportStats> {
+    return this.http.get<BulkExportStats>(
+      `${this.fieldSyncUrl}/full-sync/bulk/stats`
+    );
+  }
+
+  /**
+   * Start a fast bulk export sync to the server.
+   * This creates an H2 database export + files ZIP and uploads both.
+   * Much faster than the FieldChange approach (2-5 minutes vs 30-60 minutes).
+   *
+   * @param force If true, overwrite existing data on server
+   */
+  startBulkExportSync(force: boolean = false): Observable<BulkExportResponse> {
+    return this.http.post<BulkExportResponse>(
+      `${this.fieldSyncUrl}/full-sync/bulk/start?force=${force}`, {}
+    );
+  }
+
+  // ==================== FAILED SYNC ITEMS METHODS ====================
+
+  private syncServerUrl = environment.syncServerUrl;
+
+  /**
+   * Get all unresolved failed sync items from the sync server.
+   */
+  getFailedSyncItems(): Observable<FailedSyncItem[]> {
+    return this.http.get<FailedSyncItem[]>(`${this.syncServerUrl}/api/sync/failed`);
+  }
+
+  /**
+   * Get count of unresolved failed sync items.
+   */
+  getFailedSyncItemsCount(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.syncServerUrl}/api/sync/failed/count`);
+  }
+
+  /**
+   * Retry a specific failed sync item.
+   */
+  retryFailedItem(id: number): Observable<FailedSyncRetryResult> {
+    return this.http.post<FailedSyncRetryResult>(
+      `${this.syncServerUrl}/api/sync/failed/${id}/retry`, {}
+    );
+  }
+
+  /**
+   * Dismiss (mark as resolved) a failed sync item.
+   */
+  dismissFailedItem(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.syncServerUrl}/api/sync/failed/${id}`);
+  }
+
+  /**
+   * Retry all failed sync items.
+   */
+  retryAllFailedItems(): Observable<FailedSyncRetryAllResult> {
+    return this.http.post<FailedSyncRetryAllResult>(
+      `${this.syncServerUrl}/api/sync/failed/retry-all`, {}
     );
   }
 }

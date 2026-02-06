@@ -24,7 +24,10 @@ Components:
   - `toggleQaMode()` - toggle help mode on/off
   - `openDialog(content: QaContent)` - open dialog with specific content
   - `closeDialog()` - close the dialog
-  - Handles backward compatibility: normalizes old `{ type, content, files }` format to new `QaContent`
+  - Handles backward compatibility: normalizes legacy formats to unified `media` array:
+    - Old `{ type, content, files }` format
+    - Legacy `{ images: [], videoUrl: '' }` format
+    - Converts to new `{ media: [{ type, url, caption }] }` format
 
 - **QaToggleComponent** (`shared/qa/qa-toggle/`) - header button using `mat-icon-button`
   - Placed in `main-layout.component.html` header-actions section
@@ -33,7 +36,8 @@ Components:
 - **QaDialogComponent** (`shared/qa/qa-dialog/`) - root-level dialog
   - Placed in `app.component.html` (same pattern as CommentsDialog, WizardDialog)
   - Uses `PopupProjectionComponent` for the modal wrapper
-  - Renders text (HTML), images (inline `<img>`), video (inline `<video>`), and file links
+  - Renders text (HTML), media items (images/videos with captions), and file links
+  - Each media item displays in a card with optional caption below
 
 - **QaDirective** (`shared/qa/qa.directive.ts`) - attaches QA to any element
   - Selector: `[appQa]`
@@ -42,11 +46,21 @@ Components:
 
 Data Model (`models/ui/question.model.ts`):
 ```typescript
+// Media item with optional caption
+interface QaMediaItem {
+  type: 'image' | 'video';
+  url: string;
+  caption?: string;    // Optional HTML caption for this specific media
+}
+
 interface QaContent {
-  text?: string;       // Text/HTML explanation
-  images?: string[];   // Image URLs displayed inline
-  videoUrl?: string;   // Video URL for embedded player
-  files?: string[];    // Downloadable file links
+  text?: string;           // Introduction/general text (HTML supported)
+  media?: QaMediaItem[];   // Ordered array of images and videos with captions
+  files?: string[];        // Downloadable file links
+
+  // DEPRECATED: Use media array instead
+  images?: string[];       // Legacy: Image URLs without captions
+  videoUrl?: string;       // Legacy: Single video URL
 }
 type Question = QaContent; // Backward compatibility alias
 ```
@@ -90,16 +104,35 @@ const fields: FormField[] = [
 ];
 ```
 
-**Option B: Directive on any element**
+**Option B: Directive with multiple media items and captions (recommended)**
 ```html
-<label [appQa]="{text: 'Help text', images: ['assets/help/img.png']}">My Field</label>
-```
-
-**Option C: Directive with video**
-```html
-<div [appQa]="{text: 'Watch this tutorial', videoUrl: 'assets/help/tutorial.mp4'}">
+<div [appQa]="{
+  text: '<p>Introduction to the PID Editing System.</p>',
+  media: [
+    { type: 'image', url: 'qa-data/step1.png', caption: '<strong>Step 1:</strong> Select file type.' },
+    { type: 'video', url: 'qa-data/tutorial.mp4', caption: 'Watch this video for a complete walkthrough.' },
+    { type: 'image', url: 'qa-data/step2.png', caption: '<strong>Step 2:</strong> Upload your files.' }
+  ]
+}">
   Complex Component
 </div>
+```
+
+**Option C: Directive with simple media (no captions)**
+```html
+<label [appQa]="{
+  text: 'Help text',
+  media: [
+    { type: 'image', url: 'assets/help/img.png' },
+    { type: 'video', url: 'assets/help/tutorial.mp4' }
+  ]
+}">My Field</label>
+```
+
+**Option D: Legacy format (still supported for backward compatibility)**
+```html
+<label [appQa]="{text: 'Help text', images: ['assets/help/img.png']}">My Field</label>
+<div [appQa]="{text: 'Watch this tutorial', videoUrl: 'assets/help/tutorial.mp4'}">Content</div>
 ```
 
 ### Form Components Using QA
