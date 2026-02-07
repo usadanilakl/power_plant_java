@@ -40,3 +40,8 @@ JavaFX desktop wraps main SpringBoot app making it fully offline desktop applica
         - Download Changes to local DB (make sure all SharePoint items have the same ID across all desktop instances so duplicates re not created when synchronized)
         - When Permit is processed on desktop, it updates sharepoint and sends email to user who submitted request.
         - User sees email, opens PWA it fetches updates from SharePoint.
+
+
+        Current Manager App: "C:\Users\usada\my_projects\ManagerApp"
+
+        An attempt to create Electron Version: C:\Users\usada\JS Projects\dk-power-full-stack\apps

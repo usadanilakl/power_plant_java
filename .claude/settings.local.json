@@ -35,7 +35,10 @@
       "Bash(npx playwright test:*)",
       "Bash(grep:*)",
       "Bash(wc:*)",
-      "Bash(mvnw.cmd compile:*)"
+      "Bash(mvnw.cmd compile:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Read(//c/Users/usada/JS Projects/dk-power-full-stack/**)"
     ]
   }
 }

@@ -2,237 +2,242 @@
 export default {
   bootstrap: () => import('./main.server.mjs').then(m => m.default),
   inlineCriticalCss: true,
-  baseHref: '/',
+  baseHref: '/angular/browser/',
   locale: undefined,
   routes: [
   {
     "renderMode": 2,
-    "redirectTo": "/home",
-    "route": "/"
+    "redirectTo": "/angular/browser/home",
+    "route": "/angular/browser"
   },
   {
     "renderMode": 2,
-    "route": "/home"
+    "route": "/angular/browser/home"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/file/edit",
-    "route": "/file"
+    "redirectTo": "/angular/browser/file/edit",
+    "route": "/angular/browser/file"
   },
   {
     "renderMode": 2,
-    "route": "/file/edit"
+    "route": "/angular/browser/file/edit"
   },
   {
     "renderMode": 2,
-    "route": "/file/table"
+    "route": "/angular/browser/file/table"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/loto/loto",
-    "route": "/loto"
+    "redirectTo": "/angular/browser/loto/loto",
+    "route": "/angular/browser/loto"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto"
+    "route": "/angular/browser/loto/loto"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-points-active"
+    "route": "/angular/browser/loto/loto-points-active"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-boxes"
+    "route": "/angular/browser/loto/loto-boxes"
   },
   {
     "renderMode": 2,
-    "route": "/loto/loto-boxes-grid"
+    "route": "/angular/browser/loto/loto-boxes-grid"
   },
   {
     "renderMode": 2,
-    "route": "/loto/locks"
+    "route": "/angular/browser/loto/locks"
   },
   {
     "renderMode": 2,
-    "route": "/loto/esp-devices"
+    "route": "/angular/browser/loto/esp-devices"
   },
   {
     "renderMode": 2,
-    "route": "/loto-standard"
+    "route": "/angular/browser/loto-standard"
   },
   {
     "renderMode": 2,
-    "route": "/loto-builder"
+    "route": "/angular/browser/loto-builder"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/loto-points/table",
-    "route": "/loto-points"
+    "redirectTo": "/angular/browser/loto-points/table",
+    "route": "/angular/browser/loto-points"
   },
   {
     "renderMode": 1,
-    "route": "/loto-points/table"
+    "route": "/angular/browser/loto-points/table"
   },
   {
     "renderMode": 1,
-    "route": "/loto-points/*"
+    "route": "/angular/browser/loto-points/*"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/permit-builder/daily-packages",
-    "route": "/permit-builder"
+    "redirectTo": "/angular/browser/permit-builder/daily-packages",
+    "route": "/angular/browser/permit-builder"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/jobs"
+    "route": "/angular/browser/permit-builder/jobs"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/work-requests"
+    "route": "/angular/browser/permit-builder/work-requests"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/daily-packages"
+    "route": "/angular/browser/permit-builder/daily-packages"
   },
   {
     "renderMode": 1,
-    "route": "/permit-builder/daily-packages/re-issue/*"
+    "route": "/angular/browser/permit-builder/daily-packages/re-issue/*"
   },
   {
     "renderMode": 1,
-    "route": "/permit-builder/daily-packages/*"
+    "route": "/angular/browser/permit-builder/daily-packages/*"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/safe-works"
+    "route": "/angular/browser/permit-builder/safe-works"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/hot-works"
+    "route": "/angular/browser/permit-builder/hot-works"
   },
   {
     "renderMode": 2,
-    "route": "/permit-builder/confined-spaces"
+    "route": "/angular/browser/permit-builder/confined-spaces"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/scheduler/flow",
-    "route": "/scheduler"
+    "redirectTo": "/angular/browser/scheduler/flow",
+    "route": "/angular/browser/scheduler"
   },
   {
     "renderMode": 2,
-    "route": "/scheduler/flow"
+    "route": "/angular/browser/scheduler/flow"
   },
   {
     "renderMode": 2,
-    "route": "/scheduler/table"
+    "route": "/angular/browser/scheduler/table"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/form-designer/forms",
-    "route": "/form-designer"
+    "redirectTo": "/angular/browser/form-designer/forms",
+    "route": "/angular/browser/form-designer"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/forms"
+    "route": "/angular/browser/form-designer/forms"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/preview"
+    "route": "/angular/browser/form-designer/preview"
   },
   {
     "renderMode": 2,
-    "route": "/form-designer/design"
+    "route": "/angular/browser/form-designer/design"
   },
   {
     "renderMode": 2,
-    "route": "/tag-number"
+    "route": "/angular/browser/tag-number"
   },
   {
     "renderMode": 2,
-    "route": "/print"
+    "route": "/angular/browser/print"
   },
   {
     "renderMode": 2,
-    "route": "/backup"
+    "route": "/angular/browser/backup"
   },
   {
     "renderMode": 2,
-    "route": "/admin"
+    "route": "/angular/browser/admin"
+  },
+  {
+    "renderMode": 2,
+    "route": "/angular/browser/admin/category-values"
   },
   {
     "renderMode": 1,
-    "redirectTo": "/sync/status",
-    "route": "/sync"
+    "redirectTo": "/angular/browser/sync/status",
+    "route": "/angular/browser/sync"
   },
   {
     "renderMode": 1,
-    "route": "/sync/status"
+    "route": "/angular/browser/sync/status"
   },
   {
     "renderMode": 1,
-    "route": "/sync/recovery"
+    "route": "/angular/browser/sync/recovery"
   },
   {
     "renderMode": 1,
-    "route": "/full-sync-to-server"
+    "route": "/angular/browser/full-sync-to-server"
   },
   {
     "renderMode": 2,
-    "route": "/trash"
+    "route": "/angular/browser/trash"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/sync-admin/full-sync-to-server",
-    "route": "/sync-admin/full-sync"
+    "redirectTo": "/angular/browser/sync-admin/full-sync-to-server",
+    "route": "/angular/browser/sync-admin/full-sync"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/sync/recovery",
-    "route": "/sync-resync"
+    "redirectTo": "/angular/browser/sync/recovery",
+    "route": "/angular/browser/sync-resync"
   },
   {
     "renderMode": 2,
-    "redirectTo": "/log/table",
-    "route": "/log"
+    "redirectTo": "/angular/browser/log/table",
+    "route": "/angular/browser/log"
   },
   {
     "renderMode": 2,
-    "route": "/log/table"
+    "route": "/angular/browser/log/table"
   }
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 25225, hash: 'c5977878a307f73f3bfd7b8be9f3b683e15b50f34222fcdabcb80765d11e3478', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 17238, hash: '5b7b96a508beb60dec0b7046da3ee421761ff09f65b1443d46e974071071cc01', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
-    'file/edit/index.html': {size: 190040, hash: '6f2ee7e86c7f8e8ece82382986b459ec92525e9e5fd8f3d7e3810c3d34c84eb8', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
-    'loto/loto/index.html': {size: 119983, hash: '1ef057ff886367e464a71ea162c454df68e272da8448adf95c993084a2bd1548', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
-    'home/index.html': {size: 121817, hash: '16e56b6c8d5ac54881ae15ad928948a6517d13345fcdc371683ec733969e0557', text: () => import('./assets-chunks/home_index_html.mjs').then(m => m.default)},
-    'file/table/index.html': {size: 161884, hash: '873a05e591292573927bbaaab84a9abe5a7e2a52dfc98acd600c3b2381bd1a28', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes-grid/index.html': {size: 126207, hash: 'aa51bdcc2cabd2a373d4a4dbf5e6b34c1292459984518e38dad966d63c6cd1d1', text: () => import('./assets-chunks/loto_loto-boxes-grid_index_html.mjs').then(m => m.default)},
-    'loto/loto-points-active/index.html': {size: 119164, hash: 'c96606cd07b8bf1b19e12e612ab050748b1d30885122a31a21e29bc5a383bb54', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes/index.html': {size: 114361, hash: '3316d1ff32d7db5df8451876dfccd5122d1b89a97689ca87201dbdcbd05877ee', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
-    'loto/locks/index.html': {size: 113799, hash: '58d0d05b3f9d6e64962d9528a005c46f250327d83b0501398ffa11b64a1f3cba', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
-    'loto/esp-devices/index.html': {size: 115727, hash: 'a8bf40d09e19b32ceff1ef6b06309092348f8ebe64cf4ecd0d8634855cc3af2a', text: () => import('./assets-chunks/loto_esp-devices_index_html.mjs').then(m => m.default)},
-    'loto-builder/index.html': {size: 196933, hash: '3b787ccb8706ede0be1447cf9257d6d5a482762664c368f838b7ee93d898467c', text: () => import('./assets-chunks/loto-builder_index_html.mjs').then(m => m.default)},
-    'permit-builder/jobs/index.html': {size: 106489, hash: '96c4bc50b4b62c3fc4630b03513302964dd6591da95dd210db8779edff090131', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
-    'loto-standard/index.html': {size: 281157, hash: '5a95acbd9ff83958a477237830e343ef475152e6c0354c76ce73abbfb3ce3751', text: () => import('./assets-chunks/loto-standard_index_html.mjs').then(m => m.default)},
-    'permit-builder/daily-packages/index.html': {size: 124152, hash: '865872c3f1157a723e2acadff0f16609a1cd903a264591d3967bf3232e764e20', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
-    'permit-builder/hot-works/index.html': {size: 113279, hash: '321464f24b78b585ed94257f0ac7f9dcd92ae752da8f2ac421b3121fe63faf93', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
-    'permit-builder/safe-works/index.html': {size: 113295, hash: 'c4aaa6b5c0e9df9a0b7d44cc9ad352379d019edf0ab428fbc1f73f2359906edf', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
-    'permit-builder/confined-spaces/index.html': {size: 113329, hash: '724d4f838c2502bcdc2a0f80a8fc0b43f8da94fc913662f3bfefb8a05d323a40', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
-    'scheduler/flow/index.html': {size: 110795, hash: '74409122d44a0201e9b56571fd125358c7b1d3bd3451e82e2d1f1e15033c6fea', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
-    'scheduler/table/index.html': {size: 118822, hash: '7537ca1183d02ae4b27cf0ba61b5148b7d56635172fcd37e562771c667e1ab38', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
-    'form-designer/forms/index.html': {size: 111658, hash: '0991af239d922a1f79445470ed5ece99e59e4b19e53b3bd347f61e7f2e967dd5', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
-    'form-designer/preview/index.html': {size: 114110, hash: 'de7c703bda3f07cdc5d1c225b740bc9b4682360b12463ae81013a2b726bbb1a5', text: () => import('./assets-chunks/form-designer_preview_index_html.mjs').then(m => m.default)},
-    'permit-builder/work-requests/index.html': {size: 124329, hash: 'ac75998d8df2c8c132b25f258d7ac48df39bc42ff3c57150cd595842659bb6d0', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
-    'form-designer/design/index.html': {size: 127711, hash: 'cd5700ed6642f3e0e431194203cbc2a53b3d912c745d44a0d7c059d69f4eb691', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
-    'tag-number/index.html': {size: 102436, hash: 'aec79e51267283336ad9a25e146ac6987ef79e95ae6f38587c373b11c4e7c209', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
-    'print/index.html': {size: 58224, hash: 'a88fde15dd05eed0818faf4da49618eae5edcb32304e43676f2d4cd421cc9797', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
-    'backup/index.html': {size: 110129, hash: '3bf74a4ff1ea7d20d6df23b6883911259da9e9e774ed5d6106d04da3de39a5a6', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
-    'admin/index.html': {size: 110652, hash: '6d298fcc046c97e06968220776f87ef7413fd9f92703ba11e8a8a1172020b15a', text: () => import('./assets-chunks/admin_index_html.mjs').then(m => m.default)},
-    'trash/index.html': {size: 65688, hash: '2b53fd1c1f4a76c5a593c5ec5bc26dcd37297e8f7ec56fe121eabbafe8f75c33', text: () => import('./assets-chunks/trash_index_html.mjs').then(m => m.default)},
-    'log/table/index.html': {size: 129906, hash: 'b6ba51742e960acbcf4f5bc157992d31f15fbb6d69d3d3a41fabc5bdbd7651fa', text: () => import('./assets-chunks/log_table_index_html.mjs').then(m => m.default)},
+    'index.csr.html': {size: 25241, hash: '08f0706b575d4cc6a4e532c02d921cddb2a43cf031ffead17d70a7e5bd740fb2', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 17254, hash: '7f38014fe71616024e78aab3fa77ba504e2b53450727c265c54920f53592113e', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'home/index.html': {size: 121260, hash: '78bc840db64a4f57fd470530eb5f72ff3fdd94efbd5bdc0c2f7ab8f146e441b3', text: () => import('./assets-chunks/home_index_html.mjs').then(m => m.default)},
+    'file/table/index.html': {size: 155318, hash: '11c75a4549a8358ac91838e0ae8802d30046c003c20c9ff8a0dca7b2bf6157ba', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
+    'file/edit/index.html': {size: 182641, hash: 'f613d4884906561db38a1d977a102c9482c73f7a9a990be27b67ccf2e54fdd00', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes/index.html': {size: 113003, hash: '8f40110946f989e7bbbfadb39d558a39e6db73f27419bef8856a34007777d33b', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
+    'loto/loto-points-active/index.html': {size: 116262, hash: '9f8ea500143ee73fb90ceecfe64f004efe40f48a04a47663b6fe03578585d9ac', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes-grid/index.html': {size: 125241, hash: '926cb0a603444c8243015723e75adf64ad752acf452cfc46f2049c4816896dfc', text: () => import('./assets-chunks/loto_loto-boxes-grid_index_html.mjs').then(m => m.default)},
+    'loto/esp-devices/index.html': {size: 114689, hash: '8c8c02ac08e702fccfe2d59bbc3bb3095da07669b1ac8583f6cb5519513fdce7', text: () => import('./assets-chunks/loto_esp-devices_index_html.mjs').then(m => m.default)},
+    'loto/locks/index.html': {size: 112970, hash: 'faf1b712cf289229f78157fe8e76daedb954311be01ea3a80338a99003bfd054', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
+    'permit-builder/jobs/index.html': {size: 105629, hash: '8472f474c95afc44ee05fcaf190b46e0d404759e6bab3ed55d77c6648a80bf08', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
+    'loto-builder/index.html': {size: 189845, hash: 'b5977b2bc898a3dc9579464b7d4dfd63cfedb4cbb148b64152bd4128d360bd6c', text: () => import('./assets-chunks/loto-builder_index_html.mjs').then(m => m.default)},
+    'permit-builder/work-requests/index.html': {size: 121251, hash: '34a468feb5e0524f37cfb74ee8fbed10138334952628f5c676d82932915b5080', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
+    'permit-builder/daily-packages/index.html': {size: 123064, hash: '50c9b6058b93a4eed601246c5b9d627485a42cc0482909a25f31a091310c6b9c', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
+    'loto/loto/index.html': {size: 118114, hash: 'eab94851c64fecec588a8d3bac3687df3ead31018ef903f8f8e2c7e7fe378cd3', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
+    'permit-builder/safe-works/index.html': {size: 111180, hash: '22007d2aab37171ee5f3ee1c43991238206cb134e81a17d13f38e283aa56d709', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
+    'loto-standard/index.html': {size: 277358, hash: '24da357405d350d32e0e392931d93a4013d65fec8a0aab81f910a4634b1f5a16', text: () => import('./assets-chunks/loto-standard_index_html.mjs').then(m => m.default)},
+    'permit-builder/hot-works/index.html': {size: 111167, hash: '8e439ea7eef623bde617264ecb6d732773079cd67ff82481c2f7f6f6dbf3e963', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
+    'scheduler/flow/index.html': {size: 109934, hash: '0c446b896f649dd19db5e12b0ec408b9a7b50cc6d099eecd4508bdcd2f95e7be', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
+    'permit-builder/confined-spaces/index.html': {size: 111201, hash: 'e905504650235f8bfada59c018a21636a3ec0fe7032a221413d7652083410af3', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
+    'scheduler/table/index.html': {size: 115586, hash: '52d6be3b39802b963f1b447caf0930f0bc48280f614c5e66a549e6f05f27e16e', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
+    'form-designer/forms/index.html': {size: 110574, hash: 'd37c57dba9a3bd5aa713062dd639d7cbc42a959379cdac62b60410ad7d32414d', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
+    'form-designer/preview/index.html': {size: 112549, hash: '3cbf608a7bd9f2dd6efd5eaccb82d46fce6ac638bb7d3860d3cf9db551d7fbfd', text: () => import('./assets-chunks/form-designer_preview_index_html.mjs').then(m => m.default)},
+    'tag-number/index.html': {size: 99367, hash: '5acd26998931c5bffa77e3506ffd5ac307134817f48b0ebaee8440eae647aad9', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
+    'form-designer/design/index.html': {size: 126629, hash: '76d49266d319296d963583ae1b7aeeb36c64e10288738503b13d94c631264aa3', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
+    'print/index.html': {size: 57219, hash: 'c56a854f3afafb4b532f1216239fbb63f8b65f42b00154f70b6c89db77a75f1c', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
+    'admin/category-values/index.html': {size: 77936, hash: 'f0fe01dbb464410ac46ce4c01f47e53e962e1e01fa24c246d96740d559f98b70', text: () => import('./assets-chunks/admin_category-values_index_html.mjs').then(m => m.default)},
+    'admin/index.html': {size: 110585, hash: 'f63f86166e0c7050312e372c8ee0338460ddb550cacb0792305bb088c0532225', text: () => import('./assets-chunks/admin_index_html.mjs').then(m => m.default)},
+    'backup/index.html': {size: 108281, hash: '5293ef4b20552d25f0aa3a4daf07575be6944d8605286bea8cbc45376b177b0c', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
+    'log/table/index.html': {size: 128672, hash: '03eb4c3d95c441c3030a64c0be644144b8cc8d0a03c1d1b7e070056f9533c352', text: () => import('./assets-chunks/log_table_index_html.mjs').then(m => m.default)},
+    'trash/index.html': {size: 64090, hash: '5a287655c33c9abe74f74d7cac306626dc62f7a870d5457b214a0a3813cec4d1', text: () => import('./assets-chunks/trash_index_html.mjs').then(m => m.default)},
     'styles-Z3PCIMZQ.css': {size: 32780, hash: 'yim97pIkghI', text: () => import('./assets-chunks/styles-Z3PCIMZQ_css.mjs').then(m => m.default)}
   },
 };
