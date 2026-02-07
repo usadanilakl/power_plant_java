@@ -51,8 +51,28 @@
               <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
             </div>
             <div class="progress-details">
-              <span>{{ syncStatus.entitiesSent | number }} of {{ syncStatus.totalEntities | number }} entities sent</span>
-              <span *ngIf="syncStatus.currentEntityType">Currently syncing: {{ syncStatus.currentEntityType }}</span>
+              <!-- For bulk export, show detailed stats -->
+              <ng-container *ngIf="syncStatus.syncMethod === 'BULK_EXPORT'">
+                <div *ngIf="syncStatus.syncMode !== 'FILES_ONLY'" class="progress-stat">
+                  <span class="stat-label">Database:</span>
+                  <span [class.complete]="syncStatus.databaseComplete">
+                    {{ syncStatus.databaseComplete ? 'Complete' : 'In Progress' }}
+                    <span *ngIf="syncStatus.databaseEntitiesSent">({{ syncStatus.databaseEntitiesSent | number }} entities)</span>
+                  </span>
+                </div>
+                <div *ngIf="syncStatus.syncMode !== 'DATABASE_ONLY'" class="progress-stat">
+                  <span class="stat-label">Files:</span>
+                  <span [class.complete]="syncStatus.filesComplete">
+                    {{ formatBytes(syncStatus.fileBytesSent) }} / {{ formatBytes(syncStatus.totalFileBytes) }}
+                    <span *ngIf="syncStatus.filesArchived">({{ syncStatus.filesArchived | number }} / {{ syncStatus.totalFiles | number }} files)</span>
+                  </span>
+                </div>
+              </ng-container>
+              <!-- For FieldChange method, show legacy stats -->
+              <ng-container *ngIf="syncStatus.syncMethod !== 'BULK_EXPORT'">
+                <span>{{ syncStatus.entitiesSent | number }} of {{ syncStatus.totalEntities | number }} entities sent</span>
+                <span *ngIf="syncStatus.currentEntityType">Currently syncing: {{ syncStatus.currentEntityType }}</span>
+              </ng-container>
             </div>
           </div>
 
@@ -136,6 +156,34 @@
               <div class="method-info">
                 <strong>FieldChange Sync (Fallback)</strong>
                 <p>Sends individual field changes in batches. Slower but incremental.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sync Mode Selection (for Bulk Export) -->
+        <div *ngIf="syncMethod === 'BULK_EXPORT'" class="sync-mode-selection">
+          <h4>What to Sync</h4>
+          <div class="mode-options">
+            <label class="mode-option" [class.selected]="syncMode === 'BOTH'">
+              <input type="radio" name="syncMode" value="BOTH" [(ngModel)]="syncMode">
+              <div class="mode-info">
+                <strong>Database + Files</strong>
+                <p>Full sync of all data (recommended)</p>
+              </div>
+            </label>
+            <label class="mode-option" [class.selected]="syncMode === 'DATABASE_ONLY'">
+              <input type="radio" name="syncMode" value="DATABASE_ONLY" [(ngModel)]="syncMode">
+              <div class="mode-info">
+                <strong>Database Only</strong>
+                <p>Sync entities without files</p>
+              </div>
+            </label>
+            <label class="mode-option" [class.selected]="syncMode === 'FILES_ONLY'">
+              <input type="radio" name="syncMode" value="FILES_ONLY" [(ngModel)]="syncMode">
+              <div class="mode-info">
+                <strong>Files Only</strong>
+                <p>Sync files without database</p>
               </div>
             </label>
           </div>

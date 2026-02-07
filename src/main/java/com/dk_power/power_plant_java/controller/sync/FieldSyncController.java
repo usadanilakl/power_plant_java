@@ -490,6 +490,189 @@ public class FieldSyncController {
         return ResponseEntity.ok(result);
     }
 
+    // ==================== SERVER CONFIGURATION ====================
+
+    /**
+     * Get current sync server configuration.
+     * GET /api/field-sync/server-config
+     */
+    @GetMapping("/server-config")
+    public ResponseEntity<Map<String, Object>> getServerConfig() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("syncServerUrl", syncConfig.getSyncServerUrl());
+        result.put("syncServerEnabled", syncConfig.isSyncServerEnabled());
+        result.put("syncRuntimeEnabled", syncConfig.isSyncRuntimeEnabled());
+        result.put("effectivelyEnabled", syncConfig.isServerSyncEnabled());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Validate sync server URL format and optionally test connectivity.
+     * POST /api/field-sync/server-config/validate
+     * Body: { "url": "http://..." }
+     */
+    @PostMapping("/server-config/validate")
+    public ResponseEntity<Map<String, Object>> validateServerConfig(@RequestBody Map<String, Object> request) {
+        Map<String, Object> result = new HashMap<>();
+        String url = (String) request.get("url");
+
+        if (url == null || url.trim().isEmpty()) {
+            result.put("valid", false);
+            result.put("reachable", false);
+            result.put("message", "URL is required");
+            return ResponseEntity.ok(result);
+        }
+
+        url = url.trim();
+
+        // Validate URL format
+        if (!syncConfig.isValidSyncServerUrl(url)) {
+            result.put("valid", false);
+            result.put("reachable", false);
+            result.put("message", "Invalid URL format. Must be http:// or https://");
+            return ResponseEntity.ok(result);
+        }
+
+        result.put("valid", true);
+
+        // Test connectivity
+        try {
+            long startTime = System.currentTimeMillis();
+            String healthUrl = url + (url.endsWith("/") ? "" : "/") + "api/sync/health";
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            restTemplate.getForObject(healthUrl, Map.class);
+            long latencyMs = System.currentTimeMillis() - startTime;
+
+            result.put("reachable", true);
+            result.put("latencyMs", latencyMs);
+            result.put("message", "Server is reachable (" + latencyMs + "ms)");
+        } catch (Exception e) {
+            result.put("reachable", false);
+            result.put("message", "Cannot reach server: " + e.getMessage());
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update sync server configuration and persist to file.
+     * POST /api/field-sync/server-config
+     * Body: { "url": "http://...", "enabled": true }
+     */
+    @PostMapping("/server-config")
+    public ResponseEntity<Map<String, Object>> updateServerConfig(@RequestBody Map<String, Object> request) {
+        Map<String, Object> result = new HashMap<>();
+        String url = (String) request.get("url");
+        Boolean enabled = (Boolean) request.get("enabled");
+
+        if (url == null) {
+            result.put("success", false);
+            result.put("message", "'url' field is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        if (enabled == null) {
+            enabled = true; // Default to enabled if not specified
+        }
+
+        url = url.trim();
+
+        // Validate URL if not empty and enabled
+        if (enabled && !url.isEmpty() && !syncConfig.isValidSyncServerUrl(url)) {
+            result.put("success", false);
+            result.put("message", "Invalid URL format. Must be http:// or https://");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        String oldUrl = syncConfig.getSyncServerUrl();
+        boolean wasEnabled = syncConfig.isServerSyncEnabled();
+
+        try {
+            // Persist the new configuration
+            syncConfig.saveSyncServerConfig(url, enabled);
+
+            // Handle connection state changes
+            boolean isNowEnabled = syncConfig.isServerSyncEnabled();
+            boolean urlChanged = !url.equals(oldUrl);
+
+            if (wasEnabled && (!isNowEnabled || urlChanged)) {
+                // Stop SSE if was enabled and now disabled or URL changed
+                serverSseClient.stop();
+                log.info("SSE disconnected due to config change");
+            }
+
+            if (isNowEnabled && (!wasEnabled || urlChanged)) {
+                // Start SSE if now enabled (newly enabled or URL changed)
+                serverSseClient.startSseConnection();
+                log.info("SSE connecting to new server: {}", url);
+            }
+
+            result.put("success", true);
+            result.put("message", "Sync server configuration updated");
+            result.put("syncServerUrl", url);
+            result.put("syncServerEnabled", enabled);
+            result.put("effectivelyEnabled", isNowEnabled);
+            result.put("reconnected", urlChanged && isNowEnabled);
+
+            log.info("Sync server config updated: url={}, enabled={}", url, enabled);
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed to save configuration: " + e.getMessage());
+            log.error("Failed to update sync server config", e);
+            return ResponseEntity.internalServerError().body(result);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Test connection to sync server.
+     * POST /api/field-sync/server-config/test
+     * Body: { "url": "..." } (optional, uses current config if not provided)
+     */
+    @PostMapping("/server-config/test")
+    public ResponseEntity<Map<String, Object>> testServerConnection(@RequestBody(required = false) Map<String, Object> request) {
+        Map<String, Object> result = new HashMap<>();
+
+        String url = request != null ? (String) request.get("url") : null;
+        if (url == null || url.trim().isEmpty()) {
+            url = syncConfig.getSyncServerUrl();
+        }
+
+        if (url == null || url.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("message", "No sync server URL configured");
+            return ResponseEntity.ok(result);
+        }
+
+        url = url.trim();
+
+        try {
+            long startTime = System.currentTimeMillis();
+            String healthUrl = url + (url.endsWith("/") ? "" : "/") + "api/sync/health";
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> healthResponse = restTemplate.getForObject(healthUrl, Map.class);
+            long latencyMs = System.currentTimeMillis() - startTime;
+
+            result.put("success", true);
+            result.put("message", "Connection successful");
+            result.put("latencyMs", latencyMs);
+            result.put("serverStatus", healthResponse);
+
+            log.info("Connection test to {} successful ({}ms)", url, latencyMs);
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Connection failed: " + e.getMessage());
+            log.warn("Connection test to {} failed: {}", url, e.getMessage());
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     /**
      * Get file sync status and queue information.
      * GET /api/field-sync/file-sync/status
@@ -589,16 +772,18 @@ public class FieldSyncController {
 
     /**
      * Start a fast bulk export sync to the server.
-     * This creates an H2 database export + files ZIP and uploads both.
+     * This creates an H2 database export + files ZIP and uploads based on mode.
      * Much faster than the FieldChange approach (2-5 minutes vs 30-60 minutes).
      *
      * POST /api/field-sync/full-sync/bulk/start
      *
      * @param force If true, overwrite existing data on server
+     * @param mode  What to sync: BOTH, DATABASE_ONLY, or FILES_ONLY (default: BOTH)
      */
     @PostMapping("/full-sync/bulk/start")
     public ResponseEntity<Map<String, Object>> startBulkExportSync(
-            @RequestParam(defaultValue = "false") boolean force) {
+            @RequestParam(defaultValue = "false") boolean force,
+            @RequestParam(defaultValue = "BOTH") String mode) {
         Map<String, Object> result = new HashMap<>();
 
         if (!syncConfig.isServerSyncEnabled()) {
@@ -614,11 +799,22 @@ public class FieldSyncController {
             return ResponseEntity.ok(result);
         }
 
+        // Parse sync mode
+        FullSyncToServerService.BulkSyncMode syncMode;
         try {
-            fullSyncToServerService.startFullSyncViaBulkExport(force);
+            syncMode = FullSyncToServerService.BulkSyncMode.valueOf(mode.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            result.put("success", false);
+            result.put("message", "Invalid mode: " + mode + ". Valid values: BOTH, DATABASE_ONLY, FILES_ONLY");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        try {
+            fullSyncToServerService.startFullSyncViaBulkExport(force, syncMode);
             result.put("success", true);
-            result.put("message", "Bulk export sync started (force=" + force + "). Use /full-sync/status to monitor progress.");
+            result.put("message", "Bulk export sync started (mode=" + syncMode + ", force=" + force + "). Use /full-sync/status to monitor progress.");
             result.put("method", "BULK_EXPORT");
+            result.put("mode", syncMode.name());
             result.put("status", fullSyncToServerService.getStatus());
         } catch (Exception e) {
             result.put("success", false);

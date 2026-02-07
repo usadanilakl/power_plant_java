@@ -178,7 +178,29 @@ export interface FullSyncToServerStatus {
   filesQueued: number;
   success: boolean;
   errors: string[];
+  syncMethod: string;         // FIELD_CHANGES or BULK_EXPORT
+
+  // Progress tracking (0-100)
+  progressPercent: number;
+
+  // Sync mode
+  syncMode: 'BOTH' | 'DATABASE_ONLY' | 'FILES_ONLY';
+
+  // Database tracking
+  totalDatabaseEntities: number;
+  databaseEntitiesSent: number;
+  databaseComplete: boolean;
+
+  // Files tracking
+  totalFiles: number;
+  filesArchived: number;      // Files added to ZIP
+  totalFileBytes: number;
+  fileBytesSent: number;
+  filesComplete: boolean;
 }
+
+// Sync mode type
+export type BulkSyncMode = 'BOTH' | 'DATABASE_ONLY' | 'FILES_ONLY';
 
 export interface FullSyncToServerResponse {
   success: boolean;
@@ -533,14 +555,15 @@ export class FullResyncService {
 
   /**
    * Start a fast bulk export sync to the server.
-   * This creates an H2 database export + files ZIP and uploads both.
+   * This creates an H2 database export + files ZIP and uploads based on mode.
    * Much faster than the FieldChange approach (2-5 minutes vs 30-60 minutes).
    *
    * @param force If true, overwrite existing data on server
+   * @param mode  What to sync: BOTH, DATABASE_ONLY, or FILES_ONLY
    */
-  startBulkExportSync(force: boolean = false): Observable<BulkExportResponse> {
+  startBulkExportSync(force: boolean = false, mode: BulkSyncMode = 'BOTH'): Observable<BulkExportResponse> {
     return this.http.post<BulkExportResponse>(
-      `${this.fieldSyncUrl}/full-sync/bulk/start?force=${force}`, {}
+      `${this.fieldSyncUrl}/full-sync/bulk/start?force=${force}&mode=${mode}`, {}
     );
   }
 

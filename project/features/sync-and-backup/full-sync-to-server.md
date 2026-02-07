@@ -37,7 +37,28 @@ The fast bulk export method creates a temporary H2 database backup and files arc
 2. **Phase 1 — Safety check**: calls server `/api/resync/import/safety-check` to verify server is empty or force is enabled.
 3. **Phase 2 — Database export**: `ClientDataExportService.createExportBackup()` creates a temporary H2 database, copies all entity data table-by-table, and produces a ZIP archive.
 4. **Phase 3 — Files archive**: `BulkFileExportService.createFilesArchive()` creates a ZIP of all files from the uploads directory.
-5. **Phase 4 — Upload**: posts both archives to server `/api/resync/import/full` endpoint.
+5. **Phase 4 — Upload**: streams files archive in chunks to server, posts database archive to server.
+
+### Large File System Support
+
+For file systems larger than 500MB, the bulk export uses streaming upload to avoid OutOfMemoryError:
+
+1. **File-based archive creation**: Instead of holding the entire ZIP in memory, `BulkFileExportService.createFilesArchiveToFile()` writes directly to a temp file on disk.
+
+2. **Streaming chunked upload**: `uploadFilesFromPath()` reads chunks from the temp file and uploads them individually:
+   - 50MB chunks by default
+   - Reads directly from disk using `RandomAccessFile`
+   - Never holds more than one chunk in memory at a time
+   - Progress updates shown per chunk
+
+3. **Automatic cleanup**: Temp file is deleted after upload completes (or fails).
+
+**Memory usage comparison**:
+| Archive Size | Memory-based | Streaming |
+|--------------|--------------|-----------|
+| 500MB | 500MB+ heap | ~50MB |
+| 2GB | OOM crash | ~50MB |
+| 10GB | OOM crash | ~50MB |
 
 ### Core services (Bulk Export)
 

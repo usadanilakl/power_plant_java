@@ -7,7 +7,8 @@ import {
   FullResyncService,
   FullSyncToServerStatus,
   FullSyncToServerStatusResponse,
-  BulkExportStats
+  BulkExportStats,
+  BulkSyncMode
 } from '../../services/full-resync.service';
 @Component({
   selector: 'app-full-sync-to-server',
@@ -36,6 +37,9 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
   forceOverwrite = false;
   bulkExportStats: BulkExportStats | null = null;
   statsLoading = false;
+
+  // Sync mode selection (for bulk export)
+  syncMode: BulkSyncMode = 'BOTH';
 
   constructor(
     private resyncService: FullResyncService,
@@ -158,13 +162,13 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
     this.startLoading = true;
     this.message = '';
 
-    this.resyncService.startBulkExportSync(this.forceOverwrite).subscribe({
+    this.resyncService.startBulkExportSync(this.forceOverwrite, this.syncMode).subscribe({
       next: (response) => {
         this.startLoading = false;
         if (response.success) {
           this.syncStatus = response.status;
           this.inProgress = true;
-          this.showMessage('Bulk export sync started (fast method). Monitoring progress...', 'info');
+          this.showMessage(`Bulk export sync started (mode: ${this.syncMode}). Monitoring progress...`, 'info');
           this.startPolling();
         } else {
           this.showMessage(response.message, 'error');
@@ -188,9 +192,15 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
   }
 
   getProgressPercentage(): number {
-    if (!this.syncStatus || this.syncStatus.totalEntities === 0) {
-      return 0;
+    if (!this.syncStatus) return 0;
+
+    // Use progressPercent from backend directly if available (for bulk export)
+    if (this.syncStatus.progressPercent !== undefined && this.syncStatus.progressPercent > 0) {
+      return this.syncStatus.progressPercent;
     }
+
+    // Fallback for FieldChange method
+    if (this.syncStatus.totalEntities === 0) return 0;
     return Math.round((this.syncStatus.entitiesSent / this.syncStatus.totalEntities) * 100);
   }
 
@@ -201,6 +211,14 @@ export class FullSyncToServerComponent implements OnInit, OnDestroy {
     } catch {
       return dateString;
     }
+  }
+
+  formatBytes(bytes: number | undefined): string {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   }
 
   getPhaseClass(): string {

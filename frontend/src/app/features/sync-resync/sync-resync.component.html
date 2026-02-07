@@ -153,6 +153,56 @@
         </div>
       </div>
 
+      <!-- Server Configuration Card -->
+      <div class="card server-config-card">
+        <div class="card-header">
+          <h3>Server Configuration</h3>
+          <div class="header-actions">
+            <span class="status-badge" [ngClass]="serverConfig?.effectivelyEnabled ? 'status-ok' : 'status-info'">
+              {{ serverConfig?.effectivelyEnabled ? 'Connected' : 'Disabled' }}
+            </span>
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="toggleServerConfig()">
+              {{ showServerConfig ? 'Hide' : 'Configure' }}
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="info-grid" *ngIf="serverConfig && !showServerConfig">
+            <div class="info-item">
+              <label>Server URL</label>
+              <span>{{ serverConfig.syncServerUrl || 'Not configured' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Sync Enabled</label>
+              <span>{{ serverConfig.syncServerEnabled ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Runtime Enabled</label>
+              <span>{{ serverConfig.syncRuntimeEnabled ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Effectively Active</label>
+              <span [class.success-text]="serverConfig.effectivelyEnabled" [class.warning-text]="!serverConfig.effectivelyEnabled">
+                {{ serverConfig.effectivelyEnabled ? 'Yes' : 'No' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="loading" *ngIf="serverConfigLoading && !serverConfig">
+            Loading configuration...
+          </div>
+
+          <div class="server-config-section" *ngIf="showServerConfig">
+            <app-sync-server-config
+              (saved)="onServerConfigSaved()"
+              (cancelled)="onServerConfigCancelled()">
+            </app-sync-server-config>
+          </div>
+        </div>
+      </div>
+
       <!-- Failed Sync Items Card -->
       <div class="card failed-items-card" *ngIf="failedSyncItemsCount > 0 || showFailedItems">
         <div class="card-header">

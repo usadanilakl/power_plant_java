@@ -1101,6 +1101,24 @@ h2 {
   margin: 0;
 }
 
+/* Server Config Card */
+.server-config-card .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.server-config-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.success-text {
+  color: #28a745;
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .action-buttons {

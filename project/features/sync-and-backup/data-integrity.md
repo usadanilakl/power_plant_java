@@ -86,9 +86,10 @@ Default retention: 90 days
 
 **Remove Duplicates:**
 ```sql
+-- H2 syntax uses _ROWID_ pseudo-column
 DELETE FROM join_table
-WHERE ROWID() NOT IN (
-    SELECT MIN(ROWID()) FROM join_table
+WHERE _ROWID_ NOT IN (
+    SELECT MIN(_ROWID_) FROM join_table
     GROUP BY col1, col2
 )
 ```
@@ -108,10 +109,18 @@ Note: Duplicates must be removed first. Existing constraints are detected and sk
 
 **Purge Soft-Deleted:**
 ```sql
+-- Basic purge (if no active references exist)
 DELETE FROM entity_table
 WHERE deleted = true
-  AND updated_at < :cutoffDate
+  AND date_modified < :cutoffDate
+
+-- Safe purge (skips entities still referenced by active data)
+DELETE FROM entity_table
+WHERE deleted = true
+  AND date_modified < :cutoffDate
+  AND id NOT IN (:referencedIds)
 ```
+**Note**: Before purging, the service checks for soft-deleted entities that are still referenced by active (non-deleted) records via FK relationships. These entities are skipped to avoid breaking active data.
 
 ## Core Services
 
@@ -203,6 +212,7 @@ The Data Integrity feature is available in the **Sync & Recovery** page:
 - **Dry-run by default** — all fix operations preview changes first
 - **Confirmation dialogs** — destructive operations require confirmation
 - **Separate purge** — soft-delete purge is intentionally separate from "Fix All"
+- **Safe purge** — entities still referenced by active data are skipped (not purged)
 - **Detailed reporting** — shows exactly what was fixed or would be fixed
 
 ## Configuration

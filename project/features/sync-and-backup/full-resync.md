@@ -230,8 +230,19 @@ spring.jpa.hibernate.ddl-auto=update
 sync.files.storage-path=./file-storage            # Hash-based temp storage (auto-cleaned)
 sync.files.permanent-storage-path=./permanent-storage  # Path-based mirror (never auto-cleaned)
 sync.files.permanent-storage-enabled=true         # Enable permanent storage for resync
-sync.backup.storage-path=./backup-storage
+sync.backup.storage-path=./backup-storage         # H2 backup storage directory
+sync.backup.cache-duration-minutes=5              # Cache backup for 5 min (concurrent requests get same file)
+sync.backup.max-old-backups=3                     # Keep 3 old backups, auto-cleanup older ones
 ```
+
+### Server Concurrency
+
+When multiple clients request full resync simultaneously:
+- **Locking**: Only one backup is created at a time (uses `ReentrantLock`)
+- **Caching**: Subsequent requests within cache window (5 min default) receive the same backup file
+- **Cleanup**: Old backup files are automatically removed to save disk space
+
+See [Sync Server - H2 Backup Concurrency](sync-server.md#h2-backup-concurrency) for implementation details.
 
 ## Troubleshooting
 

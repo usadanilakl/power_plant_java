@@ -43,6 +43,10 @@ import org.springframework.web.client.RestTemplate;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -208,6 +212,18 @@ public class FullSyncToServerService {
      */
     @Async
     public void startFullSyncViaBulkExport(boolean force) {
+        startFullSyncViaBulkExport(force, BulkSyncMode.BOTH);
+    }
+
+    /**
+     * Start a fast bulk export sync to the server with sync mode selection.
+     * Creates H2 database export + files ZIP and uploads based on mode.
+     *
+     * @param force If true, overwrite existing server data
+     * @param mode  What to sync: BOTH, DATABASE_ONLY, or FILES_ONLY
+     */
+    @Async
+    public void startFullSyncViaBulkExport(boolean force, BulkSyncMode mode) {
         if (!syncInProgress.compareAndSet(false, true)) {
             log.warn("Full sync already in progress");
             return;
@@ -217,9 +233,11 @@ public class FullSyncToServerService {
         currentStatus.setStartTime(Instant.now());
         currentStatus.setPhase("Initializing bulk export");
         currentStatus.setSyncMethod("BULK_EXPORT");
+        currentStatus.setSyncMode(mode.name());
+        currentStatus.setProgressPercent(0);
 
         try {
-            performBulkExportSync(force);
+            performBulkExportSync(force, mode);
         } catch (Exception e) {
             log.error("Bulk export sync failed: {}", e.getMessage(), e);
             currentStatus.setPhase("Failed: " + e.getMessage());
@@ -232,80 +250,141 @@ public class FullSyncToServerService {
 
     /**
      * Perform bulk export sync - create database and files exports, then upload.
+     * @param force If true, overwrite existing server data
+     * @param mode What to sync: BOTH, DATABASE_ONLY, or FILES_ONLY
      */
-    private void performBulkExportSync(boolean force) {
-        log.info("Starting bulk export sync to server: {}", syncConfig.getSyncServerUrl());
+    private void performBulkExportSync(boolean force, BulkSyncMode mode) {
+        log.info("Starting bulk export sync (mode={}) to server: {}", mode, syncConfig.getSyncServerUrl());
+
+        // Calculate phase weights based on mode
+        // BOTH: safety=5%, db=15%, archive=30%, upload=50%
+        // DATABASE_ONLY: safety=10%, db=90%
+        // FILES_ONLY: safety=5%, archive=35%, upload=60%
+        int safetyWeight, dbWeight, archiveWeight, uploadWeight;
+        if (mode == BulkSyncMode.DATABASE_ONLY) {
+            safetyWeight = 10; dbWeight = 90; archiveWeight = 0; uploadWeight = 0;
+        } else if (mode == BulkSyncMode.FILES_ONLY) {
+            safetyWeight = 5; dbWeight = 0; archiveWeight = 35; uploadWeight = 60;
+        } else {
+            safetyWeight = 5; dbWeight = 15; archiveWeight = 30; uploadWeight = 50;
+        }
 
         try {
-            // Phase 1: Check server safety
+            // Phase 1: Check server safety (0% -> safetyWeight%)
             currentStatus.setPhase("Checking server safety");
+            currentStatus.setProgressPercent(0);
             if (!checkServerImportSafety(force)) {
                 currentStatus.setPhase("Failed: Server has existing data and force=false");
                 currentStatus.setSuccess(false);
                 return;
             }
+            currentStatus.setProgressPercent(safetyWeight);
 
-            // Phase 2: Create database export
-            currentStatus.setPhase("Creating database export");
-            log.info("Creating H2 database export...");
-            byte[] dbBackup = clientDataExportService.createExportBackup();
-            log.info("Database export created: {} bytes", dbBackup.length);
+            int progressBase = safetyWeight;
+            BulkImportResult dbResult = null;
 
-            // Phase 3: Create files archive
-            currentStatus.setPhase("Creating files archive");
-            log.info("Creating files archive...");
-            BulkFileExportService.FileStats fileStats = bulkFileExportService.getFileStats();
-            currentStatus.setTotalEntities(fileStats.getFileCount());
+            // Phase 2: Database (skip if FILES_ONLY)
+            if (mode != BulkSyncMode.FILES_ONLY) {
+                currentStatus.setPhase("Creating database export");
+                log.info("Creating H2 database export...");
+                byte[] dbBackup = clientDataExportService.createExportBackup();
+                log.info("Database export created: {} bytes", dbBackup.length);
+                currentStatus.setProgressPercent(progressBase + dbWeight / 2);
 
-            byte[] filesZip = bulkFileExportService.createFilesArchive();
-            log.info("Files archive created: {} bytes ({} files)",
-                filesZip.length, fileStats.getFileCount());
+                currentStatus.setPhase("Uploading database to server");
+                log.info("Uploading database export to server ({} bytes)...", dbBackup.length);
+                dbResult = uploadDatabaseOnly(dbBackup, force);
+                if (!dbResult.success()) {
+                    currentStatus.setPhase("Failed: " + dbResult.message());
+                    currentStatus.setSuccess(false);
+                    log.error("Database upload failed: {}", dbResult.message());
+                    return;
+                }
+                log.info("Database uploaded: {} entities", dbResult.entitiesImported());
 
-            // Phase 4: Upload database first (usually small)
-            currentStatus.setPhase("Uploading database to server");
-            log.info("Uploading database export to server ({} bytes)...", dbBackup.length);
-            BulkImportResult dbResult = uploadDatabaseOnly(dbBackup, force);
-            if (!dbResult.success()) {
-                currentStatus.setPhase("Failed: " + dbResult.message());
-                currentStatus.setSuccess(false);
-                log.error("Database upload failed: {}", dbResult.message());
-                return;
-            }
-            log.info("Database uploaded: {} entities", dbResult.entitiesImported());
-
-            // Phase 5: Upload files (use chunked if large)
-            BulkImportResult filesResult;
-            if (filesZip.length > CHUNKED_UPLOAD_THRESHOLD) {
-                log.info("Files archive is {} bytes (>{} threshold), using chunked upload",
-                    filesZip.length, CHUNKED_UPLOAD_THRESHOLD);
-                currentStatus.setPhase("Uploading files (chunked)");
-                filesResult = uploadFilesChunked(filesZip, force);
-            } else {
-                log.info("Files archive is {} bytes, using regular upload", filesZip.length);
-                currentStatus.setPhase("Uploading files to server");
-                filesResult = uploadFilesOnly(filesZip, force);
+                currentStatus.setDatabaseEntitiesSent(dbResult.entitiesImported());
+                currentStatus.setTotalDatabaseEntities(dbResult.entitiesImported());
+                currentStatus.setDatabaseComplete(true);
+                progressBase += dbWeight;
+                currentStatus.setProgressPercent(progressBase);
             }
 
-            // Combine results
-            BulkImportResult result = new BulkImportResult(
-                filesResult.success(),
-                filesResult.message(),
-                dbResult.entitiesImported(),
-                filesResult.filesImported(),
-                dbResult.durationMs() + filesResult.durationMs()
-            );
+            // Phase 3: Files (skip if DATABASE_ONLY)
+            BulkImportResult filesResult = new BulkImportResult(true, "Skipped", 0, 0, 0);
+            if (mode != BulkSyncMode.DATABASE_ONLY) {
+                currentStatus.setPhase("Creating files archive");
+                log.info("Creating files archive...");
 
-            if (result.success()) {
+                BulkFileExportService.FileStats fileStats = bulkFileExportService.getFileStats();
+                currentStatus.setTotalFiles(fileStats.getFileCount());
+                currentStatus.setTotalFileBytes(fileStats.getTotalSize());
+                currentStatus.setTotalEntities(fileStats.getFileCount()); // Legacy field
+
+                final int archiveProgressBase = progressBase;
+
+                Path filesZipPath = null;
+                try {
+                    // Use file-based archive with progress callback
+                    filesZipPath = bulkFileExportService.createFilesArchiveToFile(
+                        (filesProcessed, totalFiles, bytesProcessed, totalBytes) -> {
+                            // Calculate archive progress (0 to archiveWeight)
+                            int archiveProgress = totalFiles > 0
+                                ? (int) ((double) filesProcessed / totalFiles * archiveWeight)
+                                : 0;
+                            currentStatus.setProgressPercent(archiveProgressBase + archiveProgress);
+                            currentStatus.setFilesArchived(filesProcessed);
+                            currentStatus.setPhase(String.format("Creating files archive: %d / %d files",
+                                filesProcessed, totalFiles));
+                        }
+                    );
+
+                    progressBase += archiveWeight;
+                    currentStatus.setProgressPercent(progressBase);
+
+                    if (filesZipPath == null) {
+                        log.info("No files to upload");
+                        filesResult = new BulkImportResult(true, "No files to upload", 0, 0, 0);
+                    } else {
+                        long filesSize = Files.size(filesZipPath);
+                        log.info("Files archive created: {} bytes ({} files)", filesSize, fileStats.getFileCount());
+
+                        // Streaming upload with progress tracking
+                        currentStatus.setPhase("Uploading files");
+                        filesResult = uploadFilesFromPath(filesZipPath, filesSize, force, progressBase, uploadWeight);
+                    }
+
+                    currentStatus.setFilesComplete(true);
+                } finally {
+                    // Clean up temp file
+                    if (filesZipPath != null) {
+                        try {
+                            Files.deleteIfExists(filesZipPath);
+                            log.debug("Deleted temp files archive: {}", filesZipPath);
+                        } catch (IOException e) {
+                            log.warn("Failed to delete temp file: {} - {}", filesZipPath, e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Final result
+            currentStatus.setProgressPercent(100);
+
+            long totalEntities = dbResult != null ? dbResult.entitiesImported() : 0;
+            long totalFiles = filesResult.filesImported();
+            long totalDuration = (dbResult != null ? dbResult.durationMs() : 0) + filesResult.durationMs();
+
+            if (filesResult.success()) {
                 currentStatus.setPhase("Complete");
                 currentStatus.setSuccess(true);
-                currentStatus.setEntitiesSent(result.entitiesImported());
-                currentStatus.setFilesQueued((int) result.filesImported());
-                log.info("Bulk export sync complete: {} entities, {} files in {}ms",
-                    result.entitiesImported(), result.filesImported(), result.durationMs());
+                currentStatus.setEntitiesSent(totalEntities);
+                currentStatus.setFilesQueued((int) totalFiles);
+                log.info("Bulk export sync complete (mode={}): {} entities, {} files in {}ms",
+                    mode, totalEntities, totalFiles, totalDuration);
             } else {
-                currentStatus.setPhase("Failed: " + result.message());
+                currentStatus.setPhase("Failed: " + filesResult.message());
                 currentStatus.setSuccess(false);
-                log.error("Bulk export upload failed: {}", result.message());
+                log.error("Bulk export upload failed: {}", filesResult.message());
             }
 
         } catch (Exception e) {
@@ -543,6 +622,128 @@ public class FullSyncToServerService {
             }
             return new BulkImportResult(false, "Chunked upload failed: " + e.getMessage(), 0, 0, 0);
         }
+    }
+
+    /**
+     * Upload files from a file path using chunked streaming.
+     * Reads chunks directly from disk without loading entire file into memory.
+     * This prevents OutOfMemoryError when uploading large file systems.
+     *
+     * @param filePath Path to the ZIP file on disk
+     * @param fileSize Size of the file in bytes
+     * @param force Whether to force overwrite on server
+     * @return Result of the upload operation
+     */
+    private BulkImportResult uploadFilesFromPath(Path filePath, long fileSize, boolean force) {
+        return uploadFilesFromPath(filePath, fileSize, force, 0, 100);
+    }
+
+    /**
+     * Upload files from a file path using chunked streaming with progress tracking.
+     * Reads chunks directly from disk without loading entire file into memory.
+     *
+     * @param filePath Path to the ZIP file on disk
+     * @param fileSize Size of the file in bytes
+     * @param force Whether to force overwrite on server
+     * @param progressBase Base progress percentage (0-100) at start of upload
+     * @param progressWeight Weight of upload phase in overall progress (0-100)
+     * @return Result of the upload operation
+     */
+    private BulkImportResult uploadFilesFromPath(Path filePath, long fileSize, boolean force,
+                                                   int progressBase, int progressWeight) {
+        long startTime = System.currentTimeMillis();
+        String uploadId = null;
+
+        try {
+            // Use smaller chunks for streaming (50MB) to reduce memory per chunk
+            int chunkSizeBytes = 50 * 1024 * 1024; // 50MB chunks
+            int totalChunks = (int) Math.ceil((double) fileSize / chunkSizeBytes);
+
+            log.info("Starting streaming upload: {} bytes in {} chunks of {}MB each",
+                fileSize, totalChunks, chunkSizeBytes / (1024 * 1024));
+
+            // Phase 1: Initialize chunked upload
+            ChunkedUploadInit initResult = initChunkedUpload(fileSize, totalChunks);
+            if (!initResult.success()) {
+                return new BulkImportResult(false, "Failed to init chunked upload: " + initResult.message(), 0, 0, 0);
+            }
+            uploadId = initResult.uploadId();
+            log.info("Chunked upload initialized: uploadId={}", uploadId);
+
+            // Phase 2: Read and upload each chunk directly from file
+            try (RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "r")) {
+                byte[] buffer = new byte[chunkSizeBytes];
+
+                for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                    // Calculate progress within upload phase
+                    int uploadProgress = (int) ((chunkIndex + 1) * progressWeight / (double) totalChunks);
+                    int overallProgress = progressBase + uploadProgress;
+                    currentStatus.setProgressPercent(overallProgress);
+
+                    // Calculate bytes uploaded for display
+                    long bytesUploaded = Math.min((long) (chunkIndex + 1) * chunkSizeBytes, fileSize);
+                    currentStatus.setFileBytesSent(bytesUploaded);
+
+                    currentStatus.setPhase(String.format("Uploading files: %s / %s",
+                        formatBytes(bytesUploaded), formatBytes(fileSize)));
+
+                    // Read chunk from file
+                    raf.seek((long) chunkIndex * chunkSizeBytes);
+                    int bytesRead = raf.read(buffer);
+
+                    if (bytesRead <= 0) {
+                        break;
+                    }
+
+                    // Create chunk data (may be smaller than buffer for last chunk)
+                    byte[] chunkData = bytesRead < chunkSizeBytes
+                        ? Arrays.copyOf(buffer, bytesRead)
+                        : buffer;
+
+                    // Upload this chunk
+                    ChunkedUploadChunkResult chunkResult = uploadChunk(uploadId, chunkIndex, chunkData);
+                    if (!chunkResult.success()) {
+                        log.error("Chunk {} upload failed: {}", chunkIndex, chunkResult.message());
+                        cancelChunkedUpload(uploadId);
+                        return new BulkImportResult(false, "Chunk upload failed: " + chunkResult.message(), 0, 0, 0);
+                    }
+
+                    log.debug("Chunk {}/{} uploaded ({} bytes)", chunkIndex + 1, totalChunks, bytesRead);
+                }
+            }
+
+            // Phase 3: Complete the upload
+            currentStatus.setPhase("Completing file upload");
+            currentStatus.setProgressPercent(progressBase + progressWeight);
+            BulkImportResult result = completeChunkedUpload(uploadId);
+
+            long durationMs = System.currentTimeMillis() - startTime;
+            log.info("Streaming upload complete: {} files imported in {}ms", result.filesImported(), durationMs);
+
+            return new BulkImportResult(result.success(), result.message(), 0, result.filesImported(), durationMs);
+
+        } catch (Exception e) {
+            log.error("Streaming upload failed: {}", e.getMessage(), e);
+            if (uploadId != null) {
+                try {
+                    cancelChunkedUpload(uploadId);
+                } catch (Exception cancelEx) {
+                    log.warn("Failed to cancel upload {}: {}", uploadId, cancelEx.getMessage());
+                }
+            }
+            return new BulkImportResult(false, "Streaming upload failed: " + e.getMessage(), 0, 0,
+                System.currentTimeMillis() - startTime);
+        }
+    }
+
+    /**
+     * Format bytes into human-readable string.
+     */
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
     /**
@@ -1206,6 +1407,24 @@ public class FullSyncToServerService {
         private List<String> errors = new ArrayList<>();
         private String syncMethod = "FIELD_CHANGES";  // FIELD_CHANGES or BULK_EXPORT
 
+        // NEW: Direct progress for the progress bar (0-100)
+        private int progressPercent;
+
+        // NEW: Sync mode for bulk export
+        private String syncMode = "BOTH";  // BOTH, DATABASE_ONLY, FILES_ONLY
+
+        // NEW: Separate database tracking
+        private long totalDatabaseEntities;
+        private long databaseEntitiesSent;
+        private boolean databaseComplete;
+
+        // NEW: Separate file tracking
+        private long totalFiles;
+        private long filesArchived;        // Files added to ZIP during archive phase
+        private long totalFileBytes;
+        private long fileBytesSent;
+        private boolean filesComplete;
+
         // Batch tracking for resume capability
         private int lastCompletedEntityIndex = -1;  // Index in ENTITY_SYNC_ORDER
         private int lastCompletedPage = -1;         // Last page that was fully sent
@@ -1225,6 +1444,15 @@ public class FullSyncToServerService {
         public void recordSuccessfulBatch() {
             totalBatchesSent++;
         }
+    }
+
+    /**
+     * Sync mode for bulk export.
+     */
+    public enum BulkSyncMode {
+        BOTH,           // Sync database + files (default)
+        DATABASE_ONLY,  // Sync only database
+        FILES_ONLY      // Sync only files
     }
 
     @Data

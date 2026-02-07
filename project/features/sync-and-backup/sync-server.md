@@ -159,8 +159,10 @@ SSE event types:
 | `sync.files.permanent-storage-path` | `permanent-storage` | Directory for path-based permanent file storage |
 | `sync.files.permanent-storage-enabled` | true | Enable permanent file storage that mirrors client structure |
 | `sync.backup.storage-path` | `backup-storage` | Directory for H2 backup storage |
-| `sync.import.temp-dir` | `${java.io.tmpdir}/sync-import` | **NEW**: Temp directory for bulk import operations |
-| `sync.import.max-file-size` | 524288000 | **NEW**: Maximum import archive size (500MB default) |
+| `sync.backup.cache-duration-minutes` | 5 | Minutes to cache H2 backup before creating a new one |
+| `sync.backup.max-old-backups` | 3 | Number of old backup files to retain |
+| `sync.import.temp-dir` | `${java.io.tmpdir}/sync-import` | Temp directory for bulk import operations |
+| `sync.import.max-file-size` | 524288000 | Maximum import archive size (500MB default) |
 
 # Change compaction
 
@@ -177,3 +179,122 @@ A scheduled job (`SyncService.cleanupOldChanges()`) runs daily at 3 AM to delete
 | `ONLINE` | Client connected and active |
 | `SYNCING` | Client currently exchanging changes |
 | `OFFLINE` | Client not seen for 5+ minutes (auto-detected) |
+
+# H2 Backup Concurrency
+
+When multiple clients request full resync simultaneously, the server handles this efficiently:
+
+## Concurrency Protection
+
+The `FullResyncService.createH2Backup()` method uses a `ReentrantLock` to ensure only one backup is created at a time. When multiple clients request a backup simultaneously:
+
+1. First request acquires the lock and creates the backup
+2. Other requests wait for the lock
+3. Once created, all waiting requests receive the same backup file
+
+## Backup Caching
+
+To avoid creating duplicate backups for rapid successive requests, backups are cached:
+
+- New backups are only created if no valid cached backup exists
+- Cache duration is configurable (default: 5 minutes)
+- If a cached backup exists and is still valid, it's returned immediately
+- Cache is invalidated if the backup file is deleted or cache expires
+
+## Automatic Cleanup
+
+Old backup files are automatically cleaned up to prevent disk space issues:
+
+- After creating a new backup, old backups are enumerated
+- Only the most recent N backups are retained (default: 3)
+- Older backups are deleted automatically
+- Cleanup failures are logged but don't fail the backup operation
+
+## Implementation
+
+```java
+// Concurrency control
+private final ReentrantLock backupLock = new ReentrantLock();
+private volatile Path cachedBackupPath = null;
+private volatile Instant cachedBackupTime = null;
+
+public Path createH2Backup() throws Exception {
+    backupLock.lock();
+    try {
+        if (isCachedBackupValid()) {
+            return cachedBackupPath;  // Return cached
+        }
+        // Create new backup, update cache, cleanup old backups
+        ...
+    } finally {
+        backupLock.unlock();
+    }
+}
+```
+
+See: [FullResyncService](../../../sync-server/src/main/java/com/dk_power/sync_server/service/FullResyncService.java)
+
+# Server URL Configuration
+
+Clients can configure the sync server URL at runtime without restarting the application.
+
+## How to Change Server URL
+
+### From Sync Indicator (Header)
+1. Click the sync indicator icon in the header
+2. Click "Settings" button in the popover
+3. Enter the new server URL (e.g., `http://192.168.1.100:8080`)
+4. Click "Test Connection" to verify connectivity
+5. Click "Save & Reconnect" to apply changes
+
+### From Sync & Recovery Page
+1. Navigate to Sync & Recovery (`/sync`)
+2. Find the "Server Configuration" card
+3. Click "Configure" to expand settings
+4. Enter URL, toggle enabled state, test connection
+5. Click "Save & Reconnect"
+
+## Persistence
+
+Configuration is persisted to `./sync-config.properties`:
+
+```properties
+# Sync server configuration - managed by application
+sync.server.url=http://192.168.1.100:8080
+sync.server.enabled=true
+```
+
+This file:
+- Overrides `application.properties` values on startup
+- Is created/updated when you save from the UI
+- Persists across application restarts
+
+## Restart Behavior
+
+When the application starts:
+1. Default URL is loaded from `application.properties`
+2. If `sync-config.properties` exists, its values override defaults
+3. SSE connection is established to the configured server
+
+When you change the URL via UI:
+1. Current SSE connection is closed
+2. Configuration is saved to file
+3. New SSE connection is opened to new server
+4. Sync operations use new server immediately
+
+## REST Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/field-sync/server-config` | GET | Get current server configuration |
+| `/api/field-sync/server-config` | POST | Update server URL and persist |
+| `/api/field-sync/server-config/validate` | POST | Validate URL format and test connectivity |
+| `/api/field-sync/server-config/test` | POST | Test connection to server |
+
+## Related Files
+
+| File | Purpose |
+|------|---------|
+| [SyncConfig.java](../../../src/main/java/com/dk_power/power_plant_java/config/SyncConfig.java) | URL persistence and loading |
+| [FieldSyncController.java](../../../src/main/java/com/dk_power/power_plant_java/controller/sync/FieldSyncController.java) | REST endpoints |
+| `sync-config.properties` | Runtime configuration file (created when URL is saved) |

@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -77,6 +79,7 @@ public class SyncConfig {
     }
 
     private static final String MACHINE_ID_FILE = "./machine-id.properties";
+    private static final String SYNC_CONFIG_FILE = "./sync-config.properties";
 
     @PostConstruct
     public void init() {
@@ -89,6 +92,9 @@ public class SyncConfig {
         if (machineName == null || machineName.isEmpty() || machineName.equals("Unknown")) {
             machineName = getComputerName();
         }
+
+        // Load sync server config from file (overrides application.properties)
+        loadSyncServerConfigFromFile();
 
         log.info("===========================================");
         log.info("FIELD SYNC CONFIG INITIALIZED");
@@ -182,5 +188,79 @@ public class SyncConfig {
         }
 
         return "Unknown-" + machineId;
+    }
+
+    /**
+     * Load sync server URL from config file.
+     * File values override application.properties values.
+     */
+    private void loadSyncServerConfigFromFile() {
+        File file = new File(SYNC_CONFIG_FILE);
+        if (!file.exists()) {
+            log.debug("No sync config file found at {}", SYNC_CONFIG_FILE);
+            return;
+        }
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            Properties props = new Properties();
+            props.load(fis);
+
+            String urlFromFile = props.getProperty("sync.server.url");
+            if (urlFromFile != null && !urlFromFile.isEmpty()) {
+                this.syncServerUrl = urlFromFile;
+                log.info("Loaded sync server URL from file: {}", syncServerUrl);
+            }
+
+            String enabledFromFile = props.getProperty("sync.server.enabled");
+            if (enabledFromFile != null) {
+                this.syncServerEnabled = Boolean.parseBoolean(enabledFromFile);
+                log.info("Loaded sync server enabled from file: {}", syncServerEnabled);
+            }
+        } catch (Exception e) {
+            log.warn("Could not load sync config from file: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Save sync server URL to config file.
+     * This persists the configuration across application restarts.
+     *
+     * @param url The sync server URL
+     * @param enabled Whether sync is enabled
+     */
+    public synchronized void saveSyncServerConfig(String url, boolean enabled) {
+        this.syncServerUrl = url;
+        this.syncServerEnabled = enabled;
+
+        Properties props = new Properties();
+        props.setProperty("sync.server.url", url != null ? url : "");
+        props.setProperty("sync.server.enabled", String.valueOf(enabled));
+
+        try (FileOutputStream fos = new FileOutputStream(SYNC_CONFIG_FILE)) {
+            props.store(fos, "Sync server configuration - managed by application");
+            log.info("Saved sync server config to file: url={}, enabled={}", url, enabled);
+        } catch (Exception e) {
+            log.error("Failed to persist sync configuration: {}", e.getMessage());
+            throw new RuntimeException("Failed to persist sync configuration", e);
+        }
+    }
+
+    /**
+     * Validate sync server URL format.
+     *
+     * @param url The URL to validate
+     * @return true if the URL is valid HTTP or HTTPS
+     */
+    public boolean isValidSyncServerUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            URL parsedUrl = new URL(url.trim());
+            String protocol = parsedUrl.getProtocol();
+            return "http".equals(protocol) || "https".equals(protocol);
+        } catch (MalformedURLException e) {
+            return false;
+        }
     }
 }

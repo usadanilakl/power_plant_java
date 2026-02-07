@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/permit-builder/safe-work/safe-work-form/safe-work-form.component.css"],
+  "sourcesContent": [":host {\n  display: block;\n  height: 100%;\n  width: 100%;\n  overflow: hidden; /* The host element itself should not scroll */\n}\n\n.form-container {\n  height: 100%;\n  width: 100%;\n  overflow-y: auto; /* This is the element that will scroll */\n  padding: 1rem; /* Optional: for better spacing */\n  box-sizing: border-box; /* Ensures padding is included in the height/width */\n}"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,UAAQ;AACR,SAAO;AACP,YAAU;AACZ;AAEA,CAAC;AACC,UAAQ;AACR,SAAO;AACP,cAAY;AACZ,WAAS;AACT,cAAY;AACd;",
+  "names": []
+}

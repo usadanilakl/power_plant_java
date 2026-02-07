@@ -11,6 +11,7 @@ import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
 import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
 import { FullResyncService } from '../../services/full-resync.service';
+import { SyncServerConfigComponent } from '../sync-server-config/sync-server-config.component';
 
 /**
  * Sync status indicator component for the header.
@@ -28,7 +29,7 @@ import { FullResyncService } from '../../services/full-resync.service';
 @Component({
   selector: 'app-sync-indicator',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule, MatSlideToggleModule, MatButtonModule, MatDividerModule, FormsModule],
+  imports: [CommonModule, MatIconModule, MatTooltipModule, MatSlideToggleModule, MatButtonModule, MatDividerModule, FormsModule, SyncServerConfigComponent],
   template: `
     <div class="sync-indicator-wrapper">
       <div class="sync-indicator"
@@ -141,7 +142,19 @@ import { FullResyncService } from '../../services/full-resync.service';
                 <mat-icon>dashboard</mat-icon>
                 Dashboard
               </button>
+              <button mat-button (click)="toggleSettings()">
+                <mat-icon>settings</mat-icon>
+                Settings
+              </button>
             </div>
+
+            @if (showingSettings()) {
+              <mat-divider></mat-divider>
+              <app-sync-server-config
+                (saved)="onSettingsSaved()"
+                (cancelled)="onSettingsCancelled()">
+              </app-sync-server-config>
+            }
           </div>
         </div>
       }
@@ -420,6 +433,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   popoverOpen = signal<boolean>(false);
   togglingSync = signal<boolean>(false);
   syncingNow = signal<boolean>(false);
+  showingSettings = signal<boolean>(false);
   private updateTimer: any = null;
   private statusPollTimer: any = null;
 
@@ -622,6 +636,23 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
       this.autoResyncExhausted.set(false);
       this.autoResyncLevel.set(0);
     });
+  }
+
+  toggleSettings(): void {
+    this.showingSettings.update(v => !v);
+  }
+
+  onSettingsSaved(): void {
+    this.showingSettings.set(false);
+    // Refresh status after config change
+    setTimeout(() => {
+      this.loadSyncStatus();
+      this.loadSyncToggleState();
+    }, 500);
+  }
+
+  onSettingsCancelled(): void {
+    this.showingSettings.set(false);
   }
 
   private loadSyncToggleState(): void {

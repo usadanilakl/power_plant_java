@@ -21,10 +21,12 @@ import {
   IntegrityFixResult,
   TableIssues
 } from '../../services/full-resync.service';
+import { SyncStatusService, SyncServerConfig } from '../../services/sync-status.service';
+import { SyncServerConfigComponent } from '../../shared/sync-server-config/sync-server-config.component';
 @Component({
   selector: 'app-sync-resync',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SyncServerConfigComponent],
   templateUrl: './sync-resync.component.html',
   styleUrls: ['./sync-resync.component.css']
 })
@@ -83,8 +85,14 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   showPurgeConfirm = false;
   integrityFixType: 'duplicates' | 'orphans' | 'constraints' | 'all' = 'all';
 
+  // Server Configuration state
+  serverConfig: SyncServerConfig | null = null;
+  showServerConfig = false;
+  serverConfigLoading = false;
+
   constructor(
     private resyncService: FullResyncService,
+    private syncStatusService: SyncStatusService,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -96,6 +104,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       this.loadStatus();
       this.loadSyncHealthCheck();
       this.loadFailedSyncItemsCount();
+      this.loadServerConfig();
       this.startAutoRefresh();
 
       // Subscribe to restart progress
@@ -918,5 +927,52 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     return Object.entries(this.integrityCheckResult.softDeletedByEntity)
       .filter(([_, value]) => value > 0)
       .map(([key, value]) => ({ key, value }));
+  }
+
+  // ==================== SERVER CONFIGURATION METHODS ====================
+
+  /**
+   * Load current server configuration
+   */
+  loadServerConfig(): void {
+    this.serverConfigLoading = true;
+    this.syncStatusService.getSyncServerConfig().subscribe({
+      next: (config) => {
+        this.serverConfig = config;
+        this.serverConfigLoading = false;
+      },
+      error: (err) => {
+        this.serverConfigLoading = false;
+        console.debug('Could not load server config:', err.message);
+      }
+    });
+  }
+
+  /**
+   * Toggle server config visibility
+   */
+  toggleServerConfig(): void {
+    this.showServerConfig = !this.showServerConfig;
+  }
+
+  /**
+   * Handle server config saved event
+   */
+  onServerConfigSaved(): void {
+    this.showServerConfig = false;
+    this.loadServerConfig();
+    this.showMessage('Server configuration updated successfully', 'success');
+    // Refresh status after config change
+    setTimeout(() => {
+      this.loadHealth();
+      this.loadSyncHealthCheck();
+    }, 1000);
+  }
+
+  /**
+   * Handle server config cancelled event
+   */
+  onServerConfigCancelled(): void {
+    this.showServerConfig = false;
   }
 }
