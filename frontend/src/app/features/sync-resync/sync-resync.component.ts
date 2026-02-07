@@ -16,7 +16,10 @@ import {
   PartialSyncResult,
   FailedSyncItem,
   FileSyncResult,
-  FileSyncStats
+  FileSyncStats,
+  IntegrityCheckResult,
+  IntegrityFixResult,
+  TableIssues
 } from '../../services/full-resync.service';
 @Component({
   selector: 'app-sync-resync',
@@ -70,6 +73,15 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   filesSyncResult: FileSyncResult | null = null;
   showFilesSyncConfirm = false;
   forceFilesSync = false;
+
+  // Data Integrity state
+  integrityCheckResult: IntegrityCheckResult | null = null;
+  integrityFixResult: IntegrityFixResult | null = null;
+  integrityLoading = false;
+  integrityFixLoading = false;
+  showIntegrityFixConfirm = false;
+  showPurgeConfirm = false;
+  integrityFixType: 'duplicates' | 'orphans' | 'constraints' | 'all' = 'all';
 
   constructor(
     private resyncService: FullResyncService,
@@ -721,5 +733,190 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     return 'Are you sure you want to sync files only? ' +
            'This will download missing files and delete extra local files. ' +
            'Database is not affected.';
+  }
+
+  // ==================== DATA INTEGRITY METHODS ====================
+
+  /**
+   * Load data integrity check
+   */
+  loadIntegrityCheck(): void {
+    this.integrityLoading = true;
+    this.integrityCheckResult = null;
+    this.integrityFixResult = null;
+
+    this.resyncService.checkIntegrity().subscribe({
+      next: (result) => {
+        this.integrityCheckResult = result;
+        this.integrityLoading = false;
+        if (result.hasIssues) {
+          this.showMessage(
+            `Found ${result.totalDuplicates} duplicates, ${result.totalOrphans} orphans, ${result.totalSoftDeleted} soft-deleted`,
+            'warning'
+          );
+        } else {
+          this.showMessage('No integrity issues found', 'success');
+        }
+      },
+      error: (err) => {
+        this.integrityLoading = false;
+        this.showMessage('Integrity check failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Get integrity status class
+   */
+  getIntegrityStatusClass(): string {
+    if (!this.integrityCheckResult) return 'status-info';
+    if (this.integrityCheckResult.hasIssues) return 'status-warning';
+    return 'status-ok';
+  }
+
+  /**
+   * Get integrity status text
+   */
+  getIntegrityStatusText(): string {
+    if (!this.integrityCheckResult) return 'Not Checked';
+    if (this.integrityCheckResult.hasIssues) return 'Issues Found';
+    return 'Clean';
+  }
+
+  /**
+   * Preview integrity fix (dry run)
+   */
+  previewIntegrityFix(): void {
+    this.integrityFixLoading = true;
+    this.integrityFixResult = null;
+
+    this.resyncService.fixAll(true).subscribe({
+      next: (result) => {
+        this.integrityFixResult = result;
+        this.integrityFixLoading = false;
+        this.showMessage('Preview complete (no changes made)', 'info');
+      },
+      error: (err) => {
+        this.integrityFixLoading = false;
+        this.showMessage('Preview failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Show confirmation for integrity fix
+   */
+  confirmIntegrityFix(type: 'duplicates' | 'orphans' | 'constraints' | 'all'): void {
+    this.integrityFixType = type;
+    this.showIntegrityFixConfirm = true;
+  }
+
+  /**
+   * Cancel integrity fix confirmation
+   */
+  cancelIntegrityFixConfirm(): void {
+    this.showIntegrityFixConfirm = false;
+  }
+
+  /**
+   * Execute integrity fix
+   */
+  executeIntegrityFix(): void {
+    this.showIntegrityFixConfirm = false;
+    this.integrityFixLoading = true;
+    this.integrityFixResult = null;
+
+    let observable;
+    switch (this.integrityFixType) {
+      case 'duplicates':
+        observable = this.resyncService.fixDuplicates(false);
+        break;
+      case 'orphans':
+        observable = this.resyncService.fixOrphans(false);
+        break;
+      case 'constraints':
+        observable = this.resyncService.fixConstraints(false);
+        break;
+      default:
+        observable = this.resyncService.fixAll(false);
+    }
+
+    observable.subscribe({
+      next: (result) => {
+        this.integrityFixResult = result;
+        this.integrityFixLoading = false;
+        if (result.success) {
+          this.showMessage(result.message, 'success');
+          // Refresh the check results
+          this.loadIntegrityCheck();
+        } else {
+          this.showMessage(result.message, 'warning');
+        }
+      },
+      error: (err) => {
+        this.integrityFixLoading = false;
+        this.showMessage('Fix failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Show confirmation for purge deleted
+   */
+  confirmPurgeDeleted(): void {
+    this.showPurgeConfirm = true;
+  }
+
+  /**
+   * Cancel purge confirmation
+   */
+  cancelPurgeConfirm(): void {
+    this.showPurgeConfirm = false;
+  }
+
+  /**
+   * Execute purge of soft-deleted entities
+   */
+  executePurgeDeleted(): void {
+    this.showPurgeConfirm = false;
+    this.integrityFixLoading = true;
+
+    const retentionDays = this.integrityCheckResult?.softDeleteRetentionDays || 90;
+    this.resyncService.purgeDeleted(false, retentionDays).subscribe({
+      next: (result) => {
+        this.integrityFixResult = result;
+        this.integrityFixLoading = false;
+        if (result.success) {
+          this.showMessage(`Purged ${result.softDeletedPurged} soft-deleted entities`, 'success');
+          // Refresh the check results
+          this.loadIntegrityCheck();
+        } else {
+          this.showMessage(result.message, 'warning');
+        }
+      },
+      error: (err) => {
+        this.integrityFixLoading = false;
+        this.showMessage('Purge failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Get table issues as array for display
+   */
+  getTableIssuesArray(): TableIssues[] {
+    if (!this.integrityCheckResult?.tableIssues) return [];
+    return Object.values(this.integrityCheckResult.tableIssues)
+      .filter(t => t.duplicateCount > 0 || t.orphanCount > 0 || !t.hasPrimaryKey);
+  }
+
+  /**
+   * Get soft-deleted entries as array for display
+   */
+  getSoftDeletedEntries(): Array<{key: string, value: number}> {
+    if (!this.integrityCheckResult?.softDeletedByEntity) return [];
+    return Object.entries(this.integrityCheckResult.softDeletedByEntity)
+      .filter(([_, value]) => value > 0)
+      .map(([key, value]) => ({ key, value }));
   }
 }

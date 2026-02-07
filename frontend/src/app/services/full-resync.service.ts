@@ -234,6 +234,37 @@ export interface FailedSyncRetryAllResult {
   total: number;
 }
 
+// Data Integrity interfaces
+export interface TableIssues {
+  tableName: string;
+  duplicateCount: number;
+  orphanCount: number;
+  hasPrimaryKey: boolean;
+}
+
+export interface IntegrityCheckResult {
+  checkedAt: string;
+  hasIssues: boolean;
+  totalDuplicates: number;
+  totalOrphans: number;
+  constraintsMissing: boolean;
+  totalSoftDeleted: number;
+  softDeleteRetentionDays: number;
+  tableIssues: { [key: string]: TableIssues };
+  softDeletedByEntity: { [key: string]: number };
+}
+
+export interface IntegrityFixResult {
+  success: boolean;
+  message: string;
+  dryRun: boolean;
+  duplicatesRemoved: number;
+  orphansRemoved: number;
+  constraintsAdded: number;
+  softDeletedPurged: number;
+  errors: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -516,6 +547,7 @@ export class FullResyncService {
   // ==================== FAILED SYNC ITEMS METHODS ====================
 
   private syncServerUrl = environment.syncServerUrl;
+  private integrityUrl = `${environment.baseApiUrl}/api/data-integrity`;
 
   /**
    * Get all unresolved failed sync items from the sync server.
@@ -553,6 +585,69 @@ export class FullResyncService {
   retryAllFailedItems(): Observable<FailedSyncRetryAllResult> {
     return this.http.post<FailedSyncRetryAllResult>(
       `${this.syncServerUrl}/api/sync/failed/retry-all`, {}
+    );
+  }
+
+  // ==================== DATA INTEGRITY METHODS ====================
+
+  /**
+   * Check all data integrity issues (read-only).
+   * Scans for duplicates in join tables, orphaned references, missing constraints,
+   * and soft-deleted entities eligible for purge.
+   */
+  checkIntegrity(): Observable<IntegrityCheckResult> {
+    return this.http.get<IntegrityCheckResult>(`${this.integrityUrl}/check`);
+  }
+
+  /**
+   * Fix duplicate entries in join tables.
+   * @param dryRun If true (default), only report what would be fixed
+   */
+  fixDuplicates(dryRun: boolean = true): Observable<IntegrityFixResult> {
+    return this.http.post<IntegrityFixResult>(
+      `${this.integrityUrl}/fix/duplicates?dryRun=${dryRun}`, {}
+    );
+  }
+
+  /**
+   * Fix orphaned FK references in join tables.
+   * @param dryRun If true (default), only report what would be fixed
+   */
+  fixOrphans(dryRun: boolean = true): Observable<IntegrityFixResult> {
+    return this.http.post<IntegrityFixResult>(
+      `${this.integrityUrl}/fix/orphans?dryRun=${dryRun}`, {}
+    );
+  }
+
+  /**
+   * Add missing primary key constraints to join tables.
+   * @param dryRun If true (default), only report what would be added
+   */
+  fixConstraints(dryRun: boolean = true): Observable<IntegrityFixResult> {
+    return this.http.post<IntegrityFixResult>(
+      `${this.integrityUrl}/fix/constraints?dryRun=${dryRun}`, {}
+    );
+  }
+
+  /**
+   * Fix all integrity issues (duplicates, orphans, constraints).
+   * Does NOT purge soft-deleted entities.
+   * @param dryRun If true (default), only report what would be fixed
+   */
+  fixAll(dryRun: boolean = true): Observable<IntegrityFixResult> {
+    return this.http.post<IntegrityFixResult>(
+      `${this.integrityUrl}/fix/all?dryRun=${dryRun}`, {}
+    );
+  }
+
+  /**
+   * Permanently delete soft-deleted entities older than retention period.
+   * @param dryRun If true (default), only report what would be deleted
+   * @param retentionDays Minimum age of soft-deleted entities to purge (default 90)
+   */
+  purgeDeleted(dryRun: boolean = true, retentionDays: number = 90): Observable<IntegrityFixResult> {
+    return this.http.post<IntegrityFixResult>(
+      `${this.integrityUrl}/fix/purge-deleted?dryRun=${dryRun}&retentionDays=${retentionDays}`, {}
     );
   }
 }

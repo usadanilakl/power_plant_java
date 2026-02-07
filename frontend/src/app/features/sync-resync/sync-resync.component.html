@@ -491,6 +491,173 @@
         </div>
       </div>
 
+      <!-- Data Integrity Card -->
+      <div class="card integrity-card">
+        <div class="card-header">
+          <h3>Data Integrity</h3>
+          <span class="status-badge" [ngClass]="getIntegrityStatusClass()">
+            {{ getIntegrityStatusText() }}
+          </span>
+        </div>
+        <div class="card-body">
+          <p class="integrity-description">
+            Check and fix database integrity issues like duplicate entries in join tables,
+            orphaned references, and missing constraints. Also manage soft-deleted entities.
+          </p>
+
+          <!-- Check Result -->
+          <div class="integrity-result" *ngIf="integrityCheckResult">
+            <div class="preview-summary">
+              <div class="summary-item" [class.warning]="integrityCheckResult.totalDuplicates > 0">
+                <span class="count">{{ integrityCheckResult.totalDuplicates }}</span>
+                <span class="label">Duplicates</span>
+              </div>
+              <div class="summary-item" [class.warning]="integrityCheckResult.totalOrphans > 0">
+                <span class="count">{{ integrityCheckResult.totalOrphans }}</span>
+                <span class="label">Orphans</span>
+              </div>
+              <div class="summary-item" [class.warning]="integrityCheckResult.constraintsMissing">
+                <span class="count">{{ integrityCheckResult.constraintsMissing ? 'Missing' : 'OK' }}</span>
+                <span class="label">Constraints</span>
+              </div>
+              <div class="summary-item info" [class.has-items]="integrityCheckResult.totalSoftDeleted > 0">
+                <span class="count">{{ integrityCheckResult.totalSoftDeleted }}</span>
+                <span class="label">Soft Deleted ({{ integrityCheckResult.softDeleteRetentionDays }}+ days)</span>
+              </div>
+            </div>
+
+            <!-- Per-table breakdown (collapsible) -->
+            <details *ngIf="integrityCheckResult.hasIssues && getTableIssuesArray().length > 0">
+              <summary>Table Details ({{ getTableIssuesArray().length }} with issues)</summary>
+              <table class="integrity-table">
+                <thead>
+                  <tr><th>Table</th><th>Duplicates</th><th>Orphans</th><th>PK</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let table of getTableIssuesArray()">
+                    <td>{{ table.tableName }}</td>
+                    <td [class.warning]="table.duplicateCount > 0">{{ table.duplicateCount }}</td>
+                    <td [class.warning]="table.orphanCount > 0">{{ table.orphanCount }}</td>
+                    <td>{{ table.hasPrimaryKey ? '✓' : '✗' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </details>
+
+            <!-- Soft-deleted breakdown -->
+            <details *ngIf="getSoftDeletedEntries().length > 0">
+              <summary>Soft-Deleted by Entity Type</summary>
+              <ul class="soft-deleted-list">
+                <li *ngFor="let entry of getSoftDeletedEntries()">
+                  {{ entry.key }}: {{ entry.value }} items
+                </li>
+              </ul>
+            </details>
+          </div>
+
+          <!-- Fix Result -->
+          <div class="fix-result" *ngIf="integrityFixResult">
+            <div class="result-summary" [ngClass]="integrityFixResult.success ? 'result-success' : 'result-warning'">
+              <p>{{ integrityFixResult.message }}</p>
+              <p *ngIf="integrityFixResult.dryRun"><strong>(Dry Run - No changes made)</strong></p>
+              <div class="result-stats">
+                <span>Duplicates: {{ integrityFixResult.duplicatesRemoved }}</span>
+                <span>Orphans: {{ integrityFixResult.orphansRemoved }}</span>
+                <span>Constraints: {{ integrityFixResult.constraintsAdded }}</span>
+                <span *ngIf="integrityFixResult.softDeletedPurged > 0">Purged: {{ integrityFixResult.softDeletedPurged }}</span>
+              </div>
+              <div class="fix-errors" *ngIf="integrityFixResult.errors?.length">
+                <p><strong>Errors:</strong></p>
+                <ul>
+                  <li *ngFor="let error of integrityFixResult.errors.slice(0, 5)">{{ error }}</li>
+                  <li *ngIf="integrityFixResult.errors.length > 5">
+                    ... and {{ integrityFixResult.errors.length - 5 }} more
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" (click)="integrityFixResult = null">Clear Result</button>
+          </div>
+
+          <!-- Actions -->
+          <div class="integrity-actions">
+            <button
+              class="btn btn-primary"
+              (click)="loadIntegrityCheck()"
+              [disabled]="integrityLoading">
+              {{ integrityLoading ? 'Checking...' : 'Check Integrity' }}
+            </button>
+            <button
+              class="btn btn-secondary"
+              (click)="previewIntegrityFix()"
+              [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
+              {{ integrityFixLoading ? 'Loading...' : 'Preview Fix' }}
+            </button>
+            <button
+              class="btn btn-warning"
+              (click)="confirmIntegrityFix('all')"
+              [disabled]="!integrityCheckResult?.hasIssues || integrityFixLoading">
+              Fix All Issues
+            </button>
+            <button
+              class="btn btn-danger btn-sm"
+              (click)="confirmPurgeDeleted()"
+              [disabled]="!integrityCheckResult?.totalSoftDeleted || integrityFixLoading">
+              Purge Deleted ({{ integrityCheckResult?.totalSoftDeleted || 0 }})
+            </button>
+          </div>
+
+          <div class="action-notes">
+            <p><strong>Check Integrity:</strong> Scans join tables for duplicates, orphans, missing constraints, and soft-deleted items.</p>
+            <p><strong>Preview Fix:</strong> Shows what would be fixed without making changes.</p>
+            <p><strong>Fix All:</strong> Removes duplicates, orphans, and adds PK constraints (does NOT purge deleted).</p>
+            <p><strong>Purge Deleted:</strong> Permanently removes soft-deleted entities older than retention period.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integrity Fix Confirmation Dialog -->
+      <div class="dialog-overlay" *ngIf="showIntegrityFixConfirm" (click)="cancelIntegrityFixConfirm()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Confirm Fix</h3>
+          </div>
+          <div class="dialog-body">
+            <p>This will permanently remove {{ integrityCheckResult?.totalDuplicates || 0 }} duplicates
+               and {{ integrityCheckResult?.totalOrphans || 0 }} orphaned references.</p>
+            <p>This action cannot be undone. Continue?</p>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-secondary" (click)="cancelIntegrityFixConfirm()">Cancel</button>
+            <button class="btn btn-warning" (click)="executeIntegrityFix()">Fix Issues</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Purge Confirmation Dialog -->
+      <div class="dialog-overlay" *ngIf="showPurgeConfirm" (click)="cancelPurgeConfirm()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Confirm Purge</h3>
+          </div>
+          <div class="dialog-body">
+            <p><strong>Warning:</strong> This will PERMANENTLY delete {{ integrityCheckResult?.totalSoftDeleted || 0 }}
+               soft-deleted entities that are older than {{ integrityCheckResult?.softDeleteRetentionDays || 90 }} days.</p>
+            <p *ngIf="getSoftDeletedEntries().length > 0">This includes:</p>
+            <ul *ngIf="getSoftDeletedEntries().length > 0">
+              <li *ngFor="let entry of getSoftDeletedEntries()">
+                {{ entry.key }}: {{ entry.value }} items
+              </li>
+            </ul>
+            <p class="warning-text"><strong>This action CANNOT be undone. The data will be permanently lost.</strong></p>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-secondary" (click)="cancelPurgeConfirm()">Cancel</button>
+            <button class="btn btn-danger" (click)="executePurgeDeleted()">Permanently Delete</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Actions Card -->
       <div class="card actions-card">
         <div class="card-header">

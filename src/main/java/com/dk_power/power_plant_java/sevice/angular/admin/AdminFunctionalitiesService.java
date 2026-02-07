@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
+import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ public class AdminFunctionalitiesService {
     private final FileRepo fileRepo;
     private final LotoPointRepo lotoPointRepo;
     private final EquipmentRefactorService equipmentRefactorService;
+    private final SyncContext syncContext;
 
     @Value("${files.root.path}")
     private String filesRootPath;
@@ -157,25 +159,36 @@ public class AdminFunctionalitiesService {
     // Delegates to existing EquipmentRefactorService
     // ============================================================
 
+    /**
+     * Split equipment with multiple loto points.
+     * Runs inside SyncContext to bypass FieldChange tracking (one-time refactor operation).
+     */
     public Map<String, Object> splitAllEquipmentWithMultipleLotoPoints() {
         Map<String, Object> result = new HashMap<>();
         try {
-            List<Equipment> splitEquipment = equipmentRefactorService.splitAllEquipmentWithMultipleLotoPoints();
-            result.put("success", true);
-            result.put("splitCount", splitEquipment.size());
-            result.put("message", "Successfully split " + splitEquipment.size() + " equipment items");
+            // Run inside sync context to skip FieldChange creation
+            // These are one-time refactor operations, not regular data changes
+            syncContext.startSync();
+            try {
+                List<Equipment> splitEquipment = equipmentRefactorService.splitAllEquipmentWithMultipleLotoPoints();
+                result.put("success", true);
+                result.put("splitCount", splitEquipment.size());
+                result.put("message", "Successfully split " + splitEquipment.size() + " equipment items (no sync records created)");
 
-            // Return summary of split equipment
-            List<Map<String, Object>> summary = splitEquipment.stream()
-                .map(eq -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", eq.getId());
-                    item.put("tagNumber", eq.getTagNumber());
-                    item.put("description", eq.getDescription());
-                    return item;
-                })
-                .collect(Collectors.toList());
-            result.put("splitEquipment", summary);
+                // Return summary of split equipment
+                List<Map<String, Object>> summary = splitEquipment.stream()
+                    .map(eq -> {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("id", eq.getId());
+                        item.put("tagNumber", eq.getTagNumber());
+                        item.put("description", eq.getDescription());
+                        return item;
+                    })
+                    .collect(Collectors.toList());
+                result.put("splitEquipment", summary);
+            } finally {
+                syncContext.endSync();
+            }
 
         } catch (Exception e) {
             logger.error("Error splitting equipment", e);
@@ -190,22 +203,32 @@ public class AdminFunctionalitiesService {
     // Delegates to existing EquipmentRefactorService
     // ============================================================
 
+    /**
+     * Assign Location/EqType from Equipment to LotoPoints.
+     * Runs inside SyncContext to bypass FieldChange tracking (one-time refactor operation).
+     */
     public Map<String, Object> assignEquipmentAttributesToLotoPoints() {
         Map<String, Object> result = new HashMap<>();
         try {
-            // Get count before
-            int beforeCount = countLotoPointsWithoutAttributes();
+            // Run inside sync context to skip FieldChange creation
+            syncContext.startSync();
+            try {
+                // Get count before
+                int beforeCount = countLotoPointsWithoutAttributes();
 
-            equipmentRefactorService.assignEquipmentLocationAndTypeToLotoPoints();
+                equipmentRefactorService.assignEquipmentLocationAndTypeToLotoPoints();
 
-            // Get count after
-            int afterCount = countLotoPointsWithoutAttributes();
+                // Get count after
+                int afterCount = countLotoPointsWithoutAttributes();
 
-            result.put("success", true);
-            result.put("message", "Successfully assigned equipment attributes to loto points");
-            result.put("pointsWithoutAttributesBefore", beforeCount);
-            result.put("pointsWithoutAttributesAfter", afterCount);
-            result.put("pointsUpdated", beforeCount - afterCount);
+                result.put("success", true);
+                result.put("message", "Successfully assigned equipment attributes to loto points (no sync records created)");
+                result.put("pointsWithoutAttributesBefore", beforeCount);
+                result.put("pointsWithoutAttributesAfter", afterCount);
+                result.put("pointsUpdated", beforeCount - afterCount);
+            } finally {
+                syncContext.endSync();
+            }
 
         } catch (Exception e) {
             logger.error("Error assigning equipment attributes", e);
@@ -227,98 +250,107 @@ public class AdminFunctionalitiesService {
     // find matching loto point, set counterpartId for both
     // ============================================================
 
+    /**
+     * Associate LotoPoints with their counterparts (U1/U2).
+     * Runs inside SyncContext to bypass FieldChange tracking (one-time refactor operation).
+     */
     public Map<String, Object> associateLotoPointCounterparts(boolean dryRun) {
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> linkedPairs = new ArrayList<>();
         List<Map<String, Object>> skippedPoints = new ArrayList<>();
-        int processedCount = 0;
-        int linkedCount = 0;
+        int[] counts = {0, 0}; // processedCount, linkedCount
 
         try {
-            // Find all loto points with tag number starting with "01"
-            List<LotoPoint> unit1Points = lotoPointRepo.findAll().stream()
-                .filter(lp -> lp.getTagNumber() != null && lp.getTagNumber().startsWith("01"))
-                .filter(lp -> lp.getCounterpartId() == null) // Only process those not already linked
-                .collect(Collectors.toList());
+            // Run inside sync context to skip FieldChange creation when not dry run
+            if (!dryRun) {
+                syncContext.startSync();
+            }
+            try {
+                // Find all loto points with tag number starting with "01"
+                List<LotoPoint> unit1Points = lotoPointRepo.findAll().stream()
+                    .filter(lp -> lp.getTagNumber() != null && lp.getTagNumber().startsWith("01"))
+                    .filter(lp -> lp.getCounterpartId() == null) // Only process those not already linked
+                    .collect(Collectors.toList());
 
-            for (LotoPoint point1 : unit1Points) {
-                processedCount++;
-                String tag1 = point1.getTagNumber();
-                String tag2 = "02" + tag1.substring(2); // Flip 01 to 02
+                for (LotoPoint point1 : unit1Points) {
+                    counts[0]++;
+                    String tag1 = point1.getTagNumber();
+                    String tag2 = "02" + tag1.substring(2); // Flip 01 to 02
 
-                // Find matching unit 2 loto point(s)
-                List<LotoPoint> matchingPoints = lotoPointRepo.findByTagNumber(tag2);
+                    // Find matching unit 2 loto point(s)
+                    List<LotoPoint> matchingPoints = lotoPointRepo.findByTagNumber(tag2);
 
-                if (matchingPoints == null || matchingPoints.isEmpty()) {
-                    // No matching point found
-                    Map<String, Object> skipped = new HashMap<>();
-                    skipped.put("id", point1.getId());
-                    skipped.put("tagNumber", tag1);
-                    skipped.put("reason", "No matching counterpart found for tag: " + tag2);
-                    skippedPoints.add(skipped);
-                    continue;
+                    if (matchingPoints == null || matchingPoints.isEmpty()) {
+                        Map<String, Object> skipped = new HashMap<>();
+                        skipped.put("id", point1.getId());
+                        skipped.put("tagNumber", tag1);
+                        skipped.put("reason", "No matching counterpart found for tag: " + tag2);
+                        skippedPoints.add(skipped);
+                        continue;
+                    }
+
+                    if (matchingPoints.size() > 1) {
+                        Map<String, Object> skipped = new HashMap<>();
+                        skipped.put("id", point1.getId());
+                        skipped.put("tagNumber", tag1);
+                        skipped.put("reason", "Multiple counterparts found for tag: " + tag2 + " (count: " + matchingPoints.size() + ")");
+                        skippedPoints.add(skipped);
+                        continue;
+                    }
+
+                    LotoPoint point2 = matchingPoints.get(0);
+
+                    if (point2.getCounterpartId() != null && !point2.getCounterpartId().equals(point1.getId())) {
+                        Map<String, Object> skipped = new HashMap<>();
+                        skipped.put("id", point1.getId());
+                        skipped.put("tagNumber", tag1);
+                        skipped.put("reason", "Counterpart " + tag2 + " already linked to another point (ID: " + point2.getCounterpartId() + ")");
+                        skippedPoints.add(skipped);
+                        continue;
+                    }
+
+                    List<LotoPoint> unit1Matches = lotoPointRepo.findByTagNumber(tag1);
+                    if (unit1Matches.size() > 1) {
+                        Map<String, Object> skipped = new HashMap<>();
+                        skipped.put("id", point1.getId());
+                        skipped.put("tagNumber", tag1);
+                        skipped.put("reason", "Multiple loto points found with tag: " + tag1 + " (count: " + unit1Matches.size() + ")");
+                        skippedPoints.add(skipped);
+                        continue;
+                    }
+
+                    // All checks passed - link the counterparts
+                    if (!dryRun) {
+                        point1.setCounterpartId(point2.getId());
+                        point2.setCounterpartId(point1.getId());
+                        lotoPointRepo.save(point1);
+                        lotoPointRepo.save(point2);
+                    }
+
+                    counts[1]++;
+                    Map<String, Object> pair = new HashMap<>();
+                    pair.put("point1Id", point1.getId());
+                    pair.put("point1Tag", tag1);
+                    pair.put("point2Id", point2.getId());
+                    pair.put("point2Tag", tag2);
+                    linkedPairs.add(pair);
                 }
-
-                if (matchingPoints.size() > 1) {
-                    // Multiple matches found - skip to avoid ambiguity
-                    Map<String, Object> skipped = new HashMap<>();
-                    skipped.put("id", point1.getId());
-                    skipped.put("tagNumber", tag1);
-                    skipped.put("reason", "Multiple counterparts found for tag: " + tag2 + " (count: " + matchingPoints.size() + ")");
-                    skippedPoints.add(skipped);
-                    continue;
-                }
-
-                LotoPoint point2 = matchingPoints.get(0);
-
-                // Check if point2 already has a different counterpart
-                if (point2.getCounterpartId() != null && !point2.getCounterpartId().equals(point1.getId())) {
-                    Map<String, Object> skipped = new HashMap<>();
-                    skipped.put("id", point1.getId());
-                    skipped.put("tagNumber", tag1);
-                    skipped.put("reason", "Counterpart " + tag2 + " already linked to another point (ID: " + point2.getCounterpartId() + ")");
-                    skippedPoints.add(skipped);
-                    continue;
-                }
-
-                // Check for duplicates on unit 1 side
-                List<LotoPoint> unit1Matches = lotoPointRepo.findByTagNumber(tag1);
-                if (unit1Matches.size() > 1) {
-                    Map<String, Object> skipped = new HashMap<>();
-                    skipped.put("id", point1.getId());
-                    skipped.put("tagNumber", tag1);
-                    skipped.put("reason", "Multiple loto points found with tag: " + tag1 + " (count: " + unit1Matches.size() + ")");
-                    skippedPoints.add(skipped);
-                    continue;
-                }
-
-                // All checks passed - link the counterparts
+            } finally {
                 if (!dryRun) {
-                    point1.setCounterpartId(point2.getId());
-                    point2.setCounterpartId(point1.getId());
-                    lotoPointRepo.save(point1);
-                    lotoPointRepo.save(point2);
+                    syncContext.endSync();
                 }
-
-                linkedCount++;
-                Map<String, Object> pair = new HashMap<>();
-                pair.put("point1Id", point1.getId());
-                pair.put("point1Tag", tag1);
-                pair.put("point2Id", point2.getId());
-                pair.put("point2Tag", tag2);
-                linkedPairs.add(pair);
             }
 
             result.put("success", true);
             result.put("dryRun", dryRun);
-            result.put("processedCount", processedCount);
-            result.put("linkedCount", linkedCount);
+            result.put("processedCount", counts[0]);
+            result.put("linkedCount", counts[1]);
             result.put("skippedCount", skippedPoints.size());
             result.put("linkedPairs", linkedPairs);
             result.put("skippedPoints", skippedPoints);
             result.put("message", dryRun
-                ? "Dry run completed. " + linkedCount + " pairs would be linked."
-                : "Successfully linked " + linkedCount + " counterpart pairs.");
+                ? "Dry run completed. " + counts[1] + " pairs would be linked."
+                : "Successfully linked " + counts[1] + " counterpart pairs (no sync records created).");
 
         } catch (Exception e) {
             logger.error("Error associating counterparts", e);

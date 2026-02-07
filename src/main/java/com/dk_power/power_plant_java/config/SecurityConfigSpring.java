@@ -28,7 +28,7 @@ public class SecurityConfigSpring {
                         "/h2-console/**", "/images-api/**", "/ng/**","/server/**","/api/backup/**",
                         "/browser/**","/print/**", "/api-lotos/**","/red-tag-controls/**","/power-automate/**",
                         "/work-request/**", "/api/field-sync/**", "/api/sync-updates/**","/api/sync-test/**",
-                        "/api/resync/**", "/api/sync-e2e/**"
+                        "/api/resync/**", "/api/sync-e2e/**", "/api/data-integrity/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 

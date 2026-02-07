@@ -241,6 +241,14 @@ sync.backup.storage-path=./backup-storage
 
 **Resync blocked by safety check** — too many files would be deleted. Review via preview endpoint, then use `force=true` if safe.
 
+**Bulk sync to server fails with PK constraint violation** — duplicate entries exist in join tables. Run Data Integrity Check before bulk sync:
+1. Go to Sync & Recovery page
+2. Click "Check Integrity" in the Data Integrity section
+3. If duplicates found, click "Fix All Issues"
+4. Retry bulk sync
+
+See [Data Integrity](data-integrity.md) for detailed documentation.
+
 **Files not syncing after resync** — physical files are synced separately from the database. Check file manifest exists on server, files exist in server storage, and client has write permissions.
 
 **File mismatch after full/partial resync** — some files may fail to download due to network issues or server errors. Use the **Files-Only Sync** feature to retry file downloads:
