@@ -107,6 +107,72 @@ After H2 restore:
 3. Application restart required.
 4. Hibernate `ddl-auto=update` recreates client-only tables on restart (e.g. `pending_file_sync`, `sync_peer`).
 
+## Progress Tracking
+
+Full resync operations provide detailed progress tracking visible in the UI:
+
+### Phase Weights
+
+| Phase | Progress Range | Description |
+|-------|---------------|-------------|
+| DB Download | 0-15% | Downloading H2 backup from sync server |
+| DB Restore | 15-25% | Restoring database from backup |
+| File Compare | 25-30% | Comparing local files with server manifest |
+| File Download | 30-90% | Downloading missing/changed files |
+| File Delete | 90-100% | Moving extra files to trash |
+
+### Files-Only Sync Weights
+
+| Phase | Progress Range | Description |
+|-------|---------------|-------------|
+| File Compare | 0-10% | Comparing local files with server |
+| File Download | 10-90% | Downloading files with retry |
+| File Delete | 90-100% | Deleting extra local files |
+
+### Status Information
+
+During file download phase, detailed stats are shown:
+- **File count**: "Downloading files: 45 / 200"
+- **Byte progress**: "150 MB / 2.5 GB downloaded"
+- **Error count**: "(3 errors)" if any downloads failed
+
+### API Response
+
+The `/api/resync/status` endpoint returns enhanced `resyncStatus`:
+
+```json
+{
+  "resyncInProgress": true,
+  "resyncStatus": {
+    "phase": "Downloading files: 45 / 200",
+    "progressPercent": 55,
+    "totalFiles": 200,
+    "processedFiles": 45,
+    "filesDownloaded": 42,
+    "downloadErrors": 3,
+    "totalFileBytes": 2684354560,
+    "downloadedBytes": 157286400,
+    "currentPhase": "file_download",
+    "phaseProgressPercent": 63,
+    "statusMessage": "150 MB / 2.5 GB downloaded (42 files)"
+  }
+}
+```
+
+### ResyncStatus Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `progressPercent` | int | Overall progress 0-100% |
+| `currentPhase` | String | Current phase: `db_download`, `db_restore`, `file_compare`, `file_download`, `file_delete` |
+| `phaseProgressPercent` | int | Progress within current phase 0-100% |
+| `totalFileBytes` | long | Total bytes to download |
+| `downloadedBytes` | long | Bytes downloaded so far |
+| `filesDownloaded` | int | Number of files successfully downloaded |
+| `filesDeleted` | int | Number of files deleted |
+| `downloadErrors` | int | Number of download failures |
+| `statusMessage` | String | Human-readable status message |
+
 ## Core services
 
 | Service | Location | Purpose |

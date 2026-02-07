@@ -203,6 +203,87 @@
         </div>
       </div>
 
+      <!-- Auto-Resync Configuration Card -->
+      <div class="card auto-resync-card">
+        <div class="card-header">
+          <h3>Auto-Resync</h3>
+          <div class="header-actions">
+            <span class="status-badge"
+                  [ngClass]="autoResyncConfig?.effectivelyEnabled ? 'status-ok' : 'status-warning'">
+              {{ autoResyncConfig?.effectivelyEnabled ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="loading" *ngIf="autoResyncLoading && !autoResyncConfig">
+            Loading configuration...
+          </div>
+
+          <div *ngIf="autoResyncConfig" class="auto-resync-content">
+            <!-- Toggle Row -->
+            <div class="toggle-row">
+              <div class="toggle-label">
+                <span>Automatically fix sync issues</span>
+                <p class="toggle-hint">When enabled, the system will attempt to resync automatically when out-of-sync is detected.</p>
+              </div>
+              <button
+                class="btn"
+                [class.btn-success]="!autoResyncConfig.runtimeEnabled"
+                [class.btn-warning]="autoResyncConfig.runtimeEnabled"
+                (click)="toggleAutoResync()"
+                [disabled]="autoResyncToggling || !autoResyncConfig.configEnabled">
+                {{ autoResyncToggling ? 'Saving...' : (autoResyncConfig.runtimeEnabled ? 'Disable' : 'Enable') }}
+              </button>
+            </div>
+
+            <!-- Config disabled warning -->
+            <div *ngIf="!autoResyncConfig.configEnabled" class="warning-note">
+              Auto-resync is disabled in application configuration (sync.auto-resync.enabled=false).
+              The toggle above only works when config is enabled.
+            </div>
+
+            <!-- Current State -->
+            <div class="state-info" *ngIf="autoResyncConfig.state">
+              <div class="info-row">
+                <label>Escalation Level:</label>
+                <span>{{ autoResyncConfig.state.escalationLevel }} / 4</span>
+              </div>
+              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptTime">
+                <label>Last Attempt:</label>
+                <span>{{ formatTimestamp(autoResyncConfig.state.lastAttemptTime) }}</span>
+              </div>
+              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptDate">
+                <label>Sync From Date:</label>
+                <span>{{ autoResyncConfig.state.lastAttemptDate }}</span>
+              </div>
+              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptMessage">
+                <label>Status:</label>
+                <span [class.success-text]="autoResyncConfig.state.lastAttemptSuccess"
+                      [class.error-text]="!autoResyncConfig.state.lastAttemptSuccess">
+                  {{ autoResyncConfig.state.lastAttemptMessage }}
+                </span>
+              </div>
+              <div class="info-row" *ngIf="autoResyncConfig.state.autoResyncExhausted">
+                <span class="warning-text"><strong>Exhausted:</strong> All automatic attempts exhausted. Manual resync recommended.</span>
+              </div>
+              <div class="info-row" *ngIf="autoResyncConfig.state.autoResyncInProgress">
+                <span class="info-text"><strong>In Progress:</strong> An automatic resync is currently running.</span>
+              </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="auto-resync-actions" *ngIf="(autoResyncConfig.state?.escalationLevel ?? 0) > 0 || autoResyncConfig.state?.autoResyncExhausted">
+              <button
+                class="btn btn-secondary btn-sm"
+                (click)="resetAutoResync()"
+                [disabled]="autoResyncLoading">
+                Reset State (Allow Retry)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Failed Sync Items Card -->
       <div class="card failed-items-card" *ngIf="failedSyncItemsCount > 0 || showFailedItems">
         <div class="card-header">
@@ -287,6 +368,7 @@
       <div class="card progress-card" *ngIf="isOperationInProgress()">
         <div class="card-header">
           <h3>Operation In Progress</h3>
+          <span class="phase-badge" *ngIf="getCurrentPhaseName()">{{ getCurrentPhaseName() }}</span>
         </div>
         <div class="card-body">
           <div class="progress-info">
@@ -296,6 +378,47 @@
           <div class="progress-bar">
             <div class="progress-fill" [style.width.%]="getProgressPercent()"></div>
           </div>
+
+          <!-- Detailed stats during file operations -->
+          @if (operationStatus?.resyncInProgress && operationStatus?.resyncStatus && isFileOperationPhase()) {
+            <div class="progress-stats">
+              @if (operationStatus?.resyncStatus?.currentPhase === 'file_download') {
+                <div class="stat-row">
+                  <span class="stat-label">Files:</span>
+                  <span class="stat-value">
+                    {{ operationStatus?.resyncStatus?.filesDownloaded || 0 }} / {{ operationStatus?.resyncStatus?.totalFiles || 0 }}
+                    @if ((operationStatus?.resyncStatus?.downloadErrors ?? 0) > 0) {
+                      <span class="error-count">
+                        ({{ operationStatus?.resyncStatus?.downloadErrors }} errors)
+                      </span>
+                    }
+                  </span>
+                </div>
+              }
+              @if (operationStatus?.resyncStatus?.currentPhase === 'file_download' && (operationStatus?.resyncStatus?.totalFileBytes ?? 0) > 0) {
+                <div class="stat-row">
+                  <span class="stat-label">Downloaded:</span>
+                  <span class="stat-value">
+                    {{ formatBytes(operationStatus?.resyncStatus?.downloadedBytes ?? 0) }} /
+                    {{ formatBytes(operationStatus?.resyncStatus?.totalFileBytes ?? 0) }}
+                  </span>
+                </div>
+              }
+              @if (operationStatus?.resyncStatus?.currentPhase === 'file_delete') {
+                <div class="stat-row">
+                  <span class="stat-label">Deleted:</span>
+                  <span class="stat-value">{{ operationStatus?.resyncStatus?.filesDeleted || 0 }} files</span>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Status message -->
+          @if (operationStatus?.resyncStatus?.statusMessage) {
+            <div class="status-message">
+              {{ operationStatus?.resyncStatus?.statusMessage }}
+            </div>
+          }
         </div>
       </div>
 

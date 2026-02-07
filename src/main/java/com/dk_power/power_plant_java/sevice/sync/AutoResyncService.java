@@ -38,7 +38,14 @@ public class AutoResyncService {
     private final ObjectMapper objectMapper;
 
     @Value("${sync.auto-resync.enabled:true}")
-    private boolean autoResyncEnabled;
+    private boolean autoResyncConfigEnabled;
+
+    /**
+     * Runtime toggle for auto-resync. Allows enabling/disabling from UI
+     * without restarting the application. Both this AND autoResyncConfigEnabled
+     * must be true for auto-resync to be active.
+     */
+    private volatile boolean autoResyncRuntimeEnabled = true;
 
     @Value("${project.root:}")
     private String projectRootPath;
@@ -64,7 +71,7 @@ public class AutoResyncService {
      * Evaluates whether to trigger an automatic partial resync.
      */
     public void evaluateAndTrigger(SyncHealthChecker.SyncHealthResult result) {
-        if (!autoResyncEnabled) return;
+        if (!isAutoResyncEnabled()) return;
 
         // If in sync, reset state
         if (result.getSyncStatus() == SyncHealthChecker.SyncStatus.IN_SYNC) {
@@ -183,6 +190,36 @@ public class AutoResyncService {
 
     public AutoResyncState getCurrentState() {
         return currentState;
+    }
+
+    /**
+     * Check if auto-resync is effectively enabled (both config AND runtime must be true).
+     */
+    public boolean isAutoResyncEnabled() {
+        return autoResyncConfigEnabled && autoResyncRuntimeEnabled;
+    }
+
+    /**
+     * Check if auto-resync is enabled in application configuration.
+     */
+    public boolean isAutoResyncConfigEnabled() {
+        return autoResyncConfigEnabled;
+    }
+
+    /**
+     * Check if auto-resync is enabled at runtime (UI toggle).
+     */
+    public boolean isAutoResyncRuntimeEnabled() {
+        return autoResyncRuntimeEnabled;
+    }
+
+    /**
+     * Enable or disable auto-resync at runtime (from UI).
+     * This does not change the config file, only the current session.
+     */
+    public void setAutoResyncRuntimeEnabled(boolean enabled) {
+        this.autoResyncRuntimeEnabled = enabled;
+        log.info("Auto-resync runtime enabled set to: {}", enabled);
     }
 
     /**

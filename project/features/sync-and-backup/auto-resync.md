@@ -71,19 +71,45 @@ After each health check result is computed, `autoResyncService.evaluateAndTrigge
 |----------|--------|---------|
 | `/api/resync/auto-resync/state` | GET | Get current auto-resync state (escalation level, last attempt, etc.) |
 | `/api/resync/auto-resync/reset` | POST | Reset auto-resync state (retry after exhaustion) |
+| `/api/resync/auto-resync/config` | GET | Get full auto-resync configuration (config enabled, runtime enabled, effective state) |
+| `/api/resync/auto-resync/toggle` | POST | Toggle auto-resync at runtime (param: `enabled=true/false`) |
 
 ## Frontend
+
+### Sync Indicator Popover
 
 The sync indicator popover ([sync-indicator.component.ts](../../../frontend/src/app/shared/sync-indicator/sync-indicator.component.ts)) shows three auto-resync states:
 - **In progress**: spinning sync icon with "Auto-resync in progress (attempt N of 5)..."
 - **Exhausted**: warning with "Full Resync" and "Retry Auto" action buttons
 - **Pending**: "Auto-resync will attempt from {date}" (before first trigger)
 
+### Sync & Recovery Page
+
+The Sync & Recovery page ([sync-resync.component.ts](../../../frontend/src/app/features/sync-resync/sync-resync.component.ts)) includes an **Auto-Resync Configuration** card with:
+- **Enable/Disable toggle**: Button to enable or disable auto-resync at runtime
+- **Current state display**: Shows escalation level, last attempt time, success/failure, and messages
+- **Config disabled warning**: Shows when `sync.auto-resync.enabled=false` in config
+- **Reset button**: Resets auto-resync state to retry after exhaustion
+
 ## Configuration
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `sync.auto-resync.enabled` | `true` | Enable/disable automatic resync |
+| `sync.auto-resync.enabled` | `true` | Enable/disable automatic resync (config-level, requires restart) |
+
+### Runtime Toggle
+
+Auto-resync can be enabled/disabled at runtime without restarting the application:
+
+1. **From the UI**: Navigate to Sync & Recovery page → Auto-Resync card → click Enable/Disable button
+2. **Via API**: `POST /api/resync/auto-resync/toggle?enabled=false`
+
+The effective state is determined by both the config setting AND the runtime toggle:
+- `effectivelyEnabled = autoResyncConfigEnabled && autoResyncRuntimeEnabled`
+
+If the config property is set to `false`, the runtime toggle has no effect (auto-resync is disabled).
+
+The runtime state does **not** persist across application restarts — it resets to match the config value.
 
 ## Related fix: Category/Value deduplication sync
 

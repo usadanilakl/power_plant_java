@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.file.TrashService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NgFileRestController {
     private final NgFileService ngFileService;
+    private final TrashService trashService;
     private final Logger log = LoggerFactory.getLogger(NgFileRestController.class);
     @Value("${files.root.path}")
     private String rootPath;
@@ -260,5 +262,86 @@ public class NgFileRestController {
         }
     }
 
+    // ==================== TRASH ENDPOINTS ====================
 
+    /**
+     * Get all files in trash.
+     */
+    @GetMapping("/trash")
+    public ResponseEntity<NgApiResponse<List<TrashService.TrashEntry>>> listTrash() {
+        try {
+            List<TrashService.TrashEntry> entries = trashService.listTrash();
+            return ResponseEntity.ok(new NgApiResponse<>(entries, "Trash retrieved successfully"));
+        } catch (Exception e) {
+            log.error("Error listing trash: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error listing trash: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get trash statistics.
+     */
+    @GetMapping("/trash/stats")
+    public ResponseEntity<NgApiResponse<TrashService.TrashStats>> getTrashStats() {
+        try {
+            TrashService.TrashStats stats = trashService.getStats();
+            return ResponseEntity.ok(new NgApiResponse<>(stats, "Trash stats retrieved successfully"));
+        } catch (Exception e) {
+            log.error("Error getting trash stats: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error getting trash stats: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Restore a file from trash to its original location.
+     */
+    @PostMapping("/trash/{id}/restore")
+    public ResponseEntity<Map<String, Object>> restoreFromTrash(@PathVariable String id) {
+        try {
+            boolean restored = trashService.restore(id);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", restored);
+            result.put("message", restored ? "File restored successfully" : "File not found in trash");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error restoring from trash: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false, "message", "Error restoring: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Permanently delete a file from trash.
+     */
+    @DeleteMapping("/trash/{id}")
+    public ResponseEntity<Map<String, Object>> permanentlyDelete(@PathVariable String id) {
+        try {
+            boolean deleted = trashService.permanentlyDelete(id);
+            return ResponseEntity.ok(Map.of(
+                "success", deleted,
+                "message", deleted ? "Permanently deleted" : "Not found in trash"));
+        } catch (Exception e) {
+            log.error("Error permanently deleting from trash: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false, "message", "Error deleting: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Empty the entire trash (permanently delete all items).
+     */
+    @DeleteMapping("/trash")
+    public ResponseEntity<Map<String, Object>> emptyTrash() {
+        try {
+            int count = trashService.emptyTrash();
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "deletedCount", count,
+                "message", count + " files permanently deleted"));
+        } catch (Exception e) {
+            log.error("Error emptying trash: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false, "message", "Error emptying trash: " + e.getMessage()));
+        }
+    }
 }

@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @Transactional
 public class NgValueService {
@@ -47,7 +49,7 @@ public class NgValueService {
     }
 
     public Value createValue(String categoryName, Value value) {
-        Category category = categoryRepo.findByAlias(categoryName);
+        Category category = getCategoryByAliasSafe(categoryName);
         if (category == null) category = createCategory(categoryName);
         value.setCategory(category);
         return valueRepo.save(value);
@@ -106,7 +108,7 @@ public class NgValueService {
     @Transactional
     public Value addValueToCategoryByAlias(String categoryName, String valueName) {
 //        System.out.println(categoryName + " " + valueName);
-        Category category = categoryRepo.findByAlias(categoryName);
+        Category category = getCategoryByAliasSafe(categoryName);
 //        System.out.println(category.getAlias());
         if (category == null) throw new RuntimeException("Category not found");
 
@@ -123,7 +125,7 @@ public class NgValueService {
     @Transactional
     public Value addValueToCategoryByAlias(String categoryName, String valueName, String valueAlias) {
 //        System.out.println(categoryName + " " + valueName);
-        Category category = categoryRepo.findByAlias(categoryName);
+        Category category = getCategoryByAliasSafe(categoryName);
 //        System.out.println(category.getAlias());
         if (category == null) throw new RuntimeException("Category not found");
 
@@ -165,7 +167,7 @@ public class NgValueService {
     }
 
     public List<Value> getValuesByCategoryAlias(String categoryAlias) {
-        Category byAlias = categoryRepo.findByAlias(categoryAlias);
+        Category byAlias = getCategoryByAliasSafe(categoryAlias);
         if (byAlias != null) return new ArrayList<>(byAlias.getValues());
         else throw new RuntimeException("Category not found with alias: " + categoryAlias);
     }
@@ -248,6 +250,20 @@ public class NgValueService {
 
     public Category createCategory(String categoryName) {
         String alias = Util.toCamelCase(categoryName);
+
+        // Check if category already exists by alias first (most reliable)
+        Category existingByAlias = getCategoryByAliasSafe(alias);
+        if (existingByAlias != null) {
+            return existingByAlias;
+        }
+
+        // Check if category already exists by name
+        List<Category> existingByName = categoryRepo.findByName(categoryName);
+        if (!existingByName.isEmpty()) {
+            return existingByName.getFirst();
+        }
+
+        // Only create new category if none exists
         Category category = new Category(categoryName);
         category.setAlias(alias);
         return categoryRepo.save(category);
@@ -258,7 +274,7 @@ public class NgValueService {
     }
 
     public Category getCategoryByAlias(String alias) {
-        return categoryRepo.findByAlias(alias);
+        return getCategoryByAliasSafe(alias);
     }
 
     public List<Category> getCategoryByName(String name) {
@@ -267,6 +283,36 @@ public class NgValueService {
 
     public List<Category> getAllCategories() {
         return categoryRepo.findAll();
+    }
+
+    /**
+     * Safely retrieves a category by alias, handling duplicates gracefully.
+     * Returns first match if duplicates exist (logs warning).
+     * Returns null if not found.
+     */
+    public Category getCategoryByAliasSafe(String alias) {
+        List<Category> categories = categoryRepo.findByAlias(alias);
+        if (categories.isEmpty()) return null;
+        if (categories.size() > 1) {
+            log.warn("Multiple categories found with alias '{}', using first (id={})",
+                    alias, categories.get(0).getId());
+        }
+        return categories.get(0);
+    }
+
+    /**
+     * Safely retrieves a category by name, handling duplicates gracefully.
+     * Returns first match if duplicates exist (logs warning).
+     * Returns null if not found.
+     */
+    public Category getCategoryByNameSafe(String name) {
+        List<Category> categories = categoryRepo.findByName(name);
+        if (categories.isEmpty()) return null;
+        if (categories.size() > 1) {
+            log.warn("Multiple categories found with name '{}', using first (id={})",
+                    name, categories.get(0).getId());
+        }
+        return categories.get(0);
     }
 
     public Optional<Value> findById(Long system) {

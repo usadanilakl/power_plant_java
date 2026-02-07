@@ -152,7 +152,8 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public Category getByAlias(String alias) {
-        return categoryRepo.findByAlias(alias) ;
+        List<Category> categories = categoryRepo.findByAlias(alias);
+        return categories.isEmpty() ? null : categories.get(0);
     }
 }
 

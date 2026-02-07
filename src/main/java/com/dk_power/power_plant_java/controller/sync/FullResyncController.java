@@ -259,4 +259,34 @@ public class FullResyncController {
         autoResyncService.resetState();
         return ResponseEntity.ok(Map.of("message", "Auto-resync state reset"));
     }
+
+    /**
+     * Get auto-resync configuration (enabled states and current state).
+     */
+    @GetMapping("/auto-resync/config")
+    public ResponseEntity<Map<String, Object>> getAutoResyncConfig() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("configEnabled", autoResyncService.isAutoResyncConfigEnabled());
+        config.put("runtimeEnabled", autoResyncService.isAutoResyncRuntimeEnabled());
+        config.put("effectivelyEnabled", autoResyncService.isAutoResyncEnabled());
+        config.put("state", autoResyncService.getCurrentState());
+        return ResponseEntity.ok(config);
+    }
+
+    /**
+     * Toggle auto-resync at runtime (enable/disable from UI).
+     * This does not change the application.properties setting.
+     */
+    @PostMapping("/auto-resync/toggle")
+    public ResponseEntity<Map<String, Object>> toggleAutoResync(
+            @RequestParam boolean enabled) {
+        autoResyncService.setAutoResyncRuntimeEnabled(enabled);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("runtimeEnabled", enabled);
+        result.put("effectivelyEnabled", autoResyncService.isAutoResyncEnabled());
+        result.put("message", enabled ? "Auto-resync enabled" : "Auto-resync disabled");
+        return ResponseEntity.ok(result);
+    }
 }

@@ -1,0 +1,96 @@
+<div class="trash-container">
+  <div class="trash-header">
+    <div class="header-left">
+      <h1>Trash</h1>
+      <p class="subtitle" *ngIf="stats">
+        {{ entries.length }} file{{ entries.length !== 1 ? 's' : '' }} ·
+        {{ formatBytes(stats.totalSize) }} ·
+        Files auto-delete after {{ stats.retentionDays }} days
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="loadTrash()" [disabled]="loading">
+        <span class="icon">↻</span> Refresh
+      </button>
+      <button
+        class="btn btn-danger"
+        (click)="emptyTrash()"
+        [disabled]="loading || entries.length === 0">
+        <span class="icon">🗑</span> Empty Trash
+      </button>
+    </div>
+  </div>
+
+  <!-- Message Toast -->
+  <div class="message-toast" *ngIf="message" [class]="message.type">
+    {{ message.text }}
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading && entries.length === 0">
+    <div class="loading-spinner"></div>
+    <p>Loading trash...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && entries.length === 0">
+    <div class="empty-icon">🗑️</div>
+    <h2>Trash is empty</h2>
+    <p>Deleted files will appear here for {{ stats?.retentionDays || 14 }} days before being permanently removed.</p>
+  </div>
+
+  <!-- Stats Summary -->
+  <div class="stats-bar" *ngIf="stats && entries.length > 0">
+    <div class="stat-item">
+      <span class="stat-value">{{ stats.totalCount }}</span>
+      <span class="stat-label">Total Files</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{{ formatBytes(stats.totalSize) }}</span>
+      <span class="stat-label">Total Size</span>
+    </div>
+    <div class="stat-item" *ngIf="stats.expiredCount > 0">
+      <span class="stat-value warning">{{ stats.expiredCount }}</span>
+      <span class="stat-label">Expiring Soon</span>
+    </div>
+  </div>
+
+  <!-- Trash Items List -->
+  <div class="trash-list" *ngIf="entries.length > 0">
+    <div class="trash-item" *ngFor="let entry of entries" [class.loading]="actionLoading[entry.id]">
+      <div class="item-icon">
+        📄
+      </div>
+      <div class="item-details">
+        <div class="item-name">{{ entry.fileName }}</div>
+        <div class="item-path">{{ entry.originalPath }}</div>
+        <div class="item-meta">
+          <span class="meta-item">{{ formatBytes(entry.fileSize) }}</span>
+          <span class="meta-item">{{ getTimeAgo(entry.deletedAt) }}</span>
+          <span class="meta-item source-badge" [ngClass]="getSourceClass(entry.deletedBy)">
+            {{ getSourceLabel(entry.deletedBy) }}
+          </span>
+          <span class="meta-item expiry" [class.warning]="getDaysUntilDeletion(entry.deletedAt) <= 3">
+            {{ getDaysUntilDeletion(entry.deletedAt) }} day{{ getDaysUntilDeletion(entry.deletedAt) !== 1 ? 's' : '' }} left
+          </span>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="restore(entry)"
+          [disabled]="actionLoading[entry.id] || !entry.canRestore"
+          title="Restore to original location">
+          {{ actionLoading[entry.id] ? '...' : 'Restore' }}
+        </button>
+        <button
+          class="btn btn-danger btn-sm"
+          (click)="permanentlyDelete(entry)"
+          [disabled]="actionLoading[entry.id]"
+          title="Permanently delete">
+          {{ actionLoading[entry.id] ? '...' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

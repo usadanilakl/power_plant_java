@@ -85,6 +85,13 @@ public class FullResyncService {
     private static final int MAX_DELETE_COUNT = 100; // Max 100 files can be deleted without confirmation
     private static final int MIN_FILES_FOR_PERCENTAGE_CHECK = 20; // Only apply percentage check if >= 20 files
 
+    // Phase weights for full resync progress (total = 100%)
+    private static final int PHASE_DB_DOWNLOAD = 15;      // 0-15%
+    private static final int PHASE_DB_RESTORE = 10;       // 15-25%
+    private static final int PHASE_FILE_COMPARE = 5;      // 25-30%
+    private static final int PHASE_FILE_DOWNLOAD = 60;    // 30-90%
+    private static final int PHASE_FILE_DELETE = 10;      // 90-100%
+
     // Resync state tracking
     private final AtomicBoolean resyncInProgress = new AtomicBoolean(false);
     private final AtomicBoolean backupInProgress = new AtomicBoolean(false);
@@ -351,11 +358,15 @@ public class FullResyncService {
     /**
      * Perform full resync from the sync server.
      * Downloads the H2 backup ZIP and restores it directly.
+     * Includes detailed progress tracking at each phase.
      */
     private ResyncResult performServerResync(boolean skipDeletionCheck) {
         try {
-            // Phase 1: Download H2 backup from server
-            currentResyncStatus.setPhase("Downloading H2 backup from server");
+            // Phase 1: Download H2 backup from server (0-15%)
+            currentResyncStatus.setCurrentPhase("db_download");
+            currentResyncStatus.setPhase("Downloading database backup from server");
+            currentResyncStatus.setProgressPercent(0);
+            currentResyncStatus.setPhaseProgressPercent(0);
             log.info("Downloading H2 backup from sync server");
 
             String url = syncServerUrl + "/api/resync/database/h2-backup";
@@ -370,16 +381,38 @@ public class FullResyncService {
                 return new ResyncResult(false, "Failed to download H2 backup from server", null);
             }
 
+            currentResyncStatus.setProgressPercent(PHASE_DB_DOWNLOAD);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage(String.format("Downloaded %s database backup",
+                formatBytes(backupData.length)));
             log.info("Downloaded H2 backup: {} bytes", backupData.length);
 
-            // Phase 2: Restore from H2 backup
+            // Phase 2: Restore from H2 backup (15-25%)
+            currentResyncStatus.setCurrentPhase("db_restore");
             currentResyncStatus.setPhase("Restoring database from backup");
+            currentResyncStatus.setProgressPercent(PHASE_DB_DOWNLOAD);
+            currentResyncStatus.setPhaseProgressPercent(0);
+
             h2BackupService.restoreFromBytes(backupData);
 
-            // Phase 3: Compare and restore files
-            currentResyncStatus.setPhase("Comparing files");
+            currentResyncStatus.setProgressPercent(PHASE_DB_DOWNLOAD + PHASE_DB_RESTORE);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage("Database restored successfully");
+
+            // Phase 3: Compare and restore files (25-30%)
+            currentResyncStatus.setCurrentPhase("file_compare");
+            currentResyncStatus.setPhase("Comparing local files with server");
+            currentResyncStatus.setProgressPercent(PHASE_DB_DOWNLOAD + PHASE_DB_RESTORE);
+            currentResyncStatus.setPhaseProgressPercent(0);
+
             FileComparisonResult comparison = compareLocalWithServer();
-            currentResyncStatus.setTotalFiles(comparison.getTotalBackupFiles());
+            currentResyncStatus.setTotalFiles(comparison.getFilesToDownload().size());
+            currentResyncStatus.setTotalFileBytes(calculateTotalBytes(comparison.getFilesToDownload()));
+
+            currentResyncStatus.setProgressPercent(PHASE_DB_DOWNLOAD + PHASE_DB_RESTORE + PHASE_FILE_COMPARE);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage(String.format("Found %d files to download, %d to delete",
+                comparison.getFilesToDownload().size(), comparison.getFilesToDelete().size()));
 
             // Phase 4: Safety check for deletions
             if (!skipDeletionCheck) {
@@ -390,18 +423,25 @@ public class FullResyncService {
                 }
             }
 
-            // Phase 5: Download files from server
-            currentResyncStatus.setPhase("Downloading files");
-            downloadFilesFromServer(comparison);
+            // Phase 5: Download files from server with progress (30-90%)
+            currentResyncStatus.setCurrentPhase("file_download");
+            int downloadBaseProgress = PHASE_DB_DOWNLOAD + PHASE_DB_RESTORE + PHASE_FILE_COMPARE;
+            downloadFilesFromServerWithProgress(comparison, downloadBaseProgress, PHASE_FILE_DOWNLOAD);
 
-            // Phase 6: Delete extra local files
-            currentResyncStatus.setPhase("Deleting extra files");
-            deleteExtraFiles(comparison);
+            // Phase 6: Delete extra local files with progress (90-100%)
+            currentResyncStatus.setCurrentPhase("file_delete");
+            int deleteBaseProgress = downloadBaseProgress + PHASE_FILE_DOWNLOAD;
+            int deleted = deleteExtraFilesWithProgress(comparison, deleteBaseProgress, PHASE_FILE_DELETE);
+            currentResyncStatus.setFilesDeleted(deleted);
 
+            currentResyncStatus.setProgressPercent(100);
+            currentResyncStatus.setPhaseProgressPercent(100);
             currentResyncStatus.setPhase("Complete - Restart Required");
             currentResyncStatus.setEndTime(Instant.now());
             currentResyncStatus.setSuccess(true);
             currentResyncStatus.setRestartRequired(true);
+            currentResyncStatus.setStatusMessage(String.format("Resync complete: %d downloaded, %d deleted",
+                currentResyncStatus.getFilesDownloaded(), deleted));
 
             log.info("Server resync complete: {} downloaded, {} deleted, {} unchanged",
                 comparison.getFilesToDownload().size(),
@@ -748,6 +788,143 @@ public class FullResyncService {
         }
 
         log.info("Deleted {} extra local files", deleted);
+    }
+
+    /**
+     * Download files from sync server with detailed progress tracking.
+     * Updates progress from baseProgress to baseProgress + phaseWeight.
+     */
+    private void downloadFilesFromServerWithProgress(FileComparisonResult comparison,
+                                                      int baseProgress, int phaseWeight) throws IOException {
+        Path uploadsPath = getUploadsPath();
+        List<FileManifestEntry> toDownload = comparison.getFilesToDownload();
+        int total = toDownload.size();
+
+        if (total == 0) {
+            currentResyncStatus.setProgressPercent(baseProgress + phaseWeight);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage("No files to download");
+            return;
+        }
+
+        long totalBytes = currentResyncStatus.getTotalFileBytes();
+        long downloadedBytes = 0;
+        int downloaded = 0;
+        int errors = 0;
+
+        for (int i = 0; i < total; i++) {
+            FileManifestEntry entry = toDownload.get(i);
+
+            try {
+                // Update phase text with current file
+                currentResyncStatus.setPhase(String.format("Downloading files: %d / %d (%s)",
+                    i + 1, total, entry.getRelativePath()));
+
+                String url;
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+                // Prefer permanent storage endpoint if available
+                if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
+                    String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
+                        .replace("+", "%20")
+                        .replace("%2F", "/");
+                    url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+                } else if (entry.getServerId() != null) {
+                    url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                } else {
+                    log.warn("No download path for file: {}", entry.getRelativePath());
+                    errors++;
+                    continue;
+                }
+
+                ResponseEntity<byte[]> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+
+                byte[] fileContent = response.getBody();
+                if (fileContent != null) {
+                    Path destPath = uploadsPath.resolve(entry.getRelativePath());
+                    Files.createDirectories(destPath.getParent());
+                    Files.write(destPath, fileContent);
+
+                    downloadedBytes += fileContent.length;
+                    downloaded++;
+                } else {
+                    errors++;
+                }
+
+            } catch (Exception e) {
+                log.warn("Failed to download {}: {}", entry.getRelativePath(), e.getMessage());
+                errors++;
+            }
+
+            // Update progress tracking
+            currentResyncStatus.setProcessedFiles(i + 1);
+            currentResyncStatus.setFilesDownloaded(downloaded);
+            currentResyncStatus.setDownloadedBytes(downloadedBytes);
+            currentResyncStatus.setDownloadErrors(errors);
+
+            // Calculate progress: baseProgress + (filesCompleted / totalFiles) * phaseWeight
+            int phaseProgress = total > 0 ? (int) ((i + 1) * phaseWeight / (double) total) : 0;
+            currentResyncStatus.setProgressPercent(baseProgress + phaseProgress);
+            currentResyncStatus.setPhaseProgressPercent((i + 1) * 100 / total);
+
+            // Update status message with byte progress
+            if (totalBytes > 0) {
+                currentResyncStatus.setStatusMessage(String.format(
+                    "%s / %s downloaded (%d files)",
+                    formatBytes(downloadedBytes), formatBytes(totalBytes), downloaded));
+            }
+
+            if (downloaded % 50 == 0 && downloaded > 0) {
+                log.debug("Downloaded {} files from server, {} errors", downloaded, errors);
+            }
+        }
+
+        log.info("Downloaded {} files from server ({} errors)", downloaded, errors);
+    }
+
+    /**
+     * Delete extra files with detailed progress tracking.
+     * Updates progress from baseProgress to baseProgress + phaseWeight.
+     * Returns the number of files deleted.
+     */
+    private int deleteExtraFilesWithProgress(FileComparisonResult comparison,
+                                              int baseProgress, int phaseWeight) {
+        Path uploadsPath = getUploadsPath();
+        List<String> toDelete = comparison.getFilesToDelete();
+        int total = toDelete.size();
+
+        if (total == 0) {
+            currentResyncStatus.setProgressPercent(baseProgress + phaseWeight);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            return 0;
+        }
+
+        int deleted = 0;
+
+        for (int i = 0; i < total; i++) {
+            String relativePath = toDelete.get(i);
+            Path filePath = uploadsPath.resolve(relativePath);
+
+            try {
+                if (Files.deleteIfExists(filePath)) {
+                    deleted++;
+                    deleteEmptyParentDirectories(filePath.getParent(), uploadsPath);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete {}: {}", relativePath, e.getMessage());
+            }
+
+            // Update progress
+            int phaseProgress = total > 0 ? (int) ((i + 1) * phaseWeight / (double) total) : 0;
+            currentResyncStatus.setProgressPercent(baseProgress + phaseProgress);
+            currentResyncStatus.setPhaseProgressPercent((i + 1) * 100 / total);
+            currentResyncStatus.setPhase(String.format("Deleting extra files: %d / %d", i + 1, total));
+        }
+
+        log.info("Deleted {} extra local files", deleted);
+        return deleted;
     }
 
     /**
@@ -1270,12 +1447,17 @@ public class FullResyncService {
 
     // ==================== FILES-ONLY SYNC ====================
 
+    // Phase weights for files-only sync (total = 100%)
+    private static final int FILES_ONLY_PHASE_COMPARE = 10;    // 0-10%
+    private static final int FILES_ONLY_PHASE_DOWNLOAD = 80;   // 10-90%
+    private static final int FILES_ONLY_PHASE_DELETE = 10;     // 90-100%
+
     /**
      * Perform a files-only sync from the sync server.
      * This compares local files with the server manifest and downloads/deletes as needed.
      * Does NOT touch the database - only syncs files.
      *
-     * Includes retry logic for failed downloads.
+     * Includes retry logic for failed downloads and detailed progress tracking.
      *
      * @param skipDeletionCheck If true, skip the deletion safety check
      * @param maxRetries Maximum number of retries for failed downloads (default 3)
@@ -1289,18 +1471,28 @@ public class FullResyncService {
         currentResyncStatus = new ResyncStatus();
         currentResyncStatus.setStartTime(Instant.now());
         currentResyncStatus.setPhase("Starting files-only sync");
+        currentResyncStatus.setProgressPercent(0);
 
         try {
             if (syncServerUrl == null || syncServerUrl.isEmpty()) {
                 return new FileSyncResult(false, "Sync server URL not configured", null);
             }
 
-            // Phase 1: Compare files with server
+            // Phase 1: Compare files with server (0-10%)
+            currentResyncStatus.setCurrentPhase("file_compare");
             currentResyncStatus.setPhase("Comparing files with server");
+            currentResyncStatus.setProgressPercent(0);
+            currentResyncStatus.setPhaseProgressPercent(0);
             log.info("Starting files-only sync - comparing with server");
 
             FileComparisonResult comparison = compareLocalWithServer();
-            currentResyncStatus.setTotalFiles(comparison.getTotalBackupFiles());
+            currentResyncStatus.setTotalFiles(comparison.getFilesToDownload().size());
+            currentResyncStatus.setTotalFileBytes(calculateTotalBytes(comparison.getFilesToDownload()));
+
+            currentResyncStatus.setProgressPercent(FILES_ONLY_PHASE_COMPARE);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage(String.format("Found %d files to download, %d to delete",
+                comparison.getFilesToDownload().size(), comparison.getFilesToDelete().size()));
 
             log.info("File comparison: {} to download, {} to delete, {} unchanged",
                 comparison.getFilesToDownload().size(),
@@ -1316,21 +1508,30 @@ public class FullResyncService {
                 }
             }
 
-            // Phase 3: Download files from server with retry logic
-            currentResyncStatus.setPhase("Downloading files");
-            FileSyncStats stats = downloadFilesWithRetry(comparison, maxRetries);
+            // Phase 3: Download files from server with retry logic (10-90%)
+            currentResyncStatus.setCurrentPhase("file_download");
+            FileSyncStats stats = downloadFilesWithRetryAndProgress(comparison, maxRetries,
+                FILES_ONLY_PHASE_COMPARE, FILES_ONLY_PHASE_DOWNLOAD);
 
-            // Phase 4: Delete extra local files
-            currentResyncStatus.setPhase("Deleting extra files");
+            // Phase 4: Delete extra local files (90-100%)
+            currentResyncStatus.setCurrentPhase("file_delete");
             int deleted = 0;
             if (!comparison.getFilesToDelete().isEmpty()) {
-                deleted = deleteExtraFilesWithTracking(comparison);
+                deleted = deleteExtraFilesWithProgress(comparison,
+                    FILES_ONLY_PHASE_COMPARE + FILES_ONLY_PHASE_DOWNLOAD, FILES_ONLY_PHASE_DELETE);
+            } else {
+                currentResyncStatus.setProgressPercent(100);
             }
             stats.setFilesDeleted(deleted);
+            currentResyncStatus.setFilesDeleted(deleted);
 
+            currentResyncStatus.setProgressPercent(100);
+            currentResyncStatus.setPhaseProgressPercent(100);
             currentResyncStatus.setPhase("Complete");
             currentResyncStatus.setEndTime(Instant.now());
             currentResyncStatus.setSuccess(true);
+            currentResyncStatus.setStatusMessage(String.format("Files sync complete: %d downloaded, %d deleted",
+                stats.getFilesDownloaded(), deleted));
 
             // Record successful sync for health tracking
             syncHealthChecker.recordSuccessfulSync();
@@ -1430,6 +1631,122 @@ public class FullResyncService {
         }
 
         return stats;
+    }
+
+    /**
+     * Download files with retry logic and detailed progress tracking.
+     * Updates progress from baseProgress to baseProgress + phaseWeight.
+     */
+    private FileSyncStats downloadFilesWithRetryAndProgress(FileComparisonResult comparison, int maxRetries,
+                                                             int baseProgress, int phaseWeight) {
+        FileSyncStats stats = new FileSyncStats();
+        Path uploadsPath = getUploadsPath();
+
+        List<FileManifestEntry> toDownload = new ArrayList<>(comparison.getFilesToDownload());
+        List<FileManifestEntry> failedFirst = new ArrayList<>();
+
+        int total = toDownload.size();
+        if (total == 0) {
+            currentResyncStatus.setProgressPercent(baseProgress + phaseWeight);
+            currentResyncStatus.setPhaseProgressPercent(100);
+            currentResyncStatus.setStatusMessage("No files to download");
+            return stats;
+        }
+
+        long totalBytes = currentResyncStatus.getTotalFileBytes();
+        long downloadedBytes = 0;
+
+        // First pass
+        for (int i = 0; i < total; i++) {
+            FileManifestEntry entry = toDownload.get(i);
+
+            currentResyncStatus.setPhase(String.format("Downloading files: %d / %d (%s)",
+                i + 1, total, entry.getRelativePath()));
+
+            boolean success = downloadSingleFileWithBytes(entry, uploadsPath, stats);
+            if (success) {
+                downloadedBytes += entry.getSize();
+            } else {
+                failedFirst.add(entry);
+            }
+
+            // Update progress tracking
+            currentResyncStatus.setProcessedFiles(i + 1);
+            currentResyncStatus.setFilesDownloaded(stats.getFilesDownloaded());
+            currentResyncStatus.setDownloadedBytes(downloadedBytes);
+            currentResyncStatus.setDownloadErrors(failedFirst.size());
+
+            int phaseProgress = total > 0 ? (int) ((i + 1) * phaseWeight / (double) total) : 0;
+            currentResyncStatus.setProgressPercent(baseProgress + phaseProgress);
+            currentResyncStatus.setPhaseProgressPercent((i + 1) * 100 / total);
+
+            if (totalBytes > 0) {
+                currentResyncStatus.setStatusMessage(String.format(
+                    "%s / %s downloaded (%d files)",
+                    formatBytes(downloadedBytes), formatBytes(totalBytes), stats.getFilesDownloaded()));
+            }
+
+            if ((i + 1) % 50 == 0) {
+                log.info("Downloaded {}/{} files, {} failed so far",
+                    stats.getFilesDownloaded(), total, failedFirst.size());
+            }
+        }
+
+        // Retry failed files
+        if (!failedFirst.isEmpty() && maxRetries > 0) {
+            log.info("Retrying {} failed downloads (max {} retries)", failedFirst.size(), maxRetries);
+            currentResyncStatus.setStatusMessage(String.format("Retrying %d failed downloads...", failedFirst.size()));
+
+            List<FileManifestEntry> stillFailed = new ArrayList<>(failedFirst);
+
+            for (int retry = 1; retry <= maxRetries && !stillFailed.isEmpty(); retry++) {
+                log.info("Retry attempt {} for {} files", retry, stillFailed.size());
+                currentResyncStatus.setPhase(String.format("Retry %d: %d files remaining", retry, stillFailed.size()));
+
+                try {
+                    Thread.sleep(1000L * retry);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                List<FileManifestEntry> retryFailed = new ArrayList<>();
+                for (FileManifestEntry entry : stillFailed) {
+                    boolean success = downloadSingleFileWithBytes(entry, uploadsPath, stats);
+                    if (success) {
+                        downloadedBytes += entry.getSize();
+                        currentResyncStatus.setDownloadedBytes(downloadedBytes);
+                        currentResyncStatus.setFilesDownloaded(stats.getFilesDownloaded());
+                    } else {
+                        retryFailed.add(entry);
+                    }
+                }
+                stillFailed = retryFailed;
+                currentResyncStatus.setDownloadErrors(stillFailed.size());
+            }
+
+            for (FileManifestEntry failed : stillFailed) {
+                stats.addFailedFile(failed.getRelativePath());
+            }
+        } else {
+            for (FileManifestEntry failed : failedFirst) {
+                stats.addFailedFile(failed.getRelativePath());
+            }
+        }
+
+        return stats;
+    }
+
+    /**
+     * Download a single file and update stats.
+     * Returns true if successful, false otherwise.
+     */
+    private boolean downloadSingleFileWithBytes(FileManifestEntry entry, Path uploadsPath, FileSyncStats stats) {
+        boolean success = downloadSingleFile(entry, uploadsPath);
+        if (success) {
+            stats.incrementDownloaded();
+        }
+        return success;
     }
 
     /**
@@ -1756,6 +2073,25 @@ public class FullResyncService {
         return serverPath;
     }
 
+    /**
+     * Format bytes to human-readable string (e.g., "1.5 MB").
+     */
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+
+    /**
+     * Calculate total bytes for a list of file manifest entries.
+     */
+    private long calculateTotalBytes(List<FileManifestEntry> files) {
+        return files.stream()
+            .mapToLong(f -> f.getSize() > 0 ? f.getSize() : 0)
+            .sum();
+    }
+
     private String computeChecksum(Path file) throws IOException {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -1840,6 +2176,23 @@ public class FullResyncService {
         private int processedFiles;
         private boolean success;
         private boolean restartRequired;
+
+        // Progress tracking (0-100)
+        private int progressPercent;
+
+        // Byte-level file tracking
+        private long totalFileBytes;
+        private long downloadedBytes;
+
+        // Per-phase tracking
+        private String currentPhase;          // "db_download", "db_restore", "file_compare", "file_download", "file_delete"
+        private int phaseProgressPercent;     // 0-100 within current phase
+
+        // Detailed status
+        private String statusMessage;         // Human-readable status
+        private int filesDownloaded;
+        private int filesDeleted;
+        private int downloadErrors;
     }
 
     @Data

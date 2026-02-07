@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;3aa3f7a9404414a5bc8ec19f3c4fddc04ea16480d47bd6e9ff89a481b80c2910;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/qa/qa-toggle/qa-toggle.component.ts"],
-  "sourcesContent": ["\n    .qa-toggle-btn {\n      color: inherit;\n    }\n    .qa-toggle-btn.qa-active {\n      color: var(--primary-color, #1976d2);\n      background-color: var(--primary-light, rgba(25, 118, 210, 0.12));\n      border-radius: 50%;\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,SAAO;AACT;AACA,CAHC,aAGa,CAAC;AACb,SAAO,IAAI,eAAe,EAAE;AAC5B,oBAAkB,IAAI,eAAe,EAAE,KAAK,EAAE,EAAE,GAAG,EAAE,GAAG,EAAE;AAC1D,iBAAe;AACjB;",
-  "names": []
-}

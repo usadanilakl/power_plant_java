@@ -12,6 +12,8 @@ import java.util.List;
 public interface ValueRepo extends BaseCategoryValueRepo<Value> {
     List<Value> findByCategory(Category category);
 
+    List<Value> findByNameIgnoreCaseAndCategoryId(String name, Long categoryId);
+
     /**
      * Find a Value by ID including deleted ones.
      * Uses native query to bypass @Where(clause = "deleted = false").

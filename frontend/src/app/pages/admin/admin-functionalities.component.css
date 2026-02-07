@@ -169,3 +169,26 @@ table tr:hover {
 table td {
   word-break: break-word;
 }
+
+/* Navigation button style */
+.nav-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  background-color: #28a745;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.nav-btn:hover {
+  background-color: #218838;
+}
+
+.quick-links {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-left: 4px solid #28a745;
+}

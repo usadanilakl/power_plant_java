@@ -9,18 +9,20 @@ public class DefaultValueGeneratorService {
     private final NgValueService ngValueService;
 
     public void generateAllValues() {
-//         generateSystems();
-//         generateEquipmentTypes();
-//         generatePermitStatuses();
-//         generateUnitValues();
-//         generateZeroEnergyTemplates();
-//         generateGroupValues();
-//         generateEquipmentNameValues();
-//         generateVendorValues();
-//         generateFileTypeValues();
-//         generateIsoPosValues();
-//         generateNormPosValues();
-//         generateLocationValues();
+         generateSystems();
+         generateEquipmentTypes();
+         generatePermitStatuses();
+         generateUnitValues();
+         generateZeroEnergyTemplates();
+         generateGroupValues();
+         generateEquipmentNameValues();
+         generateVendorValues();
+         generateFileTypeValues();
+         generateIsoPosValues();
+         generateNormPosValues();
+         generateLocationValues();
+         generateProcessingStatusValues();
+         generateCommentTypes();
     }
 
     private void generateSystems() {

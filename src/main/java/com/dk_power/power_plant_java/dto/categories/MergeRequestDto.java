@@ -1,0 +1,17 @@
+package com.dk_power.power_plant_java.dto.categories;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+public class MergeRequestDto {
+    private Long keepId;
+    private List<Long> duplicateIds;
+}

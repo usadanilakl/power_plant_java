@@ -9,6 +9,24 @@ import { SearchCriteria } from '../models/api/search-criteria.model';
 import { FileIdDto } from '../models/file/file-id.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 
+// Trash interfaces
+export interface TrashEntry {
+  id: string;
+  originalPath: string;
+  fileName: string;
+  deletedAt: string;
+  deletedBy: 'user' | 'sync' | 'cleanup';
+  fileSize: number;
+  canRestore: boolean;
+}
+
+export interface TrashStats {
+  totalCount: number;
+  totalSize: number;
+  expiredCount: number;
+  retentionDays: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -160,5 +178,48 @@ export class FileService {
         return of(filteredFiles);
 
 
+  }
+
+  // ==================== TRASH METHODS ====================
+
+  /**
+   * Get all files in trash.
+   */
+  getTrash(): Observable<SpringApiResponse<TrashEntry[]>> {
+    return this.http.get<SpringApiResponse<TrashEntry[]>>(`${this.apiUrl}/trash`);
+  }
+
+  /**
+   * Get trash statistics.
+   */
+  getTrashStats(): Observable<SpringApiResponse<TrashStats>> {
+    return this.http.get<SpringApiResponse<TrashStats>>(`${this.apiUrl}/trash/stats`);
+  }
+
+  /**
+   * Restore a file from trash to its original location.
+   */
+  restoreFromTrash(id: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}/trash/${id}/restore`, {}
+    );
+  }
+
+  /**
+   * Permanently delete a file from trash.
+   */
+  permanentlyDeleteFromTrash(id: string): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>(
+      `${this.apiUrl}/trash/${id}`
+    );
+  }
+
+  /**
+   * Empty the entire trash (permanently delete all items).
+   */
+  emptyTrash(): Observable<{ success: boolean; deletedCount: number; message: string }> {
+    return this.http.delete<{ success: boolean; deletedCount: number; message: string }>(
+      `${this.apiUrl}/trash`
+    );
   }
 }

@@ -1,7 +1,17 @@
+/* Host element - participates in parent flex layout */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Main Wrapper */
 .tag-generator-wrapper {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   background: linear-gradient(135deg,

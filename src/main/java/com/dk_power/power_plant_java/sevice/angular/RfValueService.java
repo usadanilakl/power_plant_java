@@ -253,15 +253,14 @@ public class RfValueService {
     // ==================== HELPER METHODS ====================
 
     private Category getCategoryByAliasOrName(String aliasOrName) {
-        // Try alias first
-        Category category = categoryRepo.findByAlias(aliasOrName);
+        // Try alias first (using safe helper to handle duplicates)
+        Category category = ngValueService.getCategoryByAliasSafe(aliasOrName);
         if (category != null) {
             return category;
         }
 
-        // Try name
-        List<Category> categories = categoryRepo.findByName(aliasOrName);
-        return categories.isEmpty() ? null : categories.get(0);
+        // Try name (using safe helper to handle duplicates)
+        return ngValueService.getCategoryByNameSafe(aliasOrName);
     }
 
     private Category createCategory(String categoryNameOrAlias) {

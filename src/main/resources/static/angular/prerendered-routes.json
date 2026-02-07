@@ -36,6 +36,7 @@
     "/scheduler/table": {},
     "/sync-admin/full-sync": {},
     "/sync-resync": {},
-    "/tag-number": {}
+    "/tag-number": {},
+    "/trash": {}
   }
 }

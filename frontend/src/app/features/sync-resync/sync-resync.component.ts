@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ElementRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subject, interval, EMPTY } from 'rxjs';
 import { takeUntil, switchMap } from 'rxjs/operators';
@@ -19,7 +19,8 @@ import {
   FileSyncStats,
   IntegrityCheckResult,
   IntegrityFixResult,
-  TableIssues
+  TableIssues,
+  AutoResyncConfig
 } from '../../services/full-resync.service';
 import { SyncStatusService, SyncServerConfig } from '../../services/sync-status.service';
 import { SyncServerConfigComponent } from '../../shared/sync-server-config/sync-server-config.component';
@@ -90,9 +91,15 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   showServerConfig = false;
   serverConfigLoading = false;
 
+  // Auto-Resync Configuration state
+  autoResyncConfig: AutoResyncConfig | null = null;
+  autoResyncLoading = false;
+  autoResyncToggling = false;
+
   constructor(
     private resyncService: FullResyncService,
     private syncStatusService: SyncStatusService,
+    private elementRef: ElementRef,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -105,6 +112,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       this.loadSyncHealthCheck();
       this.loadFailedSyncItemsCount();
       this.loadServerConfig();
+      this.loadAutoResyncConfig();
       this.startAutoRefresh();
 
       // Subscribe to restart progress
@@ -351,6 +359,22 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   private showMessage(msg: string, type: 'success' | 'error' | 'info' | 'warning'): void {
     this.message = msg;
     this.messageType = type;
+
+    // Scroll to ensure the message banner is visible
+    if (this.isBrowser) {
+      // Use timeout to allow Angular to render the message element after *ngIf becomes true
+      setTimeout(() => {
+        // Query the message element directly from the DOM (more reliable with *ngIf)
+        const messageEl = this.elementRef.nativeElement.querySelector('.message');
+        if (messageEl) {
+          // Scroll so the message is visible at the top of the viewport
+          messageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          // Fallback: scroll the window to the top of the page
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 150);
+    }
   }
 
   // Utility methods
@@ -419,10 +443,89 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     return this.operationStatus?.resyncInProgress || this.operationStatus?.backupInProgress || false;
   }
 
+  /**
+   * Get overall progress percentage for resync operations.
+   * Uses backend-computed progressPercent for accurate phase-weighted progress.
+   */
   getProgressPercent(): number {
-    const status = this.operationStatus?.resyncStatus || this.operationStatus?.backupStatus;
-    if (!status || status.totalFiles === 0) return 0;
-    return Math.round((status.processedFiles / status.totalFiles) * 100);
+    if (this.operationStatus?.resyncInProgress) {
+      const status = this.operationStatus.resyncStatus;
+      // Use backend-computed progressPercent for accurate phase-weighted progress
+      if (status?.progressPercent !== undefined && status.progressPercent > 0) {
+        return status.progressPercent;
+      }
+      // Fallback to file-based calculation for backwards compatibility
+      if (status && status.totalFiles > 0) {
+        return Math.round((status.processedFiles / status.totalFiles) * 100);
+      }
+    }
+
+    if (this.operationStatus?.backupInProgress) {
+      const status = this.operationStatus.backupStatus;
+      if (status && status.totalFiles > 0) {
+        return Math.round((status.processedFiles / status.totalFiles) * 100);
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Format bytes to human-readable string.
+   */
+  formatBytes(bytes: number): string {
+    if (!bytes || bytes === 0) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
+  /**
+   * Get phase-specific progress percentage within current phase.
+   */
+  getPhaseProgressPercent(): number {
+    const status = this.operationStatus?.resyncStatus;
+    return status?.phaseProgressPercent || 0;
+  }
+
+  /**
+   * Get current phase name for display.
+   */
+  getCurrentPhaseName(): string {
+    const status = this.operationStatus?.resyncStatus;
+    if (!status?.currentPhase) return '';
+
+    switch (status.currentPhase) {
+      case 'db_download': return 'Database Download';
+      case 'db_restore': return 'Database Restore';
+      case 'file_compare': return 'File Comparison';
+      case 'file_download': return 'File Download';
+      case 'file_delete': return 'File Cleanup';
+      default: return status.currentPhase;
+    }
+  }
+
+  /**
+   * Get download progress text for file download phase.
+   */
+  getDownloadProgressText(): string {
+    const status = this.operationStatus?.resyncStatus;
+    if (!status) return '';
+
+    if (status.currentPhase === 'file_download' && status.totalFileBytes > 0) {
+      return `${this.formatBytes(status.downloadedBytes)} / ${this.formatBytes(status.totalFileBytes)}`;
+    }
+
+    return '';
+  }
+
+  /**
+   * Check if we're in a file operation phase (for detailed stats display).
+   */
+  isFileOperationPhase(): boolean {
+    const status = this.operationStatus?.resyncStatus;
+    return status?.currentPhase === 'file_download' || status?.currentPhase === 'file_delete';
   }
 
   getCurrentPhase(): string {
@@ -974,5 +1077,67 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
    */
   onServerConfigCancelled(): void {
     this.showServerConfig = false;
+  }
+
+  // ==================== AUTO-RESYNC CONFIG METHODS ====================
+
+  /**
+   * Load current auto-resync configuration
+   */
+  loadAutoResyncConfig(): void {
+    this.autoResyncLoading = true;
+    this.resyncService.getAutoResyncConfig().subscribe({
+      next: (config) => {
+        this.autoResyncConfig = config;
+        this.autoResyncLoading = false;
+      },
+      error: (err) => {
+        this.autoResyncLoading = false;
+        console.debug('Could not load auto-resync config:', err.message);
+      }
+    });
+  }
+
+  /**
+   * Toggle auto-resync at runtime
+   */
+  toggleAutoResync(): void {
+    if (!this.autoResyncConfig) return;
+
+    const newState = !this.autoResyncConfig.runtimeEnabled;
+    this.autoResyncToggling = true;
+
+    this.resyncService.toggleAutoResync(newState).subscribe({
+      next: (result) => {
+        this.autoResyncToggling = false;
+        if (result.success) {
+          this.loadAutoResyncConfig();
+          this.showMessage(result.message, 'success');
+        } else {
+          this.showMessage('Failed to toggle auto-resync', 'error');
+        }
+      },
+      error: (err) => {
+        this.autoResyncToggling = false;
+        this.showMessage('Failed to toggle auto-resync: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /**
+   * Reset auto-resync state (clear escalation, allow retry)
+   */
+  resetAutoResync(): void {
+    this.autoResyncLoading = true;
+    this.resyncService.resetAutoResyncState().subscribe({
+      next: () => {
+        this.showMessage('Auto-resync state reset', 'success');
+        this.loadAutoResyncConfig();
+      },
+      error: (err) => {
+        this.autoResyncLoading = false;
+        this.showMessage('Failed to reset auto-resync: ' + err.message, 'error');
+      }
+    });
   }
 }

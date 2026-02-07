@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
+import com.dk_power.power_plant_java.sevice.file.TrashService;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PdfConverter;
 import com.dk_power.power_plant_java.util.RenamedMultipartFile;
@@ -57,6 +58,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
+    private final TrashService trashService;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -478,7 +480,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         FileObject file = getEntityById(id);
         List<File> filesWithAllExtensions = getFilesWithAllExtensions(file);
         for (File f : filesWithAllExtensions) {
-            FileUtil.deleteFile(f.toPath());
+            // Use trash service instead of permanent deletion
+            trashService.moveToTrash(f.toPath(), "user");
         }
         return file;
     }
@@ -918,9 +921,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     @Transactional
     public void deleteUnusedValues() {
-        List<Category> fileType = categoryRepo.findByName("FileType");
-        if (!fileType.isEmpty()) {
-            Category category = fileType.get(0);
+        Category category = valueService.getCategoryByNameSafe("FileType");
+        if (category != null) {
             for (com.dk_power.power_plant_java.entities.categories.Value value : category.getValues()) {
                 if(!getByFileType(value).isEmpty()) throw new RuntimeException("Value '" + value.getName() + "' is still used by File Objects");
             }

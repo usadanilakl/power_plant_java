@@ -147,28 +147,69 @@ public class H2BackupService {
      * This is used for restoring from sync server's H2 backup.
      */
     public void restoreFromBytes(byte[] backupData) throws SQLException, IOException {
-        // Write bytes to a temporary file
+        // Write bytes to a temporary file using explicit streams to ensure proper file release on Windows
         Path tempBackup = Files.createTempFile("h2_restore_", ".zip");
         try {
-            Files.write(tempBackup, backupData);
+            // Use FileOutputStream with explicit flush and sync to ensure file is fully written and released
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempBackup.toFile());
+                 java.nio.channels.FileChannel channel = fos.getChannel()) {
+                fos.write(backupData);
+                fos.flush();
+                channel.force(true);  // Force sync to disk
+            }
             System.out.println("Wrote backup to temp file: " + tempBackup + " (" + backupData.length + " bytes)");
+
+            // Small delay to allow Windows to release file locks
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
 
             // Close all existing connections to the database
             try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
                 conn.createStatement().execute("SHUTDOWN");
             }
 
+            // Give the database time to fully shutdown
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+
             // Extract the database name and path from the JDBC URL
             String dbName = extractDatabaseName(dbUrl);
             String dbPath = extractDatabasePath(dbUrl);
 
-            // Perform the restore
-            try {
-                Restore.execute(tempBackup.toString(), dbPath, dbName);
-                System.out.println("Database restored successfully from server backup");
-            } catch (Exception e) {
-                throw new IOException("Error restoring database: " + e.getMessage(), e);
+            // Perform the restore with retry on Windows file lock issues
+            int maxRetries = 3;
+            Exception lastException = null;
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    Restore.execute(tempBackup.toString(), dbPath, dbName);
+                    System.out.println("Database restored successfully from server backup");
+                    return;  // Success
+                } catch (Exception e) {
+                    lastException = e;
+                    String message = e.getMessage();
+                    // Check if it's a file locking issue
+                    if (message != null && (message.contains("locked") || message.contains("access"))) {
+                        System.out.println("Restore attempt " + attempt + " failed due to file lock, retrying...");
+                        try {
+                            Thread.sleep(500 * attempt);  // Exponential backoff
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    } else {
+                        // Not a file lock issue, don't retry
+                        throw new IOException("Error restoring database: " + e.getMessage(), e);
+                    }
+                }
             }
+            throw new IOException("Error restoring database after " + maxRetries + " attempts: " +
+                (lastException != null ? lastException.getMessage() : "unknown error"), lastException);
         } finally {
             // Clean up temp file
             try {

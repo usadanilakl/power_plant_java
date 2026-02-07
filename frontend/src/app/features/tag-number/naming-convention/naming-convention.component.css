@@ -1,4 +1,16 @@
+/* Host element - participates in parent flex layout */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .naming-convention {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   background-color: var(--card-bg, #ffffff);
   border: 1px solid var(--border-color, #e0e0e0);
   border-radius: 12px;

@@ -17,6 +17,8 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* Ensure scroll-into-view accounts for fixed headers */
+  scroll-margin-top: 80px;
 }
 
 .message-success {
@@ -421,6 +423,60 @@ h2 {
   height: 100%;
   background-color: var(--accent-color);
   transition: width 0.3s ease;
+}
+
+/* Phase badge in progress header */
+.phase-badge {
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: rgba(77, 171, 247, 0.15);
+  color: var(--accent-color);
+}
+
+/* Progress stats during file operations */
+.progress-stats {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--secondary-background);
+  border-radius: 6px;
+}
+
+.progress-stats .stat-row {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.progress-stats .stat-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.progress-stats .stat-label {
+  font-weight: 600;
+  color: var(--secondary-text);
+  min-width: 100px;
+}
+
+.progress-stats .stat-value {
+  color: var(--primary-text);
+}
+
+.progress-stats .error-count {
+  color: var(--error-color);
+  font-weight: 500;
+}
+
+/* Status message below progress bar */
+.status-message {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--success-background);
+  border-radius: 6px;
+  font-size: 13px;
+  color: #155724;
 }
 
 /* Preview Card */
@@ -1117,6 +1173,92 @@ h2 {
 .success-text {
   color: #28a745;
   font-weight: 500;
+}
+
+.error-text {
+  color: #dc3545;
+}
+
+.info-text {
+  color: var(--accent-color);
+}
+
+/* Auto-Resync Card */
+.auto-resync-card {
+  border-left: 4px solid #20c997;
+}
+
+.auto-resync-card .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auto-resync-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toggle-label {
+  flex: 1;
+}
+
+.toggle-label span {
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 14px;
+}
+
+.toggle-hint {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--secondary-text);
+}
+
+.warning-note {
+  background: var(--warning-background);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #856404;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.state-info {
+  background: var(--secondary-background);
+  padding: 14px;
+  border-radius: 6px;
+}
+
+.state-info .info-row {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.state-info .info-row label {
+  font-weight: 600;
+  color: var(--secondary-text);
+  min-width: 120px;
+  font-size: 13px;
+}
+
+.state-info .info-row span {
+  color: var(--primary-text);
+  font-size: 13px;
+}
+
+.auto-resync-actions {
+  padding-top: 8px;
 }
 
 /* Responsive */

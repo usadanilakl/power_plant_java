@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
@@ -62,7 +63,9 @@ public class TagNumberService {
     }
 
     public String getSystemTagNumber(String tagNumber) {
-        Set<Value> values = categoryRepo.findByAlias("system").getValues();
+        List<Category> categories = categoryRepo.findByAlias("system");
+        if (categories.isEmpty()) return null;
+        Set<Value> values = categories.get(0).getValues();
         Set<String> systems = values.stream().filter(v->v.getName()!=null).map(Value::getName).collect(Collectors.toSet());
         int index = -1;
         for (String system : systems) {

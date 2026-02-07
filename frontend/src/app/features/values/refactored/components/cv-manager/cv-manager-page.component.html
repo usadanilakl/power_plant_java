@@ -1,0 +1,377 @@
+<div class="cv-manager-container">
+  <!-- Header -->
+  <div class="header">
+    <h1>Category & Value Manager</h1>
+    <p class="subtitle">Manage categories, values, and resolve duplicates</p>
+  </div>
+
+  <!-- Error Message -->
+  @if (errorMessage()) {
+    <div class="alert alert-error">
+      <span>{{ errorMessage() }}</span>
+      <button class="close-btn" (click)="errorMessage.set('')">&times;</button>
+    </div>
+  }
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'categories'"
+        (click)="setActiveTab('categories')">
+        Categories
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'values'"
+        (click)="setActiveTab('values')">
+        Values
+      </button>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="findDuplicates()" [disabled]="isLoading()">
+        Find Duplicates
+      </button>
+      @if (activeTab() === 'categories') {
+        <button class="btn btn-primary" (click)="openCreateCategoryDialog()">
+          + New Category
+        </button>
+      } @else {
+        <button class="btn btn-primary" (click)="openCreateValueDialog()">
+          + New Value
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Category Filter (for Values tab) -->
+  @if (activeTab() === 'values') {
+    <div class="filter-bar">
+      <label>Filter by Category:</label>
+      <select
+        [ngModel]="selectedCategoryFilter()"
+        (ngModelChange)="selectedCategoryFilter.set($event)">
+        <option [ngValue]="null">All Categories</option>
+        @for (cat of categories(); track cat.id) {
+          <option [ngValue]="cat.id">{{ cat.name }} ({{ cat.valueCount }})</option>
+        }
+      </select>
+    </div>
+  }
+
+  <!-- Loading Indicator -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+    </div>
+  }
+
+  <!-- Categories Table -->
+  @if (activeTab() === 'categories') {
+    <div class="table-container">
+      <app-shared-table
+        [columns]="categoryColumns"
+        [items]="categories()"
+        [clickCallback]="onCategoryClick">
+      </app-shared-table>
+
+      <!-- Action buttons for each row -->
+      <div class="row-actions-hint">
+        Click a row to edit. Use the buttons below to manage selected categories.
+      </div>
+
+      <div class="bulk-actions">
+        @for (cat of categories(); track cat.id) {
+          <div class="action-row">
+            <span class="action-label">{{ cat.name }}</span>
+            <button class="btn btn-sm btn-edit" (click)="openEditCategoryDialog(cat)">Edit</button>
+            <button class="btn btn-sm btn-delete" (click)="openDeleteCategoryDialog(cat)">Delete</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Values Table -->
+  @if (activeTab() === 'values') {
+    <div class="table-container">
+      <app-shared-table
+        [columns]="valueColumns"
+        [items]="filteredValues()"
+        [clickCallback]="onValueClick">
+      </app-shared-table>
+
+      <div class="row-actions-hint">
+        Click a row to edit. Use the buttons below to manage selected values.
+      </div>
+
+      <div class="bulk-actions">
+        @for (val of filteredValues(); track val.id) {
+          <div class="action-row">
+            <span class="action-label">{{ val.name }} ({{ val.category?.name }})</span>
+            <button class="btn btn-sm btn-edit" (click)="openEditValueDialog(val)">Edit</button>
+            <button class="btn btn-sm btn-delete" (click)="openDeleteValueDialog(val)">Delete</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Create/Edit Form Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isFormOpen()"
+  [title]="getFormTitle()"
+  (close)="closeForm()">
+  <div class="form-container">
+    @if (errorMessage()) {
+      <div class="alert alert-error form-error">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    @if (formType() === 'categories') {
+      <!-- Category Form -->
+      <div class="form-group">
+        <label for="categoryName">Name *</label>
+        <input
+          id="categoryName"
+          type="text"
+          [ngModel]="categoryFormName()"
+          (ngModelChange)="categoryFormName.set($event)"
+          placeholder="Enter category name"
+        />
+      </div>
+      <div class="form-group">
+        <label for="categoryAlias">Alias</label>
+        <input
+          id="categoryAlias"
+          type="text"
+          [ngModel]="categoryFormAlias()"
+          (ngModelChange)="categoryFormAlias.set($event)"
+          placeholder="Auto-generated if empty"
+        />
+      </div>
+    } @else {
+      <!-- Value Form -->
+      @if (formMode() === 'create') {
+        <div class="form-group">
+          <label for="valueCategory">Category *</label>
+          <select
+            id="valueCategory"
+            [ngModel]="valueFormCategoryId()"
+            (ngModelChange)="valueFormCategoryId.set($event)">
+            <option [ngValue]="null">Select a category</option>
+            @for (cat of categories(); track cat.id) {
+              <option [ngValue]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="form-group">
+        <label for="valueName">Name *</label>
+        <input
+          id="valueName"
+          type="text"
+          [ngModel]="valueFormName()"
+          (ngModelChange)="valueFormName.set($event)"
+          placeholder="Enter value name"
+        />
+      </div>
+      <div class="form-group">
+        <label for="valueAlias">Alias</label>
+        <input
+          id="valueAlias"
+          type="text"
+          [ngModel]="valueFormAlias()"
+          (ngModelChange)="valueFormAlias.set($event)"
+          placeholder="Optional alias"
+        />
+      </div>
+    }
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" (click)="closeForm()">Cancel</button>
+      @if (formType() === 'categories') {
+        <button class="btn btn-primary" (click)="saveCategory()" [disabled]="isLoading()">
+          {{ formMode() === 'create' ? 'Create' : 'Save' }}
+        </button>
+      } @else {
+        <button class="btn btn-primary" (click)="saveValue()" [disabled]="isLoading()">
+          {{ formMode() === 'create' ? 'Create' : 'Save' }}
+        </button>
+      }
+    </div>
+  </div>
+</app-rf-popup-projection>
+
+<!-- Delete Confirmation Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isDeleteDialogOpen()"
+  [title]="'Delete ' + (deleteType() === 'categories' ? 'Category' : 'Value')"
+  (close)="closeDeleteDialog()">
+  <div class="delete-dialog">
+    @if (errorMessage()) {
+      <div class="alert alert-error form-error">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <p class="delete-warning">
+      Are you sure you want to delete <strong>{{ deleteItemName() }}</strong>?
+    </p>
+
+    @if (deleteRequiresTransfer()) {
+      <div class="transfer-section">
+        @if (deleteType() === 'categories') {
+          <p class="transfer-info">
+            This category has values. They must be transferred to another category first.
+          </p>
+        } @else {
+          <p class="transfer-info">
+            This value is referenced by:
+            @if (valueDependencies()) {
+              <ul>
+                @if (valueDependencies()!.equipmentCount > 0) {
+                  <li>{{ valueDependencies()!.equipmentCount }} Equipment</li>
+                }
+                @if (valueDependencies()!.fileCount > 0) {
+                  <li>{{ valueDependencies()!.fileCount }} Files</li>
+                }
+                @if (valueDependencies()!.lotoPointCount > 0) {
+                  <li>{{ valueDependencies()!.lotoPointCount }} LOTO Points</li>
+                }
+              </ul>
+            }
+            These references must be transferred to another value first.
+          </p>
+        }
+
+        <div class="form-group">
+          <label>Transfer to:</label>
+          <select
+            [ngModel]="deleteTransferId()"
+            (ngModelChange)="deleteTransferId.set($event)">
+            <option [ngValue]="null">Select target...</option>
+            @for (item of getTransferOptions(); track $any(item).id) {
+              <option [ngValue]="$any(item).id">{{ $any(item).name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    }
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" (click)="closeDeleteDialog()">Cancel</button>
+      @if (deleteType() === 'categories') {
+        <button class="btn btn-danger" (click)="confirmDeleteCategory()" [disabled]="isLoading()">
+          Delete
+        </button>
+      } @else {
+        <button class="btn btn-danger" (click)="confirmDeleteValue()" [disabled]="isLoading()">
+          Delete
+        </button>
+      }
+    </div>
+  </div>
+</app-rf-popup-projection>
+
+<!-- Duplicate Resolver Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isDuplicateDialogOpen()"
+  [title]="'Resolve Duplicates'"
+  [size]="'large'"
+  (close)="closeDuplicateDialog()">
+  <div class="duplicate-resolver">
+    @if (errorMessage()) {
+      <div class="alert alert-error form-error">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Category Duplicates -->
+    @if (categoryDuplicates().length > 0) {
+      <section class="duplicate-section">
+        <h3>Duplicate Categories ({{ categoryDuplicates().length }} groups)</h3>
+        @for (group of categoryDuplicates(); track group.name) {
+          <div class="duplicate-group">
+            <h4>"{{ group.name }}" - {{ group.categories.length }} duplicates</h4>
+            <p class="group-hint">Select which category to keep (others will be merged into it):</p>
+            <div class="duplicate-items">
+              @for (cat of group.categories; track cat.id) {
+                <label class="duplicate-item">
+                  <input
+                    type="radio"
+                    [name]="'cat-' + group.name"
+                    [value]="cat.id"
+                    [checked]="getKeepId('category', group.name) === cat.id"
+                    (change)="selectKeepId('category', group.name, cat.id)"
+                  />
+                  <span class="item-info">
+                    <strong>ID: {{ cat.id }}</strong> - {{ cat.name }}
+                    @if (cat.alias) {
+                      ({{ cat.alias }})
+                    }
+                  </span>
+                </label>
+              }
+            </div>
+            <button
+              class="btn btn-primary btn-merge"
+              (click)="mergeCategoryGroup(group)"
+              [disabled]="!getKeepId('category', group.name) || isLoading()">
+              Merge
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Value Duplicates -->
+    @if (valueDuplicates().length > 0) {
+      <section class="duplicate-section">
+        <h3>Duplicate Values ({{ valueDuplicates().length }} groups)</h3>
+        @for (group of valueDuplicates(); track group.categoryId + '-' + group.name) {
+          <div class="duplicate-group">
+            <h4>"{{ group.name }}" in {{ group.categoryName }} - {{ group.values.length }} duplicates</h4>
+            <p class="group-hint">Select which value to keep (others will be merged into it):</p>
+            <div class="duplicate-items">
+              @for (val of group.values; track val.id) {
+                <label class="duplicate-item">
+                  <input
+                    type="radio"
+                    [name]="'val-' + group.categoryId + '-' + group.name"
+                    [value]="val.id"
+                    [checked]="getKeepId('value', group.categoryId + '-' + group.name) === val.id"
+                    (change)="selectKeepId('value', group.categoryId + '-' + group.name, val.id)"
+                  />
+                  <span class="item-info">
+                    <strong>ID: {{ val.id }}</strong> - {{ val.name }}
+                    @if (val.alias) {
+                      ({{ val.alias }})
+                    }
+                  </span>
+                </label>
+              }
+            </div>
+            <button
+              class="btn btn-primary btn-merge"
+              (click)="mergeValueGroup(group)"
+              [disabled]="!getKeepId('value', group.categoryId + '-' + group.name) || isLoading()">
+              Merge
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (categoryDuplicates().length === 0 && valueDuplicates().length === 0) {
+      <p class="no-duplicates">No duplicates remaining. All resolved!</p>
+    }
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" (click)="closeDuplicateDialog()">Close</button>
+    </div>
+  </div>
+</app-rf-popup-projection>

@@ -63,6 +63,24 @@ export interface ResyncStatus {
   totalFiles: number;
   processedFiles: number;
   success: boolean;
+  restartRequired: boolean;
+
+  // Progress tracking (0-100)
+  progressPercent: number;
+
+  // Byte-level file tracking
+  totalFileBytes: number;
+  downloadedBytes: number;
+
+  // Per-phase tracking
+  currentPhase: string;          // "db_download", "db_restore", "file_compare", "file_download", "file_delete"
+  phaseProgressPercent: number;  // 0-100 within current phase
+
+  // Detailed status
+  statusMessage: string;         // Human-readable status
+  filesDownloaded: number;
+  filesDeleted: number;
+  downloadErrors: number;
 }
 
 export interface BackupStatus {
@@ -148,6 +166,31 @@ export interface PartialSyncResult {
   message: string;
   fileComparison: FileComparisonResult | null;
   changesApplied: number;
+}
+
+// Auto-Resync interfaces
+export interface AutoResyncState {
+  escalationLevel: number;
+  lastAttemptTime: string | null;
+  lastAttemptSuccess: boolean;
+  lastAttemptDate: string | null;
+  lastAttemptMessage: string | null;
+  autoResyncExhausted: boolean;
+  autoResyncInProgress: boolean;
+}
+
+export interface AutoResyncConfig {
+  configEnabled: boolean;       // From application.properties
+  runtimeEnabled: boolean;      // Runtime toggle (can be changed from UI)
+  effectivelyEnabled: boolean;  // Both must be true for auto-resync to work
+  state: AutoResyncState;
+}
+
+export interface AutoResyncToggleResult {
+  success: boolean;
+  runtimeEnabled: boolean;
+  effectivelyEnabled: boolean;
+  message: string;
 }
 
 // Files-only sync interfaces
@@ -516,6 +559,23 @@ export class FullResyncService {
    */
   resetAutoResyncState(): Observable<any> {
     return this.http.post(`${this.baseUrl}/auto-resync/reset`, {});
+  }
+
+  /**
+   * Get current auto-resync configuration and state.
+   */
+  getAutoResyncConfig(): Observable<AutoResyncConfig> {
+    return this.http.get<AutoResyncConfig>(`${this.baseUrl}/auto-resync/config`);
+  }
+
+  /**
+   * Toggle auto-resync at runtime (enable/disable from UI).
+   * This does not change the application.properties setting.
+   */
+  toggleAutoResync(enabled: boolean): Observable<AutoResyncToggleResult> {
+    return this.http.post<AutoResyncToggleResult>(
+      `${this.baseUrl}/auto-resync/toggle?enabled=${enabled}`, {}
+    );
   }
 
   // ==================== FULL SYNC TO SERVER METHODS ====================

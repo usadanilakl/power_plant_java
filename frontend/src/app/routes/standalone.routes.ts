@@ -7,12 +7,21 @@ import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.c
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
+import { TrashComponent } from '../features/trash/trash.component';
+import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
   { path: 'print', component: PrintComponent },
   { path: 'backup', component: BackupComponent },
-  { path: 'admin', component: AdminFunctionalitiesComponent },
+  // Admin Dashboard with subroutes
+  {
+    path: 'admin',
+    children: [
+      { path: '', component: AdminFunctionalitiesComponent },
+      { path: 'category-values', component: CvManagerPageComponent }
+    ]
+  },
   // Sync Dashboard (Status + Health & Recovery)
   {
     path: 'sync',
@@ -25,6 +34,8 @@ export const STANDALONE_ROUTES: Routes = [
   },
   // Full Sync to Server (standalone)
   { path: 'full-sync-to-server', component: FullSyncToServerComponent },
+  // Trash / Recycle Bin
+  { path: 'trash', component: TrashComponent },
   // Redirects for old bookmarked routes
   { path: 'sync-admin/full-sync', redirectTo: 'full-sync-to-server', pathMatch: 'full' },
   { path: 'sync-resync', redirectTo: 'sync/recovery', pathMatch: 'full' }

@@ -131,6 +131,13 @@ h2.backup.shared.directory=/mnt/shared/backups
 sync.backup.file.directory=/mnt/shared/file_backup
 sync.backup.cron=0 0 2 * * ?           # Scheduled backup (disabled by default)
 sync.backup.enabled=false
+
+# Trash / Staged deletion
+files.trash.retention.days=14          # Days to retain deleted files
+files.trash.cleanup.cron=0 0 3 * * ?   # Cleanup expired trash at 3 AM daily
+
+# Auto-resync
+sync.auto-resync.enabled=true          # Enable automatic resync on health check failure
 ```
 
 ## Sync Server (application.properties)
@@ -171,8 +178,9 @@ spring.servlet.multipart.max-request-size=200MB
 | [partial-resync.md](partial-resync.md) | Date-based recovery using the same pipeline as real-time sync |
 | [full-sync-to-server.md](full-sync-to-server.md) | Server bootstrapping, bulk entity push, field handling |
 | [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration, failed sync item tracking |
-| [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure |
+| [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure, runtime toggle |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
+| [trash-system.md](trash-system.md) | Staged file deletion with restore capability, retention period, automatic cleanup |
 
 # E2E Test Coverage
 
