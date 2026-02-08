@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus } from '../../services/electron.service';
+import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 import { CreateImpairmentDialogComponent } from './create-impairment-dialog.component';
 import { CloseImpairmentDialogComponent } from './close-impairment-dialog.component';
 import { ImpairmentDetailDialogComponent } from './impairment-detail-dialog.component';
@@ -53,9 +53,9 @@ interface FireImpairmentItem {
       <div class="notice" *ngIf="!isSpringBootRunning">
         <span class="notice-icon">&#x26A0;</span>
         <div>
-          <strong>Spring Boot Required</strong>
-          <p>The Fire Impairment feature requires the Spring Boot application to be running.
-             Start it from the Home page or the Spring Boot menu.</p>
+          <strong>{{ appName }} Required</strong>
+          <p>The Fire Impairment feature requires {{ appName }} to be running.
+             Start it from the Home page or the {{ appName }} menu.</p>
         </div>
       </div>
 
@@ -434,6 +434,7 @@ interface FireImpairmentItem {
   `]
 })
 export class FireImpairmentComponent implements OnInit, OnDestroy {
+  appName = APP_DISPLAY_NAME;
   isSpringBootRunning = false;
   loading = false;
   error = '';

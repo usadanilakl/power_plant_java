@@ -10,6 +10,7 @@ import * as http from 'http';
 import * as crypto from 'crypto';
 import { UpdateInfo, UpdateProgress, IpcResult } from '../../shared/types';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER } from '../constants';
+import { getWorkingDir } from '../paths';
 
 export class UpdateManager {
   private workingDir: string;
@@ -18,7 +19,7 @@ export class UpdateManager {
   private cachedChecksumMtime: number = 0;
 
   constructor() {
-    this.workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    this.workingDir = getWorkingDir();
     this.jarPath = path.join(this.workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
   }
 

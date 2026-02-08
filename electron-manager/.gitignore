@@ -30,3 +30,7 @@ src/renderer/.angular/
 # Temporary files
 *.tmp
 *.temp
+
+# Bundled JRE (downloaded by scripts/download-jre.js)
+jre/
+jre-download.zip

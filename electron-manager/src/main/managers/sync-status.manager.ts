@@ -9,7 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import { SyncStatusInfo, IpcResult } from '../../shared/types';
-import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER } from '../constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, APP_DISPLAY_NAME } from '../constants';
+import { getWorkingDir } from '../paths';
 
 const SYNC_STATUS_FILE = 'sync-status.json';
 const STALE_THRESHOLD_DAYS = 14;
@@ -24,7 +25,7 @@ export class SyncStatusManager {
   private statusFilePath: string;
 
   constructor() {
-    this.workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    this.workingDir = getWorkingDir();
     this.statusFilePath = path.join(this.workingDir, SYNC_STATUS_FILE);
   }
 
@@ -117,7 +118,7 @@ export class SyncStatusManager {
         );
 
         req.on('error', (err) => {
-          resolve({ success: false, error: `Cannot reach local Spring Boot: ${err.message}` });
+          resolve({ success: false, error: `Cannot reach local ${APP_DISPLAY_NAME}: ${err.message}` });
         });
 
         req.on('timeout', () => {

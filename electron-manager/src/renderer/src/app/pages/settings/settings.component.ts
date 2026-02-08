@@ -5,6 +5,7 @@ import {
   ElectronService,
   DeviceConfig,
   DeviceRegistryEntry,
+  APP_DISPLAY_NAME,
 } from '../../services/electron.service';
 
 @Component({
@@ -157,7 +158,7 @@ import {
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-label">Quit Application</span>
-            <span class="setting-desc">Stop Spring Boot and close the application</span>
+            <span class="setting-desc">Stop {{ appName }} and close the application</span>
           </div>
           <button class="btn btn-danger" (click)="quit()">Quit</button>
         </div>
@@ -446,6 +447,7 @@ import {
   `]
 })
 export class SettingsComponent implements OnInit {
+  appName = APP_DISPLAY_NAME;
   deviceConfig: DeviceConfig | null = null;
   showSetup = false;
 

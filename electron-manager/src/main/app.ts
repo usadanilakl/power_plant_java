@@ -9,7 +9,8 @@ import * as path from 'path';
 import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
-import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS } from './constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
+import { getWorkingDir, ensureWorkingDir } from './paths';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -70,8 +71,8 @@ export default class App {
           defaultId: 0,
           cancelId: 0,
           title: 'Confirm Exit',
-          message: 'Spring Boot is still running.',
-          detail: `Port ${DEFAULT_SPRING_BOOT_CONFIG.port}\n\nDo you want to stop Spring Boot and exit?`
+          message: `${APP_DISPLAY_NAME} is still running.`,
+          detail: `Port ${DEFAULT_SPRING_BOOT_CONFIG.port}\n\nDo you want to stop ${APP_DISPLAY_NAME} and exit?`
         });
 
         if (result.response === 1) {
@@ -97,7 +98,7 @@ export default class App {
     await App.startupAssessment();
 
     // Auto-start Spring Boot if JAR exists
-    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
     if (fs.existsSync(jarPath)) {
       await App.autoStart();
@@ -146,7 +147,7 @@ export default class App {
         ]
       },
       {
-        label: 'Spring Boot',
+        label: APP_DISPLAY_NAME,
         submenu: [
           {
             label: 'Start',
@@ -219,7 +220,7 @@ export default class App {
                 type: 'info',
                 title: 'About DK Power Manager',
                 message: 'DK Power Manager',
-                detail: `Version: ${app.getVersion()}\n\nManages Power Plant Spring Boot application.`
+                detail: `Version: ${app.getVersion()}\n\nManages ${APP_DISPLAY_NAME} application.`
               });
             }
           }
@@ -267,11 +268,8 @@ export default class App {
    */
   private static async startupAssessment(): Promise<void> {
     // Ensure working directory exists
-    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
-    if (!fs.existsSync(workingDir)) {
-      fs.mkdirSync(workingDir, { recursive: true });
-      console.log(`Created working directory: ${workingDir}`);
-    }
+    ensureWorkingDir();
+    const workingDir = getWorkingDir();
 
     const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
     const deviceConfig = deviceMgr.getConfig();
@@ -307,7 +305,7 @@ export default class App {
 
   /** Build assessment with local checks only (server unreachable) */
   private static buildLocalAssessment(deviceConfig: any, serverUrl: string): StartupAssessment {
-    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
     const coldResyncMgr = App.ipcHandlers.getColdResyncManager();
     const syncMgr = App.ipcHandlers.getSyncStatusManager();

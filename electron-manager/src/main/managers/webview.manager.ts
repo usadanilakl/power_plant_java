@@ -5,6 +5,7 @@
 
 import { BrowserWindow, session } from 'electron';
 import type { WebViewTarget } from '../../shared/types';
+import { getWorkingDir } from '../paths';
 
 interface WebViewInstance {
   target: WebViewTarget;
@@ -81,11 +82,7 @@ export class WebViewManager {
     // Read gate-log config for credentials
     const fs = require('fs');
     const path = require('path');
-    const configPath = path.join(
-      process.cwd(),
-      'managed_apps/pid',
-      'gate-log-config.json'
-    );
+    const configPath = path.join(getWorkingDir(), 'gate-log-config.json');
 
     let config: any = {};
     try {

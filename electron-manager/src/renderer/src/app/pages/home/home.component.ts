@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus } from '../../services/electron.service';
+import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-home',
@@ -17,7 +17,7 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
         <div class="sb-panel-header">
           <div class="sb-title-row">
             <span class="sb-dot" [class]="status.state"></span>
-            <h2>Spring Boot</h2>
+            <h2>{{ appName }}</h2>
             <span class="status-badge" [class]="'status-' + status.state">
               {{ stateLabel }}
             </span>
@@ -64,7 +64,7 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
             </div>
           </div>
           <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
-            {{ status.state === 'running' ? 'Available' : 'Requires Spring Boot' }}
+            {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
           </span>
         </a>
 
@@ -283,6 +283,7 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
   `]
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   activeImpairmentCount: number | null = null;
   private sub?: Subscription;

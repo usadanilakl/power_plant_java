@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus } from '../../services/electron.service';
+import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-spring-boot-ui',
@@ -17,15 +17,15 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
     <ng-template #notRunning>
       <div class="placeholder">
         <div class="placeholder-icon">&#x2699;</div>
-        <h2>Spring Boot is not running</h2>
+        <h2>{{ appName }} is not running</h2>
         <p class="placeholder-detail" *ngIf="status.state === 'starting'">Starting up... please wait.</p>
         <p class="placeholder-detail" *ngIf="status.state === 'stopping'">Shutting down...</p>
         <p class="placeholder-detail" *ngIf="status.state === 'error'">{{ status.error }}</p>
-        <p class="placeholder-detail" *ngIf="status.state === 'stopped'">Start Spring Boot to view the application.</p>
+        <p class="placeholder-detail" *ngIf="status.state === 'stopped'">Start {{ appName }} to view the application.</p>
         <div class="placeholder-actions">
           <button class="btn btn-success"
                   *ngIf="status.state === 'stopped' || status.state === 'error'"
-                  (click)="start()">Start Spring Boot</button>
+                  (click)="start()">Start {{ appName }}</button>
           <a class="btn btn-secondary" routerLink="/">Go to Dashboard</a>
         </div>
       </div>
@@ -87,6 +87,7 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
   `]
 })
 export class SpringBootUiComponent implements OnInit, OnDestroy {
+  appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   sbUrl: SafeResourceUrl;
   private sub?: Subscription;

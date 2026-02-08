@@ -16,6 +16,7 @@ import {
   GRACEFUL_SHUTDOWN_TIMEOUT,
   MAX_LOG_LINES
 } from '../constants';
+import { getWorkingDir, getJavaPath } from '../paths';
 import { DeviceConfigManager } from './device-config.manager';
 
 export class SpringBootManager {
@@ -55,7 +56,7 @@ export class SpringBootManager {
     this.error = undefined;
 
     const config = DEFAULT_SPRING_BOOT_CONFIG;
-    const workingDir = this.resolveWorkingDir(config.workingDir);
+    const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, config.jar);
 
     // Validate JAR exists
@@ -80,7 +81,7 @@ export class SpringBootManager {
     console.log(`  JAR: ${jarPath}`);
 
     try {
-      const proc = spawn(config.javaPath, ['-jar', config.jar], {
+      const proc = spawn(getJavaPath(), ['-jar', config.jar], {
         cwd: workingDir,
         env: spawnEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -216,10 +217,6 @@ export class SpringBootManager {
   }
 
   // Private methods
-
-  private resolveWorkingDir(workingDir: string): string {
-    return path.resolve(__dirname, '..', '..', '..', '..', workingDir);
-  }
 
   private updateState(state: AppState): void {
     this.state = state;

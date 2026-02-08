@@ -11,7 +11,7 @@ import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
-import { DEFAULT_SPRING_BOOT_CONFIG } from '../constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncExecuteProgress } from '../../shared/types';
 
 export class IpcHandlers {
@@ -135,7 +135,7 @@ export class IpcHandlers {
         await shell.openExternal(`http://localhost:${status.port}`);
         return { success: true };
       }
-      return { success: false, error: 'Spring Boot is not running' };
+      return { success: false, error: `${APP_DISPLAY_NAME} is not running` };
     });
   }
 
@@ -175,8 +175,8 @@ export class IpcHandlers {
           defaultId: 0,
           cancelId: 0,
           title: 'Confirm Exit',
-          message: 'Spring Boot is still running.',
-          detail: `Port ${DEFAULT_SPRING_BOOT_CONFIG.port}\n\nDo you want to stop Spring Boot and exit?`
+          message: `${APP_DISPLAY_NAME} is still running.`,
+          detail: `Port ${DEFAULT_SPRING_BOOT_CONFIG.port}\n\nDo you want to stop ${APP_DISPLAY_NAME} and exit?`
         });
 
         if (result.response === 1) {
@@ -561,7 +561,7 @@ export class IpcHandlers {
       try {
         // 1. Stop Spring Boot if DB or files sync requested
         if (needsDbOrFiles && sbWasRunning) {
-          sendProgress({ phase: 'stopping_sb', statusMessage: 'Stopping Spring Boot...', progressPercent: 0 });
+          sendProgress({ phase: 'stopping_sb', statusMessage: `Stopping ${APP_DISPLAY_NAME}...`, progressPercent: 0 });
           await this.springBoot.stop();
         }
 
@@ -608,7 +608,7 @@ export class IpcHandlers {
 
         // 5. Restart Spring Boot if it was running or JAR was updated
         if ((needsDbOrFiles && sbWasRunning) || components.includes('jar')) {
-          sendProgress({ phase: 'starting_sb', statusMessage: 'Starting Spring Boot...', progressPercent: 95 });
+          sendProgress({ phase: 'starting_sb', statusMessage: `Starting ${APP_DISPLAY_NAME}...`, progressPercent: 95 });
           await this.springBoot.start();
         }
 

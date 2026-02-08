@@ -10,7 +10,8 @@ import { BrowserWindow, session } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
-import { DEFAULT_GATE_LOG_CONFIG, DEFAULT_SPRING_BOOT_CONFIG } from '../constants';
+import { DEFAULT_GATE_LOG_CONFIG } from '../constants';
+import { getWorkingDir } from '../paths';
 import type { GateLogEntry, GateLogStatus, GateLogConfig } from '../../shared/types';
 
 export class GateLogManager {
@@ -24,11 +25,7 @@ export class GateLogManager {
   private onPeopleUpdated: (() => void) | null = null;
 
   constructor() {
-    this.configPath = path.join(
-      process.cwd(),
-      DEFAULT_SPRING_BOOT_CONFIG.workingDir,
-      'gate-log-config.json'
-    );
+    this.configPath = path.join(getWorkingDir(), 'gate-log-config.json');
     this.config = this.loadConfig();
 
     // Accept self-signed certs for gate website

@@ -198,10 +198,8 @@ export interface AppSettings {
   springBoot: {
     jar: string;
     port: number;
-    workingDir: string;
     healthUrl: string;
     autoStart: boolean;
-    javaPath: string;  // 'java' or full path
   };
   syncServer: {
     url: string;

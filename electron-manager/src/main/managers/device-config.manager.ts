@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as http from 'http';
 import { DeviceConfig, DeviceRegistryResponse, IpcResult } from '../../shared/types';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER } from '../constants';
+import { getWorkingDir } from '../paths';
 
 const DEVICE_CONFIG_FILE = 'device-config.json';
 const MACHINE_ID_FILE = 'machine-id.properties';
@@ -18,12 +19,8 @@ export class DeviceConfigManager {
   private workingDir: string;
 
   constructor() {
-    this.workingDir = this.resolveWorkingDir();
+    this.workingDir = getWorkingDir();
     this.load();
-  }
-
-  private resolveWorkingDir(): string {
-    return path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
   }
 
   /** Check if device is configured */

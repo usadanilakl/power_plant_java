@@ -1,6 +1,9 @@
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
+/** User-facing display name for the Spring Boot backend (change here to rename everywhere) */
+export const APP_DISPLAY_NAME = 'JG Portal';
+
 /**
  * Types matching the preload script API.
  * Mirrors src/shared/types.ts (can't import directly due to separate build).

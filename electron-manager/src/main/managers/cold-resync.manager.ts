@@ -13,6 +13,7 @@ import * as http from 'http';
 import AdmZip from 'adm-zip';
 import { ColdResyncProgress, IpcResult } from '../../shared/types';
 import { DEFAULT_SPRING_BOOT_CONFIG } from '../constants';
+import { getWorkingDir } from '../paths';
 
 const SYNC_STATUS_FILE = 'sync-status.json';
 
@@ -30,7 +31,7 @@ export class ColdResyncManager {
   private uploadsDir: string;
 
   constructor() {
-    this.workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    this.workingDir = getWorkingDir();
     this.dbDir = path.join(this.workingDir, 'db');
     this.dbPath = path.join(this.dbDir, 'proddb.mv.db');
     this.uploadsDir = path.join(this.workingDir, 'uploads-prod');

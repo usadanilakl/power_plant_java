@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angu
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus, AppState } from '../services/electron.service';
+import { ElectronService, AppStatus, AppState, APP_DISPLAY_NAME } from '../services/electron.service';
 
 interface NavItem {
   label: string;
@@ -25,7 +25,7 @@ interface NavItem {
       <div class="sb-status" [class]="'sb-status-' + appState">
         <span class="sb-dot" [class]="appState"></span>
         <div class="sb-info">
-          <span class="sb-label">Spring Boot</span>
+          <span class="sb-label">{{ appName }}</span>
           <span class="sb-state">{{ stateLabel }}</span>
         </div>
       </div>
@@ -285,6 +285,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   @Input() collapsed = false;
   @Output() toggle = new EventEmitter<void>();
 
+  appName = APP_DISPLAY_NAME;
   version = '';
   appState: AppState = 'stopped';
   private sub?: Subscription;

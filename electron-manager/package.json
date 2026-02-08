@@ -14,6 +14,8 @@
     "dev:main": "tsc -p tsconfig.main.json --watch",
     "dev:renderer": "cd src/renderer && npm start",
     "electron": "electron .",
+    "download-jre": "node scripts/download-jre.js",
+    "prepackage": "npm run download-jre",
     "package": "npm run build && electron-builder",
     "package:dir": "npm run build && electron-builder --dir"
   },
@@ -40,8 +42,8 @@
     ],
     "extraResources": [
       {
-        "from": "../managed_apps",
-        "to": "managed_apps",
+        "from": "jre",
+        "to": "jre",
         "filter": [
           "**/*"
         ]
@@ -50,8 +52,7 @@
     "win": {
       "target": [
         "nsis"
-      ],
-      "icon": "assets/icon.ico"
+      ]
     },
     "nsis": {
       "oneClick": false,

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ElectronService, AppStatus, SyncStatusInfo, StartupAssessment, SyncComponent,
-  SyncExecuteProgress, DeviceConfig, IpcResult
+  SyncExecuteProgress, DeviceConfig, IpcResult, APP_DISPLAY_NAME
 } from '../../services/electron.service';
 import { Subscription } from 'rxjs';
 
@@ -134,7 +134,7 @@ import { Subscription } from 'rxjs';
             </button>
           </div>
 
-          <p class="hint">Spring Boot will be automatically stopped and restarted when syncing database or files.</p>
+          <p class="hint">{{ appName }} will be automatically stopped and restarted when syncing database or files.</p>
           <p class="hint" *ngIf="!assessment?.serverReachable && assessment !== null">
             Sync server must be reachable to perform sync operations.
           </p>
@@ -420,6 +420,7 @@ import { Subscription } from 'rxjs';
   `]
 })
 export class SyncUpdatesComponent implements OnInit, OnDestroy {
+  appName = APP_DISPLAY_NAME;
   assessment: StartupAssessment | null = null;
   syncProgress: SyncExecuteProgress | null = null;
   syncInProgress = false;

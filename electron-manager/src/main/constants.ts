@@ -7,6 +7,9 @@
 // Re-export shared types
 export type { AppState, AppStatus, AppSettings, IpcResult } from '../shared/types';
 
+// User-facing display name for the Spring Boot backend (change here to rename everywhere)
+export const APP_DISPLAY_NAME = 'JG Portal';
+
 // Renderer configuration
 export const rendererAppPort = 4201;
 export const rendererAppName = 'renderer';
@@ -17,9 +20,7 @@ export const DEFAULT_SPRING_BOOT_CONFIG = {
   jar: 'power_plant_java-1.jar',
   port: 8082,
   healthUrl: 'http://localhost:8082/actuator/health',
-  autoStart: true,
-  workingDir: 'managed_apps/pid',
-  javaPath: 'java'
+  autoStart: true
 };
 
 // Default Sync Server
