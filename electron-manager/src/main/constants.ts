@@ -18,7 +18,7 @@ export const DEFAULT_SPRING_BOOT_CONFIG = {
   port: 8082,
   healthUrl: 'http://localhost:8082/actuator/health',
   autoStart: true,
-  workingDir: '../managed_apps/pid/browser',
+  workingDir: 'managed_apps/pid',
   javaPath: 'java'
 };
 
@@ -34,3 +34,19 @@ export const HEALTH_CHECK_TIMEOUT = 5_000;
 export const STARTUP_HEALTH_DELAY = 5_000;
 export const GRACEFUL_SHUTDOWN_TIMEOUT = 10_000;
 export const MAX_LOG_LINES = 1_000;
+
+// Sync staleness threshold
+export const SYNC_STALE_THRESHOLD_DAYS = 14;
+
+// Gate Log defaults
+export const DEFAULT_GATE_LOG_CONFIG = {
+  onLocationApiKey: 'wNqYlPvPlq2GvktS',
+  onLocationBaseUrl: 'https://api.whosonlocation.com/v1',
+  gateWebUrl: 'https://10.56.80.80/',
+  gateUsername: 'dklokov',
+  gatePassword: 'Jackson1',
+  onLocationEmail: 'jacksonap@jpowerusa.com',
+  onLocationPassword: 'Jackson1',
+  autoRefresh: false,
+  intervalMinutes: 60
+};

@@ -28,7 +28,8 @@ public class SecurityConfigSpring {
                         "/h2-console/**", "/images-api/**", "/ng/**","/server/**","/api/backup/**",
                         "/browser/**","/print/**", "/api-lotos/**","/red-tag-controls/**","/power-automate/**",
                         "/work-request/**", "/api/field-sync/**", "/api/sync-updates/**","/api/sync-test/**",
-                        "/api/resync/**", "/api/sync-e2e/**", "/api/data-integrity/**"
+                        "/api/resync/**", "/api/sync-e2e/**", "/api/data-integrity/**",
+                        "/api/update/**", "/api/fire-impairment/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
@@ -81,7 +82,7 @@ public class SecurityConfigSpring {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost", "null"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token", "X-Machine-Id", "X-Machine-Name"));
+        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token", "X-Machine-Id", "X-Machine-Name", "X-Device-Number"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

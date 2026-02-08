@@ -47,7 +47,8 @@ public class ClientDataExportService {
         "LotoBox", "Lock", "ZeroEnergy", "HeatTrace", "Highlight",
         "ElectricalPanel", "EqBreaker", "HtPanel", "HtBreaker",
         "EspDevice", "LedStrip",
-        "SafeWork", "HotWork", "ConfinedSpace", "WorkRequest", "DailyPermitPackage"
+        "SafeWork", "HotWork", "ConfinedSpace", "WorkRequest", "DailyPermitPackage",
+        "FireImpairment"
     );
 
     /**
@@ -600,6 +601,7 @@ public class ClientDataExportService {
             case "WorkRequest" -> "work_request";
             case "DailyPermitPackage" -> "daily_permit_package";
             case "Comment" -> "comment";
+            case "FireImpairment" -> "fire_impairment";
             default -> entityType.toLowerCase();
         };
     }

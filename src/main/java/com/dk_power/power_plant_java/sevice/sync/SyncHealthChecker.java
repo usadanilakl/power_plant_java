@@ -41,9 +41,6 @@ public class SyncHealthChecker {
     private final RestTemplate restTemplate;
     private final EntityTableRegistry entityTableRegistry;
 
-    @Value("${sync.server.url:}")
-    private String syncServerUrl;
-
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
 
@@ -76,6 +73,7 @@ public class SyncHealthChecker {
      */
     @Scheduled(fixedDelayString = "${sync.health.check.interval:300000}") // Default 5 minutes
     public void checkSyncHealth() {
+        String syncServerUrl = syncConfig.getSyncServerUrl();
         if (!healthCheckEnabled || syncServerUrl == null || syncServerUrl.isEmpty()) {
             return;
         }
@@ -224,9 +222,10 @@ public class SyncHealthChecker {
      */
     private ServerSyncStats getServerStats() {
         try {
-            String url = syncServerUrl + "/api/sync/health-stats";
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/health-stats";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<ServerSyncStats> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), ServerSyncStats.class);

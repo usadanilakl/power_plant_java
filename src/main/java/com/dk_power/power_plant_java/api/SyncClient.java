@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.api;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -20,18 +20,17 @@ public class SyncClient {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    @Value("${sync.server.url}")
-    private String baseUrl;
+    private final SyncConfig syncConfig;
 
 
     public <T extends BaseIdEntity> void sendChangesToServer(String entityName, List<T> changes) {
-        String url = baseUrl + "/api/sync/" + entityName;
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName;
         ResponseEntity<Void> voidResponseEntity = executePost(url, changes, Void.class);
         System.out.println("Sent changes to server: " + voidResponseEntity);
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since) {
-        String url = baseUrl + "/api/sync/" + entityName + "?since=" + since;
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since;
         System.out.println("getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });
@@ -40,7 +39,7 @@ public class SyncClient {
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit) {
-        String url = baseUrl + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit;
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit;
         System.out.println("Getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });
@@ -49,7 +48,7 @@ public class SyncClient {
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit, LocalDateTime until) {
-        String url = baseUrl + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit + "&until=" + until;
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit + "&until=" + until;
         System.out.println("Getting data from: " + url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
         });

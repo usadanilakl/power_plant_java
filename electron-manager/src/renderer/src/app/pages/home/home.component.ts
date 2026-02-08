@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus } from '../../services/electron.service';
 
@@ -32,9 +32,12 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
             <button class="btn btn-secondary btn-sm"
                     [disabled]="status.state !== 'running'"
                     (click)="restart()">Restart</button>
+            <button class="btn btn-primary btn-sm"
+                    [disabled]="status.state !== 'running'"
+                    (click)="openPidApp()">Open PID App</button>
             <button class="btn btn-secondary btn-sm"
                     [disabled]="status.state !== 'running'"
-                    (click)="openInBrowser()">Open Browser</button>
+                    (click)="openInBrowser()">Open in Browser</button>
           </div>
         </div>
         <div class="sb-details">
@@ -55,6 +58,10 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
           <div class="feature-info">
             <h3>Fire Impairment</h3>
             <p class="feature-desc">Manage fire protection impairments</p>
+            <div class="imp-count" *ngIf="activeImpairmentCount !== null && activeImpairmentCount > 0">
+              <span class="count-badge">{{ activeImpairmentCount }}</span>
+              active impairment{{ activeImpairmentCount !== 1 ? 's' : '' }}
+            </div>
           </div>
           <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
             {{ status.state === 'running' ? 'Available' : 'Requires Spring Boot' }}
@@ -247,6 +254,28 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
       color: var(--accent-success);
     }
 
+    .imp-count {
+      font-size: 12px;
+      color: var(--accent-warning);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      background-color: var(--accent-warning);
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -255,12 +284,28 @@ import { ElectronService, AppStatus } from '../../services/electron.service';
 })
 export class HomeComponent implements OnInit, OnDestroy {
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
+  activeImpairmentCount: number | null = null;
   private sub?: Subscription;
 
-  constructor(private electronService: ElectronService) {}
+  constructor(private electronService: ElectronService, private router: Router) {}
 
   ngOnInit(): void {
-    this.sub = this.electronService.appStatus$.subscribe(s => this.status = s);
+    this.sub = this.electronService.appStatus$.subscribe(s => {
+      const wasRunning = this.status.state === 'running';
+      this.status = s;
+      if (!wasRunning && s.state === 'running') {
+        this.loadFireImpCount();
+      }
+    });
+  }
+
+  private async loadFireImpCount(): Promise<void> {
+    try {
+      const result = await this.electronService.fireImpCount();
+      if (result.success) {
+        this.activeImpairmentCount = result.data ?? 0;
+      }
+    } catch {}
   }
 
   ngOnDestroy(): void {
@@ -294,6 +339,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async restart(): Promise<void> {
     await this.electronService.restartApp();
+  }
+
+  openPidApp(): void {
+    this.router.navigate(['/pid-app']);
   }
 
   async openInBrowser(): Promise<void> {

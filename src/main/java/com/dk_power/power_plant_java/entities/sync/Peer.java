@@ -18,6 +18,8 @@ public class Peer {
     private String machineId;
 
     private String machineName;
+    private Integer deviceNumber;
+    private String deviceNumberConflict;  // machineId of conflicting peer, null if no conflict
     private String ipAddress;
     private int port;
     private Instant lastSeen;

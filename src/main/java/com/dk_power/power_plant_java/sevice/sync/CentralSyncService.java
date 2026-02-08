@@ -314,6 +314,7 @@ public class CentralSyncService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
         headers.set("X-Machine-Name", syncConfig.getMachineName());
         headers.set("Accept-Encoding", "gzip"); // Request compressed response
 
@@ -408,6 +409,7 @@ public class CentralSyncService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             HttpEntity<?> entity = new HttpEntity<>(headers);
 
@@ -432,6 +434,7 @@ public class CentralSyncService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
         headers.set("X-Machine-Name", syncConfig.getMachineName());
         headers.set("Accept-Encoding", "gzip");
 

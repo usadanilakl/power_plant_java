@@ -218,6 +218,7 @@ public class ServerSseClient {
         currentConnection.setRequestMethod("GET");
         currentConnection.setRequestProperty("Accept", "text/event-stream");
         currentConnection.setRequestProperty("X-Machine-Id", syncConfig.getMachineId());
+        currentConnection.setRequestProperty("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
         currentConnection.setRequestProperty("X-Machine-Name", syncConfig.getMachineName());
         currentConnection.setConnectTimeout(10000);
         currentConnection.setReadTimeout(60000); // 60 second timeout to allow periodic shutdown checks

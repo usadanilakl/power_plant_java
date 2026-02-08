@@ -16,6 +16,7 @@ import {
   GRACEFUL_SHUTDOWN_TIMEOUT,
   MAX_LOG_LINES
 } from '../constants';
+import { DeviceConfigManager } from './device-config.manager';
 
 export class SpringBootManager {
   private process: ChildProcess | null = null;
@@ -29,6 +30,7 @@ export class SpringBootManager {
   private healthCheckInterval?: NodeJS.Timeout;
   private statusCallback: (status: AppStatus) => void;
   private logCallback?: (line: string) => void;
+  private deviceConfigManager: DeviceConfigManager;
 
   constructor(
     statusCallback: (status: AppStatus) => void,
@@ -36,6 +38,11 @@ export class SpringBootManager {
   ) {
     this.statusCallback = statusCallback;
     this.logCallback = logCallback;
+    this.deviceConfigManager = new DeviceConfigManager();
+  }
+
+  public getDeviceConfigManager(): DeviceConfigManager {
+    return this.deviceConfigManager;
   }
 
   public async start(): Promise<void> {
@@ -58,6 +65,16 @@ export class SpringBootManager {
       throw new Error(this.error);
     }
 
+    // Build environment with device config
+    const deviceConfig = this.deviceConfigManager.getConfig();
+    const spawnEnv: Record<string, string> = { ...process.env as Record<string, string> };
+    if (deviceConfig) {
+      spawnEnv.DEVICE_CONFIG = deviceConfig.machineId.toLowerCase();
+      console.log(`  Device: ${deviceConfig.deviceName} (#${deviceConfig.deviceNumber}, DEVICE_CONFIG=${spawnEnv.DEVICE_CONFIG})`);
+    } else {
+      console.log('  Device: NOT CONFIGURED — Spring Boot will use fallback device 9');
+    }
+
     console.log(`Starting Spring Boot...`);
     console.log(`  Working dir: ${workingDir}`);
     console.log(`  JAR: ${jarPath}`);
@@ -65,6 +82,7 @@ export class SpringBootManager {
     try {
       const proc = spawn(config.javaPath, ['-jar', config.jar], {
         cwd: workingDir,
+        env: spawnEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false
       });
@@ -200,7 +218,7 @@ export class SpringBootManager {
   // Private methods
 
   private resolveWorkingDir(workingDir: string): string {
-    return path.resolve(__dirname, '..', '..', '..', workingDir);
+    return path.resolve(__dirname, '..', '..', '..', '..', workingDir);
   }
 
   private updateState(state: AppState): void {

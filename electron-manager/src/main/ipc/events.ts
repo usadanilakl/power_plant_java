@@ -22,10 +22,24 @@ export const IPC_WEBVIEW_INJECT = 'webview:inject';
 export const IPC_FIRE_IMP_LIST = 'fire-imp:list';
 export const IPC_FIRE_IMP_CREATE = 'fire-imp:create';
 export const IPC_FIRE_IMP_OPEN_FORM = 'fire-imp:open-form';
+export const IPC_FIRE_IMP_CLOSE = 'fire-imp:close';
+export const IPC_FIRE_IMP_UPDATE = 'fire-imp:update';
+export const IPC_FIRE_IMP_GET_ENUMS = 'fire-imp:get-enums';
+export const IPC_FIRE_IMP_LIST_CLOSED = 'fire-imp:list-closed';
+export const IPC_FIRE_IMP_COUNT = 'fire-imp:count';
+// Fire Impairment broadcasts (send/on)
+export const IPC_FIRE_IMP_FORM_SUBMITTED = 'fire-imp:form-submitted';
 
 // Gate Log (invoke/handle)
-export const IPC_GATE_LOG_STATUS = 'gate-log:status';
-export const IPC_GATE_LOG_PEOPLE = 'gate-log:people';
+export const IPC_GATE_LOG_GET_PEOPLE = 'gate-log:get-people';
+export const IPC_GATE_LOG_GET_STATUS = 'gate-log:get-status';
+export const IPC_GATE_LOG_REFRESH = 'gate-log:refresh';
+export const IPC_GATE_LOG_SET_AUTO_REFRESH = 'gate-log:set-auto-refresh';
+export const IPC_GATE_LOG_GET_CONFIG = 'gate-log:get-config';
+export const IPC_GATE_LOG_SAVE_CONFIG = 'gate-log:save-config';
+export const IPC_GATE_LOG_PRINT = 'gate-log:print';
+// Gate Log broadcasts (send/on)
+export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
 
 // Weather (send/on)
 export const IPC_WEATHER_STATUS = 'weather:status';
@@ -37,6 +51,30 @@ export const IPC_PJM_STATUS = 'pjm:status';
 export const IPC_WINDOW_CLOSE = 'window:close';
 export const IPC_WINDOW_MINIMIZE = 'window:minimize';
 export const IPC_WINDOW_MAXIMIZE = 'window:maximize';
+
+// Device Identity (invoke/handle)
+export const IPC_DEVICE_CONFIG_GET = 'device:get-config';
+export const IPC_DEVICE_CONFIG_SAVE = 'device:save-config';
+export const IPC_DEVICE_REGISTRY_FETCH = 'device:fetch-registry';
+export const IPC_DEVICE_REGISTRY_REGISTER = 'device:register';
+export const IPC_DEVICE_NEEDS_SETUP = 'device:needs-setup';
+
+// Update management (invoke/handle)
+export const IPC_UPDATE_CHECK = 'update:check';
+export const IPC_UPDATE_DOWNLOAD = 'update:download';
+export const IPC_UPDATE_PROGRESS = 'update:progress';     // send/on
+
+// Sync management (invoke/handle)
+export const IPC_SYNC_GET_STATUS = 'sync:get-status';
+export const IPC_SYNC_TRIGGER_RESYNC = 'sync:trigger-resync';
+export const IPC_SYNC_GET_RESYNC_STATUS = 'sync:get-resync-status';
+export const IPC_SYNC_STALE = 'sync:stale';               // send/on
+export const IPC_DEVICE_CONFLICT = 'device:conflict';       // send/on
+
+// Cold Resync (invoke/handle + send/on)
+export const IPC_COLD_RESYNC = 'cold-resync:start';
+export const IPC_COLD_RESYNC_PROGRESS = 'cold-resync:progress';  // send/on
+export const IPC_COLD_RESYNC_NEEDED = 'cold-resync:needed';      // send/on
 
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';

@@ -2,10 +2,14 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus } from '../../services/electron.service';
+import { CreateImpairmentDialogComponent } from './create-impairment-dialog.component';
+import { CloseImpairmentDialogComponent } from './close-impairment-dialog.component';
 
 interface FireImpairmentItem {
   id: number;
   name: string;
+  email: string;
+  emailCc: string;
   areaProtected: string;
   protectionType: string;
   reason: string;
@@ -19,16 +23,16 @@ interface FireImpairmentItem {
 @Component({
   selector: 'app-fire-impairment',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CreateImpairmentDialogComponent, CloseImpairmentDialogComponent],
   template: `
     <div class="page">
       <div class="page-header">
         <h1 class="page-title">Fire Impairment</h1>
         <div class="actions" *ngIf="isSpringBootRunning">
-          <button class="btn btn-secondary" (click)="loadImpairments()" [disabled]="loading">
+          <button class="btn btn-secondary" (click)="refresh()" [disabled]="loading">
             {{ loading ? 'Loading...' : 'Refresh' }}
           </button>
-          <button class="btn btn-primary" (click)="createNew()">+ New Impairment</button>
+          <button class="btn btn-primary" (click)="showCreateDialog = true">+ New Impairment</button>
         </div>
       </div>
 
@@ -44,10 +48,10 @@ interface FireImpairmentItem {
       <div class="content" *ngIf="isSpringBootRunning">
         <!-- Tab bar -->
         <div class="tab-bar">
-          <button class="tab" [class.active]="activeTab === 'active'" (click)="activeTab = 'active'">
+          <button class="tab" [class.active]="activeTab === 'active'" (click)="switchTab('active')">
             Active ({{ activeImpairments.length }})
           </button>
-          <button class="tab" [class.active]="activeTab === 'closed'" (click)="activeTab = 'closed'">
+          <button class="tab" [class.active]="activeTab === 'closed'" (click)="switchTab('closed')">
             Closed ({{ closedImpairments.length }})
           </button>
         </div>
@@ -64,6 +68,7 @@ interface FireImpairmentItem {
               </div>
               <div class="imp-actions">
                 <button class="btn btn-secondary btn-xs" (click)="openFmGlobal(imp)">Open FM Global</button>
+                <button class="btn btn-danger btn-xs" (click)="openCloseDialog(imp)">Close</button>
               </div>
             </div>
             <div class="imp-details">
@@ -100,6 +105,21 @@ interface FireImpairmentItem {
         </div>
       </div>
     </div>
+
+    <!-- Create dialog -->
+    <app-create-impairment-dialog
+        *ngIf="showCreateDialog"
+        (submitted)="onCreateSubmit($event)"
+        (cancelled)="showCreateDialog = false">
+    </app-create-impairment-dialog>
+
+    <!-- Close dialog -->
+    <app-close-impairment-dialog
+        *ngIf="showCloseDialog"
+        [impairment]="closingImpairment"
+        (confirmed)="onCloseConfirm()"
+        (cancelled)="showCloseDialog = false">
+    </app-close-impairment-dialog>
   `,
   styles: [`
     .page {
@@ -273,9 +293,18 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
   loading = false;
   error = '';
   activeTab: 'active' | 'closed' = 'active';
-  impairments: FireImpairmentItem[] = [];
 
+  activeImpairments: FireImpairmentItem[] = [];
+  closedImpairments: FireImpairmentItem[] = [];
+
+  showCreateDialog = false;
+  showCloseDialog = false;
+  closingImpairment: FireImpairmentItem | null = null;
+
+  private closedLoaded = false;
+  private lastCreatedId: number | null = null;
   private sub?: Subscription;
+  private unsubFormSubmitted?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
@@ -283,32 +312,43 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
     this.sub = this.electronService.appStatus$.subscribe(status => {
       const wasRunning = this.isSpringBootRunning;
       this.isSpringBootRunning = status.state === 'running';
-      // Auto-load when Spring Boot becomes available
       if (!wasRunning && this.isSpringBootRunning) {
-        this.loadImpairments();
+        this.loadActive();
       }
+    });
+
+    // Listen for FM Global form data (Back/Submit button interception)
+    this.unsubFormSubmitted = this.electronService.onFireImpFormSubmitted((data) => {
+      this.onFmGlobalFormData(data);
     });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.unsubFormSubmitted?.();
   }
 
-  get activeImpairments(): FireImpairmentItem[] {
-    return this.impairments.filter(i => i.isActive);
+  switchTab(tab: 'active' | 'closed'): void {
+    this.activeTab = tab;
+    if (tab === 'closed' && !this.closedLoaded) {
+      this.loadClosed();
+    }
   }
 
-  get closedImpairments(): FireImpairmentItem[] {
-    return this.impairments.filter(i => !i.isActive);
+  async refresh(): Promise<void> {
+    await this.loadActive();
+    if (this.closedLoaded) {
+      await this.loadClosed();
+    }
   }
 
-  async loadImpairments(): Promise<void> {
+  async loadActive(): Promise<void> {
     this.loading = true;
     this.error = '';
     try {
       const result = await this.electronService.fireImpList();
       if (result.success && result.data) {
-        this.impairments = result.data;
+        this.activeImpairments = result.data;
       } else {
         this.error = result.error || 'Failed to load impairments';
       }
@@ -319,29 +359,104 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
     }
   }
 
-  async createNew(): Promise<void> {
-    // Default form data for new impairment
-    const formData: Record<string, string> = {
-      name: 'Jpower',
-      clientName: 'Jpower',
-      indexNumber: '3652.35',
-      streetAddress: '24650 South Brandon Road',
-      state: 'Illinois',
-      city: 'Elwood',
-      country: 'USA',
-      phone: '779-242-6151',
-      office: 'Chicago~engchicagocustomerservicedesk@fmglobal.com'
-    };
-
-    const result = await this.electronService.fireImpOpenForm(formData);
-    if (!result.success) {
-      this.error = result.error || 'Failed to open FM Global form';
+  async loadClosed(): Promise<void> {
+    this.loading = true;
+    this.error = '';
+    try {
+      const result = await this.electronService.fireImpListClosed();
+      if (result.success && result.data) {
+        this.closedImpairments = result.data;
+        this.closedLoaded = true;
+      } else {
+        this.error = result.error || 'Failed to load closed impairments';
+      }
+    } catch (e: any) {
+      this.error = e.message || 'Failed to load closed impairments';
+    } finally {
+      this.loading = false;
     }
   }
 
+  async onCreateSubmit(dto: Record<string, string>): Promise<void> {
+    this.showCreateDialog = false;
+    this.error = '';
+
+    // Save to Spring Boot DB
+    const createResult = await this.electronService.fireImpCreate(dto);
+    if (!createResult.success) {
+      this.error = createResult.error || 'Failed to create impairment';
+      return;
+    }
+
+    // Track the created record ID for FM Global form data callback
+    this.lastCreatedId = createResult.data?.id ?? null;
+    console.log('Create response data:', JSON.stringify(createResult.data), '=> lastCreatedId:', this.lastCreatedId);
+
+    // Refresh list first so we can use it as fallback for ID
+    await this.loadActive();
+
+    // Fallback: if create response didn't include id, use the first active impairment
+    if (!this.lastCreatedId && this.activeImpairments.length > 0) {
+      this.lastCreatedId = this.activeImpairments[0].id;
+      console.log('Fallback lastCreatedId from active list:', this.lastCreatedId);
+    }
+
+    // Open FM Global with form data
+    const formResult = await this.electronService.fireImpOpenForm(dto);
+    if (!formResult.success) {
+      this.error = formResult.error || 'Failed to open FM Global form';
+    }
+  }
+
+  /**
+   * Called when FM Global Back/Submit button is intercepted.
+   * Updates the last created impairment with gathered form data.
+   */
+  private async onFmGlobalFormData(data: Record<string, string>): Promise<void> {
+    if (!this.lastCreatedId) {
+      console.log('FM Global form data received but no impairment to update');
+      return;
+    }
+
+    console.log('FM Global form data received, updating impairment', this.lastCreatedId);
+    const result = await this.electronService.fireImpUpdate(this.lastCreatedId, data);
+    if (!result.success) {
+      this.error = result.error || 'Failed to update impairment with FM Global data';
+    }
+
+    this.lastCreatedId = null;
+    await this.loadActive();
+  }
+
+  openCloseDialog(imp: FireImpairmentItem): void {
+    this.closingImpairment = imp;
+    this.showCloseDialog = true;
+  }
+
+  async onCloseConfirm(): Promise<void> {
+    if (!this.closingImpairment) return;
+
+    this.showCloseDialog = false;
+    this.error = '';
+
+    const result = await this.electronService.fireImpClose(this.closingImpairment.id);
+    if (!result.success) {
+      this.error = result.error || 'Failed to close impairment';
+    }
+
+    this.closingImpairment = null;
+    await this.loadActive();
+    this.closedLoaded = false; // Force reload on next tab switch
+  }
+
   async openFmGlobal(imp: FireImpairmentItem): Promise<void> {
+    // Track this impairment for FM Global button interception
+    this.lastCreatedId = imp.id;
+
     const formData: Record<string, string> = {
       name: imp.name || 'Jpower',
+      email: imp.email || '',
+      emailCc: imp.emailCc || '',
       areaProtected: imp.areaProtected || '',
       protectionType: imp.protectionType || '',
       reason: imp.reason || ''

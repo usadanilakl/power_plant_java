@@ -28,6 +28,13 @@ public class SyncConfig {
     @Value("${sync.machine.name:${COMPUTERNAME:${HOSTNAME:Unknown}}}")
     private String machineName;
 
+    // Device identity (from device-configs/*.properties or machine-id.properties)
+    @Value("${device.number:0}")
+    private int deviceNumber;
+
+    @Value("${device.name:}")
+    private String deviceName;
+
     @Value("${server.port:8082}")
     private int syncPort;
 
@@ -42,6 +49,13 @@ public class SyncConfig {
 
     @Value("${sync.retention.days:30}")
     private int retentionDays;
+
+    // JAR update serving (server-side)
+    @Value("${update.jar.directory:${user.dir}/updates}")
+    private String updateJarDirectory;
+
+    @Value("${update.jar.filename:power_plant_java-1.jar}")
+    private String updateJarFilename;
 
     // Central sync server configuration
     @Value("${sync.server.url:}")
@@ -83,9 +97,24 @@ public class SyncConfig {
 
     @PostConstruct
     public void init() {
-        // Ensure persistent machine ID across restarts
-        if (machineId == null || machineId.isEmpty()) {
-            machineId = loadOrCreateMachineId();
+        // Load device identity from machine-id.properties (Electron writes this)
+        loadDeviceIdentityFromFile();
+
+        // If device config imported (via DEVICE_CONFIG env var), use those values
+        if (deviceNumber > 0 && deviceName != null && !deviceName.isEmpty()) {
+            // Derive machineId from device name if not already set
+            if (machineId == null || machineId.isEmpty()) {
+                machineId = deviceName.toUpperCase()
+                    .replaceAll("\\s+", "-")
+                    .replaceAll("[^A-Z0-9\\-]", "");
+            }
+            // Persist to machine-id.properties so DevicePrefixedIdGenerator can read it
+            saveDeviceIdentityToFile();
+        } else {
+            // No device config from properties — load from machine-id.properties
+            if (machineId == null || machineId.isEmpty()) {
+                machineId = loadOrCreateMachineId();
+            }
         }
 
         // Try to get computer name from environment if not set
@@ -93,20 +122,35 @@ public class SyncConfig {
             machineName = getComputerName();
         }
 
+        // Use device name as machine name if available
+        if (deviceName != null && !deviceName.isEmpty()) {
+            machineName = deviceName;
+        }
+
         // Load sync server config from file (overrides application.properties)
         loadSyncServerConfigFromFile();
 
         log.info("===========================================");
-        log.info("FIELD SYNC CONFIG INITIALIZED");
-        log.info("Machine ID: {}", machineId);
-        log.info("Machine Name: {}", machineName);
-        log.info("Sync Port: {}", syncPort);
-        log.info("Discovery Port: {}", discoveryPort);
-        log.info("Discovery Enabled: {}", discoveryEnabled);
-        log.info("Sync Interval: {} seconds", syncIntervalSeconds);
-        log.info("Server Sync Enabled: {}", syncServerEnabled);
-        log.info("Sync Server URL: {}", syncServerUrl);
+        log.info("DEVICE IDENTITY");
+        log.info("  Device Number: {}", deviceNumber > 0 ? deviceNumber : "NOT CONFIGURED");
+        log.info("  Device Name: {}", deviceName != null && !deviceName.isEmpty() ? deviceName : "NOT CONFIGURED");
+        log.info("  Machine ID: {}", machineId);
+        log.info("  Source: {}", deviceNumber > 0 ? "device config" : "auto-generated (CONFIGURE DEVICE!)");
+        log.info("-------------------------------------------");
+        log.info("SYNC CONFIG");
+        log.info("  Machine Name: {}", machineName);
+        log.info("  Sync Port: {}", syncPort);
+        log.info("  Discovery Port: {}", discoveryPort);
+        log.info("  Discovery Enabled: {}", discoveryEnabled);
+        log.info("  Sync Interval: {} seconds", syncIntervalSeconds);
+        log.info("  Server Sync Enabled: {}", syncServerEnabled);
+        log.info("  Sync Server URL: {}", syncServerUrl);
         log.info("===========================================");
+
+        if (deviceNumber <= 0) {
+            log.warn("!!! DEVICE NUMBER NOT CONFIGURED - IDs will use fallback device 9. " +
+                "Set DEVICE_CONFIG env var or configure via Electron settings. !!!");
+        }
 
         // Try to configure firewall for sync ports (Windows only)
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -170,6 +214,73 @@ public class SyncConfig {
         }
 
         return newId;
+    }
+
+    /**
+     * Load device identity (device.number, device.name, machine.id) from machine-id.properties.
+     * This is the primary source — written by Electron during first-run setup.
+     */
+    private void loadDeviceIdentityFromFile() {
+        File file = new File(MACHINE_ID_FILE);
+        if (!file.exists()) return;
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            Properties props = new Properties();
+            props.load(fis);
+
+            String deviceNumberStr = props.getProperty("device.number");
+            if (deviceNumberStr != null && !deviceNumberStr.isEmpty() && deviceNumber <= 0) {
+                try {
+                    int num = Integer.parseInt(deviceNumberStr);
+                    if (num >= 1 && num <= 9) {
+                        this.deviceNumber = num;
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+
+            String nameFromFile = props.getProperty("device.name");
+            if (nameFromFile != null && !nameFromFile.isEmpty() && (deviceName == null || deviceName.isEmpty())) {
+                this.deviceName = nameFromFile;
+            }
+
+            String idFromFile = props.getProperty("machine.id");
+            if (idFromFile != null && !idFromFile.isEmpty() && (machineId == null || machineId.isEmpty())) {
+                this.machineId = idFromFile;
+            }
+
+            log.info("Loaded device identity from {}: device.number={}, device.name={}, machine.id={}",
+                MACHINE_ID_FILE, deviceNumber, deviceName, machineId);
+        } catch (Exception e) {
+            log.warn("Could not load device identity from {}: {}", MACHINE_ID_FILE, e.getMessage());
+        }
+    }
+
+    /**
+     * Save device identity to machine-id.properties.
+     * DevicePrefixedIdGenerator reads device.number from this file.
+     */
+    private void saveDeviceIdentityToFile() {
+        File file = new File(MACHINE_ID_FILE);
+        Properties props = new Properties();
+
+        // Load existing properties first to preserve any extra fields
+        if (file.exists()) {
+            try (FileInputStream fis = new FileInputStream(file)) {
+                props.load(fis);
+            } catch (Exception ignored) {}
+        }
+
+        props.setProperty("machine.id", machineId);
+        props.setProperty("device.number", String.valueOf(deviceNumber));
+        props.setProperty("device.name", deviceName != null ? deviceName : "");
+
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            props.store(fos, "Device identity for sync and ID generation — managed by Electron");
+            log.info("Saved device identity: machine.id={}, device.number={}, device.name={}",
+                machineId, deviceNumber, deviceName);
+        } catch (Exception e) {
+            log.error("Failed to save device identity to {}: {}", MACHINE_ID_FILE, e.getMessage());
+        }
     }
 
     private String getComputerName() {

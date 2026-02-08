@@ -955,6 +955,7 @@ public class FileObjectSyncHandler {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new FileSystemResource(file));
@@ -995,6 +996,7 @@ public class FileObjectSyncHandler {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
@@ -1067,6 +1069,7 @@ public class FileObjectSyncHandler {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
             downloadUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);

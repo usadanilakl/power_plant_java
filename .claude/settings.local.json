@@ -38,7 +38,10 @@
       "Bash(mvnw.cmd compile:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Read(//c/Users/usada/JS Projects/dk-power-full-stack/**)"
+      "Read(//c/Users/usada/JS Projects/dk-power-full-stack/**)",
+      "Bash(npx electron:*)",
+      "Bash(node -e \"const cp = require\\(''child_process''\\); const r = cp.spawnSync\\(''./node_modules/electron/dist/electron.exe'', [''.''], { cwd: ''c:/Users/usada/my_projects/power_plant_java/electron-manager'', encoding: ''utf-8'', timeout: 10000 }\\); console.log\\(''stdout:'', r.stdout\\); console.log\\(''stderr:'', r.stderr\\); console.log\\(''status:'', r.status\\);\")",
+      "Bash(npm install:*)"
     ]
   }
 }

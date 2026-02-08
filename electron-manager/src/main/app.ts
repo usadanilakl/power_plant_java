@@ -6,7 +6,8 @@
 import { BrowserWindow, Menu, MenuItemConstructorOptions, app, dialog, shell } from 'electron';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
-import { DEFAULT_SPRING_BOOT_CONFIG } from './constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, SYNC_STALE_THRESHOLD_DAYS } from './constants';
+import * as events from './ipc/events';
 
 export default class App {
   static mainWindow: BrowserWindow | null = null;
@@ -87,8 +88,17 @@ export default class App {
       App.mainWindowManager = null!;
     });
 
+    // Pre-startup checks (before Spring Boot — check server, JAR update, device conflicts)
+    await App.preStartupChecks();
+
     // Auto-start Spring Boot if configured
     await App.autoStart();
+
+    // Post-startup checks (after Spring Boot — sync staleness)
+    App.postStartupChecks();
+
+    // First-run detection: notify renderer if device identity is not configured
+    App.checkDeviceSetup();
   }
 
   private static onActivate(): void {
@@ -223,6 +233,169 @@ export default class App {
       // Refresh menu after start attempt
       setTimeout(() => App.createMenu(), 1000);
     }
+  }
+
+  private static checkDeviceSetup(): void {
+    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+    if (!deviceMgr.isConfigured()) {
+      console.log('Device identity not configured — prompting user for setup');
+      // Wait for renderer to be ready, then notify
+      App.mainWindow?.webContents.once('did-finish-load', () => {
+        App.mainWindow?.webContents.send(events.IPC_DEVICE_NEEDS_SETUP);
+      });
+      // If already loaded, send immediately
+      if (!App.mainWindow?.webContents.isLoading()) {
+        App.mainWindow?.webContents.send(events.IPC_DEVICE_NEEDS_SETUP);
+      }
+    }
+  }
+
+  /**
+   * Pre-startup checks — run BEFORE Spring Boot starts.
+   * Checks sync server availability, JAR updates, and device conflicts.
+   * All failures are non-fatal (graceful degradation when offline).
+   */
+  private static async preStartupChecks(): Promise<void> {
+    const updateMgr = App.ipcHandlers.getUpdateManager();
+    const syncMgr = App.ipcHandlers.getSyncStatusManager();
+    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+    const deviceConfig = deviceMgr.getConfig();
+
+    console.log('=== Pre-startup checks ===');
+
+    // 1. Check for JAR update
+    try {
+      console.log('Checking for JAR update...');
+      const updateResult = await updateMgr.checkForUpdate();
+      if (updateResult.success && updateResult.data?.isNewer) {
+        console.log(`Update available: ${updateResult.data.fileName} (${(updateResult.data.fileSize / 1024 / 1024).toFixed(1)} MB)`);
+        // Send progress events to renderer during download
+        const onProgress = (progress: any) => {
+          if (App.mainWindow && !App.mainWindow.isDestroyed()) {
+            App.mainWindow.webContents.send(events.IPC_UPDATE_PROGRESS, progress);
+          }
+        };
+        const downloadResult = await updateMgr.downloadUpdate(undefined, onProgress);
+        if (downloadResult.success) {
+          console.log('JAR updated — will use new version on start');
+        } else {
+          console.warn('JAR download failed:', downloadResult.error);
+        }
+      } else if (updateResult.success) {
+        console.log('JAR is up to date');
+      } else {
+        console.log('Update check skipped:', updateResult.error);
+      }
+    } catch (err) {
+      console.warn('Pre-startup update check failed:', err);
+    }
+
+    // 2. Cold resync if needed (first run — no database file)
+    const coldResyncMgr = App.ipcHandlers.getColdResyncManager();
+    if (coldResyncMgr.needsColdResync() && deviceConfig) {
+      try {
+        console.log('First run detected — performing cold resync from server...');
+        const onColdProgress = (progress: any) => {
+          if (App.mainWindow && !App.mainWindow.isDestroyed()) {
+            App.mainWindow.webContents.send(events.IPC_COLD_RESYNC_PROGRESS, progress);
+          }
+        };
+        const resyncResult = await coldResyncMgr.performColdResync(
+          deviceConfig.syncServerUrl, deviceConfig.machineId, deviceConfig.deviceNumber, onColdProgress
+        );
+        if (resyncResult.success) {
+          console.log('Cold resync complete — database and files downloaded');
+        } else {
+          console.warn('Cold resync failed:', resyncResult.error, '— Spring Boot will start with empty DB');
+        }
+      } catch (err) {
+        console.warn('Cold resync error:', err);
+      }
+    } else if (coldResyncMgr.needsColdResync()) {
+      console.log('No database found but device not configured — skipping cold resync');
+    }
+
+    // 3. Check device number conflicts (only if device is configured)
+    if (deviceConfig) {
+      try {
+        console.log('Checking device number conflicts...');
+        const conflict = await syncMgr.checkDeviceConflict(
+          deviceConfig.machineId,
+          deviceConfig.deviceNumber,
+          deviceConfig.syncServerUrl
+        );
+        if (conflict.conflict) {
+          console.warn('DEVICE CONFLICT:', conflict.details);
+          // Notify renderer
+          const sendConflict = () => {
+            App.mainWindow?.webContents.send(events.IPC_DEVICE_CONFLICT, { details: conflict.details });
+          };
+          if (App.mainWindow?.webContents.isLoading()) {
+            App.mainWindow.webContents.once('did-finish-load', sendConflict);
+          } else {
+            sendConflict();
+          }
+        } else {
+          console.log('No device number conflicts');
+        }
+      } catch (err) {
+        console.warn('Device conflict check failed:', err);
+      }
+    }
+
+    console.log('=== Pre-startup checks complete ===');
+  }
+
+  /**
+   * Post-startup checks — run AFTER Spring Boot starts.
+   * Waits for Spring Boot to be healthy, then checks sync staleness.
+   * Non-blocking: runs in background after startup.
+   */
+  private static postStartupChecks(): void {
+    const syncMgr = App.ipcHandlers.getSyncStatusManager();
+
+    // Wait for Spring Boot to be running before checking sync
+    const checkInterval = setInterval(async () => {
+      const springBoot = App.ipcHandlers.getSpringBootManager();
+      const status = springBoot.getStatus();
+
+      if (status.state === 'running' && status.healthStatus === 'healthy') {
+        clearInterval(checkInterval);
+        console.log('=== Post-startup checks ===');
+
+        // Check sync staleness
+        try {
+          const staleness = syncMgr.isSyncStale(SYNC_STALE_THRESHOLD_DAYS);
+          if (staleness.stale) {
+            const msg = staleness.daysSinceSync !== null
+              ? `Database sync is ${staleness.daysSinceSync} days old`
+              : 'Database has never been synced';
+            console.warn(`SYNC STALE: ${msg}`);
+
+            // Notify renderer
+            if (App.mainWindow && !App.mainWindow.isDestroyed()) {
+              App.mainWindow.webContents.send(events.IPC_SYNC_STALE, {
+                daysSinceSync: staleness.daysSinceSync
+              });
+            }
+          } else {
+            console.log(`Sync is current (${staleness.daysSinceSync} days ago)`);
+          }
+        } catch (err) {
+          console.warn('Post-startup sync check failed:', err);
+        }
+
+        console.log('=== Post-startup checks complete ===');
+      }
+
+      // Give up after 5 minutes
+      if (status.state === 'error' || status.state === 'stopped') {
+        clearInterval(checkInterval);
+      }
+    }, 5000);
+
+    // Safety timeout — stop checking after 5 minutes
+    setTimeout(() => clearInterval(checkInterval), 300000);
   }
 
   private static async cleanup(): Promise<void> {

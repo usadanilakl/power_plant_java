@@ -62,7 +62,10 @@ public class EntityTableRegistry {
         Map.entry("DailyPermitPackage", "daily_permit_package"),
 
         // Comments
-        Map.entry("Comment", "comment")
+        Map.entry("Comment", "comment"),
+
+        // Fire Impairment
+        Map.entry("FireImpairment", "fire_impairment")
     );
 
     /**
@@ -95,7 +98,8 @@ public class EntityTableRegistry {
         "HotWork",
         "ConfinedSpace",
         "WorkRequest",
-        "DailyPermitPackage"
+        "DailyPermitPackage",
+        "FireImpairment"
     );
 
     /**

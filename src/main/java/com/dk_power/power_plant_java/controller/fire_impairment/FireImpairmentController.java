@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.fire_impairment;
 
 import com.dk_power.power_plant_java.dto.fire_impairment.FireImpairmentDto;
+import com.dk_power.power_plant_java.entities.fire_impairment.Emails;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairmentLocation;
 import com.dk_power.power_plant_java.entities.fire_impairment.ProtectionIdentifier;
 import com.dk_power.power_plant_java.sevice.fire_impairment.FireImpairmentService;
@@ -85,5 +86,13 @@ public class FireImpairmentController {
                 .map(p -> Map.of("value", p.name(), "display", p.getDisplayValue()))
                 .toList();
         return ResponseEntity.ok(types);
+    }
+
+    @GetMapping("/emails")
+    public ResponseEntity<List<Map<String, String>>> getEmails() {
+        List<Map<String, String>> emails = Arrays.stream(Emails.values())
+                .map(e -> Map.of("key", e.name(), "name", e.getDisplayName(), "email", e.getEmail()))
+                .toList();
+        return ResponseEntity.ok(emails);
     }
 }

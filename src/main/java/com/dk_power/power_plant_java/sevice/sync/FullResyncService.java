@@ -77,9 +77,6 @@ public class FullResyncService {
     @Value("${sync.backup.file.directory:}")
     private String sharedFileBackupDirectory;
 
-    @Value("${sync.server.url:}")
-    private String syncServerUrl;
-
     // Safety thresholds for deletion protection
     private static final double MAX_DELETE_PERCENTAGE = 0.25; // Max 25% of files can be deleted in one resync
     private static final int MAX_DELETE_COUNT = 100; // Max 100 files can be deleted without confirmation
@@ -330,7 +327,7 @@ public class FullResyncService {
 
         try {
             // Try sync server first
-            if (syncServerUrl != null && !syncServerUrl.isEmpty()) {
+            if (syncConfig.getSyncServerUrl() != null && !syncConfig.getSyncServerUrl().isEmpty()) {
                 try {
                     ServerResyncHealth serverHealth = getServerHealth();
                     if (serverHealth != null && serverHealth.isHealthy()) {
@@ -369,9 +366,10 @@ public class FullResyncService {
             currentResyncStatus.setPhaseProgressPercent(0);
             log.info("Downloading H2 backup from sync server");
 
-            String url = syncServerUrl + "/api/resync/database/h2-backup";
+            String url = syncConfig.getSyncServerUrl() + "/api/resync/database/h2-backup";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<byte[]> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
@@ -728,6 +726,7 @@ public class FullResyncService {
                 String url;
                 HttpHeaders headers = new HttpHeaders();
                 headers.set("X-Machine-Id", syncConfig.getMachineId());
+                headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
                 // Prefer permanent storage endpoint if available
                 if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
@@ -735,10 +734,10 @@ public class FullResyncService {
                     String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
                         .replace("+", "%20")  // URLEncoder uses + for spaces, we want %20
                         .replace("%2F", "/"); // Keep forward slashes unencoded
-                    url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+                    url = syncConfig.getSyncServerUrl() + "/api/resync/files/permanent/" + encodedPath;
                 } else if (entry.getServerId() != null) {
                     // Fall back to hash-based storage (legacy)
-                    url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                    url = syncConfig.getSyncServerUrl() + "/api/resync/files/" + entry.getServerId();
                 } else {
                     log.warn("No download path for file: {}", entry.getRelativePath());
                     continue;
@@ -823,15 +822,16 @@ public class FullResyncService {
                 String url;
                 HttpHeaders headers = new HttpHeaders();
                 headers.set("X-Machine-Id", syncConfig.getMachineId());
+                headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
                 // Prefer permanent storage endpoint if available
                 if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
                     String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
                         .replace("+", "%20")
                         .replace("%2F", "/");
-                    url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+                    url = syncConfig.getSyncServerUrl() + "/api/resync/files/permanent/" + encodedPath;
                 } else if (entry.getServerId() != null) {
-                    url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                    url = syncConfig.getSyncServerUrl() + "/api/resync/files/" + entry.getServerId();
                 } else {
                     log.warn("No download path for file: {}", entry.getRelativePath());
                     errors++;
@@ -1196,7 +1196,7 @@ public class FullResyncService {
 
         try {
             // Try sync server first
-            if (syncServerUrl != null && !syncServerUrl.isEmpty()) {
+            if (syncConfig.getSyncServerUrl() != null && !syncConfig.getSyncServerUrl().isEmpty()) {
                 try {
                     ServerResyncHealth serverHealth = getServerHealth();
                     if (serverHealth != null && serverHealth.isHealthy()) {
@@ -1251,9 +1251,10 @@ public class FullResyncService {
      * Get health status from sync server.
      */
     private ServerResyncHealth getServerHealth() {
-        String url = syncServerUrl + "/api/resync/health";
+        String url = syncConfig.getSyncServerUrl() + "/api/resync/health";
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
         ResponseEntity<ServerResyncHealth> response = restTemplate.exchange(
             url, HttpMethod.GET, new HttpEntity<>(headers), ServerResyncHealth.class);
@@ -1268,7 +1269,7 @@ public class FullResyncService {
     public FileComparisonResult previewResync() {
         try {
             // Try sync server first
-            if (syncServerUrl != null && !syncServerUrl.isEmpty()) {
+            if (syncConfig.getSyncServerUrl() != null && !syncConfig.getSyncServerUrl().isEmpty()) {
                 try {
                     return compareLocalWithServer();
                 } catch (Exception e) {
@@ -1292,9 +1293,10 @@ public class FullResyncService {
         FileComparisonResult result = new FileComparisonResult();
 
         // Use new path-based manifest endpoint from permanent storage
-        String url = syncServerUrl + "/api/resync/files/path-manifest";
+        String url = syncConfig.getSyncServerUrl() + "/api/resync/files/path-manifest";
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
         ResponseEntity<List<PathBasedManifestEntry>> response = restTemplate.exchange(
             url, HttpMethod.GET, new HttpEntity<>(headers),
@@ -1474,7 +1476,7 @@ public class FullResyncService {
         currentResyncStatus.setProgressPercent(0);
 
         try {
-            if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            if (syncConfig.getSyncServerUrl() == null || syncConfig.getSyncServerUrl().isEmpty()) {
                 return new FileSyncResult(false, "Sync server URL not configured", null);
             }
 
@@ -1758,15 +1760,16 @@ public class FullResyncService {
             String url;
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             // Prefer permanent storage endpoint if available
             if (entry.getPermanentPath() != null && !entry.getPermanentPath().isEmpty()) {
                 String encodedPath = java.net.URLEncoder.encode(entry.getPermanentPath(), "UTF-8")
                     .replace("+", "%20")
                     .replace("%2F", "/");
-                url = syncServerUrl + "/api/resync/files/permanent/" + encodedPath;
+                url = syncConfig.getSyncServerUrl() + "/api/resync/files/permanent/" + encodedPath;
             } else if (entry.getServerId() != null) {
-                url = syncServerUrl + "/api/resync/files/" + entry.getServerId();
+                url = syncConfig.getSyncServerUrl() + "/api/resync/files/" + entry.getServerId();
             } else {
                 log.warn("No download path for file: {}", entry.getRelativePath());
                 return false;
@@ -1828,16 +1831,17 @@ public class FullResyncService {
      * Returns dates where sync history is available.
      */
     public PartialSyncDatesResponse getAvailableSyncDates() {
-        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+        if (syncConfig.getSyncServerUrl() == null || syncConfig.getSyncServerUrl().isEmpty()) {
             PartialSyncDatesResponse response = new PartialSyncDatesResponse();
             response.setErrorMessage("Sync server URL not configured");
             return response;
         }
 
         try {
-            String url = syncServerUrl + "/api/sync/partial-sync/available-dates";
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/partial-sync/available-dates";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<PartialSyncDatesResponse> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), PartialSyncDatesResponse.class);
@@ -1859,16 +1863,17 @@ public class FullResyncService {
         PartialSyncPreview preview = new PartialSyncPreview();
         preview.setDate(date);
 
-        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+        if (syncConfig.getSyncServerUrl() == null || syncConfig.getSyncServerUrl().isEmpty()) {
             preview.setErrorMessage("Sync server URL not configured");
             return preview;
         }
 
         try {
             // Get change count from server
-            String url = syncServerUrl + "/api/sync/partial-sync/count?date=" + date;
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/partial-sync/count?date=" + date;
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<Map> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
@@ -1910,7 +1915,7 @@ public class FullResyncService {
         currentResyncStatus.setPhase("Starting partial sync from " + date);
 
         try {
-            if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            if (syncConfig.getSyncServerUrl() == null || syncConfig.getSyncServerUrl().isEmpty()) {
                 return new PartialSyncResult(false, "Sync server URL not configured", null, 0);
             }
 
@@ -1979,10 +1984,11 @@ public class FullResyncService {
 
         while (hasMore) {
             String url = String.format("%s/api/sync/partial-sync/changes?date=%s&page=%d&size=%d",
-                syncServerUrl, date, page, pageSize);
+                syncConfig.getSyncServerUrl(), date, page, pageSize);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<List<FieldChange>> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers),

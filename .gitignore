@@ -160,3 +160,4 @@ machine-id.properties
 /uploads-dev/**
 /uploads-prod111/**
 /uploads-prod/**
+/electron-manager/managed_apps/**

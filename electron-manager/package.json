@@ -2,7 +2,7 @@
   "name": "electron-manager",
   "version": "1.0.0",
   "description": "Desktop Manager for Power Plant Java apps",
-  "main": "dist/main/main.js",
+  "main": "dist/main/main/main.js",
   "author": "DK Power",
   "license": "MIT",
   "scripts": {
@@ -18,8 +18,10 @@
     "package:dir": "npm run build && electron-builder --dir"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^20.11.0",
     "concurrently": "^8.2.2",
     "electron": "^31.0.0",
@@ -40,11 +42,15 @@
       {
         "from": "../managed_apps",
         "to": "managed_apps",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "assets/icon.ico"
     },
     "nsis": {

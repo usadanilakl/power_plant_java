@@ -5,15 +5,19 @@ import { GateLogComponent } from './pages/gate-log/gate-log.component';
 import { WeatherComponent } from './pages/weather/weather.component';
 import { PjmComponent } from './pages/pjm/pjm.component';
 import { LogsComponent } from './pages/logs/logs.component';
+import { SyncUpdatesComponent } from './pages/sync-updates/sync-updates.component';
 import { SettingsComponent } from './pages/settings/settings.component';
+import { SpringBootUiComponent } from './pages/spring-boot-ui/spring-boot-ui.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'pid-app', component: SpringBootUiComponent },
   { path: 'fire-impairment', component: FireImpairmentComponent },
   { path: 'gate-log', component: GateLogComponent },
   { path: 'weather', component: WeatherComponent },
   { path: 'pjm', component: PjmComponent },
   { path: 'logs', component: LogsComponent },
+  { path: 'sync-updates', component: SyncUpdatesComponent },
   { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

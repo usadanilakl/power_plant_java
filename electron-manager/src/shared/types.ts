@@ -17,7 +17,7 @@ export interface AppStatus {
 }
 
 // WebView targets
-export type WebViewTarget = 'fm-global' | 'gate-website' | 'weather' | 'pjm';
+export type WebViewTarget = 'fm-global' | 'gate-website' | 'onlocation' | 'weather' | 'pjm';
 
 export interface WebViewRequest {
   target: WebViewTarget;
@@ -58,6 +58,32 @@ export interface GateLogEntry {
   checkIn?: string;
   checkOut?: string;
   location?: string;
+  duration?: string;
+  email?: string;
+  phone?: string;
+  source: 'gate' | 'onlocation';
+}
+
+export interface GateLogStatus {
+  lastUpdate: string | null;
+  autoRefreshEnabled: boolean;
+  refreshIntervalMinutes: number;
+  isRefreshing: boolean;
+  configured: boolean;
+  totalPeople: number;
+  error?: string;
+}
+
+export interface GateLogConfig {
+  onLocationApiKey: string;
+  onLocationBaseUrl: string;
+  gateWebUrl: string;
+  gateUsername: string;
+  gatePassword: string;
+  onLocationEmail: string;
+  onLocationPassword: string;
+  autoRefresh: boolean;
+  intervalMinutes: number;
 }
 
 // Weather
@@ -80,6 +106,69 @@ export interface PjmStatus {
 export interface IpcResult<T = void> {
   success: boolean;
   data?: T;
+  error?: string;
+}
+
+// Device Identity
+export interface DeviceConfig {
+  deviceNumber: number;    // 1-9
+  deviceName: string;      // "Home PC"
+  machineId: string;       // "HOME-PC"
+  syncServerUrl: string;   // "http://10.10.190.122:8090"
+  configuredAt: string;    // ISO date
+}
+
+export interface DeviceRegistryEntry {
+  deviceNumber: number;
+  deviceName: string;
+  machineId: string;
+  lastSeen?: string;
+  status: string;
+}
+
+export interface DeviceRegistryResponse {
+  devices: DeviceRegistryEntry[];
+  takenNumbers: number[];
+  availableNumbers: number[];
+}
+
+// Update management
+export interface UpdateInfo {
+  fileName: string;
+  fileSize: number;
+  checksum: string;        // SHA-256
+  lastModified: string;    // ISO date
+  isNewer: boolean;        // Compared to local JAR
+}
+
+export interface UpdateProgress {
+  phase: 'checking' | 'downloading' | 'verifying' | 'applying' | 'done' | 'error';
+  bytesDownloaded?: number;
+  totalBytes?: number;
+  percent?: number;
+  error?: string;
+}
+
+// Sync status
+export interface SyncStatusInfo {
+  lastSyncTime: string | null;
+  serverAvailable: boolean;
+  pendingChanges: number;
+  sseConnected: boolean;
+  syncInProgress: boolean;
+  deviceConflict: boolean;
+  conflictDetails?: string;
+}
+
+// Cold Resync (external database + file download before Spring Boot starts)
+export interface ColdResyncProgress {
+  phase: 'db_download' | 'db_extract' | 'file_manifest' | 'file_download' | 'finalizing' | 'done' | 'error';
+  statusMessage: string;
+  progressPercent: number;
+  filesTotal?: number;
+  filesDownloaded?: number;
+  bytesDownloaded?: number;
+  totalBytes?: number;
   error?: string;
 }
 

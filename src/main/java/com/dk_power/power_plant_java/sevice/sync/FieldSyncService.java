@@ -262,6 +262,7 @@ public class FieldSyncService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
         headers.set("X-Machine-Name", syncConfig.getMachineName());
 
         Map<String, Object> request = new HashMap<>();

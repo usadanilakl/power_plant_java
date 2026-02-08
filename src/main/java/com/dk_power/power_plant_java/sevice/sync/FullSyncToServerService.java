@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
+import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
@@ -22,6 +23,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.*;
 import com.dk_power.power_plant_java.repository.permits.*;
 import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
+import com.dk_power.power_plant_java.repository.fire_impairment.FireImpairmentRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -113,6 +115,7 @@ public class FullSyncToServerService {
     private final WorkRequestRepo workRequestRepo;
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
     private final CommentRepo commentRepo;
+    private final FireImpairmentRepo fireImpairmentRepo;
 
     // Sync state
     private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
@@ -165,7 +168,8 @@ public class FullSyncToServerService {
         new EntitySyncConfig("HotWork", HotWork.class),
         new EntitySyncConfig("ConfinedSpace", ConfinedSpace.class),
         new EntitySyncConfig("WorkRequest", WorkRequest.class),
-        new EntitySyncConfig("DailyPermitPackage", DailyPermitPackage.class)
+        new EntitySyncConfig("DailyPermitPackage", DailyPermitPackage.class),
+        new EntitySyncConfig("FireImpairment", FireImpairment.class)
     );
 
     /**
@@ -404,6 +408,7 @@ public class FullSyncToServerService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers),
@@ -434,6 +439,7 @@ public class FullSyncToServerService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             // Create multipart request
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -489,6 +495,7 @@ public class FullSyncToServerService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new ByteArrayResource(dbBackup) {
@@ -534,6 +541,7 @@ public class FullSyncToServerService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new ByteArrayResource(filesZip) {
@@ -756,6 +764,7 @@ public class FullSyncToServerService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -789,6 +798,7 @@ public class FullSyncToServerService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("uploadId", uploadId);
@@ -832,6 +842,7 @@ public class FullSyncToServerService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -868,6 +879,7 @@ public class FullSyncToServerService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
             restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
             log.info("Cancelled chunked upload: {}", uploadId);
@@ -1008,6 +1020,7 @@ public class FullSyncToServerService {
         counts.put("ConfinedSpace", confinedSpaceRepo.count());
         counts.put("WorkRequest", workRequestRepo.count());
         counts.put("DailyPermitPackage", dailyPermitPackageRepo.count());
+        counts.put("FireImpairment", fireImpairmentRepo.count());
         return counts;
     }
 
@@ -1173,6 +1186,7 @@ public class FullSyncToServerService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("X-Machine-Id", syncConfig.getMachineId());
+            headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
             headers.set("X-Machine-Name", syncConfig.getMachineName());
             headers.set("Accept-Encoding", "gzip");
 
@@ -1272,6 +1286,7 @@ public class FullSyncToServerService {
             case "WorkRequest" -> workRequestRepo;
             case "DailyPermitPackage" -> dailyPermitPackageRepo;
             case "Comment" -> commentRepo;
+            case "FireImpairment" -> fireImpairmentRepo;
             default -> null;
         };
     }

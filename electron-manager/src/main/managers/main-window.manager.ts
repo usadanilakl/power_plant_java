@@ -32,6 +32,7 @@ export class MainWindowManager {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
+        sandbox: false,
         backgroundThrottling: false,
         preload: path.join(__dirname, '..', 'preload', 'main.preload.js')
       }
@@ -62,7 +63,7 @@ export class MainWindowManager {
       // Production: load from built files
       this.window.loadURL(
         format({
-          pathname: path.join(__dirname, '..', '..', rendererAppName, 'browser', 'index.html'),
+          pathname: path.join(__dirname, '..', '..', '..', rendererAppName, 'browser', 'index.html'),
           protocol: 'file:',
           slashes: true
         })
