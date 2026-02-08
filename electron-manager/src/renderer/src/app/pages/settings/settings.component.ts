@@ -59,6 +59,12 @@ import {
             </button>
           </div>
 
+          <!-- Previously registered device detected -->
+          <div *ngIf="existingMatch" class="match-banner">
+            This device was previously registered as "{{ existingMatch.deviceName }}" (Device #{{ existingMatch.deviceNumber }}).
+            <button class="btn btn-primary btn-sm" (click)="claimExistingDevice(existingMatch)" [disabled]="registering">Reuse Settings</button>
+          </div>
+
           <!-- Server response: device registry -->
           <div *ngIf="registryLoaded" class="registry-panel">
             <div *ngIf="serverError" class="server-error">
@@ -420,6 +426,19 @@ import {
       background: rgba(99, 102, 241, 0.1);
     }
 
+    .match-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 6px;
+      color: var(--accent-success);
+      font-size: 13px;
+    }
+
     .btn-warning {
       background-color: var(--accent-warning);
       color: #000;
@@ -448,6 +467,7 @@ export class SettingsComponent implements OnInit {
   saveMessage = '';
   saveError = false;
   selectedExisting: DeviceRegistryEntry | null = null;
+  existingMatch: DeviceRegistryEntry | null = null;
 
   allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -477,6 +497,14 @@ export class SettingsComponent implements OnInit {
       this.availableNumbers = result.data.availableNumbers || [];
       this.suggestedNumber = this.availableNumbers.length > 0 ? this.availableNumbers[0] : null;
       this.setupNumber = this.suggestedNumber;
+
+      // Auto-detect if this device was previously registered (machineId match)
+      if (this.setupName) {
+        const derivedId = this.setupName.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9\-]/g, '');
+        this.existingMatch = this.registryDevices.find(d => d.machineId === derivedId) || null;
+      } else {
+        this.existingMatch = null;
+      }
     } else {
       this.serverError = result.error || 'Could not reach sync server';
       this.registryDevices = [];

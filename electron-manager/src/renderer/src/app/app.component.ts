@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription, filter } from 'rxjs';
 import { HeaderComponent } from './components/header.component';
 import { SidebarComponent } from './layout/sidebar.component';
-import { ElectronService, UpdateProgress, ColdResyncProgress } from './services/electron.service';
+import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent } from './services/electron.service';
 
 @Component({
   selector: 'app-root',
@@ -14,24 +14,33 @@ import { ElectronService, UpdateProgress, ColdResyncProgress } from './services/
     <div class="app-container">
       <app-header></app-header>
 
-      <!-- Startup notification banners -->
-      <div class="notification-bar update" *ngIf="updateProgress && updateProgress.phase !== 'done' && updateProgress.phase !== 'error'"
-           (click)="navigateToSyncUpdates()">
-        Downloading update... {{ updateProgress.percent || 0 }}%
+      <!-- Server unreachable -->
+      <div class="notification-bar conflict" *ngIf="serverReachable === false && !syncInProgress">
+        Sync server unreachable
+        <button class="notif-action" (click)="navigateToSettings()">Settings</button>
       </div>
 
-      <div class="notification-bar update"
-           *ngIf="coldResyncProgress && coldResyncProgress.phase !== 'done' && coldResyncProgress.phase !== 'error'"
-           (click)="navigateToSyncUpdates()">
-        {{ coldResyncProgress.statusMessage }} {{ coldResyncProgress.progressPercent }}%
+      <!-- Assessment: something needed -->
+      <div class="notification-bar info" *ngIf="assessment && needsSync && !syncInProgress && serverReachable !== false && !assessmentDismissed">
+        {{ assessmentSummary }}
+        <button class="notif-action" (click)="syncNeeded()">Sync Now</button>
+        <button class="notif-action" (click)="navigateToSyncUpdates()">Details</button>
+        <button class="notif-dismiss" (click)="assessmentDismissed = true">&#x2715;</button>
       </div>
 
+      <!-- Sync in progress -->
+      <div class="notification-bar update" *ngIf="syncInProgress" (click)="navigateToSyncUpdates()">
+        {{ syncProgress?.statusMessage }} {{ syncProgress?.progressPercent }}%
+      </div>
+
+      <!-- Sync stale (post-startup, from Spring Boot) -->
       <div class="notification-bar stale" *ngIf="syncStaleWarning" (click)="navigateToSyncUpdates()">
         {{ syncStaleWarning }}
         <button class="notif-action" (click)="navigateToSyncUpdates(); $event.stopPropagation()">View</button>
         <button class="notif-dismiss" (click)="syncStaleWarning = ''; $event.stopPropagation()">&#x2715;</button>
       </div>
 
+      <!-- Device conflict (post-startup) -->
       <div class="notification-bar conflict" *ngIf="deviceConflictWarning" (click)="navigateToSettings()">
         {{ deviceConflictWarning }}
         <button class="notif-action" (click)="navigateToSettings(); $event.stopPropagation()">Settings</button>
@@ -88,6 +97,12 @@ import { ElectronService, UpdateProgress, ColdResyncProgress } from './services/
       border-bottom: 1px solid rgba(80, 140, 255, 0.25);
     }
 
+    .notification-bar.info {
+      background-color: rgba(80, 140, 255, 0.15);
+      color: var(--accent-primary);
+      border-bottom: 1px solid rgba(80, 140, 255, 0.25);
+    }
+
     .notification-bar.stale {
       background-color: rgba(255, 180, 50, 0.15);
       color: var(--accent-warning);
@@ -111,6 +126,10 @@ import { ElectronService, UpdateProgress, ColdResyncProgress } from './services/
       font-size: 12px;
     }
 
+    .notif-action + .notif-action {
+      margin-left: 0;
+    }
+
     .notif-dismiss {
       background: none;
       border: none;
@@ -129,17 +148,25 @@ import { ElectronService, UpdateProgress, ColdResyncProgress } from './services/
 export class AppComponent implements OnInit, OnDestroy {
   title = 'DK Power Manager';
   sidebarCollapsed = false;
-  updateProgress: UpdateProgress | null = null;
-  coldResyncProgress: ColdResyncProgress | null = null;
+
+  // Startup assessment state
+  assessment: StartupAssessment | null = null;
+  serverReachable: boolean | null = null; // null = not checked yet
+  syncProgress: SyncExecuteProgress | null = null;
+  syncInProgress = false;
+  assessmentDismissed = false;
+
+  // Post-startup warnings (from Spring Boot)
   syncStaleWarning = '';
   deviceConflictWarning = '';
 
   private routerSub?: Subscription;
   private unsubDeviceSetup?: () => void;
-  private unsubUpdateProgress?: () => void;
+  private unsubStartupAssessment?: () => void;
+  private unsubServerStatus?: () => void;
+  private unsubSyncProgress?: () => void;
   private unsubSyncStale?: () => void;
   private unsubDeviceConflict?: () => void;
-  private unsubColdResyncProgress?: () => void;
 
   constructor(private router: Router, private electronService: ElectronService) {}
 
@@ -155,23 +182,31 @@ export class AppComponent implements OnInit, OnDestroy {
       this.router.navigate(['/settings']);
     });
 
-    // Listen for update progress during startup
-    this.unsubUpdateProgress = this.electronService.onUpdateProgress((progress) => {
-      this.updateProgress = progress;
+    // Listen for startup assessment from main process
+    this.unsubStartupAssessment = this.electronService.onStartupAssessment((a) => {
+      this.assessment = a;
+      this.serverReachable = a.serverReachable;
+      this.assessmentDismissed = false;
+    });
+
+    // Listen for server reachability changes (polling)
+    this.unsubServerStatus = this.electronService.onStartupServerStatus((data) => {
+      this.serverReachable = data.reachable;
+    });
+
+    // Listen for selective sync progress
+    this.unsubSyncProgress = this.electronService.onSyncExecuteProgress((progress) => {
+      this.syncProgress = progress;
+      this.syncInProgress = progress.phase !== 'done' && progress.phase !== 'error';
       if (progress.phase === 'done' || progress.phase === 'error') {
-        setTimeout(() => { this.updateProgress = null; }, 5000);
+        setTimeout(() => {
+          this.syncProgress = null;
+          this.syncInProgress = false;
+        }, 5000);
       }
     });
 
-    // Listen for cold resync progress during startup
-    this.unsubColdResyncProgress = this.electronService.onColdResyncProgress((progress) => {
-      this.coldResyncProgress = progress;
-      if (progress.phase === 'done' || progress.phase === 'error') {
-        setTimeout(() => { this.coldResyncProgress = null; }, 5000);
-      }
-    });
-
-    // Listen for sync staleness warning
+    // Listen for sync staleness warning (post-startup, from Spring Boot)
     this.unsubSyncStale = this.electronService.onSyncStale((data) => {
       this.syncStaleWarning = data.daysSinceSync !== null
         ? `Database sync is ${data.daysSinceSync} days old. Full resync recommended.`
@@ -182,6 +217,37 @@ export class AppComponent implements OnInit, OnDestroy {
     this.unsubDeviceConflict = this.electronService.onDeviceConflict((data) => {
       this.deviceConflictWarning = data.details;
     });
+  }
+
+  get needsSync(): boolean {
+    if (!this.assessment) return false;
+    const a = this.assessment;
+    return !a.jar.present || a.jar.updateAvailable || !a.db.present || !a.files.present || a.sync.stale;
+  }
+
+  get assessmentSummary(): string {
+    if (!this.assessment) return '';
+    const items: string[] = [];
+    if (!this.assessment.jar.present) items.push('JAR missing');
+    else if (this.assessment.jar.updateAvailable) items.push('JAR update available');
+    if (!this.assessment.db.present) items.push('Database missing');
+    if (!this.assessment.files.present) items.push('Files missing');
+    if (this.assessment.sync.stale) {
+      items.push(this.assessment.sync.daysSinceSync !== null
+        ? `Sync ${this.assessment.sync.daysSinceSync}d old`
+        : 'Never synced');
+    }
+    return items.join(', ');
+  }
+
+  syncNeeded(): void {
+    if (!this.assessment) return;
+    const components: SyncComponent[] = [];
+    if (!this.assessment.jar.present || this.assessment.jar.updateAvailable) components.push('jar');
+    if (!this.assessment.db.present || this.assessment.sync.stale) components.push('db');
+    if (!this.assessment.files.present) components.push('files');
+    if (components.length === 0) return;
+    this.electronService.executeSync(components);
   }
 
   onSidebarToggle(): void {
@@ -199,9 +265,10 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
     this.unsubDeviceSetup?.();
-    this.unsubUpdateProgress?.();
+    this.unsubStartupAssessment?.();
+    this.unsubServerStatus?.();
+    this.unsubSyncProgress?.();
     this.unsubSyncStale?.();
     this.unsubDeviceConflict?.();
-    this.unsubColdResyncProgress?.();
   }
 }

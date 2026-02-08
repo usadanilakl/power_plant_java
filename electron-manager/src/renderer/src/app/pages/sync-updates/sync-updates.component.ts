@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ElectronService, AppStatus, SyncStatusInfo, UpdateInfo, UpdateProgress, ColdResyncProgress, IpcResult
+  ElectronService, AppStatus, SyncStatusInfo, StartupAssessment, SyncComponent,
+  SyncExecuteProgress, DeviceConfig, IpcResult
 } from '../../services/electron.service';
 import { Subscription } from 'rxjs';
 
@@ -13,195 +14,153 @@ import { Subscription } from 'rxjs';
     <div class="page">
       <h1 class="page-title">Sync & Updates</h1>
 
-      <!-- Sync Status Section -->
+      <!-- Section 1: Status & Assessment -->
       <section class="card">
         <div class="card-header">
-          <h2>Database Sync</h2>
-          <span class="server-indicator" [class.online]="syncStatus?.serverAvailable">
-            {{ syncStatus?.serverAvailable ? 'Server Online' : 'Server Offline' }}
+          <h2>Status & Assessment</h2>
+          <span class="server-indicator" [class.online]="assessment?.serverReachable">
+            {{ assessment?.serverReachable ? 'Server Online' : assessment === null ? 'Checking...' : 'Server Offline' }}
           </span>
         </div>
         <div class="card-body">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Last Sync</span>
-              <span class="info-value" [class.stale]="isSyncStale">
-                {{ syncStatus && syncStatus.lastSyncTime ? formatRelativeTime(syncStatus.lastSyncTime) : 'Never' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Pending Changes</span>
-              <span class="info-value">{{ syncStatus?.pendingChanges ?? 0 }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">SSE Connection</span>
-              <span class="info-value" [class.connected]="syncStatus?.sseConnected">
-                {{ syncStatus?.sseConnected ? 'Connected' : 'Disconnected' }}
-              </span>
-            </div>
-            <div class="info-item" *ngIf="syncStatus?.syncInProgress">
-              <span class="info-label">Status</span>
-              <span class="info-value syncing">Syncing...</span>
-            </div>
-          </div>
+          <table class="assessment-table" *ngIf="assessment">
+            <tbody>
+              <tr>
+                <td class="at-label">JAR</td>
+                <td class="at-status">
+                  <span [class.status-ok]="assessment.jar.present && !assessment.jar.updateAvailable"
+                        [class.status-warn]="assessment.jar.present && assessment.jar.updateAvailable"
+                        [class.status-missing]="!assessment.jar.present">
+                    {{ assessment.jar.present ? 'Present' : 'Missing' }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  <span *ngIf="assessment.jar.updateAvailable">Update available</span>
+                  <span *ngIf="assessment.jar.present && !assessment.jar.updateAvailable">Up to date</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="at-label">Database</td>
+                <td class="at-status">
+                  <span [class.status-ok]="assessment.db.present"
+                        [class.status-missing]="!assessment.db.present">
+                    {{ assessment.db.present ? 'Present' : 'Missing' }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  {{ assessment.db.sizeBytes > 0 ? formatFileSize(assessment.db.sizeBytes) : '' }}
+                </td>
+              </tr>
+              <tr>
+                <td class="at-label">Files</td>
+                <td class="at-status">
+                  <span [class.status-ok]="assessment.files.present"
+                        [class.status-missing]="!assessment.files.present">
+                    {{ assessment.files.present ? 'Present' : 'Missing' }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  {{ assessment.files.totalSizeBytes > 0 ? formatFileSize(assessment.files.totalSizeBytes) : '' }}
+                </td>
+              </tr>
+              <tr>
+                <td class="at-label">Last Sync</td>
+                <td class="at-status">
+                  <span [class.status-ok]="!assessment.sync.stale"
+                        [class.status-warn]="assessment.sync.stale">
+                    {{ assessment.sync.stale ? 'Stale' : 'OK' }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  {{ assessment.sync.daysSinceSync !== null ? assessment.sync.daysSinceSync + ' days ago' : 'Never' }}
+                </td>
+              </tr>
+              <tr>
+                <td class="at-label">Conflicts</td>
+                <td class="at-status">
+                  <span [class.status-ok]="!assessment.conflict.detected"
+                        [class.status-warn]="assessment.conflict.detected">
+                    {{ assessment.conflict.detected ? 'Detected' : 'None' }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  {{ assessment.conflict.details || '' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div class="stale-warning" *ngIf="isSyncStale">
-            Database sync is {{ staleDays !== null ? staleDays + ' days' : '' }} old. A full resync is recommended.
-          </div>
+          <p class="hint" *ngIf="!assessment">Loading assessment...</p>
 
-          <div class="resync-progress" *ngIf="resyncInProgress">
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 100%"></div>
-            </div>
-            <span class="progress-text">Full resync in progress...</span>
-          </div>
-
-          <div class="card-actions">
-            <button class="btn btn-primary"
-                    [disabled]="appState !== 'running' || resyncInProgress"
-                    (click)="refreshSyncStatus()">
-              Refresh Status
+          <div class="card-actions" *ngIf="assessment">
+            <button class="btn btn-secondary" (click)="refreshAssessment()">
+              Refresh
             </button>
-            <button class="btn btn-warning"
-                    [disabled]="appState !== 'running' || resyncInProgress"
-                    (click)="triggerResync()">
-              Full Resync
-            </button>
           </div>
-          <p class="hint" *ngIf="appState !== 'running'">Spring Boot must be running for sync operations.</p>
-          <p class="success-msg" *ngIf="resyncMessage">{{ resyncMessage }}</p>
         </div>
       </section>
 
-      <!-- Download from Server (Cold Resync) Section -->
+      <!-- Section 2: Sync Actions -->
       <section class="card">
         <div class="card-header">
-          <h2>Download from Server</h2>
-          <span class="server-indicator" [class.online]="syncStatus?.serverAvailable">
-            {{ syncStatus?.serverAvailable ? 'Server Online' : 'Server Offline' }}
-          </span>
+          <h2>Sync Actions</h2>
         </div>
         <div class="card-body">
-          <p class="hint" style="margin-top: 0; margin-bottom: 12px">
-            Download the full database and all files directly from the sync server.
-            Spring Boot must be stopped before downloading.
+          <div class="card-actions sync-actions">
+            <button class="btn btn-secondary"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="executeSync(['jar'])">
+              Sync JAR
+            </button>
+            <button class="btn btn-secondary"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="executeSync(['db'])">
+              Sync Database
+            </button>
+            <button class="btn btn-secondary"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="executeSync(['files'])">
+              Sync Files
+            </button>
+            <button class="btn btn-primary"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="executeSync(['jar', 'db', 'files'])">
+              Sync All
+            </button>
+            <button class="btn btn-warning"
+                    [disabled]="syncInProgress || !assessment?.serverReachable || !needsSync"
+                    (click)="syncNeeded()">
+              Sync Needed
+            </button>
+          </div>
+
+          <p class="hint">Spring Boot will be automatically stopped and restarted when syncing database or files.</p>
+          <p class="hint" *ngIf="!assessment?.serverReachable && assessment !== null">
+            Sync server must be reachable to perform sync operations.
           </p>
 
-          <div class="stale-warning" *ngIf="appState === 'running' && !coldResyncInProgress">
-            Stop Spring Boot before downloading. The database cannot be replaced while it is running.
-          </div>
-
-          <div class="resync-progress" *ngIf="coldResyncProgress">
+          <!-- Progress -->
+          <div class="sync-progress" *ngIf="syncProgress">
             <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="coldResyncProgress.progressPercent || 0"></div>
+              <div class="progress-fill" [style.width.%]="syncProgress.progressPercent || 0"></div>
             </div>
             <span class="progress-text">
-              {{ coldResyncProgress.statusMessage }}
-              <span *ngIf="coldResyncProgress.progressPercent"> {{ coldResyncProgress.progressPercent }}%</span>
-              <span *ngIf="coldResyncProgress.filesDownloaded && coldResyncProgress.filesTotal">
-                ({{ coldResyncProgress.filesDownloaded }}/{{ coldResyncProgress.filesTotal }} files)
-              </span>
+              {{ syncProgress.statusMessage }}
+              <span *ngIf="syncProgress.progressPercent"> {{ syncProgress.progressPercent }}%</span>
             </span>
           </div>
 
-          <div class="error-msg" *ngIf="coldResyncProgress?.phase === 'error'">
-            Download failed: {{ coldResyncProgress?.error }}
+          <div class="error-msg" *ngIf="syncProgress?.phase === 'error'">
+            Sync failed: {{ syncProgress?.error }}
           </div>
 
-          <div class="success-msg" *ngIf="coldResyncProgress?.phase === 'done'" style="margin-bottom: 12px">
-            Database and files downloaded successfully. Start Spring Boot to use the new data.
+          <div class="success-msg" *ngIf="syncProgress?.phase === 'done'">
+            Sync completed successfully.
           </div>
-
-          <div class="card-actions">
-            <button class="btn btn-primary"
-                    [disabled]="appState === 'running' || coldResyncInProgress || !deviceConfig"
-                    (click)="triggerColdResync()">
-              Download from Server
-            </button>
-            <button class="btn btn-secondary"
-                    *ngIf="coldResyncProgress?.phase === 'done'"
-                    (click)="startAfterColdResync()">
-              Start Spring Boot
-            </button>
-          </div>
-          <p class="hint" *ngIf="!deviceConfig">Device identity must be configured first.</p>
-          <p class="success-msg" *ngIf="coldResyncMessage">{{ coldResyncMessage }}</p>
         </div>
       </section>
 
-      <!-- Application Update Section -->
-      <section class="card">
-        <div class="card-header">
-          <h2>Application Update</h2>
-        </div>
-        <div class="card-body">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Current JAR</span>
-              <span class="info-value">power_plant_java-1.jar</span>
-            </div>
-            <div class="info-item" *ngIf="updateInfo">
-              <span class="info-label">Server JAR</span>
-              <span class="info-value">{{ updateInfo.fileName }}</span>
-            </div>
-            <div class="info-item" *ngIf="updateInfo">
-              <span class="info-label">Size</span>
-              <span class="info-value">{{ formatFileSize(updateInfo.fileSize) }}</span>
-            </div>
-            <div class="info-item" *ngIf="updateInfo">
-              <span class="info-label">Server Modified</span>
-              <span class="info-value">{{ formatRelativeTime(updateInfo.lastModified) }}</span>
-            </div>
-          </div>
-
-          <div class="update-available" *ngIf="updateInfo?.isNewer">
-            A newer version is available on the server.
-          </div>
-
-          <div class="update-progress" *ngIf="updateProgress && updateProgress.phase !== 'done' && updateProgress.phase !== 'error'">
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="updateProgress.percent || 0"></div>
-            </div>
-            <span class="progress-text">
-              {{ updatePhaseLabel }}
-              <span *ngIf="updateProgress.percent">{{ updateProgress.percent }}%</span>
-              <span *ngIf="updateProgress.bytesDownloaded && updateProgress.totalBytes">
-                ({{ formatFileSize(updateProgress.bytesDownloaded) }} / {{ formatFileSize(updateProgress.totalBytes) }})
-              </span>
-            </span>
-          </div>
-
-          <div class="error-msg" *ngIf="updateProgress?.phase === 'error'">
-            Update failed: {{ updateProgress?.error }}
-          </div>
-
-          <div class="success-msg" *ngIf="updateProgress?.phase === 'done'">
-            Update downloaded successfully. Restart to apply.
-          </div>
-
-          <div class="card-actions">
-            <button class="btn btn-secondary"
-                    [disabled]="isUpdating"
-                    (click)="checkForUpdate()">
-              Check for Update
-            </button>
-            <button class="btn btn-primary"
-                    *ngIf="updateInfo?.isNewer"
-                    [disabled]="isUpdating"
-                    (click)="downloadUpdate()">
-              Download & Update
-            </button>
-            <button class="btn btn-warning"
-                    *ngIf="updateProgress?.phase === 'done'"
-                    (click)="restartApp()">
-              Restart to Apply
-            </button>
-          </div>
-          <p class="hint" *ngIf="updateCheckMessage">{{ updateCheckMessage }}</p>
-        </div>
-      </section>
-
-      <!-- Device Identity & Conflicts Section -->
+      <!-- Section 3: Device Identity (kept from before) -->
       <section class="card">
         <div class="card-header">
           <h2>Device Identity</h2>
@@ -226,17 +185,6 @@ import { Subscription } from 'rxjs';
             </div>
           </div>
           <p *ngIf="!deviceConfig" class="hint">Device identity not configured. Go to Settings to set up.</p>
-
-          <div class="conflict-warning" *ngIf="conflictDetails">
-            {{ conflictDetails }}
-          </div>
-
-          <div class="card-actions" *ngIf="deviceConfig">
-            <button class="btn btn-secondary" (click)="checkConflict()">
-              Check for Conflicts
-            </button>
-          </div>
-          <p class="success-msg" *ngIf="conflictCheckMessage">{{ conflictCheckMessage }}</p>
         </div>
       </section>
     </div>
@@ -294,6 +242,62 @@ import { Subscription } from 'rxjs';
       color: var(--accent-success);
     }
 
+    /* Assessment table */
+    .assessment-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+
+    .assessment-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+    }
+
+    .assessment-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .at-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      width: 100px;
+    }
+
+    .at-status {
+      width: 100px;
+    }
+
+    .at-detail {
+      color: var(--text-muted);
+    }
+
+    .status-ok {
+      color: var(--accent-success);
+      font-weight: 500;
+    }
+
+    .status-warn {
+      color: var(--accent-warning);
+      font-weight: 500;
+    }
+
+    .status-missing {
+      color: var(--accent-error);
+      font-weight: 500;
+    }
+
+    /* Sync actions */
+    .sync-actions {
+      flex-wrap: wrap;
+    }
+
+    .sync-progress {
+      margin-top: 16px;
+    }
+
+    /* Shared styles */
     .info-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -320,50 +324,9 @@ import { Subscription } from 'rxjs';
       color: var(--text-primary);
     }
 
-    .info-value.stale {
-      color: var(--accent-warning);
-    }
-
-    .info-value.connected {
-      color: var(--accent-success);
-    }
-
-    .info-value.syncing {
-      color: var(--accent-primary);
-    }
-
     .info-value.mono {
       font-family: monospace;
       font-size: 12px;
-    }
-
-    .stale-warning, .conflict-warning {
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
-
-    .stale-warning {
-      background-color: rgba(255, 180, 50, 0.12);
-      color: var(--accent-warning);
-      border: 1px solid rgba(255, 180, 50, 0.25);
-    }
-
-    .conflict-warning {
-      background-color: rgba(255, 80, 80, 0.12);
-      color: var(--accent-error);
-      border: 1px solid rgba(255, 80, 80, 0.25);
-    }
-
-    .update-available {
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 16px;
-      background-color: rgba(80, 140, 255, 0.12);
-      color: var(--accent-primary);
-      border: 1px solid rgba(80, 140, 255, 0.25);
     }
 
     .progress-bar {
@@ -386,10 +349,6 @@ import { Subscription } from 'rxjs';
       color: var(--text-muted);
     }
 
-    .resync-progress, .update-progress {
-      margin-bottom: 16px;
-    }
-
     .card-actions {
       display: flex;
       gap: 8px;
@@ -406,7 +365,7 @@ import { Subscription } from 'rxjs';
     .error-msg {
       font-size: 13px;
       color: var(--accent-error);
-      margin-bottom: 12px;
+      margin-top: 12px;
     }
 
     .success-msg {
@@ -461,179 +420,85 @@ import { Subscription } from 'rxjs';
   `]
 })
 export class SyncUpdatesComponent implements OnInit, OnDestroy {
-  appState = 'stopped';
-  syncStatus: SyncStatusInfo | null = null;
-  updateInfo: UpdateInfo | null = null;
-  updateProgress: UpdateProgress | null = null;
-  deviceConfig: any = null;
-  conflictDetails: string | null = null;
-
-  resyncInProgress = false;
-  resyncMessage = '';
-  coldResyncProgress: ColdResyncProgress | null = null;
-  coldResyncInProgress = false;
-  coldResyncMessage = '';
-  isUpdating = false;
-  updateCheckMessage = '';
-  conflictCheckMessage = '';
-  isSyncStale = false;
-  staleDays: number | null = null;
+  assessment: StartupAssessment | null = null;
+  syncProgress: SyncExecuteProgress | null = null;
+  syncInProgress = false;
+  deviceConfig: DeviceConfig | null = null;
 
   private statusSub?: Subscription;
-  private unsubProgress?: () => void;
-  private unsubColdResyncProgress?: () => void;
+  private unsubSyncProgress?: () => void;
+  private unsubAssessment?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
   async ngOnInit(): Promise<void> {
     this.statusSub = this.electronService.appStatus$.subscribe(s => {
-      this.appState = s.state;
+      // track app state if needed
     });
 
-    this.unsubProgress = this.electronService.onUpdateProgress((progress) => {
-      this.updateProgress = progress;
-    });
-
-    this.unsubColdResyncProgress = this.electronService.onColdResyncProgress((progress) => {
-      this.coldResyncProgress = progress;
+    this.unsubSyncProgress = this.electronService.onSyncExecuteProgress((progress) => {
+      this.syncProgress = progress;
+      this.syncInProgress = progress.phase !== 'done' && progress.phase !== 'error';
       if (progress.phase === 'done' || progress.phase === 'error') {
-        this.coldResyncInProgress = false;
+        setTimeout(() => { this.syncInProgress = false; }, 5000);
       }
     });
 
-    // Load initial data
+    this.unsubAssessment = this.electronService.onStartupAssessment((a) => {
+      this.assessment = a;
+    });
+
     await Promise.all([
       this.loadDeviceConfig(),
-      this.refreshSyncStatus(),
+      this.loadAssessment(),
     ]);
   }
 
   ngOnDestroy(): void {
     this.statusSub?.unsubscribe();
-    this.unsubProgress?.();
-    this.unsubColdResyncProgress?.();
+    this.unsubSyncProgress?.();
+    this.unsubAssessment?.();
   }
 
   async loadDeviceConfig(): Promise<void> {
     const result = await this.electronService.getDeviceConfig();
     if (result.success) {
-      this.deviceConfig = result.data;
+      this.deviceConfig = result.data ?? null;
     }
   }
 
-  async refreshSyncStatus(): Promise<void> {
-    const result = await this.electronService.getSyncStatus();
+  async loadAssessment(): Promise<void> {
+    const result = await this.electronService.getStartupAssessment();
     if (result.success && result.data) {
-      this.syncStatus = result.data;
-      this.conflictDetails = result.data.deviceConflict ? (result.data.conflictDetails || 'Device number conflict detected') : null;
-
-      // Calculate staleness
-      if (result.data.lastSyncTime) {
-        const days = Math.round((Date.now() - new Date(result.data.lastSyncTime).getTime()) / (1000 * 60 * 60 * 24));
-        this.staleDays = days;
-        this.isSyncStale = days > 14;
-      } else {
-        this.staleDays = null;
-        this.isSyncStale = true;
-      }
+      this.assessment = result.data;
     }
   }
 
-  async triggerResync(): Promise<void> {
-    this.resyncInProgress = true;
-    this.resyncMessage = '';
-    const result = await this.electronService.triggerResync();
-    if (result.success) {
-      this.resyncMessage = 'Full resync triggered. This may take several minutes.';
-      // Poll for completion
-      const poll = setInterval(async () => {
-        const status = await this.electronService.getResyncStatus();
-        if (status.success && status.data && !status.data.inProgress) {
-          clearInterval(poll);
-          this.resyncInProgress = false;
-          this.resyncMessage = 'Full resync completed.';
-          await this.refreshSyncStatus();
-        }
-      }, 5000);
-      // Safety timeout
-      setTimeout(() => { clearInterval(poll); this.resyncInProgress = false; }, 600000);
-    } else {
-      this.resyncInProgress = false;
-      this.resyncMessage = `Resync failed: ${result.error}`;
-    }
+  async refreshAssessment(): Promise<void> {
+    this.assessment = null;
+    await this.loadAssessment();
   }
 
-  async triggerColdResync(): Promise<void> {
-    this.coldResyncInProgress = true;
-    this.coldResyncMessage = '';
-    this.coldResyncProgress = null;
-    const result = await this.electronService.triggerColdResync();
-    if (result.success) {
-      this.coldResyncMessage = 'Download complete.';
-    } else {
-      this.coldResyncInProgress = false;
-      this.coldResyncMessage = `Download failed: ${result.error}`;
-    }
+  get needsSync(): boolean {
+    if (!this.assessment) return false;
+    const a = this.assessment;
+    return !a.jar.present || a.jar.updateAvailable || !a.db.present || !a.files.present || a.sync.stale;
   }
 
-  async startAfterColdResync(): Promise<void> {
-    this.coldResyncProgress = null;
-    this.coldResyncMessage = '';
-    await this.electronService.startApp();
+  executeSync(components: SyncComponent[]): void {
+    if (this.syncInProgress) return;
+    this.syncProgress = null;
+    this.electronService.executeSync(components);
   }
 
-  async checkForUpdate(): Promise<void> {
-    this.updateCheckMessage = '';
-    this.updateInfo = null;
-    this.isUpdating = true;
-    const result = await this.electronService.checkForUpdate(this.deviceConfig?.syncServerUrl);
-    this.isUpdating = false;
-    if (result.success && result.data) {
-      this.updateInfo = result.data;
-      this.updateCheckMessage = result.data.isNewer
-        ? 'Update available!'
-        : 'Application is up to date.';
-    } else if (result.success) {
-      this.updateCheckMessage = 'No update available on server.';
-    } else {
-      this.updateCheckMessage = `Check failed: ${result.error}`;
-    }
-  }
-
-  async downloadUpdate(): Promise<void> {
-    this.isUpdating = true;
-    this.updateProgress = { phase: 'checking' };
-    const result = await this.electronService.downloadUpdate(this.deviceConfig?.syncServerUrl);
-    this.isUpdating = false;
-    if (!result.success) {
-      this.updateProgress = { phase: 'error', error: result.error };
-    }
-  }
-
-  restartApp(): void {
-    this.electronService.relaunchApp();
-  }
-
-  async checkConflict(): Promise<void> {
-    this.conflictCheckMessage = '';
-    this.conflictDetails = null;
-    // Re-fetch sync status which includes conflict info
-    await this.refreshSyncStatus();
-    if (!this.conflictDetails) {
-      this.conflictCheckMessage = 'No device number conflicts detected.';
-    }
-  }
-
-  formatRelativeTime(isoDate: string): string {
-    const ms = Date.now() - new Date(isoDate).getTime();
-    const minutes = Math.floor(ms / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (minutes > 0) return `${minutes} min ago`;
-    return 'Just now';
+  syncNeeded(): void {
+    if (!this.assessment || this.syncInProgress) return;
+    const components: SyncComponent[] = [];
+    if (!this.assessment.jar.present || this.assessment.jar.updateAvailable) components.push('jar');
+    if (!this.assessment.db.present || this.assessment.sync.stale) components.push('db');
+    if (!this.assessment.files.present) components.push('files');
+    if (components.length === 0) return;
+    this.executeSync(components);
   }
 
   formatFileSize(bytes: number): string {
@@ -641,17 +506,5 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
     if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${bytes} B`;
-  }
-
-  get updatePhaseLabel(): string {
-    const labels: Record<string, string> = {
-      checking: 'Checking...',
-      downloading: 'Downloading...',
-      verifying: 'Verifying checksum...',
-      applying: 'Applying update...',
-      done: 'Done',
-      error: 'Error'
-    };
-    return labels[this.updateProgress?.phase || ''] || '';
   }
 }

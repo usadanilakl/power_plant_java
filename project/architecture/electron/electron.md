@@ -153,21 +153,26 @@ Previous apps consolidated:
 - Device conflict detection in `FieldSyncController.exchange()` via `X-Device-Number` + `X-Machine-Id` headers
 - `Peer.deviceNumberConflict` field tracks conflicting machineId
 
-**Electron pre-startup flow (before Spring Boot starts):**
-1. Check sync server availability
-2. Check for JAR update (compare SHA-256 checksum) → download if newer with progress reporting
-3. Cold resync if needed (first run — no database file): download H2 backup + files from sync server
-4. Check device number conflicts against server registry
+**Electron startup flow — assess, don't auto-download (before Spring Boot starts):**
+1. Check sync server reachability (HTTP GET with 5s timeout)
+   - If unreachable: send `startup:server-status { reachable: false }` to renderer, poll every 15s
+   - When reachable: run full assessment
+2. Perform local + remote checks: JAR present/update available, DB present/size, files present/size, sync staleness, device conflicts
+3. Send `startup:assessment` to renderer with full `StartupAssessment` object
+4. Do NOT auto-download — user decides via notification bar or Sync & Updates page
 5. All failures are non-fatal (graceful degradation when offline)
 
+**Selective sync (user-triggered):**
+- `sync:execute` IPC handler accepts array of `SyncComponent` (`'jar' | 'db' | 'files'`)
+- Automatically stops Spring Boot before DB/files sync, restarts after
+- Progress via `sync:execute-progress` IPC with phases: `stopping_sb`, `jar`, `db_download`, `db_extract`, `files`, `starting_sb`, `done`, `error`
+
 **Cold Resync (external database + file download):**
-- `ColdResyncManager` downloads H2 database and files directly from sync server — no Spring Boot needed
-- Auto-triggers on first run when `db/proddb.mv.db` doesn't exist (and device is configured)
-- Can be triggered manually from Sync & Updates UI (Spring Boot must be stopped first)
-- Flow: download H2 backup ZIP → extract `.mv.db` with `adm-zip` → download file manifest → download all files → write `sync-status.json`
+- `ColdResyncManager` downloads H2 database and/or files directly from sync server — no Spring Boot needed
+- Composable methods: `syncDatabase()` (DB only), `syncFiles()` (files only), `performColdResync()` (both)
+- Assessment helpers: `isDbPresent()`, `getDbSizeBytes()`, `areFilesPresent()`, `getFilesTotalSizeBytes()`
 - Server endpoints (on sync server): `GET /api/resync/database/h2-backup`, `GET /api/resync/files/path-manifest`, `GET /api/resync/files/permanent/**`
 - Headers: `X-Machine-Id`, `X-Device-Number`
-- Progress reporting via IPC: `cold-resync:progress` with phase/percent/file counts
 
 **Electron post-startup flow (after Spring Boot is healthy):**
 1. Query Spring Boot `/api/field-sync/metrics` for last sync time
@@ -175,13 +180,20 @@ Previous apps consolidated:
 3. Renderer shows dismissible notification banner
 
 **Managers:**
-- `UpdateManager`: `checkForUpdate()`, `downloadUpdate()` with progress callback, SHA-256 verification, `.jar.tmp` → `.jar` atomic rename
+- `UpdateManager`: `checkForUpdate()`, `downloadUpdate()` with progress callback, SHA-256 verification, `.jar.tmp` -> `.jar` atomic rename
 - `SyncStatusManager`: `getSyncStatus()`, `isSyncStale()`, `triggerFullResync()`, `checkDeviceConflict()`, persists `sync-status.json`
-- `ColdResyncManager`: `needsColdResync()`, `performColdResync()` — downloads DB + files from sync server before Spring Boot starts
+- `ColdResyncManager`: `syncDatabase()`, `syncFiles()`, `performColdResync()`, assessment helpers — downloads DB + files from sync server
 
-**UI (Sync & Updates page):**
-- Four sections: Database Sync (status, staleness, resync), Download from Server (cold resync — works without Spring Boot), Application Update (check/download/restart), Device Identity (info + conflict warnings)
-- Notification banners in AppComponent for startup events (update progress, cold resync progress, sync stale, device conflict)
+**UI (Sync & Updates page) — 3 sections:**
+- Status & Assessment: table showing JAR/DB/Files/Last Sync/Conflicts status with color-coded indicators, server online/offline badge, Refresh button
+- Sync Actions: buttons for Sync JAR, Sync Database, Sync Files, Sync All, Sync Needed + progress bar
+- Device Identity: device name, number, machine ID, sync server URL
+
+**Notification bars in AppComponent (unified startup status):**
+- Server unreachable: red bar with Settings button
+- Assessment with issues: info bar with summary + Sync Now + Details buttons (dismissible)
+- Sync in progress: blue bar with status + progress percent
+- Sync stale / device conflict: post-startup warning bars (unchanged)
 - Sidebar nav item: "Sync & Updates" at `/sync-updates`
 
 ### Gate Log - DONE (OnLocation API + Gate Scraping + WebView Auto-Login)

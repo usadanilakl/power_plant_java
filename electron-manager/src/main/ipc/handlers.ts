@@ -12,7 +12,7 @@ import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncExecuteProgress } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -22,6 +22,7 @@ export class IpcHandlers {
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
   private mainWindow: BrowserWindow;
+  private lastAssessment: StartupAssessment | null = null;
 
   constructor(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow;
@@ -40,6 +41,11 @@ export class IpcHandlers {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send(events.IPC_APP_STATUS_CHANGED, status);
         }
+        // Rebuild menu to reflect new state (Start/Stop/Restart enabled/disabled)
+        try {
+          const App = require('../app').default;
+          App.createMenu();
+        } catch { /* ignore during startup */ }
       },
       (line) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -59,6 +65,7 @@ export class IpcHandlers {
     this.registerWebViewHandlers();
     this.registerFireImpairmentHandlers();
     this.registerColdResyncHandlers();
+    this.registerStartupHandlers();
     this.registerGateLogHandlers();
   }
 
@@ -80,6 +87,10 @@ export class IpcHandlers {
 
   public getColdResyncManager(): ColdResyncManager {
     return this.coldResyncManager;
+  }
+
+  public setLastAssessment(assessment: StartupAssessment): void {
+    this.lastAssessment = assessment;
   }
 
   private registerAppHandlers(): void {
@@ -518,6 +529,104 @@ export class IpcHandlers {
       req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
       req.write(json);
       req.end();
+    });
+  }
+
+  private registerStartupHandlers(): void {
+    // Live-refresh assessment (Sync & Updates page Refresh button)
+    ipcMain.handle(events.IPC_STARTUP_GET_ASSESSMENT, async () => {
+      try {
+        const App = require('../app').default;
+        const updated = await App.refreshAssessment();
+        return { success: true, data: updated };
+      } catch {
+        return { success: true, data: this.lastAssessment };
+      }
+    });
+
+    // Execute selective sync
+    ipcMain.handle(events.IPC_SYNC_EXECUTE, async (_event, components: SyncComponent[]) => {
+      const config = this.springBoot.getDeviceConfigManager().getConfig();
+      if (!config) return { success: false, error: 'Device not configured' };
+
+      const sendProgress = (progress: SyncExecuteProgress) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_SYNC_EXECUTE_PROGRESS, progress);
+        }
+      };
+
+      const needsDbOrFiles = components.includes('db') || components.includes('files');
+      const sbWasRunning = this.springBoot.isRunning();
+
+      try {
+        // 1. Stop Spring Boot if DB or files sync requested
+        if (needsDbOrFiles && sbWasRunning) {
+          sendProgress({ phase: 'stopping_sb', statusMessage: 'Stopping Spring Boot...', progressPercent: 0 });
+          await this.springBoot.stop();
+        }
+
+        // 2. Sync JAR
+        if (components.includes('jar')) {
+          sendProgress({ phase: 'jar', statusMessage: 'Downloading JAR...', progressPercent: 5 });
+          const jarResult = await this.updateManager.downloadUpdate(config.syncServerUrl, (p) => {
+            sendProgress({
+              phase: 'jar',
+              statusMessage: `Downloading JAR... ${p.percent || 0}%`,
+              progressPercent: 5 + Math.round((p.percent || 0) * 0.25)
+            });
+          });
+          if (!jarResult.success) throw new Error(jarResult.error || 'JAR download failed');
+        }
+
+        // 3. Sync Database
+        if (components.includes('db')) {
+          sendProgress({ phase: 'db_download', statusMessage: 'Downloading database...', progressPercent: 30 });
+          const dbResult = await this.coldResyncManager.syncDatabase(
+            config.syncServerUrl, config.machineId, config.deviceNumber,
+            (msg, pct) => sendProgress({
+              phase: pct < 70 ? 'db_download' : 'db_extract',
+              statusMessage: msg,
+              progressPercent: 30 + Math.round(pct * 0.25)
+            })
+          );
+          if (!dbResult.success) throw new Error(dbResult.error || 'Database sync failed');
+        }
+
+        // 4. Sync Files
+        if (components.includes('files')) {
+          sendProgress({ phase: 'files', statusMessage: 'Downloading files...', progressPercent: 55 });
+          const filesResult = await this.coldResyncManager.syncFiles(
+            config.syncServerUrl, config.machineId, config.deviceNumber,
+            (msg, pct) => sendProgress({
+              phase: 'files',
+              statusMessage: msg,
+              progressPercent: 55 + Math.round(pct * 0.35)
+            })
+          );
+          if (!filesResult.success) throw new Error(filesResult.error || 'Files sync failed');
+        }
+
+        // 5. Restart Spring Boot if it was running or JAR was updated
+        if ((needsDbOrFiles && sbWasRunning) || components.includes('jar')) {
+          sendProgress({ phase: 'starting_sb', statusMessage: 'Starting Spring Boot...', progressPercent: 95 });
+          await this.springBoot.start();
+        }
+
+        sendProgress({ phase: 'done', statusMessage: 'Sync complete', progressPercent: 100 });
+
+        // Persist sync time and refresh assessment
+        try {
+          this.syncStatusManager.persistSyncStatus(new Date().toISOString(), 'full');
+          const App = require('../app').default;
+          await App.refreshAssessment();
+        } catch (e) { console.warn('Assessment refresh after sync failed:', e); }
+
+        return { success: true };
+      } catch (err: any) {
+        const error = err.message || 'Sync failed';
+        sendProgress({ phase: 'error', statusMessage: error, progressPercent: 0, error });
+        return { success: false, error };
+      }
     });
   }
 

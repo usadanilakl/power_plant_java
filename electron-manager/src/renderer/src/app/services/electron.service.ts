@@ -116,6 +116,26 @@ export interface GateLogConfig {
   intervalMinutes: number;
 }
 
+export interface StartupAssessment {
+  serverReachable: boolean;
+  serverUrl: string | null;
+  deviceConfigured: boolean;
+  jar: { present: boolean; updateAvailable: boolean; updateInfo?: UpdateInfo };
+  db: { present: boolean; sizeBytes: number };
+  files: { present: boolean; totalSizeBytes: number };
+  sync: { stale: boolean; daysSinceSync: number | null };
+  conflict: { detected: boolean; details?: string };
+}
+
+export type SyncComponent = 'jar' | 'db' | 'files';
+
+export interface SyncExecuteProgress {
+  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'starting_sb' | 'done' | 'error';
+  statusMessage: string;
+  progressPercent: number;
+  error?: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -177,6 +197,15 @@ interface ElectronAPI {
   coldResync: () => Promise<IpcResult>;
   onColdResyncProgress: (callback: (progress: ColdResyncProgress) => void) => () => void;
   onColdResyncNeeded: (callback: (data: any) => void) => () => void;
+
+  // Startup assessment
+  getStartupAssessment: () => Promise<IpcResult<StartupAssessment>>;
+  onStartupAssessment: (callback: (assessment: StartupAssessment) => void) => () => void;
+  onStartupServerStatus: (callback: (data: { reachable: boolean }) => void) => () => void;
+
+  // Selective sync
+  executeSync: (components: SyncComponent[]) => Promise<IpcResult>;
+  onSyncExecuteProgress: (callback: (progress: SyncExecuteProgress) => void) => () => void;
 
   // WebView
   openWebView: (target: string, url: string) => Promise<IpcResult>;
@@ -482,6 +511,41 @@ export class ElectronService implements OnDestroy {
     if (!this.isElectron) return () => {};
     return window.electronAPI!.onColdResyncNeeded((data) => {
       this.ngZone.run(() => callback(data));
+    });
+  }
+
+  // Startup assessment
+
+  async getStartupAssessment(): Promise<IpcResult<StartupAssessment>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getStartupAssessment();
+  }
+
+  onStartupAssessment(callback: (assessment: StartupAssessment) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onStartupAssessment((assessment) => {
+      this.ngZone.run(() => callback(assessment));
+    });
+  }
+
+  onStartupServerStatus(callback: (data: { reachable: boolean }) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onStartupServerStatus((data) => {
+      this.ngZone.run(() => callback(data));
+    });
+  }
+
+  // Selective sync
+
+  async executeSync(components: SyncComponent[]): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.executeSync(components);
+  }
+
+  onSyncExecuteProgress(callback: (progress: SyncExecuteProgress) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onSyncExecuteProgress((progress) => {
+      this.ngZone.run(() => callback(progress));
     });
   }
 

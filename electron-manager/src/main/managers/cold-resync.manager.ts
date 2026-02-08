@@ -42,6 +42,139 @@ export class ColdResyncManager {
     return !fs.existsSync(this.dbPath);
   }
 
+  /** Check if database file exists */
+  public isDbPresent(): boolean {
+    return fs.existsSync(this.dbPath);
+  }
+
+  /** Get database file size in bytes (0 if missing) */
+  public getDbSizeBytes(): number {
+    if (!fs.existsSync(this.dbPath)) return 0;
+    return fs.statSync(this.dbPath).size;
+  }
+
+  /** Check if uploads directory exists and has files */
+  public areFilesPresent(): boolean {
+    if (!fs.existsSync(this.uploadsDir)) return false;
+    return this.getFilesTotalSizeBytes() > 0;
+  }
+
+  /** Get total size of uploads directory in bytes */
+  public getFilesTotalSizeBytes(): number {
+    if (!fs.existsSync(this.uploadsDir)) return 0;
+    return this.getDirSize(this.uploadsDir);
+  }
+
+  /** Download and extract H2 database only */
+  public async syncDatabase(
+    serverUrl: string,
+    machineId: string,
+    deviceNumber: number,
+    onProgress: (msg: string, pct: number) => void
+  ): Promise<IpcResult> {
+    const headers = { 'X-Machine-Id': machineId, 'X-Device-Number': String(deviceNumber) };
+
+    try {
+      this.ensureDirectories();
+
+      onProgress('Downloading database...', 0);
+      const backupZipPath = path.join(this.dbDir, 'backup_cold.zip');
+      await this.downloadFile(
+        `${serverUrl}/api/resync/database/h2-backup`,
+        backupZipPath,
+        headers,
+        (bytesDownloaded, totalBytes) => {
+          const pct = totalBytes > 0 ? Math.round((bytesDownloaded / totalBytes) * 60) : 10;
+          onProgress('Downloading database...', pct);
+        }
+      );
+
+      const zipStat = fs.statSync(backupZipPath);
+      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB)`);
+
+      onProgress('Extracting database...', 70);
+      this.extractDatabase(backupZipPath);
+      try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
+
+      this.persistSyncStatus();
+      onProgress('Database synced', 100);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Database sync failed' };
+    }
+  }
+
+  /** Download files only (from manifest) */
+  public async syncFiles(
+    serverUrl: string,
+    machineId: string,
+    deviceNumber: number,
+    onProgress: (msg: string, pct: number) => void
+  ): Promise<IpcResult> {
+    const headers = { 'X-Machine-Id': machineId, 'X-Device-Number': String(deviceNumber) };
+
+    try {
+      this.ensureDirectories();
+
+      onProgress('Fetching file manifest...', 0);
+      const manifest = await this.httpGetJson<ManifestEntry[]>(
+        `${serverUrl}/api/resync/files/path-manifest`,
+        headers
+      );
+
+      console.log(`File manifest: ${manifest?.length ?? 0} entries${manifest?.length > 0 ? ', first: ' + manifest[0].relativePath : ''}`);
+
+      if (!manifest || manifest.length === 0) {
+        onProgress('No files to download', 100);
+        return { success: true };
+      }
+
+      onProgress(`Found ${manifest.length} files`, 5);
+
+      let downloaded = 0;
+      let skipped = 0;
+      for (const entry of manifest) {
+        let relativePath = entry.relativePath;
+        if (relativePath.startsWith('uploads-prod/')) {
+          relativePath = relativePath.substring('uploads-prod/'.length);
+        } else if (relativePath.startsWith('uploads-prod\\')) {
+          relativePath = relativePath.substring('uploads-prod\\'.length);
+        }
+
+        const localPath = path.join(this.uploadsDir, relativePath);
+        const localDir = path.dirname(localPath);
+
+        if (fs.existsSync(localPath)) {
+          skipped++;
+          downloaded++;
+          continue;
+        }
+
+        if (!fs.existsSync(localDir)) {
+          fs.mkdirSync(localDir, { recursive: true });
+        }
+
+        const encodedPath = entry.relativePath.split('/').map(encodeURIComponent).join('/');
+        try {
+          await this.downloadFile(`${serverUrl}/api/resync/files/permanent/${encodedPath}`, localPath, headers);
+        } catch (err: any) {
+          console.warn(`Failed to download file: ${entry.relativePath} — ${err.message}`);
+        }
+
+        downloaded++;
+        const pct = 5 + Math.round((downloaded / manifest.length) * 95);
+        onProgress(`Downloading files... (${downloaded}/${manifest.length})`, pct);
+      }
+
+      console.log(`Files sync: ${downloaded - skipped} downloaded, ${skipped} skipped`);
+      this.persistSyncStatus();
+      onProgress('Files synced', 100);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Files sync failed' };
+    }
+  }
+
   /**
    * Perform cold resync — downloads DB + files from sync server.
    * Must be called BEFORE Spring Boot starts (DB file can't be replaced while locked).
@@ -52,73 +185,28 @@ export class ColdResyncManager {
     deviceNumber: number,
     onProgress: (progress: ColdResyncProgress) => void
   ): Promise<IpcResult> {
-    const headers = {
-      'X-Machine-Id': machineId,
-      'X-Device-Number': String(deviceNumber)
-    };
-
     try {
-      // 1. Ensure directories exist
-      this.ensureDirectories();
-
-      // 2. Download H2 backup (0–30%)
-      onProgress({ phase: 'db_download', statusMessage: 'Downloading database...', progressPercent: 0 });
-      const backupZipPath = path.join(this.dbDir, 'backup_cold.zip');
-      await this.downloadFile(
-        `${serverUrl}/api/resync/database/h2-backup`,
-        backupZipPath,
-        headers,
-        (bytesDownloaded, totalBytes) => {
-          const percent = totalBytes > 0 ? Math.round((bytesDownloaded / totalBytes) * 30) : 5;
-          onProgress({
-            phase: 'db_download',
-            statusMessage: 'Downloading database...',
-            progressPercent: percent,
-            bytesDownloaded,
-            totalBytes
-          });
-        }
-      );
-
-      // Verify ZIP was downloaded
-      const zipStat = fs.statSync(backupZipPath);
-      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB)`);
-
-      // 3. Extract database (30–40%)
-      onProgress({ phase: 'db_extract', statusMessage: 'Extracting database...', progressPercent: 30 });
-      this.extractDatabase(backupZipPath);
-      // Clean up temp ZIP
-      try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
-      onProgress({ phase: 'db_extract', statusMessage: 'Database extracted', progressPercent: 40 });
-
-      // 4. Download file manifest (40–45%)
-      onProgress({ phase: 'file_manifest', statusMessage: 'Fetching file manifest...', progressPercent: 40 });
-      const manifest = await this.httpGetJson<ManifestEntry[]>(
-        `${serverUrl}/api/resync/files/path-manifest`,
-        headers
-      );
-
-      console.log(`File manifest: ${manifest?.length ?? 0} entries${manifest?.length > 0 ? ', first: ' + manifest[0].relativePath : ''}`);
-
-      if (!manifest || manifest.length === 0) {
-        onProgress({ phase: 'finalizing', statusMessage: 'No files to download', progressPercent: 95 });
-      } else {
-        onProgress({
-          phase: 'file_manifest',
-          statusMessage: `Found ${manifest.length} files`,
-          progressPercent: 45,
-          filesTotal: manifest.length
-        });
-
-        // 5. Download files (45–95%)
-        await this.downloadFiles(serverUrl, manifest, headers, onProgress);
+      // DB (0-40%)
+      const dbResult = await this.syncDatabase(serverUrl, machineId, deviceNumber, (msg, pct) => {
+        const mappedPct = Math.round(pct * 0.4);
+        onProgress({ phase: pct < 70 ? 'db_download' : 'db_extract', statusMessage: msg, progressPercent: mappedPct });
+      });
+      if (!dbResult.success) {
+        onProgress({ phase: 'error', statusMessage: dbResult.error || 'Database sync failed', progressPercent: 0, error: dbResult.error });
+        return dbResult;
       }
 
-      // 6. Finalize — write sync-status.json (95–100%)
-      onProgress({ phase: 'finalizing', statusMessage: 'Finalizing...', progressPercent: 95 });
-      this.persistSyncStatus();
-      onProgress({ phase: 'done', statusMessage: 'Cold resync complete', progressPercent: 100 });
+      // Files (40-95%)
+      const filesResult = await this.syncFiles(serverUrl, machineId, deviceNumber, (msg, pct) => {
+        const mappedPct = 40 + Math.round(pct * 0.55);
+        onProgress({ phase: pct < 5 ? 'file_manifest' : 'file_download', statusMessage: msg, progressPercent: mappedPct, });
+      });
+      if (!filesResult.success) {
+        onProgress({ phase: 'error', statusMessage: filesResult.error || 'Files sync failed', progressPercent: 0, error: filesResult.error });
+        return filesResult;
+      }
 
+      onProgress({ phase: 'done', statusMessage: 'Cold resync complete', progressPercent: 100 });
       return { success: true };
     } catch (err: any) {
       const error = err.message || 'Unknown error during cold resync';
@@ -172,71 +260,21 @@ export class ColdResyncManager {
     console.log(`Extracted: ${dbEntry.entryName} (${dbEntry.header.size} bytes in ZIP) -> ${this.dbPath} (${(stat.size / 1024 / 1024).toFixed(1)} MB on disk)`);
   }
 
-  /**
-   * Download all files from the manifest, comparing against local files.
-   * Skips files that already exist with matching hash.
-   */
-  private async downloadFiles(
-    serverUrl: string,
-    manifest: ManifestEntry[],
-    headers: Record<string, string>,
-    onProgress: (progress: ColdResyncProgress) => void
-  ): Promise<void> {
-    let downloaded = 0;
-    let skipped = 0;
-
-    for (let i = 0; i < manifest.length; i++) {
-      const entry = manifest[i];
-
-      // The server manifest returns paths like "uploads-prod/pdf/file.pdf"
-      // Strip the leading "uploads-prod/" prefix for local relative path
-      let relativePath = entry.relativePath;
-      if (relativePath.startsWith('uploads-prod/')) {
-        relativePath = relativePath.substring('uploads-prod/'.length);
-      } else if (relativePath.startsWith('uploads-prod\\')) {
-        relativePath = relativePath.substring('uploads-prod\\'.length);
+  /** Recursively calculate directory size */
+  private getDirSize(dirPath: string): number {
+    let total = 0;
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          total += this.getDirSize(fullPath);
+        } else if (entry.isFile()) {
+          total += fs.statSync(fullPath).size;
+        }
       }
-
-      const localPath = path.join(this.uploadsDir, relativePath);
-      const localDir = path.dirname(localPath);
-
-      // Skip if file already exists (cold resync is a full download, but no need to re-download identical files)
-      if (fs.existsSync(localPath)) {
-        skipped++;
-        downloaded++;
-        continue;
-      }
-
-      // Ensure parent directory exists
-      if (!fs.existsSync(localDir)) {
-        fs.mkdirSync(localDir, { recursive: true });
-      }
-
-      // Download file
-      const encodedPath = entry.relativePath.split('/').map(encodeURIComponent).join('/');
-      const fileUrl = `${serverUrl}/api/resync/files/permanent/${encodedPath}`;
-
-      try {
-        await this.downloadFile(fileUrl, localPath, headers);
-      } catch (err: any) {
-        console.warn(`Failed to download file: ${entry.relativePath} — ${err.message}`);
-        // Non-fatal: continue with next file
-      }
-
-      downloaded++;
-
-      // Report progress (45% to 95% range)
-      const filePercent = 45 + Math.round((downloaded / manifest.length) * 50);
-      onProgress({
-        phase: 'file_download',
-        statusMessage: `Downloading files... (${downloaded}/${manifest.length})`,
-        progressPercent: filePercent,
-        filesTotal: manifest.length,
-        filesDownloaded: downloaded
-      });
-    }
-
-    console.log(`Cold resync files: ${downloaded - skipped} downloaded, ${skipped} skipped (already existed)`);
+    } catch { /* ignore permission errors */ }
+    return total;
   }
 
   /** Stream-download a file from a URL to disk */

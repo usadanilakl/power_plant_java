@@ -47,6 +47,11 @@ export class DeviceConfigManager {
 
     // Write machine-id.properties (Spring Boot reads this)
     this.writeMachineIdProperties(config);
+
+    // Write sync-config.properties (Spring Boot reads this to override application.properties)
+    if (config.syncServerUrl) {
+      this.writeSyncConfigProperties(config.syncServerUrl);
+    }
   }
 
   /** Load device config from file */
@@ -65,6 +70,20 @@ export class DeviceConfigManager {
         console.log(`Loaded device config: ${this.config.deviceName} (device #${this.config.deviceNumber})`);
         // Ensure machine-id.properties is in sync
         this.writeMachineIdProperties(this.config);
+
+        // Sync URL: if sync-config.properties has a different URL, adopt it
+        const syncConfigUrl = this.readSyncConfigUrl();
+        if (syncConfigUrl && syncConfigUrl !== this.config.syncServerUrl) {
+          console.log(`Sync server URL updated from sync-config.properties: ${this.config.syncServerUrl} -> ${syncConfigUrl}`);
+          this.config.syncServerUrl = syncConfigUrl;
+          const cfgPath = path.join(this.workingDir, DEVICE_CONFIG_FILE);
+          fs.writeFileSync(cfgPath, JSON.stringify(this.config, null, 2), 'utf-8');
+        }
+
+        // Ensure sync-config.properties is in sync
+        if (this.config.syncServerUrl) {
+          this.writeSyncConfigProperties(this.config.syncServerUrl);
+        }
       }
     } catch (err) {
       console.error('Error loading device-config.json:', err);
@@ -203,6 +222,35 @@ export class DeviceConfigManager {
         resolve({ success: false, error: err.message });
       }
     });
+  }
+
+  /** Write sync-config.properties so Spring Boot picks up the sync server URL */
+  private writeSyncConfigProperties(syncServerUrl: string): void {
+    const propsPath = path.join(this.workingDir, 'sync-config.properties');
+    const content = [
+      '# Sync server configuration — managed by Electron',
+      `# Written at ${new Date().toISOString()}`,
+      `sync.server.url=${syncServerUrl}`,
+      `sync.server.enabled=true`,
+    ].join('\n') + '\n';
+
+    try {
+      fs.writeFileSync(propsPath, content, 'utf-8');
+      console.log(`Wrote sync-config.properties: sync.server.url=${syncServerUrl}`);
+    } catch (err) {
+      console.error('Error writing sync-config.properties:', err);
+    }
+  }
+
+  /** Read sync server URL from sync-config.properties (may have been changed by Spring Boot) */
+  private readSyncConfigUrl(): string | null {
+    const propsPath = path.join(this.workingDir, 'sync-config.properties');
+    if (!fs.existsSync(propsPath)) return null;
+    try {
+      const content = fs.readFileSync(propsPath, 'utf-8');
+      const match = content.match(/sync\.server\.url=(.+)/);
+      return match ? match[1].trim() : null;
+    } catch { return null; }
   }
 
   /** Derive machineId from device name (same logic as server) */

@@ -119,6 +119,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_COLD_RESYNC_NEEDED, sub); };
   },
 
+  // Startup assessment
+  getStartupAssessment: (): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_STARTUP_GET_ASSESSMENT),
+  onStartupAssessment: (callback: (assessment: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, data: any) => callback(data);
+    ipcRenderer.on(events.IPC_STARTUP_ASSESSMENT, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_STARTUP_ASSESSMENT, sub); };
+  },
+  onStartupServerStatus: (callback: (data: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, data: any) => callback(data);
+    ipcRenderer.on(events.IPC_STARTUP_SERVER_STATUS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_STARTUP_SERVER_STATUS, sub); };
+  },
+
+  // Selective sync
+  executeSync: (components: string[]): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_SYNC_EXECUTE, components),
+  onSyncExecuteProgress: (callback: (progress: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, progress: any) => callback(progress);
+    ipcRenderer.on(events.IPC_SYNC_EXECUTE_PROGRESS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_SYNC_EXECUTE_PROGRESS, sub); };
+  },
+
   // Gate Log
   gateLogGetPeople: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_GET_PEOPLE),
   gateLogGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_GET_STATUS),

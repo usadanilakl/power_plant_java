@@ -6,10 +6,12 @@
 import { BrowserWindow, Menu, MenuItemConstructorOptions, app, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
-import { DEFAULT_SPRING_BOOT_CONFIG, SYNC_STALE_THRESHOLD_DAYS } from './constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS } from './constants';
 import * as events from './ipc/events';
+import type { StartupAssessment } from '../shared/types';
 
 export default class App {
   static mainWindow: BrowserWindow | null = null;
@@ -19,6 +21,7 @@ export default class App {
   private static mainWindowManager: MainWindowManager;
   private static ipcHandlers: IpcHandlers;
   private static isQuitting = false;
+  private static serverPollTimer: ReturnType<typeof setInterval> | null = null;
 
   public static isDevelopmentMode(): boolean {
     const isEnvironmentSet: boolean = 'ELECTRON_IS_DEV' in process.env;
@@ -90,30 +93,16 @@ export default class App {
       App.mainWindowManager = null!;
     });
 
-    // Pre-startup checks (before Spring Boot — check server, JAR update, device conflicts)
-    await App.preStartupChecks();
+    // Startup assessment (before Spring Boot — assess what's needed, don't auto-download)
+    await App.startupAssessment();
 
-    // Guard: don't start Spring Boot if JAR doesn't exist
+    // Auto-start Spring Boot if JAR exists
     const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
-    if (!fs.existsSync(jarPath)) {
-      console.error('Spring Boot JAR not found after pre-startup checks — cannot start');
-      if (App.mainWindow && !App.mainWindow.isDestroyed()) {
-        const sendMsg = () => {
-          App.mainWindow?.webContents.send(events.IPC_COLD_RESYNC_NEEDED, {
-            reason: 'jar_missing',
-            message: 'Application JAR not found. Ensure sync server is reachable and has a JAR in the updates directory.'
-          });
-        };
-        if (App.mainWindow.webContents.isLoading()) {
-          App.mainWindow.webContents.once('did-finish-load', sendMsg);
-        } else {
-          sendMsg();
-        }
-      }
-    } else {
-      // Auto-start Spring Boot if configured
+    if (fs.existsSync(jarPath)) {
       await App.autoStart();
+    } else {
+      console.log('Spring Boot JAR not found — skipping auto-start');
     }
 
     // Post-startup checks (after Spring Boot — sync staleness)
@@ -129,7 +118,7 @@ export default class App {
     }
   }
 
-  private static createMenu(): void {
+  public static createMenu(): void {
     const springBoot = App.ipcHandlers?.getSpringBootManager();
     const status = springBoot?.getStatus();
     const isRunning = status?.state === 'running';
@@ -273,114 +262,183 @@ export default class App {
   }
 
   /**
-   * Pre-startup checks — run BEFORE Spring Boot starts.
-   * Checks sync server availability, JAR updates, and device conflicts.
-   * All failures are non-fatal (graceful degradation when offline).
+   * Startup assessment — checks server reachability, assesses what's needed,
+   * and sends findings to renderer. Does NOT auto-download anything.
    */
-  private static async preStartupChecks(): Promise<void> {
-    const updateMgr = App.ipcHandlers.getUpdateManager();
-    const syncMgr = App.ipcHandlers.getSyncStatusManager();
-    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
-    const deviceConfig = deviceMgr.getConfig();
-
-    // Ensure working directory exists before any manager operations
+  private static async startupAssessment(): Promise<void> {
+    // Ensure working directory exists
     const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
     if (!fs.existsSync(workingDir)) {
       fs.mkdirSync(workingDir, { recursive: true });
       console.log(`Created working directory: ${workingDir}`);
     }
 
+    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+    const deviceConfig = deviceMgr.getConfig();
+    const serverUrl = deviceConfig?.syncServerUrl || DEFAULT_SYNC_SERVER.url;
+
+    console.log('=== Startup assessment ===');
+    console.log(`Device configured: ${!!deviceConfig}${deviceConfig ? ' serverUrl=' + serverUrl : ''}`);
+
+    // 1. Check server reachability
+    const reachable = await App.checkServerReachable(serverUrl);
+
+    if (!reachable) {
+      console.log('Sync server unreachable — sending status to renderer');
+      App.sendToRenderer(events.IPC_STARTUP_SERVER_STATUS, { reachable: false });
+
+      // Build partial assessment (local checks only)
+      const assessment = App.buildLocalAssessment(deviceConfig, serverUrl);
+      App.ipcHandlers.setLastAssessment(assessment);
+      App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
+
+      // Start polling for server availability
+      App.startServerPolling(serverUrl);
+    } else {
+      // Server is reachable — run full assessment
+      App.sendToRenderer(events.IPC_STARTUP_SERVER_STATUS, { reachable: true });
+      const assessment = await App.performFullAssessment(deviceConfig, serverUrl);
+      App.ipcHandlers.setLastAssessment(assessment);
+      App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
+    }
+
+    console.log('=== Startup assessment complete ===');
+  }
+
+  /** Build assessment with local checks only (server unreachable) */
+  private static buildLocalAssessment(deviceConfig: any, serverUrl: string): StartupAssessment {
+    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
-    const jarExists = fs.existsSync(jarPath);
+    const coldResyncMgr = App.ipcHandlers.getColdResyncManager();
+    const syncMgr = App.ipcHandlers.getSyncStatusManager();
+    const staleness = syncMgr.isSyncStale(SYNC_STALE_THRESHOLD_DAYS);
 
-    const serverUrl = deviceConfig?.syncServerUrl;
+    return {
+      serverReachable: false,
+      serverUrl,
+      deviceConfigured: !!deviceConfig,
+      jar: { present: fs.existsSync(jarPath), updateAvailable: false },
+      db: { present: coldResyncMgr.isDbPresent(), sizeBytes: coldResyncMgr.getDbSizeBytes() },
+      files: { present: coldResyncMgr.areFilesPresent(), totalSizeBytes: coldResyncMgr.getFilesTotalSizeBytes() },
+      sync: { stale: staleness.stale, daysSinceSync: staleness.daysSinceSync },
+      conflict: { detected: false }
+    };
+  }
 
-    console.log('=== Pre-startup checks ===');
-    console.log(`Working dir: ${workingDir}`);
-    console.log(`JAR: ${jarPath} (${jarExists ? 'exists' : 'MISSING — will attempt download'})`);
-    console.log(`Device configured: ${!!deviceConfig}${serverUrl ? ' serverUrl=' + serverUrl : ''}`);
+  /** Build full assessment (server reachable — includes remote checks) */
+  private static async performFullAssessment(deviceConfig: any, serverUrl: string): Promise<StartupAssessment> {
+    const assessment = App.buildLocalAssessment(deviceConfig, serverUrl);
+    assessment.serverReachable = true;
 
-    // 1. Check for JAR update (or initial download if missing)
+    // Check for JAR update
     try {
-      console.log('Checking for JAR update...');
+      const updateMgr = App.ipcHandlers.getUpdateManager();
       const updateResult = await updateMgr.checkForUpdate(serverUrl);
-      if (updateResult.success && updateResult.data?.isNewer) {
-        console.log(`Update available: ${updateResult.data.fileName} (${(updateResult.data.fileSize / 1024 / 1024).toFixed(1)} MB)`);
-        // Send progress events to renderer during download
-        const onProgress = (progress: any) => {
-          if (App.mainWindow && !App.mainWindow.isDestroyed()) {
-            App.mainWindow.webContents.send(events.IPC_UPDATE_PROGRESS, progress);
-          }
-        };
-        const downloadResult = await updateMgr.downloadUpdate(serverUrl, onProgress);
-        if (downloadResult.success) {
-          console.log('JAR updated — will use new version on start');
-        } else {
-          console.warn('JAR download failed:', downloadResult.error);
-        }
-      } else if (updateResult.success) {
-        console.log('JAR is up to date');
-      } else {
-        console.log('Update check skipped:', updateResult.error);
+      if (updateResult.success && updateResult.data) {
+        assessment.jar.updateAvailable = updateResult.data.isNewer;
+        assessment.jar.updateInfo = updateResult.data;
+        console.log(`JAR update check: ${updateResult.data.isNewer ? 'update available' : 'up to date'}`);
       }
     } catch (err) {
-      console.warn('Pre-startup update check failed:', err);
+      console.warn('JAR update check failed:', err);
     }
 
-    // 2. Cold resync if needed (first run — no database file)
-    const coldResyncMgr = App.ipcHandlers.getColdResyncManager();
-    if (coldResyncMgr.needsColdResync() && deviceConfig) {
-      try {
-        console.log('First run detected — performing cold resync from server...');
-        const onColdProgress = (progress: any) => {
-          if (App.mainWindow && !App.mainWindow.isDestroyed()) {
-            App.mainWindow.webContents.send(events.IPC_COLD_RESYNC_PROGRESS, progress);
-          }
-        };
-        const resyncResult = await coldResyncMgr.performColdResync(
-          deviceConfig.syncServerUrl, deviceConfig.machineId, deviceConfig.deviceNumber, onColdProgress
-        );
-        if (resyncResult.success) {
-          console.log('Cold resync complete — database and files downloaded');
-        } else {
-          console.warn('Cold resync failed:', resyncResult.error, '— Spring Boot will start with empty DB');
-        }
-      } catch (err) {
-        console.warn('Cold resync error:', err);
-      }
-    } else if (coldResyncMgr.needsColdResync()) {
-      console.log('No database found but device not configured — skipping cold resync');
-    }
-
-    // 3. Check device number conflicts (only if device is configured)
+    // Check device conflict
     if (deviceConfig) {
       try {
-        console.log('Checking device number conflicts...');
+        const syncMgr = App.ipcHandlers.getSyncStatusManager();
         const conflict = await syncMgr.checkDeviceConflict(
-          deviceConfig.machineId,
-          deviceConfig.deviceNumber,
-          deviceConfig.syncServerUrl
+          deviceConfig.machineId, deviceConfig.deviceNumber, serverUrl
         );
+        assessment.conflict = {
+          detected: conflict.conflict,
+          details: conflict.details
+            ? `${conflict.details}. If this is the same physical device, re-register or claim it in Settings.`
+            : undefined
+        };
         if (conflict.conflict) {
           console.warn('DEVICE CONFLICT:', conflict.details);
-          // Notify renderer
-          const sendConflict = () => {
-            App.mainWindow?.webContents.send(events.IPC_DEVICE_CONFLICT, { details: conflict.details });
-          };
-          if (App.mainWindow?.webContents.isLoading()) {
-            App.mainWindow.webContents.once('did-finish-load', sendConflict);
-          } else {
-            sendConflict();
-          }
-        } else {
-          console.log('No device number conflicts');
         }
       } catch (err) {
         console.warn('Device conflict check failed:', err);
       }
     }
 
-    console.log('=== Pre-startup checks complete ===');
+    console.log(`Assessment: JAR=${assessment.jar.present ? 'yes' : 'NO'}${assessment.jar.updateAvailable ? ' (update)' : ''} DB=${assessment.db.present ? (assessment.db.sizeBytes / 1024 / 1024).toFixed(0) + 'MB' : 'NO'} Files=${assessment.files.present ? (assessment.files.totalSizeBytes / 1024 / 1024 / 1024).toFixed(1) + 'GB' : 'NO'} Stale=${assessment.sync.stale}`);
+    return assessment;
+  }
+
+  /** Check if sync server is reachable */
+  private static checkServerReachable(serverUrl: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      try {
+        const endpoint = new URL(`${serverUrl}/api/update/check`);
+        const req = http.request(
+          {
+            hostname: endpoint.hostname,
+            port: endpoint.port || 80,
+            path: endpoint.pathname,
+            method: 'GET',
+            timeout: 5000
+          },
+          (res) => {
+            // Any response means server is reachable
+            res.resume(); // consume data
+            resolve(true);
+          }
+        );
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => { req.destroy(); resolve(false); });
+        req.end();
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  /** Poll for server availability every 15s until reachable */
+  private static startServerPolling(serverUrl: string): void {
+    if (App.serverPollTimer) return;
+
+    console.log('Starting server polling (every 15s)...');
+    App.serverPollTimer = setInterval(async () => {
+      const reachable = await App.checkServerReachable(serverUrl);
+      if (reachable) {
+        console.log('Server became reachable — running full assessment');
+        if (App.serverPollTimer) {
+          clearInterval(App.serverPollTimer);
+          App.serverPollTimer = null;
+        }
+
+        App.sendToRenderer(events.IPC_STARTUP_SERVER_STATUS, { reachable: true });
+
+        const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+        const deviceConfig = deviceMgr.getConfig();
+        const assessment = await App.performFullAssessment(deviceConfig, serverUrl);
+        App.ipcHandlers.setLastAssessment(assessment);
+        App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
+      }
+    }, 15000);
+
+    // Safety: stop polling after 10 minutes
+    setTimeout(() => {
+      if (App.serverPollTimer) {
+        clearInterval(App.serverPollTimer);
+        App.serverPollTimer = null;
+        console.log('Server polling stopped (10 min timeout)');
+      }
+    }, 600000);
+  }
+
+  /** Helper to send IPC to renderer (handles loading state) */
+  private static sendToRenderer(channel: string, data: any): void {
+    if (!App.mainWindow || App.mainWindow.isDestroyed()) return;
+    const send = () => App.mainWindow?.webContents.send(channel, data);
+    if (App.mainWindow.webContents.isLoading()) {
+      App.mainWindow.webContents.once('did-finish-load', send);
+    } else {
+      send();
+    }
   }
 
   /**
@@ -436,6 +494,10 @@ export default class App {
   }
 
   private static async cleanup(): Promise<void> {
+    if (App.serverPollTimer) {
+      clearInterval(App.serverPollTimer);
+      App.serverPollTimer = null;
+    }
     if (App.ipcHandlers) {
       await App.ipcHandlers.cleanup();
     }
@@ -464,5 +526,22 @@ export default class App {
 
   public static refreshMenu(): void {
     App.createMenu();
+  }
+
+  /**
+   * Re-run the full assessment and push updated results to the renderer.
+   * Called after sync completes and when the renderer explicitly requests a refresh.
+   */
+  public static async refreshAssessment(): Promise<StartupAssessment> {
+    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+    const deviceConfig = deviceMgr.getConfig();
+    const serverUrl = deviceConfig?.syncServerUrl || DEFAULT_SYNC_SERVER.url;
+    const reachable = await App.checkServerReachable(serverUrl);
+    const assessment = reachable
+      ? await App.performFullAssessment(deviceConfig, serverUrl)
+      : App.buildLocalAssessment(deviceConfig, serverUrl);
+    App.ipcHandlers.setLastAssessment(assessment);
+    App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
+    return assessment;
   }
 }

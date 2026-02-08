@@ -172,6 +172,27 @@ export interface ColdResyncProgress {
   error?: string;
 }
 
+// Startup Assessment (sent from main process on startup)
+export interface StartupAssessment {
+  serverReachable: boolean;
+  serverUrl: string | null;
+  deviceConfigured: boolean;
+  jar: { present: boolean; updateAvailable: boolean; updateInfo?: UpdateInfo };
+  db: { present: boolean; sizeBytes: number };
+  files: { present: boolean; totalSizeBytes: number };
+  sync: { stale: boolean; daysSinceSync: number | null };
+  conflict: { detected: boolean; details?: string };
+}
+
+export type SyncComponent = 'jar' | 'db' | 'files';
+
+export interface SyncExecuteProgress {
+  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'starting_sb' | 'done' | 'error';
+  statusMessage: string;
+  progressPercent: number;
+  error?: string;
+}
+
 // Settings
 export interface AppSettings {
   springBoot: {

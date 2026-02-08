@@ -77,6 +77,15 @@ export const IPC_COLD_RESYNC = 'cold-resync:start';
 export const IPC_COLD_RESYNC_PROGRESS = 'cold-resync:progress';  // send/on
 export const IPC_COLD_RESYNC_NEEDED = 'cold-resync:needed';      // send/on
 
+// Startup assessment (send/on from main, invoke/handle for on-demand refresh)
+export const IPC_STARTUP_ASSESSMENT = 'startup:assessment';
+export const IPC_STARTUP_SERVER_STATUS = 'startup:server-status';
+export const IPC_STARTUP_GET_ASSESSMENT = 'startup:get-assessment';
+
+// Selective sync (invoke/handle + progress via send/on)
+export const IPC_SYNC_EXECUTE = 'sync:execute';
+export const IPC_SYNC_EXECUTE_PROGRESS = 'sync:execute-progress';
+
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';
 export const IPC_QUIT = 'quit';
