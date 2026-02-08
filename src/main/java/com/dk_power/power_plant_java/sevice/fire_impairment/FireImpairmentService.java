@@ -74,6 +74,14 @@ public class FireImpairmentService {
         return mapper.convert(repo.save(entity), FireImpairmentDto.class);
     }
 
+    public FireImpairmentDto cancel(Long id, String canceledDate) {
+        FireImpairment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("FireImpairment not found: " + id));
+        entity.setIsActive(false);
+        entity.setCanceledDate(canceledDate);
+        return mapper.convert(repo.save(entity), FireImpairmentDto.class);
+    }
+
     public boolean delete(Long id) {
         FireImpairment entity = repo.findById(id).orElse(null);
         if (entity != null) {

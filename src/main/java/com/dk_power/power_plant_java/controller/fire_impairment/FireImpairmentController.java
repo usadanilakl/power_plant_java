@@ -66,6 +66,12 @@ public class FireImpairmentController {
         return ResponseEntity.ok(service.close(id, closedDate));
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<FireImpairmentDto> cancel(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String canceledDate = body.getOrDefault("canceledDate", "");
+        return ResponseEntity.ok(service.cancel(id, canceledDate));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

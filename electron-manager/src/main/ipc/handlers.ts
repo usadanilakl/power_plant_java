@@ -301,6 +301,20 @@ export class IpcHandlers {
       }
     });
 
+    // Cancel impairment
+    ipcMain.handle(events.IPC_FIRE_IMP_CANCEL, async (_event, id: number) => {
+      try {
+        const now = new Date().toISOString().split('T')[0];
+        const data = await this.springBootApiPut(
+          `/api/fire-impairment/${id}/cancel`,
+          { canceledDate: now }
+        );
+        return { success: true, data };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
     // Close impairment
     ipcMain.handle(events.IPC_FIRE_IMP_CLOSE, async (_event, id: number) => {
       try {
@@ -320,11 +334,14 @@ export class IpcHandlers {
       try {
         await this.webview.open('fm-global', 'https://redetag.fmglobal.com');
 
-        // Wait for page to load, then fill form and intercept buttons
+        // Wait for landing page to load, click Create, then fill form
         const win = this.webview['windows'].get('fm-global');
         if (win) {
           win.window.webContents.once('did-finish-load', async () => {
             try {
+              // Click "Create New Impairment" button and wait for form page to load
+              await this.webview.clickFmGlobalCreateButton();
+
               const fieldsSet = await this.webview.fillFmGlobalForm(formData);
               console.log(`FM Global form: ${fieldsSet} fields populated`);
 

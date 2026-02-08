@@ -4,6 +4,8 @@
  */
 
 import { BrowserWindow, Menu, MenuItemConstructorOptions, app, dialog, shell } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, SYNC_STALE_THRESHOLD_DAYS } from './constants';
@@ -91,8 +93,28 @@ export default class App {
     // Pre-startup checks (before Spring Boot — check server, JAR update, device conflicts)
     await App.preStartupChecks();
 
-    // Auto-start Spring Boot if configured
-    await App.autoStart();
+    // Guard: don't start Spring Boot if JAR doesn't exist
+    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
+    if (!fs.existsSync(jarPath)) {
+      console.error('Spring Boot JAR not found after pre-startup checks — cannot start');
+      if (App.mainWindow && !App.mainWindow.isDestroyed()) {
+        const sendMsg = () => {
+          App.mainWindow?.webContents.send(events.IPC_COLD_RESYNC_NEEDED, {
+            reason: 'jar_missing',
+            message: 'Application JAR not found. Ensure sync server is reachable and has a JAR in the updates directory.'
+          });
+        };
+        if (App.mainWindow.webContents.isLoading()) {
+          App.mainWindow.webContents.once('did-finish-load', sendMsg);
+        } else {
+          sendMsg();
+        }
+      }
+    } else {
+      // Auto-start Spring Boot if configured
+      await App.autoStart();
+    }
 
     // Post-startup checks (after Spring Boot — sync staleness)
     App.postStartupChecks();
@@ -261,9 +283,22 @@ export default class App {
     const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
     const deviceConfig = deviceMgr.getConfig();
 
-    console.log('=== Pre-startup checks ===');
+    // Ensure working directory exists before any manager operations
+    const workingDir = path.resolve(__dirname, '..', '..', '..', '..', DEFAULT_SPRING_BOOT_CONFIG.workingDir);
+    if (!fs.existsSync(workingDir)) {
+      fs.mkdirSync(workingDir, { recursive: true });
+      console.log(`Created working directory: ${workingDir}`);
+    }
 
-    // 1. Check for JAR update
+    const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
+    const jarExists = fs.existsSync(jarPath);
+
+    console.log('=== Pre-startup checks ===');
+    console.log(`Working dir: ${workingDir}`);
+    console.log(`JAR: ${jarPath} (${jarExists ? 'exists' : 'MISSING — will attempt download'})`);
+    console.log(`Device configured: ${!!deviceConfig}`);
+
+    // 1. Check for JAR update (or initial download if missing)
     try {
       console.log('Checking for JAR update...');
       const updateResult = await updateMgr.checkForUpdate();

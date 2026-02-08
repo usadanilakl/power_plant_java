@@ -16,6 +16,7 @@ interface FireImpairmentItem {
   submissionDate: string;
   predictedRestorationDate: string;
   closedDate?: string;
+  canceledDate?: string;
   isActive: boolean;
   url?: string;
 }
@@ -68,6 +69,7 @@ interface FireImpairmentItem {
               </div>
               <div class="imp-actions">
                 <button class="btn btn-secondary btn-xs" (click)="openFmGlobal(imp)">Open FM Global</button>
+                <button class="btn btn-warning btn-xs" (click)="cancelImpairment(imp)">Cancel</button>
                 <button class="btn btn-danger btn-xs" (click)="openCloseDialog(imp)">Close</button>
               </div>
             </div>
@@ -89,13 +91,17 @@ interface FireImpairmentItem {
           <div class="imp-card closed" *ngFor="let imp of closedImpairments">
             <div class="imp-header">
               <div class="imp-title">
-                <span class="imp-dot closed"></span>
+                <span class="imp-dot" [class.canceled]="imp.canceledDate" [class.closed]="!imp.canceledDate"></span>
                 <strong>{{ imp.areaProtected || imp.protectionType || 'Impairment #' + imp.id }}</strong>
+                <span class="status-badge" [class.badge-canceled]="imp.canceledDate" [class.badge-closed]="!imp.canceledDate">
+                  {{ imp.canceledDate ? 'Canceled' : 'Closed' }}
+                </span>
               </div>
             </div>
             <div class="imp-details">
               <span *ngIf="imp.submissionDate">Submitted: {{ imp.submissionDate }}</span>
               <span *ngIf="imp.closedDate">Closed: {{ imp.closedDate }}</span>
+              <span *ngIf="imp.canceledDate">Canceled: {{ imp.canceledDate }}</span>
             </div>
           </div>
 
@@ -257,6 +263,39 @@ interface FireImpairmentItem {
 
     .imp-dot.closed {
       background-color: var(--text-muted);
+    }
+
+    .imp-dot.canceled {
+      background-color: var(--accent-warning);
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-closed {
+      background-color: rgba(107, 114, 128, 0.15);
+      color: var(--text-muted);
+    }
+
+    .badge-canceled {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--accent-warning);
+    }
+
+    .btn-warning {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--accent-warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-warning:hover {
+      background-color: rgba(245, 158, 11, 0.25);
     }
 
     .imp-actions {
@@ -426,6 +465,16 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
 
     this.lastCreatedId = null;
     await this.loadActive();
+  }
+
+  async cancelImpairment(imp: FireImpairmentItem): Promise<void> {
+    this.error = '';
+    const result = await this.electronService.fireImpCancel(imp.id);
+    if (!result.success) {
+      this.error = result.error || 'Failed to cancel impairment';
+    }
+    await this.loadActive();
+    this.closedLoaded = false;
   }
 
   openCloseDialog(imp: FireImpairmentItem): void {

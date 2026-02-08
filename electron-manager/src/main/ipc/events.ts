@@ -27,6 +27,7 @@ export const IPC_FIRE_IMP_UPDATE = 'fire-imp:update';
 export const IPC_FIRE_IMP_GET_ENUMS = 'fire-imp:get-enums';
 export const IPC_FIRE_IMP_LIST_CLOSED = 'fire-imp:list-closed';
 export const IPC_FIRE_IMP_COUNT = 'fire-imp:count';
+export const IPC_FIRE_IMP_CANCEL = 'fire-imp:cancel';
 // Fire Impairment broadcasts (send/on)
 export const IPC_FIRE_IMP_FORM_SUBMITTED = 'fire-imp:form-submitted';
 

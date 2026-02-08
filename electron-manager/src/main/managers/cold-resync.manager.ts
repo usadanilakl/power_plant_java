@@ -34,6 +34,7 @@ export class ColdResyncManager {
     this.dbDir = path.join(this.workingDir, 'db');
     this.dbPath = path.join(this.dbDir, 'proddb.mv.db');
     this.uploadsDir = path.join(this.workingDir, 'uploads-prod');
+    console.log(`ColdResyncManager: workingDir=${this.workingDir} dbPath=${this.dbPath}`);
   }
 
   /** True if the database file doesn't exist (first run or deleted) */
@@ -79,6 +80,10 @@ export class ColdResyncManager {
         }
       );
 
+      // Verify ZIP was downloaded
+      const zipStat = fs.statSync(backupZipPath);
+      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB)`);
+
       // 3. Extract database (30–40%)
       onProgress({ phase: 'db_extract', statusMessage: 'Extracting database...', progressPercent: 30 });
       this.extractDatabase(backupZipPath);
@@ -92,6 +97,8 @@ export class ColdResyncManager {
         `${serverUrl}/api/resync/files/path-manifest`,
         headers
       );
+
+      console.log(`File manifest: ${manifest?.length ?? 0} entries${manifest?.length > 0 ? ', first: ' + manifest[0].relativePath : ''}`);
 
       if (!manifest || manifest.length === 0) {
         onProgress({ phase: 'finalizing', statusMessage: 'No files to download', progressPercent: 95 });
@@ -132,21 +139,37 @@ export class ColdResyncManager {
   /**
    * Extract the .mv.db file from the H2 backup ZIP.
    * H2's BACKUP TO creates a standard ZIP with the database file inside.
+   * Uses extractEntryTo instead of getData() to avoid loading the entire DB into memory.
    */
   private extractDatabase(zipPath: string): void {
     const zip = new AdmZip(zipPath);
     const entries = zip.getEntries();
 
+    console.log(`H2 backup ZIP entries: [${entries.map(e => `${e.entryName} (${e.header.size} bytes)`).join(', ')}]`);
+
     // Find the .mv.db entry
     const dbEntry = entries.find(e => e.entryName.endsWith('.mv.db'));
     if (!dbEntry) {
-      throw new Error('No .mv.db file found in H2 backup ZIP');
+      throw new Error(`No .mv.db file found in H2 backup ZIP. Entries: ${entries.map(e => e.entryName).join(', ')}`);
     }
 
-    // Extract to db directory with target name
-    const data = dbEntry.getData();
-    fs.writeFileSync(this.dbPath, data);
-    console.log(`Extracted database: ${dbEntry.entryName} -> ${this.dbPath} (${(data.length / 1024 / 1024).toFixed(1)} MB)`);
+    // Remove existing db file if present (extractEntryTo won't overwrite by default)
+    if (fs.existsSync(this.dbPath)) {
+      fs.unlinkSync(this.dbPath);
+    }
+
+    // Extract using extractEntryTo — safer for large files than getData() which buffers everything
+    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, 'proddb.mv.db');
+
+    // Verify extraction succeeded
+    if (!fs.existsSync(this.dbPath)) {
+      throw new Error(`Database extraction failed — ${this.dbPath} not found after extraction`);
+    }
+    const stat = fs.statSync(this.dbPath);
+    if (stat.size < 1024) {
+      throw new Error(`Database file suspiciously small: ${stat.size} bytes`);
+    }
+    console.log(`Extracted: ${dbEntry.entryName} (${dbEntry.header.size} bytes in ZIP) -> ${this.dbPath} (${(stat.size / 1024 / 1024).toFixed(1)} MB on disk)`);
   }
 
   /**
@@ -237,7 +260,12 @@ export class ColdResyncManager {
           },
           (res) => {
             if (res.statusCode !== 200) {
-              reject(new Error(`HTTP ${res.statusCode} downloading ${urlStr}`));
+              // Consume response body for diagnostic info
+              let errorBody = '';
+              res.on('data', (c: Buffer) => { errorBody += c.toString(); });
+              res.on('end', () => {
+                reject(new Error(`HTTP ${res.statusCode} from ${urlStr}: ${errorBody.substring(0, 200)}`));
+              });
               return;
             }
 

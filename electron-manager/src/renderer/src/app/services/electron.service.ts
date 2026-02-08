@@ -140,6 +140,7 @@ interface ElectronAPI {
   fireImpCreate: (dto: any) => Promise<IpcResult<any>>;
   fireImpUpdate: (id: number, dto: any) => Promise<IpcResult<any>>;
   fireImpClose: (id: number) => Promise<IpcResult>;
+  fireImpCancel: (id: number) => Promise<IpcResult>;
   fireImpOpenForm: (formData: Record<string, string>) => Promise<IpcResult>;
   onFireImpFormSubmitted: (callback: (data: Record<string, string>) => void) => () => void;
 
@@ -323,6 +324,11 @@ export class ElectronService implements OnDestroy {
   async fireImpClose(id: number): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.fireImpClose(id);
+  }
+
+  async fireImpCancel(id: number): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.fireImpCancel(id);
   }
 
   async fireImpOpenForm(formData: Record<string, string>): Promise<IpcResult> {

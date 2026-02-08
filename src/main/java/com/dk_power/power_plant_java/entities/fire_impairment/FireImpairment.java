@@ -35,6 +35,7 @@ public class FireImpairment extends BaseIdEntity {
     private String submissionDate;
     private String predictedRestorationDate;
     private String closedDate;
+    private String canceledDate;
     @Column(columnDefinition = "TEXT")
     private String precautions;
     private Boolean isActive = true;

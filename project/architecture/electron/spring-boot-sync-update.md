@@ -14,7 +14,7 @@ The Electron wrapper performs startup checks to keep field devices current:
 Electron onReady
   → create window, register IPC, load renderer
   → preStartupChecks()                    (before Spring Boot)
-    1. Check JAR update → download if newer (with progress to renderer)
+    1. Check JAR update → download if newer or missing (with progress to renderer)
     2. Cold resync if needed (no database file + device configured)
        → download H2 backup ZIP from sync server
        → extract .mv.db with adm-zip

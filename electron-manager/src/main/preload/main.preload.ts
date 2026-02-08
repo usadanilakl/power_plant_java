@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(events.IPC_FIRE_IMP_UPDATE, id, dto),
   fireImpClose: (id: number): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_FIRE_IMP_CLOSE, id),
+  fireImpCancel: (id: number): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_FIRE_IMP_CANCEL, id),
   fireImpOpenForm: (formData: Record<string, string>): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_FIRE_IMP_OPEN_FORM, formData),
   onFireImpFormSubmitted: (callback: (data: Record<string, string>) => void) => {

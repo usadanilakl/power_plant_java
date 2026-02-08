@@ -220,6 +220,46 @@ export class WebViewManager {
   }
 
   /**
+   * Click the "Create New Impairment" button on the FM Global landing page.
+   * Returns a promise that resolves when the form page finishes loading.
+   */
+  public async clickFmGlobalCreateButton(): Promise<void> {
+    const instance = this.windows.get('fm-global');
+    if (!instance || instance.window.isDestroyed()) {
+      throw new Error('FM Global WebView is not open');
+    }
+
+    const webContents = instance.window.webContents;
+
+    // Check if the Create button exists on the current page
+    const hasButton = await webContents.executeJavaScript(`
+      !!document.getElementById('MainContent_btnCreate')
+    `);
+
+    if (!hasButton) {
+      console.log('[WebView] MainContent_btnCreate not found — may already be on form page');
+      return;
+    }
+
+    // Set up a promise that resolves when the next page finishes loading
+    const pageLoaded = new Promise<void>((resolve) => {
+      webContents.once('did-finish-load', () => {
+        resolve();
+      });
+    });
+
+    // Click the Create button
+    await webContents.executeJavaScript(`
+      document.getElementById('MainContent_btnCreate').click();
+    `);
+    console.log('[WebView] Clicked MainContent_btnCreate');
+
+    // Wait for the form page to load
+    await pageLoaded;
+    console.log('[WebView] FM Global form page loaded');
+  }
+
+  /**
    * Fill FM Global impairment form with provided data.
    * Mirrors the fillImparementDetails() from the JavaFX WebViewApp.
    */

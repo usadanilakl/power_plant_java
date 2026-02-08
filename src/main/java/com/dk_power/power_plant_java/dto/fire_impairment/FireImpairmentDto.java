@@ -26,6 +26,7 @@ public class FireImpairmentDto {
     private String submissionDate;
     private String predictedRestorationDate;
     private String closedDate;
+    private String canceledDate;
     private String precautions;
     private Boolean isActive;
     private String url;
