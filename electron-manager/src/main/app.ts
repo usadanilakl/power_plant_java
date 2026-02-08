@@ -293,15 +293,17 @@ export default class App {
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
     const jarExists = fs.existsSync(jarPath);
 
+    const serverUrl = deviceConfig?.syncServerUrl;
+
     console.log('=== Pre-startup checks ===');
     console.log(`Working dir: ${workingDir}`);
     console.log(`JAR: ${jarPath} (${jarExists ? 'exists' : 'MISSING — will attempt download'})`);
-    console.log(`Device configured: ${!!deviceConfig}`);
+    console.log(`Device configured: ${!!deviceConfig}${serverUrl ? ' serverUrl=' + serverUrl : ''}`);
 
     // 1. Check for JAR update (or initial download if missing)
     try {
       console.log('Checking for JAR update...');
-      const updateResult = await updateMgr.checkForUpdate();
+      const updateResult = await updateMgr.checkForUpdate(serverUrl);
       if (updateResult.success && updateResult.data?.isNewer) {
         console.log(`Update available: ${updateResult.data.fileName} (${(updateResult.data.fileSize / 1024 / 1024).toFixed(1)} MB)`);
         // Send progress events to renderer during download
@@ -310,7 +312,7 @@ export default class App {
             App.mainWindow.webContents.send(events.IPC_UPDATE_PROGRESS, progress);
           }
         };
-        const downloadResult = await updateMgr.downloadUpdate(undefined, onProgress);
+        const downloadResult = await updateMgr.downloadUpdate(serverUrl, onProgress);
         if (downloadResult.success) {
           console.log('JAR updated — will use new version on start');
         } else {

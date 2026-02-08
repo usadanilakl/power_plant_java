@@ -1,30 +1,43 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus } from '../../services/electron.service';
 import { CreateImpairmentDialogComponent } from './create-impairment-dialog.component';
 import { CloseImpairmentDialogComponent } from './close-impairment-dialog.component';
+import { ImpairmentDetailDialogComponent } from './impairment-detail-dialog.component';
 
 interface FireImpairmentItem {
   id: number;
   name: string;
   email: string;
   emailCc: string;
+  clientName: string;
+  indexNumber: string;
+  streetAddress: string;
+  state: string;
+  city: string;
+  country: string;
+  phone: string;
+  valveNumber: string;
   areaProtected: string;
-  protectionType: string;
   reason: string;
+  office: string;
+  protectionType: string;
   submissionDate: string;
   predictedRestorationDate: string;
   closedDate?: string;
   canceledDate?: string;
+  precautions?: string;
   isActive: boolean;
   url?: string;
+  location?: string;
 }
 
 @Component({
   selector: 'app-fire-impairment',
   standalone: true,
-  imports: [CommonModule, CreateImpairmentDialogComponent, CloseImpairmentDialogComponent],
+  imports: [CommonModule, FormsModule, CreateImpairmentDialogComponent, CloseImpairmentDialogComponent, ImpairmentDetailDialogComponent],
   template: `
     <div class="page">
       <div class="page-header">
@@ -57,57 +70,107 @@ interface FireImpairmentItem {
           </button>
         </div>
 
-        <div class="error-msg" *ngIf="error">{{ error }}</div>
-
-        <!-- Active list -->
-        <div class="imp-list" *ngIf="activeTab === 'active'">
-          <div class="imp-card" *ngFor="let imp of activeImpairments">
-            <div class="imp-header">
-              <div class="imp-title">
-                <span class="imp-dot active"></span>
-                <strong>{{ imp.areaProtected || imp.protectionType || 'Impairment #' + imp.id }}</strong>
-              </div>
-              <div class="imp-actions">
-                <button class="btn btn-secondary btn-xs" (click)="openFmGlobal(imp)">Open FM Global</button>
-                <button class="btn btn-warning btn-xs" (click)="cancelImpairment(imp)">Cancel</button>
-                <button class="btn btn-danger btn-xs" (click)="openCloseDialog(imp)">Close</button>
-              </div>
-            </div>
-            <div class="imp-details">
-              <span *ngIf="imp.protectionType">Protection: {{ imp.protectionType }}</span>
-              <span *ngIf="imp.reason">Reason: {{ imp.reason }}</span>
-              <span *ngIf="imp.submissionDate">Submitted: {{ imp.submissionDate }}</span>
-              <span *ngIf="imp.predictedRestorationDate">Est. Restore: {{ imp.predictedRestorationDate }}</span>
-            </div>
-          </div>
-
-          <div class="empty-state" *ngIf="activeImpairments.length === 0 && !loading">
-            <p>No active impairments.</p>
-          </div>
+        <!-- Search bar -->
+        <div class="search-bar">
+          <input type="text"
+                 class="search-input"
+                 placeholder="Search by area, protection type, reason, location..."
+                 [(ngModel)]="searchTerm">
+          <span class="search-count" *ngIf="searchTerm.trim()">
+            {{ activeTab === 'active' ? filteredActiveImpairments.length : filteredClosedImpairments.length }} results
+          </span>
         </div>
 
-        <!-- Closed list -->
-        <div class="imp-list" *ngIf="activeTab === 'closed'">
-          <div class="imp-card closed" *ngFor="let imp of closedImpairments">
-            <div class="imp-header">
-              <div class="imp-title">
-                <span class="imp-dot" [class.canceled]="imp.canceledDate" [class.closed]="!imp.canceledDate"></span>
-                <strong>{{ imp.areaProtected || imp.protectionType || 'Impairment #' + imp.id }}</strong>
-                <span class="status-badge" [class.badge-canceled]="imp.canceledDate" [class.badge-closed]="!imp.canceledDate">
-                  {{ imp.canceledDate ? 'Canceled' : 'Closed' }}
-                </span>
-              </div>
-            </div>
-            <div class="imp-details">
-              <span *ngIf="imp.submissionDate">Submitted: {{ imp.submissionDate }}</span>
-              <span *ngIf="imp.closedDate">Closed: {{ imp.closedDate }}</span>
-              <span *ngIf="imp.canceledDate">Canceled: {{ imp.canceledDate }}</span>
-            </div>
-          </div>
+        <div class="error-msg" *ngIf="error">{{ error }}</div>
 
-          <div class="empty-state" *ngIf="closedImpairments.length === 0 && !loading">
-            <p>No closed impairments.</p>
-          </div>
+        <!-- Active table -->
+        <div class="table-container" *ngIf="activeTab === 'active' && filteredActiveImpairments.length > 0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" (click)="sortBy('areaProtected')">
+                  Area Protected {{ sortIndicator('areaProtected') }}
+                </th>
+                <th class="sortable" (click)="sortBy('protectionType')">
+                  Protection {{ sortIndicator('protectionType') }}
+                </th>
+                <th>Reason</th>
+                <th class="sortable" (click)="sortBy('submissionDate')">
+                  Submitted {{ sortIndicator('submissionDate') }}
+                </th>
+                <th class="sortable" (click)="sortBy('predictedRestorationDate')">
+                  Est. Restore {{ sortIndicator('predictedRestorationDate') }}
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let imp of filteredActiveImpairments"
+                  class="clickable-row"
+                  (click)="openDetail(imp)">
+                <td class="name-cell">{{ imp.areaProtected || '--' }}</td>
+                <td>{{ imp.protectionType || '--' }}</td>
+                <td class="reason-cell">{{ imp.reason || '--' }}</td>
+                <td>{{ imp.submissionDate || '--' }}</td>
+                <td>{{ imp.predictedRestorationDate || '--' }}</td>
+                <td class="actions-cell" (click)="$event.stopPropagation()">
+                  <button class="btn btn-secondary btn-xs" (click)="openFmGlobal(imp)">FM Global</button>
+                  <button class="btn btn-warning btn-xs" (click)="cancelImpairment(imp)">Cancel</button>
+                  <button class="btn btn-danger btn-xs" (click)="openCloseDialog(imp)">Close</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" *ngIf="activeTab === 'active' && filteredActiveImpairments.length === 0 && !loading">
+          <p *ngIf="!searchTerm.trim()">No active impairments.</p>
+          <p *ngIf="searchTerm.trim()">No active impairments match "{{ searchTerm }}".</p>
+        </div>
+
+        <!-- Closed table -->
+        <div class="table-container" *ngIf="activeTab === 'closed' && filteredClosedImpairments.length > 0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" (click)="sortBy('areaProtected')">
+                  Area Protected {{ sortIndicator('areaProtected') }}
+                </th>
+                <th class="sortable" (click)="sortBy('protectionType')">
+                  Protection {{ sortIndicator('protectionType') }}
+                </th>
+                <th>Status</th>
+                <th class="sortable" (click)="sortBy('submissionDate')">
+                  Submitted {{ sortIndicator('submissionDate') }}
+                </th>
+                <th class="sortable" (click)="sortBy('closedDate')">
+                  Closed/Canceled {{ sortIndicator('closedDate') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let imp of filteredClosedImpairments"
+                  class="clickable-row"
+                  (click)="openDetail(imp)">
+                <td class="name-cell">{{ imp.areaProtected || '--' }}</td>
+                <td>{{ imp.protectionType || '--' }}</td>
+                <td>
+                  <span class="status-badge"
+                        [class.badge-canceled]="imp.canceledDate"
+                        [class.badge-closed]="!imp.canceledDate">
+                    {{ imp.canceledDate ? 'Canceled' : 'Closed' }}
+                  </span>
+                </td>
+                <td>{{ imp.submissionDate || '--' }}</td>
+                <td>{{ imp.canceledDate || imp.closedDate || '--' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" *ngIf="activeTab === 'closed' && filteredClosedImpairments.length === 0 && !loading">
+          <p *ngIf="!searchTerm.trim()">No closed impairments.</p>
+          <p *ngIf="searchTerm.trim()">No closed impairments match "{{ searchTerm }}".</p>
         </div>
       </div>
     </div>
@@ -126,10 +189,20 @@ interface FireImpairmentItem {
         (confirmed)="onCloseConfirm()"
         (cancelled)="showCloseDialog = false">
     </app-close-impairment-dialog>
+
+    <!-- Detail dialog -->
+    <app-impairment-detail-dialog
+        *ngIf="showDetailDialog"
+        [impairment]="selectedImpairment"
+        (closed)="showDetailDialog = false"
+        (openFmGlobal)="openFmGlobal($event)"
+        (closeImpairment)="openCloseDialog($event)"
+        (cancelImpairment)="cancelImpairment($event)">
+    </app-impairment-detail-dialog>
   `,
   styles: [`
     .page {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 0 auto;
     }
 
@@ -207,6 +280,38 @@ interface FireImpairmentItem {
       border-bottom-color: var(--accent-primary);
     }
 
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 8px 14px;
+      font-size: 13px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
     .error-msg {
       padding: 12px 16px;
       background-color: rgba(239, 68, 68, 0.1);
@@ -217,56 +322,70 @@ interface FireImpairmentItem {
       margin-bottom: 16px;
     }
 
-    .imp-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .imp-card {
+    .table-container {
       background-color: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 10px;
+      overflow: hidden;
     }
 
-    .imp-card.closed {
-      opacity: 0.7;
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
     }
 
-    .imp-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-secondary);
     }
 
-    .imp-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .data-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .data-table th.sortable:hover {
       color: var(--text-primary);
-      font-size: 14px;
     }
 
-    .imp-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
+    .data-table td {
+      padding: 8px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .imp-dot.active {
-      background-color: var(--accent-warning);
-      box-shadow: 0 0 6px var(--accent-warning);
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover td { background-color: rgba(255, 255, 255, 0.03); }
+
+    .name-cell { font-weight: 500; color: var(--text-primary); }
+
+    .reason-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .imp-dot.closed {
-      background-color: var(--text-muted);
+    .actions-cell {
+      white-space: nowrap;
     }
 
-    .imp-dot.canceled {
-      background-color: var(--accent-warning);
+    .actions-cell .btn-xs {
+      margin-right: 4px;
+    }
+
+    .actions-cell .btn-xs:last-child {
+      margin-right: 0;
     }
 
     .status-badge {
@@ -298,22 +417,9 @@ interface FireImpairmentItem {
       background-color: rgba(245, 158, 11, 0.25);
     }
 
-    .imp-actions {
-      display: flex;
-      gap: 6px;
-    }
-
     .btn-xs {
       padding: 4px 10px;
       font-size: 11px;
-    }
-
-    .imp-details {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--text-muted);
     }
 
     .empty-state {
@@ -340,12 +446,73 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
   showCloseDialog = false;
   closingImpairment: FireImpairmentItem | null = null;
 
+  showDetailDialog = false;
+  selectedImpairment: FireImpairmentItem | null = null;
+
+  searchTerm = '';
+  sortField = 'submissionDate';
+  sortAsc = false;
+
   private closedLoaded = false;
   private lastCreatedId: number | null = null;
   private sub?: Subscription;
   private unsubFormSubmitted?: () => void;
 
   constructor(private electronService: ElectronService) {}
+
+  // Filtered + sorted getters
+
+  get filteredActiveImpairments(): FireImpairmentItem[] {
+    return this.sortItems(this.filterItems(this.activeImpairments));
+  }
+
+  get filteredClosedImpairments(): FireImpairmentItem[] {
+    return this.sortItems(this.filterItems(this.closedImpairments));
+  }
+
+  private filterItems(items: FireImpairmentItem[]): FireImpairmentItem[] {
+    if (!this.searchTerm.trim()) return items;
+    const term = this.searchTerm.toLowerCase().trim();
+    return items.filter(imp =>
+      (imp.areaProtected || '').toLowerCase().includes(term) ||
+      (imp.protectionType || '').toLowerCase().includes(term) ||
+      (imp.reason || '').toLowerCase().includes(term) ||
+      (imp.email || '').toLowerCase().includes(term) ||
+      (imp.emailCc || '').toLowerCase().includes(term) ||
+      (imp.location || '').toLowerCase().includes(term) ||
+      (imp.valveNumber || '').toLowerCase().includes(term)
+    );
+  }
+
+  private sortItems(items: FireImpairmentItem[]): FireImpairmentItem[] {
+    const dir = this.sortAsc ? 1 : -1;
+    return [...items].sort((a, b) => {
+      const aVal = (a as any)[this.sortField] || '';
+      const bVal = (b as any)[this.sortField] || '';
+      return aVal.localeCompare(bVal) * dir;
+    });
+  }
+
+  sortBy(field: string): void {
+    if (this.sortField === field) {
+      this.sortAsc = !this.sortAsc;
+    } else {
+      this.sortField = field;
+      this.sortAsc = field === 'areaProtected' || field === 'protectionType';
+    }
+  }
+
+  sortIndicator(field: string): string {
+    if (this.sortField !== field) return '';
+    return this.sortAsc ? '\u25B2' : '\u25BC';
+  }
+
+  openDetail(imp: FireImpairmentItem): void {
+    this.selectedImpairment = imp;
+    this.showDetailDialog = true;
+  }
+
+  // Lifecycle
 
   ngOnInit(): void {
     this.sub = this.electronService.appStatus$.subscribe(status => {
@@ -447,10 +614,6 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Called when FM Global Back/Submit button is intercepted.
-   * Updates the last created impairment with gathered form data.
-   */
   private async onFmGlobalFormData(data: Record<string, string>): Promise<void> {
     if (!this.lastCreatedId) {
       console.log('FM Global form data received but no impairment to update');
@@ -495,7 +658,7 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
 
     this.closingImpairment = null;
     await this.loadActive();
-    this.closedLoaded = false; // Force reload on next tab switch
+    this.closedLoaded = false;
   }
 
   async openFmGlobal(imp: FireImpairmentItem): Promise<void> {
