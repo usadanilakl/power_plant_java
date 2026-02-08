@@ -66,42 +66,52 @@ import {
             </div>
 
             <div *ngIf="!serverError">
-              <h3 class="registry-title">Registered Devices</h3>
-              <table class="registry-table" *ngIf="registryDevices.length > 0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Machine ID</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let d of registryDevices">
-                    <td>{{ d.deviceNumber }}</td>
-                    <td>{{ d.deviceName }}</td>
-                    <td>{{ d.machineId }}</td>
-                    <td><span class="status-badge" [class]="'status-' + d.status.toLowerCase()">{{ d.status }}</span></td>
-                  </tr>
-                </tbody>
-              </table>
-              <p *ngIf="registryDevices.length === 0" class="text-muted">No devices registered yet.</p>
-            </div>
-
-            <!-- Register with server -->
-            <div class="register-section" *ngIf="!serverError">
-              <h3 class="registry-title">Register This Device</h3>
-              <div class="form-group">
-                <label class="form-label">Device Number</label>
-                <select class="form-input" [(ngModel)]="setupNumber">
-                  <option *ngFor="let n of availableNumbers" [ngValue]="n">{{ n }}{{ n === suggestedNumber ? ' (suggested)' : '' }}</option>
-                </select>
-                <span class="form-hint" *ngIf="availableNumbers.length > 0">Available: {{ availableNumbers.join(', ') }}</span>
-                <span class="form-hint form-error" *ngIf="availableNumbers.length === 0">All numbers (1-9) are taken!</span>
+              <!-- Use existing device -->
+              <div *ngIf="registryDevices.length > 0">
+                <h3 class="registry-title">Use Existing Device</h3>
+                <p class="text-muted" style="margin-bottom: 8px">Select a previously registered device to use on this machine.</p>
+                <table class="registry-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Machine ID</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let d of registryDevices" [class.selected-row]="selectedExisting?.machineId === d.machineId">
+                      <td>{{ d.deviceNumber }}</td>
+                      <td>{{ d.deviceName }}</td>
+                      <td>{{ d.machineId }}</td>
+                      <td><span class="status-badge" [class]="'status-' + d.status.toLowerCase()">{{ d.status }}</span></td>
+                      <td>
+                        <button class="btn btn-sm btn-primary" (click)="claimExistingDevice(d)" [disabled]="registering">
+                          Use
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <button class="btn btn-success" (click)="registerWithServer()" [disabled]="registering || !setupName || availableNumbers.length === 0">
-                {{ registering ? 'Registering...' : 'Register & Save' }}
-              </button>
+              <p *ngIf="registryDevices.length === 0" class="text-muted">No devices registered yet.</p>
+
+              <!-- Register new device -->
+              <div class="register-section">
+                <h3 class="registry-title">Register New Device</h3>
+                <div class="form-group">
+                  <label class="form-label">Device Number</label>
+                  <select class="form-input" [(ngModel)]="setupNumber">
+                    <option *ngFor="let n of availableNumbers" [ngValue]="n">{{ n }}{{ n === suggestedNumber ? ' (suggested)' : '' }}</option>
+                  </select>
+                  <span class="form-hint" *ngIf="availableNumbers.length > 0">Available: {{ availableNumbers.join(', ') }}</span>
+                  <span class="form-hint form-error" *ngIf="availableNumbers.length === 0">All numbers (1-9) are taken!</span>
+                </div>
+                <button class="btn btn-success" (click)="registerWithServer()" [disabled]="registering || !setupName || availableNumbers.length === 0">
+                  {{ registering ? 'Registering...' : 'Register & Save' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -406,6 +416,10 @@ import {
       font-size: 12px;
     }
 
+    .selected-row {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
     .btn-warning {
       background-color: var(--accent-warning);
       color: #000;
@@ -433,6 +447,7 @@ export class SettingsComponent implements OnInit {
   registering = false;
   saveMessage = '';
   saveError = false;
+  selectedExisting: DeviceRegistryEntry | null = null;
 
   allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -458,8 +473,8 @@ export class SettingsComponent implements OnInit {
     this.registryLoaded = true;
 
     if (result.success && result.data) {
-      this.registryDevices = result.data.devices;
-      this.availableNumbers = result.data.availableNumbers;
+      this.registryDevices = result.data.devices || [];
+      this.availableNumbers = result.data.availableNumbers || [];
       this.suggestedNumber = this.availableNumbers.length > 0 ? this.availableNumbers[0] : null;
       this.setupNumber = this.suggestedNumber;
     } else {
@@ -503,6 +518,33 @@ export class SettingsComponent implements OnInit {
     }
 
     this.registering = false;
+  }
+
+  async claimExistingDevice(device: DeviceRegistryEntry): Promise<void> {
+    this.selectedExisting = device;
+    this.registering = true;
+    this.saveMessage = '';
+
+    const config: DeviceConfig = {
+      deviceNumber: device.deviceNumber,
+      deviceName: device.deviceName,
+      machineId: device.machineId,
+      syncServerUrl: this.setupServerUrl,
+      configuredAt: new Date().toISOString()
+    };
+
+    const result = await this.electronService.saveDeviceConfig(config);
+    if (result.success) {
+      this.deviceConfig = config;
+      this.showSetup = false;
+      this.saveMessage = `Using device #${config.deviceNumber} (${config.deviceName}). Relaunch to apply.`;
+      this.saveError = false;
+    } else {
+      this.saveMessage = result.error || 'Failed to save config';
+      this.saveError = true;
+    }
+    this.registering = false;
+    this.selectedExisting = null;
   }
 
   async saveManual(): Promise<void> {

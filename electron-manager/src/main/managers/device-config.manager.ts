@@ -97,7 +97,7 @@ export class DeviceConfigManager {
 
     return new Promise((resolve) => {
       try {
-        const url = new URL(`${serverUrl}/api/field-sync/device-registry`);
+        const url = new URL(`${serverUrl}/api/sync/device-registry`);
         const req = http.request(
           {
             hostname: url.hostname,
@@ -146,7 +146,7 @@ export class DeviceConfigManager {
 
     return new Promise((resolve) => {
       try {
-        const url = new URL(`${serverUrl}/api/field-sync/device-registry`);
+        const url = new URL(`${serverUrl}/api/sync/device-registry`);
         const body: Record<string, unknown> = { deviceName };
         if (deviceNumber) body.deviceNumber = deviceNumber;
         const json = JSON.stringify(body);
@@ -169,7 +169,7 @@ export class DeviceConfigManager {
             res.on('end', () => {
               try {
                 const data = JSON.parse(responseBody);
-                if (data.success) {
+                if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300 && data.deviceNumber) {
                   const config: DeviceConfig = {
                     deviceNumber: data.deviceNumber,
                     deviceName: data.deviceName,
@@ -179,10 +179,10 @@ export class DeviceConfigManager {
                   };
                   resolve({ success: true, data: config });
                 } else {
-                  resolve({ success: false, error: data.message || 'Registration failed' });
+                  resolve({ success: false, error: data.error || data.message || `Registration failed (HTTP ${res.statusCode})` });
                 }
               } catch {
-                resolve({ success: false, error: 'Invalid response from server' });
+                resolve({ success: false, error: `Invalid response from server (HTTP ${res.statusCode})` });
               }
             });
           }

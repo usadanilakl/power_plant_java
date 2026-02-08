@@ -22,6 +22,7 @@ Electron onReady
        → write sync-status.json
     3. Check device number conflicts
     All failures are non-fatal (graceful degradation when offline)
+  → guard: skip autoStart if JAR is missing (notify renderer via cold-resync:needed)
   → autoStart Spring Boot
   → postStartupChecks()                   (after Spring Boot is healthy)
     → check sync staleness → warn if >14 days
@@ -79,6 +80,8 @@ Downloads the full H2 database and all files from the sync server **before** Spr
 - Cold resync: Electron downloads directly, works without Spring Boot, no restart needed
 - Internal resync: Spring Boot downloads and restores itself via `POST /api/resync/execute`, requires restart after
 
+**Sequence safety:** After restoring the sync server's H2 backup, the `id_seq` sequence may be stale. `SequenceInitializer` (power_plant_java `config/` package) runs on every Spring Boot startup — checks if the sequence value is below the max ID suffix for this device and adjusts it if needed. This prevents `DevicePrefixedIdGenerator` from generating duplicate IDs.
+
 ### Sync Staleness Detection
 
 - `SyncStatusManager` writes `sync-status.json` to `managed_apps/pid/` after each successful sync
@@ -96,7 +99,8 @@ Downloads the full H2 database and all files from the sync server **before** Spr
 
 ### Error Handling & Fallbacks
 
-- **Server unreachable**: All pre-startup checks are non-fatal. Spring Boot starts normally.
+- **Server unreachable**: All pre-startup checks are non-fatal. Spring Boot starts normally (if JAR exists).
+- **JAR missing**: If JAR doesn't exist after pre-startup checks, Spring Boot is NOT started. Renderer notified via `cold-resync:needed` with reason `jar_missing`.
 - **JAR download fails**: Old JAR is preserved. User can retry from Sync & Updates UI.
 - **Checksum mismatch**: `.tmp` file deleted. Download can be retried.
 - **Cold resync fails**: Spring Boot starts with empty DB. User can retry from Sync & Updates UI.

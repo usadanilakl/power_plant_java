@@ -153,7 +153,7 @@ export class SyncStatusManager {
     const url = serverUrl || DEFAULT_SYNC_SERVER.url;
 
     try {
-      const data = await this.httpGet(`${url}/api/field-sync/device-registry`);
+      const data = await this.httpGet(`${url}/api/sync/device-registry`);
       if (!data || !data.devices) {
         return { conflict: false };
       }

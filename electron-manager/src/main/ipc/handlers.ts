@@ -386,16 +386,19 @@ export class IpcHandlers {
 
   private registerUpdateHandlers(): void {
     ipcMain.handle(events.IPC_UPDATE_CHECK, async (_event, serverUrl?: string) => {
-      return this.updateManager.checkForUpdate(serverUrl);
+      // Resolve URL: explicit param > device config > default
+      const url = serverUrl || this.getSpringBootManager().getDeviceConfigManager().getConfig()?.syncServerUrl;
+      return this.updateManager.checkForUpdate(url);
     });
 
     ipcMain.handle(events.IPC_UPDATE_DOWNLOAD, async (_event, serverUrl?: string) => {
+      const url = serverUrl || this.getSpringBootManager().getDeviceConfigManager().getConfig()?.syncServerUrl;
       const onProgress = (progress: UpdateProgress) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send(events.IPC_UPDATE_PROGRESS, progress);
         }
       };
-      return this.updateManager.downloadUpdate(serverUrl, onProgress);
+      return this.updateManager.downloadUpdate(url, onProgress);
     });
   }
 

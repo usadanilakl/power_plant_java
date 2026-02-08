@@ -586,7 +586,7 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     this.updateCheckMessage = '';
     this.updateInfo = null;
     this.isUpdating = true;
-    const result = await this.electronService.checkForUpdate();
+    const result = await this.electronService.checkForUpdate(this.deviceConfig?.syncServerUrl);
     this.isUpdating = false;
     if (result.success && result.data) {
       this.updateInfo = result.data;
@@ -603,7 +603,7 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
   async downloadUpdate(): Promise<void> {
     this.isUpdating = true;
     this.updateProgress = { phase: 'checking' };
-    const result = await this.electronService.downloadUpdate();
+    const result = await this.electronService.downloadUpdate(this.deviceConfig?.syncServerUrl);
     this.isUpdating = false;
     if (!result.success) {
       this.updateProgress = { phase: 'error', error: result.error };
