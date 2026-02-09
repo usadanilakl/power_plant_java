@@ -9,7 +9,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -188,17 +193,61 @@ public class EngraverService {
     }
 
     /**
-     * Opens LightBurn with the appropriate template file based on QR setting.
-     * On Windows, also brings the window to foreground if already open.
+     * Lists available LightBurn template files (.lbrn2) in the engraver data directory.
      */
-    public void openLightBurn(boolean withQr) throws IOException {
-        String templateName = withQr ? lightburnTemplateWithQr : lightburnTemplate;
+    public List<String> listTemplateFiles() {
+        File dir = new File(engraverDataPath);
+        if (!dir.exists() || !dir.isDirectory()) {
+            return Collections.emptyList();
+        }
+        File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".lbrn2"));
+        if (files == null) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(files)
+                .map(File::getName)
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Ensures the template's VariableText section has the correct CSV Filename.
+     * Injects or updates the Filename element so any template works with the generated CSV.
+     */
+    private void injectCsvPathIntoTemplate(File templateFile) throws IOException {
+        String csvAbsolutePath = new File(engraverDataPath, csvFilename).getAbsolutePath().replace('\\', '/');
+        String filenameElement = "        <Filename Value=\"" + csvAbsolutePath + "\"/>";
+
+        String content = Files.readString(templateFile.toPath(), StandardCharsets.UTF_8);
+
+        if (content.contains("<Filename Value=\"")) {
+            // Replace existing Filename element
+            content = content.replaceFirst(
+                    "<Filename Value=\"[^\"]*\"/>",
+                    "<Filename Value=\"" + csvAbsolutePath + "\"/>"
+            );
+        } else if (content.contains("</VariableText>")) {
+            // Insert Filename before closing tag
+            content = content.replace("</VariableText>", filenameElement + "\n    </VariableText>");
+        }
+
+        Files.writeString(templateFile.toPath(), content, StandardCharsets.UTF_8);
+        log.info("Injected CSV path into template: {}", csvAbsolutePath);
+    }
+
+    /**
+     * Opens LightBurn with a specific template file.
+     * Injects the CSV path into the template before opening.
+     */
+    public void openLightBurn(String templateName) throws IOException {
         File templateFile = new File(engraverDataPath, templateName);
 
         if (!templateFile.exists()) {
             log.warn("LightBurn template not found: {}", templateFile.getAbsolutePath());
             throw new IOException("LightBurn template file not found: " + templateFile.getAbsolutePath());
         }
+
+        injectCsvPathIntoTemplate(templateFile);
 
         try {
             String os = System.getProperty("os.name").toLowerCase();
@@ -225,7 +274,7 @@ public class EngraverService {
                 pb.start();
             }
 
-            log.info("Opened LightBurn with template: {} (withQr: {})", templateFile.getAbsolutePath(), withQr);
+            log.info("Opened LightBurn with template: {}", templateFile.getAbsolutePath());
         } catch (Exception e) {
             log.error("Failed to open LightBurn: {}", e.getMessage());
             throw new IOException("Failed to open LightBurn: " + e.getMessage());
@@ -236,7 +285,7 @@ public class EngraverService {
      * Opens LightBurn with the default (no QR) template.
      */
     public void openLightBurn() throws IOException {
-        openLightBurn(false);
+        openLightBurn(lightburnTemplate);
     }
 
     /**

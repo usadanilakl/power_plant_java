@@ -3,9 +3,10 @@
  * Handles starting, stopping, health monitoring, and log capture.
  */
 
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as net from 'net';
 import * as http from 'http';
 import { AppState, AppStatus } from '../../shared/types';
 import {
@@ -64,6 +65,25 @@ export class SpringBootManager {
       this.error = `JAR not found: ${jarPath}`;
       this.updateState('error');
       throw new Error(this.error);
+    }
+
+    // Check for port conflict (e.g. previous user's session left Spring Boot running)
+    const portInUse = await this.isPortInUse(config.port);
+    if (portInUse) {
+      console.log(`Port ${config.port} is already in use — stopping existing instance...`);
+      this.addLog(`Port ${config.port} in use — stopping existing instance`);
+      await this.killProcessOnPort(config.port);
+      // Final check: ensure port is actually free after kill attempts
+      const stillInUse = await this.isPortInUse(config.port);
+      if (stillInUse) {
+        const freed = await this.waitForPortFree(config.port, 5_000);
+        if (!freed) {
+          this.error = `Port ${config.port} is still in use after attempting to stop existing instance`;
+          this.updateState('error');
+          throw new Error(this.error);
+        }
+      }
+      this.addLog('Previous instance stopped, port is now free');
     }
 
     // Build environment with device config
@@ -255,6 +275,101 @@ export class SpringBootManager {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = undefined;
     }
+  }
+
+  private isPortInUse(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      server.once('error', () => resolve(true));
+      server.once('listening', () => {
+        server.close();
+        resolve(false);
+      });
+      server.listen(port, '127.0.0.1');
+    });
+  }
+
+  private async killProcessOnPort(port: number): Promise<void> {
+    // 1. Try graceful shutdown via Spring Boot actuator endpoint
+    const shutdownOk = await this.requestActuatorShutdown(port);
+    if (shutdownOk) {
+      console.log('Actuator shutdown request accepted — waiting for process to exit');
+      this.addLog('Sent shutdown request to existing instance');
+      const freed = await this.waitForPortFree(port, 8_000);
+      if (freed) return; // Graceful shutdown succeeded
+      console.log('Actuator shutdown did not free port in time — falling back to taskkill');
+      this.addLog('Graceful shutdown timed out — force stopping');
+    }
+
+    // 2. Fallback: find PID via netstat and kill it
+    if (process.platform !== 'win32') return;
+
+    try {
+      const output = execSync(
+        `netstat -ano | findstr :${port} | findstr LISTENING`,
+        { encoding: 'utf-8' }
+      );
+      const pids = new Set<string>();
+      for (const line of output.trim().split('\n')) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== '0') pids.add(pid);
+      }
+
+      for (const pid of pids) {
+        console.log(`Force killing process on port ${port} (PID: ${pid})`);
+        this.addLog(`Force killing PID ${pid} on port ${port}`);
+        try {
+          execSync(`taskkill /pid ${pid} /f`, { encoding: 'utf-8' });
+        } catch { /* process may have already exited */ }
+      }
+    } catch {
+      // No process found on port
+    }
+  }
+
+  private requestActuatorShutdown(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const req = http.request(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/actuator/shutdown',
+          method: 'POST',
+          timeout: 5_000,
+          headers: { 'Content-Type': 'application/json' }
+        },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode !== undefined && res.statusCode < 500);
+        }
+      );
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+      req.end();
+    });
+  }
+
+  private waitForPortFree(port: number, timeoutMs: number = 10_000): Promise<boolean> {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        if (Date.now() - start > timeoutMs) {
+          resolve(false);
+          return;
+        }
+        const server = net.createServer();
+        server.once('error', () => {
+          setTimeout(check, 500);
+        });
+        server.once('listening', () => {
+          server.close();
+          resolve(true);
+        });
+        server.listen(port, '127.0.0.1');
+      };
+      check();
+    });
   }
 
   private performHealthCheck(): void {

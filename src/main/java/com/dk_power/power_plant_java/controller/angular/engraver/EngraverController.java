@@ -21,19 +21,25 @@ public class EngraverController {
     private final NgLotoPointService lotoPointService;
 
     /**
+     * List available LightBurn template files.
+     */
+    @GetMapping("/templates")
+    public ResponseEntity<NgApiResponse<List<String>>> listTemplates() {
+        List<String> templates = engraverService.listTemplateFiles();
+        return ResponseEntity.ok(new NgApiResponse<>(templates, "Success"));
+    }
+
+    /**
      * Process a batch of LOTO points for engraving.
-     * Generates CSV and optionally opens LightBurn.
-     * @param ids List of LOTO point IDs to process
-     * @param openLightBurn Whether to open LightBurn after generating CSV
-     * @param withQr Whether to include QR codes and use QR template
+     * Generates CSV and optionally opens LightBurn with the selected template.
      */
     @PostMapping("/process-batch")
     public ResponseEntity<NgApiResponse<EngraverBatchResponse>> processBatch(
             @RequestBody List<Long> ids,
             @RequestParam(defaultValue = "true") boolean openLightBurn,
-            @RequestParam(defaultValue = "false") boolean withQr) {
+            @RequestParam(defaultValue = "false") boolean withQr,
+            @RequestParam(required = false) String template) {
         try {
-            // Fetch LOTO points by IDs
             List<LotoPoint> points = lotoPointService.getByIds(ids);
 
             if (points.isEmpty()) {
@@ -41,12 +47,10 @@ public class EngraverController {
                         .body(new NgApiResponse<>(null, "No LOTO points found for the provided IDs"));
             }
 
-            // Generate CSV with QR option
             String csvPath = engraverService.generateCsvForBatch(points, withQr);
 
-            // Open LightBurn if requested (with appropriate template)
-            if (openLightBurn) {
-                engraverService.openLightBurn(withQr);
+            if (openLightBurn && template != null && !template.isBlank()) {
+                engraverService.openLightBurn(template);
             }
 
             EngraverBatchResponse response = new EngraverBatchResponse(
@@ -78,16 +82,30 @@ public class EngraverController {
 
     /**
      * Open LightBurn without generating new CSV (use existing).
-     * @param withQr Whether to open the QR template or text-only template
      */
     @PostMapping("/open-lightburn")
     public ResponseEntity<NgApiResponse<String>> openLightBurn(
-            @RequestParam(defaultValue = "false") boolean withQr) {
+            @RequestParam String template) {
         try {
-            engraverService.openLightBurn(withQr);
+            engraverService.openLightBurn(template);
             return ResponseEntity.ok(new NgApiResponse<>("LightBurn opened", "Success"));
         } catch (Exception e) {
             log.error("Failed to open LightBurn: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Mark LOTO points as labeled after engraving.
+     */
+    @PostMapping("/mark-labeled")
+    public ResponseEntity<NgApiResponse<String>> markLabeled(@RequestBody List<Long> ids) {
+        try {
+            lotoPointService.markAsLabeled(ids);
+            return ResponseEntity.ok(new NgApiResponse<>(ids.size() + " points marked as labeled", "Success"));
+        } catch (Exception e) {
+            log.error("Failed to mark points as labeled: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }

@@ -172,6 +172,23 @@ export interface ColdResyncProgress {
   error?: string;
 }
 
+// Electron self-update
+export interface ElectronUpdateInfo {
+  fileName: string;
+  fileSize: number;
+  checksum: string;        // SHA-256
+  lastModified: string;    // ISO date
+  isNewer: boolean;        // Compared to local electron-version.json
+}
+
+export interface ElectronUpdateProgress {
+  phase: 'checking' | 'downloading' | 'verifying' | 'staged' | 'error';
+  bytesDownloaded?: number;
+  totalBytes?: number;
+  percent?: number;
+  error?: string;
+}
+
 // Startup Assessment (sent from main process on startup)
 export interface StartupAssessment {
   serverReachable: boolean;
@@ -182,12 +199,27 @@ export interface StartupAssessment {
   files: { present: boolean; totalSizeBytes: number };
   sync: { stale: boolean; daysSinceSync: number | null };
   conflict: { detected: boolean; details?: string };
+  resourcePacks?: ResourcePackStatus[];
+  electron?: { updateAvailable: boolean; updateStaged: boolean; updateInfo?: ElectronUpdateInfo };
 }
 
-export type SyncComponent = 'jar' | 'db' | 'files';
+export type SyncComponent = 'jar' | 'db' | 'files' | 'resource-packs';
+
+export interface ResourcePackStatus {
+  name: string;
+  localPresent: boolean;
+  totalFiles: number;
+  missingFiles: number;
+  updatedFiles: number;
+}
+
+export interface SyncOptions {
+  /** When true, deletes all local files before downloading from server. Default: false (only download missing). */
+  cleanFiles?: boolean;
+}
 
 export interface SyncExecuteProgress {
-  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'starting_sb' | 'done' | 'error';
+  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'resource-packs' | 'starting_sb' | 'done' | 'error';
   statusMessage: string;
   progressPercent: number;
   error?: string;

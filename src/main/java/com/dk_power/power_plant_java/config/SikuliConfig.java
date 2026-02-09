@@ -35,7 +35,8 @@ public class SikuliConfig {
                 copyFolder(sourceTessdataDir, sikuliTessdataPath);
                 System.out.println("Copied tessdata folder to SikuliX AppData: " + sikuliTessdataPath);
             } else {
-                throw new IllegalStateException("Source tessdata directory not found at " + sourceTessdataDir);
+                System.out.println("[warn] SikuliConfig: tessdata not found at " + sourceTessdataDir + " — OCR features will be unavailable");
+                return;
             }
         } else {
             System.out.println("Using existing tessdata folder at SikuliX AppData: " + sikuliTessdataPath);

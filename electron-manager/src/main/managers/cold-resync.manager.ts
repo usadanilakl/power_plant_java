@@ -105,17 +105,27 @@ export class ColdResyncManager {
     }
   }
 
-  /** Download files only (from manifest) */
+  /** Download files only (from manifest).
+   *  @param cleanFirst If true, deletes all local files before downloading. Default: false (only download missing). */
   public async syncFiles(
     serverUrl: string,
     machineId: string,
     deviceNumber: number,
-    onProgress: (msg: string, pct: number) => void
+    onProgress: (msg: string, pct: number) => void,
+    cleanFirst: boolean = false
   ): Promise<IpcResult> {
     const headers = { 'X-Machine-Id': machineId, 'X-Device-Number': String(deviceNumber) };
 
     try {
       this.ensureDirectories();
+
+      // Clean existing files if requested
+      if (cleanFirst && fs.existsSync(this.uploadsDir)) {
+        onProgress('Clearing local files...', 0);
+        console.log(`Clean file sync: removing ${this.uploadsDir}`);
+        fs.rmSync(this.uploadsDir, { recursive: true, force: true });
+        fs.mkdirSync(this.uploadsDir, { recursive: true });
+      }
 
       onProgress('Fetching file manifest...', 0);
       const manifest = await this.httpGetJson<ManifestEntry[]>(

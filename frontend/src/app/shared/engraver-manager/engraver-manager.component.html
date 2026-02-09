@@ -1,8 +1,9 @@
 @if (modalService.isVisible()) {
-  <app-popup-projection
+  <app-rf-popup-projection
     [title]="'Engraver Manager'"
     [size]="'large'"
     [isOpen]="true"
+    [zIndex]="11000"
     (close)="close()"
   >
     <div class="engraver-container">
@@ -42,7 +43,34 @@
 
         <div class="batch-info">
           <p><strong>Total Tags:</strong> {{ modalService.totalItems() }}</p>
-          <p><strong>Tags per Batch:</strong> 4 (max)</p>
+        </div>
+
+        <!-- Template Selection -->
+        <div class="config-section">
+          <label class="config-label">Template</label>
+          <select
+            class="config-select"
+            [ngModel]="modalService.selectedTemplate()"
+            (ngModelChange)="onTemplateChange($event)"
+          >
+            @for (tpl of modalService.availableTemplates(); track tpl) {
+              <option [value]="tpl">{{ tpl }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Batch Size Selection -->
+        <div class="config-section">
+          <label class="config-label">Tags per Batch</label>
+          <select
+            class="config-select"
+            [ngModel]="modalService.batchSize()"
+            (ngModelChange)="onBatchSizeChange(+$event)"
+          >
+            @for (size of batchSizeOptions; track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
         </div>
 
         <!-- QR Code Toggle -->
@@ -83,6 +111,9 @@
                   <th>#</th>
                   <th>Tag Number</th>
                   <th>Description</th>
+                  @if (batch.status !== 'completed') {
+                    <th class="remove-col"></th>
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -91,12 +122,21 @@
                     <td class="row-number">{{ i + 1 }}</td>
                     <td class="tag-number">{{ item.tagNumber || '(no tag)' }}</td>
                     <td class="description">{{ item.description || '(no description)' }}</td>
+                    @if (batch.status !== 'completed') {
+                      <td class="remove-col">
+                        <button
+                          class="btn-remove"
+                          (click)="removeItem(item.id!)"
+                          title="Remove from batch"
+                        >✕</button>
+                      </td>
+                    }
                   </tr>
                 }
-                @for (_ of [].constructor(4 - batch.items.length); track $index) {
+                @for (_ of [].constructor(modalService.batchSize() - batch.items.length); track $index) {
                   <tr class="empty-row">
                     <td class="row-number">{{ batch.items.length + $index + 1 }}</td>
-                    <td colspan="2" class="empty-cell">— empty slot —</td>
+                    <td [attr.colspan]="batch.status !== 'completed' ? 3 : 2" class="empty-cell">— empty slot —</td>
                   </tr>
                 }
               </tbody>
@@ -186,5 +226,5 @@
         }
       </div>
     </div>
-  </app-popup-projection>
+  </app-rf-popup-projection>
 }

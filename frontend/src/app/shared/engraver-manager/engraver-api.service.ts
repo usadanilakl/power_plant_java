@@ -25,15 +25,20 @@ export class EngraverApiService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Process a batch of LOTO point IDs for engraving.
-   * Generates CSV and opens LightBurn.
-   * @param ids LOTO point IDs to process
-   * @param openLightBurn Whether to open LightBurn after generating CSV
-   * @param withQr Whether to include QR codes and use QR template
+   * List available LightBurn template files.
    */
-  processBatch(ids: number[], openLightBurn = true, withQr = false): Observable<SpringApiResponse<EngraverBatchResponse>> {
+  getTemplates(): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/templates`);
+  }
+
+  /**
+   * Process a batch of LOTO point IDs for engraving.
+   * Generates CSV and opens LightBurn with the selected template.
+   */
+  processBatch(ids: number[], template: string, openLightBurn = true, withQr = false): Observable<SpringApiResponse<EngraverBatchResponse>> {
+    const params = `openLightBurn=${openLightBurn}&withQr=${withQr}&template=${encodeURIComponent(template)}`;
     return this.http.post<SpringApiResponse<EngraverBatchResponse>>(
-      `${this.apiUrl}/process-batch?openLightBurn=${openLightBurn}&withQr=${withQr}`,
+      `${this.apiUrl}/process-batch?${params}`,
       ids
     );
   }
@@ -46,10 +51,18 @@ export class EngraverApiService {
   }
 
   /**
-   * Open LightBurn with the existing CSV file.
-   * @param withQr Whether to open QR template or text-only template
+   * Open LightBurn with the existing CSV file and a specific template.
    */
-  openLightBurn(withQr = false): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/open-lightburn?withQr=${withQr}`, {});
+  openLightBurn(template: string): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${this.apiUrl}/open-lightburn?template=${encodeURIComponent(template)}`, {}
+    );
+  }
+
+  /**
+   * Mark LOTO points as labeled after engraving.
+   */
+  markLabeled(ids: number[]): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/mark-labeled`, ids);
   }
 }

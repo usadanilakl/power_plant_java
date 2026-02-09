@@ -17,7 +17,8 @@
     "download-jre": "node scripts/download-jre.js",
     "prepackage": "npm run download-jre",
     "package": "npm run build && electron-builder",
-    "package:dir": "npm run build && electron-builder --dir"
+    "package:dir": "npm run build && electron-builder --dir",
+    "package:zip": "npm run package:dir && node scripts/create-update-zip.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.16"
@@ -44,6 +45,13 @@
       {
         "from": "jre",
         "to": "jre",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../tessdata",
+        "to": "tessdata",
         "filter": [
           "**/*"
         ]

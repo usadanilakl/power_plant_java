@@ -178,6 +178,15 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     @Transactional
+    public void markAsLabeled(List<Long> ids) {
+        List<LotoPoint> points = lotoPointRepo.findAllById(ids);
+        for (LotoPoint point : points) {
+            point.setIsLabeled(true);
+        }
+        lotoPointRepo.saveAll(points);
+    }
+
+    @Transactional
     public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
         System.out.println(lotoPointDto.getIsoPos() + " - Processing LotoPoint");
         LotoPoint entity = convertIdDtoToEntity(lotoPointDto);

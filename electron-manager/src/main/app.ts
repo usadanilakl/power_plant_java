@@ -3,14 +3,14 @@
  * Manages a single Spring Boot process (PID app).
  */
 
-import { BrowserWindow, Menu, MenuItemConstructorOptions, app, dialog, shell } from 'electron';
+import { BrowserWindow, Menu, MenuItemConstructorOptions, app, dialog, shell, powerMonitor, session } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
-import { getWorkingDir, ensureWorkingDir } from './paths';
+import { getWorkingDir, ensureWorkingDir, ensureTessdata } from './paths';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -94,8 +94,14 @@ export default class App {
       App.mainWindowManager = null!;
     });
 
+    // Clean up staging from a previous Electron update (if any)
+    App.ipcHandlers.getElectronUpdateManager().cleanupStaging();
+
     // Startup assessment (before Spring Boot — assess what's needed, don't auto-download)
     await App.startupAssessment();
+
+    // Clear Chromium HTTP cache so stale Angular assets from previous JAR aren't served
+    await session.defaultSession.clearCache();
 
     // Auto-start Spring Boot if JAR exists
     const workingDir = getWorkingDir();
@@ -134,6 +140,55 @@ export default class App {
             accelerator: 'CmdOrCtrl+,',
             click: () => {
               // TODO: Open settings page via IPC
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Clear Application Data...',
+            click: async () => {
+              const workingDir = getWorkingDir();
+              const { response } = await dialog.showMessageBox(App.mainWindow!, {
+                type: 'warning',
+                title: 'Clear Application Data',
+                message: 'This will delete all downloaded data:',
+                detail: `• JAR file\n• Database\n• Uploaded files\n• Device configuration\n\nLocation: ${workingDir}\n\nJG Portal will be stopped. You will need to sync again after clearing.`,
+                buttons: ['Cancel', 'Clear Data'],
+                defaultId: 0,
+                cancelId: 0
+              });
+              if (response === 1) {
+                try {
+                  // Stop Spring Boot if running
+                  if (springBoot?.isRunning()) {
+                    await springBoot.stop();
+                  }
+                  // Delete working directory contents
+                  if (fs.existsSync(workingDir)) {
+                    fs.rmSync(workingDir, { recursive: true, force: true });
+                    fs.mkdirSync(workingDir, { recursive: true });
+                  }
+                  App.createMenu();
+                  dialog.showMessageBox(App.mainWindow!, {
+                    type: 'info',
+                    title: 'Data Cleared',
+                    message: 'Application data has been cleared.',
+                    detail: 'Restart the app or sync again to re-download data.'
+                  });
+                } catch (err: any) {
+                  dialog.showMessageBox(App.mainWindow!, {
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to clear data',
+                    detail: err.message
+                  });
+                }
+              }
+            }
+          },
+          {
+            label: 'Open Data Folder',
+            click: () => {
+              shell.openPath(getWorkingDir());
             }
           },
           { type: 'separator' },
@@ -267,8 +322,9 @@ export default class App {
    * and sends findings to renderer. Does NOT auto-download anything.
    */
   private static async startupAssessment(): Promise<void> {
-    // Ensure working directory exists
+    // Ensure working directory and bundled assets exist
     ensureWorkingDir();
+    ensureTessdata();
     const workingDir = getWorkingDir();
 
     const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
@@ -311,6 +367,8 @@ export default class App {
     const syncMgr = App.ipcHandlers.getSyncStatusManager();
     const staleness = syncMgr.isSyncStale(SYNC_STALE_THRESHOLD_DAYS);
 
+    const resourcePackMgr = App.ipcHandlers.getResourcePackManager();
+
     return {
       serverReachable: false,
       serverUrl,
@@ -319,7 +377,12 @@ export default class App {
       db: { present: coldResyncMgr.isDbPresent(), sizeBytes: coldResyncMgr.getDbSizeBytes() },
       files: { present: coldResyncMgr.areFilesPresent(), totalSizeBytes: coldResyncMgr.getFilesTotalSizeBytes() },
       sync: { stale: staleness.stale, daysSinceSync: staleness.daysSinceSync },
-      conflict: { detected: false }
+      conflict: { detected: false },
+      resourcePacks: resourcePackMgr.getLocalStatus(),
+      electron: {
+        updateAvailable: false,
+        updateStaged: App.ipcHandlers.getElectronUpdateManager().isUpdateStaged()
+      }
     };
   }
 
@@ -360,6 +423,35 @@ export default class App {
       } catch (err) {
         console.warn('Device conflict check failed:', err);
       }
+    }
+
+    // Check resource packs
+    try {
+      const rpMgr = App.ipcHandlers.getResourcePackManager();
+      const headers: Record<string, string> = deviceConfig
+        ? { 'X-Machine-Id': deviceConfig.machineId, 'X-Device-Number': String(deviceConfig.deviceNumber) }
+        : {};
+      assessment.resourcePacks = await rpMgr.checkForUpdates(serverUrl, headers);
+      const rpSummary = assessment.resourcePacks.map(p => `${p.name}:${p.missingFiles + p.updatedFiles > 0 ? p.missingFiles + p.updatedFiles + ' need sync' : 'ok'}`).join(', ');
+      console.log(`Resource packs: ${rpSummary || 'none'}`);
+    } catch (err) {
+      console.warn('Resource pack check failed:', err);
+    }
+
+    // Check for Electron app update
+    try {
+      const electronMgr = App.ipcHandlers.getElectronUpdateManager();
+      const electronResult = await electronMgr.checkForUpdate(serverUrl);
+      if (electronResult.success && electronResult.data) {
+        assessment.electron = {
+          updateAvailable: electronResult.data.isNewer,
+          updateStaged: electronMgr.isUpdateStaged(),
+          updateInfo: electronResult.data
+        };
+        console.log(`Electron update: ${electronResult.data.isNewer ? 'available' : 'up to date'}`);
+      }
+    } catch (err) {
+      console.warn('Electron update check failed:', err);
     }
 
     console.log(`Assessment: JAR=${assessment.jar.present ? 'yes' : 'NO'}${assessment.jar.updateAvailable ? ' (update)' : ''} DB=${assessment.db.present ? (assessment.db.sizeBytes / 1024 / 1024).toFixed(0) + 'MB' : 'NO'} Files=${assessment.files.present ? (assessment.files.totalSizeBytes / 1024 / 1024 / 1024).toFixed(1) + 'GB' : 'NO'} Stale=${assessment.sync.stale}`);
@@ -519,6 +611,20 @@ export default class App {
         await App.cleanup();
         App.application.exit();
       }
+    });
+
+    // Auto-stop Spring Boot on Windows sign-out or system shutdown
+    electronApp.whenReady().then(() => {
+      powerMonitor.on('shutdown', async () => {
+        console.log('System shutdown detected — stopping Spring Boot');
+        await App.cleanup();
+      });
+
+      powerMonitor.on('lock-screen', () => {
+        console.log('Screen locked / user switching — Spring Boot continues running');
+        // We intentionally do NOT stop Spring Boot on lock/switch.
+        // If the next user opens the app, the port conflict resolver will handle it.
+      });
     });
   }
 

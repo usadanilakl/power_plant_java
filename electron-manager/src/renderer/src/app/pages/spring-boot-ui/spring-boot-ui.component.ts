@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -11,7 +11,8 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
   imports: [CommonModule, RouterModule],
   template: `
     <div class="sb-ui" *ngIf="status.state === 'running'; else notRunning">
-      <iframe [src]="sbUrl" class="sb-iframe"></iframe>
+      <iframe #sbIframe [src]="sbUrl" class="sb-iframe"></iframe>
+      <button class="refresh-btn" (click)="refreshPage()" title="Refresh page">&#x21BB;</button>
     </div>
 
     <ng-template #notRunning>
@@ -42,12 +43,37 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
       display: flex;
       flex: 1;
       height: 100%;
+      position: relative;
     }
 
     .sb-iframe {
       width: 100%;
       height: 100%;
       border: none;
+    }
+
+    .refresh-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 150ms;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .refresh-btn:hover {
+      opacity: 1;
+      color: var(--text-primary);
     }
 
     .placeholder {
@@ -87,6 +113,8 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
   `]
 })
 export class SpringBootUiComponent implements OnInit, OnDestroy {
+  @ViewChild('sbIframe') iframe?: ElementRef<HTMLIFrameElement>;
+
   appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   sbUrl: SafeResourceUrl;
@@ -109,5 +137,16 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
 
   async start(): Promise<void> {
     await this.electronService.startApp();
+  }
+
+  refreshPage(): void {
+    try {
+      this.iframe?.nativeElement?.contentWindow?.location.reload();
+    } catch {
+      // Cross-origin fallback: re-assign src to current value
+      if (this.iframe?.nativeElement) {
+        this.iframe.nativeElement.src = this.iframe.nativeElement.src;
+      }
+    }
   }
 }

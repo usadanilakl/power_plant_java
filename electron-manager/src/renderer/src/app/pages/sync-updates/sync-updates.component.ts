@@ -1,15 +1,16 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   ElectronService, AppStatus, SyncStatusInfo, StartupAssessment, SyncComponent,
-  SyncExecuteProgress, DeviceConfig, IpcResult, APP_DISPLAY_NAME
+  SyncOptions, SyncExecuteProgress, DeviceConfig, ResourcePackStatus, ElectronUpdateProgress, IpcResult, APP_DISPLAY_NAME
 } from '../../services/electron.service';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-sync-updates',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page">
       <h1 class="page-title">Sync & Updates</h1>
@@ -87,6 +88,33 @@ import { Subscription } from 'rxjs';
                   {{ assessment.conflict.details || '' }}
                 </td>
               </tr>
+              <tr *ngFor="let pack of assessment.resourcePacks">
+                <td class="at-label">{{ pack.name }}</td>
+                <td class="at-status">
+                  <span [class.status-ok]="pack.localPresent && pack.missingFiles === 0 && pack.updatedFiles === 0"
+                        [class.status-warn]="pack.localPresent && (pack.missingFiles > 0 || pack.updatedFiles > 0)"
+                        [class.status-missing]="!pack.localPresent">
+                    {{ !pack.localPresent ? 'Missing' : (pack.missingFiles + pack.updatedFiles > 0 ? 'Needs sync' : 'OK') }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  {{ pack.totalFiles }} files{{ pack.missingFiles > 0 ? ', ' + pack.missingFiles + ' missing' : '' }}{{ pack.updatedFiles > 0 ? ', ' + pack.updatedFiles + ' changed' : '' }}
+                </td>
+              </tr>
+              <tr *ngIf="assessment.electron">
+                <td class="at-label">Electron</td>
+                <td class="at-status">
+                  <span [class.status-ok]="!assessment.electron.updateAvailable && !assessment.electron.updateStaged"
+                        [class.status-warn]="assessment.electron.updateAvailable || assessment.electron.updateStaged">
+                    {{ assessment.electron.updateStaged ? 'Staged' : (assessment.electron.updateAvailable ? 'Update' : 'OK') }}
+                  </span>
+                </td>
+                <td class="at-detail">
+                  <span *ngIf="assessment.electron.updateStaged">Ready to apply (requires restart)</span>
+                  <span *ngIf="assessment.electron.updateAvailable && !assessment.electron.updateStaged">Update available</span>
+                  <span *ngIf="!assessment.electron.updateAvailable && !assessment.electron.updateStaged">Up to date</span>
+                </td>
+              </tr>
             </tbody>
           </table>
 
@@ -122,9 +150,14 @@ import { Subscription } from 'rxjs';
                     (click)="executeSync(['files'])">
               Sync Files
             </button>
+            <button class="btn btn-secondary"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="executeSync(['resource-packs'])">
+              Sync Resource Packs
+            </button>
             <button class="btn btn-primary"
                     [disabled]="syncInProgress || !assessment?.serverReachable"
-                    (click)="executeSync(['jar', 'db', 'files'])">
+                    (click)="executeSync(['jar', 'db', 'files', 'resource-packs'])">
               Sync All
             </button>
             <button class="btn btn-warning"
@@ -133,6 +166,11 @@ import { Subscription } from 'rxjs';
               Sync Needed
             </button>
           </div>
+
+          <label class="toggle-option">
+            <input type="checkbox" [(ngModel)]="cleanFiles" [disabled]="syncInProgress" />
+            Re-download all files (clear local files first)
+          </label>
 
           <p class="hint">{{ appName }} will be automatically stopped and restarted when syncing database or files.</p>
           <p class="hint" *ngIf="!assessment?.serverReachable && assessment !== null">
@@ -160,7 +198,56 @@ import { Subscription } from 'rxjs';
         </div>
       </section>
 
-      <!-- Section 3: Device Identity (kept from before) -->
+      <!-- Section 3: Electron Update -->
+      <section class="card" *ngIf="assessment?.electron">
+        <div class="card-header">
+          <h2>Electron App Update</h2>
+        </div>
+        <div class="card-body">
+          <p *ngIf="!assessment?.electron?.updateAvailable && !assessment?.electron?.updateStaged" class="hint">
+            Electron app is up to date.
+          </p>
+          <p *ngIf="assessment?.electron?.updateAvailable && !assessment?.electron?.updateStaged">
+            A new version of the Electron app is available on the sync server.
+          </p>
+          <p *ngIf="assessment?.electron?.updateStaged">
+            Update is downloaded and ready to apply. Applying will close the application and restart it automatically.
+          </p>
+
+          <div class="card-actions">
+            <button class="btn btn-secondary"
+                    [disabled]="electronDownloading || !assessment?.electron?.updateAvailable || assessment?.electron?.updateStaged"
+                    (click)="downloadElectronUpdate()">
+              Download Update
+            </button>
+            <button class="btn btn-warning"
+                    [disabled]="electronDownloading || !assessment?.electron?.updateStaged"
+                    (click)="applyElectronUpdate()">
+              Apply Update (Restart)
+            </button>
+          </div>
+
+          <div class="sync-progress" *ngIf="electronProgress">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="electronProgress.percent || 0"></div>
+            </div>
+            <span class="progress-text">
+              {{ electronProgress.phase === 'downloading' ? 'Downloading...' : electronProgress.phase === 'verifying' ? 'Verifying...' : electronProgress.phase }}
+              <span *ngIf="electronProgress.percent"> {{ electronProgress.percent }}%</span>
+            </span>
+          </div>
+
+          <div class="error-msg" *ngIf="electronProgress?.phase === 'error'">
+            Download failed: {{ electronProgress?.error }}
+          </div>
+
+          <div class="success-msg" *ngIf="electronProgress?.phase === 'staged'">
+            Update downloaded and verified. Click "Apply Update" to install.
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Device Identity (kept from before) -->
       <section class="card">
         <div class="card-header">
           <h2>Device Identity</h2>
@@ -417,6 +504,20 @@ import { Subscription } from 'rxjs';
     .btn-warning:hover:not(:disabled) {
       filter: brightness(1.1);
     }
+
+    .toggle-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .toggle-option input[type="checkbox"] {
+      accent-color: var(--accent-primary);
+    }
   `]
 })
 export class SyncUpdatesComponent implements OnInit, OnDestroy {
@@ -424,11 +525,16 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
   assessment: StartupAssessment | null = null;
   syncProgress: SyncExecuteProgress | null = null;
   syncInProgress = false;
+  cleanFiles = false;
   deviceConfig: DeviceConfig | null = null;
+
+  electronDownloading = false;
+  electronProgress: ElectronUpdateProgress | null = null;
 
   private statusSub?: Subscription;
   private unsubSyncProgress?: () => void;
   private unsubAssessment?: () => void;
+  private unsubElectronProgress?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
@@ -449,6 +555,16 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
       this.assessment = a;
     });
 
+    this.unsubElectronProgress = this.electronService.onElectronUpdateProgress((progress) => {
+      this.electronProgress = progress;
+      if (progress.phase === 'staged' || progress.phase === 'error') {
+        this.electronDownloading = false;
+        if (progress.phase === 'staged') {
+          this.refreshAssessment();
+        }
+      }
+    });
+
     await Promise.all([
       this.loadDeviceConfig(),
       this.loadAssessment(),
@@ -459,6 +575,7 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     this.statusSub?.unsubscribe();
     this.unsubSyncProgress?.();
     this.unsubAssessment?.();
+    this.unsubElectronProgress?.();
   }
 
   async loadDeviceConfig(): Promise<void> {
@@ -483,13 +600,15 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
   get needsSync(): boolean {
     if (!this.assessment) return false;
     const a = this.assessment;
-    return !a.jar.present || a.jar.updateAvailable || !a.db.present || !a.files.present || a.sync.stale;
+    const packsNeedSync = a.resourcePacks?.some(p => !p.localPresent || p.missingFiles > 0 || p.updatedFiles > 0) ?? false;
+    return !a.jar.present || a.jar.updateAvailable || !a.db.present || !a.files.present || a.sync.stale || packsNeedSync;
   }
 
   executeSync(components: SyncComponent[]): void {
     if (this.syncInProgress) return;
     this.syncProgress = null;
-    this.electronService.executeSync(components);
+    const options: SyncOptions = this.cleanFiles ? { cleanFiles: true } : {};
+    this.electronService.executeSync(components, options);
   }
 
   syncNeeded(): void {
@@ -498,8 +617,29 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     if (!this.assessment.jar.present || this.assessment.jar.updateAvailable) components.push('jar');
     if (!this.assessment.db.present || this.assessment.sync.stale) components.push('db');
     if (!this.assessment.files.present) components.push('files');
+    const packsNeedSync = this.assessment.resourcePacks?.some(p => !p.localPresent || p.missingFiles > 0 || p.updatedFiles > 0) ?? false;
+    if (packsNeedSync) components.push('resource-packs');
     if (components.length === 0) return;
     this.executeSync(components);
+  }
+
+  async downloadElectronUpdate(): Promise<void> {
+    if (this.electronDownloading) return;
+    this.electronDownloading = true;
+    this.electronProgress = null;
+    const result = await this.electronService.downloadElectronUpdate();
+    if (!result.success) {
+      this.electronDownloading = false;
+      this.electronProgress = { phase: 'error', error: result.error || 'Download failed' };
+    }
+  }
+
+  async applyElectronUpdate(): Promise<void> {
+    const confirmed = confirm(
+      'Apply the Electron update? The application will close and restart automatically.\n\nMake sure all work is saved before proceeding.'
+    );
+    if (!confirmed) return;
+    await this.electronService.applyElectronUpdate();
   }
 
   formatFileSize(bytes: number): string {

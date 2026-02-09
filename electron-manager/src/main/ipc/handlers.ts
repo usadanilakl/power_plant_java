@@ -2,7 +2,7 @@
  * IPC Handlers - Registers all IPC event handlers for the main process.
  */
 
-import { app, ipcMain, shell, dialog, BrowserWindow } from 'electron';
+import { app, ipcMain, shell, dialog, BrowserWindow, session } from 'electron';
 import * as http from 'http';
 import * as events from './events';
 import { SpringBootManager } from '../managers/spring-boot.manager';
@@ -11,8 +11,10 @@ import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
+import { ResourcePackManager } from '../managers/resource-pack.manager';
+import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncExecuteProgress } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -21,6 +23,8 @@ export class IpcHandlers {
   private syncStatusManager: SyncStatusManager;
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
+  private resourcePackManager: ResourcePackManager;
+  private electronUpdateManager: ElectronUpdateManager;
   private mainWindow: BrowserWindow;
   private lastAssessment: StartupAssessment | null = null;
 
@@ -30,6 +34,8 @@ export class IpcHandlers {
     this.updateManager = new UpdateManager();
     this.syncStatusManager = new SyncStatusManager();
     this.coldResyncManager = new ColdResyncManager();
+    this.resourcePackManager = new ResourcePackManager();
+    this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
     this.gateLogManager.setOnPeopleUpdated(() => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -67,6 +73,7 @@ export class IpcHandlers {
     this.registerColdResyncHandlers();
     this.registerStartupHandlers();
     this.registerGateLogHandlers();
+    this.registerElectronUpdateHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -87,6 +94,14 @@ export class IpcHandlers {
 
   public getColdResyncManager(): ColdResyncManager {
     return this.coldResyncManager;
+  }
+
+  public getResourcePackManager(): ResourcePackManager {
+    return this.resourcePackManager;
+  }
+
+  public getElectronUpdateManager(): ElectronUpdateManager {
+    return this.electronUpdateManager;
   }
 
   public setLastAssessment(assessment: StartupAssessment): void {
@@ -545,7 +560,7 @@ export class IpcHandlers {
     });
 
     // Execute selective sync
-    ipcMain.handle(events.IPC_SYNC_EXECUTE, async (_event, components: SyncComponent[]) => {
+    ipcMain.handle(events.IPC_SYNC_EXECUTE, async (_event, components: SyncComponent[], options?: SyncOptions) => {
       const config = this.springBoot.getDeviceConfigManager().getConfig();
       if (!config) return { success: false, error: 'Device not configured' };
 
@@ -594,20 +609,37 @@ export class IpcHandlers {
 
         // 4. Sync Files
         if (components.includes('files')) {
-          sendProgress({ phase: 'files', statusMessage: 'Downloading files...', progressPercent: 55 });
+          sendProgress({ phase: 'files', statusMessage: 'Downloading files...', progressPercent: 50 });
           const filesResult = await this.coldResyncManager.syncFiles(
             config.syncServerUrl, config.machineId, config.deviceNumber,
             (msg, pct) => sendProgress({
               phase: 'files',
               statusMessage: msg,
-              progressPercent: 55 + Math.round(pct * 0.35)
-            })
+              progressPercent: 50 + Math.round(pct * 0.25)
+            }),
+            options?.cleanFiles ?? false
           );
           if (!filesResult.success) throw new Error(filesResult.error || 'Files sync failed');
         }
 
-        // 5. Restart Spring Boot if it was running or JAR was updated
+        // 5. Sync Resource Packs
+        if (components.includes('resource-packs')) {
+          sendProgress({ phase: 'resource-packs', statusMessage: 'Syncing resource packs...', progressPercent: 75 });
+          const headers = { 'X-Machine-Id': config.machineId, 'X-Device-Number': String(config.deviceNumber) };
+          const rpResult = await this.resourcePackManager.syncAllPacks(
+            config.syncServerUrl, headers,
+            (msg, pct) => sendProgress({
+              phase: 'resource-packs',
+              statusMessage: msg,
+              progressPercent: 75 + Math.round(pct * 0.15)
+            })
+          );
+          if (!rpResult.success) throw new Error(rpResult.error || 'Resource packs sync failed');
+        }
+
+        // 6. Clear Chromium cache (stale Angular assets in iframe) and restart Spring Boot
         if ((needsDbOrFiles && sbWasRunning) || components.includes('jar')) {
+          await session.defaultSession.clearCache();
           sendProgress({ phase: 'starting_sb', statusMessage: `Starting ${APP_DISPLAY_NAME}...`, progressPercent: 95 });
           await this.springBoot.start();
         }
@@ -692,6 +724,45 @@ export class IpcHandlers {
       try {
         await this.gateLogManager.print();
         return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  private registerElectronUpdateHandlers(): void {
+    ipcMain.handle(events.IPC_ELECTRON_UPDATE_CHECK, async (_event, serverUrl?: string) => {
+      try {
+        const url = serverUrl || this.springBoot.getDeviceConfigManager().getConfig()?.syncServerUrl;
+        return await this.electronUpdateManager.checkForUpdate(url);
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_ELECTRON_UPDATE_DOWNLOAD, async (_event, serverUrl?: string) => {
+      try {
+        const url = serverUrl || this.springBoot.getDeviceConfigManager().getConfig()?.syncServerUrl;
+        const onProgress = (progress: ElectronUpdateProgress) => {
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send(events.IPC_ELECTRON_UPDATE_PROGRESS, progress);
+          }
+        };
+        return await this.electronUpdateManager.downloadUpdate(url, onProgress);
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_ELECTRON_UPDATE_APPLY, async () => {
+      try {
+        const result = this.electronUpdateManager.applyUpdate();
+        if (result.success) {
+          // Batch script is launched — stop Spring Boot and exit so the script can replace files
+          await this.springBoot.stop();
+          app.exit(0);
+        }
+        return result;
       } catch (error: any) {
         return { success: false, error: error.message };
       }

@@ -5,9 +5,13 @@
     - Data CRUD operation
     - Data manipulation (format conversions, import/export, desktop automation)
     - Security
-2. JavaFX - bundling app:
-    - Starts and stops main SpringBoot app as well as some smaller simple apps (Fire Impairment, Gate Log)
-    - Provides UI to switch between apps
+2. Electron Manager (replaced JavaFX):
+    - Wraps main SpringBoot app as desktop application
+    - Manages start/stop/restart, health monitoring, sync, updates
+    - Bundled JRE (Temurin 21) — no system Java required
+    - Packaged as Windows installer (NSIS) or portable folder
+    - Shared data at %PROGRAMDATA% for multi-user workstations
+    - Independent features: Fire Impairment, Gate Log, Weather, PJM
 3. Sync Server (SpringBoot):
     - Synchronizes main SpringBoot app instances
     - Provides full database and file backup
@@ -22,8 +26,8 @@ JavaFX desktop wraps main SpringBoot app making it fully offline desktop applica
 
 ## Improvements/Plans
 
-1. Switch JavaFX to Electron - supports modern web technologies, better automation, easier deployment
-2. Set up automatic update system - Electron reaches to Sync Server checks for updated jar file for main SpringBoot app. If found, it downloads it and replaces current local jar file with it. Then start the app as normal. 
+1. ~~Switch JavaFX to Electron~~ - DONE. Electron Manager with bundled JRE, NSIS installer + portable build, multi-user support
+2. ~~Set up automatic update system~~ - DONE. Electron checks sync server for JAR updates, downloads with SHA-256 verification, auto-restarts Spring Boot. Electron self-update: downloads ZIP from sync server, stages it, applies via external batch script (Windows file locking requires process exit before replacement), relaunches automatically
 3. Prep main SpringBoot app for web access - deploy it on server, set security separations. Run it just like any other instance of main SpringBoot app that syncs with server.
 4. Set up Angular PWA to work with web instance of main SpringBoot app: 
     - PWA submits changes to public endpoint

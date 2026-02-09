@@ -88,6 +88,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_UPDATE_PROGRESS, sub); };
   },
 
+  // Electron self-update
+  checkForElectronUpdate: (serverUrl?: string): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_ELECTRON_UPDATE_CHECK, serverUrl),
+  downloadElectronUpdate: (serverUrl?: string): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_ELECTRON_UPDATE_DOWNLOAD, serverUrl),
+  applyElectronUpdate: (): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_ELECTRON_UPDATE_APPLY),
+  onElectronUpdateProgress: (callback: (progress: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, progress: any) => callback(progress);
+    ipcRenderer.on(events.IPC_ELECTRON_UPDATE_PROGRESS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_ELECTRON_UPDATE_PROGRESS, sub); };
+  },
+
   // Sync management
   getSyncStatus: (): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_SYNC_GET_STATUS),
@@ -134,8 +147,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Selective sync
-  executeSync: (components: string[]): Promise<IpcResult> =>
-    ipcRenderer.invoke(events.IPC_SYNC_EXECUTE, components),
+  executeSync: (components: string[], options?: Record<string, any>): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_SYNC_EXECUTE, components, options),
   onSyncExecuteProgress: (callback: (progress: any) => void) => {
     const sub = (_event: Electron.IpcRendererEvent, progress: any) => callback(progress);
     ipcRenderer.on(events.IPC_SYNC_EXECUTE_PROGRESS, sub);

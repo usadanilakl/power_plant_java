@@ -36,6 +36,8 @@ electron-manager/
 │   │   │   ├── update.manager.ts         # JAR update check/download/verify
 │   │   │   ├── sync-status.manager.ts    # Sync status, staleness, conflict detection
 │   │   │   ├── cold-resync.manager.ts   # External DB + file download (before SB starts)
+│   │   │   ├── electron-update.manager.ts # Electron self-update (check/download/apply via batch script)
+│   │   │   ├── resource-pack.manager.ts # Resource pack sync (engraver_data, qa-data)
 │   │   │   ├── gate-log.manager.ts      # Gate Log: OnLocation API + gate scraper + combiner
 │   │   │   └── webview.manager.ts        # WebView windows (FM Global, Gate, OnLocation)
 │   │   ├── ipc/
@@ -80,6 +82,9 @@ electron-manager/
 - No `shell: true` in spawn (security fix)
 - `isQuitting` flag prevents double-cleanup race condition
 - `sandbox: false` in BrowserWindow webPreferences (required for preload `require()` in Electron 20+)
+- **Port conflict resolution**: On start, checks if port 8082 is in use (e.g., orphaned process from previous user session). Tries graceful `POST /actuator/shutdown` first (8s timeout), falls back to `taskkill /f` via PID lookup from `netstat`
+- **Session cleanup**: `powerMonitor.on('shutdown')` stops Spring Boot on Windows sign-out/shutdown. Lock-screen intentionally does NOT stop SB — port conflict resolver handles the next user's session
+- **Device config as env var**: `DEVICE_CONFIG` environment variable passed to Spring Boot process from `device-config.json`
 
 ### Embedded Spring Boot UI - DONE
 - Spring Boot app (localhost:8082) rendered inside Electron via `<iframe>` on the `/pid-app` route
@@ -163,9 +168,10 @@ Previous apps consolidated:
 5. All failures are non-fatal (graceful degradation when offline)
 
 **Selective sync (user-triggered):**
-- `sync:execute` IPC handler accepts array of `SyncComponent` (`'jar' | 'db' | 'files'`)
+- `sync:execute` IPC handler accepts array of `SyncComponent` (`'jar' | 'db' | 'files' | 'resource-packs'`)
 - Automatically stops Spring Boot before DB/files sync, restarts after
-- Progress via `sync:execute-progress` IPC with phases: `stopping_sb`, `jar`, `db_download`, `db_extract`, `files`, `starting_sb`, `done`, `error`
+- Resource packs sync does NOT require Spring Boot restart
+- Progress via `sync:execute-progress` IPC with phases: `stopping_sb`, `jar`, `db_download`, `db_extract`, `files`, `resource-packs`, `starting_sb`, `done`, `error`
 
 **Cold Resync (external database + file download):**
 - `ColdResyncManager` downloads H2 database and/or files directly from sync server — no Spring Boot needed
@@ -184,9 +190,10 @@ Previous apps consolidated:
 - `SyncStatusManager`: `getSyncStatus()`, `isSyncStale()`, `triggerFullResync()`, `checkDeviceConflict()`, persists `sync-status.json`
 - `ColdResyncManager`: `syncDatabase()`, `syncFiles()`, `performColdResync()`, assessment helpers — downloads DB + files from sync server
 
-**UI (Sync & Updates page) — 3 sections:**
-- Status & Assessment: table showing JAR/DB/Files/Last Sync/Conflicts status with color-coded indicators, server online/offline badge, Refresh button
-- Sync Actions: buttons for Sync JAR, Sync Database, Sync Files, Sync All, Sync Needed + progress bar
+**UI (Sync & Updates page) — 4 sections:**
+- Status & Assessment: table showing JAR/DB/Files/Last Sync/Conflicts/Resource Packs/Electron status with color-coded indicators, server online/offline badge, Refresh button
+- Sync Actions: buttons for Sync JAR, Sync Database, Sync Files, Sync Resource Packs, Sync All, Sync Needed + progress bar
+- Electron App Update: Download Update button (downloads ZIP to staging), Apply Update (Restart) button (confirmation dialog, launches batch script, exits app), progress/status display
 - Device Identity: device name, number, machine ID, sync server URL
 
 **Notification bars in AppComponent (unified startup status):**
@@ -195,6 +202,45 @@ Previous apps consolidated:
 - Sync in progress: blue bar with status + progress percent
 - Sync stale / device conflict: post-startup warning bars (unchanged)
 - Sidebar nav item: "Sync & Updates" at `/sync-updates`
+
+### Electron Self-Update - DONE
+
+Electron checks the sync server for a newer version of itself, downloads a ZIP to staging, and applies it via an external batch script (Windows locks running .exe/.dll files, so replacement must happen after Electron exits).
+
+**Sync server** (`ElectronUpdateService` + `ElectronUpdateController`):
+- Admin drops a ZIP into `electron-updates/` directory on the sync server
+- Config: `electron-update.directory=${user.dir}/electron-updates`
+- `GET /api/electron-update/check` → returns `{ fileName, fileSize, checksum (SHA-256), lastModified }` or 404
+- `GET /api/electron-update/download` → streams ZIP with Content-Length, ETag, Accept-Ranges
+- SHA-256 cached by file mtime (same pattern as JAR updates)
+
+**Electron (`ElectronUpdateManager`):**
+- Version tracking: `electron-version.json` in working dir stores `{ checksum, fileName, appliedAt }`
+- `checkForUpdate()`: compares server checksum with local `electron-version.json`
+- `downloadUpdate()`: downloads ZIP to `electron-update-staging/` dir, verifies SHA-256. Phases: `checking` → `downloading` → `verifying` → `staged` | `error`
+- `applyUpdate()`: writes `update.cmd` batch script to staging, spawns it detached, returns success (caller stops Spring Boot + exits)
+- `cleanupStaging()`: called on startup to remove leftover staging dir from previous update
+- Included in startup assessment: `assessment.electron.updateAvailable`, `assessment.electron.updateStaged`
+
+**Batch script (`update.cmd`) generated by `applyUpdate()`:**
+1. Wait for Electron process to exit (polls via `tasklist`)
+2. Extract ZIP over install directory using PowerShell `Expand-Archive -Force`
+3. Copy `electron-version.json` from staging to working dir
+4. Clean up staging directory
+5. Relaunch the app
+
+**ZIP structure requirement:** Files must be at root level in the ZIP (`DK Power Manager.exe`, `resources/`, `locales/`, etc.) — NOT nested inside a subfolder. The `create-update-zip.js` script ensures this.
+
+**IPC channels** (3 invoke/handle + 1 send/on):
+- `electron-update:check`, `electron-update:download`, `electron-update:apply`
+- `electron-update:progress` (broadcast: download progress phases)
+
+**Packaging:**
+- `npm run package:zip` = `package:dir` + `node scripts/create-update-zip.js`
+- Uses PowerShell `Compress-Archive -Path 'release\win-unpacked\*'` to create ZIP with files at root level
+- Output: `release/DK-Power-Manager-{version}.zip`
+
+**Key difference from JAR updates:** Electron update requires full app close + restart (via batch script). JAR/DB/files updates only restart Spring Boot within the running Electron process. This is why Electron is NOT part of `SyncComponent` — it's a separate action.
 
 ### Gate Log - DONE (OnLocation API + Gate Scraping + WebView Auto-Login)
 
@@ -246,8 +292,62 @@ Previous app consolidated: `C:\Users\usada\my_projects\Entrance_Log` (Spring Boo
 - **Output structure**: Because `rootDir` is `./src`, compiled output lands in `dist/main/main/` and `dist/main/shared/` — `package.json` main entry is `dist/main/main/main.js`
 - **Path resolution**: All `__dirname`-relative paths in managers account for the extra directory level (e.g., renderer HTML is `path.join(__dirname, '..', '..', '..', ...)`)
 
+## Packaging & Deployment - DONE
+
+### Path Resolution (`src/main/paths.ts`)
+
+Centralized path resolver handles dev vs. packaged mode:
+
+| | Dev mode | Packaged mode |
+|---|---|---|
+| **Working dir** | `electron-manager/managed_apps/pid/` (relative to `__dirname`) | `%PROGRAMDATA%/DK Power Manager/managed_apps/pid/` (shared across all Windows users) |
+| **Java** | `java` (system PATH) | `<install>/resources/jre/bin/java.exe` (bundled Temurin JRE 21) |
+| **`app.isPackaged`** | `false` | `true` (both installer and unpacked builds) |
+
+All managers import `getWorkingDir()` and `getJavaPath()` from `paths.ts` — no more scattered `path.resolve(__dirname, ...)`.
+
+### Build Scripts
+
+| Script | Output | Use case |
+|---|---|---|
+| `npm run build` | `dist/` (TypeScript + Angular) | Dev build |
+| `npm run package` | `release/*.exe` (NSIS installer) | Formal install with Start Menu, desktop shortcut, Add/Remove Programs |
+| `npm run package:dir` | `release/win-unpacked/` (portable folder) | Copy-paste deployment, zip for SharePoint |
+| `npm run package:zip` | `release/DK-Power-Manager-{ver}.zip` | Builds portable folder + creates ZIP for sync server distribution |
+| `npm run download-jre` | `jre/` (Temurin JRE 21 x64) | Auto-runs before packaging via `prepackage` hook |
+
+### Bundled JRE
+
+- Eclipse Temurin JRE 21 (Windows x64), downloaded by `scripts/download-jre.js`
+- Packaged as `extraResources` → lands at `<install>/resources/jre/`
+- `getJavaPath()` returns `<install>/resources/jre/bin/java.exe` in packaged mode
+- `jre/` is in `.gitignore` (downloaded on demand, not committed)
+
+### Installer vs. Portable
+
+Both produce identical behavior (`app.isPackaged = true`, same path resolution):
+- **Installer** (NSIS): Start Menu/Desktop shortcuts, Add/Remove Programs entry, in-place upgrade
+- **Portable** (`win-unpacked/` folder): No install needed, just run the `.exe`. Zip and put on SharePoint.
+- **Data location**: Both use `%PROGRAMDATA%\DK Power Manager\managed_apps\pid\` — shared across Windows users
+- **Uninstall**: NSIS removes install dir only. `%PROGRAMDATA%` data persists in both cases. Use File > Clear Application Data menu to wipe.
+
+### Angular Renderer (packaged mode fixes)
+
+- `baseHref: "./"` in `angular.json` production config — fixes asset loading with `file://` protocol
+- `withHashLocation()` in `provideRouter()` — hash routing (`#/path`) works with `file://` (pushState does not)
+
+### Multi-User Shared Workstation
+
+- **Data sharing**: `%PROGRAMDATA%` is machine-wide, all users read/write the same JAR, DB, files, and device config
+- **Port conflicts**: When user A signs out leaving Spring Boot running and user B opens the app, the port conflict resolver stops user A's orphaned process (actuator shutdown → taskkill fallback) then starts a fresh instance
+- **Session events**: `powerMonitor.on('shutdown')` cleans up on sign-out/shutdown. Lock-screen intentionally does NOT stop Spring Boot.
+
+### File Menu Utilities
+
+- **Clear Application Data...**: Confirmation dialog → stops Spring Boot → deletes `%PROGRAMDATA%\DK Power Manager\managed_apps\pid\` → recreates empty dir
+- **Open Data Folder**: Opens the working directory in Windows Explorer
+
 ## Deferred (Future Work)
-- Electron packaging and installer
 - Weather WeatherBug BrowserView integration
 - PJM Data Miner API integration
 - Permit monitoring (needs Main SpringBoot API)

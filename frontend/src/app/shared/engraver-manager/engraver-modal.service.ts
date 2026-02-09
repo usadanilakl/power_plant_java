@@ -12,8 +12,6 @@ export interface EngraverBatchItem {
   providedIn: 'root'
 })
 export class EngraverModalService {
-  static readonly BATCH_SIZE = 4;
-
   // Core state signals
   isVisible = signal(false);
   allItems = signal<LotoPointDto[]>([]);
@@ -21,6 +19,11 @@ export class EngraverModalService {
   batches = signal<EngraverBatchItem[]>([]);
   isProcessing = signal(false);
   withQr = signal(false);
+
+  // Template and batch size
+  availableTemplates = signal<string[]>([]);
+  selectedTemplate = signal<string>('');
+  batchSize = signal(4);
 
   // Computed signals
   totalBatches = computed(() => this.batches().length);
@@ -51,7 +54,7 @@ export class EngraverModalService {
 
   /**
    * Opens the modal with a list of LOTO points.
-   * Automatically splits them into batches of 4.
+   * Splits them into batches based on current batchSize.
    */
   openWithItems(items: LotoPointDto[]): void {
     this.allItems.set(items);
@@ -62,18 +65,37 @@ export class EngraverModalService {
   }
 
   /**
-   * Creates batches from the items.
+   * Creates batches from the items using current batch size.
    */
   private createBatches(items: LotoPointDto[]): EngraverBatchItem[] {
+    const size = this.batchSize();
     const batches: EngraverBatchItem[] = [];
-    for (let i = 0; i < items.length; i += EngraverModalService.BATCH_SIZE) {
+    for (let i = 0; i < items.length; i += size) {
       batches.push({
-        batchNumber: Math.floor(i / EngraverModalService.BATCH_SIZE) + 1,
-        items: items.slice(i, i + EngraverModalService.BATCH_SIZE),
+        batchNumber: Math.floor(i / size) + 1,
+        items: items.slice(i, i + size),
         status: 'pending'
       });
     }
     return batches;
+  }
+
+  /**
+   * Re-splits batches when batch size changes.
+   */
+  updateBatchSize(size: number): void {
+    this.batchSize.set(size);
+    if (this.allItems().length > 0) {
+      this.batches.set(this.createBatches(this.allItems()));
+      this.currentBatchIndex.set(0);
+    }
+  }
+
+  /**
+   * Sets the selected template.
+   */
+  setTemplate(template: string): void {
+    this.selectedTemplate.set(template);
   }
 
   /**
@@ -153,6 +175,23 @@ export class EngraverModalService {
   }
 
   /**
+   * Removes an item from processing. Re-splits remaining items into batches.
+   */
+  removeItem(itemId: number): void {
+    const remaining = this.allItems().filter(item => item.id !== itemId);
+    if (remaining.length === 0) {
+      this.close();
+      return;
+    }
+    this.allItems.set(remaining);
+    this.batches.set(this.createBatches(remaining));
+    const idx = this.currentBatchIndex();
+    if (idx >= this.batches().length) {
+      this.currentBatchIndex.set(Math.max(0, this.batches().length - 1));
+    }
+  }
+
+  /**
    * Toggles QR code setting.
    */
   toggleQr(): void {
@@ -169,5 +208,6 @@ export class EngraverModalService {
     this.currentBatchIndex.set(0);
     this.isProcessing.set(false);
     this.withQr.set(false);
+    this.batchSize.set(4);
   }
 }

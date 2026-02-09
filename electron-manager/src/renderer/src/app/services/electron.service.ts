@@ -119,6 +119,22 @@ export interface GateLogConfig {
   intervalMinutes: number;
 }
 
+export interface ElectronUpdateInfo {
+  fileName: string;
+  fileSize: number;
+  checksum: string;
+  lastModified: string;
+  isNewer: boolean;
+}
+
+export interface ElectronUpdateProgress {
+  phase: 'checking' | 'downloading' | 'verifying' | 'staged' | 'error';
+  bytesDownloaded?: number;
+  totalBytes?: number;
+  percent?: number;
+  error?: string;
+}
+
 export interface StartupAssessment {
   serverReachable: boolean;
   serverUrl: string | null;
@@ -128,12 +144,26 @@ export interface StartupAssessment {
   files: { present: boolean; totalSizeBytes: number };
   sync: { stale: boolean; daysSinceSync: number | null };
   conflict: { detected: boolean; details?: string };
+  resourcePacks?: ResourcePackStatus[];
+  electron?: { updateAvailable: boolean; updateStaged: boolean; updateInfo?: ElectronUpdateInfo };
 }
 
-export type SyncComponent = 'jar' | 'db' | 'files';
+export type SyncComponent = 'jar' | 'db' | 'files' | 'resource-packs';
+
+export interface ResourcePackStatus {
+  name: string;
+  localPresent: boolean;
+  totalFiles: number;
+  missingFiles: number;
+  updatedFiles: number;
+}
+
+export interface SyncOptions {
+  cleanFiles?: boolean;
+}
 
 export interface SyncExecuteProgress {
-  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'starting_sb' | 'done' | 'error';
+  phase: 'stopping_sb' | 'jar' | 'db_download' | 'db_extract' | 'files' | 'resource-packs' | 'starting_sb' | 'done' | 'error';
   statusMessage: string;
   progressPercent: number;
   error?: string;
@@ -174,10 +204,16 @@ interface ElectronAPI {
   registerDevice: (deviceName: string, deviceNumber?: number, syncServerUrl?: string) => Promise<IpcResult<DeviceConfig>>;
   onDeviceNeedsSetup: (callback: () => void) => () => void;
 
-  // Update management
+  // Update management (JAR)
   checkForUpdate: (serverUrl?: string) => Promise<IpcResult<UpdateInfo>>;
   downloadUpdate: (serverUrl?: string) => Promise<IpcResult>;
   onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void;
+
+  // Electron self-update
+  checkForElectronUpdate: (serverUrl?: string) => Promise<IpcResult<ElectronUpdateInfo>>;
+  downloadElectronUpdate: (serverUrl?: string) => Promise<IpcResult>;
+  applyElectronUpdate: () => Promise<IpcResult>;
+  onElectronUpdateProgress: (callback: (progress: ElectronUpdateProgress) => void) => () => void;
 
   // Sync management
   getSyncStatus: () => Promise<IpcResult<SyncStatusInfo>>;
@@ -207,7 +243,7 @@ interface ElectronAPI {
   onStartupServerStatus: (callback: (data: { reachable: boolean }) => void) => () => void;
 
   // Selective sync
-  executeSync: (components: SyncComponent[]) => Promise<IpcResult>;
+  executeSync: (components: SyncComponent[], options?: SyncOptions) => Promise<IpcResult>;
   onSyncExecuteProgress: (callback: (progress: SyncExecuteProgress) => void) => () => void;
 
   // WebView
@@ -421,6 +457,30 @@ export class ElectronService implements OnDestroy {
     });
   }
 
+  // Electron self-update
+
+  async checkForElectronUpdate(serverUrl?: string): Promise<IpcResult<ElectronUpdateInfo>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.checkForElectronUpdate(serverUrl);
+  }
+
+  async downloadElectronUpdate(serverUrl?: string): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.downloadElectronUpdate(serverUrl);
+  }
+
+  async applyElectronUpdate(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.applyElectronUpdate();
+  }
+
+  onElectronUpdateProgress(callback: (progress: ElectronUpdateProgress) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onElectronUpdateProgress((progress) => {
+      this.ngZone.run(() => callback(progress));
+    });
+  }
+
   // Sync management
 
   async getSyncStatus(): Promise<IpcResult<SyncStatusInfo>> {
@@ -540,9 +600,9 @@ export class ElectronService implements OnDestroy {
 
   // Selective sync
 
-  async executeSync(components: SyncComponent[]): Promise<IpcResult> {
+  async executeSync(components: SyncComponent[], options?: SyncOptions): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.executeSync(components);
+    return window.electronAPI!.executeSync(components, options);
   }
 
   onSyncExecuteProgress(callback: (progress: SyncExecuteProgress) => void): () => void {
