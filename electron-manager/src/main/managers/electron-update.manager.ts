@@ -245,17 +245,17 @@ export class ElectronUpdateManager {
 
     const exePath = app.getPath('exe');
     const installDir = path.dirname(exePath);
-    const exeName = path.basename(exePath);
+    const electronPid = process.pid;
     const cmdPath = path.join(this.stagingDir, 'update.cmd');
 
-    // Write the batch script
+    // Write the batch script — uses PID to detect exit (avoids issues with spaces in exe name)
     const script = `@echo off
 setlocal enabledelayedexpansion
 title DK Power Manager - Updating...
 
-echo Waiting for DK Power Manager to exit...
+echo Waiting for DK Power Manager (PID ${electronPid}) to exit...
 :WAIT_LOOP
-tasklist /fi "IMAGENAME eq ${exeName}" 2>nul | find /i "${exeName}" >nul
+tasklist /fi "PID eq ${electronPid}" 2>nul | find "${electronPid}" >nul
 if not errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto WAIT_LOOP

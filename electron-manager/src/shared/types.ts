@@ -97,9 +97,21 @@ export interface WeatherStatus {
 // PJM
 export interface PjmStatus {
   lmpPrice?: number;
+  congestionPrice?: number;
+  marginalLossPrice?: number;
+  pnodeName?: string;
+  dataTimestamp?: string;   // datetime_beginning_ept from PJM API
   unit: string;
   lastUpdate?: string;
-  status: 'loading' | 'available' | 'unavailable';
+  status: 'loading' | 'available' | 'unavailable' | 'error';
+  error?: string;
+}
+
+export interface PjmConfig {
+  apiKey: string;
+  pnodeId: number;         // Default: 33092371 (ComEd zone aggregate)
+  pnodeName: string;       // Display name
+  pollIntervalMinutes: number;
 }
 
 // IPC Result wrapper

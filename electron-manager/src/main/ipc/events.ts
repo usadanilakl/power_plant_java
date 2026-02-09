@@ -42,10 +42,13 @@ export const IPC_GATE_LOG_PRINT = 'gate-log:print';
 // Gate Log broadcasts (send/on)
 export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
 
-// Weather (send/on)
+// Weather (invoke/handle + send/on)
+export const IPC_WEATHER_GET_STATUS = 'weather:get-status';
 export const IPC_WEATHER_STATUS = 'weather:status';
 
-// PJM (send/on)
+// PJM (invoke/handle + send/on)
+export const IPC_PJM_GET_STATUS = 'pjm:get-status';
+export const IPC_PJM_SHOW_WINDOW = 'pjm:show-window';
 export const IPC_PJM_STATUS = 'pjm:status';
 
 // Window control

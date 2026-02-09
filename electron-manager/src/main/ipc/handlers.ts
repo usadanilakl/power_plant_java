@@ -11,10 +11,12 @@ import { UpdateManager } from '../managers/update.manager';
 import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
+import { WeatherManager } from '../managers/weather.manager';
+import { PjmManager } from '../managers/pjm.manager';
 import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, PjmStatus } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -23,6 +25,8 @@ export class IpcHandlers {
   private syncStatusManager: SyncStatusManager;
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
+  private weatherManager: WeatherManager;
+  private pjmManager: PjmManager;
   private resourcePackManager: ResourcePackManager;
   private electronUpdateManager: ElectronUpdateManager;
   private mainWindow: BrowserWindow;
@@ -37,6 +41,18 @@ export class IpcHandlers {
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
+    this.weatherManager = new WeatherManager((status: WeatherStatus) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(events.IPC_WEATHER_STATUS, status);
+      }
+    });
+    this.weatherManager.start();
+    this.pjmManager = new PjmManager((status: PjmStatus) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(events.IPC_PJM_STATUS, status);
+      }
+    });
+    this.pjmManager.start();
     this.gateLogManager.setOnPeopleUpdated(() => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_GATE_LOG_PEOPLE_UPDATED);
@@ -73,6 +89,8 @@ export class IpcHandlers {
     this.registerColdResyncHandlers();
     this.registerStartupHandlers();
     this.registerGateLogHandlers();
+    this.registerWeatherHandlers();
+    this.registerPjmHandlers();
     this.registerElectronUpdateHandlers();
   }
 
@@ -98,6 +116,14 @@ export class IpcHandlers {
 
   public getResourcePackManager(): ResourcePackManager {
     return this.resourcePackManager;
+  }
+
+  public getWeatherManager(): WeatherManager {
+    return this.weatherManager;
+  }
+
+  public getPjmManager(): PjmManager {
+    return this.pjmManager;
   }
 
   public getElectronUpdateManager(): ElectronUpdateManager {
@@ -730,6 +756,23 @@ export class IpcHandlers {
     });
   }
 
+  private registerWeatherHandlers(): void {
+    ipcMain.handle(events.IPC_WEATHER_GET_STATUS, () => {
+      return { success: true, data: this.weatherManager.getStatus() };
+    });
+  }
+
+  private registerPjmHandlers(): void {
+    ipcMain.handle(events.IPC_PJM_GET_STATUS, () => {
+      return { success: true, data: this.pjmManager.getStatus() };
+    });
+
+    ipcMain.handle(events.IPC_PJM_SHOW_WINDOW, () => {
+      this.pjmManager.showWindow();
+      return { success: true };
+    });
+  }
+
   private registerElectronUpdateHandlers(): void {
     ipcMain.handle(events.IPC_ELECTRON_UPDATE_CHECK, async (_event, serverUrl?: string) => {
       try {
@@ -771,6 +814,8 @@ export class IpcHandlers {
 
   public async cleanup(): Promise<void> {
     this.gateLogManager.cleanup();
+    this.weatherManager.cleanup();
+    this.pjmManager.cleanup();
     this.webview.closeAll();
     await this.springBoot.stop();
   }

@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ElectronService, PjmStatus } from '../../services/electron.service';
 
 @Component({
   selector: 'app-pjm',
@@ -7,27 +8,60 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="page">
-      <h1 class="page-title">PJM Monitoring</h1>
+      <div class="page-header">
+        <h1 class="page-title">PJM Monitoring</h1>
+        <button class="btn-secondary" (click)="showWindow()">Open Voyager</button>
+      </div>
+
+      <!-- Status indicator -->
+      <div class="status-bar" [class]="'status-' + status.status">
+        <span class="status-dot"></span>
+        <span class="status-text">{{ statusLabel }}</span>
+      </div>
 
       <!-- LMP Price display -->
       <div class="price-panel">
         <div class="price-header">
-          <span class="price-label">Current LMP</span>
-          <span class="price-unit">$/MWh</span>
+          <span class="price-label">Real-Time LMP</span>
+          <span class="price-unit">{{ status.unit }}</span>
         </div>
-        <div class="price-value">{{ lmpPrice || '--' }}</div>
-        <span class="price-updated">{{ lastUpdate || 'Not connected' }}</span>
+        <div class="price-value" [class.price-positive]="(status.lmpPrice ?? 0) >= 0"
+             [class.price-negative]="(status.lmpPrice ?? 0) < 0">
+          {{ status.lmpPrice != null ? ('$' + status.lmpPrice.toFixed(2)) : '--' }}
+        </div>
+        <span class="price-updated" *ngIf="status.dataTimestamp">
+          PJM interval: {{ status.dataTimestamp }}
+        </span>
+        <span class="price-updated">
+          Last polled: {{ status.lastUpdate || 'Never' }}
+        </span>
+      </div>
+
+      <!-- Price breakdown -->
+      <div class="info-row" *ngIf="status.status === 'available'">
+        <div class="info-card">
+          <span class="info-label">Energy LMP</span>
+          <span class="info-value">\${{ status.lmpPrice?.toFixed(2) || '--' }}</span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Congestion</span>
+          <span class="info-value">\${{ status.congestionPrice?.toFixed(2) || '0.00' }}</span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Marginal Loss</span>
+          <span class="info-value">\${{ status.marginalLossPrice?.toFixed(2) || '0.00' }}</span>
+        </div>
       </div>
 
       <!-- Info cards -->
       <div class="info-row">
         <div class="info-card">
           <span class="info-label">Pricing Node</span>
-          <span class="info-value">JPOWER (ComEd)</span>
+          <span class="info-value">{{ status.pnodeName || 'ComEd' }}</span>
         </div>
         <div class="info-card">
-          <span class="info-label">Zone</span>
-          <span class="info-value">ComEd</span>
+          <span class="info-label">Data Source</span>
+          <span class="info-value">PJM Data Miner</span>
         </div>
         <div class="info-card">
           <span class="info-label">Update Interval</span>
@@ -35,13 +69,19 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
 
-      <div class="notice">
-        <span class="notice-icon">&#x2139;</span>
+      <div class="notice notice-error" *ngIf="status.status === 'error'">
+        <span class="notice-icon">&#x26A0;</span>
         <div>
-          <strong>Setup Required</strong>
-          <p>PJM monitoring will connect to the PJM Data Miner API or use WebView automation
-             to scrape real-time LMP pricing data. Configure credentials in Settings to enable
-             live data feed.</p>
+          <strong>Error</strong>
+          <p>{{ status.error }}</p>
+        </div>
+      </div>
+
+      <div class="notice notice-success" *ngIf="status.status === 'available'">
+        <span class="notice-icon">&#x2713;</span>
+        <div>
+          <strong>Live Data Active</strong>
+          <p>Receiving real-time 5-minute unverified LMP data from PJM Data Miner API.</p>
         </div>
       </div>
     </div>
@@ -52,12 +92,73 @@ import { CommonModule } from '@angular/common';
       margin: 0 auto;
     }
 
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
     .page-title {
       font-size: 22px;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 20px;
+      margin: 0;
     }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background-color 0.15s;
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-loading {
+      background-color: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      color: rgb(234, 179, 8);
+    }
+    .status-loading .status-dot { background-color: rgb(234, 179, 8); }
+
+    .status-available {
+      background-color: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: rgb(34, 197, 94);
+    }
+    .status-available .status-dot { background-color: rgb(34, 197, 94); }
+
+    .status-unavailable, .status-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: rgb(239, 68, 68);
+    }
+    .status-unavailable .status-dot,
+    .status-error .status-dot { background-color: rgb(239, 68, 68); }
 
     .price-panel {
       display: flex;
@@ -92,7 +193,15 @@ import { CommonModule } from '@angular/common';
     .price-value {
       font-size: 56px;
       font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .price-positive {
       color: var(--accent-success);
+    }
+
+    .price-negative {
+      color: var(--accent-danger, #ef4444);
     }
 
     .price-updated {
@@ -141,6 +250,16 @@ import { CommonModule } from '@angular/common';
       color: var(--text-secondary);
     }
 
+    .notice-success {
+      background-color: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .notice-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
     .notice-icon {
       font-size: 20px;
       flex-shrink: 0;
@@ -152,13 +271,52 @@ import { CommonModule } from '@angular/common';
       margin-bottom: 4px;
     }
 
+    .notice-success strong {
+      color: var(--accent-success);
+    }
+
+    .notice-error strong {
+      color: var(--accent-danger, #ef4444);
+    }
+
     .notice p {
       font-size: 13px;
       margin: 0;
     }
   `]
 })
-export class PjmComponent {
-  lmpPrice: string | null = null;
-  lastUpdate = '';
+export class PjmComponent implements OnInit, OnDestroy {
+  status: PjmStatus = { status: 'loading', unit: '$/MWh' };
+  private unsubscribe?: () => void;
+
+  constructor(private electronService: ElectronService) {}
+
+  get statusLabel(): string {
+    switch (this.status.status) {
+      case 'loading': return 'Fetching LMP data...';
+      case 'available': return 'Live';
+      case 'unavailable': return 'No data available';
+      case 'error': return 'Error';
+      default: return 'Unknown';
+    }
+  }
+
+  async ngOnInit(): Promise<void> {
+    const result = await this.electronService.getPjmStatus();
+    if (result.success && result.data) {
+      this.status = result.data;
+    }
+
+    this.unsubscribe = this.electronService.onPjmStatusChange((status) => {
+      this.status = status;
+    });
+  }
+
+  async showWindow(): Promise<void> {
+    await this.electronService.pjmShowWindow();
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe?.();
+  }
 }

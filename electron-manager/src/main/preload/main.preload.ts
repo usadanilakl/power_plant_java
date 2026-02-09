@@ -171,6 +171,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub); };
   },
 
+  // Weather
+  getWeatherStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_GET_STATUS),
+  onWeatherStatusChange: (callback: (status: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, status: any) => callback(status);
+    ipcRenderer.on(events.IPC_WEATHER_STATUS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_WEATHER_STATUS, sub); };
+  },
+
+  // PJM
+  getPjmStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_GET_STATUS),
+  pjmShowWindow: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_SHOW_WINDOW),
+  onPjmStatusChange: (callback: (status: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, status: any) => callback(status);
+    ipcRenderer.on(events.IPC_PJM_STATUS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_PJM_STATUS, sub); };
+  },
+
   // General
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(events.IPC_GET_APP_VERSION),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(events.IPC_OPEN_EXTERNAL, url),

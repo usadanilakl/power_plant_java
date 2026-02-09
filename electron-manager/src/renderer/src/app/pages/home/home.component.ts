@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-home',
@@ -78,10 +78,17 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
         </a>
 
         <a class="feature-card" routerLink="/weather">
-          <div class="feature-icon">&#x2601;</div>
+          <div class="feature-icon">&#x26A1;</div>
           <div class="feature-info">
             <h3>Weather</h3>
             <p class="feature-desc">Lightning and weather monitoring</p>
+            <div class="lightning-snippet" *ngIf="weatherStatus?.status === 'available' && weatherStatus?.lightningDistance">
+              <span class="lightning-badge" [class]="lightningLevel">{{ weatherStatus?.lightningDistance }} {{ weatherStatus?.unit || 'mi' }}</span>
+              {{ lightningLabel }}
+            </div>
+            <div class="lightning-snippet loading" *ngIf="weatherStatus?.status === 'loading'">
+              Loading...
+            </div>
           </div>
           <span class="feature-status available">Independent</span>
         </a>
@@ -276,6 +283,34 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
       background-color: var(--accent-warning);
     }
 
+    .lightning-snippet {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lightning-snippet.loading {
+      color: var(--text-muted);
+    }
+
+    .lightning-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .lightning-badge.safe { background-color: var(--accent-success); }
+    .lightning-badge.caution { background-color: var(--accent-warning); }
+    .lightning-badge.danger { background-color: var(--accent-error); }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -286,7 +321,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   activeImpairmentCount: number | null = null;
+  weatherStatus: WeatherStatus | null = null;
   private sub?: Subscription;
+  private unsubWeather?: () => void;
 
   constructor(private electronService: ElectronService, private router: Router) {}
 
@@ -298,6 +335,36 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.loadFireImpCount();
       }
     });
+
+    this.loadWeatherStatus();
+    this.unsubWeather = this.electronService.onWeatherStatusChange((s) => {
+      this.weatherStatus = s;
+    });
+  }
+
+  private async loadWeatherStatus(): Promise<void> {
+    try {
+      const result = await this.electronService.getWeatherStatus();
+      if (result.success && result.data) {
+        this.weatherStatus = result.data;
+      }
+    } catch {}
+  }
+
+  get lightningLevel(): string {
+    const d = parseFloat(this.weatherStatus?.lightningDistance || '');
+    if (isNaN(d)) return '';
+    if (d <= 8) return 'danger';
+    if (d <= 20) return 'caution';
+    return 'safe';
+  }
+
+  get lightningLabel(): string {
+    const d = parseFloat(this.weatherStatus?.lightningDistance || '');
+    if (isNaN(d)) return '';
+    if (d <= 8) return 'Lightning Alarm';
+    if (d <= 20) return 'Lightning Watch';
+    return 'All Clear';
   }
 
   private async loadFireImpCount(): Promise<void> {
@@ -311,6 +378,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.unsubWeather?.();
   }
 
   get stateLabel(): string {

@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ElectronService, WeatherStatus } from '../../services/electron.service';
 
 @Component({
   selector: 'app-weather',
@@ -14,7 +15,7 @@ import { CommonModule } from '@angular/common';
         <div class="lightning-icon">&#x26A1;</div>
         <div class="lightning-info">
           <span class="lightning-distance">{{ lightningDistance || '--' }}</span>
-          <span class="lightning-unit">miles</span>
+          <span class="lightning-unit">{{ unit || 'miles' }}</span>
         </div>
         <span class="lightning-label">Lightning Distance</span>
       </div>
@@ -35,13 +36,18 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
 
+      <button class="open-btn" (click)="openWeatherPage()">Open WeatherBug Lightning Page</button>
+
       <div class="notice">
         <span class="notice-icon">&#x2139;</span>
         <div>
-          <strong>Setup Required</strong>
-          <p>Weather monitoring uses a hidden BrowserView to scrape lightning distance from WeatherBug.
-             Once configured, it will automatically update every 60 seconds and display alerts when
-             lightning is within actionable distances.</p>
+          <strong>Lightning Alert Thresholds</strong>
+          <p>
+            <span class="threshold danger-text">Alarm (&le; 8 mi)</span> &mdash;
+            <span class="threshold caution-text">Watch (8&ndash;20 mi)</span> &mdash;
+            <span class="threshold safe-text">Clear (&gt; 20 mi)</span>.
+            Data refreshes every 10 seconds from WeatherBug Spark.
+          </p>
         </div>
       </div>
     </div>
@@ -178,11 +184,66 @@ import { CommonModule } from '@angular/common';
       font-size: 13px;
       margin: 0;
     }
+
+    .open-btn {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+
+    .open-btn:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--accent-primary);
+    }
+
+    .threshold { font-weight: 500; }
+    .danger-text { color: var(--accent-error); }
+    .caution-text { color: var(--accent-warning); }
+    .safe-text { color: var(--accent-success); }
   `]
 })
-export class WeatherComponent {
+export class WeatherComponent implements OnInit, OnDestroy {
   lightningDistance: string | null = null;
+  unit = '';
   lastUpdate = '';
+  private unsubscribe?: () => void;
+
+  constructor(private electronService: ElectronService) {}
+
+  async ngOnInit(): Promise<void> {
+    // Get initial cached status
+    const result = await this.electronService.getWeatherStatus();
+    if (result.success && result.data) {
+      this.applyStatus(result.data);
+    }
+
+    // Subscribe to live updates
+    this.unsubscribe = this.electronService.onWeatherStatusChange((status) => {
+      this.applyStatus(status);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe?.();
+  }
+
+  private applyStatus(status: WeatherStatus): void {
+    this.lightningDistance = status.lightningDistance ?? null;
+    this.unit = status.unit || 'mi';
+    this.lastUpdate = status.lastUpdate || '';
+  }
+
+  openWeatherPage(): void {
+    this.electronService.openWebView('weather', 'https://www.weatherbug.com/alerts/lightning/elwood-il-60421/');
+  }
 
   get lightningLevel(): string {
     if (!this.lightningDistance) return '';

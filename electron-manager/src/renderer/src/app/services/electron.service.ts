@@ -169,6 +169,25 @@ export interface SyncExecuteProgress {
   error?: string;
 }
 
+export interface WeatherStatus {
+  lightningDistance?: string;
+  unit?: string;
+  lastUpdate?: string;
+  status: 'loading' | 'available' | 'unavailable';
+}
+
+export interface PjmStatus {
+  lmpPrice?: number;
+  congestionPrice?: number;
+  marginalLossPrice?: number;
+  pnodeName?: string;
+  dataTimestamp?: string;
+  unit: string;
+  lastUpdate?: string;
+  status: 'loading' | 'available' | 'unavailable' | 'error';
+  error?: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -245,6 +264,15 @@ interface ElectronAPI {
   // Selective sync
   executeSync: (components: SyncComponent[], options?: SyncOptions) => Promise<IpcResult>;
   onSyncExecuteProgress: (callback: (progress: SyncExecuteProgress) => void) => () => void;
+
+  // Weather
+  getWeatherStatus: () => Promise<IpcResult<WeatherStatus>>;
+  onWeatherStatusChange: (callback: (status: WeatherStatus) => void) => () => void;
+
+  // PJM
+  getPjmStatus: () => Promise<IpcResult<PjmStatus>>;
+  pjmShowWindow: () => Promise<IpcResult>;
+  onPjmStatusChange: (callback: (status: PjmStatus) => void) => () => void;
 
   // WebView
   openWebView: (target: string, url: string) => Promise<IpcResult>;
@@ -609,6 +637,39 @@ export class ElectronService implements OnDestroy {
     if (!this.isElectron) return () => {};
     return window.electronAPI!.onSyncExecuteProgress((progress) => {
       this.ngZone.run(() => callback(progress));
+    });
+  }
+
+  // Weather
+
+  async getWeatherStatus(): Promise<IpcResult<WeatherStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getWeatherStatus();
+  }
+
+  onWeatherStatusChange(callback: (status: WeatherStatus) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onWeatherStatusChange((status) => {
+      this.ngZone.run(() => callback(status));
+    });
+  }
+
+  // PJM
+
+  async getPjmStatus(): Promise<IpcResult<PjmStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getPjmStatus();
+  }
+
+  async pjmShowWindow(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmShowWindow();
+  }
+
+  onPjmStatusChange(callback: (status: PjmStatus) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onPjmStatusChange((status) => {
+      this.ngZone.run(() => callback(status));
     });
   }
 
