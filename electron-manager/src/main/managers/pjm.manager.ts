@@ -28,7 +28,7 @@ const PJM_PASSWORD = 'pjm@jackson2025';
 export class PjmManager {
   private pollInterval: NodeJS.Timeout | null = null;
   private voyagerWindow: BrowserWindow | null = null;
-  private cachedStatus: PjmStatus = { status: 'loading', unit: '$/MWh' };
+  private cachedStatus: PjmStatus = { status: 'unavailable', unit: '$/MWh' };
   private onStatusUpdate: (status: PjmStatus) => void;
   private config: PjmConfig;
 
@@ -53,6 +53,14 @@ export class PjmManager {
 
   public getStatus(): PjmStatus {
     return { ...this.cachedStatus };
+  }
+
+  public refresh(): void {
+    this.fetchLmpData();
+  }
+
+  public isPolling(): boolean {
+    return this.pollInterval !== null;
   }
 
   public getConfig(): PjmConfig {
@@ -116,7 +124,7 @@ export class PjmManager {
     console.log('[PJM] Cleaned up');
   }
 
-  private stop(): void {
+  public stop(): void {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
@@ -174,12 +182,12 @@ export class PjmManager {
     const tomorrowStr = `${tomorrowDate.getMonth() + 1}/${tomorrowDate.getDate()}/${tomorrowDate.getFullYear()} 00:00`;
 
     const params = new URLSearchParams({
+      startRow: '1',
+      rowCount: '1',
       pnode_id: String(this.config.pnodeId),
       datetime_beginning_ept: `${todayStr}to${tomorrowStr}`,
-      rowCount: '1',
       sort: 'datetime_beginning_ept',
       order: 'desc',
-      fields: 'datetime_beginning_ept,pnode_id,pnode_name,voltage,equipment,type,zone,itsced_lmp,marginal_congestion,marginal_loss',
     });
 
     const url = `${PJM_API_BASE}/rt_unverified_fivemin_lmps?${params.toString()}`;
@@ -245,9 +253,10 @@ export class PjmManager {
       }
 
       const latest = items[0];
-      const lmp = parseFloat(latest.itsced_lmp ?? latest.total_lmp_rt ?? latest.lmp);
-      const congestion = parseFloat(latest.marginal_congestion ?? latest.congestion_price_rt ?? 0);
-      const loss = parseFloat(latest.marginal_loss ?? latest.marginal_loss_price_rt ?? 0);
+      console.log('[PJM] Response fields:', Object.keys(latest).join(', '));
+      const lmp = parseFloat(latest.total_lmp_rt ?? latest.itsced_lmp ?? latest.lmp);
+      const congestion = parseFloat(latest.congestion_price_rt ?? latest.marginal_congestion ?? 0);
+      const loss = parseFloat(latest.marginal_loss_price_rt ?? latest.marginal_loss ?? 0);
       const pnodeName = latest.pnode_name || this.config.pnodeName;
       const dataTime = latest.datetime_beginning_ept || '';
 
@@ -281,31 +290,56 @@ export class PjmManager {
     }
   }
 
-  /** Auto-login for the Voyager visual reference window */
-  private autoLoginVoyager(): void {
+  /** Auto-login for the Voyager visual reference window using insertText (Chromium input pipeline) */
+  private async autoLoginVoyager(): Promise<void> {
     if (!this.voyagerWindow || this.voyagerWindow.isDestroyed()) return;
 
-    const loginScript = `
-      (function() {
-        var emailInput = document.getElementById('username');
-        var passwordInput = document.getElementById('password');
-        var loginBtn = document.getElementById('submit');
+    const wc = this.voyagerWindow.webContents;
 
-        if (emailInput && passwordInput && loginBtn) {
-          emailInput.value = ${JSON.stringify(PJM_USERNAME)};
-          passwordInput.value = ${JSON.stringify(PJM_PASSWORD)};
-          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-          loginBtn.click();
-          return 'login-submitted';
-        }
-        return 'login-fields-not-found';
-      })();
-    `;
+    try {
+      // Check if login fields exist
+      const fieldsExist = await wc.executeJavaScript(`
+        (function() {
+          return {
+            username: !!document.getElementById('username'),
+            password: !!document.getElementById('password'),
+            submit: !!document.getElementById('submit')
+          };
+        })();
+      `);
 
-    this.voyagerWindow.webContents.executeJavaScript(loginScript)
-      .then((result: string) => console.log(`[PJM] Voyager login: ${result}`))
-      .catch((err: Error) => console.warn(`[PJM] Voyager login failed: ${err.message}`));
+      if (!fieldsExist.username || !fieldsExist.password || !fieldsExist.submit) {
+        console.log('[PJM] Voyager login fields not found (may already be logged in)');
+        return;
+      }
+
+      // Focus username field, clear, and type via insertText
+      await wc.executeJavaScript(`
+        var el = document.getElementById('username');
+        el.focus();
+        el.click();
+        el.value = '';
+      `);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await wc.insertText(PJM_USERNAME);
+
+      // Focus password field, clear, and type via insertText
+      await wc.executeJavaScript(`
+        var el = document.getElementById('password');
+        el.focus();
+        el.click();
+        el.value = '';
+      `);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await wc.insertText(PJM_PASSWORD);
+
+      // Click login button
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await wc.executeJavaScript(`document.getElementById('submit').click()`);
+      console.log('[PJM] Voyager login: submitted via insertText');
+    } catch (err: any) {
+      console.warn(`[PJM] Voyager login failed: ${err.message}`);
+    }
   }
 
   private updateStatus(partial: Partial<PjmStatus>): void {

@@ -44,11 +44,20 @@ export const IPC_GATE_LOG_PEOPLE_UPDATED = 'gate-log:people-updated';
 
 // Weather (invoke/handle + send/on)
 export const IPC_WEATHER_GET_STATUS = 'weather:get-status';
+export const IPC_WEATHER_REFRESH = 'weather:refresh';
+export const IPC_WEATHER_SET_INTERVAL = 'weather:set-interval';
 export const IPC_WEATHER_STATUS = 'weather:status';
+export const IPC_WEATHER_GET_FORECAST = 'weather:get-forecast';
+export const IPC_WEATHER_REFRESH_FORECAST = 'weather:refresh-forecast';
+export const IPC_WEATHER_FORECAST = 'weather:forecast';   // send/on broadcast
 
 // PJM (invoke/handle + send/on)
 export const IPC_PJM_GET_STATUS = 'pjm:get-status';
 export const IPC_PJM_SHOW_WINDOW = 'pjm:show-window';
+export const IPC_PJM_SET_POLLING = 'pjm:set-polling';
+export const IPC_PJM_REFRESH = 'pjm:refresh';
+export const IPC_PJM_GET_CONFIG = 'pjm:get-config';
+export const IPC_PJM_SAVE_CONFIG = 'pjm:save-config';
 export const IPC_PJM_STATUS = 'pjm:status';
 
 // Window control

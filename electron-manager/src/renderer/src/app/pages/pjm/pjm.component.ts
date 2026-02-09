@@ -1,16 +1,24 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ElectronService, PjmStatus } from '../../services/electron.service';
 
 @Component({
   selector: 'app-pjm',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page">
       <div class="page-header">
         <h1 class="page-title">PJM Monitoring</h1>
-        <button class="btn-secondary" (click)="showWindow()">Open Voyager</button>
+        <div class="header-actions">
+          <button class="btn-secondary" (click)="refresh()">Refresh</button>
+          <button class="btn-polling" [class.btn-polling-active]="polling" (click)="togglePolling()">
+            {{ polling ? 'Stop Polling' : 'Start Polling' }}
+          </button>
+          <button class="btn-secondary" (click)="openLmpTrend()">LMP Trend</button>
+          <button class="btn-secondary" (click)="showWindow()">Open Voyager</button>
+        </div>
       </div>
 
       <!-- Status indicator -->
@@ -64,8 +72,15 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
           <span class="info-value">PJM Data Miner</span>
         </div>
         <div class="info-card">
-          <span class="info-label">Update Interval</span>
-          <span class="info-value">5 min</span>
+          <span class="info-label">Poll Interval</span>
+          <select class="interval-select" [(ngModel)]="pollIntervalMinutes" (ngModelChange)="onIntervalChange($event)">
+            <option [ngValue]="1">1 min</option>
+            <option [ngValue]="2">2 min</option>
+            <option [ngValue]="5">5 min</option>
+            <option [ngValue]="10">10 min</option>
+            <option [ngValue]="15">15 min</option>
+            <option [ngValue]="30">30 min</option>
+          </select>
         </div>
       </div>
 
@@ -106,6 +121,11 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
       margin: 0;
     }
 
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
     .btn-secondary {
       padding: 8px 16px;
       background-color: var(--bg-card);
@@ -119,6 +139,31 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
 
     .btn-secondary:hover {
       background-color: var(--bg-hover);
+    }
+
+    .btn-polling {
+      padding: 8px 16px;
+      background-color: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 8px;
+      color: rgb(34, 197, 94);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .btn-polling:hover {
+      background-color: rgba(34, 197, 94, 0.25);
+    }
+
+    .btn-polling-active {
+      background-color: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: rgb(239, 68, 68);
+    }
+
+    .btn-polling-active:hover {
+      background-color: rgba(239, 68, 68, 0.25);
     }
 
     .status-bar {
@@ -152,12 +197,18 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
     }
     .status-available .status-dot { background-color: rgb(34, 197, 94); }
 
-    .status-unavailable, .status-error {
+    .status-unavailable {
+      background-color: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: rgb(148, 163, 184);
+    }
+    .status-unavailable .status-dot { background-color: rgb(148, 163, 184); }
+
+    .status-error {
       background-color: rgba(239, 68, 68, 0.1);
       border: 1px solid rgba(239, 68, 68, 0.3);
       color: rgb(239, 68, 68);
     }
-    .status-unavailable .status-dot,
     .status-error .status-dot { background-color: rgb(239, 68, 68); }
 
     .price-panel {
@@ -239,6 +290,22 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
       color: var(--text-primary);
     }
 
+    .interval-select {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .interval-select:hover {
+      border-color: var(--accent-primary, #3b82f6);
+    }
+
     .notice {
       display: flex;
       align-items: flex-start;
@@ -286,12 +353,17 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
   `]
 })
 export class PjmComponent implements OnInit, OnDestroy {
-  status: PjmStatus = { status: 'loading', unit: '$/MWh' };
+  status: PjmStatus = { status: 'unavailable', unit: '$/MWh' };
+  polling = false;
+  pollIntervalMinutes = 5;
   private unsubscribe?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
   get statusLabel(): string {
+    if (!this.polling && this.status.status !== 'available') {
+      return 'Polling disabled';
+    }
     switch (this.status.status) {
       case 'loading': return 'Fetching LMP data...';
       case 'available': return 'Live';
@@ -302,14 +374,44 @@ export class PjmComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    const result = await this.electronService.getPjmStatus();
+    const result = await this.electronService.getPjmStatus() as any;
     if (result.success && result.data) {
       this.status = result.data;
+    }
+    if (result.polling != null) {
+      this.polling = result.polling;
+    }
+
+    const configResult = await this.electronService.pjmGetConfig();
+    if (configResult.success && configResult.data) {
+      this.pollIntervalMinutes = configResult.data.pollIntervalMinutes || 5;
     }
 
     this.unsubscribe = this.electronService.onPjmStatusChange((status) => {
       this.status = status;
     });
+  }
+
+  async togglePolling(): Promise<void> {
+    const result = await this.electronService.pjmSetPolling(!this.polling);
+    if (result.success && result.polling != null) {
+      this.polling = result.polling;
+    }
+  }
+
+  async onIntervalChange(minutes: number): Promise<void> {
+    const result = await this.electronService.pjmSaveConfig({ pollIntervalMinutes: minutes });
+    if (result.success && result.polling != null) {
+      this.polling = result.polling;
+    }
+  }
+
+  async refresh(): Promise<void> {
+    await this.electronService.pjmRefresh();
+  }
+
+  async openLmpTrend(): Promise<void> {
+    await this.electronService.openWebView('pjm-lmp', 'https://dataviewer.pjm.com/dataviewer/pages/public/lmp.jsf');
   }
 
   async showWindow(): Promise<void> {

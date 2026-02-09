@@ -94,6 +94,36 @@ export interface WeatherStatus {
   status: 'loading' | 'available' | 'unavailable';
 }
 
+export interface WeatherForecast {
+  current: {
+    temperature: number;       // °F
+    apparentTemperature: number;
+    humidity: number;          // %
+    windSpeed: number;         // mph
+    windDirection: number;     // degrees
+    windGusts: number;         // mph
+    weatherCode: number;       // WMO code
+  };
+  hourly: {
+    time: string[];            // ISO timestamps
+    temperature: number[];
+    weatherCode: number[];
+    windSpeed: number[];
+    precipitation: number[];   // inches
+  };
+  daily: {
+    time: string[];            // YYYY-MM-DD
+    temperatureMax: number[];
+    temperatureMin: number[];
+    weatherCode: number[];
+    precipitationSum: number[];
+    windSpeedMax: number[];
+  };
+  lastUpdate: string;
+  status: 'loading' | 'available' | 'error';
+  error?: string;
+}
+
 // PJM
 export interface PjmStatus {
   lmpPrice?: number;

@@ -16,7 +16,7 @@ import { PjmManager } from '../managers/pjm.manager';
 import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, PjmStatus } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -41,18 +41,24 @@ export class IpcHandlers {
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
-    this.weatherManager = new WeatherManager((status: WeatherStatus) => {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send(events.IPC_WEATHER_STATUS, status);
+    this.weatherManager = new WeatherManager(
+      (status: WeatherStatus) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_WEATHER_STATUS, status);
+        }
+      },
+      (forecast: WeatherForecast) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_WEATHER_FORECAST, forecast);
+        }
       }
-    });
+    );
     this.weatherManager.start();
     this.pjmManager = new PjmManager((status: PjmStatus) => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_PJM_STATUS, status);
       }
     });
-    this.pjmManager.start();
     this.gateLogManager.setOnPeopleUpdated(() => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_GATE_LOG_PEOPLE_UPDATED);
@@ -758,18 +764,64 @@ export class IpcHandlers {
 
   private registerWeatherHandlers(): void {
     ipcMain.handle(events.IPC_WEATHER_GET_STATUS, () => {
-      return { success: true, data: this.weatherManager.getStatus() };
+      return {
+        success: true,
+        data: this.weatherManager.getStatus(),
+        intervalSeconds: this.weatherManager.getIntervalSeconds()
+      };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_REFRESH, () => {
+      this.weatherManager.refresh();
+      return { success: true };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_SET_INTERVAL, (_event, seconds: number) => {
+      this.weatherManager.setScrapeInterval(seconds);
+      return { success: true, intervalSeconds: this.weatherManager.getIntervalSeconds() };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_GET_FORECAST, () => {
+      return { success: true, data: this.weatherManager.getForecast() };
+    });
+
+    ipcMain.handle(events.IPC_WEATHER_REFRESH_FORECAST, () => {
+      this.weatherManager.refreshForecast();
+      return { success: true };
     });
   }
 
   private registerPjmHandlers(): void {
     ipcMain.handle(events.IPC_PJM_GET_STATUS, () => {
-      return { success: true, data: this.pjmManager.getStatus() };
+      return { success: true, data: this.pjmManager.getStatus(), polling: this.pjmManager.isPolling() };
     });
 
     ipcMain.handle(events.IPC_PJM_SHOW_WINDOW, () => {
       this.pjmManager.showWindow();
       return { success: true };
+    });
+
+    ipcMain.handle(events.IPC_PJM_REFRESH, () => {
+      this.pjmManager.refresh();
+      return { success: true };
+    });
+
+    ipcMain.handle(events.IPC_PJM_SET_POLLING, (_event, enabled: boolean) => {
+      if (enabled) {
+        this.pjmManager.start();
+      } else {
+        this.pjmManager.stop();
+      }
+      return { success: true, polling: this.pjmManager.isPolling() };
+    });
+
+    ipcMain.handle(events.IPC_PJM_GET_CONFIG, () => {
+      return { success: true, data: this.pjmManager.getConfig() };
+    });
+
+    ipcMain.handle(events.IPC_PJM_SAVE_CONFIG, (_event, config: any) => {
+      this.pjmManager.saveConfig(config);
+      return { success: true, data: this.pjmManager.getConfig(), polling: this.pjmManager.isPolling() };
     });
   }
 

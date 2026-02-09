@@ -176,6 +176,36 @@ export interface WeatherStatus {
   status: 'loading' | 'available' | 'unavailable';
 }
 
+export interface WeatherForecast {
+  current: {
+    temperature: number;
+    apparentTemperature: number;
+    humidity: number;
+    windSpeed: number;
+    windDirection: number;
+    windGusts: number;
+    weatherCode: number;
+  };
+  hourly: {
+    time: string[];
+    temperature: number[];
+    weatherCode: number[];
+    windSpeed: number[];
+    precipitation: number[];
+  };
+  daily: {
+    time: string[];
+    temperatureMax: number[];
+    temperatureMin: number[];
+    weatherCode: number[];
+    precipitationSum: number[];
+    windSpeedMax: number[];
+  };
+  lastUpdate: string;
+  status: 'loading' | 'available' | 'error';
+  error?: string;
+}
+
 export interface PjmStatus {
   lmpPrice?: number;
   congestionPrice?: number;
@@ -266,12 +296,21 @@ interface ElectronAPI {
   onSyncExecuteProgress: (callback: (progress: SyncExecuteProgress) => void) => () => void;
 
   // Weather
-  getWeatherStatus: () => Promise<IpcResult<WeatherStatus>>;
+  getWeatherStatus: () => Promise<IpcResult<WeatherStatus> & { intervalSeconds?: number }>;
+  weatherRefresh: () => Promise<IpcResult>;
+  weatherSetInterval: (seconds: number) => Promise<IpcResult & { intervalSeconds?: number }>;
   onWeatherStatusChange: (callback: (status: WeatherStatus) => void) => () => void;
+  getWeatherForecast: () => Promise<IpcResult<WeatherForecast>>;
+  weatherRefreshForecast: () => Promise<IpcResult>;
+  onWeatherForecastChange: (callback: (forecast: WeatherForecast) => void) => () => void;
 
   // PJM
-  getPjmStatus: () => Promise<IpcResult<PjmStatus>>;
+  getPjmStatus: () => Promise<IpcResult<PjmStatus> & { polling?: boolean }>;
   pjmShowWindow: () => Promise<IpcResult>;
+  pjmSetPolling: (enabled: boolean) => Promise<IpcResult & { polling?: boolean }>;
+  pjmRefresh: () => Promise<IpcResult>;
+  pjmGetConfig: () => Promise<IpcResult<any>>;
+  pjmSaveConfig: (config: any) => Promise<IpcResult<any> & { polling?: boolean }>;
   onPjmStatusChange: (callback: (status: PjmStatus) => void) => () => void;
 
   // WebView
@@ -642,15 +681,42 @@ export class ElectronService implements OnDestroy {
 
   // Weather
 
-  async getWeatherStatus(): Promise<IpcResult<WeatherStatus>> {
+  async getWeatherStatus(): Promise<IpcResult<WeatherStatus> & { intervalSeconds?: number }> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.getWeatherStatus();
+  }
+
+  async weatherRefresh(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.weatherRefresh();
+  }
+
+  async weatherSetInterval(seconds: number): Promise<IpcResult & { intervalSeconds?: number }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.weatherSetInterval(seconds);
   }
 
   onWeatherStatusChange(callback: (status: WeatherStatus) => void): () => void {
     if (!this.isElectron) return () => {};
     return window.electronAPI!.onWeatherStatusChange((status) => {
       this.ngZone.run(() => callback(status));
+    });
+  }
+
+  async getWeatherForecast(): Promise<IpcResult<WeatherForecast>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getWeatherForecast();
+  }
+
+  async weatherRefreshForecast(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.weatherRefreshForecast();
+  }
+
+  onWeatherForecastChange(callback: (forecast: WeatherForecast) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onWeatherForecastChange((forecast) => {
+      this.ngZone.run(() => callback(forecast));
     });
   }
 
@@ -664,6 +730,26 @@ export class ElectronService implements OnDestroy {
   async pjmShowWindow(): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.pjmShowWindow();
+  }
+
+  async pjmSetPolling(enabled: boolean): Promise<IpcResult & { polling?: boolean }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmSetPolling(enabled);
+  }
+
+  async pjmRefresh(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmRefresh();
+  }
+
+  async pjmGetConfig(): Promise<IpcResult<any>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmGetConfig();
+  }
+
+  async pjmSaveConfig(config: any): Promise<IpcResult<any> & { polling?: boolean }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmSaveConfig(config);
   }
 
   onPjmStatusChange(callback: (status: PjmStatus) => void): () => void {

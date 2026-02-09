@@ -173,15 +173,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Weather
   getWeatherStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_GET_STATUS),
+  weatherRefresh: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_REFRESH),
+  weatherSetInterval: (seconds: number): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_SET_INTERVAL, seconds),
   onWeatherStatusChange: (callback: (status: any) => void) => {
     const sub = (_event: Electron.IpcRendererEvent, status: any) => callback(status);
     ipcRenderer.on(events.IPC_WEATHER_STATUS, sub);
     return () => { ipcRenderer.removeListener(events.IPC_WEATHER_STATUS, sub); };
   },
+  getWeatherForecast: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_GET_FORECAST),
+  weatherRefreshForecast: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEATHER_REFRESH_FORECAST),
+  onWeatherForecastChange: (callback: (forecast: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, forecast: any) => callback(forecast);
+    ipcRenderer.on(events.IPC_WEATHER_FORECAST, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_WEATHER_FORECAST, sub); };
+  },
 
   // PJM
   getPjmStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_GET_STATUS),
   pjmShowWindow: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_SHOW_WINDOW),
+  pjmSetPolling: (enabled: boolean): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_SET_POLLING, enabled),
+  pjmRefresh: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_REFRESH),
+  pjmGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_GET_CONFIG),
+  pjmSaveConfig: (config: any): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_SAVE_CONFIG, config),
   onPjmStatusChange: (callback: (status: any) => void) => {
     const sub = (_event: Electron.IpcRendererEvent, status: any) => callback(status);
     ipcRenderer.on(events.IPC_PJM_STATUS, sub);

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-home',
@@ -82,11 +82,16 @@ import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../
           <div class="feature-info">
             <h3>Weather</h3>
             <p class="feature-desc">Lightning and weather monitoring</p>
-            <div class="lightning-snippet" *ngIf="weatherStatus?.status === 'available' && weatherStatus?.lightningDistance">
-              <span class="lightning-badge" [class]="lightningLevel">{{ weatherStatus?.lightningDistance }} {{ weatherStatus?.unit || 'mi' }}</span>
-              {{ lightningLabel }}
+            <div class="weather-snippets" *ngIf="weatherStatus?.status === 'available' || weatherForecast?.status === 'available'">
+              <div class="lightning-snippet" *ngIf="weatherStatus?.status === 'available' && weatherStatus?.lightningDistance">
+                <span class="lightning-badge" [class]="lightningLevel">{{ weatherStatus?.lightningDistance }} {{ weatherStatus?.unit || 'mi' }}</span>
+                {{ lightningLabel }}
+              </div>
+              <div class="temp-snippet" *ngIf="weatherForecast?.status === 'available'">
+                {{ weatherForecast!.current.temperature | number:'1.0-0' }}&deg;F &middot; {{ forecastDesc }}
+              </div>
             </div>
-            <div class="lightning-snippet loading" *ngIf="weatherStatus?.status === 'loading'">
+            <div class="lightning-snippet loading" *ngIf="weatherStatus?.status === 'loading' && !weatherForecast">
               Loading...
             </div>
           </div>
@@ -98,6 +103,22 @@ import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../
           <div class="feature-info">
             <h3>PJM</h3>
             <p class="feature-desc">Grid pricing and power data</p>
+            <div class="pjm-snippet" *ngIf="pjmStatus?.status === 'available'">
+              <span class="pjm-price" [class.price-positive]="(pjmStatus?.lmpPrice ?? 0) >= 0"
+                    [class.price-negative]="(pjmStatus?.lmpPrice ?? 0) < 0">
+                \${{ pjmStatus?.lmpPrice?.toFixed(2) }}
+              </span>
+              <span class="pjm-unit">$/MWh</span>
+            </div>
+            <div class="pjm-snippet muted" *ngIf="pjmStatus?.status !== 'available' && !pjmPolling">
+              Polling disabled
+            </div>
+            <div class="pjm-snippet muted" *ngIf="pjmStatus?.status === 'loading' && pjmPolling">
+              Loading...
+            </div>
+            <div class="pjm-snippet error-text" *ngIf="pjmStatus?.status === 'error'">
+              Error
+            </div>
           </div>
           <span class="feature-status available">Independent</span>
         </a>
@@ -283,16 +304,28 @@ import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../
       background-color: var(--accent-warning);
     }
 
+    .weather-snippets {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
     .lightning-snippet {
       font-size: 12px;
       color: var(--text-secondary);
-      margin-top: 4px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .lightning-snippet.loading {
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .temp-snippet {
+      font-size: 12px;
       color: var(--text-muted);
     }
 
@@ -311,6 +344,31 @@ import { ElectronService, AppStatus, WeatherStatus, APP_DISPLAY_NAME } from '../
     .lightning-badge.caution { background-color: var(--accent-warning); }
     .lightning-badge.danger { background-color: var(--accent-error); }
 
+    .pjm-snippet {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .pjm-snippet.muted { color: var(--text-muted); }
+    .pjm-snippet.error-text { color: var(--accent-error); }
+
+    .pjm-price {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .pjm-price.price-positive { color: var(--accent-success); }
+    .pjm-price.price-negative { color: var(--accent-error); }
+
+    .pjm-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -322,8 +380,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   activeImpairmentCount: number | null = null;
   weatherStatus: WeatherStatus | null = null;
+  weatherForecast: WeatherForecast | null = null;
+  pjmStatus: PjmStatus | null = null;
+  pjmPolling = false;
   private sub?: Subscription;
   private unsubWeather?: () => void;
+  private unsubForecast?: () => void;
+  private unsubPjm?: () => void;
 
   constructor(private electronService: ElectronService, private router: Router) {}
 
@@ -340,6 +403,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.unsubWeather = this.electronService.onWeatherStatusChange((s) => {
       this.weatherStatus = s;
     });
+
+    this.loadWeatherForecast();
+    this.unsubForecast = this.electronService.onWeatherForecastChange((f) => {
+      this.weatherForecast = f;
+    });
+
+    this.loadPjmStatus();
+    this.unsubPjm = this.electronService.onPjmStatusChange((s) => {
+      this.pjmStatus = s;
+    });
   }
 
   private async loadWeatherStatus(): Promise<void> {
@@ -347,6 +420,27 @@ export class HomeComponent implements OnInit, OnDestroy {
       const result = await this.electronService.getWeatherStatus();
       if (result.success && result.data) {
         this.weatherStatus = result.data;
+      }
+    } catch {}
+  }
+
+  private async loadWeatherForecast(): Promise<void> {
+    try {
+      const result = await this.electronService.getWeatherForecast();
+      if (result.success && result.data) {
+        this.weatherForecast = result.data;
+      }
+    } catch {}
+  }
+
+  private async loadPjmStatus(): Promise<void> {
+    try {
+      const result = await this.electronService.getPjmStatus() as any;
+      if (result.success && result.data) {
+        this.pjmStatus = result.data;
+      }
+      if (result.polling != null) {
+        this.pjmPolling = result.polling;
       }
     } catch {}
   }
@@ -367,6 +461,20 @@ export class HomeComponent implements OnInit, OnDestroy {
     return 'All Clear';
   }
 
+  get forecastDesc(): string {
+    if (!this.weatherForecast?.current) return '';
+    const codes: Record<number, string> = {
+      0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+      45: 'Fog', 48: 'Fog', 51: 'Drizzle', 53: 'Drizzle', 55: 'Drizzle',
+      61: 'Rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Freezing rain',
+      71: 'Snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+      80: 'Showers', 81: 'Showers', 82: 'Heavy showers',
+      85: 'Snow showers', 86: 'Snow showers',
+      95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm'
+    };
+    return codes[this.weatherForecast.current.weatherCode] || 'Unknown';
+  }
+
   private async loadFireImpCount(): Promise<void> {
     try {
       const result = await this.electronService.fireImpCount();
@@ -379,6 +487,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     this.unsubWeather?.();
+    this.unsubForecast?.();
+    this.unsubPjm?.();
   }
 
   get stateLabel(): string {
