@@ -193,6 +193,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overflow-y: auto;
+  max-height: 70vh;
 }
 
 .current-batch-header {
@@ -523,6 +525,193 @@
   font-size: 1.1rem;
   margin-right: 0.25rem;
 }
+
+/* Tag Preview Section */
+.tag-preview-section {
+  background: var(--secondary-background);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.tag-preview-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tag-previews-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/*
+ * Tag preview — pixel-accurate layout matching LightBurn template.
+ *
+ * Source: "2-tags-with-qr 2x3.lbrn2"
+ * Physical tag: 76mm × 51mm (Rect W=76, H=25, scaleY=2.04)
+ * Scale: 3.55 px/mm (270px / 76mm)
+ * Text MaxWidth: 60mm → 213px (79% of tag width)
+ *
+ * Y positions derived from XForm translateY values:
+ *   tag top in workspace = 98mm (Rect centerY 123.5 - halfH 25.5)
+ *   element % = (elementY - 98) / 51 * 100
+ */
+.tag-preview {
+  position: relative;
+  background: #e8e4d8;
+  border: 2px solid #999;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 2x3 inch tag: 76mm × 51mm at 3.55 px/mm */
+.tag-preview.tag-2x3 {
+  width: 270px;
+  height: 181px;
+}
+
+/* 2x1 inch tag: proportional scale-down */
+.tag-preview.tag-2x1 {
+  width: 200px;
+  height: 134px;
+}
+
+/* All elements are absolutely positioned within the tag */
+.tag-el {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  max-width: 79%;  /* LightBurn MaxWidth 60mm / tag 76mm */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Arial', sans-serif;
+  color: #111;
+}
+
+/* Text that overflows gets a red underline hint */
+.tag-el-overflow {
+  text-decoration: underline wavy #e74c3c;
+}
+
+/* ── Tag Number ── top center
+ * XForm Y=101.98 → (101.98 - 98) / 51 = 7.8%
+ * H=14.65, scaleY=0.667 → effective 9.77mm → 34.7px height → font-size ~31px
+ * scaleX=1.059 → slight horizontal stretch
+ */
+.tag-num-el {
+  top: 7.8%;
+  font-size: 31px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transform: translate(-50%, -50%) scaleX(1.06);
+}
+
+/* ── QR Code ── middle center
+ * XForm Y=120.71 → (120.71 - 98) / 51 = 44.5%
+ * W=22, H=22 at scale 1.38×1.04 → 30mm × 23mm
+ * At 3.55px/mm → 107px × 82px
+ */
+.tag-qr-el {
+  top: 44.5%;
+  width: 107px;
+  height: 82px;
+  border: 1.5px solid #777;
+  background: #f5f2ea;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  overflow: visible;
+}
+
+.qr-pattern {
+  width: 70%;
+  height: 70%;
+  background:
+    linear-gradient(90deg, #555 25%, transparent 25%, transparent 75%, #555 75%),
+    linear-gradient(#555 25%, transparent 25%, transparent 75%, #555 75%);
+  background-size: 33% 33%;
+  opacity: 0.45;
+}
+
+/* ── 1-line Description ──
+ * XForm Y=137.01 → 76.5%
+ * H=19.82, scaleY=0.875 → effective 17.3mm → 61.6px height → font-size ~55px
+ */
+.tag-desc-1l {
+  top: 76.5%;
+  font-size: 55px;
+  font-weight: 600;
+}
+
+/* ── 2-line Description ──
+ * Line 1: Y=134.71 → 72.0%   Line 2: Y=142.74 → 87.7%
+ * H=9, scaleY=1.028 → effective 9.25mm → 32.9px → font-size ~29px
+ * scaleX=1.175 → noticeable horizontal stretch
+ */
+.tag-desc-2l-1 { top: 72.0%; font-size: 29px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.18); }
+.tag-desc-2l-2 { top: 87.7%; font-size: 29px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.18); }
+
+/* ── 3-line Description ──
+ * Line 1: Y=134.25 → 71.1%   Line 2: Y=139.50 → 81.4%   Line 3: Y=144.75 → 91.7%
+ * H=5, scaleY=1.063 → effective 5.32mm → 18.9px → font-size ~17px
+ * scaleX≈1.25 → significant horizontal stretch
+ */
+.tag-desc-3l-1 { top: 71.1%; font-size: 17px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.25); }
+.tag-desc-3l-2 { top: 81.4%; font-size: 17px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.25); }
+.tag-desc-3l-3 { top: 91.7%; font-size: 17px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.25); }
+
+/* ── 4-line Description ──
+ * Line 1: Y≈133.6 → 69.8%   Line 2: Y≈137.7 → 77.9%
+ * Line 3: Y≈141.9 → 86.0%   Line 4: Y≈146.0 → 94.2%
+ * H=6.26, scaleY=0.667 → effective 4.18mm → 14.8px → font-size ~13px
+ * scaleX=1.059
+ */
+.tag-desc-4l-1 { top: 69.8%; font-size: 13px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.06); }
+.tag-desc-4l-2 { top: 77.9%; font-size: 13px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.06); }
+.tag-desc-4l-3 { top: 86.0%; font-size: 13px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.06); }
+.tag-desc-4l-4 { top: 94.2%; font-size: 13px; font-weight: 500; transform: translate(-50%, -50%) scaleX(1.06); }
+
+/* ── Mounting Hole ── right edge, vertically centered
+ * Ellipse at X=145.94 → 95.4% from tag left
+ * Y centered at 50%, Rx=1.5mm → ~5px radius
+ */
+.tag-hole-el {
+  position: absolute;
+  right: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid #999;
+  background: var(--secondary-background, #2a2a2e);
+}
+
+/* ── 2x1 tag overrides ── proportionally smaller (74% scale) */
+.tag-preview.tag-2x1 .tag-num-el { font-size: 23px; }
+.tag-preview.tag-2x1 .tag-qr-el { width: 79px; height: 61px; }
+.tag-preview.tag-2x1 .tag-desc-1l { font-size: 41px; }
+.tag-preview.tag-2x1 .tag-desc-2l-1,
+.tag-preview.tag-2x1 .tag-desc-2l-2 { font-size: 21px; }
+.tag-preview.tag-2x1 .tag-desc-3l-1,
+.tag-preview.tag-2x1 .tag-desc-3l-2,
+.tag-preview.tag-2x1 .tag-desc-3l-3 { font-size: 13px; }
+.tag-preview.tag-2x1 .tag-desc-4l-1,
+.tag-preview.tag-2x1 .tag-desc-4l-2,
+.tag-preview.tag-2x1 .tag-desc-4l-3,
+.tag-preview.tag-2x1 .tag-desc-4l-4 { font-size: 10px; }
+.tag-preview.tag-2x1 .tag-hole-el { width: 8px; height: 8px; }
 
 /* Responsive */
 @media (max-width: 768px) {

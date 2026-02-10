@@ -42,7 +42,9 @@ export class EngraverManagerComponent {
         if (response.responseData) {
           this.modalService.availableTemplates.set(response.responseData);
           if (!this.modalService.selectedTemplate() && response.responseData.length > 0) {
-            this.modalService.selectedTemplate.set(response.responseData[0]);
+            const firstTemplate = response.responseData[0];
+            this.modalService.selectedTemplate.set(firstTemplate);
+            this.applyBatchSizeFromTemplate(firstTemplate);
           }
         }
       },
@@ -54,10 +56,79 @@ export class EngraverManagerComponent {
 
   onTemplateChange(template: string): void {
     this.modalService.setTemplate(template);
+    this.applyBatchSizeFromTemplate(template);
   }
 
   onBatchSizeChange(size: number): void {
     this.modalService.updateBatchSize(size);
+  }
+
+  /**
+   * Parses leading number from template filename and sets batch size.
+   * E.g., "2-tags-with-qr 2x3.lbrn2" -> batch size 2
+   */
+  private applyBatchSizeFromTemplate(template: string): void {
+    const match = template.match(/^(\d+)/);
+    if (match) {
+      const size = parseInt(match[1], 10);
+      if (size > 0 && size <= 10) {
+        this.modalService.updateBatchSize(size);
+      }
+    }
+  }
+
+  /**
+   * Detects tag size from template name ("2x3" or "2x1").
+   */
+  getTagSize(): '2x3' | '2x1' {
+    const template = this.modalService.selectedTemplate();
+    if (template && template.includes('2x1')) return '2x1';
+    return '2x3';
+  }
+
+  /**
+   * Splits a description into display lines, mirroring backend logic.
+   * Max 4 lines, ~20 chars per line, splits at word boundaries.
+   */
+  getDescriptionLines(description: string | null): string[] {
+    if (!description || description.trim() === '') return [''];
+
+    // Check for explicit line breaks
+    if (description.includes('\n')) {
+      return description.split('\n').map(l => l.trim()).slice(0, 4);
+    }
+
+    // Short descriptions stay on one line
+    if (description.length <= 20) return [description];
+
+    // Split by word boundaries
+    const words = description.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      if (currentLine.length + word.length + 1 <= 20) {
+        currentLine = currentLine ? currentLine + ' ' + word : word;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = '';
+        }
+        currentLine = word;
+      }
+
+      if (lines.length >= 3 && currentLine) {
+        lines.push(currentLine);
+        currentLine = '';
+        break;
+      }
+    }
+
+    if (currentLine && lines.length < 4) {
+      lines.push(currentLine);
+    }
+
+    return lines;
   }
 
   /**

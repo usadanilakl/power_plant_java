@@ -42,7 +42,7 @@ public class EngraverService {
 
     /**
      * Generates CSV file for a batch of LOTO points.
-     * The CSV has columns for 1-line, 2-line, and 3-line descriptions.
+     * The CSV has columns for 1-line, 2-line, 3-line, and 4-line descriptions.
      * Header inclusion is controlled by engraver.csv.include-header property (default: false).
      */
     public String generateCsvForBatch(List<LotoPoint> batch, boolean withQr) throws IOException {
@@ -54,7 +54,7 @@ public class EngraverService {
         try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
             // Write header only if configured to include it
             if (includeHeader) {
-                writer.println("tagNumber,oneLineDesctiption,twoLineDesctiption1,twoLineDescription2,threeLneDescription1,threeLneDescription2,threeLneDescription3,qrCode");
+                writer.println("tagNumber,oneLineDescription,twoLineDescription1,twoLineDescription2,threeLineDescription1,threeLineDescription2,threeLineDescription3,fourLineDescription1,fourLineDescription2,fourLineDescription3,fourLineDescription4,qrCode");
             }
 
             // Write each item
@@ -70,10 +70,10 @@ public class EngraverService {
 
     /**
      * Maps a LotoPoint to CSV columns based on description length.
-     * Automatically determines whether to use 1, 2, or 3 line format.
-     * QR code is added as the last column (column 8) to preserve existing template mappings.
+     * Automatically determines whether to use 1, 2, 3, or 4 line format.
+     * QR code is the last column (column 12).
      *
-     * CSV columns: tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, qrCode
+     * CSV columns: tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode
      */
     private String[] mapLotoPointToCsvRow(LotoPoint point, boolean withQr) {
         String tagNumber = escapeCsvField(point.getTagNumber() != null ? point.getTagNumber() : "");
@@ -89,6 +89,10 @@ public class EngraverService {
         String threeLine1 = "";
         String threeLine2 = "";
         String threeLine3 = "";
+        String fourLine1 = "";
+        String fourLine2 = "";
+        String fourLine3 = "";
+        String fourLine4 = "";
 
         if (lines.length == 1 && lines[0].length() <= 20) {
             // Short single line - use oneLineDescription
@@ -97,17 +101,23 @@ public class EngraverService {
             // Two lines - use twoLineDescription columns
             twoLine1 = escapeCsvField(lines[0]);
             twoLine2 = lines.length > 1 ? escapeCsvField(lines[1]) : "";
-        } else {
-            // Three lines - use threeLneDescription columns
+        } else if (lines.length == 3) {
+            // Three lines - use threeLineDescription columns
             threeLine1 = escapeCsvField(lines[0]);
             threeLine2 = escapeCsvField(lines[1]);
-            threeLine3 = lines.length > 2 ? escapeCsvField(lines[2]) : "";
+            threeLine3 = escapeCsvField(lines[2]);
+        } else {
+            // Four lines - use fourLineDescription columns
+            fourLine1 = escapeCsvField(lines[0]);
+            fourLine2 = escapeCsvField(lines[1]);
+            fourLine3 = escapeCsvField(lines[2]);
+            fourLine4 = lines.length > 3 ? escapeCsvField(lines[3]) : "";
         }
 
-        // QR code is the last column (column 8) - contains tag number if withQr is true
+        // QR code is the last column - contains tag number if withQr is true
         String qrCode = withQr ? tagNumber : "";
 
-        return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, qrCode};
+        return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode};
     }
 
     /**
@@ -122,8 +132,8 @@ public class EngraverService {
         // Check for explicit line breaks
         if (description.contains("\n")) {
             String[] lines = description.split("\n");
-            // Trim each line and limit to 3 lines
-            String[] result = new String[Math.min(lines.length, 3)];
+            // Trim each line and limit to 4 lines
+            String[] result = new String[Math.min(lines.length, 4)];
             for (int i = 0; i < result.length; i++) {
                 result[i] = lines[i].trim();
             }
@@ -166,14 +176,14 @@ public class EngraverService {
                 currentLine.append(word);
             }
 
-            // Limit to 3 lines
-            if (lines.size() >= 2 && currentLine.length() > 0) {
+            // Limit to 4 lines
+            if (lines.size() >= 3 && currentLine.length() > 0) {
                 lines.add(currentLine.toString());
                 break;
             }
         }
 
-        if (currentLine.length() > 0 && lines.size() < 3) {
+        if (currentLine.length() > 0 && lines.size() < 4) {
             lines.add(currentLine.toString());
         }
 

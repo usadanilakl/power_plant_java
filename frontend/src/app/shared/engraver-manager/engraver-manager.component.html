@@ -144,6 +144,50 @@
           </div>
         }
 
+        <!-- Tag Preview Section -->
+        @if (modalService.currentBatch(); as batch) {
+          <div class="tag-preview-section">
+            <h4>Tag Preview</h4>
+            <div class="tag-previews-grid">
+              @for (item of batch.items; track item.id) {
+                <div class="tag-preview" [class.tag-2x3]="getTagSize() === '2x3'" [class.tag-2x1]="getTagSize() === '2x1'">
+                  <!-- Tag number — top center -->
+                  <span class="tag-el tag-num-el">{{ item.tagNumber || '(no tag)' }}</span>
+
+                  <!-- QR code — middle center -->
+                  @if (modalService.withQr()) {
+                    <div class="tag-el tag-qr-el">
+                      <div class="qr-pattern"></div>
+                    </div>
+                  }
+
+                  <!-- Description — bottom area, positioned per line count -->
+                  @if (getDescriptionLines(item.description); as lines) {
+                    @if (lines.length <= 1) {
+                      <span class="tag-el tag-desc-1l">{{ lines[0] }}</span>
+                    } @else if (lines.length === 2) {
+                      <span class="tag-el tag-desc-2l-1">{{ lines[0] }}</span>
+                      <span class="tag-el tag-desc-2l-2">{{ lines[1] }}</span>
+                    } @else if (lines.length === 3) {
+                      <span class="tag-el tag-desc-3l-1">{{ lines[0] }}</span>
+                      <span class="tag-el tag-desc-3l-2">{{ lines[1] }}</span>
+                      <span class="tag-el tag-desc-3l-3">{{ lines[2] }}</span>
+                    } @else {
+                      <span class="tag-el tag-desc-4l-1">{{ lines[0] }}</span>
+                      <span class="tag-el tag-desc-4l-2">{{ lines[1] }}</span>
+                      <span class="tag-el tag-desc-4l-3">{{ lines[2] }}</span>
+                      <span class="tag-el tag-desc-4l-4">{{ lines[3] }}</span>
+                    }
+                  }
+
+                  <!-- Mounting hole — right edge, centered vertically -->
+                  <div class="tag-hole-el"></div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Actions section -->
         <div class="actions-section">
           @if (modalService.currentBatch()?.status !== 'completed') {

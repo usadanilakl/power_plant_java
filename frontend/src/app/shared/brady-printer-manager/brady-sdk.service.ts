@@ -1,5 +1,5 @@
-import { inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable } from '@angular/core';
+import BradySDK from '@bradycorporation/brady-web-sdk';
 import { BehaviorSubject, catchError, from, map, Observable, of, switchMap } from 'rxjs';
 
 import { QrCodeService } from '../qr-code/qr-code.service';
@@ -26,38 +26,23 @@ const INITIAL_STATE: BradyPrinterState = {
 })
 export class BradySdkService {
   private sdkInstance: any; // Use 'any' since BradySDK is not a known type
-  private BradySDK: any; // Dynamically loaded SDK
 
   private readonly stateSubject = new BehaviorSubject<BradyPrinterState>(INITIAL_STATE);
   public readonly state$ = this.stateSubject.asObservable();
   private qrCodeService = inject(QrCodeService);
-  private platformId = inject(PLATFORM_ID);
-
-  private get isBrowser(): boolean {
-    return isPlatformBrowser(this.platformId);
-  }
 
   /**
    * Initializes the Brady Web SDK. This should be called once when the application starts.
    */
-  async initialize(): Promise<void> {
-    if (!this.isBrowser) {
-      console.log('Brady SDK initialization skipped on server.');
-      return;
-    }
-
+  initialize(): void {
     if (this.sdkInstance) {
       console.warn('Brady SDK has already been initialized.');
       return;
     }
 
     try {
-      // Dynamically import the SDK only in browser
-      const sdkModule = await import('@bradycorporation/brady-web-sdk');
-      this.BradySDK = sdkModule.default;
-
       // The SDK is initialized with the callback that will update our state subject.
-      this.sdkInstance = new this.BradySDK(this.printerUpdatesCallback.bind(this));
+      this.sdkInstance = new BradySDK(this.printerUpdatesCallback.bind(this));
       console.log('Brady SDK initialized successfully.');
       this.updateState({ isConnected: this.sdkInstance.isConnected() });
     } catch (error) {
@@ -71,11 +56,6 @@ export class BradySdkService {
    * Manages the ownership GUID in localStorage.
    */
   async scanForPrinters(): Promise<void> {
-    if (!this.isBrowser) {
-      console.log('Printer scanning skipped on server.');
-      return;
-    }
-
     if (!this.sdkInstance) {
       throw new Error('Brady SDK is not initialized. Call initialize() first.');
     }
@@ -104,14 +84,9 @@ export class BradySdkService {
    * Automatically connects to a known printer or initiates a scan if not connected.
    * Initializes the SDK if not already initialized.
    */
-  async autoConnectOrScan(): Promise<void> {
-    if (!this.isBrowser) {
-      return;
-    }
-
-    // Ensure SDK is initialized first
+  autoConnectOrScan(): void {
     if (!this.sdkInstance) {
-      await this.initialize();
+      this.initialize();
     }
 
     if (this.sdkInstance?.isConnected()) {
@@ -202,17 +177,12 @@ export class BradySdkService {
           return;
         }
         const img = new Image();
-        const blobUrl = URL.createObjectURL(blob);
         img.onload = () => {
-          URL.revokeObjectURL(blobUrl); // Clean up blob URL to prevent memory leak
           observer.next(img);
           observer.complete();
         };
-        img.onerror = () => {
-          URL.revokeObjectURL(blobUrl);
-          observer.error(new Error('Failed to load image from blob.'));
-        };
-        img.src = blobUrl;
+        img.onerror = () => observer.error(new Error('Failed to load image from blob.'));
+        img.src = URL.createObjectURL(blob);
       });
     });
 
@@ -520,10 +490,10 @@ async createImageFromStringsWithQr(string1: string, string2: string, qrCodeData 
     const isConnected = this.sdkInstance.isConnected();
     this.updateState({
       isConnected,
-      printerName: isConnected ? this.sdkInstance.getPrinterName() : null,
-      printerModel: isConnected ? this.sdkInstance.getPrinterModel() : null,
+      printerName: isConnected ? (this.sdkInstance.getPrinterSerialNumber?.() ?? 'Brady Printer') : null,
+      printerModel: null,
       status: isConnected ? 'Connected' : 'Disconnected',
-      error: null, // Clear previous errors on status update
+      error: null,
     });
   }
 

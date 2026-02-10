@@ -209,5 +209,7 @@ export class EngraverModalService {
     this.isProcessing.set(false);
     this.withQr.set(false);
     this.batchSize.set(4);
+    this.availableTemplates.set([]);
+    this.selectedTemplate.set('');
   }
 }
