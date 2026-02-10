@@ -1,0 +1,11 @@
+{
+  "onLocationApiKey": "YOUR_ONLOCATION_API_KEY",
+  "onLocationBaseUrl": "https://api.whosonlocation.com/v1",
+  "gateWebUrl": "https://10.56.80.80/",
+  "gateUsername": "YOUR_USERNAME",
+  "gatePassword": "YOUR_PASSWORD",
+  "onLocationEmail": "YOUR_EMAIL",
+  "onLocationPassword": "YOUR_PASSWORD",
+  "autoRefresh": false,
+  "intervalMinutes": 60
+}

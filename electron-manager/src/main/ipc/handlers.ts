@@ -698,8 +698,19 @@ export class IpcHandlers {
   private registerPermitsHandlers(): void {
     ipcMain.handle(events.IPC_WORK_REQUEST_COUNT, async () => {
       try {
-        const data = await this.springBootApiGet('/ng/work-requests/get-all-by-status/Active');
-        return { success: true, data: Array.isArray(data) ? data.length : 0 };
+        const [newRes, activeRes] = await Promise.all([
+          this.springBootApiGet('/ng/work-requests/get-all-by-status/New'),
+          this.springBootApiGet('/ng/work-requests/get-all-by-status/Active')
+        ]);
+        const newList = newRes?.responseData;
+        const activeList = activeRes?.responseData;
+        return {
+          success: true,
+          data: {
+            newCount: Array.isArray(newList) ? newList.length : 0,
+            activeCount: Array.isArray(activeList) ? activeList.length : 0
+          }
+        };
       } catch (error: any) {
         return { success: false, error: error.message };
       }

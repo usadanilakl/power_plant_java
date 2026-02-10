@@ -43,7 +43,11 @@
       "Bash(node -e \"const cp = require\\(''child_process''\\); const r = cp.spawnSync\\(''./node_modules/electron/dist/electron.exe'', [''.''], { cwd: ''c:/Users/usada/my_projects/power_plant_java/electron-manager'', encoding: ''utf-8'', timeout: 10000 }\\); console.log\\(''stdout:'', r.stdout\\); console.log\\(''stderr:'', r.stderr\\); console.log\\(''status:'', r.status\\);\")",
       "Bash(npm install:*)",
       "Bash(git -C \"c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java\" log --all --oneline --diff-filter=A -- \"*.json\" \"*.env\" \"*.key\" \"*.pem\" \"*.properties\")",
-      "Bash(git -C \"c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java\" ls-files)"
+      "Bash(git -C \"c:\\\\Users\\\\usada\\\\my_projects\\\\power_plant_java\" ls-files)",
+      "Bash(git ls-tree:*)",
+      "Bash(sort:*)",
+      "Bash(git reset:*)",
+      "Bash(node -e:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"

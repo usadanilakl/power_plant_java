@@ -156,7 +156,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Permits
-  getWorkRequestCount: (): Promise<IpcResult<number>> => ipcRenderer.invoke(events.IPC_WORK_REQUEST_COUNT),
+  getWorkRequestCount: (): Promise<IpcResult<{ newCount: number; activeCount: number }>> => ipcRenderer.invoke(events.IPC_WORK_REQUEST_COUNT),
 
   // Gate Log
   gateLogGetPeople: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_GET_PEOPLE),

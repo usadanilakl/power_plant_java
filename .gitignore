@@ -166,5 +166,6 @@ machine-id.properties
 /src/main/resources/application-secrets.properties
 /src/main/resources/private_key.pem
 global.env
+/electron-manager/config-defaults/
 /data/certificate.pfx
 /exports/**

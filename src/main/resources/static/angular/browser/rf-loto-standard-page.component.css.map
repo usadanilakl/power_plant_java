@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-page.component.css"],
-  "sourcesContent": [".header-menus {\r\n  display: flex;\r\n  flex-direction: row;\r\n  align-items: center;\r\n  gap: 16px;\r\n  width: 100%;\r\n}\r\n\r\n.menu-container {\r\n  flex: 1;\r\n}\r\n"],
-  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,eAAa;AACb,OAAK;AACL,SAAO;AACT;AAEA,CAAC;AACC,QAAM;AACR;",
-  "names": []
-}

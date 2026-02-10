@@ -135,8 +135,13 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
               <span class="item-placeholder">--</span>
             </a>
             <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'permit-builder/work-requests' }">
-              <span>New Work Requests</span>
-              <span class="count-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0">{{ newWorkRequestCount }}</span>
+              <span>Work Requests</span>
+              <span class="wr-counts">
+                <span class="count-badge active-badge" *ngIf="activeWorkRequestCount !== null && activeWorkRequestCount > 0"
+                      title="Active">{{ activeWorkRequestCount }}</span>
+                <span class="count-badge new-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0"
+                      title="New">{{ newWorkRequestCount }}<span class="new-dot">*</span></span>
+              </span>
             </a>
           </div>
           <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
@@ -428,6 +433,30 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
       color: var(--text-muted);
     }
 
+    .wr-counts {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .count-badge.new-badge {
+      background-color: var(--accent-warning);
+      position: relative;
+    }
+
+    .count-badge.active-badge {
+      background-color: var(--accent-primary);
+    }
+
+    .new-dot {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent-warning);
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -439,6 +468,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   activeImpairmentCount: number | null = null;
   newWorkRequestCount: number | null = null;
+  activeWorkRequestCount: number | null = null;
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
   pjmStatus: PjmStatus | null = null;
@@ -548,8 +578,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async loadWorkRequestCount(): Promise<void> {
     try {
       const result = await this.electronService.getWorkRequestCount();
-      if (result.success) {
-        this.newWorkRequestCount = result.data ?? 0;
+      if (result.success && result.data) {
+        this.newWorkRequestCount = result.data.newCount;
+        this.activeWorkRequestCount = result.data.activeCount;
       }
     } catch {}
   }

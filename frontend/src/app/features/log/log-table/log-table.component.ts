@@ -143,7 +143,7 @@ export class LogTableComponent implements OnInit {
 
     const searchCriteria: SearchCriteria = {
       ...existingCriteria,
-      sortColumn: event.column.id,
+      sortColumn: event.column.accessorKey || event.column.id,
       sortDirection: event.isAscending ? 'ASC' : 'DESC',
       page: 1,
       pageSize: 50,

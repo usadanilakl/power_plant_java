@@ -385,10 +385,10 @@ export class RfLotoPointStateService {
     //   return;
     // }
 
-    const filters = this.getCurrentSearchCriteria() ?? {
-      type: 'column',
-      filters: {},
-    };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     // Fetch from server with pagination
     this.apiService
@@ -442,10 +442,10 @@ export class RfLotoPointStateService {
     }
 
     const nextPage = cached.page + 1;
-    const filters = this.getCurrentSearchCriteria() ?? {
-      type: 'column',
-      filters: {},
-    };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)

@@ -28,7 +28,8 @@ electron-manager/
 │   ├── main/                             # Electron main process
 │   │   ├── main.ts                       # Entry point
 │   │   ├── app.ts                        # App lifecycle, menu, pre/post-startup checks
-│   │   ├── constants.ts                  # Config (single Spring Boot app)
+│   │   ├── constants.ts                  # Config (single Spring Boot app, no credentials)
+│   │   ├── paths.ts                      # Path resolver (dev vs packaged) + config provisioning
 │   │   ├── managers/
 │   │   │   ├── main-window.manager.ts    # Primary BrowserWindow
 │   │   │   ├── spring-boot.manager.ts    # Start/stop/health for PID app
@@ -39,6 +40,7 @@ electron-manager/
 │   │   │   ├── electron-update.manager.ts # Electron self-update (check/download/apply via batch script)
 │   │   │   ├── resource-pack.manager.ts # Resource pack sync (engraver_data, qa-data)
 │   │   │   ├── gate-log.manager.ts      # Gate Log: OnLocation API + gate scraper + combiner
+│   │   │   ├── pjm.manager.ts          # PJM: Data Miner API polling + Voyager window
 │   │   │   └── webview.manager.ts        # WebView windows (FM Global, Gate, OnLocation)
 │   │   ├── ipc/
 │   │   │   ├── events.ts                 # All IPC channel names
@@ -275,11 +277,21 @@ Previous app consolidated: `C:\Users\usada\my_projects\Entrance_Log` (Spring Boo
 - Placeholder for WeatherBug BrowserView scraping
 - Previous code: `C:\Users\usada\JS Projects\dk-power-full-stack\apps\pwa\src\app\features\weather`
 
-### PJM Monitoring - UI SCAFFOLD
-- LMP price display panel
-- Info cards (Pricing Node, Zone, Update Interval)
-- Placeholder for PJM Data Miner API or WebView automation
-- Previous code: `C:\Users\usada\JS Projects\dk-power-full-stack\apps\pwa\src\app\features\pjm`
+### PJM Monitoring - DONE (Data Miner API + Voyager Window)
+
+**Electron main process** (no Spring Boot dependency):
+- `PjmManager` in `pjm.manager.ts`: polls PJM Data Miner 2 REST API for real-time LMP prices
+- API: `https://api.pjm.com/api/v1/rt_unverified_fivemin_lmps` with `Ocp-Apim-Subscription-Key` header
+- Default pnode: 33092371 (ComEd zone aggregate)
+- Configurable poll interval (1/2/5/10/15/30 min), persisted to `pjm-config.json`
+- Voyager visual reference: opens `https://voyager.tnsk.com` in a BrowserWindow with auto-login via `insertText`
+- Voyager credentials loaded from `pjm-config.json` (`voyagerUsername`/`voyagerPassword`) — not hardcoded
+- Config persistence: `managed_apps/pid/pjm-config.json` (API key, pnode, poll interval, Voyager credentials)
+
+**Home page integration:**
+- LMP price card on dashboard shows live price snippet when available
+
+Previous code: `C:\Users\usada\JS Projects\dk-power-full-stack\apps\pwa\src\app\features\pjm`
 
 ### Permit Monitoring - NOT STARTED
 - Depends on Main SpringBoot API (not yet available)
@@ -305,6 +317,26 @@ Centralized path resolver handles dev vs. packaged mode:
 | **`app.isPackaged`** | `false` | `true` (both installer and unpacked builds) |
 
 All managers import `getWorkingDir()` and `getJavaPath()` from `paths.ts` — no more scattered `path.resolve(__dirname, ...)`.
+
+### Config Provisioning (`provisionDefaultConfigs()` in `paths.ts`)
+
+On startup, seeds runtime config files (credentials, API keys) into the working directory from bundled defaults:
+
+| | Dev mode | Packaged mode |
+|---|---|---|
+| **Defaults source** | `electron-manager/config-defaults/` | `<install>/resources/config-defaults/` |
+| **Target** | `electron-manager/managed_apps/pid/` | `%PROGRAMDATA%/DK Power Manager/managed_apps/pid/` |
+
+**Behavior:**
+- Config file **missing** → copies the bundled default (first-run provisioning)
+- Config file **exists but missing new keys** → merges defaults underneath (existing values win, new keys added)
+- Config file **up-to-date** → no-op
+
+**Config files managed:**
+- `pjm-config.json` — PJM API key, pnode, poll interval, Voyager login credentials
+- `gate-log-config.json` — OnLocation API key, gate username/password, auto-refresh settings
+
+**Security:** `config-defaults/` is gitignored (contains real credentials). Ships with the package via `extraResources` in `package.json`. Credentials never appear in git-tracked source code — `constants.ts` has empty-string defaults that get overridden at runtime.
 
 ### Build Scripts
 
@@ -349,6 +381,7 @@ Both produce identical behavior (`app.isPackaged = true`, same path resolution):
 
 ## Deferred (Future Work)
 - Weather WeatherBug BrowserView integration
-- PJM Data Miner API integration
 - Permit monitoring (needs Main SpringBoot API)
 - Settings persistence (save/load beyond device identity)
+- Rotate compromised credentials (still in git history) — Azure OAuth, PJM API key, gate/OnLocation passwords
+- Optional: scrub git history with `git filter-repo` / BFG Repo Cleaner

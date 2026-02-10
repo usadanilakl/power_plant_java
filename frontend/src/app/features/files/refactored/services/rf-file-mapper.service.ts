@@ -39,6 +39,7 @@ export class FileMapperService {
       isVerified: {
         id: 'isVerified',
         header: 'Verified',
+        accessorKey: 'isVerified',
         accessorFn: (item: FileDto) => (item.isVerified ? 'Yes' : 'No'),
         width: 80,
         filterable: true,
@@ -68,10 +69,11 @@ export class FileMapperService {
       fileNumber: {
         id: 'fileNumber',
         header: 'File Number',
+        accessorKey: 'fileNumber',
         accessorFn: (item: FileDto) => this.formatFileNumbers(item.fileNumber),
         width: 200,
         filterable: true,
-        sortable: false,
+        sortable: true,
       },
       system: {
         id: 'system',
@@ -85,11 +87,12 @@ export class FileMapperService {
       relatedSystems: {
         id: 'relatedSystems',
         header: 'Related Systems',
+        accessorKey: 'relatedSystems',
         accessorFn: (item: FileDto) =>
           this.formatRelatedSystems(item.relatedSystems),
         width: 200,
         filterable: true,
-        sortable: false,
+        sortable: true,
       },
       vendor: {
         id: 'vendor',

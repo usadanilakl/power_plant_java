@@ -55,6 +55,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "config-defaults",
+        "to": "config-defaults",
+        "filter": [
+          "*.json"
+        ]
       }
     ],
     "win": {

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/radio-group/radio-group.component.css"],
-  "sourcesContent": ["\n.radio-group {\n  margin-bottom: 15px;\n}\n\n.group-label {\n  display: block;\n  margin-bottom: 10px;\n  font-weight: bold;\n  font-size: 1.1em;\n  color: #333;\n}\n\n.options-container {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 10px;\n}\n\n.option {\n  position: relative;\n}\n\n.radio-group input[type=\"radio\"] {\n  display: none;\n}\n\n.radio-group label {\n  display: inline-block;\n  padding: 8px 16px;\n  border: 1px solid #ccc;\n  border-radius: 4px;\n  cursor: pointer;\n  transition: all 0.3s ease;\n  font-size: 0.9em;\n}\n\n.radio-group input[type=\"radio\"]:checked + label {\n  background-color: #007bff;\n  color: white;\n  border-color: #007bff;\n}\n\n.radio-group label:hover {\n  background-color: #e9ecef;\n}\n\n.radio-group input[type=\"radio\"]:checked + label:hover {\n  background-color: #0056b3;\n}\n"],
-  "mappings": ";AACA,CAAC;AACC,iBAAe;AACjB;AAEA,CAAC;AACC,WAAS;AACT,iBAAe;AACf,eAAa;AACb,aAAW;AACX,SAAO;AACT;AAEA,CAAC;AACC,WAAS;AACT,aAAW;AACX,OAAK;AACP;AAEA,CAAC;AACC,YAAU;AACZ;AAEA,CAtBC,YAsBY,KAAK,CAAC;AACjB,WAAS;AACX;AAEA,CA1BC,YA0BY;AACX,WAAS;AACT,WAAS,IAAI;AACb,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACf,UAAQ;AACR,cAAY,IAAI,KAAK;AACrB,aAAW;AACb;AAEA,CApCC,YAoCY,KAAK,CAAC,WAAa,SAAS,EAAE;AACzC,oBAAkB;AAClB,SAAO;AACP,gBAAc;AAChB;AAEA,CA1CC,YA0CY,KAAK;AAChB,oBAAkB;AACpB;AAEA,CA9CC,YA8CY,KAAK,CAAC,WAAa,SAAS,EAAE,KAAK;AAC9C,oBAAkB;AACpB;",
-  "names": []
-}

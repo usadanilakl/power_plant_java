@@ -247,7 +247,7 @@ interface ElectronAPI {
   onFireImpFormSubmitted: (callback: (data: Record<string, string>) => void) => () => void;
 
   // Permits
-  getWorkRequestCount: () => Promise<IpcResult<number>>;
+  getWorkRequestCount: () => Promise<IpcResult<{ newCount: number; activeCount: number }>>;
 
   // Device Identity
   getDeviceConfig: () => Promise<IpcResult<DeviceConfig | null>>;
@@ -483,7 +483,7 @@ export class ElectronService implements OnDestroy {
 
   // Permits
 
-  async getWorkRequestCount(): Promise<IpcResult<number>> {
+  async getWorkRequestCount(): Promise<IpcResult<{ newCount: number; activeCount: number }>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.getWorkRequestCount();
   }

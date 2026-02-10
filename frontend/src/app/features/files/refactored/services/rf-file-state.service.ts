@@ -453,7 +453,10 @@ export class RfFileStateService {
     //   return;
     // }
 
-    const filters = this.getCurrentSearchCriteria() ?? { type: 'column', filters: {} };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     // Fetch from server with pagination
     this.apiService
@@ -503,10 +506,10 @@ export class RfFileStateService {
     }
 
     const nextPage = cached.page + 1;
-    const filters = this.getCurrentSearchCriteria() ?? {
-      type: 'column',
-      filters: {},
-    };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(

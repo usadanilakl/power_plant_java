@@ -72,10 +72,10 @@ export class LogStateService {
     const cacheKey = `${columnKey}:${searchString}`;
     this.loadingUniqueItems.set(true);
 
-    const filters = this.getCurrentSearchCriteria() ?? {
-      type: 'column',
-      filters: {},
-    };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(columnKey, filters, 1, 50)
@@ -129,10 +129,10 @@ export class LogStateService {
     }
 
     const nextPage = cached.page + 1;
-    const filters = this.getCurrentSearchCriteria() ?? {
-      type: 'column',
-      filters: {},
-    };
+    const currentCriteria = this.getCurrentSearchCriteria();
+    const filters: SearchCriteria = currentCriteria
+      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+      : { type: 'column', filters: {} };
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(columnKey, filters, nextPage, 50)

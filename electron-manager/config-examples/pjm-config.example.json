@@ -1,0 +1,8 @@
+{
+  "apiKey": "YOUR_PJM_API_KEY",
+  "pnodeId": 33092371,
+  "pnodeName": "ComEd",
+  "pollIntervalMinutes": 5,
+  "voyagerUsername": "YOUR_PJM_USERNAME",
+  "voyagerPassword": "YOUR_PJM_PASSWORD"
+}

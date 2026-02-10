@@ -76,7 +76,7 @@ Both targets open visible BrowserWindows for manual user interaction:
 - URL: `https://us3.whosonlocation.com/login`
 - Two-step auto-login: fill `#email_input` → click `#nextBtn` → wait 2s → fill `#password_input` → click `#signInBtn`
 
-Credentials read from `managed_apps/pid/gate-log-config.json` (falls back to hardcoded defaults).
+Credentials read from `managed_apps/pid/gate-log-config.json` (provisioned from `config-defaults/` on first run; no hardcoded fallbacks in source).
 
 ### Angular UI: `gate-log.component.ts`
 
@@ -93,19 +93,19 @@ Layout:
 Stored in `managed_apps/pid/gate-log-config.json`:
 ```json
 {
-  "onLocationApiKey": "wNqYlPvPlq2GvktS",
+  "onLocationApiKey": "<OnLocation API key>",
   "onLocationBaseUrl": "https://api.whosonlocation.com/v1",
   "gateWebUrl": "https://10.56.80.80/",
-  "gateUsername": "dklokov",
-  "gatePassword": "Jackson1",
-  "onLocationEmail": "jacksonap@jpowerusa.com",
-  "onLocationPassword": "Jackson1",
+  "gateUsername": "<gate username>",
+  "gatePassword": "<gate password>",
+  "onLocationEmail": "<OnLocation email>",
+  "onLocationPassword": "<OnLocation password>",
   "autoRefresh": false,
   "intervalMinutes": 60
 }
 ```
 
-Pre-populated with defaults from old app. Editable from config panel in Gate Log page.
+Provisioned automatically on first run from `config-defaults/gate-log-config.json` (gitignored, ships via `extraResources`). Editable from config panel in Gate Log page. `constants.ts` has empty-string defaults — real credentials only live in the runtime config file.
 
 ### Previous App
 

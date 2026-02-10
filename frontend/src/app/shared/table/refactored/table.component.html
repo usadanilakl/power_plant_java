@@ -50,9 +50,9 @@
               <app-column-filter-input
                 [uniqueValues]="columnUniqueOptions()"
                 [isLoadingMore]="isLoadingMore()"
-                (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
-                (loadMoreOptions)="searchService.onLoadMoreColumnFilterOptions(column.accessorKey!,$event)"
-                (loadInitialOptions)="searchService.onLoadColumnFilterOptions(column.accessorKey!,$event)"
+                (filterChange)="searchService.onColumnFilterChange(column.accessorKey || column.id, $event)"
+                (loadMoreOptions)="searchService.onLoadMoreColumnFilterOptions(column.accessorKey || column.id,$event)"
+                (loadInitialOptions)="searchService.onLoadColumnFilterOptions(column.accessorKey || column.id,$event)"
               ></app-column-filter-input>
             </div>
 

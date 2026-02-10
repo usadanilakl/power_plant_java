@@ -53,6 +53,21 @@ Base: `/work-requests-api`
 - **RfWorkRequestStateService** — BehaviorSubject state, signals, SSE sync updates, pagination
 - **RfWorkRequestMapperService** — column/form field definitions, location options
 
+## Column Mapping Notes
+
+WorkRequest uses `permitStatus` (`@ManyToOne Value`) for status, but the Angular DTO exposes it as `status` (a flat string). This creates a split between entity property paths and DTO field names:
+
+| Column | `id` (DTO key) | `accessorKey` (entity path) | `formFieldKey` | Notes |
+|--------|----------------|----------------------------|----------------|-------|
+| Status | `status` | `permitStatus.name` | `status` | Sort/filter use `accessorKey` for backend queries |
+| Other fields | matches entity field | matches entity field | — | Simple fields map 1:1 |
+
+**Sort handler** uses `event.column.accessorKey || event.column.id` (not just `id`) so the backend receives the correct entity property path for Spring Data Sort.
+
+**Column filters** already use `column.accessorKey` via the shared `table.component.html` template.
+
+**Unique values** (`loadUniqueItems`) always ensures `filters: {}` is present in the SearchCriteria body, even when reusing sort-only criteria — prevents NPE in `FlexibleQueryInterface.getFilteredUniqueValuesOfColumn()`.
+
 ## Sync Server Deduplication
 
 Multiple clients independently pull the same WorkRequests from SharePoint, each creating a local entity with a different device-prefixed ID but the same `sharepointId`. After sync-server sync, duplicates accumulate.

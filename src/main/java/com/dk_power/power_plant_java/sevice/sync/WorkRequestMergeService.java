@@ -59,9 +59,17 @@ public class WorkRequestMergeService {
             "GROUP BY sharepoint_id HAVING COUNT(*) > 1")
             .getResultList();
 
+        if (duplicates.isEmpty()) {
+            log.debug("[WorkRequest Merge] No duplicates found");
+        } else {
+            log.info("[WorkRequest Merge] Found {} sharepointId groups with duplicates", duplicates.size());
+        }
+
         int merged = 0;
         for (Object[] row : duplicates) {
             String sharepointId = (String) row[0];
+            int count = ((Number) row[1]).intValue();
+            log.info("[WorkRequest Merge] sharepointId='{}' has {} copies", sharepointId, count);
             merged += mergeBySharepointId(sharepointId);
         }
         return merged;

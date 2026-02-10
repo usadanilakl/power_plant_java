@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.sync.WorkRequestMergeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,6 +26,7 @@ public class WorkRequestSyncService {
     private final WorkRequestRepo workRequestRepo;
     private final WorkRequestMapper workRequestMapper;
     private final NgValueService valueService;
+    private final WorkRequestMergeService workRequestMergeService;
 
     @Value("${sharepoint.sync.enabled:true}")
     private boolean syncEnabled;
@@ -40,6 +41,13 @@ public class WorkRequestSyncService {
             return;
         }
         syncFromSharePoint();
+        // After SP sync transaction commits, merge duplicates that may have been
+        // created by independent SharePoint pulls on different machines
+        try {
+            workRequestMergeService.mergeIfDuplicatesExist();
+        } catch (Exception e) {
+            log.error("[SharePoint Sync] WorkRequest dedup failed: {}", e.getMessage(), e);
+        }
     }
 
     /**
@@ -70,7 +78,7 @@ public class WorkRequestSyncService {
                     continue;
                 }
 
-                WorkRequest existing = workRequestRepo.findBySharepointId(remote.getSharepointId()).orElse(null);
+                WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(remote.getSharepointId()).orElse(null);
                 String remoteStatus = remote.getStatus();
                 if (remoteStatus == null || remoteStatus.isEmpty()) {
                     remoteStatus = "Active";

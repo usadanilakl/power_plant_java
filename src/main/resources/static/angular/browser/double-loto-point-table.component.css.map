@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/loto-points/refactored/double-loto-point-table/double-loto-point-table.component.css"],
-  "sourcesContent": [":host {\r\n  display: block;\r\n  width: 100%;\r\n  height: 100%;\r\n}\r\n\r\n.double-table-container {\r\n  display: flex;\r\n  gap: 20px;\r\n  height: 100%;\r\n  width: 100%;\r\n  padding: 16px;\r\n  background-color: var(--secondary-background);\r\n  border-radius: 4px;\r\n  box-sizing: border-box;\r\n  /* Ensure container doesn't create stacking context that interferes with dialogs */\r\n  position: relative;\r\n  z-index: 0;\r\n}\r\n\r\n.divider {\r\n  width: 1px;\r\n  background-color: var(--border-color);\r\n}\r\n\r\n@media (max-width: 1200px) {\r\n  .double-table-container {\r\n    flex-direction: column;\r\n    gap: 16px;\r\n  }\r\n\r\n  .divider {\r\n    width: 100%;\r\n    height: 1px;\r\n  }\r\n\r\n  app-source-loto-point-table,\r\n  app-destination-loto-point-table {\r\n    min-width: 100%;\r\n    height: 50%;\r\n  }\r\n}"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,SAAO;AACP,UAAQ;AACV;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACL,UAAQ;AACR,SAAO;AACP,WAAS;AACT,oBAAkB,IAAI;AACtB,iBAAe;AACf,cAAY;AAEZ,YAAU;AACV,WAAS;AACX;AAEA,CAAC;AACC,SAAO;AACP,oBAAkB,IAAI;AACxB;AAEA,OAAO,CAAC,SAAS,EAAE;AACjB,GApBD;AAqBG,oBAAgB;AAChB,SAAK;AACP;AAEA,GAXD;AAYG,WAAO;AACP,YAAQ;AACV;AAEA;AAAA,EACA;AACE,eAAW;AACX,YAAQ;AACV;AACF;",
-  "names": []
-}

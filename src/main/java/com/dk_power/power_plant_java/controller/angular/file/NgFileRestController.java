@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -108,17 +109,41 @@ public class NgFileRestController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
-            Page<FileDto> searchResults = null;
-            if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
-                searchResults = ngFileService.complexSearch(criteria, page - 1, pageSize, "fileNumber", "asc", true);
-            } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
+            Page<FileDto> searchResults;
+            if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
                 searchResults = ngFileService.complexSearch(criteria.getQuery(), page - 1, pageSize);
+            } else {
+                // Handles COLUMN, SORT, and any other type via complexSearchWithPagination
+                String sortBy = criteria.getSortColumn() != null ? criteria.getSortColumn() : "fileNumber";
+                String sortDir = criteria.getSortDirection() != null ? criteria.getSortDirection() : "ASC";
+                Sort.Direction direction = Sort.Direction.fromString(sortDir);
+                Page<FileObject> entityPage = ngFileService.complexSearchWithPagination(
+                        ngFileService.getRepo(), criteria,
+                        PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)), true);
+                searchResults = entityPage.map(ngFileService::toDto);
             }
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/unique-values/{column}/filtered")
+    public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValues(
+            @PathVariable String column,
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize,
+            @RequestParam(defaultValue = "true") boolean andLogicEnabled) {
+        try {
+            Page<String> result = ngFileService.getFilteredUniqueValuesOfColumn(
+                    ngFileService.getEntityManager(), ngFileService.getRepo(), FileObject.class,
+                    column, criteria, PageRequest.of(page - 1, pageSize), andLogicEnabled);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Unique values fetched"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
 

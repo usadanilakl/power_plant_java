@@ -44,6 +44,7 @@ public class CentralSyncService {
     private final SyncContext syncContext;
     private final FieldSyncService fieldSyncService;
     private final ApplicationContext applicationContext;
+    private final WorkRequestMergeService workRequestMergeService;
 
     // Lazily fetched to avoid circular dependency
     private ServerSseClient serverSseClient;
@@ -209,6 +210,17 @@ public class CentralSyncService {
 
             log.info("Server sync complete: sent={}, received={}, applied={}",
                 result.getChangesSent(), result.getChangesReceived(), result.getChangesApplied());
+
+            // After all batches applied, run WorkRequest dedup as a final pass.
+            // Per-batch afterCommit merge may miss duplicates when sharepointId
+            // arrives in a later batch than the entity creation.
+            if (receiveResult.totalApplied > 0) {
+                try {
+                    workRequestMergeService.mergeIfDuplicatesExist();
+                } catch (Exception ex) {
+                    log.error("Post-sync WorkRequest merge failed: {}", ex.getMessage(), ex);
+                }
+            }
 
         } catch (Exception e) {
             serverAvailable = false;

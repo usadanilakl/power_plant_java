@@ -10,7 +10,7 @@ import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
-import { getWorkingDir, ensureWorkingDir, ensureTessdata } from './paths';
+import { getWorkingDir, ensureWorkingDir, ensureTessdata, provisionDefaultConfigs } from './paths';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -45,6 +45,11 @@ export default class App {
       app.quit();
       return;
     }
+
+    // Ensure working dir and config files exist BEFORE managers are created
+    // (managers read configs in their constructors)
+    ensureWorkingDir();
+    provisionDefaultConfigs();
 
     // Set up IPC handlers
     App.ipcHandlers = new IpcHandlers(App.mainWindow);
@@ -322,8 +327,7 @@ export default class App {
    * and sends findings to renderer. Does NOT auto-download anything.
    */
   private static async startupAssessment(): Promise<void> {
-    // Ensure working directory and bundled assets exist
-    ensureWorkingDir();
+    // ensureWorkingDir + provisionDefaultConfigs already called in onReady before IpcHandlers
     ensureTessdata();
     const workingDir = getWorkingDir();
 
