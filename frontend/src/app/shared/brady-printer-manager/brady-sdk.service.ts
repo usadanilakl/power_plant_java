@@ -1,5 +1,5 @@
-import { inject, Injectable } from '@angular/core';
-import BradySDK from '@bradycorporation/brady-web-sdk';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, catchError, from, map, Observable, of, switchMap } from 'rxjs';
 
 import { QrCodeService } from '../qr-code/qr-code.service';
@@ -26,21 +26,28 @@ const INITIAL_STATE: BradyPrinterState = {
 })
 export class BradySdkService {
   private sdkInstance: any; // Use 'any' since BradySDK is not a known type
+  private readonly isBrowser: boolean;
 
   private readonly stateSubject = new BehaviorSubject<BradyPrinterState>(INITIAL_STATE);
   public readonly state$ = this.stateSubject.asObservable();
   private qrCodeService = inject(QrCodeService);
 
+  constructor() {
+    this.isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  }
+
   /**
    * Initializes the Brady Web SDK. This should be called once when the application starts.
    */
-  initialize(): void {
+  async initialize(): Promise<void> {
+    if (!this.isBrowser) return;
     if (this.sdkInstance) {
       console.warn('Brady SDK has already been initialized.');
       return;
     }
 
     try {
+      const { default: BradySDK } = await import('@bradycorporation/brady-web-sdk');
       // The SDK is initialized with the callback that will update our state subject.
       this.sdkInstance = new BradySDK(this.printerUpdatesCallback.bind(this));
       console.log('Brady SDK initialized successfully.');
@@ -84,15 +91,16 @@ export class BradySdkService {
    * Automatically connects to a known printer or initiates a scan if not connected.
    * Initializes the SDK if not already initialized.
    */
-  autoConnectOrScan(): void {
+  async autoConnectOrScan(): Promise<void> {
+    if (!this.isBrowser) return;
     if (!this.sdkInstance) {
-      this.initialize();
+      await this.initialize();
     }
 
     if (this.sdkInstance?.isConnected()) {
       this.printerUpdatesCallback(); // Refresh state
     } else {
-      this.scanForPrinters();
+      await this.scanForPrinters();
     }
   }
 

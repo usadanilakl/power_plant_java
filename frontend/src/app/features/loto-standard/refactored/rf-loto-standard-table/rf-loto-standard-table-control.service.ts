@@ -32,9 +32,13 @@ export class LotoStandardTableControlService extends TableControlsService {
                 entityLabel: 'LOTO Standards',
                 searchCriteria: this.stateService.getCurrentSearchCriteria(),
                 selectedIds: this.stateService.selectedItems().map(item => item.id),
-                exportAllFn: () => this.excelService.exportLotoStandardAll(),
-                exportByQueryFn: (criteria) => this.excelService.exportLotoStandardByQuery(criteria),
-                exportByIdsFn: (ids) => this.excelService.exportLotoStandardByIds(ids),
+                exportAllFn: () => this.excelService.exportLotoStandardAll(this.exportDialogService.selectedFormat()),
+                exportByQueryFn: (criteria) => this.excelService.exportLotoStandardByQuery(criteria, this.exportDialogService.selectedFormat()),
+                exportByIdsFn: (ids) => this.excelService.exportLotoStandardByIds(ids, this.exportDialogService.selectedFormat()),
+                formatOptions: [
+                  { value: 'compact', label: 'Compact', description: 'Summary sheet + single detail sheet with all LOTO points' },
+                  { value: 'detailed', label: 'Detailed', description: 'Summary sheet + one sheet per standard with its LOTO points' },
+                ],
               });
             },
             color: 'primary' as ButtonColor,

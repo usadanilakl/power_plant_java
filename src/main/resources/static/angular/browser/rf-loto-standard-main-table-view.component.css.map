@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;d87d0c4f64007a17bd7a66abd95d368618794111af0f888986941277ec01a1fd;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-main-table-view.component.ts"],
+  "sourcesContent": ["\n    .loto-standard-main-view {\n      width: 100%;\n      height: 100%;\n      padding: 16px;\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACX;",
+  "names": []
+}

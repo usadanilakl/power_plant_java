@@ -104,6 +104,9 @@ export const IPC_ELECTRON_UPDATE_DOWNLOAD = 'electron-update:download';
 export const IPC_ELECTRON_UPDATE_APPLY = 'electron-update:apply';
 export const IPC_ELECTRON_UPDATE_PROGRESS = 'electron-update:progress';  // send/on
 
+// Permits (invoke/handle)
+export const IPC_WORK_REQUEST_COUNT = 'permits:work-request-count';
+
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';
 export const IPC_QUIT = 'quit';

@@ -61,7 +61,12 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     color: '#f39c12',
     defaultRoute: '/permit-builder',
     items: [
-      { title: 'Permit Builder', description: 'Manage work permits', icon: 'assignment', route: '/permit-builder', color: '#f39c12' },
+      { title: 'Daily Packages', description: 'Daily permit packages', icon: 'event_note', route: '/permit-builder/daily-packages', color: '#f39c12' },
+      { title: 'Work Requests', description: 'Work request permits from SharePoint', icon: 'request_page', route: '/permit-builder/work-requests', color: '#e67e22' },
+      { title: 'Job Logs', description: 'Job log entries', icon: 'work', route: '/permit-builder/jobs', color: '#d35400' },
+      { title: 'Safe Works', description: 'Safe work permits', icon: 'health_and_safety', route: '/permit-builder/safe-works', color: '#27ae60' },
+      { title: 'Hot Works', description: 'Hot work permits', icon: 'local_fire_department', route: '/permit-builder/hot-works', color: '#e74c3c' },
+      { title: 'Confined Spaces', description: 'Confined space entry permits', icon: 'sensor_door', route: '/permit-builder/confined-spaces', color: '#8e44ad' },
       { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }
     ]
   },

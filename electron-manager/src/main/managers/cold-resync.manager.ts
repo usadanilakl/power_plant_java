@@ -34,7 +34,7 @@ export class ColdResyncManager {
     this.workingDir = getWorkingDir();
     this.dbDir = path.join(this.workingDir, 'db');
     this.dbPath = path.join(this.dbDir, 'proddb.mv.db');
-    this.uploadsDir = path.join(this.workingDir, 'uploads-prod');
+    this.uploadsDir = path.join(this.workingDir, 'uploads');
     console.log(`ColdResyncManager: workingDir=${this.workingDir} dbPath=${this.dbPath}`);
   }
 

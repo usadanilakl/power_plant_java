@@ -74,6 +74,27 @@ import { DestroyRef } from '@angular/core';
             </button>
           </div>
 
+          @if (exportDialogService.hasFormatOptions()) {
+            <div class="format-section">
+              <p class="format-label">Export format:</p>
+              <div class="export-options">
+                @for (option of exportDialogService.getFormatOptions(); track option.value) {
+                  <button
+                    type="button"
+                    class="export-option-btn"
+                    [class.selected]="exportDialogService.selectedFormat() === option.value"
+                    (click)="exportDialogService.selectedFormat.set(option.value)"
+                  >
+                    <span class="option-label">
+                      <strong>{{ option.label }}</strong>
+                      <span class="option-description">{{ option.description }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
           @if (exportDialogService.exportError()) {
             <div class="error-message">
               {{ exportDialogService.exportError() }}
@@ -170,6 +191,17 @@ import { DestroyRef } from '@angular/core';
 
     .option-description {
       font-size: 0.85em;
+      color: var(--text-secondary, #666);
+    }
+
+    .format-section {
+      margin-bottom: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color, #ddd);
+    }
+
+    .format-label {
+      margin-bottom: 12px;
       color: var(--text-secondary, #666);
     }
 

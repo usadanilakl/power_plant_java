@@ -20,10 +20,8 @@ const PJM_API_BASE = 'https://api.pjm.com/api/v1';
 const DEFAULT_PNODE_ID = 33092371; // ComEd zone aggregate
 const DEFAULT_POLL_INTERVAL_MIN = 5;
 
-// Voyager auto-login (for the "Open PJM Window" visual reference)
+// Voyager auto-login (credentials loaded from pjm-config.json at runtime)
 const PJM_LOGIN_URL = 'https://voyager.tnsk.com/platform/page/signin.html';
-const PJM_USERNAME = 'PJMjackson';
-const PJM_PASSWORD = 'pjm@jackson2025';
 
 export class PjmManager {
   private pollInterval: NodeJS.Timeout | null = null;
@@ -141,13 +139,15 @@ export class PjmManager {
           pnodeId: raw.pnodeId || DEFAULT_PNODE_ID,
           pnodeName: raw.pnodeName || 'ComEd',
           pollIntervalMinutes: raw.pollIntervalMinutes || DEFAULT_POLL_INTERVAL_MIN,
+          voyagerUsername: raw.voyagerUsername || '',
+          voyagerPassword: raw.voyagerPassword || '',
         };
       }
     } catch { /* use defaults */ }
 
-    // Create default config with the user's primary key
+    // Create default config (API key must be set in pjm-config.json)
     const defaultConfig: PjmConfig = {
-      apiKey: '4cb6a11b05634135a07cff815bfb1aeb',
+      apiKey: '',
       pnodeId: DEFAULT_PNODE_ID,
       pnodeName: 'ComEd',
       pollIntervalMinutes: DEFAULT_POLL_INTERVAL_MIN,
@@ -293,6 +293,10 @@ export class PjmManager {
   /** Auto-login for the Voyager visual reference window using insertText (Chromium input pipeline) */
   private async autoLoginVoyager(): Promise<void> {
     if (!this.voyagerWindow || this.voyagerWindow.isDestroyed()) return;
+    if (!this.config.voyagerUsername || !this.config.voyagerPassword) {
+      console.log('[PJM] Voyager credentials not configured in pjm-config.json, skipping auto-login');
+      return;
+    }
 
     const wc = this.voyagerWindow.webContents;
 
@@ -321,7 +325,7 @@ export class PjmManager {
         el.value = '';
       `);
       await new Promise(resolve => setTimeout(resolve, 500));
-      await wc.insertText(PJM_USERNAME);
+      await wc.insertText(this.config.voyagerUsername);
 
       // Focus password field, clear, and type via insertText
       await wc.executeJavaScript(`
@@ -331,7 +335,7 @@ export class PjmManager {
         el.value = '';
       `);
       await new Promise(resolve => setTimeout(resolve, 200));
-      await wc.insertText(PJM_PASSWORD);
+      await wc.insertText(this.config.voyagerPassword);
 
       // Click login button
       await new Promise(resolve => setTimeout(resolve, 200));

@@ -30,8 +30,20 @@
         <appender-ref ref="Console" />
     </root>
 
-    <!-- LOG "com.dk_power.power_plant_java*" at TRACE level -->
-    <logger name="com.dk_power.power_plant_java" level="trace" additivity="false">
+    <!-- LOG app at INFO level, sync at WARN to reduce noise -->
+    <logger name="com.dk_power.power_plant_java" level="info" additivity="false">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="Console" />
+    </logger>
+    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn" additivity="false">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="Console" />
+    </logger>
+    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn" additivity="false">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="Console" />
+    </logger>
+    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn" additivity="false">
         <appender-ref ref="RollingFile" />
         <appender-ref ref="Console" />
     </logger>

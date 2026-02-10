@@ -42,16 +42,32 @@ export class ExcelService {
   }
 
   // ==================== LOTO STANDARD ====================
-  exportLotoStandardAll(): Observable<SpringApiResponse<string>> {
-    return this.http.get<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-all`);
+  exportLotoStandardAll(format?: string): Observable<SpringApiResponse<string>> {
+    const params = format ? `?format=${format}` : '';
+    return this.http.get<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-all${params}`);
   }
 
-  exportLotoStandardByQuery(criteria: SearchCriteria): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-by-query`, criteria);
+  exportLotoStandardByQuery(criteria: SearchCriteria, format?: string): Observable<SpringApiResponse<string>> {
+    const params = format ? `?format=${format}` : '';
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-by-query${params}`, criteria);
   }
 
-  exportLotoStandardByIds(ids: number[]): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-by-ids`, ids);
+  exportLotoStandardByIds(ids: number[], format?: string): Observable<SpringApiResponse<string>> {
+    const params = format ? `?format=${format}` : '';
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/loto-standard/export-by-ids${params}`, ids);
+  }
+
+  // ==================== WORK REQUEST ====================
+  exportWorkRequestAll(): Observable<SpringApiResponse<string>> {
+    return this.http.get<SpringApiResponse<string>>(`${this.apiUrl}/work-request/export-all`);
+  }
+
+  exportWorkRequestByQuery(criteria: SearchCriteria): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/work-request/export-by-query`, criteria);
+  }
+
+  exportWorkRequestByIds(ids: number[]): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/work-request/export-by-ids`, ids);
   }
 
   // ==================== LEGACY (backward compatibility) ====================

@@ -699,8 +699,8 @@ public interface FlexibleQueryInterface {
             String entityName = entityClass.getSimpleName();
             String pathExpr = buildPathExpression(columnName);
 
-            Map<String,String> filters = searchCriteria.getFilters();
-            Map<String,String> filterLogic = searchCriteria.getColumnFilterLogic();
+            Map<String,String> filters = searchCriteria.getFilters() != null ? searchCriteria.getFilters() : Map.of();
+            Map<String,String> filterLogic = searchCriteria.getColumnFilterLogic() != null ? searchCriteria.getColumnFilterLogic() : Map.of();
 
             // For nested entities, we need to select the ID for ordering
             String selectClause = pathExpr;

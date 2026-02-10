@@ -83,7 +83,7 @@ import { ValueDto } from '../../models/value.model';
                   <div class="comment-header">
                     <span class="comment-author">{{ comment.createdBy }}</span>
                     <span class="comment-date">{{ formatDate(comment.dateCreated) }}</span>
-                    @if (comment.commentType?.name) {
+                    @if (comment.commentType.name) {
                       <span class="comment-type-badge">{{ comment.commentType.name }}</span>
                     }
                     @if (comment.needsAttention && !comment.isResolved) {

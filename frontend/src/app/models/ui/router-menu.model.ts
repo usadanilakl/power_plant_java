@@ -43,7 +43,12 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         icon: 'assignment',
         defaultRoute: '/permit-builder',
         items: [
-            { route: '/permit-builder', label: 'Permit Builder' },
+            { route: '/permit-builder/daily-packages', label: 'Daily Packages' },
+            { route: '/permit-builder/work-requests', label: 'Work Requests' },
+            { route: '/permit-builder/jobs', label: 'Job Logs' },
+            { route: '/permit-builder/safe-works', label: 'Safe Works' },
+            { route: '/permit-builder/hot-works', label: 'Hot Works' },
+            { route: '/permit-builder/confined-spaces', label: 'Confined Spaces' },
             { route: '/scheduler', label: 'Scheduler' }
         ]
     },

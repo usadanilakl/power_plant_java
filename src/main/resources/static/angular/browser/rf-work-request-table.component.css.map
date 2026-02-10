@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/permit-builder/work-request/refactored/rf-work-request-table/rf-work-request-table.component.css"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n  flex-direction: column;\r\n  flex: 1;\r\n  min-height: 0;\r\n  overflow: hidden;\r\n  width: 100%;\r\n  height: 100%;\r\n}\r\n\r\n.work-request-table-container {\r\n  width: 100%;\r\n  height: 100%;\r\n  display: flex;\r\n  flex-direction: column;\r\n  position: relative;\r\n  flex: 1;\r\n  min-height: 0;\r\n}\r\n\r\n.error-message {\r\n  padding: 8px 12px;\r\n  background-color: var(--status-incomplete, #ffcccc);\r\n  color: #721c24;\r\n  border-radius: 4px;\r\n  margin-bottom: 8px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.loading-indicator {\r\n  padding: 8px 12px;\r\n  color: var(--text-secondary, #999);\r\n  font-size: 0.85em;\r\n  flex-shrink: 0;\r\n}\r\n\r\napp-table {\r\n  flex: 1;\r\n  overflow: hidden;\r\n  display: flex;\r\n  flex-direction: column;\r\n  min-height: 0;\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACV,SAAO;AACP,UAAQ;AACV;AAEA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACT,kBAAgB;AAChB,YAAU;AACV,QAAM;AACN,cAAY;AACd;AAEA,CAAC;AACC,WAAS,IAAI;AACb,oBAAkB,IAAI,mBAAmB,EAAE;AAC3C,SAAO;AACP,iBAAe;AACf,iBAAe;AACf,eAAa;AACf;AAEA,CAAC;AACC,WAAS,IAAI;AACb,SAAO,IAAI,gBAAgB,EAAE;AAC7B,aAAW;AACX,eAAa;AACf;AAEA;AACE,QAAM;AACN,YAAU;AACV,WAAS;AACT,kBAAgB;AAChB,cAAY;AACd;",
+  "names": []
+}

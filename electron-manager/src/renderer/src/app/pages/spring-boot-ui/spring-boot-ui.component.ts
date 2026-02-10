@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
@@ -122,9 +122,12 @@ export class SpringBootUiComponent implements OnInit, OnDestroy {
 
   constructor(
     private electronService: ElectronService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private route: ActivatedRoute
   ) {
-    this.sbUrl = this.sanitizer.bypassSecurityTrustResourceUrl('http://localhost:8082/app');
+    const subPath = this.route.snapshot.queryParamMap.get('path');
+    const url = subPath ? `http://localhost:8082/app/${subPath}` : 'http://localhost:8082/app';
+    this.sbUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
   ngOnInit(): void {

@@ -122,6 +122,27 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
           </div>
           <span class="feature-status available">Independent</span>
         </a>
+
+        <div class="feature-card permits-card" [class.disabled]="status.state !== 'running'">
+          <div class="feature-icon">&#x1F4CB;</div>
+          <div class="feature-info">
+            <h3>Permits</h3>
+            <p class="feature-desc">Work requests, LOTOs, permits</p>
+          </div>
+          <div class="permit-items">
+            <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'loto/loto' }">
+              <span>Active LOTOs</span>
+              <span class="item-placeholder">--</span>
+            </a>
+            <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'permit-builder/work-requests' }">
+              <span>New Work Requests</span>
+              <span class="count-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0">{{ newWorkRequestCount }}</span>
+            </a>
+          </div>
+          <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
+            {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
+          </span>
+        </div>
       </div>
     </div>
   `,
@@ -369,6 +390,44 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
       color: var(--text-muted);
     }
 
+    .permits-card {
+      cursor: default;
+    }
+
+    .permits-card.disabled .permit-item {
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .permit-items {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .permit-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 150ms;
+    }
+
+    .permit-item:hover {
+      background-color: var(--bg-secondary);
+    }
+
+    .item-placeholder {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -379,6 +438,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   appName = APP_DISPLAY_NAME;
   status: AppStatus = { state: 'stopped', port: 0, healthStatus: 'unknown' };
   activeImpairmentCount: number | null = null;
+  newWorkRequestCount: number | null = null;
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
   pjmStatus: PjmStatus | null = null;
@@ -396,6 +456,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.status = s;
       if (!wasRunning && s.state === 'running') {
         this.loadFireImpCount();
+        this.loadWorkRequestCount();
       }
     });
 
@@ -480,6 +541,15 @@ export class HomeComponent implements OnInit, OnDestroy {
       const result = await this.electronService.fireImpCount();
       if (result.success) {
         this.activeImpairmentCount = result.data ?? 0;
+      }
+    } catch {}
+  }
+
+  private async loadWorkRequestCount(): Promise<void> {
+    try {
+      const result = await this.electronService.getWorkRequestCount();
+      if (result.success) {
+        this.newWorkRequestCount = result.data ?? 0;
       }
     } catch {}
   }

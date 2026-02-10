@@ -154,6 +154,13 @@
             <version>6.13.0</version>
         </dependency>
 
+        <!-- Azure Identity - certificate-based auth for SharePoint Graph API -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+            <version>1.14.2</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.sikulix/sikulixapi -->
         <dependency>
             <groupId>com.sikulix</groupId>

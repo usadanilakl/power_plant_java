@@ -178,8 +178,10 @@ interface CounterpartLotoPointStatus {
                   <mat-spinner diameter="18"></mat-spinner>
                   Creating Standard...
                 } @else {
-                  <mat-icon>playlist_add</mat-icon>
-                  Create Counterpart Standard
+                  <ng-container>
+                    <mat-icon>playlist_add</mat-icon>
+                    Create Counterpart Standard
+                  </ng-container>
                 }
               </button>
             } @else {

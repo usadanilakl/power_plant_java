@@ -92,8 +92,8 @@ export class WebViewManager {
     } catch { /* use empty config */ }
 
     if (target === 'gate-website') {
-      const username = config.gateUsername || 'dklokov';
-      const password = config.gatePassword || 'Jackson1';
+      const username = config.gateUsername || '';
+      const password = config.gatePassword || '';
       const wc = instance.window.webContents;
 
       // Gate form requires Chromium-level input (insertText). JS keyboard events
@@ -139,8 +139,8 @@ export class WebViewManager {
       console.log(`[WebView] Gate website auto-login: submitted via insertText`);
 
     } else if (target === 'onlocation') {
-      const email = config.onLocationEmail || 'jacksonap@jpowerusa.com';
-      const password = config.onLocationPassword || 'Jackson1';
+      const email = config.onLocationEmail || '';
+      const password = config.onLocationPassword || '';
 
       // OnLocation login is a two-step process: email first, then password
       const emailScript = `

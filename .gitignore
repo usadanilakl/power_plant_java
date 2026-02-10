@@ -161,3 +161,10 @@ machine-id.properties
 /uploads-prod111/**
 /uploads-prod/**
 /electron-manager/managed_apps/**
+
+# Secrets and credentials
+/src/main/resources/application-secrets.properties
+/src/main/resources/private_key.pem
+global.env
+/data/certificate.pfx
+/exports/**

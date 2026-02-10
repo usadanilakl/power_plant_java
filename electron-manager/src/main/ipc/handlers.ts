@@ -94,6 +94,7 @@ export class IpcHandlers {
     this.registerFireImpairmentHandlers();
     this.registerColdResyncHandlers();
     this.registerStartupHandlers();
+    this.registerPermitsHandlers();
     this.registerGateLogHandlers();
     this.registerWeatherHandlers();
     this.registerPjmHandlers();
@@ -690,6 +691,17 @@ export class IpcHandlers {
         const error = err.message || 'Sync failed';
         sendProgress({ phase: 'error', statusMessage: error, progressPercent: 0, error });
         return { success: false, error };
+      }
+    });
+  }
+
+  private registerPermitsHandlers(): void {
+    ipcMain.handle(events.IPC_WORK_REQUEST_COUNT, async () => {
+      try {
+        const data = await this.springBootApiGet('/ng/work-requests/get-all-by-status/Active');
+        return { success: true, data: Array.isArray(data) ? data.length : 0 };
+      } catch (error: any) {
+        return { success: false, error: error.message };
       }
     });
   }

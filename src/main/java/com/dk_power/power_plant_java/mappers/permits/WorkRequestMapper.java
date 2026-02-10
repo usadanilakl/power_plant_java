@@ -164,6 +164,53 @@ public class WorkRequestMapper implements BaseMapper {
         return entity;
     }
 
+    /**
+     * Maps SharePoint DTO (from external sync) to a new WorkRequest entity.
+     * Used by WorkRequestSyncService when creating entities from SharePoint data.
+     */
+    public WorkRequest fromSharePointDto(WorkRequestDto spDto) {
+        if (spDto == null) return null;
+
+        WorkRequest entity = new WorkRequest();
+        entity.setDateOfWorkToBePerformed(spDto.getDateOfWorkToBePerformed());
+        entity.setTimeOfWorkToBePerformed(spDto.getTimeOfWorkToBePerformed());
+        entity.setRequestedBy(spDto.getRequestedBy());
+        entity.setCompany(spDto.getCompany());
+        entity.setLocation(spDto.getLocation());
+        entity.setAffectedEquipment(spDto.getAffectedEquipment());
+        entity.setWorkScope(spDto.getWorkScope());
+        entity.setIsHotWorkRequired(spDto.getIsHotWorkRequired());
+        entity.setForeman(spDto.getForeman());
+        entity.setFireWatch(spDto.getFireWatch());
+        entity.setIsLotoRequired(spDto.getIsLotoRequired());
+        entity.setIsConfinedSpaceEntryRequired(spDto.getIsConfinedSpaceEntryRequired());
+        entity.setSpace(spDto.getSpace());
+        entity.setSharepointId(spDto.getSharepointId());
+
+        return entity;
+    }
+
+    /**
+     * Updates an existing entity's fields from SharePoint data (for sync updates).
+     */
+    public void updateEntityFromSharePoint(WorkRequest entity, WorkRequestDto spDto) {
+        if (entity == null || spDto == null) return;
+
+        entity.setDateOfWorkToBePerformed(spDto.getDateOfWorkToBePerformed());
+        entity.setTimeOfWorkToBePerformed(spDto.getTimeOfWorkToBePerformed());
+        entity.setRequestedBy(spDto.getRequestedBy());
+        entity.setCompany(spDto.getCompany());
+        entity.setLocation(spDto.getLocation());
+        entity.setAffectedEquipment(spDto.getAffectedEquipment());
+        entity.setWorkScope(spDto.getWorkScope());
+        entity.setIsHotWorkRequired(spDto.getIsHotWorkRequired());
+        entity.setForeman(spDto.getForeman());
+        entity.setFireWatch(spDto.getFireWatch());
+        entity.setIsLotoRequired(spDto.getIsLotoRequired());
+        entity.setIsConfinedSpaceEntryRequired(spDto.getIsConfinedSpaceEntryRequired());
+        entity.setSpace(spDto.getSpace());
+    }
+
 
 
     @Override

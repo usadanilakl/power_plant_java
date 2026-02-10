@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.controller.angular.permits;
 
-import com.dk_power.power_plant_java.clients.PowerAutomateClient;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
@@ -18,7 +17,6 @@ import java.util.List;
 @RequestMapping("/ng/work-requests")
 public class WorkRequestController {
 
-    private final PowerAutomateClient powerAutomateClient;
     private final NgWorkRequestService workRequestService;
     private final WorkRequestMapper workRequestMapper;
 
@@ -87,8 +85,7 @@ public class WorkRequestController {
     @GetMapping("/process-by-id/{id}")
     public ResponseEntity<NgApiResponse<NgWorkRequestDto>> processByIdRequest(@PathVariable String id) {
         try {
-            WorkRequestDto workRequestDto = workRequestService.completeWorkRequest(Long.parseLong(id));
-            NgWorkRequestDto ngWorkRequestDto = workRequestMapper.toNgWorkRequestDto(workRequestDto);
+            NgWorkRequestDto ngWorkRequestDto = workRequestService.completeWorkRequest(Long.parseLong(id));
             return ResponseEntity.ok(
                     new NgApiResponse<>(ngWorkRequestDto, "Successfully processed request")
             );

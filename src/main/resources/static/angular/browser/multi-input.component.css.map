@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/multi-input/multi-input.component.css"],
+  "sourcesContent": ["\r\n\r\n.label-container {\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\n"],
+  "mappings": ";AAEA,CAAC;AACC,WAAS;AACT,eAAa;AACf;",
+  "names": []
+}

@@ -5,6 +5,8 @@
   gap: 1.25rem;
   background-color: var(--card-background);
   color: var(--primary-text);
+  padding: 1.25rem;
+  overflow-y: auto;
 }
 
 .printer-manager-container.queue-mode {
@@ -189,6 +191,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Status Section */
@@ -243,6 +247,7 @@
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+  padding: 0.5rem 0;
 }
 
 /* Buttons */
@@ -258,6 +263,8 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn:disabled {

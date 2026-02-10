@@ -109,7 +109,7 @@
       <div class="bulk-actions">
         @for (val of filteredValues(); track val.id) {
           <div class="action-row">
-            <span class="action-label">{{ val.name }} ({{ val.category?.name }})</span>
+            <span class="action-label">{{ val.name }} ({{ val.category.name }})</span>
             <button class="btn btn-sm btn-edit" (click)="openEditValueDialog(val)">Edit</button>
             <button class="btn btn-sm btn-delete" (click)="openDeleteValueDialog(val)">Delete</button>
           </div>

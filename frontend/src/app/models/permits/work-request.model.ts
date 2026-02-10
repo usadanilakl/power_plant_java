@@ -22,6 +22,7 @@ export interface WorkRequestModel extends BaseModel {
   isConfinedSpaceEntryRequired: boolean | null;
   space: string | null;
   sharepointId: string | null;
+  status: string | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -39,6 +40,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   isConfinedSpaceEntryRequired: boolean | null;
   space: string | null;
   sharepointId: string | null;
+  status: string | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -56,6 +58,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.isConfinedSpaceEntryRequired = data.isConfinedSpaceEntryRequired ?? null;
     this.space = data.space ?? null;
     this.sharepointId = data.sharepointId ?? null;
+    this.status = data.status ?? null;
   }
 
   // Serialization method
@@ -76,6 +79,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired,
       space: this.space,
       sharepointId: this.sharepointId,
+      status: this.status,
     };
   }
 
@@ -97,6 +101,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isConfinedSpaceEntryRequired: json.isConfinedSpaceEntryRequired || null,
       space: json.space || null,
       sharepointId: json.sharepointId || null,
+      status: json.status || null,
     });
   }
 
@@ -106,7 +111,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       'id', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
       'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired',
-      'space', 'sharepointId', 'isVerified', 'name', 'objectType'
+      'space', 'sharepointId', 'status', 'isVerified', 'name', 'objectType'
     ].includes(key);
   }
   static toFormFields(
@@ -208,21 +213,32 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         type: 'text', 
         initialValue: dto.space 
       },
-      sharepointId: { 
-        name: 'sharepointId', 
-        label: 'Sharepoint ID', 
-        type: 'text', 
-        initialValue: dto.sharepointId 
+      sharepointId: {
+        name: 'sharepointId',
+        label: 'Sharepoint ID',
+        type: 'text',
+        initialValue: dto.sharepointId
       },
-      isVerified: { 
-        name: 'isVerified', 
-        label: 'Is Verified', 
-        type: 'select', 
+      status: {
+        name: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: 'Active', label: 'Active' },
+          { value: 'Closed', label: 'Closed' },
+          { value: 'Archived', label: 'Archived' }
+        ],
+        initialValue: dto.status ?? 'Active'
+      },
+      isVerified: {
+        name: 'isVerified',
+        label: 'Is Verified',
+        type: 'select',
         options: [
           { value: 'true', label: 'Yes' },
           { value: 'false', label: 'No' }
-        ], 
-        initialValue: dto.isVerified?.toString() 
+        ],
+        initialValue: dto.isVerified?.toString()
       },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
@@ -231,7 +247,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     return fields.map(fieldName => allFields[fieldName]);
   }
 
-  static toTableColumns(fields: WorkRequestFieldName[] = ['sharepointId','requestedBy', 'company', 'location', 'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired']): Column[] {
+  static toTableColumns(fields: WorkRequestFieldName[] = ['status', 'dateOfWorkToBePerformed', 'requestedBy', 'company', 'location', 'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired']): Column[] {
     const allColumns: { [key in WorkRequestFieldName]: Column } = {
       id: { id: 'id', header: 'ID', accessorKey: 'id' },
       dateOfWorkToBePerformed: { id: 'dateOfWorkToBePerformed', header: 'Date of Work', accessorKey: 'dateOfWorkToBePerformed' },
@@ -241,28 +257,28 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       location: { id: 'location', header: 'Location', accessorKey: 'location' },
       affectedEquipment: { id: 'affectedEquipment', header: 'Affected Equipment', accessorKey: 'affectedEquipment' },
       workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
-        isHotWorkRequired: { 
-        id: 'isHotWorkRequired', 
-        header: 'Hot Work Required', 
+        isHotWorkRequired: {
+        id: 'isHotWorkRequired',
+        header: 'Hot Work Required',
         accessorFn: (item: WorkRequestDto) => item.isHotWorkRequired ? 'Yes' : 'No',
-        conditionalStyling: (item: any, column: Column) => 
-            item.isHotWorkRequired ? { 'background-color': '#FFCCCB' } : { 'background-color': '' }
+        conditionalStyling: (item: any, column: Column) =>
+            item.isHotWorkRequired ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
         },
       foreman: { id: 'foreman', header: 'Foreman', accessorKey: 'foreman' },
       fireWatch: { id: 'fireWatch', header: 'Fire Watch', accessorKey: 'fireWatch' },
-        isLotoRequired: { 
-        id: 'isLotoRequired', 
-        header: 'LOTO Required', 
+        isLotoRequired: {
+        id: 'isLotoRequired',
+        header: 'LOTO Required',
         accessorFn: (item: WorkRequestDto) => item.isLotoRequired ? 'Yes' : 'No',
-        conditionalStyling: (item: any, column: Column) => 
-            item.isLotoRequired ? { 'background-color': '#FFCCCB' } : { 'background-color': '' }
+        conditionalStyling: (item: any, column: Column) =>
+            item.isLotoRequired ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
         },
-        isConfinedSpaceEntryRequired: { 
-        id: 'isConfinedSpaceEntryRequired', 
-        header: 'Confined Space Entry', 
+        isConfinedSpaceEntryRequired: {
+        id: 'isConfinedSpaceEntryRequired',
+        header: 'Confined Space Entry',
         accessorFn: (item: WorkRequestDto) => item.isConfinedSpaceEntryRequired ? 'Yes' : 'No',
-        conditionalStyling: (item: any, column: Column) => 
-            item.isConfinedSpaceEntryRequired ? { 'background-color': '#FFCCCB' } : { 'background-color': '' }
+        conditionalStyling: (item: any, column: Column) =>
+            item.isConfinedSpaceEntryRequired ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
         },
       space: { id: 'space', header: 'Space', accessorKey: 'space' },
       sharepointId: { 
@@ -280,14 +296,25 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
           return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
         }
       },
+      status: {
+        id: 'status',
+        header: 'Status',
+        accessorKey: 'status',
+        conditionalStyling: (item: any, column: Column) => {
+          if (item.status === 'Active') return { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' };
+          if (item.status === 'Closed') return { 'background-color': 'var(--status-not-processed)', 'color': 'var(--primary-text)' };
+          if (item.status === 'Archived') return { 'background-color': 'var(--status-incomplete)', 'color': 'var(--primary-text)' };
+          return { 'background-color': '', 'color': '' };
+        }
+      },
       name: { id: 'name', header: 'Name', accessorKey: 'name' },
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
         isVerified: {
         id: 'isVerified',
         header: 'Verified',
         accessorFn: (item: WorkRequestDto) => item.isVerified ? 'Yes' : 'No',
-        conditionalStyling: (item: any, column: Column) => 
-            item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+        conditionalStyling: (item: any, column: Column) =>
+            item.isVerified ? { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' } : { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' }
         },
     };
 

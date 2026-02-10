@@ -55,6 +55,7 @@ public class FieldSyncService {
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final EntityTableRegistry entityTableRegistry;
     private final CategoryValueMergeService categoryValueMergeService;
+    private final WorkRequestMergeService workRequestMergeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -76,7 +77,8 @@ public class FieldSyncService {
             FileRepo fileRepo,
             FileObjectSyncHandler fileObjectSyncHandler,
             EntityTableRegistry entityTableRegistry,
-            CategoryValueMergeService categoryValueMergeService) {
+            CategoryValueMergeService categoryValueMergeService,
+            WorkRequestMergeService workRequestMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -92,6 +94,7 @@ public class FieldSyncService {
         this.fileObjectSyncHandler = fileObjectSyncHandler;
         this.entityTableRegistry = entityTableRegistry;
         this.categoryValueMergeService = categoryValueMergeService;
+        this.workRequestMergeService = workRequestMergeService;
     }
 
     /**
@@ -563,6 +566,13 @@ public class FieldSyncService {
                     } catch (Exception e) {
                         log.error("Category/Value merge failed: {}", e.getMessage(), e);
                     }
+
+                    // Merge duplicate WorkRequests created by independent SharePoint pulls
+                    try {
+                        workRequestMergeService.mergeIfDuplicatesExist();
+                    } catch (Exception e) {
+                        log.error("WorkRequest merge failed: {}", e.getMessage(), e);
+                    }
                 }
             });
         } else {
@@ -585,6 +595,13 @@ public class FieldSyncService {
                 categoryValueMergeService.mergeIfDuplicatesExist();
             } catch (Exception e) {
                 log.error("Category/Value merge failed: {}", e.getMessage(), e);
+            }
+
+            // Merge duplicate WorkRequests created by independent SharePoint pulls
+            try {
+                workRequestMergeService.mergeIfDuplicatesExist();
+            } catch (Exception e) {
+                log.error("WorkRequest merge failed: {}", e.getMessage(), e);
             }
         }
 

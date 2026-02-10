@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/loto-standard/refactored/rf-loto-standard-table/rf-loto-standard-table.component.css"],
+  "sourcesContent": [".loto-standard-table-container {\r\n  width: 100%;\r\n  height: 100%;\r\n  position: relative;\r\n}\r\n\r\n.error-message {\r\n  padding: 12px;\r\n  background-color: var(--error-background, #ffebee);\r\n  color: var(--error-color, #c62828);\r\n  border-radius: 4px;\r\n  margin-bottom: 12px;\r\n}\r\n\r\n.loading-indicator {\r\n  padding: 12px;\r\n  text-align: center;\r\n  color: var(--primary-color, #1976d2);\r\n  font-style: italic;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,YAAU;AACZ;AAEA,CAAC;AACC,WAAS;AACT,oBAAkB,IAAI,kBAAkB,EAAE;AAC1C,SAAO,IAAI,aAAa,EAAE;AAC1B,iBAAe;AACf,iBAAe;AACjB;AAEA,CAAC;AACC,WAAS;AACT,cAAY;AACZ,SAAO,IAAI,eAAe,EAAE;AAC5B,cAAY;AACd;",
+  "names": []
+}

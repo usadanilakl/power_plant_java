@@ -139,22 +139,17 @@ public class Loto extends BasePermitEntity {
     @PostLoad
     private void initializeFields(){
         if (getPermitStatus() == null || getPermitStatus().getName() == null) {
-            System.out.println(getPermitStatus());
             this.isArchived = false;
             this.isMutable = true;
-            System.out.println("Permit status is null or permit status name is null, setting mutable to true and archived to false");
         } else if (getPermitStatus().getName().equals("Closed")) {
             this.isArchived = true;
             this.isMutable = false;
-            System.out.println("Permit status is 'Closed', setting mutable to false and archived to true");
         } else if (getPermitStatus().getName().equals("Active")) {
             this.isArchived = false;
             this.isMutable = false;
-            System.out.println("Permit status is 'Active', setting mutable to false and archived to false");
         }else{
             this.isArchived = false;
             this.isMutable = true;
-            System.out.println("Permit status is not 'Closed' or 'Active', setting mutable to true and archived to false");
         }
 
 //        System.out.println("isMutable: " + isMutable + ", isArchived: " + isArchived);

@@ -155,6 +155,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_SYNC_EXECUTE_PROGRESS, sub); };
   },
 
+  // Permits
+  getWorkRequestCount: (): Promise<IpcResult<number>> => ipcRenderer.invoke(events.IPC_WORK_REQUEST_COUNT),
+
   // Gate Log
   gateLogGetPeople: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_GET_PEOPLE),
   gateLogGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_GATE_LOG_GET_STATUS),

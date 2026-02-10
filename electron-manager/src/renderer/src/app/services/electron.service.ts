@@ -246,6 +246,9 @@ interface ElectronAPI {
   fireImpOpenForm: (formData: Record<string, string>) => Promise<IpcResult>;
   onFireImpFormSubmitted: (callback: (data: Record<string, string>) => void) => () => void;
 
+  // Permits
+  getWorkRequestCount: () => Promise<IpcResult<number>>;
+
   // Device Identity
   getDeviceConfig: () => Promise<IpcResult<DeviceConfig | null>>;
   saveDeviceConfig: (config: DeviceConfig) => Promise<IpcResult>;
@@ -476,6 +479,13 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.onFireImpFormSubmitted((data) => {
       this.ngZone.run(() => callback(data));
     });
+  }
+
+  // Permits
+
+  async getWorkRequestCount(): Promise<IpcResult<number>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getWorkRequestCount();
   }
 
   // Device Identity

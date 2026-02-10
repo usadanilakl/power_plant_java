@@ -142,6 +142,8 @@ export interface PjmConfig {
   pnodeId: number;         // Default: 33092371 (ComEd zone aggregate)
   pnodeName: string;       // Display name
   pollIntervalMinutes: number;
+  voyagerUsername?: string;
+  voyagerPassword?: string;
 }
 
 // IPC Result wrapper

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/permit-builder/hot-work/hot-work-table/hot-work-table.component.css"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  min-height: 100%;\r\n  width: 100%;\r\n  overflow: hidden;\r\n}"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACZ;",
+  "names": []
+}

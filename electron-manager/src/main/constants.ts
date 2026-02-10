@@ -39,15 +39,15 @@ export const MAX_LOG_LINES = 1_000;
 // Sync staleness threshold
 export const SYNC_STALE_THRESHOLD_DAYS = 14;
 
-// Gate Log defaults
+// Gate Log defaults (credentials loaded from gate-log-config.json at runtime)
 export const DEFAULT_GATE_LOG_CONFIG = {
-  onLocationApiKey: 'wNqYlPvPlq2GvktS',
+  onLocationApiKey: '',
   onLocationBaseUrl: 'https://api.whosonlocation.com/v1',
   gateWebUrl: 'https://10.56.80.80/',
-  gateUsername: 'dklokov',
-  gatePassword: 'Jackson1',
-  onLocationEmail: 'jacksonap@jpowerusa.com',
-  onLocationPassword: 'Jackson1',
+  gateUsername: '',
+  gatePassword: '',
+  onLocationEmail: '',
+  onLocationPassword: '',
   autoRefresh: false,
   intervalMinutes: 60
 };

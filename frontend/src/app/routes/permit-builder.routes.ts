@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { PermitBuilderPageComponent } from '../pages/permit-builder-page/permit-builder-page.component';
 import { JobLogComponent } from '../features/permit-builder/job-log/job-log.component';
 import { WorkRequestComponent } from '../features/permit-builder/work-request/work-request.component';
+import { RfWorkRequestPageComponent } from '../features/permit-builder/work-request/refactored/rf-work-request-page/rf-work-request-page.component';
 import { DailyPermitPackageComponent } from '../features/permit-builder/daily-permit-package/daily-permit-package.component';
 import { SafeWorkComponent } from '../features/permit-builder/safe-work/safe-work.component';
 import { HotWorkComponent } from '../features/permit-builder/hot-work/hot-work.component';
@@ -23,7 +24,7 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         component: JobLogComponent,
         data: { leftMenu: JobLogLeftMenuComponent }
       },
-      { path: 'work-requests', component: WorkRequestComponent },
+      { path: 'work-requests', component: RfWorkRequestPageComponent },
       {
         path: 'daily-packages',
         component: DailyPermitPackageComponent,

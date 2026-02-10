@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 import { MainLayoutComponent } from "../../layout/refactored/main-layout.component";
-import { PERMIT_BUILDER_NAV_MENU_ITEMS, RouterMenuItems } from '../../models/ui/router-menu.model';
 import { RouterModule } from '@angular/router';
 import { LeftMenuOutletComponent } from "../../shared/left-menu-outlet/left-menu-outlet.component";
 
@@ -13,5 +12,4 @@ import { LeftMenuOutletComponent } from "../../shared/left-menu-outlet/left-menu
   styleUrl: './permit-builder-page.component.css'
 })
 export class PermitBuilderPageComponent {
-  navMenuItems: RouterMenuItems = PERMIT_BUILDER_NAV_MENU_ITEMS;
 }

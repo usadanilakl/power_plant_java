@@ -5,7 +5,13 @@ import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 
 export type ExportOption = 'all' | 'queried' | 'selected';
 
-export type EntityType = 'lotoPoint' | 'file' | 'lotoStandard';
+export type EntityType = 'lotoPoint' | 'file' | 'lotoStandard' | 'workRequest';
+
+export interface ExportFormatOption {
+  value: string;
+  label: string;
+  description: string;
+}
 
 export interface ExportConfig {
   entityType: EntityType;
@@ -15,6 +21,7 @@ export interface ExportConfig {
   exportAllFn: () => Observable<SpringApiResponse<string>>;
   exportByQueryFn: (criteria: SearchCriteria) => Observable<SpringApiResponse<string>>;
   exportByIdsFn: (ids: number[]) => Observable<SpringApiResponse<string>>;
+  formatOptions?: ExportFormatOption[];
 }
 
 @Injectable({
@@ -24,12 +31,18 @@ export class ExportDialogService {
   isVisible = signal(false);
   isExporting = signal(false);
   exportError = signal<string | null>(null);
+  selectedFormat = signal<string>('');
 
   private config = signal<ExportConfig | null>(null);
 
   open(config: ExportConfig): void {
     this.config.set(config);
     this.exportError.set(null);
+    if (config.formatOptions && config.formatOptions.length > 0) {
+      this.selectedFormat.set(config.formatOptions[0].value);
+    } else {
+      this.selectedFormat.set('');
+    }
     this.isVisible.set(true);
   }
 
@@ -57,6 +70,15 @@ export class ExportDialogService {
 
   hasSelectedItems(): boolean {
     return this.getSelectedIds().length > 0;
+  }
+
+  hasFormatOptions(): boolean {
+    const opts = this.config()?.formatOptions;
+    return !!opts && opts.length > 0;
+  }
+
+  getFormatOptions(): ExportFormatOption[] {
+    return this.config()?.formatOptions ?? [];
   }
 
   hasSearchCriteria(): boolean {

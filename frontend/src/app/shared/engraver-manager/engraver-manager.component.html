@@ -190,7 +190,7 @@
 
         <!-- Actions section -->
         <div class="actions-section">
-          @if (modalService.currentBatch()?.status !== 'completed') {
+          @if (modalService.currentBatch().status !== 'completed') {
             <button
               (click)="processBatch()"
               [disabled]="modalService.isProcessing()"
@@ -203,7 +203,7 @@
               }
             </button>
 
-            @if (modalService.currentBatch()?.status === 'processing') {
+            @if (modalService.currentBatch().status === 'processing') {
               <button (click)="reopenLightBurn()" class="btn secondary">
                 Reopen LightBurn
               </button>
@@ -211,7 +211,7 @@
 
             <button
               (click)="markCompleteAndNext()"
-              [disabled]="modalService.currentBatch()?.status === 'pending'"
+              [disabled]="modalService.currentBatch().status === 'pending'"
               class="btn success"
             >
               @if (modalService.hasNextBatch()) {
