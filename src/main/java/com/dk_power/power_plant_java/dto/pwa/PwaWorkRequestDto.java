@@ -1,6 +1,9 @@
 package com.dk_power.power_plant_java.dto.pwa;
 
+import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class PwaWorkRequestDto {
@@ -27,4 +30,8 @@ public class PwaWorkRequestDto {
     private String submitterPhone;
     private String submitterCompany;
     private String pwaUserUuid;         // PWA user's UUID
+    private String timeSubmitted;       // ISO 8601 timestamp
+
+    // Attachments (photos, signatures, documents)
+    private List<PaAttachmentDto> attachments;
 }

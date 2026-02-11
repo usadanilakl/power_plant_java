@@ -3,6 +3,7 @@ import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "./base.model";
 import { IJobStep, JobStep } from "./jha-job-step.model";
 import { JhaPa } from "./jha-pa.model";
+import { IAttachment } from "./attachment.model";
 
 export interface IJha extends IBaseModel {
   jobName: string;
@@ -19,10 +20,16 @@ export interface IJha extends IBaseModel {
   specialTools: string;
   jobSteps: IJobStep[];
   sharepointId: string;
+  localUuid: string;
+  workRequestId?: number;
+  workRequestLocalUuid?: string;
+  workRequestSharepointId?: string;
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  attachments: IAttachment[];
 }
 
 export class Jha extends BaseModel<IJha> implements IJha {
-  
+
   jobName: string;
   applicability: string;
   analysisBy: string;
@@ -37,6 +44,12 @@ export class Jha extends BaseModel<IJha> implements IJha {
   specialTools: string;
   jobSteps: JobStep[];
   sharepointId: string;
+  localUuid: string;
+  workRequestId?: number;
+  workRequestLocalUuid?: string;
+  workRequestSharepointId?: string;
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  attachments: IAttachment[];
 
   constructor(data: Partial<IJha> = {}) {
     super(data);
@@ -48,12 +61,18 @@ export class Jha extends BaseModel<IJha> implements IJha {
     this.date = data.date ?? '';
     this.ppe = data.ppe ?? '';
     this.loto = data.loto ?? '';
-    this.confinedSpace = data.confinedSpace?? '';
+    this.confinedSpace = data.confinedSpace ?? '';
     this.hazCom = data.hazCom ?? '';
     this.handAndPowerTools = data.handAndPowerTools ?? '';
     this.specialTools = data.specialTools ?? '';
     this.jobSteps = data.jobSteps?.map(step => new JobStep(step)) ?? [];
-    this.sharepointId = data.sharepointId?? '';
+    this.sharepointId = data.sharepointId ?? '';
+    this.localUuid = data.localUuid ?? crypto.randomUUID();
+    this.workRequestId = data.workRequestId;
+    this.workRequestLocalUuid = data.workRequestLocalUuid;
+    this.workRequestSharepointId = data.workRequestSharepointId;
+    this.submissionStatus = data.submissionStatus ?? 'draft';
+    this.attachments = data.attachments ?? [];
   }
 
   getFormFields(): FormField[] {
@@ -70,7 +89,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
       { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
       { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
-      { name: 'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId },
+      { name: 'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId, readonly: true },
       {
         name: 'jobSteps',
         label: 'Job Steps',
@@ -81,7 +100,10 @@ export class Jha extends BaseModel<IJha> implements IJha {
           { name: 'hazard', label: 'Hazard', type: 'textarea' },
           { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea' }
         ]
-      }
+      },
+      { name: 'photos', label: 'Photos', type: 'file', accept: 'image/*', multiple: true, initialValue: this.getAttachmentsByType('photo'), group: { label: 'Attachments' } },
+      { name: 'signature', label: 'Signature', type: 'signature', initialValue: null, group: { label: 'Attachments' } },
+      { name: 'documents', label: 'Documents', type: 'file', accept: '.pdf,.doc,.docx', multiple: true, initialValue: this.getAttachmentsByType('document'), group: { label: 'Attachments' } },
     ];
   }
   
@@ -99,41 +121,44 @@ export class Jha extends BaseModel<IJha> implements IJha {
       ];
     }
     
+    getAttachmentsByType(type: 'photo' | 'signature' | 'document'): IAttachment[] {
+      return this.attachments.filter(a => a.type === type);
+    }
+
     convertToPaModel(): JhaPa {
       return new JhaPa({
-        jobName: this.jobName,
-        applicability: this.applicability,
-        analysisBy: this.analysisBy,
-        reviewedBy: this.reviewedBy,
-        approvedBy: this.approvedBy,
-        date: this.date,
-        ppe: this.ppe,
-        loto: this.loto,
-        confinedSpace: this.confinedSpace,
-        hazCom: this.hazCom,
-        handAndPowerTools: this.handAndPowerTools,
-        specialTools: this.specialTools,
-        jobSteps: this.jobSteps,
-        sharepointId: this.sharepointId,
+        WorkRequestId: this.workRequestId,
+        JobName: this.jobName,
+        Applicability: this.applicability,
+        AnalysisBy: this.analysisBy,
+        ReviewedBy: this.reviewedBy,
+        ApprovedBy: this.approvedBy,
+        Date: this.date,
+        PPE: this.ppe,
+        LOTO: this.loto,
+        ConfinedSpace: this.confinedSpace,
+        HazCom: this.hazCom,
+        HandAndPowerTools: this.handAndPowerTools,
+        SpecialTools: this.specialTools,
+        JobSteps: this.jobSteps,
       });
     }
   getEmailBody(): string {
     const paModel = this.convertToPaModel();
     const fieldLabels: { [key: string]: string } = {
-      jobName: 'Job Name/Title',
-      applicability: 'Applicability',
-      analysisBy: 'Analysis By',
-      reviewedBy: 'Reviewed By',
-      approvedBy: 'Approved By',
-      date: 'Date',
-      ppe: 'Personal Protective Equipment (PPE)',
-      loto: 'LOTO',
-      confinedSpace: 'Confined Space',
-      hazCom: 'HazCom',
-      handAndPowerTools: 'Hand and Power Tools',
-      specialTools: 'Special Tools',
-      jobSteps: 'Job Steps',
-      sharepointId: 'Sharepoint ID'
+      JobName: 'Job Name/Title',
+      Applicability: 'Applicability',
+      AnalysisBy: 'Analysis By',
+      ReviewedBy: 'Reviewed By',
+      ApprovedBy: 'Approved By',
+      Date: 'Date',
+      PPE: 'Personal Protective Equipment (PPE)',
+      LOTO: 'LOTO',
+      ConfinedSpace: 'Confined Space',
+      HazCom: 'HazCom',
+      HandAndPowerTools: 'Hand and Power Tools',
+      SpecialTools: 'Special Tools',
+      JobSteps: 'Job Steps'
     };
 
     let body = '';
@@ -142,15 +167,15 @@ export class Jha extends BaseModel<IJha> implements IJha {
         const label = fieldLabels[key] || key;
         const value = (paModel as any)[key];
 
-        if (key === 'jobSteps' && Array.isArray(value) && value.length > 0) {
+        if (key === 'JobSteps' && Array.isArray(value) && value.length > 0) {
           body += `${label}:\n`;
-          value.forEach((step, index) => {
+          value.forEach((step: any, index: number) => {
             body += `  Step ${index + 1}:\n`;
             body += `    Description: ${step.description || ''}\n`;
             body += `    Hazards: ${step.hazards || ''}\n`;
             body += `    Controls: ${step.controls || ''}\n`;
           });
-        } else if (value && typeof value !== 'object') { // Only include fields that have a value and are not objects
+        } else if (value && typeof value !== 'object') {
           body += `${label}: ${value}\n`;
         }
       }

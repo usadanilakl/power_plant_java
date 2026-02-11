@@ -4,11 +4,13 @@ import { Option } from "./option.model";
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' | 
+  type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' |
   'time' | 'checkbox-group' | 'checkbox' | 'radio' | 'file' | 'multi-input' |
-  'number' | 'radio-group' | 'form-array' | 'email' | 'password';
+  'number' | 'radio-group' | 'form-array' | 'email' | 'password' | 'signature';
   validators?: ValidatorFn[];
   options?: Option[];
+  multiple?: boolean;
+  accept?: string;
   initialValue?: any;
   currentValue?: any;
   position?: { x: number; y: number };

@@ -50,10 +50,17 @@
               }
               @case('file'){
                 <app-file-input
-                  formControlName="file"
-                  label="Upload File"
-                  accept=".pdf,.doc,.docx,.img,.jpg,.jpeg">
+                  [formControl]="getFormControl(field.name)"
+                  [label]="field.label"
+                  [accept]="field.accept ?? '*/*'"
+                  [multiple]="field.multiple ?? false">
                 </app-file-input>
+              }
+              @case('signature'){
+                <app-signature-input
+                  [formControl]="getFormControl(field.name)"
+                  [label]="field.label">
+                </app-signature-input>
               }
               @case('multi-input'){
                 <app-multi-text-input

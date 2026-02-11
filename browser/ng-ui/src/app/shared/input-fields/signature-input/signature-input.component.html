@@ -1,0 +1,18 @@
+<div class="signature-container">
+  <label class="signature-label">{{ label }}</label>
+  <div class="canvas-wrapper">
+    <canvas
+      #signatureCanvas
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp()"
+      (pointerleave)="onPointerUp()"
+      style="touch-action: none;">
+    </canvas>
+  </div>
+  <div class="signature-actions">
+    @if (hasSignature) {
+      <button type="button" class="clear-btn" (click)="clear()">Clear</button>
+    }
+  </div>
+</div>

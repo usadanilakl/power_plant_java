@@ -1,0 +1,21 @@
+{
+  "workRequestId": 42,
+  "jobName": "...",
+  "applicability": "...",
+  "analysisBy": "...",
+  "reviewedBy": "...",
+  "approvedBy": "...",
+  "date": "2026-02-11",
+  "ppe": "...",
+  "loto": "...",
+  "confinedSpace": "...",
+  "hazCom": "...",
+  "handAndPowerTools": "...",
+  "specialTools": "...",
+  "jobSteps": [{ "sequence": 1, "description": "...", "hazard": "...", "safetyMeasures": "..." }],
+  "submitterName": "DK",
+  "submitterEmail": "dk@company.com",
+  "submitterPhone": "555-1234",
+  "submitterCompany": "DK",
+  "timeSubmitted": "2026-02-11T03:40:54Z"
+}

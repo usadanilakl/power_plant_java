@@ -2,7 +2,7 @@
 
 Work request is submitted by people who will be performing work. It includes the following information:
 
-1. Person requesting
+1. Person requesting (auto set to name provided during first visit)
 2. Date of work to be performed
 3. Affected Equipment
 4. Scope of work
@@ -19,8 +19,31 @@ Work request is submitted by people who will be performing work. It includes the
     - pdf/jpg
     - video
 7. JHA for the work to be performed (separate permit form)
+8. Time submitted (Now)
 
 WorkRequest extends BasePermit so it includes all fields from there.
+
+{
+  "dateOfWork": "2026-02-11",
+  "timeOfWork": "15:20",
+  "workRequestedBy": "DK",
+  "company": "DK",
+  "locationOfWork": "Location",
+  "affectedEquipment": "Eq",
+  "workScope": "Scope",
+  "isLOTORequired": "Yes",
+  "isHotWorkRequired": "No",
+  "isConfinedSpaceEntryRequired": "No",
+  "foremanName": "",
+  "fireWatchName": "",
+  "spaceToBeEntered": "",
+  "status": "Active",
+  "submitterName": "DK",
+  "submitterEmail": "dk@company.com",
+  "submitterPhone": "555-1234",
+  "submitterCompany": "DK",
+  "timeSubmitted": "2026-02-11T03:40:54Z"
+}
 
 ## Backend Architecture
 

@@ -1,0 +1,43 @@
+.signature-container {
+  margin-bottom: 10px;
+}
+
+.signature-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--primary-text);
+}
+
+.canvas-wrapper {
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background-color: #fff;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  cursor: crosshair;
+}
+
+.signature-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.clear-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.clear-btn:hover {
+  background-color: #c82333;
+}

@@ -5,6 +5,7 @@ import { FormField } from '../../../models/inputs/form-field.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/reactive-form.component";
 import { EmailPromptComponent } from "../../../shared/communication/email-prompt/email-prompt.component";
+import { UserSetupService } from '../../../services/user-setup.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -17,13 +18,25 @@ import { environment } from '../../../../environments/environment';
 export class WorkRequestFormComponent {
 
   workRequestStateService = inject(WorkRequestStateService);
+  userSetupService = inject(UserSetupService);
   destroyRef = inject(DestroyRef);
 
   entityInput = input<WorkRequest>();
   fieldsInput = input<FormField[]>();
 
   private entityFromState = toSignal(this.workRequestStateService.selectedWorkRequest$, { initialValue: new WorkRequest() });
-  entity = computed(() => this.entityInput() ?? this.entityFromState());
+  entity = computed(() => {
+    const wr = this.entityInput() ?? this.entityFromState();
+    // Auto-populate workRequestedBy and company from user setup if empty
+    if (wr) {
+      const userData = this.userSetupService.getUserData();
+      if (userData) {
+        if (!wr.workRequestedBy) wr.workRequestedBy = userData.name;
+        if (!wr.company) wr.company = userData.company;
+      }
+    }
+    return wr;
+  });
 
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());

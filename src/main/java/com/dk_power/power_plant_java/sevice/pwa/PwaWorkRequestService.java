@@ -1,10 +1,13 @@
 package com.dk_power.power_plant_java.sevice.pwa;
 
+import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
@@ -13,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -22,6 +26,7 @@ public class PwaWorkRequestService {
 
     private final SharepointAccessService sharepointAccess;
     private final WorkRequestRepo workRequestRepo;
+    private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
 
     /**
@@ -44,15 +49,31 @@ public class PwaWorkRequestService {
         entity.setLocalUuid(dto.getLocalUuid());
         entity.setPermitStatus(valueService.createValue("Permit Status", "Active"));
 
-        // Save submitter info
+        // Save submitter info and timestamp
         entity.setSubmitterName(dto.getSubmitterName());
         entity.setSubmitterEmail(dto.getSubmitterEmail());
         entity.setSubmitterPhone(dto.getSubmitterPhone());
         entity.setSubmitterCompany(dto.getSubmitterCompany());
+        entity.setSubmittedAt(LocalDateTime.now());
 
         // Save locally first
         workRequestRepo.save(entity);
         log.info("[PWA Submit] Work request saved locally: localUuid={}", dto.getLocalUuid());
+
+        // Save attachments
+        if (dto.getAttachments() != null) {
+            for (PaAttachmentDto att : dto.getAttachments()) {
+                PermitAttachment attachment = new PermitAttachment();
+                attachment.setEntityType("WorkRequest");
+                attachment.setEntityId(entity.getId());
+                attachment.setFileName(att.getFileName());
+                attachment.setContentType(att.getContentType());
+                attachment.setBase64Content(att.getBase64Content());
+                attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachmentRepo.save(attachment);
+            }
+            log.info("[PWA Submit] Saved {} attachments for localUuid={}", dto.getAttachments().size(), dto.getLocalUuid());
+        }
 
         // Attempt SharePoint submission via fallback chain (Certificate -> Power Automate)
         String sharepointId = null;
@@ -68,6 +89,18 @@ public class PwaWorkRequestService {
                 method = "sharepoint";
                 log.info("[PWA Submit] Work request created in SharePoint: id={}, localUuid={}",
                         sharepointId, dto.getLocalUuid());
+
+                // Upload attachments to SharePoint
+                if (dto.getAttachments() != null) {
+                    for (PaAttachmentDto att : dto.getAttachments()) {
+                        try {
+                            sharepointAccess.addAttachment("WorkRequest", sharepointId, att);
+                        } catch (Exception attEx) {
+                            log.warn("[PWA Submit] Failed to upload attachment {} to SharePoint: {}",
+                                    att.getFileName(), attEx.getMessage());
+                        }
+                    }
+                }
             } else {
                 log.warn("[PWA Submit] SharePoint returned null ID for localUuid={}", dto.getLocalUuid());
             }
@@ -124,6 +157,13 @@ public class PwaWorkRequestService {
         entity.setFireWatch(dto.getFireWatchName());
         entity.setSpace(dto.getSpaceToBeEntered());
         return entity;
+    }
+
+    private String guessAttachmentType(String contentType) {
+        if (contentType == null) return "document";
+        if (contentType.startsWith("image/")) return "photo";
+        if (contentType.contains("pdf") || contentType.contains("document")) return "document";
+        return "document";
     }
 
     private PwaStatusResult toStatusResult(WorkRequest entity) {

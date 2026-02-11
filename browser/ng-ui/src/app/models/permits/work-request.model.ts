@@ -4,6 +4,7 @@ import { BaseModel, IBaseModel } from "./base.model";
 import { futureOrPresentDateValidator } from "../../shared/forms/validators/date.validators";
 import { WorkRequestPa } from "./work-request-pa.model";
 import { Column } from "../inputs/column.model";
+import { IAttachment } from "./attachment.model";
 
 export interface IWorkRequest extends IBaseModel {
   id: number;
@@ -25,6 +26,7 @@ export interface IWorkRequest extends IBaseModel {
   fireWatchName: string;
   spaceToBeEntered: string;
   jhaStatus?: string;
+  attachments: IAttachment[];
 }
 
 export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest {
@@ -46,6 +48,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   fireWatchName: string;
   spaceToBeEntered: string;
   jhaStatus?: string;
+  attachments: IAttachment[];
 
   constructor(data: Partial<IWorkRequest> = {}) {
     super(data);
@@ -67,6 +70,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.fireWatchName = data.fireWatchName ?? '';
     this.spaceToBeEntered = data.spaceToBeEntered ?? '';
     this.jhaStatus = data.jhaStatus;
+    this.attachments = data.attachments ?? [];
   }
 
   getFormFields(): FormField[] {
@@ -115,9 +119,12 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         label: 'Space to be Entered',
         type: 'text',
         initialValue: this.spaceToBeEntered,
-        showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' }, 
+        showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' },
         validators: [Validators.required]
       },
+      { name: 'photos', label: 'Photos', type: 'file', accept: 'image/*', multiple: true, initialValue: this.getAttachmentsByType('photo'), group: { label: 'Attachments' } },
+      { name: 'signature', label: 'Signature', type: 'signature', initialValue: null, group: { label: 'Attachments' } },
+      { name: 'documents', label: 'Documents', type: 'file', accept: '.pdf,.doc,.docx', multiple: true, initialValue: this.getAttachmentsByType('document'), group: { label: 'Attachments' } },
     ];
   }
 
@@ -172,43 +179,50 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       }
     }
 
-  convertToPaModel(): WorkRequestPa {
+  getAttachmentsByType(type: 'photo' | 'signature' | 'document'): IAttachment[] {
+    return this.attachments.filter(a => a.type === type);
+  }
 
-    // console.log('Converting to PA model:', this);
+  convertToPaModel(): WorkRequestPa {
+    // Combine date + time into ISO datetime for SharePoint DateTime column
+    const dateStr = this.dateOfWork instanceof Date
+      ? this.dateOfWork.toISOString().split('T')[0]
+      : String(this.dateOfWork || '');
+    const combinedDateTime = this.timeOfWork
+      ? `${dateStr}T${this.timeOfWork}:00`
+      : `${dateStr}T00:00:00`;
 
     return new WorkRequestPa({
-      company: this.company,
-      dateOfWork: this.dateOfWork.toISOString().split('T')[0],
-      timeOfWork: this.timeOfWork,
-      locationOfWork: this.locationOfWork,
-      workRequestedBy: this.workRequestedBy,
-      affectedEquipment: this.affectedEquipment,
-      workScope: this.workScope,
-      isLOTORequired: this.isLOTORequired,
-      isHotWorkRequired: this.isHotWorkRequired,
-      isConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired,
-      foremanName: this.foremanName,
-      fireWatchName: this.fireWatchName,
-      spaceToBeEntered: this.spaceToBeEntered
+      Company: this.company,
+      DateOfWork: combinedDateTime,
+      LocationOfWork: this.locationOfWork,
+      WorkRequestedBy: this.workRequestedBy,
+      AffectedEquipment: this.affectedEquipment,
+      WorkScope: this.workScope,
+      IsLOTORequired: this.isLOTORequired,
+      IsHotWorkRequired: this.isHotWorkRequired,
+      IsConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired,
+      ForemanName: this.foremanName,
+      FireWatchName: this.fireWatchName,
+      SpaceToBeEntered: this.spaceToBeEntered
     });
   }
 
   getEmailBody(): string {
     const paModel = this.convertToPaModel();
     const fieldLabels: { [key: string]: string } = {
-      company: 'Company',
-      dateOfWork: 'Date of Work',
-      timeOfWork: 'Time of Work',
-      locationOfWork: 'Location of Work',
-      workRequestedBy: 'Work Requested By',
-      affectedEquipment: 'Affected Equipment',
-      workScope: 'Work Scope',
-      isLOTORequired: 'LOTO Required',
-      isHotWorkRequired: 'Hot Work Required',
-      isConfinedSpaceEntryRequired: 'Confined Space Entry Required',
-      foremanName: 'Foreman Name',
-      fireWatchName: 'Fire Watch Name',
-      spaceToBeEntered: 'Space to be Entered'
+      Company: 'Company',
+      DateOfWork: 'Date & Time of Work',
+      LocationOfWork: 'Location of Work',
+      WorkRequestedBy: 'Work Requested By',
+      AffectedEquipment: 'Affected Equipment',
+      WorkScope: 'Work Scope',
+      IsLOTORequired: 'LOTO Required',
+      IsHotWorkRequired: 'Hot Work Required',
+      IsConfinedSpaceEntryRequired: 'Confined Space Entry Required',
+      ForemanName: 'Foreman Name',
+      FireWatchName: 'Fire Watch Name',
+      SpaceToBeEntered: 'Space to be Entered'
     };
 
     let body = '';

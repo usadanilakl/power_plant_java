@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.entities.permits;
 
-import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.JobStep;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -10,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +43,24 @@ public class Jha {
     private String jobSteps;
 
     private String sharepointId;
+
+    // WorkRequest relationship
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "work_request_id")
+    private WorkRequest workRequest;
+
+    private String workRequestSharepointId;
+
+    // PWA tracking
+    private String localUuid;
+    private Boolean deleted = false;
+    private LocalDateTime submittedAt;
+
+    // Submitter contact info
+    private String submitterName;
+    private String submitterEmail;
+    private String submitterPhone;
+    private String submitterCompany;
 
     private static final ObjectMapper mapper = new ObjectMapper();
 

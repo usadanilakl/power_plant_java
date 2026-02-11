@@ -11,6 +11,8 @@ import { SearchableMultiSelectInputComponent } from "../../input-fields/searchab
 import { MultiTextInputComponent } from "../../input-fields/multi-text-input/multi-text-input.component";
 import { FormInputComponent } from "../../input-fields/form-input/form-input.component";
 import { FormArrayInputComponent } from "../../input-fields/form-array-input/form-array-input.component";
+import { FileInputComponent } from "../../input-fields/file-input/file-input.component";
+import { SignatureInputComponent } from "../../input-fields/signature-input/signature-input.component";
 
 @Component({
   selector: 'app-reactive-form',
@@ -24,7 +26,9 @@ import { FormArrayInputComponent } from "../../input-fields/form-array-input/for
     SearchableMultiSelectInputComponent,
     MultiTextInputComponent,
     FormInputComponent,
-    FormArrayInputComponent
+    FormArrayInputComponent,
+    FileInputComponent,
+    SignatureInputComponent
 ],
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.css'

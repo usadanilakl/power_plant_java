@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "work_request")
 @Getter
@@ -36,6 +38,7 @@ public class WorkRequest extends BasePermitEntity {
 
     // PWA tracking
     private String localUuid;           // PWA's unique ID for dedup
+    private LocalDateTime submittedAt;  // When submitted from PWA
     private String submitterName;       // PWA submitter contact info
     private String submitterEmail;
     private String submitterPhone;

@@ -1,21 +1,30 @@
-<div class="file-input-container" 
+<div class="file-input-container"
      [class.dragover]="isDragover">
   <div class="drop-zone">
-    <p>Drag and drop a file here, or</p>
+    <p>Drag and drop {{ multiple ? 'files' : 'a file' }} here, or</p>
     <label class="file-input-label">
       {{ label }}
-      <input 
-        type="file" 
+      <input
+        type="file"
         [accept]="accept"
+        [multiple]="multiple"
+        [attr.capture]="capture || null"
         (change)="onFileSelected($event)"
         class="file-input"
       >
     </label>
   </div>
-  @if (file) {
-    <div class="file-info">
-      <span class="file-name">{{ file.name }}</span>
-      <button class="remove-file" (click)="handleFile(null)">Remove</button>
+  @if (files.length > 0) {
+    <div class="file-list">
+      @for (attachment of files; track attachment.fileName; let i = $index) {
+        <div class="file-info">
+          @if (attachment.thumbnailBase64) {
+            <img [src]="attachment.thumbnailBase64" class="file-thumbnail" alt="preview">
+          }
+          <span class="file-name">{{ attachment.fileName }}</span>
+          <button type="button" class="remove-file" (click)="removeFile(i)">Remove</button>
+        </div>
+      }
     </div>
   }
 </div>

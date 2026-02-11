@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, switchMap } from 'rxjs';
-import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto } from './server-api.service';
+import { Observable, catchError, map, of } from 'rxjs';
+import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto } from './server-api.service';
 import { PowerAutomateService } from './power-automate.service';
 import { UserSetupService } from './user-setup.service';
 import { WorkRequest } from '../models/permits/work-request.model';
+import { Jha } from '../models/permits/jha.model';
 import { environment } from '../../environments/environment';
 
 export interface SubmissionResult {
@@ -42,15 +43,42 @@ export class SubmissionOrchestratorService {
       company: userData.company
     });
 
-    return this.tryServer(dto).pipe(
+    return this.tryServerWr(dto).pipe(
       catchError(serverError => {
         console.warn('[Orchestrator] Server failed, trying Power Automate:', serverError.message);
-        return this.tryPowerAutomate(workRequest, dto.localUuid);
+        return this.tryPowerAutomateWr(workRequest, dto.localUuid);
       })
     );
   }
 
-  private tryServer(dto: PwaWorkRequestDto): Observable<SubmissionResult> {
+  submitJha(jha: Jha): Observable<SubmissionResult> {
+    const userData = this.userSetup.getUserData();
+    if (!userData) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid: '',
+        message: 'User data not configured. Please complete setup first.',
+        requiresEmail: true
+      });
+    }
+
+    const dto = this.serverApi.convertJhaToDto(jha, {
+      name: userData.name,
+      email: userData.email,
+      phone: userData.phone,
+      company: userData.company
+    });
+
+    return this.tryServerJha(dto).pipe(
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for JHA, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateJha(jha, dto.localUuid);
+      })
+    );
+  }
+
+  private tryServerWr(dto: PwaWorkRequestDto): Observable<SubmissionResult> {
     return this.serverApi.submitWorkRequest(dto).pipe(
       map(response => ({
         success: response.success,
@@ -64,7 +92,49 @@ export class SubmissionOrchestratorService {
     );
   }
 
-  private tryPowerAutomate(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
+  private tryServerJha(dto: PwaJhaDto): Observable<SubmissionResult> {
+    return this.serverApi.submitJha(dto).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as const,
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid,
+        message: response.method === 'local'
+          ? 'JHA saved locally. Will sync to SharePoint when available.'
+          : 'JHA submitted successfully via server.'
+      }))
+    );
+  }
+
+  private tryPowerAutomateWr(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
+    // Try V2 flow first if configured
+    if (this.powerAutomate.isV2Configured('workRequest')) {
+      const userData = this.userSetup.getUserData()!;
+      const paRequest = this.powerAutomate.buildCreateRequest(
+        workRequest.convertToPaModel() as any,
+        userData,
+        workRequest.attachments
+      );
+
+      return this.powerAutomate.submitV2('workRequest', paRequest).pipe(
+        map(response => ({
+          success: response.success,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: 'Submitted successfully via Power Automate (V2).'
+        })),
+        catchError(v2Error => {
+          console.warn('[Orchestrator] PA V2 failed, trying V1:', v2Error.message);
+          return this.tryPowerAutomateWrV1(workRequest, localUuid);
+        })
+      );
+    }
+
+    return this.tryPowerAutomateWrV1(workRequest, localUuid);
+  }
+
+  private tryPowerAutomateWrV1(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
     const paRequest = {
       url: '',
       workForm: workRequest.convertToPaModel(),
@@ -92,11 +162,71 @@ export class SubmissionOrchestratorService {
     );
   }
 
+  private tryPowerAutomateJha(jha: Jha, localUuid: string): Observable<SubmissionResult> {
+    if (this.powerAutomate.isV2Configured('jha')) {
+      const userData = this.userSetup.getUserData()!;
+      const paRequest = this.powerAutomate.buildCreateRequest(
+        jha.convertToPaModel() as any,
+        userData,
+        jha.attachments
+      );
+
+      return this.powerAutomate.submitV2('jha', paRequest).pipe(
+        map(response => ({
+          success: response.success,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: 'JHA submitted successfully via Power Automate (V2).'
+        })),
+        catchError(paError => {
+          console.warn('[Orchestrator] PA V2 failed for JHA:', paError.message);
+          return of({
+            success: false,
+            method: 'email' as const,
+            localUuid,
+            message: 'All JHA submission methods failed. Please submit via email.',
+            requiresEmail: true
+          });
+        })
+      );
+    }
+
+    // No V1 fallback for JHA - it didn't exist before
+    return of({
+      success: false,
+      method: 'email' as const,
+      localUuid,
+      message: 'JHA Power Automate flow not configured. Please submit via email.',
+      requiresEmail: true
+    });
+  }
+
   generateEmailContent(workRequest: WorkRequest): { subject: string; body: string; mailto: string } {
     const userData = this.userSetup.getUserData();
     const subject = `Work Request: ${workRequest.workScope?.substring(0, 50) || 'New Request'}`;
 
     let body = workRequest.getEmailBody();
+    if (userData) {
+      body += `\n--- Submitter Info ---\n`;
+      body += `Name: ${userData.name}\n`;
+      body += `Email: ${userData.email}\n`;
+      body += `Phone: ${userData.phone}\n`;
+      body += `Company: ${userData.company}\n`;
+    }
+
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedBody = encodeURIComponent(body);
+    const mailto = `mailto:${environment.emailRecipient}?subject=${encodedSubject}&body=${encodedBody}`;
+
+    return { subject, body, mailto };
+  }
+
+  generateJhaEmailContent(jha: Jha): { subject: string; body: string; mailto: string } {
+    const userData = this.userSetup.getUserData();
+    const subject = `JHA: ${jha.jobName?.substring(0, 50) || 'New JHA'}`;
+
+    let body = jha.getEmailBody();
     if (userData) {
       body += `\n--- Submitter Info ---\n`;
       body += `Name: ${userData.name}\n`;

@@ -2,52 +2,52 @@ import { IJobStep, JobStep } from "./jha-job-step.model";
 
 
 export interface IJhaPa {
-  jobName: string;
-  applicability: string;
-  analysisBy: string;
-  reviewedBy: string;
-  approvedBy: string;
-  date: string;
-  ppe: string;
-  loto: string;
-  confinedSpace: string;
-  hazCom: string;
-  handAndPowerTools: string;
-  specialTools: string;
-  jobSteps: IJobStep[];
-  sharepointId: string;
+  WorkRequestId?: number;
+  JobName: string;
+  Applicability: string;
+  AnalysisBy: string;
+  ReviewedBy: string;
+  ApprovedBy: string;
+  Date: string;
+  PPE: string;
+  LOTO: string;
+  ConfinedSpace: string;
+  HazCom: string;
+  HandAndPowerTools: string;
+  SpecialTools: string;
+  JobSteps: IJobStep[];
 }
 
 export class JhaPa implements IJhaPa {
-  jobName: string;
-  applicability: string;
-  analysisBy: string;
-  reviewedBy: string;
-  approvedBy: string;
-  date: string;
-  ppe: string;
-  loto: string;
-  confinedSpace: string;
-  hazCom: string;
-  handAndPowerTools: string;
-  specialTools: string;
-  jobSteps: JobStep[];
-  sharepointId: string;
+  WorkRequestId?: number;
+  JobName: string;
+  Applicability: string;
+  AnalysisBy: string;
+  ReviewedBy: string;
+  ApprovedBy: string;
+  Date: string;
+  PPE: string;
+  LOTO: string;
+  ConfinedSpace: string;
+  HazCom: string;
+  HandAndPowerTools: string;
+  SpecialTools: string;
+  JobSteps: JobStep[];
 
   constructor(data: Partial<IJhaPa> = {}) {
-    this.jobName = data.jobName ?? '';
-    this.applicability = data.applicability ?? '';
-    this.analysisBy = data.analysisBy ?? '';
-    this.reviewedBy = data.reviewedBy ?? '';
-    this.approvedBy = data.approvedBy ?? '';
-    this.date = data.date ?? '';
-    this.ppe = data.ppe ?? '';
-    this.loto = data.loto ?? '';
-    this.confinedSpace = data.confinedSpace?? '';
-    this.hazCom = data.hazCom ?? '';
-    this.handAndPowerTools = data.handAndPowerTools ?? '';
-    this.specialTools = data.specialTools ?? '';
-    this.jobSteps = data.jobSteps?.map(step => new JobStep(step)) ?? [];
-    this.sharepointId = data.sharepointId?? '';
+    this.WorkRequestId = data.WorkRequestId;
+    this.JobName = data.JobName ?? '';
+    this.Applicability = data.Applicability ?? '';
+    this.AnalysisBy = data.AnalysisBy ?? '';
+    this.ReviewedBy = data.ReviewedBy ?? '';
+    this.ApprovedBy = data.ApprovedBy ?? '';
+    this.Date = data.Date ?? '';
+    this.PPE = data.PPE ?? '';
+    this.LOTO = data.LOTO ?? '';
+    this.ConfinedSpace = data.ConfinedSpace ?? '';
+    this.HazCom = data.HazCom ?? '';
+    this.HandAndPowerTools = data.HandAndPowerTools ?? '';
+    this.SpecialTools = data.SpecialTools ?? '';
+    this.JobSteps = data.JobSteps?.map(step => new JobStep(step)) ?? [];
   }
 }

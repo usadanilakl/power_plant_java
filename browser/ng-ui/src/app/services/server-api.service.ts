@@ -3,6 +3,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, map, of, timeout, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { WorkRequest } from '../models/permits/work-request.model';
+import { Jha } from '../models/permits/jha.model';
+import { IAttachment } from '../models/permits/attachment.model';
 
 export interface PwaSubmissionResult {
   success: boolean;
@@ -39,6 +41,33 @@ export interface PwaWorkRequestDto {
   submitterEmail: string;
   submitterPhone: string;
   submitterCompany: string;
+  timeSubmitted: string;
+  attachments: { fileName: string; contentType: string; base64Content: string }[];
+}
+
+export interface PwaJhaDto {
+  localUuid: string;
+  workRequestLocalUuid?: string;
+  workRequestSharepointId?: string;
+  jobName: string;
+  applicability: string;
+  analysisBy: string;
+  reviewedBy: string;
+  approvedBy: string;
+  date: string;
+  ppe: string;
+  loto: string;
+  confinedSpace: string;
+  hazCom: string;
+  handAndPowerTools: string;
+  specialTools: string;
+  jobSteps: { sequence: number; description: string; hazard: string; safetyMeasures: string }[];
+  submitterName: string;
+  submitterEmail: string;
+  submitterPhone: string;
+  submitterCompany: string;
+  timeSubmitted: string;
+  attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
 @Injectable({
@@ -50,6 +79,14 @@ export class ServerApiService {
 
   submitWorkRequest(dto: PwaWorkRequestDto): Observable<PwaSubmissionResult> {
     return this.http.post<{ payload: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/work-request/submit`, dto).pipe(
+      timeout(15000),
+      map(response => response.payload),
+      catchError(this.handleError)
+    );
+  }
+
+  submitJha(dto: PwaJhaDto): Observable<PwaSubmissionResult> {
+    return this.http.post<{ payload: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/jha/submit`, dto).pipe(
       timeout(15000),
       map(response => response.payload),
       catchError(this.handleError)
@@ -100,8 +137,51 @@ export class ServerApiService {
       submitterName: userData.name,
       submitterEmail: userData.email,
       submitterPhone: userData.phone,
-      submitterCompany: userData.company
+      submitterCompany: userData.company,
+      timeSubmitted: new Date().toISOString(),
+      attachments: this.convertAttachments(workRequest.attachments)
     };
+  }
+
+  convertJhaToDto(jha: Jha, userData: { name: string; email: string; phone: string; company: string }): PwaJhaDto {
+    return {
+      localUuid: jha.localUuid || crypto.randomUUID(),
+      workRequestLocalUuid: jha.workRequestLocalUuid,
+      workRequestSharepointId: jha.workRequestSharepointId,
+      jobName: jha.jobName || '',
+      applicability: jha.applicability || '',
+      analysisBy: jha.analysisBy || '',
+      reviewedBy: jha.reviewedBy || '',
+      approvedBy: jha.approvedBy || '',
+      date: jha.date || '',
+      ppe: jha.ppe || '',
+      loto: jha.loto || '',
+      confinedSpace: jha.confinedSpace || '',
+      hazCom: jha.hazCom || '',
+      handAndPowerTools: jha.handAndPowerTools || '',
+      specialTools: jha.specialTools || '',
+      jobSteps: (jha.jobSteps || []).map((step, i) => ({
+        sequence: step.sequence || i + 1,
+        description: step.description || '',
+        hazard: step.hazard || '',
+        safetyMeasures: step.safetyMeasures || ''
+      })),
+      submitterName: userData.name,
+      submitterEmail: userData.email,
+      submitterPhone: userData.phone,
+      submitterCompany: userData.company,
+      timeSubmitted: new Date().toISOString(),
+      attachments: this.convertAttachments(jha.attachments)
+    };
+  }
+
+  private convertAttachments(attachments: IAttachment[]): { fileName: string; contentType: string; base64Content: string }[] {
+    if (!attachments || attachments.length === 0) return [];
+    return attachments.map(a => ({
+      fileName: a.fileName,
+      contentType: a.contentType,
+      base64Content: a.base64Content
+    }));
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

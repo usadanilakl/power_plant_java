@@ -58,6 +58,18 @@ export class IndexedDbService extends Dexie {
       spaces: '++id, sharepointId, status, createdAt, updatedAt'
     });
 
+    // Version 7: Added localUuid indexes for dedup, submissionStatus for WR/JHA
+    this.version(7).stores({
+      workRequests: '++id, localUuid, sharepointId, status, submissionStatus, jhaStatus, createdAt, updatedAt',
+      jhas: '++id, localUuid, sharepointId, status, submissionStatus, createdAt, updatedAt'
+    }).upgrade(tx => {
+      return tx.table('jhas').toCollection().modify(jha => {
+        if (!jha.localUuid) jha.localUuid = crypto.randomUUID();
+        if (!jha.submissionStatus) jha.submissionStatus = 'draft';
+        if (!jha.attachments) jha.attachments = [];
+      });
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);

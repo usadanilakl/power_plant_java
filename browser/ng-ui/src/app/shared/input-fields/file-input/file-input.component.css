@@ -32,16 +32,32 @@
   display: none;
 }
 
-.file-info {
+.file-list {
   margin-top: 15px;
+}
+
+.file-info {
+  margin-top: 8px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
+}
+
+.file-thumbnail {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
 .file-name {
   font-size: 0.9em;
   color: var(--secondary-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .remove-file {
@@ -51,4 +67,5 @@
   padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
+  flex-shrink: 0;
 }
