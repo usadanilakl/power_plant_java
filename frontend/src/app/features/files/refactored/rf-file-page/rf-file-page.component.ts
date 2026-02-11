@@ -8,7 +8,7 @@ import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { RfFileStateService } from '../services/rf-file-state.service';
 import { RfFileFormComponent } from '../rf-file-form/rf-file-form.component';
-import { RfFileLeftMenuComponent } from '../rf-file-left-menu/rf-file-left-menu.component';
+import { RfFileLeftPanelComponent } from '../rf-file-left-panel/rf-file-left-panel.component';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 import { ExportDialogComponent } from '../../../../shared/export-dialog/export-dialog.component';
 
@@ -20,7 +20,7 @@ import { ExportDialogComponent } from '../../../../shared/export-dialog/export-d
     RouterModule,
     MainLayoutComponent,
     RouterMenuComponent,
-    RfFileLeftMenuComponent,
+    RfFileLeftPanelComponent,
     RfPopupProjectionComponent,
     RfFileFormComponent,
     RfMultiUploadComponent,

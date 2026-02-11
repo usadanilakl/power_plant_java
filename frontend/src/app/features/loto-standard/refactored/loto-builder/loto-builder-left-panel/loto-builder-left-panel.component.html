@@ -54,16 +54,7 @@
        reactiveGuideMessage="Expand folders and click on a file to load it"
        [reactiveGuideTooltipOnly]="true">
     @if (builderState.leftMenuTab() === 'file') {
-      @if (builderState.displayMode() === 'toggle-menu') {
-        <app-rf-file-left-menu></app-rf-file-left-menu>
-      } @else {
-        <app-loto-builder-file-table
-          [tableId]="'loto-builder-file-table'"
-          [isTableIsolated]="false"
-          [loadMoreEnabled]="true"
-          [enableDragDrop]="false"
-        ></app-loto-builder-file-table>
-      }
+      <app-rf-file-left-panel [displayMode]="builderState.displayMode()"></app-rf-file-left-panel>
     } @else {
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-loto-builder-loto-point-left-menu></app-loto-builder-loto-point-left-menu>

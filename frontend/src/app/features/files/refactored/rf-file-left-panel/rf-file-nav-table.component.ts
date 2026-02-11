@@ -3,34 +3,34 @@ import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError, switchMap, exhaustMap, debounceTime, filter } from 'rxjs/operators';
 import { of, Subject } from 'rxjs';
-import { TableComponent, FilterOutRules } from '../../../../../../shared/table/refactored/table.component';
-import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
-import { TableSelectionService } from '../../../../../../shared/table/refactored/services/table-selection.service';
-import { TableDragService } from '../../../../../../shared/table/refactored/services/table-drag.service';
-import { TableControlsService } from '../../../../../../shared/table/refactored/services/table-controls.service';
-import { TableStateService } from '../../../../../../shared/table/refactored/services/table-state.service';
-import { TableDataService } from '../../../../../../shared/table/refactored/services/table-data.service';
-import { TableSearchService } from '../../../../../../shared/table/refactored/services/table-search.service';
-import { TableSortService } from '../../../../../../shared/table/refactored/services/table-sort.service';
-import { TableResizeService } from '../../../../../../shared/table/refactored/services/table-resize.service';
-import { TableSyncService } from '../../../../../../shared/table/refactored/services/table-sync.service';
-import { TableUtilService } from '../../../../../../shared/table/refactored/services/table-util.service';
-import { FileTableControlService } from '../../../../../files/refactored/rf-file-table/rf-file-table-control.service';
-import { RfFileApiService } from '../../../../../files/refactored/services/rf-file-api.service';
-import { RfFileStateService } from '../../../../../files/refactored/services/rf-file-state.service';
-import { FileMapperService } from '../../../../../files/refactored/services/rf-file-mapper.service';
-import { FileDto } from '../../../../../../models/file/file.model';
-import { Column } from '../../../../../../models/column.model';
-import { SearchCriteria } from '../../../../../../models/api/search-criteria.model';
-import { LotoBuilderFileTableClickService } from './loto-builder-file-table-click.service';
+import { TableComponent, FilterOutRules } from '../../../../shared/table/refactored/table.component';
+import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
+import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../shared/table/refactored/services/table-drag.service';
+import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
+import { TableStateService } from '../../../../shared/table/refactored/services/table-state.service';
+import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
+import { TableSearchService } from '../../../../shared/table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../shared/table/refactored/services/table-sort.service';
+import { TableResizeService } from '../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../shared/table/refactored/services/table-sync.service';
+import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
+import { FileTableControlService } from '../rf-file-table/rf-file-table-control.service';
+import { RfFileApiService } from '../services/rf-file-api.service';
+import { RfFileStateService } from '../services/rf-file-state.service';
+import { FileMapperService } from '../services/rf-file-mapper.service';
+import { FileDto } from '../../../../models/file/file.model';
+import { Column } from '../../../../models/column.model';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+import { RfFileNavClickService } from './rf-file-nav-click.service';
 
 /**
- * File table component for LOTO builder.
- * Uses custom click service to open files in the right panel.
- * Directly uses TableComponent to ensure our click service is used.
+ * Compact file navigation table for left panels.
+ * Uses reactive pipelines (switchMap/exhaustMap) for search and load-more.
+ * Default click service sets the current file — override at parent level for custom behavior.
  */
 @Component({
-  selector: 'app-loto-builder-file-table',
+  selector: 'app-rf-file-nav-table',
   standalone: true,
   imports: [CommonModule, TableComponent],
   providers: [
@@ -42,7 +42,7 @@ import { LotoBuilderFileTableClickService } from './loto-builder-file-table-clic
     TableSortService,
     TableResizeService,
     TableSyncService,
-    { provide: TableClickService, useClass: LotoBuilderFileTableClickService },
+    { provide: TableClickService, useClass: RfFileNavClickService },
     { provide: TableControlsService, useClass: FileTableControlService },
   ],
   template: `
@@ -130,7 +130,7 @@ import { LotoBuilderFileTableClickService } from './loto-builder-file-table-clic
     }
   `],
 })
-export class LotoBuilderFileTableComponent implements OnInit {
+export class RfFileNavTableComponent implements OnInit {
   private apiService = inject(RfFileApiService);
   protected stateService = inject(RfFileStateService);
   private mapperService = inject(FileMapperService);
@@ -138,7 +138,7 @@ export class LotoBuilderFileTableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   // Inputs
-  tableId = input<string>('loto-builder-file-table');
+  tableId = input<string>('rf-file-nav-table');
   inputItems = input<FileDto[] | null>(null);
   isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(true);
@@ -290,18 +290,8 @@ export class LotoBuilderFileTableComponent implements OnInit {
   }
 
   onSearch(criteria: SearchCriteria): void {
-    const isUsingInputItems = this.inputItems();
-
-    if (isUsingInputItems) {
-      this.searchWithinInputItems(criteria);
-    } else {
-      this.searchInDatabase(criteria);
-    }
-  }
-
-  private searchWithinInputItems(_criteria: SearchCriteria): void {
-    // For isolated tables with inputItems, filtering is handled by the table component
-    // This method is a placeholder for future client-side filtering if needed
+    if (this.inputItems()) return;
+    this.searchInDatabase(criteria);
   }
 
   private searchInDatabase(criteria: SearchCriteria): void {

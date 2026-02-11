@@ -1,10 +1,18 @@
+:host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
 
 .loto-standard-menu-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
   background: var(--surface-color, #ffffff);
   border-right: 1px solid var(--border-color, #e0e0e0);
+  overflow: hidden;
 }
 
 .menu-header {
@@ -186,4 +194,14 @@
 .retry-button:hover {
   background: var(--error-color, #f44336);
   color: white;
+}
+
+/* Toggle Menu Container */
+app-rf-toggle-menu {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }

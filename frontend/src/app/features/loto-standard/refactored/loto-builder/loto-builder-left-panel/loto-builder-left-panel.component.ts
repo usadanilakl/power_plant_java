@@ -2,8 +2,9 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
-import { RfFileLeftMenuComponent } from '../../../../files/refactored/rf-file-left-menu/rf-file-left-menu.component';
-import { LotoBuilderFileTableComponent } from './loto-builder-file-table/loto-builder-file-table.component';
+import { RfFileLeftPanelComponent } from '../../../../files/refactored/rf-file-left-panel/rf-file-left-panel.component';
+import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
+import { LotoBuilderFileTableClickService } from './loto-builder-file-table/loto-builder-file-table-click.service';
 import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-table/loto-builder-loto-point-table.component';
 import { LotoBuilderLotoPointLeftMenuComponent } from './loto-builder-loto-point-left-menu/loto-builder-loto-point-left-menu.component';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
@@ -15,12 +16,14 @@ import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-gui
   imports: [
     CommonModule,
     MatIconModule,
-    RfFileLeftMenuComponent,
-    LotoBuilderFileTableComponent,
+    RfFileLeftPanelComponent,
     LotoBuilderLotoPointTableComponent,
     LotoBuilderLotoPointLeftMenuComponent,
     GuideDirective,
     ReactiveGuideDirective,
+  ],
+  providers: [
+    { provide: TableClickService, useClass: LotoBuilderFileTableClickService },
   ],
   templateUrl: './loto-builder-left-panel.component.html',
   styleUrl: './loto-builder-left-panel.component.css',

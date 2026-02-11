@@ -62,7 +62,7 @@ export class RfToggleMenuComponent {
    * Filter a single item and its children
    */
   private filterSingleItem(item: NestedItem, searchTerms: string[], mode: SearchMode): NestedItem | null {
-    const itemText = item.name.toLowerCase();
+    const itemText = (item.name + (item.subtitle ? ' ' + item.subtitle : '')).toLowerCase();
     const matchesSearch = this.itemMatchesSearch(itemText, searchTerms, mode);
 
     // Recursively filter children
