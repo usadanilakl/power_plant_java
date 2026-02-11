@@ -30,7 +30,8 @@ public class SecurityConfigSpring {
                         "/work-request/**", "/work-requests-api/**",
                         "/api/field-sync/**", "/api/sync-updates/**","/api/sync-test/**",
                         "/api/resync/**", "/api/sync-e2e/**", "/api/data-integrity/**",
-                        "/api/update/**", "/api/fire-impairment/**"
+                        "/api/update/**", "/api/fire-impairment/**",
+                        "/api/pwa/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
@@ -81,7 +82,12 @@ public class SecurityConfigSpring {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost", "null"));
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:4200",
+                "http://localhost",
+                "null",
+                "https://dk-power.github.io"  // PWA on GitHub Pages
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token", "X-Machine-Id", "X-Machine-Name", "X-Device-Number"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));

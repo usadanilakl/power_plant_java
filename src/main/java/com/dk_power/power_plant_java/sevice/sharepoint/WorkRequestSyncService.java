@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sharepoint;
 
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
+import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
@@ -52,16 +53,16 @@ public class WorkRequestSyncService {
 
     /**
      * Sync work requests from SharePoint. Can be called manually or by scheduler.
-     * Returns the number of new/updated records.
+     * Returns detailed sync result with counts for created, updated, failed, etc.
      */
     @Transactional
-    public int syncFromSharePoint() {
-        int changes = 0;
+    public SyncResult syncFromSharePoint() {
+        SyncResult result = new SyncResult();
         try {
             List<WorkRequestDto> remoteRequests = sharepointAccessService.getAllWorkRequests();
             if (remoteRequests == null || remoteRequests.isEmpty()) {
                 log.debug("[SharePoint Sync] No work requests returned from SharePoint");
-                return 0;
+                return result;
             }
 
             log.info("[SharePoint Sync] Fetched {} work requests from SharePoint", remoteRequests.size());
@@ -75,36 +76,42 @@ public class WorkRequestSyncService {
             // Process each remote request
             for (WorkRequestDto remote : remoteRequests) {
                 if (remote == null || remote.getSharepointId() == null) {
+                    result.incrementSkipped();
                     continue;
                 }
 
-                WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(remote.getSharepointId()).orElse(null);
-                String remoteStatus = remote.getStatus();
-                if (remoteStatus == null || remoteStatus.isEmpty()) {
-                    remoteStatus = "Active";
-                }
-
-                if (existing == null) {
-                    // New record from SharePoint
-                    WorkRequest entity = workRequestMapper.fromSharePointDto(remote);
-                    entity.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
-                    workRequestRepo.save(entity);
-                    changes++;
-                    log.debug("[SharePoint Sync] Created new work request: sharepointId={}", remote.getSharepointId());
-                } else {
-                    // Existing record — update fields and status if changed
-                    String existingStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : "";
-                    boolean statusChanged = !existingStatus.equalsIgnoreCase(remoteStatus);
-
-                    workRequestMapper.updateEntityFromSharePoint(existing, remote);
-                    if (statusChanged) {
-                        existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+                try {
+                    WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(remote.getSharepointId()).orElse(null);
+                    String remoteStatus = remote.getStatus();
+                    if (remoteStatus == null || remoteStatus.isEmpty()) {
+                        remoteStatus = "Active";
                     }
-                    workRequestRepo.save(existing);
-                    if (statusChanged) {
-                        changes++;
-                        log.debug("[SharePoint Sync] Updated status for sharepointId={}: {} → {}", remote.getSharepointId(), existingStatus, remoteStatus);
+
+                    if (existing == null) {
+                        // New record from SharePoint
+                        WorkRequest entity = workRequestMapper.fromSharePointDto(remote);
+                        entity.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+                        workRequestRepo.save(entity);
+                        result.incrementCreated();
+                        log.debug("[SharePoint Sync] Created new work request: sharepointId={}", remote.getSharepointId());
+                    } else {
+                        // Existing record — update fields and status if changed
+                        String existingStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : "";
+                        boolean statusChanged = !existingStatus.equalsIgnoreCase(remoteStatus);
+
+                        workRequestMapper.updateEntityFromSharePoint(existing, remote);
+                        if (statusChanged) {
+                            existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+                        }
+                        workRequestRepo.save(existing);
+                        if (statusChanged) {
+                            result.incrementUpdated();
+                            log.debug("[SharePoint Sync] Updated status for sharepointId={}: {} → {}", remote.getSharepointId(), existingStatus, remoteStatus);
+                        }
                     }
+                } catch (Exception e) {
+                    result.incrementFailed();
+                    log.error("[SharePoint Sync] Failed to process work request sharepointId={}: {}", remote.getSharepointId(), e.getMessage(), e);
                 }
             }
 
@@ -113,22 +120,29 @@ public class WorkRequestSyncService {
             for (WorkRequest local : localActive) {
                 String spId = local.getSharepointId();
                 if (spId != null && !remoteIds.contains(spId.toLowerCase())) {
-                    local.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
-                    workRequestRepo.save(local);
-                    changes++;
-                    log.debug("[SharePoint Sync] Auto-closed work request: sharepointId={}", spId);
+                    try {
+                        local.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
+                        workRequestRepo.save(local);
+                        result.incrementAutoClosed();
+                        log.debug("[SharePoint Sync] Auto-closed work request: sharepointId={}", spId);
+                    } catch (Exception e) {
+                        result.incrementFailed();
+                        log.error("[SharePoint Sync] Failed to auto-close work request sharepointId={}: {}", spId, e.getMessage(), e);
+                    }
                 }
             }
 
-            if (changes > 0) {
-                log.info("[SharePoint Sync] Completed with {} changes", changes);
+            if (result.getTotalChanges() > 0) {
+                log.info("[SharePoint Sync] Completed: created={}, updated={}, autoClosed={}, failed={}",
+                        result.getCreated(), result.getUpdated(), result.getAutoClosed(), result.getFailed());
             } else {
                 log.debug("[SharePoint Sync] Completed, no changes");
             }
 
         } catch (Exception e) {
-            log.warn("[SharePoint Sync] Failed: {}", e.getMessage());
+            log.error("[SharePoint Sync] Failed to fetch from SharePoint: {}", e.getMessage(), e);
+            result.setErrorMessage(e.getMessage());
         }
-        return changes;
+        return result;
     }
 }

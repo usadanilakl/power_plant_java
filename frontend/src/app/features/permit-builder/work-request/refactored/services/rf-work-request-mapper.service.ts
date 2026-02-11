@@ -15,17 +15,25 @@ export class RfWorkRequestMapperService {
   private destroyRef = inject(DestroyRef);
 
   locationOptions = signal<Option[]>([]);
+  locationOptionsLoading = signal<boolean>(true);
 
   constructor() {
     this.loadAllOptions();
   }
 
   private loadAllOptions(): void {
+    this.locationOptionsLoading.set(true);
     this.valueService
       .getOptionsByCategory('location')
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((options) => {
-        this.locationOptions.set(options);
+      .subscribe({
+        next: (options) => {
+          this.locationOptions.set(options);
+          this.locationOptionsLoading.set(false);
+        },
+        error: () => {
+          this.locationOptionsLoading.set(false);
+        }
       });
   }
 

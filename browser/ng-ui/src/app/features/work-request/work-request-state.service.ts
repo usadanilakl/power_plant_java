@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
 import { WorkRequest } from '../../models/permits/work-request.model';
 import { WorkRequestApiService } from './wokr-request-api.service';
@@ -6,6 +6,7 @@ import { WorkRequestLocalStorageService } from './work-request-local-storage.ser
 import { WorkRequestDbService } from './work-request-db.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GlobalMessageService } from '../../services/global-message.service';
+import { SubmissionOrchestratorService, SubmissionResult } from '../../services/submission-orchestrator.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,7 +17,10 @@ export class WorkRequestStateService {
   workRequestLocalStorageService = inject(WorkRequestLocalStorageService);
   workRequesDbService = inject(WorkRequestDbService);
   globalMessageService = inject(GlobalMessageService);
-  destroyRef = inject(DestroyRef)
+  orchestrator = inject(SubmissionOrchestratorService);
+  destroyRef = inject(DestroyRef);
+
+  emailFallbackData = signal<{ mailto: string; body: string } | null>(null);
 
   constructor() { 
     this.loadWorkRequests();
@@ -65,32 +69,64 @@ export class WorkRequestStateService {
     }
   }
 
-  submitNewRequest(workReuest: WorkRequest) {
-    this.globalMessageService.showMessage('Submitting request...', 'white', 20000);
-    this.workRequestApiService.submitFormToSharepoint(workReuest).pipe(
-      switchMap(response => {
-        console.log('Submission successful!', response);
-        const updatedWorkRequest = new WorkRequest({...workReuest, sharepointId: response.id, status: 'received'  });
-        // The addWorkRequest observable will be executed by switchMap
+  submitNewRequest(workRequest: WorkRequest) {
+    this.globalMessageService.showMessage('Submitting request...', 'white', 30000);
+    this.emailFallbackData.set(null);
+
+    workRequest.submissionStatus = 'pending';
+
+    this.orchestrator.submitWorkRequest(workRequest).pipe(
+      switchMap((result: SubmissionResult) => {
+        console.log('[WorkRequestState] Submission result:', result);
+
+        if (result.requiresEmail) {
+          const emailContent = this.orchestrator.generateEmailContent(workRequest);
+          this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body });
+          workRequest.submissionStatus = 'failed';
+          this.globalMessageService.showMessage(
+            'Submission failed. Please use email fallback below.',
+            'yellow',
+            10000
+          );
+          return this.workRequesDbService.addWorkRequest(workRequest);
+        }
+
+        const updatedWorkRequest = new WorkRequest({
+          ...workRequest,
+          sharepointId: result.sharepointId || '',
+          submissionStatus: 'submitted',
+          submissionMethod: result.method,
+          status: 'received'
+        });
+
         return this.workRequesDbService.addWorkRequest(updatedWorkRequest).pipe(
-          // tap allows side-effects without altering the stream
           tap(() => {
             this.selectWorkRequest(updatedWorkRequest);
             this.workRequestLocalStorageService.clearDraft();
             this.addWorkRequestsToList([updatedWorkRequest]);
+            this.globalMessageService.showMessage(
+              `Request submitted via ${result.method}.`,
+              'green'
+            );
           })
         );
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: () => {
-        this.globalMessageService.showMessage('Request submitted successfully.', 'green');
-      },
       error: (err) => {
-        console.error('Submission failed!', err);
-        this.globalMessageService.showMessage('Failed to submit request. Please try again or submit by email.', 'red');
+        console.error('[WorkRequestState] Submission error:', err);
+        const emailContent = this.orchestrator.generateEmailContent(workRequest);
+        this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body });
+        this.globalMessageService.showMessage(
+          'Submission failed. Please use email fallback.',
+          'red'
+        );
       }
     });
+  }
+
+  clearEmailFallback() {
+    this.emailFallbackData.set(null);
   }
 
   resubmitSelected() {

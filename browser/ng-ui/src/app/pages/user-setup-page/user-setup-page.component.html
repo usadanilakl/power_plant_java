@@ -1,0 +1,38 @@
+<div class="setup-container">
+  <div class="setup-card">
+    <h1>{{ isUpdate ? 'Update Your Info' : 'Welcome to Jackson Generation' }}</h1>
+    <p class="subtitle">
+      {{ isUpdate ? 'Update your contact information below.' : 'Please provide your contact information to get started. This will be attached to your submissions.' }}
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="form-field">
+        <label for="name">Full Name *</label>
+        <input id="name" type="text" formControlName="name" placeholder="John Doe">
+        <span class="error" *ngIf="getError('name')">{{ getError('name') }}</span>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email Address *</label>
+        <input id="email" type="email" formControlName="email" placeholder="john.doe@company.com">
+        <span class="error" *ngIf="getError('email')">{{ getError('email') }}</span>
+      </div>
+
+      <div class="form-field">
+        <label for="phone">Phone Number *</label>
+        <input id="phone" type="tel" formControlName="phone" placeholder="+1 (555) 123-4567">
+        <span class="error" *ngIf="getError('phone')">{{ getError('phone') }}</span>
+      </div>
+
+      <div class="form-field">
+        <label for="company">Company *</label>
+        <input id="company" type="text" formControlName="company" placeholder="Your Company Name">
+        <span class="error" *ngIf="getError('company')">{{ getError('company') }}</span>
+      </div>
+
+      <button type="submit" class="submit-button" [disabled]="form.invalid">
+        {{ isUpdate ? 'Update Info' : 'Get Started' }}
+      </button>
+    </form>
+  </div>
+</div>

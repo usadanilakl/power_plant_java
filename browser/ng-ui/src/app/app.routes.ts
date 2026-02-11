@@ -5,6 +5,7 @@ import { JhaPageComponent } from './pages/jha-page/jha-page.component';
 import { WorkRequestComponent } from './features/work-request/work-request.component';
 import { JhaComponent } from './features/jha/jha.component';
 import { standaloneGuard } from './guards/standalone.guard';
+import { userSetupGuard } from './guards/user-setup.guard';
 import { SpacePageComponent } from './pages/space-page/space-page.component';
 import { SpaceComponent } from './features/space/space.component';
 import { authGuard } from './auth/auth.guard';
@@ -29,11 +30,16 @@ export const routes: Routes = [
       loadComponent: () => import('./pages/install-app-page/install-app-page.component').then(m => m.InstallAppPageComponent),
       canActivate: [standaloneGuard]
     },
+    {
+      path: 'setup',
+      loadComponent: () => import('./pages/user-setup-page/user-setup-page.component').then(m => m.UserSetupPageComponent),
+      canActivate: [standaloneGuard]
+    },
     { path: '', redirectTo: '/work-request/form', pathMatch: 'full' },
     {
       path: 'work-request',
       component: WorkRequestPageComponent,
-      canActivate: [standaloneGuard],
+      canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: WorkRequestComponent }
@@ -42,7 +48,7 @@ export const routes: Routes = [
     {
       path: 'jha',
       component: JhaPageComponent,
-      canActivate: [standaloneGuard],
+      canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: JhaComponent }

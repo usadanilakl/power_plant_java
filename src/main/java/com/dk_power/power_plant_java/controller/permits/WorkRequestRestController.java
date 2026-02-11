@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.permits;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
+import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
@@ -129,10 +130,12 @@ public class WorkRequestRestController {
     }
 
     @PostMapping("/sync")
-    public ResponseEntity<NgApiResponse<Integer>> triggerSync() {
+    public ResponseEntity<NgApiResponse<SyncResult>> triggerSync() {
         try {
-            int changes = syncService.syncFromSharePoint();
-            return ResponseEntity.ok(new NgApiResponse<>(changes, "Sync completed with " + changes + " changes"));
+            SyncResult result = syncService.syncFromSharePoint();
+            String message = String.format("Sync completed: created=%d, updated=%d, autoClosed=%d, failed=%d",
+                    result.getCreated(), result.getUpdated(), result.getAutoClosed(), result.getFailed());
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Sync failed: " + e.getMessage()));
         }

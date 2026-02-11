@@ -1,9 +1,9 @@
 {
-  "escalationLevel" : 0,
-  "lastAttemptTime" : null,
-  "lastAttemptSuccess" : false,
-  "lastAttemptDate" : null,
-  "lastAttemptMessage" : null,
+  "escalationLevel" : 1,
+  "lastAttemptTime" : 1770798925.699791953,
+  "lastAttemptSuccess" : true,
+  "lastAttemptDate" : "2026-02-10",
+  "lastAttemptMessage" : "Partial sync completed. 0 changes applied, 0 files downloaded, 0 files deleted",
   "autoResyncExhausted" : false,
   "autoResyncInProgress" : false
 }

@@ -101,7 +101,6 @@ public class WorkRequestController {
         try {
             WorkRequest requestById = workRequestService.getEntityById(id);
             NgWorkRequestDto dto = workRequestMapper.convertToNgDto(requestById);
-            System.out.println(dto);
             return ResponseEntity.ok(
                     new NgApiResponse<>(dto, "Successfully got work request by id")
             );

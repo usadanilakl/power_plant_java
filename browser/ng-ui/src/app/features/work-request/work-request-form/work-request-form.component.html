@@ -7,9 +7,23 @@
 >
   <ng-container extra-buttons>
     <app-email-prompt
-      to="dklokov@jpowerusa.com"
-      subject="Failed to submit work request"
+      [to]="emailRecipient"
+      subject="Work Request Submission"
       [body]="entity().getEmailBody()"
     ></app-email-prompt>
   </ng-container>
 </app-reactive-form>
+
+@if (emailFallbackData()) {
+  <div class="email-fallback-banner">
+    <p><strong>Submission failed.</strong> All automatic methods unavailable. Please submit via email:</p>
+    <div class="email-fallback-actions">
+      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onEmailSent()">
+        Open Email Client
+      </a>
+      <button class="email-button secondary" (click)="onEmailSent()">
+        I've Sent the Email
+      </button>
+    </div>
+  </div>
+}

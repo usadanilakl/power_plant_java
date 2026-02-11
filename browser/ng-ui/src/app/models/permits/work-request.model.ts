@@ -8,6 +8,9 @@ import { Column } from "../inputs/column.model";
 export interface IWorkRequest extends IBaseModel {
   id: number;
   sharepointId: string;
+  localUuid: string;
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  submissionMethod?: 'server' | 'powerAutomate' | 'email';
   company: string;
   dateOfWork: Date;
   timeOfWork: string;
@@ -26,6 +29,9 @@ export interface IWorkRequest extends IBaseModel {
 
 export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest {
   sharepointId: string;
+  localUuid: string;
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  submissionMethod?: 'server' | 'powerAutomate' | 'email';
   company: string;
   dateOfWork: Date;
   timeOfWork: string;
@@ -44,6 +50,9 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   constructor(data: Partial<IWorkRequest> = {}) {
     super(data);
     this.sharepointId = data.sharepointId ?? '';
+    this.localUuid = data.localUuid ?? crypto.randomUUID();
+    this.submissionStatus = data.submissionStatus ?? 'draft';
+    this.submissionMethod = data.submissionMethod;
     this.company = data.company ?? '';
     this.dateOfWork = data.dateOfWork ? new Date(data.dateOfWork) : new Date();
     this.timeOfWork = data.timeOfWork ?? '';

@@ -15,4 +15,7 @@ public interface WorkRequestRepo extends PermitRepo<WorkRequest> {
     List<WorkRequest> findAllBySharepointId(String id);
 
     Optional<WorkRequest> findFirstBySharepointIdOrderByIdAsc(String id);
+
+    // PWA tracking
+    Optional<WorkRequest> findByLocalUuid(String localUuid);
 }

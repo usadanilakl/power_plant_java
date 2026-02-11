@@ -33,4 +33,11 @@ public class WorkRequest extends BasePermitEntity {
     private Boolean isConfinedSpaceEntryRequired;
     private String space;
     private String sharepointId;
+
+    // PWA tracking
+    private String localUuid;           // PWA's unique ID for dedup
+    private String submitterName;       // PWA submitter contact info
+    private String submitterEmail;
+    private String submitterPhone;
+    private String submitterCompany;
 }
