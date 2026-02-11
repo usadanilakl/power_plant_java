@@ -120,7 +120,7 @@ public class NgFileRestController {
                 Page<FileObject> entityPage = ngFileService.complexSearchWithPagination(
                         ngFileService.getRepo(), criteria,
                         PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)), true);
-                searchResults = entityPage.map(ngFileService::toDto);
+                searchResults = entityPage.map(ngFileService::toDtoLight);
             }
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);

@@ -1,8 +1,8 @@
 import { Component, DestroyRef, inject, input, OnInit, signal, computed, effect, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { tap, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { tap, catchError, switchMap, exhaustMap, debounceTime, filter } from 'rxjs/operators';
+import { of, Subject } from 'rxjs';
 import { TableComponent, FilterOutRules } from '../../../../../../shared/table/refactored/table.component';
 import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
 import { TableSelectionService } from '../../../../../../shared/table/refactored/services/table-selection.service';
@@ -151,6 +151,10 @@ export class LotoBuilderFileTableComponent implements OnInit {
   itemsReorderedEvent = output<FileDto[]>();
   rowHoveredEvent = output<FileDto | null>();
 
+  // Reactive pipeline triggers
+  private searchTrigger$ = new Subject<SearchCriteria>();
+  private loadMoreTrigger$ = new Subject<SearchCriteria>();
+
   // State
   items$ = toSignal(this.stateService.allLoadedFiles$, {
     initialValue: [],
@@ -185,6 +189,56 @@ export class LotoBuilderFileTableComponent implements OnInit {
     effect(() => {
       const fields = this.fieldsToDisplay();
       this.columns.set(this.mapperService.toTableColumns(fields));
+    });
+
+    // Search pipeline: debounce 300ms + switchMap (cancels stale requests)
+    this.searchTrigger$.pipe(
+      debounceTime(300),
+      tap(() => {
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
+      }),
+      switchMap(criteria =>
+        this.apiService.searchFiles(criteria, 50).pipe(
+          catchError(error => {
+            console.error('Error searching files:', error);
+            this.errorMessage.set('Search failed');
+            this.isLoading.set(false);
+            return of(null);
+          })
+        )
+      ),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(response => {
+      this.stateService.clearFiles();
+      this.stateService.resetPage();
+      if (response?.responseData?.content) {
+        this.stateService.addFiles(response.responseData.content);
+        this.stateService.incrementPage();
+      }
+      this.isLoading.set(false);
+    });
+
+    // Load-more pipeline: exhaustMap (ignores triggers while loading)
+    this.loadMoreTrigger$.pipe(
+      filter(() => !this.isLoading()),
+      exhaustMap(criteria => {
+        this.isLoading.set(true);
+        return this.apiService.searchFiles(criteria, 50).pipe(
+          catchError(error => {
+            console.error('Error loading more files:', error);
+            this.isLoading.set(false);
+            return of(null);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(response => {
+      if (response && response.responseData?.content && response.responseData.content.length > 0) {
+        this.stateService.addFiles(response.responseData.content);
+        this.stateService.incrementPage();
+      }
+      this.isLoading.set(false);
     });
   }
 
@@ -251,48 +305,20 @@ export class LotoBuilderFileTableComponent implements OnInit {
   }
 
   private searchInDatabase(criteria: SearchCriteria): void {
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
     const existingCriteria = this.stateService.getCurrentSearchCriteria() || {};
-
     const mergedCriteria: SearchCriteria = {
       ...existingCriteria,
       ...criteria,
       page: 1,
       pageSize: 50,
     };
-
     this.stateService.setSearchCriteria(mergedCriteria);
-    this.stateService.resetPage();
-    this.stateService.clearFiles();
-
-    this.apiService
-      .searchFiles(mergedCriteria, 50)
-      .pipe(
-        tap((response) => {
-          if (response.responseData?.content) {
-            this.stateService.addFiles(response.responseData.content);
-            this.stateService.incrementPage();
-          }
-          this.isLoading.set(false);
-        }),
-        catchError((error) => {
-          console.error('Error searching files:', error);
-          this.errorMessage.set('Search failed');
-          this.isLoading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    this.searchTrigger$.next(mergedCriteria);
   }
 
   onTableSortChanged(event: { column: Column; isAscending: boolean }): void {
     if (this.inputItems()) return;
-
     const existingCriteria = this.stateService.getCurrentSearchCriteria() || {};
-
     const searchCriteria: SearchCriteria = {
       ...existingCriteria,
       sortColumn: event.column.accessorKey || event.column.id,
@@ -301,44 +327,14 @@ export class LotoBuilderFileTableComponent implements OnInit {
       pageSize: 50,
       type: existingCriteria.type ?? 'sort',
     };
-
-    this.stateService.clearFiles();
-    this.stateService.resetPage();
     this.stateService.setSearchCriteria(searchCriteria);
-
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
-    this.apiService
-      .searchFiles(searchCriteria, 50)
-      .pipe(
-        tap((response) => {
-          if (response.responseData?.content?.length > 0) {
-            this.stateService.addFiles(response.responseData.content);
-            this.stateService.incrementPage();
-          }
-          this.isLoading.set(false);
-        }),
-        catchError((error) => {
-          console.error('Error loading sorted files:', error);
-          this.errorMessage.set('Failed to load sorted data');
-          this.isLoading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    this.searchTrigger$.next(searchCriteria);
   }
 
   onLoadMore(criteria: SearchCriteria | void): void {
-    if (!this.loadMoreEnabled()) return;
-    if (this.isLoading()) return;
-
-    this.isLoading.set(true);
-
+    if (!this.loadMoreEnabled() || this.isLoading()) return;
     const existingCriteria = this.stateService.getCurrentSearchCriteria();
     const incomingCriteria = criteria || {};
-
     const loadMoreCriteria: SearchCriteria = {
       ...(existingCriteria || { type: 'column', filters: {} }),
       ...incomingCriteria,
@@ -346,24 +342,6 @@ export class LotoBuilderFileTableComponent implements OnInit {
       sortDirection: incomingCriteria.sortDirection || existingCriteria?.sortDirection,
       page: this.stateService.getCurrentPage(),
     };
-
-    this.apiService
-      .searchFiles(loadMoreCriteria, 50)
-      .pipe(
-        tap((response) => {
-          if (response.responseData?.content?.length > 0) {
-            this.stateService.addFiles(response.responseData.content);
-            this.stateService.incrementPage();
-          }
-          this.isLoading.set(false);
-        }),
-        catchError((error) => {
-          console.error('Error loading more files:', error);
-          this.isLoading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    this.loadMoreTrigger$.next(loadMoreCriteria);
   }
 }

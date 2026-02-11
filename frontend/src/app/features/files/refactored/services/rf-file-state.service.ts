@@ -1,10 +1,10 @@
 
 import { Injectable, inject, DestroyRef, signal, NgZone } from "@angular/core";
 import { FileDto } from "../../../../models/file/file.model";
-import { BehaviorSubject, Observable } from "rxjs";
+import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { tap, catchError } from "rxjs/operators";
+import { tap, catchError, switchMap, debounceTime } from "rxjs/operators";
 import { of } from "rxjs";
 import { RfFormField } from "../../../../models/ui/form-field.model";
 import { RfFileApiService } from "./rf-file-api.service";
@@ -52,6 +52,9 @@ export class RfFileStateService {
   currentColumnUniqueItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
+  // Reactive pipeline trigger for unique items loading
+  private uniqueItemsTrigger$ = new Subject<{ columnKey: string; searchString: string }>();
+
   constructor() {
     this.loadFromLocalStorage();
 
@@ -62,6 +65,43 @@ export class RfFileStateService {
       .subscribe((event) => {
         this.handleSyncUpdate(event);
       });
+
+    // Unique items pipeline: debounce 200ms + switchMap (cancels stale requests)
+    this.uniqueItemsTrigger$.pipe(
+      debounceTime(200),
+      switchMap(({ columnKey, searchString }) => {
+        this.loadingUniqueItems.set(true);
+        const currentCriteria = this.getCurrentSearchCriteria();
+        const filters: SearchCriteria = currentCriteria
+          ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
+          : { type: 'column', filters: {} };
+
+        return this.apiService.getFilteredUniqueValuesOfColumn(
+          columnKey, filters, 1, 50
+        ).pipe(
+          tap(response => {
+            if (response.responseData?.content?.length > 0) {
+              const uniqueValues = response.responseData.content;
+              this.setUniqueItems(columnKey, uniqueValues);
+              this.currentColumnUniqueItems.set(uniqueValues);
+              const cacheKey = `${columnKey}:${searchString}`;
+              this.uniqueValuesCache.set(cacheKey, {
+                values: uniqueValues,
+                page: 1,
+                hasMore: !response.responseData.last
+              });
+            }
+            this.loadingUniqueItems.set(false);
+          }),
+          catchError(error => {
+            console.error(`Error loading unique items for ${columnKey}:`, error);
+            this.loadingUniqueItems.set(false);
+            return of(null);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
   }
 
   /**
@@ -440,56 +480,11 @@ export class RfFileStateService {
   }
 
   /**
-   * Load unique items for a column with server-side filtering and pagination
+   * Load unique items for a column with server-side filtering and pagination.
+   * Pushes to reactive pipeline with debounce + switchMap to cancel stale requests.
    */
   loadUniqueItems(columnKey: keyof FileDto, searchString: string): void {
-    const cacheKey = `${columnKey}:${searchString}`;
-    this.loadingUniqueItems.set(true);
-    
-    // Check if we have cached results for this column and search term
-    const cached = this.uniqueValuesCache.get(cacheKey);
-    // if (cached) {
-    //   this.setUniqueItems(String(columnKey), cached.values);
-    //   return;
-    // }
-
-    const currentCriteria = this.getCurrentSearchCriteria();
-    const filters: SearchCriteria = currentCriteria
-      ? { ...currentCriteria, filters: currentCriteria.filters ?? {} }
-      : { type: 'column', filters: {} };
-
-    // Fetch from server with pagination
-    this.apiService
-      .getFilteredUniqueValuesOfColumn(
-        String(columnKey),
-        filters,
-        1,
-        50
-      )
-      .pipe(
-        tap(response => {
-          if (response.responseData?.content && response.responseData.content.length > 0) {
-            const uniqueValues = response.responseData.content;
-            this.setUniqueItems(String(columnKey), uniqueValues);
-            this.currentColumnUniqueItems.set(uniqueValues);
-            this.loadingUniqueItems.set(false);
-            
-            // Cache the results
-            this.uniqueValuesCache.set(cacheKey, {
-              values: uniqueValues,
-              page: 1,
-              hasMore: !response.responseData.last
-            });
-          }
-        }),
-        catchError(error => {
-          console.error(`Error loading unique items for column ${columnKey}:`, error);
-          this.loadingUniqueItems.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    this.uniqueItemsTrigger$.next({ columnKey: String(columnKey), searchString });
   }
 
   /**

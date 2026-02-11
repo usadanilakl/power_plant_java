@@ -16,6 +16,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
@@ -45,6 +46,7 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     }
     private String name;
 
+    @BatchSize(size = 50)
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "file_type_id")
     private Value fileType;
@@ -53,6 +55,7 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     private String baseLink = "uploads";
     private String folder;
 
+    @BatchSize(size = 50)
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "system_id")
     private Value system;
@@ -63,10 +66,12 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     private String extension;
     private String extensions;
 
+    @BatchSize(size = 50)
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
 
+    @BatchSize(size = 50)
     @ManyToMany(mappedBy = "files")
     @JsonIgnore
     @JsonManagedReference
@@ -76,6 +81,7 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     @ManyToMany(mappedBy = "pid")
     private List<HeatTrace> heatTrace;
 
+    @BatchSize(size = 50)
     @OneToMany(mappedBy = "file")
     @JsonBackReference
     private List<Highlight> highlights;

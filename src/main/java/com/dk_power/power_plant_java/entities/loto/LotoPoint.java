@@ -11,6 +11,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
@@ -61,6 +62,7 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
 
 //    @ManyToMany(mappedBy = "lotoPoints")
 //    private Set<Loto> lotos = new HashSet<>();
+    @BatchSize(size = 50)
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonIgnore
     private Set<Equipment> equipmentList;

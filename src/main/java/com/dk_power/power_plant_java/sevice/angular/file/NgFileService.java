@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -107,6 +108,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileMapper.convertToDto(entity);
     }
 
+    public FileDto toDtoLight(FileObject entity) {
+        return fileMapper.convertToDtoLight(entity);
+    }
+
     /**
      * Get files by search criteria for export.
      * Uses the complex search without pagination to get all matching results.
@@ -135,8 +140,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         searchCriteria.put("relatedSystems", searchString);
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
-//        return complexSearch(sc).stream().map(this::toDto).toList();
-        return complexSearch(sc, page, size, "fileNumber", "asc", false);
+        Sort.Direction direction = Sort.Direction.fromString("asc");
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "fileNumber"));
+        Page<FileObject> itemsPage = complexSearchWithPagination(getRepo(), sc, pageable, false);
+        return itemsPage.map(this::toDtoLight);
     }
 
     public Optional<FileDto> findDtoById(Long id) {

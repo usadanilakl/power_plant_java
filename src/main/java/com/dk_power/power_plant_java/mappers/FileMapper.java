@@ -51,12 +51,12 @@ public class FileMapper implements BaseMapper {
         if (file.getName() != null) fileDto.setName(file.getName());
         if (file.getObjectType() != null) fileDto.setObjectType(file.getObjectType());
         fileDto.setId(file.getId());
-        if (file.getFileType() != null) fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
-        if (file.getSystem() != null) fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
-        if (file.getVendor() != null && file.getVendor().getId()!=null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
+        if (file.getFileType() != null) fileDto.setFileType(valueService.convertToDto(file.getFileType()));
+        if (file.getSystem() != null) fileDto.setSystem(valueService.convertToDto(file.getSystem()));
+        if (file.getVendor() != null && file.getVendor().getId()!=null) fileDto.setVendor(valueService.convertToDto(file.getVendor()));
         if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
         if (file.getPoints() != null)
-            fileDto.setPoints(file.getPoints().stream().map(e -> equipmentService.getDtoById(e.getId())).toList());
+            fileDto.setPoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if (file.getHighlights() != null)
@@ -78,9 +78,9 @@ public class FileMapper implements BaseMapper {
         if (file.getName() != null) fileDto.setName(file.getName());
         if (file.getObjectType() != null) fileDto.setObjectType(file.getObjectType());
         fileDto.setId(file.getId());
-        if (file.getFileType() != null) fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
-        if (file.getSystem() != null) fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
-        if (file.getVendor() != null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
+        if (file.getFileType() != null) fileDto.setFileType(valueService.convertToDto(file.getFileType()));
+        if (file.getSystem() != null) fileDto.setSystem(valueService.convertToDto(file.getSystem()));
+        if (file.getVendor() != null) fileDto.setVendor(valueService.convertToDto(file.getVendor()));
         if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
