@@ -183,6 +183,78 @@ public class SharePointCertificateAccess implements SharePointAccess {
     }
 
     @Override
+    public String createWorkRequest(WorkRequestDto dto) {
+        String endpoint = "/_api/web/lists/getbytitle('Work Requests')/items";
+
+        // Build JSON body with SharePoint internal field names
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("__metadata", Map.of("type", "SP.Data.Work_x0020_RequestsListItem"));
+
+        // Map DTO fields to SharePoint internal field names
+        if (dto.getDateOfWorkToBePerformed() != null) {
+            body.put("Date_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed", dto.getDateOfWorkToBePerformed());
+        }
+        if (dto.getTimeOfWorkToBePerformed() != null) {
+            body.put("Time_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed", dto.getTimeOfWorkToBePerformed());
+        }
+        if (dto.getRequestedBy() != null) {
+            body.put("Work_x0020_Requested_x0020_By", dto.getRequestedBy());
+        }
+        if (dto.getCompany() != null) {
+            body.put("Company", dto.getCompany());
+        }
+        if (dto.getLocation() != null) {
+            body.put("Location_x0020_Of_x0020_Work", dto.getLocation());
+        }
+        if (dto.getAffectedEquipment() != null) {
+            body.put("Affected_x0020_Equipment", dto.getAffectedEquipment());
+        }
+        if (dto.getWorkScope() != null) {
+            body.put("Work_x0020_Scope", dto.getWorkScope());
+        }
+        if (dto.getForeman() != null) {
+            body.put("Foreman_x0020_Name", dto.getForeman());
+        }
+        if (dto.getFireWatch() != null) {
+            body.put("Fire_x002d_watch_x0020_Name", dto.getFireWatch());
+        }
+        if (dto.getIsHotWorkRequired() != null) {
+            body.put("Is_x0020_Hot_x0020_Work_x0020_Required_x0020__x0028_welding_x002c__x0020_cutting_x002c__x0020_griding_x002c__x0020_open_x0020_flame_x002c__x0020_sparks_x0029_",
+                    dto.getIsHotWorkRequired());
+        }
+        if (dto.getIsLotoRequired() != null) {
+            body.put("Is_x0020_LOTO_x0020_Required_x003f_", dto.getIsLotoRequired());
+        }
+        if (dto.getIsConfinedSpaceEntryRequired() != null) {
+            body.put("Is_x0020_Confined_x0020_Space_x0020_Entry_x0020_Required_x003f_", dto.getIsConfinedSpaceEntryRequired());
+        }
+        if (dto.getSpace() != null) {
+            body.put("Space_x0020_to_x0020_be_x0020_entered_x003a_", dto.getSpace());
+        }
+        body.put("Status", "Active");
+
+        try {
+            String jsonBody = objectMapper.writeValueAsString(body);
+            log.info("[SharePoint] Creating work request: {}", jsonBody);
+
+            ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                // Extract ID from response
+                JsonNode root = objectMapper.readTree(response.getBody());
+                String id = root.path("d").path("ID").asText(null);
+                log.info("[SharePoint] Created work request with ID: {}", id);
+                return id;
+            } else {
+                throw new RuntimeException("SharePoint create failed: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("[SharePoint] Failed to create work request: {}", e.getMessage());
+            throw new RuntimeException("Failed to create work request in SharePoint: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void archiveWorkRequest(String sharepointId) {
         String endpoint = "/_api/web/lists/getbytitle('Work Requests')/items(" + sharepointId + ")";
         String body = "{\"Status\":\"Archived\"}";

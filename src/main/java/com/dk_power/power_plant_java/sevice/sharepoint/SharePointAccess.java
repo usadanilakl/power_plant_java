@@ -9,6 +9,13 @@ public interface SharePointAccess {
 
     List<WorkRequestDto> getAllWorkRequests();
 
+    /**
+     * Create a new work request in SharePoint.
+     * @param dto the work request data
+     * @return the SharePoint ID of the created item, or null if creation failed
+     */
+    String createWorkRequest(WorkRequestDto dto);
+
     void archiveWorkRequest(String sharepointId);
 
     void changeWorkRequestStatus(String sharepointId, String status);

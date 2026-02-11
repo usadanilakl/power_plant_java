@@ -5,8 +5,10 @@ import com.dk_power.power_plant_java.dto.permits.SpaceDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.sevice.HttpService;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -20,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PowerAutomateClient {
@@ -86,8 +89,68 @@ public class PowerAutomateClient {
         postRequestToPermitsFlow(Map.of("actionType","setStatus","id",id, "status",status));
     }
 
+    /**
+     * Create a new work request in SharePoint via Power Automate.
+     * @param dto the work request data
+     * @return the SharePoint ID of the created item
+     */
+    public String createWorkRequest(WorkRequestDto dto) throws IOException, InterruptedException {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("actionType", "createWorkRequest");
+        requestBody.put("Date of work to be performed", dto.getDateOfWorkToBePerformed());
+        requestBody.put("Time of work to be performed", dto.getTimeOfWorkToBePerformed());
+        requestBody.put("Work Requested By", dto.getRequestedBy());
+        requestBody.put("Company", dto.getCompany());
+        requestBody.put("Location Of Work", dto.getLocation());
+        requestBody.put("Affected Equipment", dto.getAffectedEquipment());
+        requestBody.put("Work Scope", dto.getWorkScope());
+        requestBody.put("Is Hot Work Required (welding, cutting, griding, open flame, sparks)", dto.getIsHotWorkRequired());
+        requestBody.put("Foreman Name", dto.getForeman());
+        requestBody.put("Fire-watch Name", dto.getFireWatch());
+        requestBody.put("Is LOTO Required?", dto.getIsLotoRequired());
+        requestBody.put("Is Confined Space Entry Required?", dto.getIsConfinedSpaceEntryRequired());
+        requestBody.put("Space to be entered:", dto.getSpace());
+        requestBody.put("Status", "Active");
 
+        HttpClient client = HttpClient.newHttpClient();
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonBody = mapper.writeValueAsString(requestBody);
 
+        log.info("[PowerAutomate] Creating work request: {}", jsonBody);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(WORK_REQUEST_URL))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        log.info("[PowerAutomate] Create response: status={}, body={}", response.statusCode(), response.body());
+
+        if (response.statusCode() == 200 || response.statusCode() == 201) {
+            // Try to extract the SharePoint ID from response
+            try {
+                JsonNode root = mapper.readTree(response.body());
+                // Power Automate might return the ID in different ways
+                if (root.has("ID")) {
+                    return root.get("ID").asText();
+                } else if (root.has("id")) {
+                    return root.get("id").asText();
+                } else if (root.has("sharepointId")) {
+                    return root.get("sharepointId").asText();
+                }
+                // If no ID in response, return null - item was created but we don't have the ID
+                log.warn("[PowerAutomate] Work request created but no ID returned in response");
+                return null;
+            } catch (Exception e) {
+                log.warn("[PowerAutomate] Failed to parse response for ID: {}", e.getMessage());
+                return null;
+            }
+        } else {
+            throw new IOException("Power Automate create failed with status: " + response.statusCode() + ", response: " + response.body());
+        }
+    }
 
     public List<SpaceDto> getAllSpaces() throws IOException, InterruptedException {
         Map<String,String> requestMap = Map.of(

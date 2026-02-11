@@ -25,6 +25,20 @@ public class SharepointAccessService {
         );
     }
 
+    /**
+     * Create a new work request in SharePoint.
+     * Uses certificate access first, falls back to Power Automate.
+     * @param dto the work request data
+     * @return the SharePoint ID of the created item, or null if creation failed
+     */
+    public String createWorkRequest(WorkRequestDto dto) {
+        return executeWithFallback(
+                () -> certificateAccess.createWorkRequest(dto),
+                () -> powerAutomateAccess.createWorkRequest(dto),
+                "createWorkRequest"
+        );
+    }
+
     public void archiveWorkRequest(String sharepointId) {
         executeWithFallback(
                 () -> { certificateAccess.archiveWorkRequest(sharepointId); return null; },

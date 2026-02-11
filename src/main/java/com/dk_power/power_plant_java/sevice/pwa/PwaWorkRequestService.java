@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.pwa;
 
+import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
@@ -53,11 +54,30 @@ public class PwaWorkRequestService {
         workRequestRepo.save(entity);
         log.info("[PWA Submit] Work request saved locally: localUuid={}", dto.getLocalUuid());
 
-        // TODO: Implement SharePoint create via SharepointAccessService
-        // For now, the scheduled sync will pick up records without sharepointId
-        // and attempt to create them in SharePoint
+        // Attempt SharePoint submission via fallback chain (Certificate -> Power Automate)
+        String sharepointId = null;
+        String method = "local";
 
-        return PwaSubmissionResult.success("local", null, dto.getLocalUuid());
+        try {
+            WorkRequestDto spDto = convertToSharePointDto(dto);
+            sharepointId = sharepointAccess.createWorkRequest(spDto);
+
+            if (sharepointId != null) {
+                entity.setSharepointId(sharepointId);
+                workRequestRepo.save(entity);
+                method = "sharepoint";
+                log.info("[PWA Submit] Work request created in SharePoint: id={}, localUuid={}",
+                        sharepointId, dto.getLocalUuid());
+            } else {
+                log.warn("[PWA Submit] SharePoint returned null ID for localUuid={}", dto.getLocalUuid());
+            }
+        } catch (Exception e) {
+            log.error("[PWA Submit] Failed to create in SharePoint for localUuid={}: {}",
+                    dto.getLocalUuid(), e.getMessage());
+            // Item is saved locally - can be synced later
+        }
+
+        return PwaSubmissionResult.success(method, sharepointId, dto.getLocalUuid());
     }
 
     /**
@@ -67,6 +87,25 @@ public class PwaWorkRequestService {
         return workRequestRepo.findByLocalUuid(localUuid)
                 .map(this::toStatusResult)
                 .orElse(null);
+    }
+
+    private WorkRequestDto convertToSharePointDto(PwaWorkRequestDto dto) {
+        WorkRequestDto spDto = new WorkRequestDto();
+        spDto.setDateOfWorkToBePerformed(dto.getDateOfWork());
+        spDto.setTimeOfWorkToBePerformed(dto.getTimeOfWork());
+        spDto.setRequestedBy(dto.getWorkRequestedBy());
+        spDto.setCompany(dto.getCompany());
+        spDto.setLocation(dto.getLocationOfWork());
+        spDto.setAffectedEquipment(dto.getAffectedEquipment());
+        spDto.setWorkScope(dto.getWorkScope());
+        spDto.setForeman(dto.getForemanName());
+        spDto.setFireWatch(dto.getFireWatchName());
+        spDto.setBooleanIsLotoRequired(dto.getIsLotoRequired());
+        spDto.setBooleanIsHotWorkRequired(dto.getIsHotWorkRequired());
+        spDto.setBooleanIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
+        spDto.setSpace(dto.getSpaceToBeEntered());
+        spDto.setStatus("Active");
+        return spDto;
     }
 
     private WorkRequest convertToEntity(PwaWorkRequestDto dto) {

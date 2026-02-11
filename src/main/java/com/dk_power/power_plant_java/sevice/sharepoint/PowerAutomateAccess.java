@@ -23,6 +23,16 @@ public class PowerAutomateAccess implements SharePointAccess {
     }
 
     @Override
+    public String createWorkRequest(WorkRequestDto dto) {
+        try {
+            return powerAutomateClient.createWorkRequest(dto);
+        } catch (Exception e) {
+            log.error("[PowerAutomate] Failed to create work request: {}", e.getMessage());
+            throw new RuntimeException("PowerAutomate failed to create work request: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void archiveWorkRequest(String sharepointId) {
         powerAutomateClient.archiveWorkRequests(sharepointId);
     }
