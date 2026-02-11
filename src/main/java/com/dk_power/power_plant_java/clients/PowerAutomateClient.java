@@ -104,11 +104,12 @@ public class PowerAutomateClient {
         requestBody.put("Location Of Work", dto.getLocation());
         requestBody.put("Affected Equipment", dto.getAffectedEquipment());
         requestBody.put("Work Scope", dto.getWorkScope());
-        requestBody.put("Is Hot Work Required (welding, cutting, griding, open flame, sparks)", dto.getIsHotWorkRequired());
+        // Power Automate expects String "Yes"/"No", not Boolean
+        requestBody.put("Is Hot Work Required (welding, cutting, griding, open flame, sparks)", booleanToYesNo(dto.getIsHotWorkRequired()));
         requestBody.put("Foreman Name", dto.getForeman());
         requestBody.put("Fire-watch Name", dto.getFireWatch());
-        requestBody.put("Is LOTO Required?", dto.getIsLotoRequired());
-        requestBody.put("Is Confined Space Entry Required?", dto.getIsConfinedSpaceEntryRequired());
+        requestBody.put("Is LOTO Required?", booleanToYesNo(dto.getIsLotoRequired()));
+        requestBody.put("Is Confined Space Entry Required?", booleanToYesNo(dto.getIsConfinedSpaceEntryRequired()));
         requestBody.put("Space to be entered:", dto.getSpace());
         requestBody.put("Status", "Active");
 
@@ -174,6 +175,13 @@ public class PowerAutomateClient {
         );
     }
 
-
-
+    /**
+     * Convert Boolean to "Yes"/"No" string for Power Automate.
+     */
+    private String booleanToYesNo(Boolean value) {
+        if (value == null) {
+            return "No";
+        }
+        return value ? "Yes" : "No";
+    }
 }
