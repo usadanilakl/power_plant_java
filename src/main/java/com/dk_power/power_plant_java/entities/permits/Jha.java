@@ -9,7 +9,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,7 +53,8 @@ public class Jha {
     // PWA tracking
     private String localUuid;
     private Boolean deleted = false;
-    private LocalDateTime submittedAt;
+    @Column(name = "time_submitted")
+    private String timeSubmitted;
 
     // Submitter contact info
     private String submitterName;

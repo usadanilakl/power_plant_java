@@ -30,7 +30,7 @@ ALTER TABLE IF EXISTS loto_boxes ADD COLUMN IF NOT EXISTS led_strip_id BIGINT;
 
 -- Add PWA submitter fields to work_request
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS local_uuid VARCHAR(255);
-ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP;
+ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS time_submitted VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_name VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_email VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);
@@ -38,7 +38,7 @@ ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_company VA
 
 -- Same for audit table
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS local_uuid VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP;
+ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS time_submitted VARCHAR(255);
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_name VARCHAR(255);
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_email VARCHAR(255);
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);

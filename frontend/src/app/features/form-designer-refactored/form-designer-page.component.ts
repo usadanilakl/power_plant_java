@@ -9,7 +9,7 @@ import { LeftMenuOutletComponent } from '../../shared/left-menu-outlet/left-menu
   standalone: true,
   imports: [RouterMenuComponent, MainLayoutComponent, LeftMenuOutletComponent, RouterModule],
   template: `
-    <app-main-layout>
+    <app-main-layout [isSideMenuEnabled]="true">
       <ng-container header>
         <app-router-menu [layout]="'row'"></app-router-menu>
       </ng-container>

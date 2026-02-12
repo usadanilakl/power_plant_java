@@ -196,6 +196,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
         body.put("LocationOfWork", dto.getLocation() != null ? dto.getLocation() : "");
         body.put("AffectedEquipment", dto.getAffectedEquipment() != null ? dto.getAffectedEquipment() : "");
         body.put("Title", dto.getWorkScope() != null ? dto.getWorkScope() : "");
+        body.put("WorkScope", dto.getWorkScope() != null ? dto.getWorkScope() : "");
         body.put("IsLOTORequired", Boolean.TRUE.equals(dto.getIsLotoRequired()));
         body.put("IsHotWorkRequired", Boolean.TRUE.equals(dto.getIsHotWorkRequired()));
         body.put("IsConfinedSpaceEntryRequired", Boolean.TRUE.equals(dto.getIsConfinedSpaceEntryRequired()));

@@ -17,9 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 @Service
@@ -44,8 +44,10 @@ public class PwaJhaService {
         // Convert DTO to entity
         Jha entity = convertToEntity(dto);
         entity.setLocalUuid(dto.getLocalUuid());
-        ZonedDateTime centralNow = ZonedDateTime.now(ZoneId.of("America/Chicago"));
-        entity.setSubmittedAt(centralNow.toLocalDateTime());
+        String timeSubmitted = ZonedDateTime.now(ZoneId.of("America/Chicago"))
+                .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
+        entity.setTimeSubmitted(timeSubmitted);
+        dto.setTimeSubmitted(timeSubmitted);
         entity.setDeleted(false);
 
         // Link to WorkRequest

@@ -188,6 +188,7 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setSpace(spDto.getSpace());
         entity.setSharepointId(spDto.getSharepointId());
         entity.setLocalUuid(spDto.getLocalUuid());
+        entity.setTimeSubmitted(spDto.getTimeSubmitted());
         entity.setSubmitterName(spDto.getSubmitterName());
         entity.setSubmitterEmail(spDto.getSubmitterEmail());
         entity.setSubmitterPhone(spDto.getSubmitterPhone());
@@ -231,6 +232,9 @@ public class WorkRequestMapper implements BaseMapper {
         }
         if (entity.getLocalUuid() == null && spDto.getLocalUuid() != null) {
             entity.setLocalUuid(spDto.getLocalUuid());
+        }
+        if (entity.getTimeSubmitted() == null && spDto.getTimeSubmitted() != null) {
+            entity.setTimeSubmitted(spDto.getTimeSubmitted());
         }
     }
 

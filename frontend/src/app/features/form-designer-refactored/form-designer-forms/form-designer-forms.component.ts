@@ -37,6 +37,6 @@ export class FormDesignerFormsComponent {
   }
 
   getCellStyle(form: PrintableFormDto, column: Column): any {
-    return column.conditionalStyling ? column.conditionalStyling(form) : {};
+    return column.conditionalStyling ? column.conditionalStyling(form, column) : {};
   }
 }

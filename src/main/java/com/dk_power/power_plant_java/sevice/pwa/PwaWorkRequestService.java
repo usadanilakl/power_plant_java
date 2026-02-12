@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,15 +53,14 @@ public class PwaWorkRequestService {
         entity.setPermitStatus(valueService.createValue("Permit Status", "Active"));
 
         // Save submitter info and timestamp (Central Time is the source of truth)
-        ZonedDateTime centralNow = ZonedDateTime.now(ZoneId.of("America/Chicago"));
+        String timeSubmitted = ZonedDateTime.now(ZoneId.of("America/Chicago"))
+                .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
         entity.setSubmitterName(dto.getSubmitterName());
         entity.setSubmitterEmail(dto.getSubmitterEmail());
         entity.setSubmitterPhone(dto.getSubmitterPhone());
         entity.setSubmitterCompany(dto.getSubmitterCompany());
-        entity.setSubmittedAt(centralNow.toLocalDateTime());
-
-        // Override client timestamp with server Central Time for SharePoint
-        dto.setTimeSubmitted(centralNow.format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a")));
+        entity.setTimeSubmitted(timeSubmitted);
+        dto.setTimeSubmitted(timeSubmitted);
 
         // Save locally first
         workRequestRepo.save(entity);
@@ -210,7 +208,7 @@ public class PwaWorkRequestService {
         result.setLocalUuid(entity.getLocalUuid());
         result.setSharepointId(entity.getSharepointId());
         result.setStatus(entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "Unknown");
-        result.setSubmittedAt(entity.getDateCreated());
+        result.setTimeSubmitted(entity.getTimeSubmitted());
         result.setSubmissionMethod(entity.getSharepointId() != null ? "sharepoint" : "local");
         return result;
     }

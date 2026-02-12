@@ -1,0 +1,358 @@
+@if (container; as c) {
+  <div class="properties-panel">
+    <h3>{{ getContainerName() }}</h3>
+
+    <div class="property-group">
+      <label>Bulk Edit Mode</label>
+      <div class="property-row">
+        <input type="checkbox" [checked]="isBulkEditMode()" (change)="toggleBulkEditMode()">
+      </div>
+
+      @if (isBulkEditMode()) {
+        <div class="input-row">
+          <div class="input-field">
+            <label for="bulkEditTarget">Apply To</label>
+            <select id="bulkEditTarget" [ngModel]="bulkEditTarget()" (ngModelChange)="setBulkEditTarget($event)">
+              <option value="selected">All Selected</option>
+              <option value="page">All on Page</option>
+              <option value="type">All of Same Type</option>
+            </select>
+          </div>
+        </div>
+        <button (click)="applyBulkUpdate()">Apply</button>
+      }
+    </div>
+
+    <div class="property-group">
+      <label>Container</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="containerName">Name</label>
+          <input id="containerName" type="text" [(ngModel)]="c.name" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="pageNumber">Page</label>
+          <select id="pageNumber" [ngModel]="c.pageNumber" (ngModelChange)="setPageNumber(+$event)">
+            @for (page of pages(); track page) {
+              <option [value]="page">{{ page }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="property-row">
+        <label>Locked:</label>
+        <input type="checkbox" [checked]="c.locked" (change)="toggleLocked()">
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Position</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="posX">X</label>
+          <input id="posX" type="number" [(ngModel)]="c.position.x" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="posY">Y</label>
+          <input id="posY" type="number" [(ngModel)]="c.position.y" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Size</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="width">Width</label>
+          <input id="width" type="number" [(ngModel)]="c.size.width" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="height">Height</label>
+          <input id="height" type="number" [(ngModel)]="c.size.height" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Style</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="backgroundColor">Background</label>
+          <input id="backgroundColor" type="color" [(ngModel)]="c.style.backgroundColor" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field-addon">
+          <label for="transparentBg">Transparent</label>
+          <input id="transparentBg" type="checkbox" [checked]="c.style.backgroundColor === 'transparent'" (change)="toggleTransparentBackground()">
+        </div>
+        <div class="input-field">
+          <label for="borderColor">Border Color</label>
+          <input id="borderColor" type="color" [(ngModel)]="c.style.borderColor" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderRadius">Border Radius</label>
+          <input id="borderRadius" type="text" placeholder="e.g., 5px or 50%" [(ngModel)]="c.style.borderRadius" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Border Visibility</label>
+      <div class="input-row border-toggle-buttons">
+        <button (click)="toggleBorder('Top')" [class.active]="isBorderVisible('Top')">Top</button>
+        <button (click)="toggleBorder('Right')" [class.active]="isBorderVisible('Right')">Right</button>
+        <button (click)="toggleBorder('Bottom')" [class.active]="isBorderVisible('Bottom')">Bottom</button>
+        <button (click)="toggleBorder('Left')" [class.active]="isBorderVisible('Left')">Left</button>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Border Thickness</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderTopWidth">Top</label>
+          <input id="borderTopWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="c.style.borderTopWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="borderRightWidth">Right</label>
+          <input id="borderRightWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="c.style.borderRightWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderBottomWidth">Bottom</label>
+          <input id="borderBottomWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="c.style.borderBottomWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="borderLeftWidth">Left</label>
+          <input id="borderLeftWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="c.style.borderLeftWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Content</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="contentType">Content Type</label>
+          <select id="contentType" [(ngModel)]="c.contentType" (ngModelChange)="onContentTypeChange()">
+            <option value="text">Text</option>
+            <option value="formField">Form Field</option>
+            <option value="variable">Dynamic Content</option>
+            <option value="image">Image</option>
+            <option value="repeatingSection">Repeating Section</option>
+          </select>
+        </div>
+      </div>
+
+      @switch (c.contentType) {
+        @case ('text') {
+          <div class="input-row">
+            <div class="input-field">
+              <div class="label-with-button">
+                <label for="textContent">Text</label>
+                <button (click)="useContainerNameAsContent()" class="btn-link">Use Name</button>
+              </div>
+              <textarea id="textContent" [(ngModel)]="c.content" (ngModelChange)="onPropertyChange()"></textarea>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontSize">Font Size (px)</label>
+              <input id="fontSize" type="number" [(ngModel)]="c.contentStyle.fontSize" (ngModelChange)="onPropertyChange()">
+            </div>
+            <div class="input-field">
+              <label for="textColor">Text Color</label>
+              <input id="textColor" type="color" [(ngModel)]="c.contentStyle.color" (ngModelChange)="onPropertyChange()">
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontWeight">Font Weight</label>
+              <select id="fontWeight" [(ngModel)]="c.style.fontWeight" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+              </select>
+            </div>
+            <div class="input-field">
+              <label for="fontStyle">Font Style</label>
+              <select id="fontStyle" [(ngModel)]="c.style.fontStyle" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="whiteSpace">White Space</label>
+              <select id="whiteSpace" [(ngModel)]="c.contentStyle.whiteSpace" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="pre-wrap">Preserve Spaces & Wrap</option>
+                <option value="pre">Preserve Spaces</option>
+                <option value="nowrap">No Wrap</option>
+              </select>
+            </div>
+          </div>
+        }
+        @case ('variable') {
+          <div class="input-row">
+            <div class="input-field">
+              <label for="formFieldContent">Field</label>
+              <select id="formFieldContent" [(ngModel)]="c.content" [compareWith]="compareFields" (ngModelChange)="onPropertyChange()">
+                <option [ngValue]="null">-- Select Field --</option>
+                @for (field of flattenedFields; track field.path) {
+                  <option [ngValue]="field.path">{{ field.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontSize">Font Size (px)</label>
+              <input id="fontSize" type="number" [(ngModel)]="c.contentStyle.fontSize" (ngModelChange)="onPropertyChange()">
+            </div>
+            <div class="input-field">
+              <label for="textColor">Text Color</label>
+              <input id="textColor" type="color" [(ngModel)]="c.contentStyle.color" (ngModelChange)="onPropertyChange()">
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontWeight">Font Weight</label>
+              <select id="fontWeight" [(ngModel)]="c.style.fontWeight" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+              </select>
+            </div>
+            <div class="input-field">
+              <label for="fontStyle">Font Style</label>
+              <select id="fontStyle" [(ngModel)]="c.style.fontStyle" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
+            </div>
+          </div>
+        }
+        @case ('formField') {
+          @if (isFormFieldContent(c.content)) {
+            <div class="input-row">
+              <div class="input-field">
+                <label for="formFieldName">Field Name</label>
+                <select id="formFieldName" [(ngModel)]="c.content.name" (ngModelChange)="onPropertyChange()">
+                  <option value="">-- Select Field --</option>
+                  @for (field of flattenedFields; track field.path) {
+                    <option [value]="field.path">{{ field.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-field">
+                <label for="formFieldType">Field Type</label>
+                <select id="formFieldType" [(ngModel)]="c.content.type" (ngModelChange)="onPropertyChange()">
+                  @for (type of formFieldTypes; track type) {
+                    <option [value]="type">{{ type | titlecase }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+        }
+        @case ('repeatingSection') {
+          @if (isFormFieldContent(c.content)) {
+            <div class="input-row">
+              <div class="input-field">
+                <label for="repeatingContent">Source Array</label>
+                <select id="repeatingContent" [(ngModel)]="c.content.name!" (ngModelChange)="onPropertyChange()">
+                  <option [ngValue]="null">-- Select Array Field --</option>
+                  @for (field of arrayFields; track field.path) {
+                    <option [ngValue]="field.path">{{ field.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-field">
+                <label for="repeatingForm">Form Template</label>
+                <select id="repeatingForm" [(ngModel)]="formId" (ngModelChange)="onEntityFieldTypeChange()">
+                  <option [ngValue]="null">-- Select Form --</option>
+                  @for (form of printableForms(); track form.id) {
+                    <option [ngValue]="form.id">{{ form.name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+        }
+        @case ('image') {
+          <div class="input-row">
+            <div class="input-field">
+              <label for="imageContent">Image</label>
+              <input id="imageContent" type="file" (change)="onFileSelected($event)" accept="image/*">
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <div class="property-group">
+      <label>Content Position</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="justifyContent">Justify</label>
+          <select id="justifyContent" [(ngModel)]="c.style.justifyContent" (ngModelChange)="onPropertyChange()">
+            <option value="flex-start">Start</option>
+            <option value="center">Center</option>
+            <option value="flex-end">End</option>
+            <option value="space-between">Space Between</option>
+            <option value="space-around">Space Around</option>
+          </select>
+        </div>
+        <div class="input-field">
+          <label for="alignItems">Align</label>
+          <select id="alignItems" [(ngModel)]="c.style.alignItems" (ngModelChange)="onPropertyChange()">
+            <option value="flex-start">Start</option>
+            <option value="center">Center</option>
+            <option value="flex-end">End</option>
+            <option value="stretch">Stretch</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Padding</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingAll">All</label>
+          <input id="paddingAll" type="number" (change)="setAllPaddings($event)">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingTop">Top</label>
+          <input id="paddingTop" type="text" placeholder="e.g., 10px" [(ngModel)]="c.style.paddingTop" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="paddingRight">Right</label>
+          <input id="paddingRight" type="text" placeholder="e.g., 10px" [(ngModel)]="c.style.paddingRight" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingBottom">Bottom</label>
+          <input id="paddingBottom" type="text" placeholder="e.g., 10px" [(ngModel)]="c.style.paddingBottom" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="paddingLeft">Left</label>
+          <input id="paddingLeft" type="text" placeholder="e.g., 10px" [(ngModel)]="c.style.paddingLeft" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="delete-button" (click)="onDelete()">Delete Container</button>
+    </div>
+  </div>
+}

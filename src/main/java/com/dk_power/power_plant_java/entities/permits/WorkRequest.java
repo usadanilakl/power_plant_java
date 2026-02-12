@@ -9,8 +9,6 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "work_request")
 @Getter
@@ -42,8 +40,8 @@ public class WorkRequest extends BasePermitEntity {
     @Column(name = "local_uuid")
     private String localUuid;
 
-    @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    @Column(name = "time_submitted")
+    private String timeSubmitted;
 
     @Column(name = "submitter_name")
     private String submitterName;

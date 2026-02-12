@@ -11,6 +11,6 @@ public class PwaStatusResult {
     private String status;              // "pending", "active", "processed", "closed"
     private LocalDateTime processedAt;
     private String processedBy;
-    private LocalDateTime submittedAt;
+    private String timeSubmitted;
     private String submissionMethod;
 }

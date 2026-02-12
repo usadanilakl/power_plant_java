@@ -1,0 +1,28 @@
+@if (formDefinition()) {
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+    @if (!readOnly()) {
+      <div class="form-actions">
+        <button type="button" (click)="onSubmit()">Submit</button>
+        <button type="button" (click)="print()">Print</button>
+      </div>
+    }
+
+    @for (page of pages(); track page.pageNumber) {
+      <div class="form-sheet"
+        [style.width.px]="sheetSize().width * pixelsPerInch"
+        [style.height.px]="sheetSize().height * pixelsPerInch">
+        @for (container of page.containers; track container.id) {
+          <app-form-container-renderer
+            [container]="container"
+            [form]="form"
+            (arrayItemAdded)="onArrayItemAdded($event)"
+            (arrayItemRemoved)="onArrayItemRemoved($event)"
+            [readOnly]="readOnly()"
+            [formData]="formData()">
+          </app-form-container-renderer>
+        }
+      </div>
+    }
+  </form>
+}
