@@ -57,7 +57,9 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         icon: 'edit_document',
         defaultRoute: '/form-designer',
         items: [
-            { route: '/form-designer', label: 'Form Designer' }
+            { route: '/form-designer/forms', label: 'Existing Forms' },
+            { route: '/form-designer/design', label: 'Design' },
+            { route: '/form-designer/preview', label: 'Preview' }
         ]
     },
     {
