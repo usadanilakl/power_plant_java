@@ -1,18 +1,28 @@
 import { Routes } from '@angular/router';
-import { PrintableFormPageComponent } from '../pages/printable-form-page/printable-form-page.component';
-import { PrintableFormComponent } from '../features/form-designer/printable-form/printable-form.component';
-import { PrintableFormPreviewComponent } from '../features/form-designer/printable-form/printable-form-preview/printable-form-preview.component';
-import { PrintableFormDesignerRefactoredComponent } from '../features/form-designer/refactored/printable-form-designer-refactored/printable-form-designer-refactored.component';
+import { FormDesignerPageComponent } from '../features/form-designer-refactored/form-designer-page.component';
+import { FormDesignerLeftMenuComponent } from '../features/form-designer-refactored/form-designer-left-menu/form-designer-left-menu.component';
 
 export const FORM_DESIGNER_ROUTES: Routes = [
   {
     path: 'form-designer',
-    component: PrintableFormPageComponent,
+    component: FormDesignerPageComponent,
     children: [
       { path: '', redirectTo: 'forms', pathMatch: 'full' },
-      { path: 'forms', component: PrintableFormComponent },
-      { path: 'preview', component: PrintableFormPreviewComponent },
-      { path: 'design', component: PrintableFormDesignerRefactoredComponent }
-    ]
-  }
+      {
+        path: 'forms',
+        loadComponent: () => import('../features/form-designer-refactored/form-designer-forms/form-designer-forms.component').then(m => m.FormDesignerFormsComponent),
+        data: { leftMenu: FormDesignerLeftMenuComponent },
+      },
+      {
+        path: 'design',
+        loadComponent: () => import('../features/form-designer-refactored/form-designer-canvas/form-designer-canvas.component').then(m => m.FormDesignerCanvasComponent),
+        data: { leftMenu: FormDesignerLeftMenuComponent },
+      },
+      {
+        path: 'preview',
+        loadComponent: () => import('../features/form-designer-refactored/form-designer-preview/form-designer-preview.component').then(m => m.FormDesignerPreviewComponent),
+        data: { leftMenu: FormDesignerLeftMenuComponent },
+      },
+    ],
+  },
 ];

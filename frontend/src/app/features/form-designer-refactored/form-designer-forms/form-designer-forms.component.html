@@ -1,0 +1,34 @@
+<div class="forms-container">
+  <div class="header">
+    <h2>Existing Forms</h2>
+  </div>
+
+  <table class="forms-table">
+    <thead>
+      <tr>
+        @for (col of columns; track col.id) {
+          <th>{{ col.header }}</th>
+        }
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (form of forms(); track form.id) {
+        <tr class="form-row" (click)="selectForm(form)">
+          @for (col of columns; track col.id) {
+            <td [ngStyle]="getCellStyle(form, col)">{{ getCellValue(form, col) }}</td>
+          }
+          <td class="actions-cell">
+            <button class="action-btn" (click)="copyForm(form, $event)" title="Copy">Copy</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td [attr.colspan]="columns.length + 1" class="empty-state">
+            No forms found. Create one from the left menu.
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

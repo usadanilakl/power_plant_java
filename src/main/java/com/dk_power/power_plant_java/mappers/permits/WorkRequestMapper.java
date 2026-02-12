@@ -188,6 +188,10 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setSpace(spDto.getSpace());
         entity.setSharepointId(spDto.getSharepointId());
         entity.setLocalUuid(spDto.getLocalUuid());
+        entity.setSubmitterName(spDto.getSubmitterName());
+        entity.setSubmitterEmail(spDto.getSubmitterEmail());
+        entity.setSubmitterPhone(spDto.getSubmitterPhone());
+        entity.setSubmitterCompany(spDto.getSubmitterCompany());
 
         return entity;
     }
@@ -211,6 +215,23 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(spDto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(spDto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(spDto.getSpace());
+
+        // Preserve submitter fields: fill from SharePoint if local value is missing
+        if (entity.getSubmitterName() == null && spDto.getSubmitterName() != null) {
+            entity.setSubmitterName(spDto.getSubmitterName());
+        }
+        if (entity.getSubmitterEmail() == null && spDto.getSubmitterEmail() != null) {
+            entity.setSubmitterEmail(spDto.getSubmitterEmail());
+        }
+        if (entity.getSubmitterPhone() == null && spDto.getSubmitterPhone() != null) {
+            entity.setSubmitterPhone(spDto.getSubmitterPhone());
+        }
+        if (entity.getSubmitterCompany() == null && spDto.getSubmitterCompany() != null) {
+            entity.setSubmitterCompany(spDto.getSubmitterCompany());
+        }
+        if (entity.getLocalUuid() == null && spDto.getLocalUuid() != null) {
+            entity.setLocalUuid(spDto.getLocalUuid());
+        }
     }
 
 

@@ -129,7 +129,7 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
 ]
 
 export const FORM_DESIGNER_NAV_MENU_ITEMS = [
-    { label: 'Existing Froms', route: './forms' },
-    { label: 'Design New', route: './design' },
-    { label: 'Preview', route: './perview' },
+    { label: 'Existing Forms', route: './forms' },
+    { label: 'Design', route: './design' },
+    { label: 'Preview', route: './preview' },
 ]

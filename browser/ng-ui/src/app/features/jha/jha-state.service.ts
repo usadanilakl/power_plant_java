@@ -186,7 +186,10 @@ export class JhaStateService {
     }
 
     resubmitSelected() {
-      this.jhaLocalStorageService.saveDraft(this.getSelectedJha());
+      const jha = this.getSelectedJha();
+      const { attachments, files, id, localUuid, sharepointId, submissionStatus, status, ...draftFields } = jha as any;
+      this.jhaLocalStorageService.saveDraft(draftFields);
+      this.selectJha(new Jha(draftFields));
     }
 
     revokeSelected(){

@@ -1,0 +1,12 @@
+<label class="square-checkbox-container" [for]="id">
+  <input
+    type="checkbox"
+    [id]="id"
+    [ngModel]="value"
+    (ngModelChange)="toggle($event)"
+    [disabled]="disabled"
+    (blur)="onTouched()"
+  />
+  <span class="custom-square"></span>
+  {{ label }}
+</label>

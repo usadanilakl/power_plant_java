@@ -1,0 +1,31 @@
+<div class="invisible-select-container" cdkOverlayOrigin #trigger="cdkOverlayOrigin">
+  <div class="select-display" (click)="toggleDropdown($event)">
+    <span>{{ selectedOption?.label || label }}</span>
+  </div>
+</div>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="trigger"
+  [cdkConnectedOverlayOpen]="isOpen"
+  [cdkConnectedOverlayPositions]="positions"
+  (overlayOutsideClick)="closeDropdown()"
+  (detach)="closeDropdown()">
+  <div class="options-container">
+    <div class="search-bar">
+      <input type="text" (input)="onSearch($event)" (click)="$event.stopPropagation()" placeholder="Search...">
+    </div>
+    <div class="options-list">
+      <div *ngFor="let option of filteredOptions" class="option" (click)="selectOption(option, $event)">
+        {{ option.label }}
+      </div>
+      <div *ngIf="filteredOptions.length === 0" class="option disabled">
+        No options found
+      </div>
+    </div>
+    <div class="actions">
+      <button (click)="onAddNewOption($event)">Add New</button>
+      <button (click)="onEditOption($event)" [disabled]="!value">Edit Selected</button>
+    </div>
+  </div>
+</ng-template>

@@ -39,10 +39,21 @@ public class WorkRequest extends BasePermitEntity {
     private String sharepointId;
 
     // PWA tracking
-    private String localUuid;           // PWA's unique ID for dedup
-    private LocalDateTime submittedAt;  // When submitted from PWA
-    private String submitterName;       // PWA submitter contact info
+    @Column(name = "local_uuid")
+    private String localUuid;
+
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "submitter_name")
+    private String submitterName;
+
+    @Column(name = "submitter_email")
     private String submitterEmail;
+
+    @Column(name = "submitter_phone")
     private String submitterPhone;
+
+    @Column(name = "submitter_company")
     private String submitterCompany;
 }
