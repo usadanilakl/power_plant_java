@@ -230,11 +230,15 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   }
 
   convertToPaModel(): WorkRequestPa {
-    // Extract local date components (avoids UTC date shift from toISOString)
+    // Build a UTC ISO string for Power Automate.
+    // The user enters date + time which represent Central Time.
+    // We construct a Date using the form values (interpreted as browser-local time),
+    // then toISOString() converts to UTC. This is correct when the browser is in
+    // Central Time (America/Chicago), which is always the case for this power plant PWA.
     const d = this.dateOfWork instanceof Date ? this.dateOfWork : new Date(this.dateOfWork);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    // Combine as naive local datetime (Central Time) — no UTC conversion
-    const combinedDateTime = `${dateStr}T${this.timeOfWork || '00:00'}:00`;
+    const centralDateTime = new Date(`${dateStr}T${this.timeOfWork || '00:00'}:00`);
+    const combinedDateTime = centralDateTime.toISOString(); // UTC with Z suffix
 
     return new WorkRequestPa({
       PwaId: this.localUuid,

@@ -4,6 +4,7 @@ import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
+import { ValueDto } from '../value.model';
 
 
 export class SwHazards {
@@ -102,6 +103,7 @@ export interface SafeWorkModel extends BaseModel {
   hazards: SwHazards | null;
   permits: SwPermits | null;
   ppe: SwPpe | null;
+  permitStatus: ValueDto;
 }
 
 export class SafeWorkDto extends BaseDto implements SafeWorkModel {
@@ -115,6 +117,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
   hazards: SwHazards | null;
   permits: SwPermits | null;
   ppe: SwPpe | null;
+  permitStatus: ValueDto;
 
   constructor(data: Partial<SafeWorkModel> = {}) {
     super(data);
@@ -128,6 +131,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     this.hazards = data.hazards ?? new SwHazards();
     this.permits = data.permits ?? new SwPermits();
     this.ppe = data.ppe ?? new SwPpe();
+    this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
   override toJson(): any {
@@ -143,6 +147,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       hazards: this.hazards,
       permits: this.permits,
       ppe: this.ppe,
+      permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
 
@@ -159,6 +164,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       hazards: json.hazards || new SwHazards(),
       permits: json.permits || new SwPermits(),
       ppe: json.ppe || new SwPpe(),
+      permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
 
@@ -289,8 +295,13 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         id: 'isVerified',
         header: 'Verified',
         accessorFn: (item: SafeWorkDto) => item.isVerified ? 'Yes' : 'No',
-        conditionalStyling: (item: any, column: Column) => 
+        conditionalStyling: (item: any, column: Column) =>
             item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+      },
+      permitStatus: {
+        id: 'permitStatus',
+        header: 'Status',
+        accessorFn: (item: SafeWorkDto) => item.permitStatus?.name || ''
       },
     };
 

@@ -85,16 +85,17 @@ body.dragging {
 }
 
 @media print {
-  /* Remove default browser print margins */
-  /* @page {
-    margin: 0px;
+  @page {
+    margin: 0;
     padding: 0;
     size: letter;
-  } */
+  }
+
   /* Force colors and backgrounds to be printed */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    overflow: visible !important;
   }
 
   /* Hide everything on the page by default */
@@ -109,14 +110,33 @@ body.dragging {
 
   /* Position the print layout to fill the page */
   app-print-layout {
-    display: block !important; /* Override the component's host style */
+    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
-    /* Add scaling to make everything smaller */
-    transform: scale(1); /* Adjust this value (0.8, 0.9, etc.) to control size */
-    transform-origin: top left; /* Scale from top-left corner */
+    transform: scale(1);
+    transform-origin: top left;
+  }
+
+  /* Form designer preview print support */
+  app-form-designer-preview, app-form-designer-preview * {
+    visibility: visible;
+  }
+
+  app-form-designer-preview {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Remove renderer padding/background for clean print output */
+  app-form-designer-preview app-form-renderer {
+    padding: 0 !important;
+    background: none !important;
+    overflow: visible !important;
   }
 
   /* Ensure form sheets break pages correctly */
@@ -124,10 +144,14 @@ body.dragging {
     page-break-after: always;
     box-shadow: none !important;
     margin: 0 !important;
+    overflow: visible !important;
   }
 
-  /* Hide action buttons inside the rendered form */
-  .form-actions {
+  /* Hide action buttons and add/remove buttons in print */
+  .form-actions,
+  .add-item-section,
+  .empty-state,
+  .remove-button {
     display: none !important;
   }
 }

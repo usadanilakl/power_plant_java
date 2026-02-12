@@ -17,8 +17,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-import java.time.Instant;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -147,8 +147,12 @@ public class SharePointCertificateAccess implements SharePointAccess {
             for (JsonNode item : items) {
                 WorkRequestDto dto = new WorkRequestDto();
                 dto.setSharepointId(item.path("ID").asText(item.path("Id").asText(null)));
-                dto.setDateOfWorkToBePerformed(item.path("DateOfWork").asText(null));
-                dto.setTimeOfWorkToBePerformed(item.path("DateOfWork").asText(null)); // will be split by caller if needed
+                // SharePoint returns DateOfWork as combined UTC datetime (e.g. "2026-02-15T20:30:00Z")
+                // Split into separate date + time in Central Time for H2 storage
+                String rawDateOfWork = item.path("DateOfWork").asText(null);
+                String[] centralDateAndTime = fromSharePointDateTime(rawDateOfWork);
+                dto.setDateOfWorkToBePerformed(centralDateAndTime[0]);
+                dto.setTimeOfWorkToBePerformed(centralDateAndTime[1]);
                 dto.setRequestedBy(item.path("WorkRequestedBy").asText(null));
                 dto.setCompany(item.path("Company").asText(null));
                 dto.setLocation(item.path("LocationOfWork").asText(null));
@@ -183,14 +187,8 @@ public class SharePointCertificateAccess implements SharePointAccess {
         // Build JSON body using modern SharePoint column names (same as PA V2)
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("PwaId", dto.getLocalUuid() != null ? dto.getLocalUuid() : "");
-        // Combine date + time into ISO datetime (same as PA V2)
-        String date = dto.getDateOfWorkToBePerformed();
-        String time = dto.getTimeOfWorkToBePerformed();
-        if (date != null && time != null && !time.isEmpty()) {
-            body.put("DateOfWork", date + "T" + time + ":00");
-        } else {
-            body.put("DateOfWork", date != null ? date + "T00:00:00" : "");
-        }
+        // Combine date + time as Central Time with offset so SharePoint stores correctly
+        body.put("DateOfWork", toCentralIso(dto.getDateOfWorkToBePerformed(), dto.getTimeOfWorkToBePerformed()));
         body.put("WorkRequestedBy", dto.getRequestedBy() != null ? dto.getRequestedBy() : "");
         body.put("Company", dto.getCompany() != null ? dto.getCompany() : "");
         body.put("LocationOfWork", dto.getLocation() != null ? dto.getLocation() : "");
@@ -326,5 +324,47 @@ public class SharePointCertificateAccess implements SharePointAccess {
     @Override
     public String getName() {
         return "Certificate (SharePoint REST API)";
+    }
+
+    /**
+     * Parse a combined UTC datetime from SharePoint (e.g. "2026-02-15T20:30:00Z")
+     * into [date, time] in Central Time (e.g. ["2026-02-15", "14:30"]).
+     */
+    private String[] fromSharePointDateTime(String raw) {
+        if (raw == null || raw.isEmpty()) return new String[]{ null, null };
+        try {
+            // Remove trailing Z and parse as LocalDateTime, then convert UTC → Central
+            String cleaned = raw.replace("Z", "").replace("z", "");
+            if (!cleaned.contains("T")) return new String[]{ raw, null };
+            LocalDateTime utcLdt = LocalDateTime.parse(cleaned);
+            ZonedDateTime utc = utcLdt.atZone(ZoneId.of("UTC"));
+            ZonedDateTime central = utc.withZoneSameInstant(ZoneId.of("America/Chicago"));
+            String date = central.toLocalDate().toString(); // yyyy-MM-dd
+            String time = String.format("%02d:%02d", central.getHour(), central.getMinute());
+            return new String[]{ date, time };
+        } catch (Exception e) {
+            log.warn("[SharePoint] Failed to parse DateOfWork '{}': {}", raw, e.getMessage());
+            // Fallback: naive split
+            if (raw.contains("T")) {
+                String[] parts = raw.split("T");
+                String timePart = parts[1].length() >= 5 ? parts[1].substring(0, 5) : parts[1];
+                return new String[]{ parts[0], timePart };
+            }
+            return new String[]{ raw, null };
+        }
+    }
+
+    private String toCentralIso(String date, String time) {
+        if (date == null || date.isEmpty()) return "";
+        String timeStr = (time != null && !time.isEmpty()) ? time : "00:00";
+        if (timeStr.length() == 5) timeStr += ":00";
+        try {
+            LocalDateTime ldt = LocalDateTime.parse(date + "T" + timeStr);
+            ZonedDateTime central = ldt.atZone(ZoneId.of("America/Chicago"));
+            return central.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        } catch (Exception e) {
+            log.warn("[SharePoint] Failed to parse date/time: {} / {}", date, time);
+            return date + "T" + timeStr;
+        }
     }
 }

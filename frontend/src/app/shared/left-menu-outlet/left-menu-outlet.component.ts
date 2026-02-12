@@ -9,7 +9,8 @@ interface RouteData {
 
 @Component({
   selector: 'app-left-menu-outlet',
-  template: '<ng-container #leftMenuHost></ng-container>'
+  template: '<ng-container #leftMenuHost></ng-container>',
+  styles: [`:host { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; width: 100%; }`]
 })
 export class LeftMenuOutletComponent implements OnInit, AfterViewInit {
   @ViewChild('leftMenuHost', { read: ViewContainerRef, static: false }) leftMenuHost!: ViewContainerRef;

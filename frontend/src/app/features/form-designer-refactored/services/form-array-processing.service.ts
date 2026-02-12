@@ -44,7 +44,11 @@ export class FormArrayProcessingService {
 
     if (arrayLength === 0) return [container];
 
-    const nestedForm = field.nestedForm;
+    let nestedForm = field.nestedForm;
+    if (!nestedForm && field.fields && field.fields.length > 0) {
+      nestedForm = this.buildNestedFormFromFields(field.fields, formSize);
+      field.nestedForm = nestedForm;
+    }
     if (!nestedForm) return [container];
 
     const nestedFormHeight = nestedForm.size.height * this.PIXELS_PER_INCH;
@@ -125,6 +129,33 @@ export class FormArrayProcessingService {
   private getNestedValue(obj: any, path: string): any {
     if (!obj || !path) return null;
     return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : null), obj);
+  }
+
+  private buildNestedFormFromFields(fields: FormField[], formSize: { width: number; height: number }): any {
+    const rowHeight = 30;
+    const gap = 5;
+    let yOffset = 0;
+    const containers: any[] = [];
+
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      const h = f.type === 'textarea' ? rowHeight * 2 : rowHeight;
+      containers.push({
+        id: -(i + 1),
+        contentType: 'formField',
+        content: f,
+        position: { x: 0, y: yOffset },
+        size: { width: formSize.width * this.PIXELS_PER_INCH - 20, height: h },
+        pageNumber: 1,
+      });
+      yOffset += h + gap;
+    }
+
+    const totalHeight = yOffset / this.PIXELS_PER_INCH + 0.2;
+    return {
+      formContainers: containers,
+      size: { width: formSize.width, height: Math.max(0.5, totalHeight) },
+    };
   }
 
   private isFormField(content: any): content is FormField {

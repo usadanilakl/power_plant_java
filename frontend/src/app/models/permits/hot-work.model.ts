@@ -5,6 +5,7 @@ import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
+import { ValueDto } from '../value.model';
 
 
 export class HotWorkMeasures {
@@ -42,6 +43,7 @@ export interface HotWorkModel extends BaseModel {
   isFireWatchRequired: boolean;
   timeOfInitialTest: string;
   initialTestResult: string;
+  permitStatus: ValueDto;
 }
 
 export class HotWorkDto extends BaseDto implements HotWorkModel {
@@ -58,6 +60,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   timeOfInitialTest: string;
   isFireWatchRequired: boolean;
   initialTestResult: string;
+  permitStatus: ValueDto;
 
   constructor(data: Partial<HotWorkModel> = {}) {
     super(data);
@@ -74,6 +77,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.timeOfInitialTest = data.timeOfInitialTest ?? '';
     this.isFireWatchRequired = data.isFireWatchRequired ?? true;
     this. initialTestResult = data.initialTestResult ?? '';
+    this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
   override toJson(): any {
@@ -88,6 +92,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       meterNum: this.meterNum,
       specialInstructions: this.specialInstructions,
       measures: this.measures,
+      permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
 
@@ -103,6 +108,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       meterNum: json.meterNum || null,
       specialInstructions: json.specialInstructions || null,
       measures: json.measures || new HotWorkMeasures(),
+      permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
 
@@ -264,6 +270,11 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         id: 'initialTestResult',
         header: 'Initial Test Result',
         accessorKey: 'initialTestResult'
+      },
+      permitStatus: {
+        id: 'permitStatus',
+        header: 'Status',
+        accessorFn: (item: HotWorkDto) => item.permitStatus?.name || ''
       }
     };
 

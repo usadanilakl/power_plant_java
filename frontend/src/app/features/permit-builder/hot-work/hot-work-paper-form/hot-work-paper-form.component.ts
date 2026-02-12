@@ -3,7 +3,7 @@ import { CurrentHotWorkService } from '../../../../services/current-items-servic
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { HotWorkDto } from '../../../../models/permits/hot-work.model';
-import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
+import { FormRendererComponent } from "../../../form-designer-refactored/form-renderer/form-renderer.component";
 import { Option } from '../../../../models/option.model';
 import { FormContainerDto } from '../../../../models/forms/form-container.model';
 import { FormField } from '../../../../models/ui/form-field.model';

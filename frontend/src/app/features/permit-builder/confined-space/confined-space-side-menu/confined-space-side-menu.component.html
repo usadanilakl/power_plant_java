@@ -1,4 +1,7 @@
-<app-confined-space-table
-    (rowLeftClickEvent)="onConfinedSpaceRowLeftClick($event)"
-></app-confined-space-table>
-<button (click)="currentConfinedSpaceService.switchFormView()">Switch Form View</button>
+<app-permit-left-panel
+  [isPaperViewInput]="currentConfinedSpaceService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-confined-space-left-menu menu></app-confined-space-left-menu>
+  <app-confined-space-table table></app-confined-space-table>
+</app-permit-left-panel>

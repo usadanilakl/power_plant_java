@@ -1,5 +1,5 @@
 import { Component, computed, DestroyRef, EventEmitter, inject, input, Input, isSignal, Output, signal, Signal } from '@angular/core';
-import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
+import { FormRendererComponent } from "../../../form-designer-refactored/form-renderer/form-renderer.component";
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { toSignal } from '@angular/core/rxjs-interop';

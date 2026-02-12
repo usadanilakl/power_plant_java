@@ -21,9 +21,15 @@ export class PrintService {
     // Use a timeout to allow Angular to render the print component
     // with the new data before the print dialog opens.
     setTimeout(() => {
-      window.print();
-      // Clear the data after printing to hide the print component again
-      this.printableForm.set(null);
-    }, 50); // A small delay is usually sufficient
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.printCurrentPage) {
+        electronAPI.printCurrentPage({ silent: false }).then(() => {
+          this.printableForm.set(null);
+        });
+      } else {
+        window.print();
+        this.printableForm.set(null);
+      }
+    }, 50);
   }
 }

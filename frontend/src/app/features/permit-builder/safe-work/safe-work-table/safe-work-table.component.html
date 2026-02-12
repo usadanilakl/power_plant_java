@@ -1,5 +1,6 @@
-<app-shared-table
-    [items]="currentSafeWorkService.allActiveSafeWorks$"
-    [columns]="columns()"
-    [clickCallback]="onRowLeftClick.bind(this)"
-></app-shared-table>
+<app-table
+  [tableId]="'safe-work-table'"
+  [items]="items()"
+  [columns]="columns()"
+  [isTableIsolated]="true"
+></app-table>

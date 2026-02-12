@@ -49,9 +49,14 @@ export class FormRenderingService {
     const formArray = this.fb.array([]);
     if (!Array.isArray(arrayData)) return formArray;
 
-    const nestedFields = field.nestedForm?.formContainers
+    let nestedFields = field.nestedForm?.formContainers
       ?.filter((c: any) => c.contentType === 'formField' && this.isFormField(c.content))
       .map((c: any) => c.content as FormField) || [];
+
+    // Fallback: use fields array directly (e.g. JHA job steps)
+    if (nestedFields.length === 0 && field.fields && field.fields.length > 0) {
+      nestedFields = field.fields;
+    }
 
     for (const item of arrayData) {
       formArray.push(this.createArrayItem(nestedFields, item) as any);

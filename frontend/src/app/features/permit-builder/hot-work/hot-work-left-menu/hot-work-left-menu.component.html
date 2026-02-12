@@ -1,0 +1,45 @@
+<div class="permit-menu-container">
+  <div class="menu-header">
+    <h2>Hot Work Permits</h2>
+    <div class="header-actions">
+      <button class="icon-button refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
+        <span class="icon">↻</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grouping-controls">
+    <label class="controls-label">Group by:</label>
+    <div class="grouping-buttons">
+      <button
+        class="group-button"
+        [class.active]="groupBy() === 'status'"
+        (click)="setGrouping('status')"
+      >Status</button>
+      <button
+        class="group-button"
+        [class.active]="groupBy() === 'location'"
+        (click)="setGrouping('location')"
+      >Location</button>
+      <button
+        class="group-button"
+        [class.active]="groupBy() === 'requestor'"
+        (click)="setGrouping('requestor')"
+      >Foreman</button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading permits...</span>
+    </div>
+  } @else {
+    <app-rf-toggle-menu
+      [menuItems]="menuItems()"
+      [enableSearch]="true"
+      [searchPlaceholder]="'Search hot work permits...'"
+      (itemClick)="onItemClick($event)"
+    ></app-rf-toggle-menu>
+  }
+</div>

@@ -52,7 +52,15 @@ export class FormContainerRendererComponent {
   });
 
   getContainerStyles(container: FormContainerDto): any {
-    return this.renderingService.getContainerStyles(container);
+    const styles = this.renderingService.getContainerStyles(container);
+    // For form-array containers, use min-height instead of fixed height
+    // so the Add button and items are not clipped
+    if (this.isFormField(container.content) && (container.content as FormField).type === 'form-array') {
+      styles['min-height'] = styles['height'];
+      styles['height'] = 'auto';
+      styles['overflow'] = 'visible';
+    }
+    return styles;
   }
 
   getContentStyles(container: FormContainerDto): any {
@@ -81,10 +89,19 @@ export class FormContainerRendererComponent {
     if (!form) return this.fb.array([]) as FormArray;
 
     const control = form.get(path);
-    if (!control || !(control instanceof FormArray)) {
-      return this.fb.array([]) as FormArray;
+    if (control instanceof FormArray) {
+      return control;
     }
-    return control as FormArray;
+
+    // If not found, create and register in the parent form
+    // so all components share the same connected reference
+    const newArray = this.fb.array([]) as FormArray;
+    form.addControl(path, newArray);
+    return newArray;
+  }
+
+  getArrayIndexRange(): { start: number; end: number } | undefined {
+    return (this.container() as any).arrayIndexRange;
   }
 
   getNestedValue(obj: any, path: string): any {

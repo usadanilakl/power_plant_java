@@ -5,6 +5,7 @@ import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
+import { ValueDto } from '../value.model';
 
 export class ConfinedSpaceHazards {
   oxygenDeficiency: boolean = false;
@@ -89,6 +90,7 @@ export interface ConfinedSpaceModel extends BaseModel {
   hazards: ConfinedSpaceHazards | null;
   ppe: ConfinedSpacePpe | null;
   precautions: ConfinedSpacePrecautions | null;
+  permitStatus: ValueDto;
 }
 
 export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
@@ -115,6 +117,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   hazards: ConfinedSpaceHazards | null;
   ppe: ConfinedSpacePpe | null;
   precautions: ConfinedSpacePrecautions | null;
+  permitStatus: ValueDto;
 
   constructor(data: Partial<ConfinedSpaceModel> = {}) {
     super(data);
@@ -141,6 +144,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.hazards = data.hazards ?? new ConfinedSpaceHazards();
     this.ppe = data.ppe?? new ConfinedSpacePpe();
     this.precautions = data.precautions?? new ConfinedSpacePrecautions();
+    this.permitStatus = data.permitStatus ?? new ValueDto();
   }
 
   override toJson(): any {
@@ -167,6 +171,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       hazards: this.hazards,
       ppe: this.ppe,
       precautions: this.precautions,
+      permitStatus: this.permitStatus?.toJson() ?? null,
     };
   }
 
@@ -194,6 +199,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       hazards: json.hazards || new ConfinedSpaceHazards(),
       ppe: json.ppe || new ConfinedSpacePpe(),
       precautions: json.precautions || new ConfinedSpacePrecautions(),
+      permitStatus: ValueDto.fromJson(json.permitStatus),
     });
   }
 
@@ -378,7 +384,12 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
             accessorFn: (item: ConfinedSpaceDto) => item.isVerified ? 'Yes' : 'No'
         },
         name: { id: 'name', header: 'Name', accessorKey: 'name' },
-        objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' }
+        objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
+        permitStatus: {
+            id: 'permitStatus',
+            header: 'Status',
+            accessorFn: (item: ConfinedSpaceDto) => item.permitStatus?.name || ''
+        }
         };
 
         return fields.map(fieldName => allColumns[fieldName]);

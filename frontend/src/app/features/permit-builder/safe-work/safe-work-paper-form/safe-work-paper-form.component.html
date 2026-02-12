@@ -1,6 +1,5 @@
 <app-form-renderer
     [formData]="data"
-    [formDefinitionInput]="form()"
-    (formChange)="onChange($event)"
-    (formSubmit)="onSubmit($event)">"
+    [formDefinition]="form()"
+    (formSubmit)="onSubmit($event)"
 ></app-form-renderer>

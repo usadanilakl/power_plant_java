@@ -28,12 +28,26 @@ import { RadioCheckboxesComponent } from '../radio-checkboxes/radio-checkboxes.c
 export class NestedFormInputComponent implements OnInit, OnDestroy {
   formField = input<FormField>();
   formArray = input<FormArray>(new FormArray<AbstractControl>([]));
+  arrayIndexRange = input<{ start: number; end: number }>();
   @Input() fieldName: string = '';
 
   itemAdded = output<FormGroup>();
   itemRemoved = output<{ index: number; fieldName: string }>();
 
-  formTemplate = computed<PrintableFormDto>(() => this.formField()?.nestedForm as PrintableFormDto);
+  formTemplate = computed<PrintableFormDto | null>(() => {
+    const field = this.formField();
+    if (!field) return null;
+
+    // If nestedForm is available, use it directly
+    if (field.nestedForm) return field.nestedForm as PrintableFormDto;
+
+    // Auto-generate from fields array (e.g. JHA job steps)
+    if (field.fields && field.fields.length > 0) {
+      return this.buildTemplateFromFields(field.fields);
+    }
+
+    return null;
+  });
 
   private fb = inject(FormBuilder);
   pixelsPerInch = 96;
@@ -41,19 +55,27 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   ngOnInit(): void {}
 
   getFormGroupsForCurrentContainer(): AbstractControl[] {
-    const start = this.formField()?.arrayIndexRange?.start;
-    const end = this.formField()?.arrayIndexRange?.end;
-    return this.formArray().controls.slice(start, end);
+    const range = this.arrayIndexRange();
+    if (range) {
+      return this.formArray().controls.slice(range.start, range.end);
+    }
+    // No range specified — show all items
+    return this.formArray().controls;
   }
 
   addItem(): void {
-    const newGroup = this.createFormGroup();
+    const nextSequence = this.formArray().length + 1;
+    const newGroup = this.createFormGroup({ sequence: nextSequence });
+    // Ensure a sequence control exists even if not in the field template
+    if (!newGroup.get('sequence')) {
+      newGroup.addControl('sequence', new FormControl(nextSequence));
+    }
     this.formArray().push(newGroup);
     this.itemAdded.emit(newGroup);
   }
 
   removeItem(index: number): void {
-    const startIndex = this.formField()?.arrayIndexRange?.start ?? 0;
+    const startIndex = this.arrayIndexRange()?.start ?? 0;
     const actualIndex = startIndex + index;
 
     if (actualIndex < 0 || actualIndex >= this.formArray().length) return;
@@ -70,10 +92,45 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   }
 
   private getAllFormFields(): FormField[] {
-    if (!this.formTemplate()) return [];
-    return (this.formTemplate().formContainers || [])
+    const template = this.formTemplate();
+    if (!template) {
+      // Last resort: use fields directly
+      return this.formField()?.fields || [];
+    }
+    return (template.formContainers || [])
       .filter(c => c.contentType === 'formField' && this.isFormField(c.content))
       .map(c => c.content as FormField);
+  }
+
+  private buildTemplateFromFields(fields: FormField[]): PrintableFormDto {
+    const rowHeight = 30;
+    const gap = 5;
+    const containers: FormContainerDto[] = [];
+    let yOffset = 0;
+
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      const height = field.type === 'textarea' ? rowHeight * 2 : rowHeight;
+
+      containers.push(new FormContainerDto({
+        id: -(i + 1),
+        contentType: 'formField',
+        content: field,
+        position: { x: 0, y: yOffset },
+        size: { width: 8.5 * this.pixelsPerInch - 20, height },
+        pageNumber: 1,
+        style: { border: '1px solid #ccc' },
+      }));
+
+      yOffset += height + gap;
+    }
+
+    const totalHeight = yOffset / this.pixelsPerInch + 0.2;
+
+    return new PrintableFormDto({
+      formContainers: containers,
+      size: { width: 8.5, height: Math.max(0.5, totalHeight) },
+    });
   }
 
   private createFormGroup(data: any = {}): FormGroup {

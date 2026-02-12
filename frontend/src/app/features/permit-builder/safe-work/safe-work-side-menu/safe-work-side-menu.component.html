@@ -1,4 +1,7 @@
-<app-safe-work-table
-    (rowLeftClickEvent)="onSafeWorkRowLeftClick($event)"
-></app-safe-work-table>
-<button (click)="switchFormView()">Switch Form View</button>
+<app-permit-left-panel
+  [isPaperViewInput]="currentSafeWorkService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-safe-work-left-menu menu></app-safe-work-left-menu>
+  <app-safe-work-table table></app-safe-work-table>
+</app-permit-left-panel>

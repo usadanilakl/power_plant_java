@@ -111,6 +111,10 @@ export const IPC_WORK_REQUEST_COUNT = 'permits:work-request-count';
 export const IPC_MENU_POPUP = 'menu:popup';
 export const IPC_MENU_NAVIGATE = 'menu:navigate';   // send/on (main -> renderer)
 
+// Print (invoke/handle)
+export const IPC_PRINT_CURRENT_PAGE = 'print:current-page';
+export const IPC_PRINT_HTML = 'print:html';
+
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';
 export const IPC_QUIT = 'quit';

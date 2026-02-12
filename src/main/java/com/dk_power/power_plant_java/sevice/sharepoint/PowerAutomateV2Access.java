@@ -13,6 +13,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -169,14 +173,8 @@ public class PowerAutomateV2Access implements SharePointAccess {
     private Map<String, Object> workRequestToMap(WorkRequestDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
-        // Combine date + time into ISO datetime for SharePoint DateTime column
-        String date = dto.getDateOfWorkToBePerformed();
-        String time = dto.getTimeOfWorkToBePerformed();
-        if (date != null && time != null && !time.isEmpty()) {
-            map.put("DateOfWork", date + "T" + time + ":00");
-        } else {
-            map.put("DateOfWork", date != null ? date + "T00:00:00" : "");
-        }
+        // Combine date + time as UTC — PA handles timezone display via SharePoint site settings
+        map.put("DateOfWork", toUtcIso(dto.getDateOfWorkToBePerformed(), dto.getTimeOfWorkToBePerformed()));
         map.put("WorkRequestedBy", orEmpty(dto.getRequestedBy()));
         map.put("Company", orEmpty(dto.getCompany()));
         map.put("LocationOfWork", orEmpty(dto.getLocation()));
@@ -199,16 +197,12 @@ public class PowerAutomateV2Access implements SharePointAccess {
 
     private WorkRequestDto mapToWorkRequestDto(Map<String, Object> map) {
         WorkRequestDto dto = new WorkRequestDto();
-        // Split ISO datetime from SharePoint back into separate date and time
+        // SharePoint returns DateOfWork as UTC datetime (e.g. "2026-02-15T20:30:00Z")
+        // Convert back to Central Time and split into separate date + time for H2 storage
         String dateTime = str(map, "DateOfWork");
-        if (dateTime != null && dateTime.contains("T")) {
-            String[] parts = dateTime.split("T");
-            dto.setDateOfWorkToBePerformed(parts[0]);
-            dto.setTimeOfWorkToBePerformed(parts[1].length() >= 5 ? parts[1].substring(0, 5) : parts[1]);
-        } else {
-            dto.setDateOfWorkToBePerformed(dateTime);
-            dto.setTimeOfWorkToBePerformed("");
-        }
+        String[] centralDateAndTime = fromUtcDateTime(dateTime);
+        dto.setDateOfWorkToBePerformed(centralDateAndTime[0]);
+        dto.setTimeOfWorkToBePerformed(centralDateAndTime[1] != null ? centralDateAndTime[1] : "");
         dto.setRequestedBy(str(map, "WorkRequestedBy"));
         dto.setCompany(str(map, "Company"));
         dto.setLocation(str(map, "LocationOfWork"));
@@ -290,5 +284,50 @@ public class PowerAutomateV2Access implements SharePointAccess {
 
     private String orEmpty(String val) {
         return val != null ? val : "";
+    }
+
+    /**
+     * Parse a combined UTC datetime from SharePoint/PA (e.g. "2026-02-15T20:30:00Z")
+     * into [date, time] in Central Time (e.g. ["2026-02-15", "14:30"]).
+     */
+    private String[] fromUtcDateTime(String raw) {
+        if (raw == null || raw.isEmpty()) return new String[]{ null, null };
+        try {
+            String cleaned = raw.replace("Z", "").replace("z", "");
+            if (!cleaned.contains("T")) return new String[]{ raw, null };
+            LocalDateTime utcLdt = LocalDateTime.parse(cleaned);
+            ZonedDateTime utc = utcLdt.atZone(ZoneId.of("UTC"));
+            ZonedDateTime central = utc.withZoneSameInstant(ZoneId.of("America/Chicago"));
+            String date = central.toLocalDate().toString();
+            String time = String.format("%02d:%02d", central.getHour(), central.getMinute());
+            return new String[]{ date, time };
+        } catch (Exception e) {
+            log.warn("[PA-V2] Failed to parse DateOfWork '{}': {}", raw, e.getMessage());
+            if (raw.contains("T")) {
+                String[] parts = raw.split("T");
+                String timePart = parts[1].length() >= 5 ? parts[1].substring(0, 5) : parts[1];
+                return new String[]{ parts[0], timePart };
+            }
+            return new String[]{ raw, null };
+        }
+    }
+
+    /**
+     * Combine date + time (assumed Central Time) into UTC ISO for Power Automate.
+     * PA applies its own timezone handling, so we send UTC to avoid double-conversion.
+     */
+    private String toUtcIso(String date, String time) {
+        if (date == null || date.isEmpty()) return "";
+        String timeStr = (time != null && !time.isEmpty()) ? time : "00:00";
+        if (timeStr.length() == 5) timeStr += ":00";
+        try {
+            LocalDateTime ldt = LocalDateTime.parse(date + "T" + timeStr);
+            ZonedDateTime central = ldt.atZone(ZoneId.of("America/Chicago"));
+            ZonedDateTime utc = central.withZoneSameInstant(ZoneId.of("UTC"));
+            return utc.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z";
+        } catch (Exception e) {
+            log.warn("[PA-V2] Failed to parse date/time: {} / {}", date, time);
+            return date + "T" + timeStr;
+        }
     }
 }

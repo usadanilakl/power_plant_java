@@ -17,25 +17,28 @@
   width: 100%;
   display: flex;
   justify-content: center;
+  margin-bottom: 4px;
 }
 
 .remove-button {
   position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 10;
-  background-color: rgba(231, 76, 60, 0.8);
+  top: -8px;
+  right: -8px;
+  z-index: 100;
+  background-color: rgba(231, 76, 60, 0.9);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  line-height: 24px;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
   text-align: center;
   font-weight: bold;
+  font-size: 12px;
   cursor: pointer;
-  opacity: 0.3;
-  transition: opacity 0.3s ease, background-color 0.3s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .form-item-wrapper:hover .remove-button {

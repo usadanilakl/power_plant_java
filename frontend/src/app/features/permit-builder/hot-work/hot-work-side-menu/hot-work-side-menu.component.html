@@ -1,4 +1,7 @@
-<app-hot-work-table
-    (rowLeftClickEvent)="onHotWorkRowLeftClick($event)"
-></app-hot-work-table>
-<button (click)="currentHotWorkService.switchFormView()">Switch Form View</button>
+<app-permit-left-panel
+  [isPaperViewInput]="currentHotWorkService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-hot-work-left-menu menu></app-hot-work-left-menu>
+  <app-hot-work-table table></app-hot-work-table>
+</app-permit-left-panel>

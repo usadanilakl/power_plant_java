@@ -133,6 +133,7 @@ export class IpcHandlers {
     this.registerPjmHandlers();
     this.registerElectronUpdateHandlers();
     this.registerMenuHandlers();
+    this.registerPrintHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -1073,6 +1074,72 @@ export class IpcHandlers {
       if (template.length > 0) {
         const menu = Menu.buildFromTemplate(template);
         menu.popup({ window: win, x, y });
+      }
+    });
+  }
+
+  private registerPrintHandlers(): void {
+    // Print the current page (main window) with proper settings
+    ipcMain.handle(events.IPC_PRINT_CURRENT_PAGE, async (_event, options?: { silent?: boolean }) => {
+      try {
+        const win = this.mainWindow;
+        if (!win || win.isDestroyed()) {
+          return { success: false, error: 'Main window not available' };
+        }
+
+        return new Promise((resolve) => {
+          win.webContents.print(
+            {
+              silent: options?.silent ?? false,
+              printBackground: true,
+              margins: { marginType: 'none' },
+            },
+            (success, failureReason) => {
+              resolve({
+                success,
+                error: success ? undefined : (failureReason || 'Print failed'),
+              });
+            }
+          );
+        });
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Print arbitrary HTML content in a hidden window
+    ipcMain.handle(events.IPC_PRINT_HTML, async (_event, html: string, options?: { silent?: boolean }) => {
+      try {
+        const win = new BrowserWindow({
+          show: false,
+          width: 816,
+          height: 1056,
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+          },
+        });
+
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+        return new Promise((resolve) => {
+          win.webContents.print(
+            {
+              silent: options?.silent ?? false,
+              printBackground: true,
+              margins: { marginType: 'none' },
+            },
+            (success, failureReason) => {
+              win.destroy();
+              resolve({
+                success,
+                error: success ? undefined : (failureReason || 'Print failed'),
+              });
+            }
+          );
+        });
+      } catch (error: any) {
+        return { success: false, error: error.message };
       }
     });
   }

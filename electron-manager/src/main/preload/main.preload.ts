@@ -213,6 +213,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_MENU_NAVIGATE, sub); };
   },
 
+  // Print
+  printCurrentPage: (options?: { silent?: boolean }): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_PRINT_CURRENT_PAGE, options),
+  printHtml: (html: string, options?: { silent?: boolean }): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_PRINT_HTML, html, options),
+
   // General
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(events.IPC_GET_APP_VERSION),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(events.IPC_OPEN_EXTERNAL, url),

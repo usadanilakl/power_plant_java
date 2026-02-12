@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { PrintableFormDto } from '../models/printable-form.model';
 import { FormArrayProcessingService } from '../services/form-array-processing.service';
 import { FormRenderingService } from '../services/form-rendering.service';
@@ -29,7 +29,7 @@ export class FormRendererComponent {
 
   readonly pixelsPerInch = 96;
 
-  form!: FormGroup;
+  form: FormGroup = new FormGroup({});
   formArrayItemsCount = signal(0);
 
   sheetSize = computed(() => {
@@ -82,17 +82,20 @@ export class FormRendererComponent {
 
   onArrayItemRemoved(event: { index: number; fieldName: string }): void {
     const control = this.form.get(event.fieldName);
-    if (control && control instanceof FormGroup) {
-      const formArray = control.get(event.fieldName);
-      if (formArray) {
-        (formArray as any).removeAt(event.index);
-      }
+    if (control instanceof FormArray) {
+      control.removeAt(event.index);
     }
     this.formArrayItemsCount.update(count => count + 1);
     this.form.updateValueAndValidity();
   }
 
   print(): void {
-    window.print();
+    // Use Electron's print API when available (better margins/sizing control)
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.printCurrentPage) {
+      electronAPI.printCurrentPage({ silent: false });
+    } else {
+      window.print();
+    }
   }
 }
