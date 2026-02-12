@@ -48,6 +48,8 @@ public class WorkRequestDto {
     @JsonProperty("Status")
     private String status;
 
+    private String localUuid;
+
     public void setIsHotWorkRequired(String isHotWorkRequired) {
         this.isHotWorkRequired = convertYesNoToBooleanString(isHotWorkRequired);
     }

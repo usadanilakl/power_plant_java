@@ -166,6 +166,7 @@ public class PowerAutomateV2Access implements SharePointAccess {
 
     private Map<String, Object> workRequestToMap(WorkRequestDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("PwaId", dto.getLocalUuid());
         // Combine date + time into ISO datetime for SharePoint DateTime column
         String date = dto.getDateOfWorkToBePerformed();
         String time = dto.getTimeOfWorkToBePerformed();
@@ -214,11 +215,13 @@ public class PowerAutomateV2Access implements SharePointAccess {
         dto.setSpace(str(map, "SpaceToBeEntered"));
         dto.setSharepointId(str(map, "ID"));
         dto.setStatus(str(map, "Status"));
+        dto.setLocalUuid(str(map, "PwaId"));
         return dto;
     }
 
     private Map<String, Object> jhaToMap(JhaDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("PwaId", dto.getLocalUuid());
         map.put("JobName", dto.getJobName());
         map.put("Applicability", dto.getApplicability());
         map.put("AnalysisBy", dto.getAnalysisBy());
@@ -258,6 +261,7 @@ public class PowerAutomateV2Access implements SharePointAccess {
         dto.setHandAndPowerTools(str(map, "HandAndPowerTools"));
         dto.setSpecialTools(str(map, "SpecialTools"));
         dto.setSharepointId(str(map, "ID"));
+        dto.setLocalUuid(str(map, "PwaId"));
         String jobStepsJson = str(map, "JobSteps");
         if (jobStepsJson != null && !jobStepsJson.isEmpty()) {
             try {

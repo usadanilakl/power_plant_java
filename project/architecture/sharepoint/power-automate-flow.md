@@ -75,6 +75,7 @@ All flows return the same structure:
 ### `data` Fields
 ```json
 {
+  "PwaId": "a1b2c3d4-e5f6-...",
   "DateOfWork": "2026-02-11T15:20:00",
   "WorkRequestedBy": "DK",
   "Company": "DK",
@@ -99,6 +100,7 @@ All flows return the same structure:
 ### SharePoint List Columns (Internal Name)
 | Internal Name | Type | Notes |
 |------------|------|-------|
+| PwaId | Single line of text | UUID from PWA client. Allows status check without server |
 | DateOfWork | Date and Time | ISO datetime, e.g. `2026-02-11T15:20:00`. App keeps date/time separate in UI, combines for SharePoint |
 | WorkRequestedBy | Single line of text | Auto-populated from user setup name |
 | Company | Single line of text | Auto-populated from user setup company |
@@ -127,6 +129,7 @@ All flows return the same structure:
 ### `data` Fields
 ```json
 {
+  "PwaId": "a1b2c3d4-e5f6-...",
   "WorkRequestId": 42,
   "JobName": "...",
   "Applicability": "...",
@@ -159,6 +162,7 @@ All flows return the same structure:
 ### SharePoint List Columns (Internal Name)
 | Internal Name | Type | Notes |
 |------------|------|-------|
+| PwaId | Single line of text | UUID from PWA client. Allows status check without server |
 | WorkRequestId | Lookup | References "Work Requests" list |
 | JobName | Single line of text | |
 | Applicability | Single line of text | |

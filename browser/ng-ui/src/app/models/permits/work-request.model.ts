@@ -193,6 +193,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       : `${dateStr}T00:00:00`;
 
     return new WorkRequestPa({
+      PwaId: this.localUuid,
       Company: this.company,
       DateOfWork: combinedDateTime,
       LocationOfWork: this.locationOfWork,

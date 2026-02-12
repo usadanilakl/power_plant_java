@@ -1,4 +1,5 @@
 export interface IWorkRequestPa {
+  PwaId: string;
   Company: string;
   DateOfWork: string;  // ISO datetime: "2026-02-11T15:20:00"
   LocationOfWork: string;
@@ -14,6 +15,7 @@ export interface IWorkRequestPa {
 }
 
 export class WorkRequestPa implements IWorkRequestPa {
+  PwaId: string;
   Company: string;
   DateOfWork: string;
   LocationOfWork: string;
@@ -28,6 +30,7 @@ export class WorkRequestPa implements IWorkRequestPa {
   SpaceToBeEntered: string;
 
   constructor(data: Partial<IWorkRequestPa> = {}) {
+    this.PwaId = data.PwaId ?? '';
     this.Company = data.Company ?? '';
     this.DateOfWork = data.DateOfWork ?? '';
     this.LocationOfWork = data.LocationOfWork ?? '';

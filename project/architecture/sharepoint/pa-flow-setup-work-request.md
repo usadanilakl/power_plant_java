@@ -10,6 +10,7 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
 
 | Internal Name | Display Name | Type | Settings |
 |--------------|-------------|------|----------|
+| PwaId | PWA ID | Single line of text | UUID from PWA client |
 | DateOfWork | Date Of Work | Date and Time | Include time = **Yes** |
 | WorkRequestedBy | Work Requested By | Single line of text | |
 | Company | Company | Single line of text | |
@@ -45,6 +46,7 @@ List already exists with PascalCase internal names (e.g. `DateOfWork`). Verify t
   "actionType": "create",
   "id": null,
   "data": {
+    "PwaId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "DateOfWork": "2026-02-11T15:20:00",
     "WorkRequestedBy": "DK",
     "Company": "DK Power",
@@ -126,6 +128,7 @@ Add these actions right after the trigger:
 | List Column (display name) | Expression / Dynamic Content |
 |-------------|------------------------------|
 | Title | `triggerBody()?['data']?['WorkScope']` |
+| PWA ID | `triggerBody()?['data']?['PwaId']` |
 | Date Of Work | `triggerBody()?['data']?['DateOfWork']` |
 | Work Requested By | `triggerBody()?['data']?['WorkRequestedBy']` |
 | Company | `triggerBody()?['data']?['Company']` |
@@ -187,6 +190,7 @@ After the Create item action:
 | Key | Value |
 |-----|-------|
 | ID | `string(item()?['ID'])` |
+| PwaId | `item()?['PwaId']` |
 | DateOfWork | `item()?['DateOfWork']` |
 | WorkRequestedBy | `item()?['WorkRequestedBy']` |
 | Company | `item()?['Company']` |
@@ -341,6 +345,7 @@ curl -X POST "<your-flow-url>" \
     "actionType": "create",
     "id": null,
     "data": {
+      "PwaId": "test-uuid-1234",
       "DateOfWork": "2026-02-11T15:20:00",
       "WorkRequestedBy": "Test User",
       "Company": "Test Co",

@@ -2,6 +2,7 @@ import { IJobStep, JobStep } from "./jha-job-step.model";
 
 
 export interface IJhaPa {
+  PwaId: string;
   WorkRequestId?: number;
   JobName: string;
   Applicability: string;
@@ -19,6 +20,7 @@ export interface IJhaPa {
 }
 
 export class JhaPa implements IJhaPa {
+  PwaId: string;
   WorkRequestId?: number;
   JobName: string;
   Applicability: string;
@@ -35,6 +37,7 @@ export class JhaPa implements IJhaPa {
   JobSteps: JobStep[];
 
   constructor(data: Partial<IJhaPa> = {}) {
+    this.PwaId = data.PwaId ?? '';
     this.WorkRequestId = data.WorkRequestId;
     this.JobName = data.JobName ?? '';
     this.Applicability = data.Applicability ?? '';

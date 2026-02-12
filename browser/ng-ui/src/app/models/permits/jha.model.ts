@@ -127,6 +127,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
 
     convertToPaModel(): JhaPa {
       return new JhaPa({
+        PwaId: this.localUuid,
         WorkRequestId: this.workRequestId,
         JobName: this.jobName,
         Applicability: this.applicability,
