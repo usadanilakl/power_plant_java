@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Audited
+@Where(clause = "deleted=false")
 public class WorkRequest extends BasePermitEntity {
 
     private String dateOfWorkToBePerformed;
