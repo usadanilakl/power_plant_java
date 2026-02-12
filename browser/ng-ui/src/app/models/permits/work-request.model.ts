@@ -10,7 +10,7 @@ export interface IWorkRequest extends IBaseModel {
   id: number;
   sharepointId: string;
   localUuid: string;
-  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed' | 'sent via email';
   submissionMethod?: 'server' | 'powerAutomate' | 'email';
   company: string;
   dateOfWork: Date;
@@ -32,7 +32,7 @@ export interface IWorkRequest extends IBaseModel {
 export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest {
   sharepointId: string;
   localUuid: string;
-  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed';
+  submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed' | 'sent via email';
   submissionMethod?: 'server' | 'powerAutomate' | 'email';
   company: string;
   dateOfWork: Date;
@@ -174,6 +174,8 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
           return { backgroundColor: '#4caf50', color: '#fff' };
         case 'revoked':
           return { backgroundColor: '#f44336', color: '#fff' };
+        case 'sent via email':
+          return { backgroundColor: '#2196f3', color: '#fff' };
         default:
           return { backgroundColor: '#f1f1f1', color: '#000' };
       }
@@ -184,13 +186,12 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   }
 
   convertToPaModel(): WorkRequestPa {
-    // Combine date + time into ISO datetime for SharePoint DateTime column
-    const dateStr = this.dateOfWork instanceof Date
-      ? this.dateOfWork.toISOString().split('T')[0]
-      : String(this.dateOfWork || '');
-    const combinedDateTime = this.timeOfWork
-      ? `${dateStr}T${this.timeOfWork}:00`
-      : `${dateStr}T00:00:00`;
+    // Extract local date components (avoids UTC date shift from toISOString)
+    const d = this.dateOfWork instanceof Date ? this.dateOfWork : new Date(this.dateOfWork);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // Create local Date from date + time, convert to UTC ISO for SharePoint
+    const localDate = new Date(`${dateStr}T${this.timeOfWork || '00:00'}:00`);
+    const combinedDateTime = localDate.toISOString();
 
     return new WorkRequestPa({
       PwaId: this.localUuid,
@@ -200,9 +201,9 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       WorkRequestedBy: this.workRequestedBy,
       AffectedEquipment: this.affectedEquipment,
       WorkScope: this.workScope,
-      IsLOTORequired: this.isLOTORequired,
-      IsHotWorkRequired: this.isHotWorkRequired,
-      IsConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired,
+      IsLOTORequired: this.isLOTORequired === 'Yes',
+      IsHotWorkRequired: this.isHotWorkRequired === 'Yes',
+      IsConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired === 'Yes',
       ForemanName: this.foremanName,
       FireWatchName: this.fireWatchName,
       SpaceToBeEntered: this.spaceToBeEntered
@@ -210,32 +211,37 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   }
 
   getEmailBody(): string {
-    const paModel = this.convertToPaModel();
-    const fieldLabels: { [key: string]: string } = {
-      Company: 'Company',
-      DateOfWork: 'Date & Time of Work',
-      LocationOfWork: 'Location of Work',
-      WorkRequestedBy: 'Work Requested By',
-      AffectedEquipment: 'Affected Equipment',
-      WorkScope: 'Work Scope',
-      IsLOTORequired: 'LOTO Required',
-      IsHotWorkRequired: 'Hot Work Required',
-      IsConfinedSpaceEntryRequired: 'Confined Space Entry Required',
-      ForemanName: 'Foreman Name',
-      FireWatchName: 'Fire Watch Name',
-      SpaceToBeEntered: 'Space to be Entered'
-    };
+    const d = this.dateOfWork instanceof Date ? this.dateOfWork : new Date(this.dateOfWork);
+    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    const timeStr = this.timeOfWork || 'Not specified';
 
-    let body = '';
-    for (const key in paModel) {
-      if (Object.prototype.hasOwnProperty.call(paModel, key)) {
-        const label = fieldLabels[key] || key;
-        const value = (paModel as any)[key];
-        if (value) { // Only include fields that have a value
-          body += `${label}: ${value}\n`;
-        }
+    const lines: [string, string][] = [
+      ['Company', this.company],
+      ['Date of Work', dateStr],
+      ['Time of Work', timeStr],
+      ['Location of Work', this.locationOfWork],
+      ['Work Requested By', this.workRequestedBy],
+      ['Affected Equipment', this.affectedEquipment],
+      ['Work Scope', this.workScope],
+      ['LOTO Required', this.isLOTORequired],
+      ['Hot Work Required', this.isHotWorkRequired],
+      ['Foreman Name', this.foremanName],
+      ['Fire Watch Name', this.fireWatchName],
+      ['Confined Space Entry Required', this.isConfinedSpaceEntryRequired],
+      ['Space to be Entered', this.spaceToBeEntered],
+    ];
+
+    let body = '--- Work Request ---\n\n';
+    for (const [label, value] of lines) {
+      if (value) {
+        body += `${label}: ${value}\n`;
       }
     }
+
+    if (this.attachments.length > 0) {
+      body += `\nAttachments: ${this.attachments.length} file(s) - please download and attach separately.\n`;
+    }
+
     return body;
   }
 }

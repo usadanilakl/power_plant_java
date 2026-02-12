@@ -107,48 +107,36 @@ export class SubmissionOrchestratorService {
   }
 
   private tryPowerAutomateWr(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
-    // Try V2 flow first if configured
-    if (this.powerAutomate.isV2Configured('workRequest')) {
-      const userData = this.userSetup.getUserData()!;
-      const paRequest = this.powerAutomate.buildCreateRequest(
-        workRequest.convertToPaModel() as any,
-        userData,
-        workRequest.attachments
-      );
+    if (!this.powerAutomate.isV2Configured('workRequest')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Power Automate flow not configured. Please submit via email.',
+        requiresEmail: true
+      });
+    }
 
-      return this.powerAutomate.submitV2('workRequest', paRequest).pipe(
-        map(response => ({
-          success: response.success,
+    const userData = this.userSetup.getUserData()!;
+    const paRequest = this.powerAutomate.buildCreateRequest(
+      workRequest.convertToPaModel() as any,
+      userData,
+      workRequest.attachments
+    );
+
+    return this.powerAutomate.submitV2('workRequest', paRequest).pipe(
+      map(response => {
+        if (!response.success) {
+          throw new Error(response.message || 'PA V2 flow returned failure');
+        }
+        return {
+          success: true,
           method: 'powerAutomate' as const,
           sharepointId: response.id,
           localUuid,
-          message: 'Submitted successfully via Power Automate (V2).'
-        })),
-        catchError(v2Error => {
-          console.warn('[Orchestrator] PA V2 failed, trying V1:', v2Error.message);
-          return this.tryPowerAutomateWrV1(workRequest, localUuid);
-        })
-      );
-    }
-
-    return this.tryPowerAutomateWrV1(workRequest, localUuid);
-  }
-
-  private tryPowerAutomateWrV1(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
-    const paRequest = {
-      url: '',
-      workForm: workRequest.convertToPaModel(),
-      actionType: 'save' as const
-    };
-
-    return this.powerAutomate.submitForm(paRequest).pipe(
-      map((response: any) => ({
-        success: true,
-        method: 'powerAutomate' as const,
-        sharepointId: response?.id,
-        localUuid,
-        message: 'Submitted successfully via Power Automate.'
-      })),
+          message: 'Submitted successfully via Power Automate.'
+        };
+      }),
       catchError(paError => {
         console.warn('[Orchestrator] Power Automate failed:', paError.message);
         return of({
@@ -172,13 +160,18 @@ export class SubmissionOrchestratorService {
       );
 
       return this.powerAutomate.submitV2('jha', paRequest).pipe(
-        map(response => ({
-          success: response.success,
-          method: 'powerAutomate' as const,
-          sharepointId: response.id,
-          localUuid,
-          message: 'JHA submitted successfully via Power Automate (V2).'
-        })),
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message || 'PA V2 JHA flow returned failure');
+          }
+          return {
+            success: true,
+            method: 'powerAutomate' as const,
+            sharepointId: response.id,
+            localUuid,
+            message: 'JHA submitted successfully via Power Automate (V2).'
+          };
+        }),
         catchError(paError => {
           console.warn('[Orchestrator] PA V2 failed for JHA:', paError.message);
           return of({
@@ -202,9 +195,40 @@ export class SubmissionOrchestratorService {
     });
   }
 
-  generateEmailContent(workRequest: WorkRequest): { subject: string; body: string; mailto: string } {
+  generateSubmitLink(workRequest: WorkRequest): string {
+    const userData = this.userSetup.getUserData();
+    const dto: Omit<PwaWorkRequestDto, 'attachments'> & { attachments: never[] } = {
+      localUuid: workRequest.localUuid || crypto.randomUUID(),
+      company: workRequest.company || '',
+      dateOfWork: workRequest.dateOfWork instanceof Date
+        ? workRequest.dateOfWork.toISOString().split('T')[0]
+        : String(workRequest.dateOfWork || ''),
+      timeOfWork: workRequest.timeOfWork || '',
+      locationOfWork: workRequest.locationOfWork || '',
+      workRequestedBy: workRequest.workRequestedBy || '',
+      affectedEquipment: workRequest.affectedEquipment || '',
+      workScope: workRequest.workScope || '',
+      isLotoRequired: workRequest.isLOTORequired === 'Yes',
+      isHotWorkRequired: workRequest.isHotWorkRequired === 'Yes',
+      isConfinedSpaceEntryRequired: workRequest.isConfinedSpaceEntryRequired === 'Yes',
+      foremanName: workRequest.foremanName,
+      fireWatchName: workRequest.fireWatchName,
+      spaceToBeEntered: workRequest.spaceToBeEntered,
+      submitterName: userData?.name || '',
+      submitterEmail: userData?.email || '',
+      submitterPhone: userData?.phone || '',
+      submitterCompany: userData?.company || '',
+      timeSubmitted: new Date().toISOString(),
+      attachments: []
+    };
+    const encoded = btoa(JSON.stringify(dto));
+    return `${environment.serverUrl}/api/pwa/work-request/submit-from-email?data=${encoded}`;
+  }
+
+  generateEmailContent(workRequest: WorkRequest): { subject: string; body: string; mailto: string; submitLink: string } {
     const userData = this.userSetup.getUserData();
     const subject = `Work Request: ${workRequest.workScope?.substring(0, 50) || 'New Request'}`;
+    const submitLink = this.generateSubmitLink(workRequest);
 
     let body = workRequest.getEmailBody();
     if (userData) {
@@ -214,12 +238,15 @@ export class SubmissionOrchestratorService {
       body += `Phone: ${userData.phone}\n`;
       body += `Company: ${userData.company}\n`;
     }
+    body += `\n--- Auto-Submit Link ---\n`;
+    body += `If the server is running, click to submit automatically:\n`;
+    body += `${submitLink}\n`;
 
     const encodedSubject = encodeURIComponent(subject);
     const encodedBody = encodeURIComponent(body);
     const mailto = `mailto:${environment.emailRecipient}?subject=${encodedSubject}&body=${encodedBody}`;
 
-    return { subject, body, mailto };
+    return { subject, body, mailto, submitLink };
   }
 
   generateJhaEmailContent(jha: Jha): { subject: string; body: string; mailto: string } {

@@ -6,9 +6,9 @@ export interface IWorkRequestPa {
   WorkRequestedBy: string;
   AffectedEquipment: string;
   WorkScope: string;
-  IsLOTORequired: string;
-  IsHotWorkRequired: string;
-  IsConfinedSpaceEntryRequired: string;
+  IsLOTORequired: boolean;
+  IsHotWorkRequired: boolean;
+  IsConfinedSpaceEntryRequired: boolean;
   ForemanName: string;
   FireWatchName: string;
   SpaceToBeEntered: string;
@@ -22,9 +22,9 @@ export class WorkRequestPa implements IWorkRequestPa {
   WorkRequestedBy: string;
   AffectedEquipment: string;
   WorkScope: string;
-  IsLOTORequired: string;
-  IsHotWorkRequired: string;
-  IsConfinedSpaceEntryRequired: string;
+  IsLOTORequired: boolean;
+  IsHotWorkRequired: boolean;
+  IsConfinedSpaceEntryRequired: boolean;
   ForemanName: string;
   FireWatchName: string;
   SpaceToBeEntered: string;
@@ -37,9 +37,9 @@ export class WorkRequestPa implements IWorkRequestPa {
     this.WorkRequestedBy = data.WorkRequestedBy ?? '';
     this.AffectedEquipment = data.AffectedEquipment ?? '';
     this.WorkScope = data.WorkScope ?? '';
-    this.IsLOTORequired = data.IsLOTORequired ?? 'No';
-    this.IsHotWorkRequired = data.IsHotWorkRequired ?? 'No';
-    this.IsConfinedSpaceEntryRequired = data.IsConfinedSpaceEntryRequired ?? 'No';
+    this.IsLOTORequired = data.IsLOTORequired ?? false;
+    this.IsHotWorkRequired = data.IsHotWorkRequired ?? false;
+    this.IsConfinedSpaceEntryRequired = data.IsConfinedSpaceEntryRequired ?? false;
     this.ForemanName = data.ForemanName ?? '';
     this.FireWatchName = data.FireWatchName ?? '';
     this.SpaceToBeEntered = data.SpaceToBeEntered ?? '';

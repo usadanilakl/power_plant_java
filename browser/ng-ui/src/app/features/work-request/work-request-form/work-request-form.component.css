@@ -46,3 +46,36 @@
 .email-button.secondary:hover {
   background-color: #545b62;
 }
+
+.email-button.gmail {
+  background-color: #db4437;
+  color: white;
+}
+
+.email-button.gmail:hover {
+  background-color: #c23321;
+}
+
+.email-button.accent {
+  background-color: #28a745;
+  color: white;
+}
+
+.email-button.accent:hover {
+  background-color: #218838;
+}
+
+.email-button.server {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.email-button.server:hover {
+  background-color: #138496;
+}
+
+.attachment-note {
+  font-size: 0.85rem;
+  color: #856404;
+  font-style: italic;
+}

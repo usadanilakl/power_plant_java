@@ -102,7 +102,7 @@ export class PowerAutomateService {
         SubmitterEmail: userData.email,
         SubmitterPhone: userData.phone,
         SubmitterCompany: userData.company,
-        TimeSubmitted: new Date().toISOString()
+        TimeSubmitted: this.toLocalIso(new Date())
       },
       attachments: attachments?.map(a => ({
         fileName: a.fileName,
@@ -120,5 +120,14 @@ export class PowerAutomateService {
     const urls = (environment as any).paFlowUrls;
     if (!urls) return '';
     return urls[entityType] || '';
+  }
+
+  /** Formats a Date as local ISO with timezone offset, e.g. 2026-02-11T19:39:40-06:00 */
+  private toLocalIso(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const offset = date.getTimezoneOffset();
+    const sign = offset <= 0 ? '+' : '-';
+    const absOffset = Math.abs(offset);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`;
   }
 }

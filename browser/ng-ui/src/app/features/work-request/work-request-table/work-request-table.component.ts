@@ -1,10 +1,12 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, output } from '@angular/core';
 import { WorkRequestStateService } from '../work-request-state.service';
+import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { WorkRequest } from '../../../models/permits/work-request.model';
 import { TableComponent } from "../../../shared/table/table.component";
 import { PopupComponent } from "../../../shared/menus/popup/popup.component";
 import { ButtonConfig, ButtonsComponent } from '../../../shared/menus/buttons/buttons.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-work-request-table',
@@ -15,6 +17,7 @@ import { ButtonConfig, ButtonsComponent } from '../../../shared/menus/buttons/bu
 export class WorkRequestTableComponent implements OnInit {
 
   workRequestStateService = inject(WorkRequestStateService);
+  orchestrator = inject(SubmissionOrchestratorService);
   destroyRef = inject(DestroyRef);
 
   itemsInput = input<WorkRequest[]>();
@@ -35,6 +38,7 @@ export class WorkRequestTableComponent implements OnInit {
     // Populate items and columns as needed
     this.actionButtons = [
       { name: 'Resubmit', action: () => this.resubmitSelected(), color: 'primary' },
+      { name: 'Submit via Email', action: () => this.submitViaEmail(), color: 'accent' },
       { name: 'Revoke', action: () => this.Revoke(), color: 'accent' },
       { name: 'Delete', action: () => this.deleteSelected(), color: 'warn' }
     ];
@@ -63,10 +67,17 @@ export class WorkRequestTableComponent implements OnInit {
   }
 
   deleteSelected(): void {
-    console.log('Deleting:', this  .selectedItem());
+    console.log('Deleting:', this.selectedItem());
     this.closeActionMenu();
   }
 
-
-
+  submitViaEmail(): void {
+    const wr = this.selectedItem();
+    if (!wr) return;
+    const wrInstance = new WorkRequest(wr);
+    const emailContent = this.orchestrator.generateEmailContent(wrInstance);
+    window.location.href = emailContent.mailto;
+    this.workRequestStateService.markSentViaEmail(wrInstance);
+    this.closeActionMenu();
+  }
 }

@@ -5,25 +5,32 @@
   (formValueChange)="onAnyValueChange($event)"
   (formSubmit)="onSubmit($event)"
 >
-  <ng-container extra-buttons>
-    <app-email-prompt
-      [to]="emailRecipient"
-      subject="Work Request Submission"
-      [body]="entity().getEmailBody()"
-    ></app-email-prompt>
-  </ng-container>
 </app-reactive-form>
 
 @if (emailFallbackData()) {
   <div class="email-fallback-banner">
     <p><strong>Submission failed.</strong> All automatic methods unavailable. Please submit via email:</p>
     <div class="email-fallback-actions">
-      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onEmailSent()">
+      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onEmailButtonClick()">
         Open Email Client
       </a>
+      <button class="email-button gmail" (click)="openGmail()">
+        Open Gmail
+      </button>
+      <a [href]="submitLink()" target="_blank" class="email-button server" (click)="onEmailButtonClick()">
+        Submit via Server
+      </a>
+      @if (hasAttachments()) {
+        <button class="email-button accent" (click)="downloadAttachments()">
+          Download Attachments ({{ attachmentCount() }})
+        </button>
+      }
       <button class="email-button secondary" (click)="onEmailSent()">
-        I've Sent the Email
+        Done
       </button>
     </div>
+    @if (hasAttachments()) {
+      <p class="attachment-note">Please download and manually attach files to your email.</p>
+    }
   </div>
 }

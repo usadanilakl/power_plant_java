@@ -7,6 +7,7 @@ import { WorkRequestDbService } from './work-request-db.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GlobalMessageService } from '../../services/global-message.service';
 import { SubmissionOrchestratorService, SubmissionResult } from '../../services/submission-orchestrator.service';
+import { IAttachment } from '../../models/permits/attachment.model';
 
 @Injectable({
   providedIn: 'root'
@@ -70,6 +71,23 @@ export class WorkRequestStateService {
   }
 
   submitNewRequest(workRequest: WorkRequest) {
+    const formData = workRequest as any;
+    const attachments: IAttachment[] = [
+      ...(Array.isArray(formData.photos) ? formData.photos : []),
+      ...(Array.isArray(formData.documents) ? formData.documents : []),
+    ];
+    if (formData.signature && typeof formData.signature === 'string') {
+      const base64 = formData.signature.includes(',')
+        ? formData.signature.split(',')[1]
+        : formData.signature;
+      attachments.push({
+        fileName: 'signature.png',
+        contentType: 'image/png',
+        base64Content: base64,
+        type: 'signature'
+      });
+    }
+    workRequest = new WorkRequest({ ...formData, attachments });
     this.globalMessageService.showMessage('Submitting request...', 'white', 30000);
     this.emailFallbackData.set(null);
 
@@ -79,16 +97,24 @@ export class WorkRequestStateService {
       switchMap((result: SubmissionResult) => {
         console.log('[WorkRequestState] Submission result:', result);
 
-        if (result.requiresEmail) {
-          const emailContent = this.orchestrator.generateEmailContent(workRequest);
-          this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body });
-          workRequest.submissionStatus = 'failed';
+        if (!result.success || result.requiresEmail) {
+          const failedWorkRequest = new WorkRequest({
+            ...workRequest,
+            submissionStatus: 'failed',
+            status: 'failed'
+          });
+          if (result.requiresEmail) {
+            const emailContent = this.orchestrator.generateEmailContent(failedWorkRequest);
+            this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body });
+          }
           this.globalMessageService.showMessage(
-            'Submission failed. Please use email fallback below.',
-            'yellow',
+            result.requiresEmail
+              ? 'Submission failed. Please use email fallback below.'
+              : (result.message || 'Submission failed.'),
+            'red',
             10000
           );
-          return this.workRequesDbService.addWorkRequest(workRequest);
+          return this.workRequesDbService.addWorkRequest(failedWorkRequest);
         }
 
         const updatedWorkRequest = new WorkRequest({
@@ -115,8 +141,14 @@ export class WorkRequestStateService {
     ).subscribe({
       error: (err) => {
         console.error('[WorkRequestState] Submission error:', err);
-        const emailContent = this.orchestrator.generateEmailContent(workRequest);
+        const failedWorkRequest = new WorkRequest({
+          ...workRequest,
+          submissionStatus: 'failed',
+          status: 'failed'
+        });
+        const emailContent = this.orchestrator.generateEmailContent(failedWorkRequest);
         this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body });
+        this.workRequesDbService.addWorkRequest(failedWorkRequest).subscribe();
         this.globalMessageService.showMessage(
           'Submission failed. Please use email fallback.',
           'red'
@@ -127,6 +159,27 @@ export class WorkRequestStateService {
 
   clearEmailFallback() {
     this.emailFallbackData.set(null);
+  }
+
+  markSentViaEmail(workRequest?: WorkRequest) {
+    const wr = workRequest ?? this.getSelectedWorkRequest();
+    if (!wr) return;
+    const updated = new WorkRequest({
+      ...wr,
+      submissionStatus: 'sent via email',
+      status: 'sent via email'
+    });
+    this.workRequesDbService.updateWorkRequest(updated).pipe(
+      tap(() => {
+        this.selectWorkRequest(updated);
+        this.addWorkRequestsToList([updated]);
+        this.emailFallbackData.set(null);
+        this.globalMessageService.showMessage('Marked as sent via email.', 'green');
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      error: () => this.globalMessageService.showMessage('Failed to update status.', 'red')
+    });
   }
 
   resubmitSelected() {
