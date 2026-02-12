@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserSetupService, PwaUserData } from '../../services/user-setup.service';
+import { SignatureInputComponent } from '../../shared/input-fields/signature-input/signature-input.component';
 
 @Component({
   selector: 'app-user-setup-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SignatureInputComponent],
   templateUrl: './user-setup-page.component.html',
   styleUrl: './user-setup-page.component.css'
 })
@@ -27,7 +28,8 @@ export class UserSetupPageComponent {
       name: [existingData?.name ?? '', [Validators.required, Validators.minLength(2)]],
       email: [existingData?.email ?? '', [Validators.required, Validators.email]],
       phone: [existingData?.phone ?? '', [Validators.required, Validators.pattern(/^[\d\s\-\+\(\)]+$/)]],
-      company: [existingData?.company ?? '', [Validators.required, Validators.minLength(2)]]
+      company: [existingData?.company ?? '', [Validators.required, Validators.minLength(2)]],
+      signature: [existingData?.signature ?? null]
     });
   }
 
@@ -42,7 +44,8 @@ export class UserSetupPageComponent {
       name: formValue.name,
       email: formValue.email,
       phone: formValue.phone,
-      company: formValue.company
+      company: formValue.company,
+      signature: formValue.signature ?? undefined
     });
 
     this.router.navigate(['/work-request/form']);

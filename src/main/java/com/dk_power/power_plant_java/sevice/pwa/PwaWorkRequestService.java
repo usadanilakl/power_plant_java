@@ -17,6 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -49,12 +53,16 @@ public class PwaWorkRequestService {
         entity.setLocalUuid(dto.getLocalUuid());
         entity.setPermitStatus(valueService.createValue("Permit Status", "Active"));
 
-        // Save submitter info and timestamp
+        // Save submitter info and timestamp (Central Time is the source of truth)
+        ZonedDateTime centralNow = ZonedDateTime.now(ZoneId.of("America/Chicago"));
         entity.setSubmitterName(dto.getSubmitterName());
         entity.setSubmitterEmail(dto.getSubmitterEmail());
         entity.setSubmitterPhone(dto.getSubmitterPhone());
         entity.setSubmitterCompany(dto.getSubmitterCompany());
-        entity.setSubmittedAt(LocalDateTime.now());
+        entity.setSubmittedAt(centralNow.toLocalDateTime());
+
+        // Override client timestamp with server Central Time for SharePoint
+        dto.setTimeSubmitted(centralNow.format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a")));
 
         // Save locally first
         workRequestRepo.save(entity);
@@ -80,6 +88,16 @@ public class PwaWorkRequestService {
         String method = "local";
 
         try {
+            // Check SharePoint for existing item with same PwaId to prevent duplicates
+            sharepointId = findExistingSharePointId(dto.getLocalUuid());
+            if (sharepointId != null) {
+                log.info("[PWA Submit] Duplicate found in SharePoint for PwaId={}, sharepointId={}",
+                        dto.getLocalUuid(), sharepointId);
+                entity.setSharepointId(sharepointId);
+                workRequestRepo.save(entity);
+                return PwaSubmissionResult.success("sharepoint", sharepointId, dto.getLocalUuid());
+            }
+
             WorkRequestDto spDto = convertToSharePointDto(dto);
             sharepointId = sharepointAccess.createWorkRequest(spDto);
 
@@ -138,6 +156,12 @@ public class PwaWorkRequestService {
         spDto.setBooleanIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         spDto.setSpace(dto.getSpaceToBeEntered());
         spDto.setStatus("Active");
+        spDto.setLocalUuid(dto.getLocalUuid());
+        spDto.setSubmitterName(dto.getSubmitterName());
+        spDto.setSubmitterEmail(dto.getSubmitterEmail());
+        spDto.setSubmitterPhone(dto.getSubmitterPhone());
+        spDto.setSubmitterCompany(dto.getSubmitterCompany());
+        spDto.setTimeSubmitted(dto.getTimeSubmitted());
         return spDto;
     }
 
@@ -164,6 +188,21 @@ public class PwaWorkRequestService {
         if (contentType.startsWith("image/")) return "photo";
         if (contentType.contains("pdf") || contentType.contains("document")) return "document";
         return "document";
+    }
+
+    private String findExistingSharePointId(String localUuid) {
+        if (localUuid == null || localUuid.isEmpty()) return null;
+        try {
+            List<WorkRequestDto> existing = sharepointAccess.getAllWorkRequests();
+            return existing.stream()
+                    .filter(wr -> localUuid.equals(wr.getLocalUuid()))
+                    .map(WorkRequestDto::getSharepointId)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("[PWA Submit] Could not check SharePoint for duplicates: {}", e.getMessage());
+            return null;
+        }
     }
 
     private PwaStatusResult toStatusResult(WorkRequest entity) {

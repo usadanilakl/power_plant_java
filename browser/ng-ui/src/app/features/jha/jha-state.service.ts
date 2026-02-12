@@ -9,6 +9,9 @@ import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { WorkRequestDbService } from "../work-request/work-request-db.service";
 import { RouteDataEncoderService } from "../../services/route-data-encoder.service";
 import { IJhaTransfer, JhaTransfer } from "../../models/permits/jha-transfer.model";
+import { WorkRequest } from "../../models/permits/work-request.model";
+import { UserSetupService } from "../../services/user-setup.service";
+import { IAttachment } from "../../models/permits/attachment.model";
 @Injectable({
   providedIn: 'root'
 })
@@ -20,6 +23,7 @@ export class JhaStateService {
     globalMessageService = inject(GlobalMessageService);
     workRequestDbService = inject(WorkRequestDbService);
     routeDataEncoder = inject(RouteDataEncoderService);
+    userSetupService = inject(UserSetupService);
     destroyRef = inject(DestroyRef);
 
     constructor() {
@@ -37,6 +41,8 @@ export class JhaStateService {
     private jhaTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
     jhaTransfers$: Observable<JhaTransfer[]> = this.jhaTransfersSubject.asObservable();
     jhaTransfersSignal = toSignal(this.jhaTransfersSubject, { initialValue: [] });
+
+    workRequestsForJha$: Observable<WorkRequest[]> = this.workRequestDbService.getWorkRequestsNeedingJha();
 
     private queryParamTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
 
@@ -108,6 +114,18 @@ export class JhaStateService {
       this.selectedJhaSubject.next(jha);
     }
 
+    selectWorkRequestForJha(workRequest: WorkRequest): void {
+      const d = workRequest.dateOfWork ? new Date(workRequest.dateOfWork) : new Date();
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const newJha = new Jha({
+        jobName: workRequest.workScope,
+        date: dateStr,
+        workRequestSharepointId: workRequest.sharepointId,
+        workRequestLocalUuid: workRequest.localUuid,
+      });
+      this.selectJha(newJha);
+    }
+
     getSelectedJha(): Jha {
       return this.selectedJhaSubject.value;
     }
@@ -124,6 +142,24 @@ export class JhaStateService {
     }
 
     submitNewRequest(jha: Jha) {
+      const formData = jha as any;
+      const attachments: IAttachment[] = [
+        ...(Array.isArray(formData.files) ? formData.files : []),
+      ];
+      const userSignature = this.userSetupService.getUserData()?.signature;
+      if (userSignature) {
+        const base64 = userSignature.includes(',')
+          ? userSignature.split(',')[1]
+          : userSignature;
+        attachments.push({
+          fileName: 'signature.png',
+          contentType: 'image/png',
+          base64Content: base64,
+          type: 'signature'
+        });
+      }
+      jha = new Jha({ ...formData, attachments });
+
       this.globalMessageService.showMessage('Submitting JHA...', 'white', 20000);
       this.jhaApiService.submitFormToSharepoint(jha).pipe(
         switchMap(response => {
@@ -131,9 +167,9 @@ export class JhaStateService {
           const updatedJha = new Jha({...jha, sharepointId: response.id, status: 'received'  });
           return this.jhaDbService.addJha(updatedJha).pipe(
             tap(() => {
-              this.selectJha(updatedJha);
-              this.jhaLocalStorageService.clearDraft();
               this.addJhasToList([updatedJha]);
+              this.jhaLocalStorageService.clearDraft();
+              this.selectJha(new Jha());
             })
           );
         }),

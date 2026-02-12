@@ -1,1 +1,5 @@
-<p>jha-left-menu works!</p>
+<app-table
+    [items]="items()"
+    [columns]="columns"
+    (rowClicked)="onRowClick($event)"
+></app-table>

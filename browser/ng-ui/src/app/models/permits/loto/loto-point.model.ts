@@ -61,7 +61,7 @@ export class LotoPoint extends BaseModel<ILotoPoint> implements ILotoPoint {
       {
         id: 'updatedAt',
         header: 'Last Updated',
-        accessorFn: (item: ILotoPoint) => new Date(item.updatedAt).toLocaleDateString()
+        accessorFn: (item: ILotoPoint) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
       },
     ];
   }

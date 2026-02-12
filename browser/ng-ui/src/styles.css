@@ -13,6 +13,9 @@
   --header-text: #ffffff;
   --accent-color-shadow: rgba(0, 123, 255, 0.25);
   --disabled-background: #cccccc;
+  --hover-background: #f0f2f5;
+  --selected-background: #cce5ff;
+  --selected-text: #004085;
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
@@ -36,6 +39,9 @@
   --header-text: #e0e0e0;
   --accent-color-shadow: rgba(77, 171, 247, 0.25);
   --disabled-background: #5a5a5a;
+  --hover-background: #333333;
+  --selected-background: #1a3a5c;
+  --selected-text: #cce5ff;
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);

@@ -7,7 +7,7 @@ import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
-import com.dk_power.power_plant_java.sevice.sharepoint.WorkRequestSyncService;
+import com.dk_power.power_plant_java.sevice.sync.WorkRequestSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

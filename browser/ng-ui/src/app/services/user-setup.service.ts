@@ -6,6 +6,7 @@ export interface PwaUserData {
   email: string;
   phone: string;
   company: string;
+  signature?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

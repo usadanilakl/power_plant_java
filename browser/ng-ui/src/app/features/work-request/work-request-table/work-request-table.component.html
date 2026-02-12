@@ -1,6 +1,7 @@
 <app-table
     [items]="items()"
     [columns]="columns"
+    [deleteItem]="workRequestStateService.deleteById"
     (rowClicked)="onRowClick($event)"
 ></app-table>
 

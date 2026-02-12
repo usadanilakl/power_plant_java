@@ -8,6 +8,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GlobalMessageService } from '../../services/global-message.service';
 import { SubmissionOrchestratorService, SubmissionResult } from '../../services/submission-orchestrator.service';
 import { IAttachment } from '../../models/permits/attachment.model';
+import { UserSetupService } from '../../services/user-setup.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,7 @@ export class WorkRequestStateService {
   workRequesDbService = inject(WorkRequestDbService);
   globalMessageService = inject(GlobalMessageService);
   orchestrator = inject(SubmissionOrchestratorService);
+  userSetupService = inject(UserSetupService);
   destroyRef = inject(DestroyRef);
 
   emailFallbackData = signal<{ mailto: string; body: string } | null>(null);
@@ -74,13 +76,13 @@ export class WorkRequestStateService {
   submitNewRequest(workRequest: WorkRequest) {
     const formData = workRequest as any;
     const attachments: IAttachment[] = [
-      ...(Array.isArray(formData.photos) ? formData.photos : []),
-      ...(Array.isArray(formData.documents) ? formData.documents : []),
+      ...(Array.isArray(formData.files) ? formData.files : []),
     ];
-    if (formData.signature && typeof formData.signature === 'string') {
-      const base64 = formData.signature.includes(',')
-        ? formData.signature.split(',')[1]
-        : formData.signature;
+    const userSignature = this.userSetupService.getUserData()?.signature;
+    if (userSignature) {
+      const base64 = userSignature.includes(',')
+        ? userSignature.split(',')[1]
+        : userSignature;
       attachments.push({
         fileName: 'signature.png',
         contentType: 'image/png',
@@ -128,9 +130,9 @@ export class WorkRequestStateService {
 
         return this.workRequesDbService.addWorkRequest(updatedWorkRequest).pipe(
           tap(() => {
-            this.selectWorkRequest(updatedWorkRequest);
-            this.workRequestLocalStorageService.clearDraft();
             this.addWorkRequestsToList([updatedWorkRequest]);
+            this.workRequestLocalStorageService.clearDraft();
+            this.selectWorkRequest(new WorkRequest());
             this.globalMessageService.showMessage(
               `Request submitted via ${result.method}.`,
               'green'
@@ -185,9 +187,27 @@ export class WorkRequestStateService {
 
   resubmitSelected() {
     const wr = this.getSelectedWorkRequest();
-    const { attachments, photos, documents, signature, ...draftWithoutAttachments } = wr as any;
-    this.workRequestLocalStorageService.saveDraft(draftWithoutAttachments);
-    this.selectWorkRequest(new WorkRequest(wr));
+    const { attachments, photos, documents, signature, id, localUuid, sharepointId, submissionStatus, submissionMethod, status, ...draftFields } = wr as any;
+    this.workRequestLocalStorageService.saveDraft(draftFields);
+    this.selectWorkRequest(new WorkRequest({ ...wr, localUuid: undefined, id: undefined, sharepointId: undefined, submissionStatus: undefined, submissionMethod: undefined, status: undefined }));
+  }
+
+  deleteSelected() {
+    const wr = this.getSelectedWorkRequest();
+    if (!wr?.id) return;
+    this.deleteById(wr.id);
+  }
+
+  deleteById = (id: any) => {
+    this.workRequesDbService.deleteWorkRequest(+id).pipe(
+      tap(() => {
+        this.selectWorkRequest(new WorkRequest());
+        this.globalMessageService.showMessage('Work request deleted.', 'green');
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      error: () => this.globalMessageService.showMessage('Failed to delete work request.', 'red')
+    });
   }
 
   revokeSelected(){

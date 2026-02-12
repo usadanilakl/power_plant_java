@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 @Service
@@ -42,7 +44,8 @@ public class PwaJhaService {
         // Convert DTO to entity
         Jha entity = convertToEntity(dto);
         entity.setLocalUuid(dto.getLocalUuid());
-        entity.setSubmittedAt(LocalDateTime.now());
+        ZonedDateTime centralNow = ZonedDateTime.now(ZoneId.of("America/Chicago"));
+        entity.setSubmittedAt(centralNow.toLocalDateTime());
         entity.setDeleted(false);
 
         // Link to WorkRequest

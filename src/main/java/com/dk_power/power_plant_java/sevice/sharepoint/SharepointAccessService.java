@@ -17,7 +17,6 @@ import java.util.function.Supplier;
 public class SharepointAccessService {
 
     private final SharePointCertificateAccess certificateAccess;
-    private final PowerAutomateAccess powerAutomateAccess;
     private final PowerAutomateV2Access v2Access;
 
     // --- WorkRequest ---

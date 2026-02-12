@@ -48,7 +48,7 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
             {
                 id: 'updatedAt',
                 header: 'Last Updated',
-                accessorFn: (item: IInstrument) => new Date(item.updatedAt).toLocaleDateString()
+                accessorFn: (item: IInstrument) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
             },
         ];
     }

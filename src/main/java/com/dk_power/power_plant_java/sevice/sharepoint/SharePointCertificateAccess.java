@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.sharepoint;
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientCertificateCredential;
+import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import com.dk_power.power_plant_java.dto.permits.SpaceDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -107,7 +108,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Accept", "application/json;odata=verbose");
+        headers.set("Accept", "application/json;odata=nometadata");
         return headers;
     }
 
@@ -141,38 +142,31 @@ public class SharePointCertificateAccess implements SharePointAccess {
         List<WorkRequestDto> results = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(response.getBody());
-            JsonNode items = root.path("d").path("results");
-            if (items.size() > 0) {
-                JsonNode firstItem = items.get(0);
-                Iterator<String> fieldNames = firstItem.fieldNames();
-                List<String> names = new ArrayList<>();
-                while (fieldNames.hasNext()) names.add(fieldNames.next());
-                log.info("[SharePoint] Work Request fields: {}", names);
-            }
+            // nometadata uses "value", verbose uses "d.results"
+            JsonNode items = root.has("value") ? root.path("value") : root.path("d").path("results");
             for (JsonNode item : items) {
                 WorkRequestDto dto = new WorkRequestDto();
-                dto.setSharepointId(item.path("ID").asText(null));
-                dto.setDateOfWorkToBePerformed(item.path("Date_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed").asText(null));
-                dto.setTimeOfWorkToBePerformed(item.path("Time_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed").asText(null));
-                dto.setRequestedBy(item.path("Work_x0020_Requested_x0020_By").asText(null));
+                dto.setSharepointId(item.path("ID").asText(item.path("Id").asText(null)));
+                dto.setDateOfWorkToBePerformed(item.path("DateOfWork").asText(null));
+                dto.setTimeOfWorkToBePerformed(item.path("DateOfWork").asText(null)); // will be split by caller if needed
+                dto.setRequestedBy(item.path("WorkRequestedBy").asText(null));
                 dto.setCompany(item.path("Company").asText(null));
-                dto.setLocation(item.path("Location_x0020_Of_x0020_Work").asText(null));
-                dto.setAffectedEquipment(item.path("Affected_x0020_Equipment").asText(null));
-                dto.setWorkScope(item.path("Work_x0020_Scope").asText(null));
-                dto.setForeman(item.path("Foreman_x0020_Name").asText(null));
-                dto.setFireWatch(item.path("Fire_x002d_watch_x0020_Name").asText(null));
+                dto.setLocation(item.path("LocationOfWork").asText(null));
+                dto.setAffectedEquipment(item.path("AffectedEquipment").asText(null));
+                dto.setWorkScope(item.path("Title").asText(null));
+                dto.setBooleanIsLotoRequired(item.path("IsLOTORequired").asBoolean(false));
+                dto.setBooleanIsHotWorkRequired(item.path("IsHotWorkRequired").asBoolean(false));
+                dto.setBooleanIsConfinedSpaceEntryRequired(item.path("IsConfinedSpaceEntryRequired").asBoolean(false));
+                dto.setForeman(item.path("ForemanName").asText(null));
+                dto.setFireWatch(item.path("FireWatchName").asText(null));
+                dto.setSpace(item.path("SpaceToBeEntered").asText(null));
                 dto.setStatus(item.path("Status").asText(null));
-
-                String hotWork = item.path("Is_x0020_Hot_x0020_Work_x0020_Required_x0020__x0028_welding_x002c__x0020_cutting_x002c__x0020_griding_x002c__x0020_open_x0020_flame_x002c__x0020_sparks_x0029_").asText(null);
-                if (hotWork != null) dto.setIsHotWorkRequired(hotWork);
-
-                String loto = item.path("Is_x0020_LOTO_x0020_Required_x003f_").asText(null);
-                if (loto != null) dto.setIsLotoRequired(loto);
-
-                String confined = item.path("Is_x0020_Confined_x0020_Space_x0020_Entry_x0020_Required_x003f_").asText(null);
-                if (confined != null) dto.setIsConfinedSpaceEntryRequired(confined);
-
-                dto.setSpace(item.path("Space_x0020_to_x0020_be_x0020_entered_x003a_").asText(null));
+                dto.setLocalUuid(item.path("PwaId").asText(null));
+                dto.setSubmitterName(item.path("SubmitterName").asText(null));
+                dto.setSubmitterEmail(item.path("SubmitterEmail").asText(null));
+                dto.setSubmitterPhone(item.path("SubmitterPhone").asText(null));
+                dto.setSubmitterCompany(item.path("SubmitterCompany").asText(null));
+                dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
                 results.add(dto);
             }
             log.debug("[SharePoint] Fetched {} work requests via REST API", results.size());
@@ -186,52 +180,34 @@ public class SharePointCertificateAccess implements SharePointAccess {
     public String createWorkRequest(WorkRequestDto dto) {
         String endpoint = "/_api/web/lists/getbytitle('Work Requests')/items";
 
-        // Build JSON body with SharePoint internal field names
+        // Build JSON body using modern SharePoint column names (same as PA V2)
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("__metadata", Map.of("type", "SP.Data.Work_x0020_RequestsListItem"));
-
-        // Map DTO fields to SharePoint internal field names
-        if (dto.getDateOfWorkToBePerformed() != null) {
-            body.put("Date_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed", dto.getDateOfWorkToBePerformed());
+        body.put("PwaId", dto.getLocalUuid() != null ? dto.getLocalUuid() : "");
+        // Combine date + time into ISO datetime (same as PA V2)
+        String date = dto.getDateOfWorkToBePerformed();
+        String time = dto.getTimeOfWorkToBePerformed();
+        if (date != null && time != null && !time.isEmpty()) {
+            body.put("DateOfWork", date + "T" + time + ":00");
+        } else {
+            body.put("DateOfWork", date != null ? date + "T00:00:00" : "");
         }
-        if (dto.getTimeOfWorkToBePerformed() != null) {
-            body.put("Time_x0020_of_x0020_work_x0020_to_x0020_be_x0020_performed", dto.getTimeOfWorkToBePerformed());
-        }
-        if (dto.getRequestedBy() != null) {
-            body.put("Work_x0020_Requested_x0020_By", dto.getRequestedBy());
-        }
-        if (dto.getCompany() != null) {
-            body.put("Company", dto.getCompany());
-        }
-        if (dto.getLocation() != null) {
-            body.put("Location_x0020_Of_x0020_Work", dto.getLocation());
-        }
-        if (dto.getAffectedEquipment() != null) {
-            body.put("Affected_x0020_Equipment", dto.getAffectedEquipment());
-        }
-        if (dto.getWorkScope() != null) {
-            body.put("Work_x0020_Scope", dto.getWorkScope());
-        }
-        if (dto.getForeman() != null) {
-            body.put("Foreman_x0020_Name", dto.getForeman());
-        }
-        if (dto.getFireWatch() != null) {
-            body.put("Fire_x002d_watch_x0020_Name", dto.getFireWatch());
-        }
-        if (dto.getIsHotWorkRequired() != null) {
-            body.put("Is_x0020_Hot_x0020_Work_x0020_Required_x0020__x0028_welding_x002c__x0020_cutting_x002c__x0020_griding_x002c__x0020_open_x0020_flame_x002c__x0020_sparks_x0029_",
-                    dto.getIsHotWorkRequired());
-        }
-        if (dto.getIsLotoRequired() != null) {
-            body.put("Is_x0020_LOTO_x0020_Required_x003f_", dto.getIsLotoRequired());
-        }
-        if (dto.getIsConfinedSpaceEntryRequired() != null) {
-            body.put("Is_x0020_Confined_x0020_Space_x0020_Entry_x0020_Required_x003f_", dto.getIsConfinedSpaceEntryRequired());
-        }
-        if (dto.getSpace() != null) {
-            body.put("Space_x0020_to_x0020_be_x0020_entered_x003a_", dto.getSpace());
-        }
-        body.put("Status", "Active");
+        body.put("WorkRequestedBy", dto.getRequestedBy() != null ? dto.getRequestedBy() : "");
+        body.put("Company", dto.getCompany() != null ? dto.getCompany() : "");
+        body.put("LocationOfWork", dto.getLocation() != null ? dto.getLocation() : "");
+        body.put("AffectedEquipment", dto.getAffectedEquipment() != null ? dto.getAffectedEquipment() : "");
+        body.put("Title", dto.getWorkScope() != null ? dto.getWorkScope() : "");
+        body.put("IsLOTORequired", Boolean.TRUE.equals(dto.getIsLotoRequired()));
+        body.put("IsHotWorkRequired", Boolean.TRUE.equals(dto.getIsHotWorkRequired()));
+        body.put("IsConfinedSpaceEntryRequired", Boolean.TRUE.equals(dto.getIsConfinedSpaceEntryRequired()));
+        body.put("ForemanName", dto.getForeman() != null ? dto.getForeman() : "");
+        body.put("FireWatchName", dto.getFireWatch() != null ? dto.getFireWatch() : "");
+        body.put("SpaceToBeEntered", dto.getSpace() != null ? dto.getSpace() : "");
+        body.put("Status", dto.getStatus() != null ? dto.getStatus() : "Active");
+        body.put("SubmitterName", dto.getSubmitterName() != null ? dto.getSubmitterName() : "");
+        body.put("SubmitterEmail", dto.getSubmitterEmail() != null ? dto.getSubmitterEmail() : "");
+        body.put("SubmitterPhone", dto.getSubmitterPhone() != null ? dto.getSubmitterPhone() : "");
+        body.put("SubmitterCompany", dto.getSubmitterCompany() != null ? dto.getSubmitterCompany() : "");
+        body.put("TimeSubmitted", dto.getTimeSubmitted() != null ? dto.getTimeSubmitted() : "");
 
         try {
             String jsonBody = objectMapper.writeValueAsString(body);
@@ -240,9 +216,9 @@ public class SharePointCertificateAccess implements SharePointAccess {
             ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                // Extract ID from response
+                // Extract ID from response (nometadata: root.ID, verbose: d.ID)
                 JsonNode root = objectMapper.readTree(response.getBody());
-                String id = root.path("d").path("ID").asText(null);
+                String id = root.has("ID") ? root.path("ID").asText(null) : root.path("d").path("ID").asText(null);
                 log.info("[SharePoint] Created work request with ID: {}", id);
                 return id;
             } else {
@@ -307,6 +283,38 @@ public class SharePointCertificateAccess implements SharePointAccess {
             throw new RuntimeException("Failed to parse spaces response: " + e.getMessage(), e);
         }
         return results;
+    }
+
+    @Override
+    public void addAttachment(String entityType, String sharepointId, PaAttachmentDto attachment) {
+        String listTitle;
+        if ("WorkRequest".equals(entityType)) {
+            listTitle = "Work Requests";
+        } else if ("Jha".equals(entityType)) {
+            listTitle = "JHA";
+        } else if ("ConfinedSpace".equals(entityType)) {
+            listTitle = "Confined Spaces";
+        } else {
+            throw new IllegalArgumentException("Unknown entity type: " + entityType);
+        }
+
+        String endpoint = String.format(
+                "/_api/web/lists/getbytitle('%s')/items(%s)/AttachmentFiles/add(FileName='%s')",
+                listTitle, sharepointId, attachment.getFileName());
+
+        byte[] fileBytes = Base64.getDecoder().decode(attachment.getBase64Content());
+
+        String fullUrl = siteUrl + endpoint;
+        HttpHeaders headers = createHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        HttpEntity<byte[]> entity = new HttpEntity<>(fileBytes, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        if (response.getStatusCode().is2xxSuccessful()) {
+            log.info("[SharePoint] Attachment '{}' uploaded to {} {}", attachment.getFileName(), entityType, sharepointId);
+        } else {
+            throw new RuntimeException("Failed to upload attachment: " + response.getStatusCode());
+        }
     }
 
     @Override

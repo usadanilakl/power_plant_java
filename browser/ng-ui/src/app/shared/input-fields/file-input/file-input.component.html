@@ -2,17 +2,30 @@
      [class.dragover]="isDragover">
   <div class="drop-zone">
     <p>Drag and drop {{ multiple ? 'files' : 'a file' }} here, or</p>
-    <label class="file-input-label">
-      {{ label }}
-      <input
-        type="file"
-        [accept]="accept"
-        [multiple]="multiple"
-        [attr.capture]="capture || null"
-        (change)="onFileSelected($event)"
-        class="file-input"
-      >
-    </label>
+    <div class="button-row">
+      <label class="file-input-label">
+        {{ label }}
+        <input
+          type="file"
+          [accept]="accept"
+          [multiple]="multiple"
+          (change)="onFileSelected($event)"
+          class="file-input"
+        >
+      </label>
+      @if (hasCamera) {
+        <label class="file-input-label camera-label">
+          Take Photo
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            (change)="onFileSelected($event)"
+            class="file-input"
+          >
+        </label>
+      }
+    </div>
   </div>
   @if (files.length > 0) {
     <div class="file-list">

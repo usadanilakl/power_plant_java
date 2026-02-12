@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.sevice.sharepoint;
+package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
@@ -6,7 +6,7 @@ import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
-import com.dk_power.power_plant_java.sevice.sync.WorkRequestMergeService;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

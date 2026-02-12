@@ -101,9 +101,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
           { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea' }
         ]
       },
-      { name: 'photos', label: 'Photos', type: 'file', accept: 'image/*', multiple: true, initialValue: this.getAttachmentsByType('photo'), group: { label: 'Attachments' } },
-      { name: 'signature', label: 'Signature', type: 'signature', initialValue: null, group: { label: 'Attachments' } },
-      { name: 'documents', label: 'Documents', type: 'file', accept: '.pdf,.doc,.docx', multiple: true, initialValue: this.getAttachmentsByType('document'), group: { label: 'Attachments' } },
+      { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true, initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
     ];
   }
   
@@ -116,7 +114,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
         {
           id: 'updatedAt',
           header: 'Last Updated',
-          accessorFn: (item: IJha) => new Date(item.updatedAt).toLocaleDateString()
+          accessorFn: (item: IJha) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
         },
       ];
     }

@@ -18,6 +18,13 @@
   align-items: center;
 }
 
+.button-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .file-input-label {
   padding: 10px 15px;
   background-color: var(--accent-color);
@@ -26,6 +33,10 @@
   cursor: pointer;
   display: inline-block;
   margin-top: 10px;
+}
+
+.camera-label {
+  background-color: #2196f3;
 }
 
 .file-input {

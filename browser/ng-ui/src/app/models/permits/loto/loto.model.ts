@@ -42,7 +42,7 @@ export class Loto extends BaseModel<ILoto> implements ILoto {
       {
         id: 'updatedAt',
         header: 'Last Updated',
-        accessorFn: (item: ILoto) => new Date(item.updatedAt).toLocaleDateString()
+        accessorFn: (item: ILoto) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
       },
     ];
   }

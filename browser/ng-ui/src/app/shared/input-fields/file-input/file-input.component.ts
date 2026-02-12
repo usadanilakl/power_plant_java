@@ -26,8 +26,11 @@ export class FileInputComponent implements ControlValueAccessor {
   onChange: Function = () => {};
   onTouched: Function = () => {};
   isDragover: boolean = false;
+  hasCamera: boolean = false;
 
-  constructor(private host: ElementRef<HTMLInputElement>) {}
+  constructor(private host: ElementRef<HTMLInputElement>) {
+    this.hasCamera = 'mediaDevices' in navigator && 'ontouchstart' in window;
+  }
 
   @HostListener('dragover', ['$event']) onDragOver(event: DragEvent) {
     event.preventDefault();

@@ -67,7 +67,7 @@ export class WorkRequestTableComponent implements OnInit {
   }
 
   deleteSelected(): void {
-    console.log('Deleting:', this.selectedItem());
+    this.workRequestStateService.deleteSelected();
     this.closeActionMenu();
   }
 

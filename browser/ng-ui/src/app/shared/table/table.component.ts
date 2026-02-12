@@ -244,20 +244,24 @@ export class TableComponent implements OnInit, AfterViewInit {
     // Apply global search filter
     let filtered = this._items.filter(item => {
       if (this.globalSearchQuery) {
-        return Object.values(item).some(value => 
-          String(value).toLowerCase().includes(this.globalSearchQuery.toLowerCase())
+        const query = this.globalSearchQuery.toLowerCase();
+        const rawMatch = Object.values(item).some(v => String(v).toLowerCase().includes(query));
+        if (rawMatch) return true;
+        return this.columns.some(col =>
+          col.accessorFn && String(this.getCellValue(item, col)).toLowerCase().includes(query)
         );
       }
       return true;
     });
-  
+
     // Apply column filters
     filtered = filtered.filter(item => {
-      // console.log('Filter conditions:', this.columnFilters);
-      // console.log('Item:', item);
-      return Object.entries(this.columnFilters).every(([key, value]) => 
-        !value || String(this.getNestedProperty(item, key)).toLowerCase().includes(value.toLowerCase())
-      );
+      return Object.entries(this.columnFilters).every(([key, value]) => {
+        if (!value) return true;
+        const column = this.columns.find(col => col.id === key || col.accessorKey === key);
+        const cellValue = column ? this.getCellValue(item, column) : this.getNestedProperty(item, key);
+        return String(cellValue).toLowerCase().includes(value.toLowerCase());
+      });
     });
   
     // Apply sorting if a column is currently sorted

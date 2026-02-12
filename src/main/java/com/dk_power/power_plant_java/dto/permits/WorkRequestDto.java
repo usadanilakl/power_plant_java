@@ -50,6 +50,12 @@ public class WorkRequestDto {
 
     private String localUuid;
 
+    private String submitterName;
+    private String submitterEmail;
+    private String submitterPhone;
+    private String submitterCompany;
+    private String timeSubmitted;
+
     public void setIsHotWorkRequired(String isHotWorkRequired) {
         this.isHotWorkRequired = convertYesNoToBooleanString(isHotWorkRequired);
     }

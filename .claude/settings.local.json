@@ -47,7 +47,8 @@
       "Bash(git ls-tree:*)",
       "Bash(sort:*)",
       "Bash(git reset:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(du:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"

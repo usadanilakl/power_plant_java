@@ -49,6 +49,7 @@ public class PowerAutomateV2Access implements SharePointAccess {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("create");
         req.setData(workRequestToMap(dto));
+        req.setAttachments(Collections.emptyList());
         PaResponseDto resp = v2Client.workRequest(req);
         if (!resp.isSuccess()) {
             throw new RuntimeException("PA-V2 create WorkRequest failed: " + resp.getMessage());
@@ -120,6 +121,7 @@ public class PowerAutomateV2Access implements SharePointAccess {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("addAttachment");
         req.setId(sharepointId);
+        req.setData(Map.of());
         req.setAttachments(List.of(attachment));
         PaResponseDto resp;
         if ("WorkRequest".equals(entityType)) {
@@ -166,27 +168,32 @@ public class PowerAutomateV2Access implements SharePointAccess {
 
     private Map<String, Object> workRequestToMap(WorkRequestDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("PwaId", dto.getLocalUuid());
+        map.put("PwaId", orEmpty(dto.getLocalUuid()));
         // Combine date + time into ISO datetime for SharePoint DateTime column
         String date = dto.getDateOfWorkToBePerformed();
         String time = dto.getTimeOfWorkToBePerformed();
         if (date != null && time != null && !time.isEmpty()) {
             map.put("DateOfWork", date + "T" + time + ":00");
         } else {
-            map.put("DateOfWork", date != null ? date + "T00:00:00" : null);
+            map.put("DateOfWork", date != null ? date + "T00:00:00" : "");
         }
-        map.put("WorkRequestedBy", dto.getRequestedBy());
-        map.put("Company", dto.getCompany());
-        map.put("LocationOfWork", dto.getLocation());
-        map.put("AffectedEquipment", dto.getAffectedEquipment());
-        map.put("WorkScope", dto.getWorkScope());
-        map.put("IsLOTORequired", boolToYesNo(dto.getIsLotoRequired()));
-        map.put("IsHotWorkRequired", boolToYesNo(dto.getIsHotWorkRequired()));
-        map.put("IsConfinedSpaceEntryRequired", boolToYesNo(dto.getIsConfinedSpaceEntryRequired()));
-        map.put("ForemanName", dto.getForeman());
-        map.put("FireWatchName", dto.getFireWatch());
-        map.put("SpaceToBeEntered", dto.getSpace());
+        map.put("WorkRequestedBy", orEmpty(dto.getRequestedBy()));
+        map.put("Company", orEmpty(dto.getCompany()));
+        map.put("LocationOfWork", orEmpty(dto.getLocation()));
+        map.put("AffectedEquipment", orEmpty(dto.getAffectedEquipment()));
+        map.put("WorkScope", orEmpty(dto.getWorkScope()));
+        map.put("IsLOTORequired", Boolean.TRUE.equals(dto.getIsLotoRequired()));
+        map.put("IsHotWorkRequired", Boolean.TRUE.equals(dto.getIsHotWorkRequired()));
+        map.put("IsConfinedSpaceEntryRequired", Boolean.TRUE.equals(dto.getIsConfinedSpaceEntryRequired()));
+        map.put("ForemanName", orEmpty(dto.getForeman()));
+        map.put("FireWatchName", orEmpty(dto.getFireWatch()));
+        map.put("SpaceToBeEntered", orEmpty(dto.getSpace()));
         map.put("Status", dto.getStatus() != null ? dto.getStatus() : "Active");
+        map.put("SubmitterName", orEmpty(dto.getSubmitterName()));
+        map.put("SubmitterEmail", orEmpty(dto.getSubmitterEmail()));
+        map.put("SubmitterPhone", orEmpty(dto.getSubmitterPhone()));
+        map.put("SubmitterCompany", orEmpty(dto.getSubmitterCompany()));
+        map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
         return map;
     }
 
@@ -281,8 +288,7 @@ public class PowerAutomateV2Access implements SharePointAccess {
         return val != null ? val.toString() : null;
     }
 
-    private String boolToYesNo(Boolean val) {
-        if (val == null) return "No";
-        return val ? "Yes" : "No";
+    private String orEmpty(String val) {
+        return val != null ? val : "";
     }
 }

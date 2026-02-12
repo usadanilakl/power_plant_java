@@ -78,25 +78,25 @@ export class ServerApiService {
   private baseUrl = environment.serverUrl;
 
   submitWorkRequest(dto: PwaWorkRequestDto): Observable<PwaSubmissionResult> {
-    return this.http.post<{ payload: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/work-request/submit`, dto).pipe(
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/work-request/submit`, dto).pipe(
       timeout(15000),
-      map(response => response.payload),
+      map(response => response.responseData),
       catchError(this.handleError)
     );
   }
 
   submitJha(dto: PwaJhaDto): Observable<PwaSubmissionResult> {
-    return this.http.post<{ payload: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/jha/submit`, dto).pipe(
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/jha/submit`, dto).pipe(
       timeout(15000),
-      map(response => response.payload),
+      map(response => response.responseData),
       catchError(this.handleError)
     );
   }
 
   getWorkRequestStatus(localUuid: string): Observable<PwaStatusResult | null> {
-    return this.http.get<{ payload: PwaStatusResult }>(`${this.baseUrl}/api/pwa/work-request/status/${localUuid}`).pipe(
+    return this.http.get<{ responseData: PwaStatusResult }>(`${this.baseUrl}/api/pwa/work-request/status/${localUuid}`).pipe(
       timeout(10000),
-      map(response => response.payload),
+      map(response => response.responseData),
       catchError(err => {
         if (err.status === 404) {
           return of(null);
@@ -115,9 +115,14 @@ export class ServerApiService {
   }
 
   convertWorkRequestToDto(workRequest: WorkRequest, userData: { name: string; email: string; phone: string; company: string }): PwaWorkRequestDto {
-    const dateStr = workRequest.dateOfWork instanceof Date
-      ? workRequest.dateOfWork.toISOString().split('T')[0]
-      : String(workRequest.dateOfWork || '');
+    // Extract local date components (avoids UTC date shift from toISOString)
+    let dateStr: string;
+    if (workRequest.dateOfWork instanceof Date) {
+      const d = workRequest.dateOfWork;
+      dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else {
+      dateStr = String(workRequest.dateOfWork || '');
+    }
 
     return {
       localUuid: workRequest.localUuid || crypto.randomUUID(),
@@ -138,7 +143,7 @@ export class ServerApiService {
       submitterEmail: userData.email,
       submitterPhone: userData.phone,
       submitterCompany: userData.company,
-      timeSubmitted: new Date().toISOString(),
+      timeSubmitted: ServerApiService.formatCentralTime(new Date()),
       attachments: this.convertAttachments(workRequest.attachments)
     };
   }
@@ -170,7 +175,7 @@ export class ServerApiService {
       submitterEmail: userData.email,
       submitterPhone: userData.phone,
       submitterCompany: userData.company,
-      timeSubmitted: new Date().toISOString(),
+      timeSubmitted: ServerApiService.formatCentralTime(new Date()),
       attachments: this.convertAttachments(jha.attachments)
     };
   }
@@ -182,6 +187,15 @@ export class ServerApiService {
       contentType: a.contentType,
       base64Content: a.base64Content
     }));
+  }
+
+  /** Formats a Date as Central Time: MM/dd/yyyy hh:mm AM/PM */
+  static formatCentralTime(date: Date): string {
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/Chicago',
+      month: '2-digit', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    }).replace(',', '');
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

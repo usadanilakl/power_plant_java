@@ -201,7 +201,7 @@ export class SubmissionOrchestratorService {
       localUuid: workRequest.localUuid || crypto.randomUUID(),
       company: workRequest.company || '',
       dateOfWork: workRequest.dateOfWork instanceof Date
-        ? workRequest.dateOfWork.toISOString().split('T')[0]
+        ? `${workRequest.dateOfWork.getFullYear()}-${String(workRequest.dateOfWork.getMonth() + 1).padStart(2, '0')}-${String(workRequest.dateOfWork.getDate()).padStart(2, '0')}`
         : String(workRequest.dateOfWork || ''),
       timeOfWork: workRequest.timeOfWork || '',
       locationOfWork: workRequest.locationOfWork || '',
@@ -218,7 +218,7 @@ export class SubmissionOrchestratorService {
       submitterEmail: userData?.email || '',
       submitterPhone: userData?.phone || '',
       submitterCompany: userData?.company || '',
-      timeSubmitted: new Date().toISOString(),
+      timeSubmitted: ServerApiService.formatCentralTime(new Date()),
       attachments: []
     };
     const encoded = btoa(JSON.stringify(dto));

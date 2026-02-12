@@ -51,6 +51,23 @@ export class WorkRequestDbService {
     );
   }
 
+  getWorkRequestsNeedingJha(): Observable<WorkRequest[]> {
+    return from(
+      liveQuery(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return this.indexedDbService.workRequests
+          .filter(wr => {
+            const isFuture = new Date(wr.dateOfWork) >= today;
+            const needsJha = !wr.jhaStatus || wr.jhaStatus !== 'Completed';
+            return isFuture && needsJha;
+          })
+          .toArray();
+      })
+    );
+  }
+
   deleteWorkRequest(id: number): Observable<void> {
     return from(this.indexedDbService.workRequests.delete(id));
   }

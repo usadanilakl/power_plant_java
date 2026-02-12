@@ -80,7 +80,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         name: 'dateOfWork',
         label: 'Date of Work',
         type: 'date',
-        initialValue: this.dateOfWork.toISOString().split('T')[0],
+        initialValue: `${this.dateOfWork.getFullYear()}-${String(this.dateOfWork.getMonth() + 1).padStart(2, '0')}-${String(this.dateOfWork.getDate()).padStart(2, '0')}`,
         validators: [Validators.required, futureOrPresentDateValidator()]
       },
       { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required] },
@@ -122,9 +122,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' },
         validators: [Validators.required]
       },
-      { name: 'photos', label: 'Photos', type: 'file', accept: 'image/*', multiple: true, initialValue: this.getAttachmentsByType('photo'), group: { label: 'Attachments' } },
-      { name: 'signature', label: 'Signature', type: 'signature', initialValue: null, group: { label: 'Attachments' } },
-      { name: 'documents', label: 'Documents', type: 'file', accept: '.pdf,.doc,.docx', multiple: true, initialValue: this.getAttachmentsByType('document'), group: { label: 'Attachments' } },
+      { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true, initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
     ];
   }
 
@@ -158,7 +156,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         {
           id: 'updatedAt',
           header: 'Last Updated',
-          accessorFn: (item: IWorkRequest) => new Date(item.updatedAt).toLocaleDateString()
+          accessorFn: (item: IWorkRequest) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
         },
         { id: 'jhaStatus', header: 'JHA Status', accessorKey: 'jhaStatus'  },
         {
@@ -225,13 +223,18 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     return this.attachments.filter(a => a.type === type);
   }
 
+  getSignatureDataUrl(): string | null {
+    const sig = this.attachments.find(a => a.type === 'signature');
+    if (!sig?.base64Content) return null;
+    return `data:${sig.contentType || 'image/png'};base64,${sig.base64Content}`;
+  }
+
   convertToPaModel(): WorkRequestPa {
     // Extract local date components (avoids UTC date shift from toISOString)
     const d = this.dateOfWork instanceof Date ? this.dateOfWork : new Date(this.dateOfWork);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    // Create local Date from date + time, convert to UTC ISO for SharePoint
-    const localDate = new Date(`${dateStr}T${this.timeOfWork || '00:00'}:00`);
-    const combinedDateTime = localDate.toISOString();
+    // Combine as naive local datetime (Central Time) — no UTC conversion
+    const combinedDateTime = `${dateStr}T${this.timeOfWork || '00:00'}:00`;
 
     return new WorkRequestPa({
       PwaId: this.localUuid,

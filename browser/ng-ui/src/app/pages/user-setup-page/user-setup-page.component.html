@@ -30,6 +30,13 @@
         <span class="error" *ngIf="getError('company')">{{ getError('company') }}</span>
       </div>
 
+      <div class="form-field">
+        <app-signature-input
+          formControlName="signature"
+          label="Signature">
+        </app-signature-input>
+      </div>
+
       <button type="submit" class="submit-button" [disabled]="form.invalid">
         {{ isUpdate ? 'Update Info' : 'Get Started' }}
       </button>
