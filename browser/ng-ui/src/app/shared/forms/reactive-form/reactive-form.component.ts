@@ -153,7 +153,7 @@ export class ReactiveFormComponent {
           let value = this.getNestedValue(this.entity(), field.name);
 
           if (field.type === 'file') {
-            value = null;
+            value = field.initialValue ?? null;
           } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
             value = value || [];
           } else if (field.type === 'select' && typeof value === 'object' && value !== null) {

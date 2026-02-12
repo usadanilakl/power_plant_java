@@ -60,7 +60,8 @@ export class WorkRequestStateService {
     return this.selectedWorkRequestSubject.value;
   }
   saveDraft(workRequest: WorkRequest) {
-    this.workRequestLocalStorageService.saveDraft(workRequest);
+    const { attachments, photos, documents, signature, ...draftWithoutAttachments } = workRequest as any;
+    this.workRequestLocalStorageService.saveDraft(draftWithoutAttachments);
   }
 
   loadFromLocalStorage() {
@@ -183,7 +184,10 @@ export class WorkRequestStateService {
   }
 
   resubmitSelected() {
-    this.workRequestLocalStorageService.saveDraft(this.getSelectedWorkRequest());
+    const wr = this.getSelectedWorkRequest();
+    const { attachments, photos, documents, signature, ...draftWithoutAttachments } = wr as any;
+    this.workRequestLocalStorageService.saveDraft(draftWithoutAttachments);
+    this.selectWorkRequest(new WorkRequest(wr));
   }
 
   revokeSelected(){

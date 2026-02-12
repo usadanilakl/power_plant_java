@@ -64,6 +64,7 @@ export class WorkRequestFormComponent {
   }
 
   onEmailButtonClick() {
+    if (this.hasAttachments()) this.downloadAttachments();
     this.workRequestStateService.markSentViaEmail();
   }
 
@@ -74,6 +75,7 @@ export class WorkRequestFormComponent {
     const subject = encodeURIComponent('Work Request Submission');
     const body = encodeURIComponent(data.body);
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`, '_blank');
+    if (this.hasAttachments()) this.downloadAttachments();
     this.workRequestStateService.markSentViaEmail();
   }
 

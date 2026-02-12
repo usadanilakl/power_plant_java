@@ -427,6 +427,9 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   registerLastClickedCell(item: any, column: Column, event: MouseEvent) {
     this.lastClickedCell = { item, column };
+    if (column.onCellClick) {
+      column.onCellClick(item, event);
+    }
   }
 
   onDeleteSelectedItems() {

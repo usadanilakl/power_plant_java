@@ -59,7 +59,7 @@
             [class.ghost-row]="i === ghostRowIndex"
             [class.dragging]="draggedItem && draggedItem.id === item.id">
           @for (column of columns; track column.id; let colIndex = $index) {
-            <td 
+            <td
               (click)="registerLastClickedCell(item, column, $event)"
               [ngStyle]="getCellStyle(item, column)"
               [attr.data-col-index]="colIndex"

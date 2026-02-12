@@ -77,6 +77,15 @@ export class WorkRequestTableComponent implements OnInit {
     const wrInstance = new WorkRequest(wr);
     const emailContent = this.orchestrator.generateEmailContent(wrInstance);
     window.location.href = emailContent.mailto;
+    if (wrInstance.attachments?.length > 0) {
+      for (const att of wrInstance.attachments) {
+        const dataUri = `data:${att.contentType};base64,${att.base64Content}`;
+        const link = document.createElement('a');
+        link.href = dataUri;
+        link.download = att.fileName;
+        link.click();
+      }
+    }
     this.workRequestStateService.markSentViaEmail(wrInstance);
     this.closeActionMenu();
   }

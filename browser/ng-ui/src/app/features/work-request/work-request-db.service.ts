@@ -14,7 +14,7 @@ export class WorkRequestDbService {
   addWorkRequest(workRequestData: Partial<IWorkRequest>): Observable<number> {
     const { id, ...requestData } = workRequestData;
     const newWorkRequest = new WorkRequest(requestData);
-    return from(this.indexedDbService.workRequests.add(newWorkRequest));
+    return from(this.addWithQuotaRecovery(newWorkRequest));
   }
 
   getAllWorkRequests(): Observable<WorkRequest[]> {
@@ -33,7 +33,7 @@ export class WorkRequestDbService {
       ...workRequest,
       updatedAt: new Date()
     };
-    return from(this.indexedDbService.workRequests.update(workRequest.id, changes));
+    return from(this.updateWithQuotaRecovery(workRequest.id, changes));
   }
 
   getWorkRequestWithoutJha(): Observable<WorkRequest[]> {
@@ -53,5 +53,76 @@ export class WorkRequestDbService {
 
   deleteWorkRequest(id: number): Observable<void> {
     return from(this.indexedDbService.workRequests.delete(id));
+  }
+
+  private isQuotaError(error: any): boolean {
+    if (error?.name === 'QuotaExceededError') return true;
+    if (error?.inner?.name === 'QuotaExceededError') return true;
+    if (error?.message?.includes?.('quota')) return true;
+    return false;
+  }
+
+  private async stripOldestAttachments(): Promise<number> {
+    const allWrs = await this.indexedDbService.workRequests
+      .orderBy('createdAt')
+      .toArray();
+
+    const withAttachments = allWrs.filter(wr => wr.attachments?.length > 0);
+    let freedCount = 0;
+
+    for (const wr of withAttachments) {
+      await this.indexedDbService.workRequests.update(wr.id, {
+        attachments: [],
+        updatedAt: new Date()
+      });
+      freedCount++;
+    }
+
+    return freedCount;
+  }
+
+  private async addWithQuotaRecovery(workRequest: WorkRequest): Promise<number> {
+    try {
+      return await this.indexedDbService.workRequests.add(workRequest);
+    } catch (error) {
+      if (!this.isQuotaError(error)) throw error;
+
+      console.warn('[WorkRequestDB] Storage quota exceeded, cleaning up old attachments...');
+      const freed = await this.stripOldestAttachments();
+
+      if (freed > 0) {
+        try {
+          return await this.indexedDbService.workRequests.add(workRequest);
+        } catch (retryError) {
+          if (!this.isQuotaError(retryError)) throw retryError;
+        }
+      }
+
+      console.warn('[WorkRequestDB] Still not enough space, saving without attachments');
+      const stripped = new WorkRequest({ ...workRequest, attachments: [] });
+      return await this.indexedDbService.workRequests.add(stripped);
+    }
+  }
+
+  private async updateWithQuotaRecovery(id: number, changes: any): Promise<number> {
+    try {
+      return await this.indexedDbService.workRequests.update(id, changes);
+    } catch (error) {
+      if (!this.isQuotaError(error)) throw error;
+
+      console.warn('[WorkRequestDB] Storage quota exceeded on update, cleaning up old attachments...');
+      const freed = await this.stripOldestAttachments();
+
+      if (freed > 0) {
+        try {
+          return await this.indexedDbService.workRequests.update(id, changes);
+        } catch (retryError) {
+          if (!this.isQuotaError(retryError)) throw retryError;
+        }
+      }
+
+      console.warn('[WorkRequestDB] Still not enough space, updating without attachments');
+      return await this.indexedDbService.workRequests.update(id, { ...changes, attachments: [] });
+    }
   }
 }

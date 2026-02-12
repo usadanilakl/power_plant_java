@@ -161,6 +161,46 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
           accessorFn: (item: IWorkRequest) => new Date(item.updatedAt).toLocaleDateString()
         },
         { id: 'jhaStatus', header: 'JHA Status', accessorKey: 'jhaStatus'  },
+        {
+          id: 'attachments',
+          header: 'Attachments',
+          accessorFn: (item: IWorkRequest) => {
+            if (!item.attachments?.length) return '';
+            return item.attachments.map(a => a.fileName || a.type).join(', ');
+          },
+          conditionalStyling: (item: IWorkRequest): { [key: string]: string } => {
+            if (item.attachments?.length) {
+              return { color: '#1976d2', cursor: 'pointer', textDecoration: 'underline' };
+            }
+            return {};
+          },
+          onCellClick: (item: IWorkRequest, event: MouseEvent) => {
+            if (!item.attachments?.length) return;
+            event.stopPropagation();
+            const blobUrls: { url: string; fileName: string; contentType: string }[] = [];
+            for (const att of item.attachments) {
+              const byteChars = atob(att.base64Content);
+              const byteArray = new Uint8Array(byteChars.length);
+              for (let i = 0; i < byteChars.length; i++) {
+                byteArray[i] = byteChars.charCodeAt(i);
+              }
+              const blob = new Blob([byteArray], { type: att.contentType });
+              blobUrls.push({ url: URL.createObjectURL(blob), fileName: att.fileName, contentType: att.contentType });
+            }
+            const htmlParts = blobUrls.map(b => {
+              if (b.contentType.startsWith('image/')) {
+                return `<div style="margin-bottom:1rem"><h3>${b.fileName}</h3><img src="${b.url}" style="max-width:100%;border:1px solid #ccc;border-radius:4px"></div>`;
+              } else if (b.contentType === 'application/pdf') {
+                return `<div style="margin-bottom:1rem"><h3>${b.fileName}</h3><iframe src="${b.url}" style="width:100%;height:600px;border:1px solid #ccc;border-radius:4px"></iframe></div>`;
+              } else {
+                return `<div style="margin-bottom:1rem"><h3><a href="${b.url}" download="${b.fileName}">${b.fileName}</a> (click to download)</h3></div>`;
+              }
+            });
+            const html = `<!DOCTYPE html><html><head><title>Attachments</title><style>body{font-family:sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}h3{margin:0.5rem 0}</style></head><body><h2>Attachments (${blobUrls.length})</h2>${htmlParts.join('')}</body></html>`;
+            const pageBlob = new Blob([html], { type: 'text/html' });
+            window.open(URL.createObjectURL(pageBlob), '_blank');
+          }
+        },
       ];
     }
 
