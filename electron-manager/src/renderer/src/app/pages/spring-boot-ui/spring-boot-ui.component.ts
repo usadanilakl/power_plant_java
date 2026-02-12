@@ -12,12 +12,12 @@ import { ElectronService, AppStatus, APP_DISPLAY_NAME } from '../../services/ele
   template: `
     <div class="sb-ui" *ngIf="status.state === 'running'; else notRunning">
       <iframe #sbIframe [src]="sbUrl" class="sb-iframe"></iframe>
-      <button class="refresh-btn" (click)="refreshPage()" title="Refresh page">&#x21BB;</button>
+      <button class="refresh-btn" (click)="refreshPage()" title="Refresh page"><span class="material-icons">refresh</span></button>
     </div>
 
     <ng-template #notRunning>
       <div class="placeholder">
-        <div class="placeholder-icon">&#x2699;</div>
+        <div class="placeholder-icon"><span class="material-icons">settings</span></div>
         <h2>{{ appName }} is not running</h2>
         <p class="placeholder-detail" *ngIf="status.state === 'starting'">Starting up... please wait.</p>
         <p class="placeholder-detail" *ngIf="status.state === 'stopping'">Shutting down...</p>

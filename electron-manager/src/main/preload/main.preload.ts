@@ -204,6 +204,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_PJM_STATUS, sub); };
   },
 
+  // Menu
+  popupMenu: (menuId: string, x: number, y: number): Promise<void> =>
+    ipcRenderer.invoke(events.IPC_MENU_POPUP, menuId, x, y),
+  onMenuNavigate: (callback: (path: string) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, path: string) => callback(path);
+    ipcRenderer.on(events.IPC_MENU_NAVIGATE, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_MENU_NAVIGATE, sub); };
+  },
+
   // General
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(events.IPC_GET_APP_VERSION),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(events.IPC_OPEN_EXTERNAL, url),

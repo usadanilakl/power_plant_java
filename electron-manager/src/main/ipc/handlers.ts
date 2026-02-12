@@ -2,7 +2,7 @@
  * IPC Handlers - Registers all IPC event handlers for the main process.
  */
 
-import { app, ipcMain, shell, dialog, BrowserWindow, session } from 'electron';
+import { app, ipcMain, shell, dialog, BrowserWindow, session, Menu, MenuItemConstructorOptions } from 'electron';
 import * as http from 'http';
 import * as events from './events';
 import { SpringBootManager } from '../managers/spring-boot.manager';
@@ -81,6 +81,39 @@ export class IpcHandlers {
         }
       }
     );
+
+    // Intercept main-process console output and route to unified log buffer
+    this.interceptConsole();
+  }
+
+  /**
+   * Intercepts console.log/warn/error in the main process and feeds
+   * tagged [EM] entries into the shared log buffer + IPC stream.
+   */
+  private interceptConsole(): void {
+    const origLog = console.log.bind(console);
+    const origWarn = console.warn.bind(console);
+    const origError = console.error.bind(console);
+
+    const emitLog = (level: string, args: any[]) => {
+      const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+      this.springBoot.addLog(`[EM] [${level}] ${msg}`);
+    };
+
+    console.log = (...args: any[]) => {
+      origLog(...args);
+      emitLog('LOG', args);
+    };
+
+    console.warn = (...args: any[]) => {
+      origWarn(...args);
+      emitLog('WARN', args);
+    };
+
+    console.error = (...args: any[]) => {
+      origError(...args);
+      emitLog('ERR', args);
+    };
   }
 
   public register(): void {
@@ -99,6 +132,7 @@ export class IpcHandlers {
     this.registerWeatherHandlers();
     this.registerPjmHandlers();
     this.registerElectronUpdateHandlers();
+    this.registerMenuHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -883,6 +917,162 @@ export class IpcHandlers {
         return result;
       } catch (error: any) {
         return { success: false, error: error.message };
+      }
+    });
+  }
+
+  private registerMenuHandlers(): void {
+    ipcMain.handle(events.IPC_MENU_POPUP, (_event, menuId: string, x: number, y: number) => {
+      const springBoot = this.springBoot;
+      const status = springBoot.getStatus();
+      const isRunning = status.state === 'running';
+      const isStopped = status.state === 'stopped' || status.state === 'error';
+      const win = this.mainWindow;
+
+      let template: MenuItemConstructorOptions[] = [];
+
+      switch (menuId) {
+        case 'file':
+          template = [
+            {
+              label: 'Settings',
+              accelerator: 'CmdOrCtrl+,',
+              click: () => {
+                if (win && !win.isDestroyed()) {
+                  win.webContents.send(events.IPC_MENU_NAVIGATE, '/settings');
+                }
+              }
+            },
+            { type: 'separator' },
+            {
+              label: 'Clear Application Data...',
+              click: async () => {
+                const { getWorkingDir } = require('../paths');
+                const workingDir = getWorkingDir();
+                const { response } = await dialog.showMessageBox(win, {
+                  type: 'warning',
+                  title: 'Clear Application Data',
+                  message: 'This will delete all downloaded data:',
+                  detail: `• JAR file\n• Database\n• Uploaded files\n• Device configuration\n\nLocation: ${workingDir}\n\nJG Portal will be stopped. You will need to sync again after clearing.`,
+                  buttons: ['Cancel', 'Clear Data'],
+                  defaultId: 0,
+                  cancelId: 0
+                });
+                if (response === 1) {
+                  try {
+                    if (springBoot.isRunning()) await springBoot.stop();
+                    const fs = require('fs');
+                    if (fs.existsSync(workingDir)) {
+                      fs.rmSync(workingDir, { recursive: true, force: true });
+                      fs.mkdirSync(workingDir, { recursive: true });
+                    }
+                    try { const App = require('../app').default; App.createMenu(); } catch {}
+                    dialog.showMessageBox(win, {
+                      type: 'info', title: 'Data Cleared',
+                      message: 'Application data has been cleared.',
+                      detail: 'Restart the app or sync again to re-download data.'
+                    });
+                  } catch (err: any) {
+                    dialog.showMessageBox(win, {
+                      type: 'error', title: 'Error',
+                      message: 'Failed to clear data', detail: err.message
+                    });
+                  }
+                }
+              }
+            },
+            {
+              label: 'Open Data Folder',
+              click: () => {
+                const { getWorkingDir } = require('../paths');
+                shell.openPath(getWorkingDir());
+              }
+            },
+            { type: 'separator' },
+            {
+              label: 'Exit',
+              accelerator: 'CmdOrCtrl+Q',
+              click: () => win?.close()
+            }
+          ];
+          break;
+
+        case 'app':
+          template = [
+            {
+              label: 'Start',
+              enabled: isStopped,
+              click: async () => {
+                try {
+                  await springBoot.start();
+                  try { const App = require('../app').default; App.createMenu(); } catch {}
+                } catch (e) { console.error('Failed to start:', e); }
+              }
+            },
+            {
+              label: 'Stop',
+              enabled: isRunning || status.state === 'starting',
+              click: async () => {
+                try {
+                  await springBoot.stop();
+                  try { const App = require('../app').default; App.createMenu(); } catch {}
+                } catch (e) { console.error('Failed to stop:', e); }
+              }
+            },
+            {
+              label: 'Restart',
+              enabled: isRunning,
+              click: async () => {
+                try {
+                  await springBoot.restart();
+                  try { const App = require('../app').default; App.createMenu(); } catch {}
+                } catch (e) { console.error('Failed to restart:', e); }
+              }
+            },
+            { type: 'separator' },
+            {
+              label: `Open in Browser (port ${DEFAULT_SPRING_BOOT_CONFIG.port})`,
+              enabled: isRunning,
+              click: () => shell.openExternal(`http://localhost:${DEFAULT_SPRING_BOOT_CONFIG.port}`)
+            }
+          ];
+          break;
+
+        case 'view':
+          template = [
+            { role: 'reload' },
+            { role: 'forceReload' },
+            { type: 'separator' },
+            { role: 'toggleDevTools' },
+            { type: 'separator' },
+            { role: 'resetZoom' },
+            { role: 'zoomIn' },
+            { role: 'zoomOut' },
+            { type: 'separator' },
+            { role: 'togglefullscreen' }
+          ];
+          break;
+
+        case 'help':
+          template = [
+            {
+              label: 'About',
+              click: () => {
+                dialog.showMessageBox(win, {
+                  type: 'info',
+                  title: 'About DK Power Manager',
+                  message: 'DK Power Manager',
+                  detail: `Version: ${app.getVersion()}\n\nManages ${APP_DISPLAY_NAME} application.`
+                });
+              }
+            }
+          ];
+          break;
+      }
+
+      if (template.length > 0) {
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({ window: win, x, y });
       }
     });
   }

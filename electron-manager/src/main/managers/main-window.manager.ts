@@ -26,6 +26,7 @@ export class MainWindowManager {
       height,
       minWidth: 800,
       minHeight: 600,
+      frame: false,
       title: 'DK Power Manager',
       show: false,
       backgroundColor: '#1a1a2e',

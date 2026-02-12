@@ -54,7 +54,7 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
       <!-- Feature overview cards -->
       <div class="features-grid">
         <a class="feature-card" routerLink="/fire-impairment">
-          <div class="feature-icon">&#x2622;</div>
+          <div class="feature-icon"><span class="material-icons" style="color: #ef4444">local_fire_department</span></div>
           <div class="feature-info">
             <h3>Fire Impairment</h3>
             <p class="feature-desc">Manage fire protection impairments</p>
@@ -69,7 +69,7 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
         </a>
 
         <a class="feature-card" routerLink="/gate-log">
-          <div class="feature-icon">&#x2706;</div>
+          <div class="feature-icon"><span class="material-icons" style="color: #06b6d4">badge</span></div>
           <div class="feature-info">
             <h3>Gate Log</h3>
             <p class="feature-desc">Monitor site access and personnel</p>
@@ -78,7 +78,7 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
         </a>
 
         <a class="feature-card" routerLink="/weather">
-          <div class="feature-icon">&#x26A1;</div>
+          <div class="feature-icon"><span class="material-icons" style="color: #f59e0b">thunderstorm</span></div>
           <div class="feature-info">
             <h3>Weather</h3>
             <p class="feature-desc">Lightning and weather monitoring</p>
@@ -99,7 +99,7 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
         </a>
 
         <a class="feature-card" routerLink="/pjm">
-          <div class="feature-icon">&#x26A1;</div>
+          <div class="feature-icon"><span class="material-icons" style="color: #eab308">bolt</span></div>
           <div class="feature-info">
             <h3>PJM</h3>
             <p class="feature-desc">Grid pricing and power data</p>
@@ -124,7 +124,7 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
         </a>
 
         <div class="feature-card permits-card" [class.disabled]="status.state !== 'running'">
-          <div class="feature-icon">&#x1F4CB;</div>
+          <div class="feature-icon"><span class="material-icons" style="color: #8b5cf6">assignment</span></div>
           <div class="feature-info">
             <h3>Permits</h3>
             <p class="feature-desc">Work requests, LOTOs, permits</p>
@@ -147,6 +147,31 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
           <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
             {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
           </span>
+        </div>
+
+        <div class="feature-card external-links-card">
+          <div class="feature-icon"><span class="material-icons" style="color: #3b82f6">open_in_new</span></div>
+          <div class="feature-info">
+            <h3>External Links</h3>
+            <p class="feature-desc">SharePoint, Maximo, and other tools</p>
+          </div>
+          <div class="ext-links">
+            <a class="ext-link" (click)="openLink('toi')">
+              <span class="material-icons ext-link-icon">description</span>
+              <span>TOI</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
+            <a class="ext-link" (click)="openLink('work-requests')">
+              <span class="material-icons ext-link-icon">table_chart</span>
+              <span>Work Requests</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
+            <a class="ext-link" (click)="openLink('maximo')">
+              <span class="material-icons ext-link-icon">engineering</span>
+              <span>Maximo</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -457,6 +482,52 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
       color: var(--accent-warning);
     }
 
+    .external-links-card {
+      cursor: default;
+    }
+
+    .ext-links {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .ext-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 150ms;
+    }
+
+    .ext-link:hover {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .ext-link-icon {
+      font-size: 18px;
+      color: var(--text-muted);
+    }
+
+    .ext-arrow {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-left: auto;
+      opacity: 0;
+      transition: opacity 150ms;
+    }
+
+    .ext-link:hover .ext-arrow {
+      opacity: 1;
+    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -627,5 +698,18 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async openInBrowser(): Promise<void> {
     await this.electronService.openAppUrl();
+  }
+
+  private readonly externalLinks: Record<string, string> = {
+    'toi': 'https://jpowerusa.sharepoint.com/sites/JG/External/Forms/AllItems.aspx?id=%2Fsites%2FJG%2FExternal%2F60%20%2D%20Operations%2F60%2E11%20TIO%2DTMOD&viewid=88b99ea1%2D77a0%2D4798%2Dbc16%2D64e9eec8fa6a',
+    'work-requests': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/External/60%20-%20Operations/60.18%20Leads/Advanced%20Work%20Request/Advanced%20Work%20Request%20Log.xlsx?d=w3324dfbe805c45a38d2e7af0df93fbdc&csf=1&web=1&e=S12SEW',
+    'maximo': ''
+  };
+
+  openLink(key: string): void {
+    const url = this.externalLinks[key];
+    if (url) {
+      this.electronService.openExternal(url);
+    }
   }
 }

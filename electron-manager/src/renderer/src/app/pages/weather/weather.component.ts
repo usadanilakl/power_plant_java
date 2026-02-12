@@ -44,7 +44,7 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
       <div class="top-row">
         <!-- Lightning distance display -->
         <div class="lightning-panel" [class]="lightningLevel">
-          <div class="lightning-icon">&#x26A1;</div>
+          <div class="lightning-icon"><span class="material-icons">bolt</span></div>
           <div class="lightning-info">
             <span class="lightning-distance">{{ lightningDistance || '--' }}</span>
             <span class="lightning-unit">{{ unit || 'mi' }}</span>
@@ -136,7 +136,7 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
       </div>
 
       <div class="notice">
-        <span class="notice-icon">&#x2139;</span>
+        <span class="notice-icon material-icons" style="color: #3b82f6">info</span>
         <div>
           <strong>Data Sources</strong>
           <p>

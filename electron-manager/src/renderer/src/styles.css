@@ -205,6 +205,13 @@ html, body {
   }
 }
 
+/* Material Icons utilities */
+.sort-icon {
+  font-size: 16px;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
 /* Utility classes */
 .text-muted {
   color: var(--text-muted);

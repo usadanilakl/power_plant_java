@@ -18,7 +18,7 @@ import {
         <h1 class="page-title">Gate Log</h1>
         <div class="header-actions">
           <button class="btn btn-icon" (click)="showConfig = !showConfig" title="Configuration">
-            &#x2699;
+            <span class="material-icons">settings</span>
           </button>
         </div>
       </div>
@@ -130,7 +130,7 @@ import {
 
       <!-- Not configured notice -->
       <div class="notice" *ngIf="!status.configured && !showConfig">
-        <span class="notice-icon">&#x2139;</span>
+        <span class="notice-icon material-icons" style="color: #3b82f6">info</span>
         <div>
           <strong>Not Configured</strong>
           <p>Gate Log requires credentials to connect. Click the gear icon above to configure.</p>
@@ -143,14 +143,14 @@ import {
           <thead>
             <tr>
               <th class="sortable" (click)="sortBy('name')">
-                Name {{ sortField === 'name' ? (sortAsc ? '&#x25B2;' : '&#x25BC;') : '' }}
+                Name <span class="material-icons sort-icon" *ngIf="sortField === 'name'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
               </th>
               <th>Source</th>
               <th class="sortable" (click)="sortBy('checkIn')">
-                Check In {{ sortField === 'checkIn' ? (sortAsc ? '&#x25B2;' : '&#x25BC;') : '' }}
+                Check In <span class="material-icons sort-icon" *ngIf="sortField === 'checkIn'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
               </th>
               <th class="sortable" (click)="sortBy('duration')">
-                Duration {{ sortField === 'duration' ? (sortAsc ? '&#x25B2;' : '&#x25BC;') : '' }}
+                Duration <span class="material-icons sort-icon" *ngIf="sortField === 'duration'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
               </th>
               <th>Company</th>
               <th>Contact</th>

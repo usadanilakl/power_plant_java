@@ -236,14 +236,11 @@ export class SpringBootManager {
     return DEFAULT_SPRING_BOOT_CONFIG.autoStart;
   }
 
-  // Private methods
-
-  private updateState(state: AppState): void {
-    this.state = state;
-    this.statusCallback(this.getStatus());
-  }
-
-  private addLog(line: string): void {
+  /**
+   * Add a log entry to the buffer and broadcast to renderer.
+   * Used internally for Spring Boot stdout/stderr, and externally for Electron logs.
+   */
+  public addLog(line: string): void {
     const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] ${line}`;
     this.logs.push(entry);
@@ -253,6 +250,13 @@ export class SpringBootManager {
     }
 
     this.logCallback?.(entry);
+  }
+
+  // Private methods
+
+  private updateState(state: AppState): void {
+    this.state = state;
+    this.statusCallback(this.getStatus());
   }
 
   private startHealthCheck(): void {
