@@ -51,7 +51,7 @@ interface FireImpairmentItem {
       </div>
 
       <div class="notice" *ngIf="!isSpringBootRunning">
-        <span class="notice-icon">&#x26A0;</span>
+        <span class="notice-icon material-icons" style="color: #f59e0b">warning</span>
         <div>
           <strong>{{ appName }} Required</strong>
           <p>The Fire Impairment feature requires {{ appName }} to be running.
@@ -89,17 +89,17 @@ interface FireImpairmentItem {
             <thead>
               <tr>
                 <th class="sortable" (click)="sortBy('areaProtected')">
-                  Area Protected {{ sortIndicator('areaProtected') }}
+                  Area Protected <span class="material-icons sort-icon" *ngIf="sortField === 'areaProtected'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th class="sortable" (click)="sortBy('protectionType')">
-                  Protection {{ sortIndicator('protectionType') }}
+                  Protection <span class="material-icons sort-icon" *ngIf="sortField === 'protectionType'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th>Reason</th>
                 <th class="sortable" (click)="sortBy('submissionDate')">
-                  Submitted {{ sortIndicator('submissionDate') }}
+                  Submitted <span class="material-icons sort-icon" *ngIf="sortField === 'submissionDate'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th class="sortable" (click)="sortBy('predictedRestorationDate')">
-                  Est. Restore {{ sortIndicator('predictedRestorationDate') }}
+                  Est. Restore <span class="material-icons sort-icon" *ngIf="sortField === 'predictedRestorationDate'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th>Actions</th>
               </tr>
@@ -134,17 +134,17 @@ interface FireImpairmentItem {
             <thead>
               <tr>
                 <th class="sortable" (click)="sortBy('areaProtected')">
-                  Area Protected {{ sortIndicator('areaProtected') }}
+                  Area Protected <span class="material-icons sort-icon" *ngIf="sortField === 'areaProtected'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th class="sortable" (click)="sortBy('protectionType')">
-                  Protection {{ sortIndicator('protectionType') }}
+                  Protection <span class="material-icons sort-icon" *ngIf="sortField === 'protectionType'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th>Status</th>
                 <th class="sortable" (click)="sortBy('submissionDate')">
-                  Submitted {{ sortIndicator('submissionDate') }}
+                  Submitted <span class="material-icons sort-icon" *ngIf="sortField === 'submissionDate'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
                 <th class="sortable" (click)="sortBy('closedDate')">
-                  Closed/Canceled {{ sortIndicator('closedDate') }}
+                  Closed/Canceled <span class="material-icons sort-icon" *ngIf="sortField === 'closedDate'">{{ sortAsc ? 'arrow_drop_up' : 'arrow_drop_down' }}</span>
                 </th>
               </tr>
             </thead>
@@ -505,7 +505,7 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
 
   sortIndicator(field: string): string {
     if (this.sortField !== field) return '';
-    return this.sortAsc ? '\u25B2' : '\u25BC';
+    return this.sortAsc ? 'arrow_drop_up' : 'arrow_drop_down';
   }
 
   openDetail(imp: FireImpairmentItem): void {

@@ -25,7 +25,7 @@ import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent 
         {{ assessmentSummary }}
         <button class="notif-action" (click)="syncNeeded()">Sync Now</button>
         <button class="notif-action" (click)="navigateToSyncUpdates()">Details</button>
-        <button class="notif-dismiss" (click)="assessmentDismissed = true">&#x2715;</button>
+        <button class="notif-dismiss" (click)="assessmentDismissed = true"><span class="material-icons" style="font-size:14px">close</span></button>
       </div>
 
       <!-- Sync in progress -->
@@ -37,14 +37,14 @@ import { ElectronService, StartupAssessment, SyncExecuteProgress, SyncComponent 
       <div class="notification-bar stale" *ngIf="syncStaleWarning" (click)="navigateToSyncUpdates()">
         {{ syncStaleWarning }}
         <button class="notif-action" (click)="navigateToSyncUpdates(); $event.stopPropagation()">View</button>
-        <button class="notif-dismiss" (click)="syncStaleWarning = ''; $event.stopPropagation()">&#x2715;</button>
+        <button class="notif-dismiss" (click)="syncStaleWarning = ''; $event.stopPropagation()"><span class="material-icons" style="font-size:14px">close</span></button>
       </div>
 
       <!-- Device conflict (post-startup) -->
       <div class="notification-bar conflict" *ngIf="deviceConflictWarning" (click)="navigateToSettings()">
         {{ deviceConflictWarning }}
         <button class="notif-action" (click)="navigateToSettings(); $event.stopPropagation()">Settings</button>
-        <button class="notif-dismiss" (click)="deviceConflictWarning = ''; $event.stopPropagation()">&#x2715;</button>
+        <button class="notif-dismiss" (click)="deviceConflictWarning = ''; $event.stopPropagation()"><span class="material-icons" style="font-size:14px">close</span></button>
       </div>
 
       <div class="app-body">

@@ -85,7 +85,7 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
       </div>
 
       <div class="notice notice-error" *ngIf="status.status === 'error'">
-        <span class="notice-icon">&#x26A0;</span>
+        <span class="notice-icon material-icons" style="color: #ef4444">warning</span>
         <div>
           <strong>Error</strong>
           <p>{{ status.error }}</p>
@@ -93,7 +93,7 @@ import { ElectronService, PjmStatus } from '../../services/electron.service';
       </div>
 
       <div class="notice notice-success" *ngIf="status.status === 'available'">
-        <span class="notice-icon">&#x2713;</span>
+        <span class="notice-icon material-icons" style="color: #22c55e">check_circle</span>
         <div>
           <strong>Live Data Active</strong>
           <p>Receiving real-time 5-minute unverified LMP data from PJM Data Miner API.</p>

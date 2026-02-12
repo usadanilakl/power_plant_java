@@ -319,6 +319,10 @@ interface ElectronAPI {
   // WebView
   openWebView: (target: string, url: string) => Promise<IpcResult>;
 
+  // Menu
+  popupMenu: (menuId: string, x: number, y: number) => Promise<void>;
+  onMenuNavigate: (callback: (path: string) => void) => () => void;
+
   // Window control
   closeWindow: () => void;
   minimizeWindow: () => void;
@@ -350,6 +354,10 @@ export class ElectronService implements OnDestroy {
   private _logs = new BehaviorSubject<string[]>([]);
   private unsubscribeStatus?: () => void;
   private unsubscribeLog?: () => void;
+  private logBuffer: string[] = [];
+  private logFlushTimer: any = null;
+  private static readonly LOG_FLUSH_MS = 100;
+  private static readonly MAX_RENDERER_LOGS = 2_000;
 
   constructor(private ngZone: NgZone) {
     if (this.isElectron) {
@@ -392,10 +400,25 @@ export class ElectronService implements OnDestroy {
     });
 
     this.unsubscribeLog = window.electronAPI!.onAppLog((line) => {
-      this.ngZone.run(() => {
-        const current = this._logs.value;
-        this._logs.next([...current, line]);
-      });
+      this.logBuffer.push(line);
+      if (!this.logFlushTimer) {
+        this.logFlushTimer = setTimeout(() => this.flushLogBuffer(), ElectronService.LOG_FLUSH_MS);
+      }
+    });
+  }
+
+  private flushLogBuffer(): void {
+    this.logFlushTimer = null;
+    if (this.logBuffer.length === 0) return;
+    const batch = this.logBuffer;
+    this.logBuffer = [];
+    this.ngZone.run(() => {
+      let current = this._logs.value;
+      current = current.concat(batch);
+      if (current.length > ElectronService.MAX_RENDERER_LOGS) {
+        current = current.slice(-ElectronService.MAX_RENDERER_LOGS);
+      }
+      this._logs.next(current);
     });
   }
 
@@ -776,6 +799,20 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.openWebView(target, url);
   }
 
+  // Menu
+
+  popupMenu(menuId: string, x: number, y: number): void {
+    if (!this.isElectron) return;
+    window.electronAPI!.popupMenu(menuId, x, y);
+  }
+
+  onMenuNavigate(callback: (path: string) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onMenuNavigate((path) => {
+      this.ngZone.run(() => callback(path));
+    });
+  }
+
   // Window controls
 
   closeWindow(): void {
@@ -816,5 +853,9 @@ export class ElectronService implements OnDestroy {
   ngOnDestroy(): void {
     this.unsubscribeStatus?.();
     this.unsubscribeLog?.();
+    if (this.logFlushTimer) {
+      clearTimeout(this.logFlushTimer);
+      this.logFlushTimer = null;
+    }
   }
 }

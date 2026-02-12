@@ -8,6 +8,9 @@ interface NavItem {
   label: string;
   route: string;
   icon: string;
+  color: string;
+  queryParams?: Record<string, string>;
+  badge?: number | null;
 }
 
 @Component({
@@ -17,7 +20,7 @@ interface NavItem {
   template: `
     <aside class="sidebar" [class.collapsed]="collapsed">
       <div class="sidebar-header">
-        <span class="logo-icon">&#9889;</span>
+        <span class="logo-icon material-icons">bolt</span>
         <span class="logo-text">DK Power</span>
       </div>
 
@@ -34,17 +37,19 @@ interface NavItem {
         <a *ngFor="let item of navItems"
            class="nav-item"
            [routerLink]="item.route"
+           [queryParams]="item.queryParams"
            routerLinkActive="active"
            [routerLinkActiveOptions]="{ exact: item.route === '/' }"
            [title]="collapsed ? item.label : ''">
-          <span class="nav-icon">{{ item.icon }}</span>
+          <span class="nav-icon material-icons" [style.color]="item.color">{{ item.icon }}</span>
           <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-badge" *ngIf="item.badge != null && item.badge > 0">{{ item.badge }}</span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
         <button class="toggle-btn" (click)="toggle.emit()" [title]="collapsed ? 'Expand sidebar' : 'Collapse sidebar'">
-          <span class="toggle-icon">{{ collapsed ? '\u276F' : '\u276E' }}</span>
+          <span class="toggle-icon material-icons">{{ collapsed ? 'chevron_right' : 'chevron_left' }}</span>
         </button>
         <span class="version" *ngIf="version">v{{ version }}</span>
       </div>
@@ -78,6 +83,7 @@ interface NavItem {
     .logo-icon {
       font-size: 22px;
       flex-shrink: 0;
+      color: #eab308;
     }
 
     .logo-text {
@@ -213,9 +219,13 @@ interface NavItem {
       color: white;
     }
 
+    .nav-item.active .nav-icon {
+      color: white !important;
+    }
+
     .nav-icon {
-      font-size: 16px;
-      width: 20px;
+      font-size: 20px;
+      width: 24px;
       text-align: center;
       flex-shrink: 0;
     }
@@ -230,6 +240,41 @@ interface NavItem {
     .collapsed .nav-label {
       opacity: 0;
       width: 0;
+    }
+
+    .nav-badge {
+      font-size: 10px;
+      font-weight: 600;
+      background-color: #8b5cf6;
+      color: white;
+      border-radius: 10px;
+      padding: 0 5px;
+      min-width: 16px;
+      text-align: center;
+      line-height: 16px;
+      height: 16px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active .nav-badge {
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .nav-item {
+      position: relative;
+    }
+
+    .collapsed .nav-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      margin-left: 0;
+      font-size: 9px;
+      padding: 0 4px;
+      min-width: 14px;
+      line-height: 14px;
+      height: 14px;
     }
 
     .sidebar-footer {
@@ -291,15 +336,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
 
   navItems: NavItem[] = [
-    { label: 'Home', route: '/', icon: '\u2302' },
-    { label: 'PID App', route: '/pid-app', icon: '\u2756' },
-    { label: 'Fire Impairment', route: '/fire-impairment', icon: '\u2622' },
-    { label: 'Gate Log', route: '/gate-log', icon: '\u2706' },
-    { label: 'Weather', route: '/weather', icon: '\u2601' },
-    { label: 'PJM', route: '/pjm', icon: '\u26A1' },
-    { label: 'Logs', route: '/logs', icon: '\u2263' },
-    { label: 'Sync & Updates', route: '/sync-updates', icon: '\u21BB' },
-    { label: 'Settings', route: '/settings', icon: '\u2699' }
+    { label: 'Home', route: '/', icon: 'home', color: '#3b82f6' },
+    { label: 'PID App', route: '/pid-app', icon: 'dashboard', color: '#8b5cf6' },
+    { label: 'Permits', route: '/pid-app', icon: 'assignment', color: '#8b5cf6', queryParams: { path: 'permit-builder/work-requests' } },
+    { label: 'Fire Impairment', route: '/fire-impairment', icon: 'local_fire_department', color: '#ef4444' },
+    { label: 'Gate Log', route: '/gate-log', icon: 'badge', color: '#06b6d4' },
+    { label: 'Weather', route: '/weather', icon: 'thunderstorm', color: '#f59e0b' },
+    { label: 'PJM', route: '/pjm', icon: 'bolt', color: '#eab308' },
+    { label: 'Logs', route: '/logs', icon: 'terminal', color: '#22c55e' },
+    { label: 'Sync & Updates', route: '/sync-updates', icon: 'sync', color: '#3b82f6' },
+    { label: 'Settings', route: '/settings', icon: 'settings', color: '#a1a1aa' }
   ];
 
   constructor(private electronService: ElectronService) {}
@@ -307,8 +353,24 @@ export class SidebarComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.version = await this.electronService.getAppVersion();
     this.sub = this.electronService.appStatus$.subscribe(status => {
+      const wasNotRunning = this.appState !== 'running';
       this.appState = status.state;
+      if (wasNotRunning && status.state === 'running') {
+        this.loadWorkRequestCount();
+      }
     });
+  }
+
+  private async loadWorkRequestCount(): Promise<void> {
+    try {
+      const result = await this.electronService.getWorkRequestCount();
+      if (result.success && result.data) {
+        const permitsItem = this.navItems.find(item => item.label === 'Permits');
+        if (permitsItem) {
+          permitsItem.badge = result.data.activeCount;
+        }
+      }
+    } catch {}
   }
 
   get stateLabel(): string {
