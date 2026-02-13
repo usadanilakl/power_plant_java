@@ -12,6 +12,13 @@ The sync server:
 
 **Source:** `C:\Users\usada\my_projects\sync-server` (or `/home/dk-power/IdeaProjects/sync-server`)
 
+> **Alternative: Hub-Peer mode** — Instead of running a separate sync-server, one `power_plant_java` instance can act as the sync relay by setting `sync.role=hub`. This eliminates mirror entities and uses the hub's real production database. See [hub-peer-sync.md](hub-peer-sync.md).
+>
+> When hub mode is active, three client-side controllers are conditionally disabled to avoid URL mapping conflicts with hub controllers:
+> - `FullResyncController` (`/api/resync`) — replaced by `HubResyncController`
+> - `UpdateController` (`/api/update`) — replaced by `HubJarUpdateController`
+> - `SyncController` (legacy, `/api/sync`) — replaced by `HubSyncController`
+
 # Architecture
 
 ## Data flow

@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.sevice.sync.FullResyncService.*;
 import com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * REST controller for full resync operations.
+ * REST controller for full resync operations (client-side).
  *
  * Provides endpoints for:
  * - Checking sync health status
@@ -21,9 +22,12 @@ import java.util.Map;
  * - Triggering full resync
  * - Creating backups
  * - Monitoring operation progress
+ *
+ * Disabled in hub mode — HubResyncController takes over /api/resync.
  */
 @RestController
 @RequestMapping("/api/resync")
+@ConditionalOnExpression("'${sync.role:}' != 'hub'")
 @RequiredArgsConstructor
 @Slf4j
 public class FullResyncController {

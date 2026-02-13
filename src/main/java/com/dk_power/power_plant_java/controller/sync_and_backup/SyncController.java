@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.app_services.SyncService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -14,8 +15,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Legacy entity-based sync controller.
+ * Disabled in hub mode — HubSyncController takes over /api/sync.
+ */
 @RestController
 @RequestMapping("/api/sync")
+@ConditionalOnExpression("'${sync.role:}' != 'hub'")
 @RequiredArgsConstructor
 public class SyncController {
 

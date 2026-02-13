@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
@@ -16,12 +17,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * REST controller for JAR update management.
+ * REST controller for JAR update management (client-side).
  * Admin places new JARs in the configured updates directory;
  * Electron clients check and download updates from here.
+ *
+ * Disabled in hub mode — HubJarUpdateController takes over /api/update.
  */
 @RestController
 @RequestMapping("/api/update")
+@ConditionalOnExpression("'${sync.role:}' != 'hub'")
 @RequiredArgsConstructor
 @Slf4j
 public class UpdateController {

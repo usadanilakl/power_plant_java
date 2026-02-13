@@ -19,16 +19,18 @@ Scenarios 1–4 and 8 all converge on the same code path: `FieldSyncService.appl
 
 # Architecture
 
-## Data flow
+## Deployment Options
 
-```
-Frontend Change → Backend → Local H2 DB → Sync Server → SSE Broadcast → Other Backends → SSE → Other Frontends
-```
+There are two deployment modes for the sync relay. Both use the same client-side sync engine (`FieldSyncService`, `CentralSyncService`, SSE). Clients just change `sync.server.url`.
+
+### Option A: Separate Sync Server (current)
+
+A dedicated `sync-server` project maintains mirror copies of all 26 entity types.
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
 │   Client A      │         │   Sync Server   │
-│   (H2 DB)       │ ◄─────► │   (H2 DB)       │
+│   (H2 DB)       │ ◄─────► │   (Mirror H2)   │
 └─────────────────┘         └─────────────────┘
         │                          │
         │   FieldChange sync       │
@@ -38,6 +40,34 @@ Frontend Change → Backend → Local H2 DB → Sync Server → SSE Broadcast �
 │   Client B      │         │  Shared Drive   │
 │   (H2 DB)       │ ◄──────►│  (Backup)       │
 └─────────────────┘         └─────────────────┘
+```
+
+See [sync-server.md](sync-server.md).
+
+### Option B: Hub-Peer (new)
+
+One `power_plant_java` instance with `sync.role=hub` acts as both a working client AND the sync relay. No mirror entities — the hub's real production database is authoritative.
+
+```
+┌──────────────┐       SSE + REST       ┌──────────────┐
+│   Client A   │ ◄────────────────────► │     HUB      │
+│  (field PC)  │                         │  (office PC) │
+└──────────────┘                         │  H2 DB (real)│
+┌──────────────┐       SSE + REST       │  uploads/    │
+│   Client B   │ ◄────────────────────► │              │
+│  (field PC)  │                         └──────────────┘
+```
+
+See [hub-peer-sync.md](hub-peer-sync.md).
+
+### Coexistence
+
+Both modes can run side-by-side (different clients pointed at different servers) but changes do NOT flow between the two servers. Migrate clients one at a time.
+
+## Data flow
+
+```
+Frontend Change → Backend → Local H2 DB → Sync Server/Hub → SSE Broadcast → Other Backends → SSE → Other Frontends
 ```
 
 ## Key design patterns
@@ -95,6 +125,9 @@ When adding a new entity type, register it in all of these:
     [ServiceFacade](../../../src/main/java/com/dk_power/power_plant_java/sevice/ServiceFacade.java)
 3. **FullSyncToServerService** — add repo to constructor and `getRepositoryForType()` switch.
     [FullSyncToServerService](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/FullSyncToServerService.java)
+
+**Sync-server only** (not needed for hub-peer mode — the hub reuses existing entities):
+
 4. **Sync server — ServerEntitySyncService** — add to `SUPPORTED_TYPES`, constructor, `createEntity()`, and `getRepository()`.
     [ServerEntitySyncService](../../../../sync-server/src/main/java/com/dk_power/sync_server/service/ServerEntitySyncService.java)
 5. **Sync server — entity + repository** — create mirror entity and repository.
@@ -140,7 +173,7 @@ files.trash.cleanup.cron=0 0 3 * * ?   # Cleanup expired trash at 3 AM daily
 sync.auto-resync.enabled=true          # Enable automatic resync on health check failure
 ```
 
-## Sync Server (application.properties)
+## Sync Server (separate project — application.properties)
 
 ```properties
 server.port=8090
@@ -168,6 +201,25 @@ spring.servlet.multipart.max-file-size=100MB
 spring.servlet.multipart.max-request-size=200MB
 ```
 
+## Hub mode (add to client application.properties)
+
+```properties
+# Activate hub mode — this instance becomes the sync server
+sync.role=hub
+sync.server.enabled=false               # Hub IS the server, no upstream sync
+
+# Hub settings
+sync.hub.file-storage-path=./hub-file-storage
+sync.hub.retention-days=90
+sync.hub.batch-size=500
+sync.hub.compaction-enabled=true
+
+# Update distribution
+electron-update.directory=${user.dir}/electron-updates
+update.jar.directory=${user.dir}/updates
+resource-packs.base-path=${user.dir}/resource-packs
+```
+
 # Detail documentation
 
 | Document | Covers |
@@ -178,6 +230,7 @@ spring.servlet.multipart.max-request-size=200MB
 | [partial-resync.md](partial-resync.md) | Date-based recovery using the same pipeline as real-time sync |
 | [full-sync-to-server.md](full-sync-to-server.md) | Server bootstrapping, bulk entity push, field handling |
 | [sync-server.md](sync-server.md) | Sync server architecture, endpoints, services, configuration, failed sync item tracking |
+| [hub-peer-sync.md](hub-peer-sync.md) | Hub-peer architecture, endpoints, conditional controller isolation, migration |
 | [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure, runtime toggle |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
 | [trash-system.md](trash-system.md) | Staged file deletion with restore capability, retention period, automatic cleanup |

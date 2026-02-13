@@ -173,13 +173,33 @@ sync.import.max-file-size=524288000
 
 2. **EntityTableRegistry reuse** — Health stats and resync use `EntityTableRegistry.getSyncOrder()` for entity type iteration and `getTableName()` for native SQL queries, avoiding per-entity repository injection.
 
-3. **Zero existing file modifications** — All hub functionality is additive. The `@ConditionalOnProperty` guard ensures hub beans only load when `sync.role=hub`.
+3. **Conditional controller isolation** — Hub controllers are guarded by `@ConditionalOnProperty(name = "sync.role", havingValue = "hub")`. Three existing client-side controllers that share URL paths are disabled in hub mode via `@ConditionalOnExpression("'${sync.role:}' != 'hub'")`:
+   - `FullResyncController` (`/api/resync`) — replaced by `HubResyncController`
+   - `UpdateController` (`/api/update`) — replaced by `HubJarUpdateController`
+   - `SyncController` (legacy, `/api/sync`) — replaced by `HubSyncController`
+
+   This prevents "Ambiguous handler methods" startup failures. When `sync.role` is not set (normal client), the existing controllers load as usual.
 
 4. **SyncContext listener suppression** — When the hub applies incoming changes via `FieldSyncService.applyIncomingChanges()`, `SyncContext.startSync()` prevents `FieldChangeEntityListener` from creating echo changes.
 
 5. **SSE anti-loop** — `broadcastChanges(changes, originMachineId)` excludes the origin machine from receiving its own changes back.
 
 6. **Bulk import safety** — Since the hub has real production data, `importDatabaseBackup()` requires `force=true` and warns about overwriting production data.
+
+## Coexistence with Sync-Server
+
+Hub-peer and the separate sync-server can run **side-by-side** but NOT as a unified network:
+
+- Each client has one `sync.server.url` — pointing to either the old server or the hub
+- Changes do NOT flow between the two servers
+- Migration is per-client: switch `sync.server.url` one machine at a time
+- The hub machine itself should have `sync.server.enabled=false` (it IS the server)
+
+**Migration steps:**
+1. Start hub with `sync.role=hub` and `sync.server.enabled=false`
+2. Bootstrap hub data (import from sync-server or full-sync from one client)
+3. Switch clients one by one to hub URL
+4. Decommission old sync-server once all clients migrated
 
 ## Electron Integration
 
