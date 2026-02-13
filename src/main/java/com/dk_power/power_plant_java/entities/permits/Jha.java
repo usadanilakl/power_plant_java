@@ -23,7 +23,6 @@ import java.util.List;
 @Where(clause = "deleted=false")
 public class Jha extends BasePermitEntity {
 
-    @Column(nullable = false)
     private String jobName;
 
     private String applicability;

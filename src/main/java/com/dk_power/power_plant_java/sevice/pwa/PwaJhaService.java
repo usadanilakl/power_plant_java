@@ -114,7 +114,8 @@ public class PwaJhaService {
                             PaAttachmentDto wrAtt = new PaAttachmentDto();
                             wrAtt.setBase64Content(att.getBase64Content());
                             wrAtt.setContentType(att.getContentType());
-                            wrAtt.setFileName("JHA-" + att.getFileName());
+                            String fn = att.getFileName();
+                            wrAtt.setFileName(fn.startsWith("JHA-") ? fn : "JHA-" + fn);
                             wrAdapter.addAttachment(wrSpId, wrAtt);
                         } catch (Exception attEx) {
                             log.warn("[PWA JHA Submit] Failed to upload attachment to WR {}: {}",
