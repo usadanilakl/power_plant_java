@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface SyncConfig {
   enabled: boolean;
@@ -15,15 +16,22 @@ interface SyncConfig {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="sp-sync-container">
-      <h2>SharePoint Sync</h2>
+    <div class="container">
+      <div class="page-header">
+        <h2>SharePoint Sync</h2>
+        <span *ngIf="config" class="status-badge" [ngClass]="config.enabled ? 'status-online' : 'status-offline'">
+          {{ config.enabled ? 'Auto-Sync On' : 'Auto-Sync Off' }}
+        </span>
+      </div>
 
       <div *ngIf="message" class="message-banner" [ngClass]="messageType" (click)="message = ''">
-        {{ message }}
+        <span>{{ message }}</span>
         <span class="close-btn">&times;</span>
       </div>
 
-      <div *ngIf="loading" class="loading">Loading configuration...</div>
+      <div *ngIf="loading" class="card loading-card">
+        <div class="loading-text">Loading configuration...</div>
+      </div>
 
       <div *ngIf="!loading && config" class="card">
         <h3>Auto-Sync Configuration</h3>
@@ -31,48 +39,61 @@ interface SyncConfig {
           When enabled, Work Requests and JHAs are periodically pulled from SharePoint into the local database.
         </p>
 
-        <div class="setting-row">
-          <label class="setting-label">Auto-Sync</label>
-          <label class="toggle">
-            <input type="checkbox" [(ngModel)]="config.enabled" (change)="save()">
-            <span class="slider"></span>
-            <span class="toggle-text">{{ config.enabled ? 'ON' : 'OFF' }}</span>
-          </label>
-        </div>
+        <div class="settings-list">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Auto-Sync</span>
+              <span class="setting-hint">Enable automatic background syncing</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" [(ngModel)]="config.enabled" (change)="save()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
 
-        <div class="setting-row">
-          <label class="setting-label">SharePoint Sync Interval</label>
-          <select [(ngModel)]="config.intervalMs" (change)="save()" [disabled]="!config.enabled" class="interval-select">
-            <option [ngValue]="60000">1 minute</option>
-            <option [ngValue]="120000">2 minutes</option>
-            <option [ngValue]="300000">5 minutes</option>
-            <option [ngValue]="600000">10 minutes</option>
-            <option [ngValue]="900000">15 minutes</option>
-            <option [ngValue]="1800000">30 minutes</option>
-          </select>
-        </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">SharePoint Sync Interval</span>
+              <span class="setting-hint">How often to pull from SharePoint</span>
+            </div>
+            <select [(ngModel)]="config.intervalMs" (change)="save()" [disabled]="!config.enabled" class="interval-select">
+              <option [ngValue]="60000">1 min</option>
+              <option [ngValue]="120000">2 min</option>
+              <option [ngValue]="300000">5 min</option>
+              <option [ngValue]="600000">10 min</option>
+              <option [ngValue]="900000">15 min</option>
+              <option [ngValue]="1800000">30 min</option>
+            </select>
+          </div>
 
-        <div class="setting-row">
-          <label class="setting-label">Peer Sync Interval</label>
-          <select [(ngModel)]="config.peerSyncIntervalSeconds" (change)="save()" class="interval-select">
-            <option [ngValue]="15">15 seconds</option>
-            <option [ngValue]="30">30 seconds</option>
-            <option [ngValue]="60">1 minute</option>
-            <option [ngValue]="120">2 minutes</option>
-            <option [ngValue]="300">5 minutes</option>
-          </select>
-        </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Peer Sync Interval</span>
+              <span class="setting-hint">Frequency for peer-to-peer sync</span>
+            </div>
+            <select [(ngModel)]="config.peerSyncIntervalSeconds" (change)="save()" class="interval-select">
+              <option [ngValue]="15">15 sec</option>
+              <option [ngValue]="30">30 sec</option>
+              <option [ngValue]="60">1 min</option>
+              <option [ngValue]="120">2 min</option>
+              <option [ngValue]="300">5 min</option>
+            </select>
+          </div>
 
-        <div class="setting-row">
-          <label class="setting-label">Health Check Interval</label>
-          <select [(ngModel)]="config.healthCheckIntervalMs" (change)="save()" class="interval-select">
-            <option [ngValue]="60000">1 minute</option>
-            <option [ngValue]="120000">2 minutes</option>
-            <option [ngValue]="300000">5 minutes</option>
-            <option [ngValue]="600000">10 minutes</option>
-            <option [ngValue]="900000">15 minutes</option>
-            <option [ngValue]="1800000">30 minutes</option>
-          </select>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Health Check Interval</span>
+              <span class="setting-hint">How often to check connection health</span>
+            </div>
+            <select [(ngModel)]="config.healthCheckIntervalMs" (change)="save()" class="interval-select">
+              <option [ngValue]="60000">1 min</option>
+              <option [ngValue]="120000">2 min</option>
+              <option [ngValue]="300000">5 min</option>
+              <option [ngValue]="600000">10 min</option>
+              <option [ngValue]="900000">15 min</option>
+              <option [ngValue]="1800000">30 min</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -81,169 +102,298 @@ interface SyncConfig {
         <p class="card-desc">Trigger a one-time sync from SharePoint regardless of auto-sync settings.</p>
         <div class="btn-row">
           <button class="btn btn-primary" (click)="syncWorkRequests()" [disabled]="syncing">
+            <span *ngIf="syncingWr" class="spinner"></span>
             {{ syncingWr ? 'Syncing...' : 'Sync Work Requests' }}
           </button>
           <button class="btn btn-primary" (click)="syncJhas()" [disabled]="syncing">
+            <span *ngIf="syncingJha" class="spinner"></span>
             {{ syncingJha ? 'Syncing...' : 'Sync JHAs' }}
           </button>
         </div>
-        <div *ngIf="lastSyncResult" class="sync-result">{{ lastSyncResult }}</div>
+        <div *ngIf="lastSyncResult" class="sync-result">
+          {{ lastSyncResult }}
+        </div>
       </div>
     </div>
   `,
   styles: [`
-    .sp-sync-container {
-      padding: 16px;
-      max-width: 600px;
-    }
-
-    h2 {
-      margin: 0 0 16px;
-    }
-
-    .card {
-      background: var(--card-bg, #fff);
-      border: 1px solid var(--border-color, #ddd);
-      border-radius: 8px;
+    .container {
       padding: 20px;
-      margin-bottom: 16px;
+      max-width: 640px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .page-header h2 {
+      margin: 0;
+      color: var(--primary-text, #212529);
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .status-online {
+      background: var(--success-background, #c8e6c9);
+      color: #155724;
+    }
+
+    .status-offline {
+      background: var(--secondary-background, #f0f2f5);
+      color: var(--secondary-text, #495057);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-background, #ffffff);
+      border-radius: 8px;
+      box-shadow: var(--card-shadow, 0 2px 4px rgba(0, 0, 0, 0.1));
+      padding: 20px;
+      margin-bottom: 20px;
     }
 
     .card h3 {
       margin: 0 0 4px;
       font-size: 15px;
+      font-weight: 600;
+      color: var(--primary-text, #212529);
     }
 
     .card-desc {
-      color: #888;
+      color: var(--secondary-text, #495057);
       font-size: 13px;
       margin: 0 0 16px;
+      line-height: 1.4;
+    }
+
+    .loading-card {
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .loading-text {
+      color: var(--secondary-text, #495057);
+      font-size: 14px;
+    }
+
+    /* Settings */
+    .settings-list {
+      border-top: 1px solid var(--border-color, #dee2e6);
     }
 
     .setting-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border-color, #eee);
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-color, #dee2e6);
     }
 
-    .setting-row:last-of-type {
-      border-bottom: none;
+    .setting-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
     .setting-label {
       font-size: 14px;
       font-weight: 500;
+      color: var(--primary-text, #212529);
+    }
+
+    .setting-hint {
+      font-size: 12px;
+      color: var(--secondary-text, #495057);
     }
 
     /* Toggle switch */
     .toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      position: relative;
       cursor: pointer;
+      display: inline-block;
     }
 
     .toggle input { display: none; }
 
-    .slider {
-      width: 40px;
-      height: 22px;
-      background: #ccc;
-      border-radius: 11px;
+    .toggle-track {
+      display: block;
+      width: 44px;
+      height: 24px;
+      background: var(--border-color, #ccc);
+      border-radius: 12px;
       position: relative;
       transition: background 0.2s;
     }
 
-    .slider::after {
+    .toggle-track::after {
       content: '';
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       background: #fff;
       border-radius: 50%;
       position: absolute;
       top: 2px;
       left: 2px;
       transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
-    .toggle input:checked + .slider {
+    .toggle input:checked + .toggle-track {
       background: #4caf50;
     }
 
-    .toggle input:checked + .slider::after {
-      transform: translateX(18px);
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(20px);
     }
 
-    .toggle-text {
-      font-size: 13px;
-      font-weight: 600;
-      min-width: 28px;
-    }
-
+    /* Select */
     .interval-select {
-      padding: 6px 12px;
-      border: 1px solid var(--border-color, #ccc);
-      border-radius: 6px;
-      font-size: 13px;
-      background: var(--input-bg, #fff);
-      color: inherit;
-    }
-
-    .interval-select:disabled {
-      opacity: 0.5;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color, #dee2e6);
+      border-radius: 4px;
+      font-size: 14px;
+      background: var(--card-background, #fff);
+      color: var(--primary-text, #212529);
+      min-width: 90px;
       cursor: pointer;
     }
 
+    .interval-select:focus {
+      outline: none;
+      border-color: var(--accent-color, #007bff);
+    }
+
+    .interval-select:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
     .btn:disabled {
-      opacity: 0.5;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
     .btn-primary {
-      background: #1976d2;
+      background: var(--accent-color, #007bff);
       color: #fff;
     }
 
-    .sync-result {
-      margin-top: 12px;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      background: rgba(76, 175, 80, 0.1);
-      color: #4caf50;
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-color-hover, #0056b3);
     }
 
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Sync result */
+    .sync-result {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--success-background, #c8e6c9);
+      color: #155724;
+      border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+
+    /* Message banner */
     .message-banner {
-      padding: 10px 16px;
-      border-radius: 6px;
-      margin-bottom: 12px;
+      padding: 12px 20px;
+      border-radius: 4px;
+      margin-bottom: 20px;
       font-size: 13px;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
 
-    .message-banner.success { background: rgba(76,175,80,0.1); color: #4caf50; }
-    .message-banner.error { background: rgba(244,67,54,0.1); color: #f44336; }
-    .message-banner.info { background: rgba(33,150,243,0.1); color: #2196f3; }
+    .message-banner.success {
+      background: var(--success-background, #c8e6c9);
+      color: #155724;
+      border: 1px solid rgba(40, 167, 69, 0.3);
+    }
 
-    .close-btn { cursor: pointer; font-weight: bold; }
+    .message-banner.error {
+      background: var(--error-background, #ffcdd2);
+      color: #721c24;
+      border: 1px solid rgba(220, 53, 69, 0.3);
+    }
 
-    .loading { color: #888; font-size: 13px; padding: 20px 0; }
+    .message-banner.info {
+      background: rgba(77, 171, 247, 0.15);
+      color: var(--accent-color, #007bff);
+      border: 1px solid rgba(77, 171, 247, 0.3);
+    }
+
+    .close-btn {
+      font-size: 18px;
+      font-weight: bold;
+      opacity: 0.7;
+      margin-left: 12px;
+    }
+
+    .close-btn:hover { opacity: 1; }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .btn-row {
+        flex-direction: column;
+      }
+
+      .btn { width: 100%; justify-content: center; }
+    }
   `]
 })
 export class SharepointSyncComponent implements OnInit {
@@ -264,9 +414,9 @@ export class SharepointSyncComponent implements OnInit {
   }
 
   loadConfig(): void {
-    this.http.get<{ data: SyncConfig }>('/api/sharepoint-sync/config').subscribe({
+    this.http.get<{ responseData: SyncConfig }>(`${environment.baseApiUrl}/api/sharepoint-sync/config`).subscribe({
       next: (resp) => {
-        this.config = resp.data;
+        this.config = resp.responseData;
         this.loading = false;
       },
       error: (err) => {
@@ -278,9 +428,9 @@ export class SharepointSyncComponent implements OnInit {
 
   save(): void {
     if (!this.config) return;
-    this.http.put<{ data: SyncConfig }>('/api/sharepoint-sync/config', this.config).subscribe({
+    this.http.put<{ responseData: SyncConfig }>(`${environment.baseApiUrl}/api/sharepoint-sync/config`, this.config).subscribe({
       next: (resp) => {
-        this.config = resp.data;
+        this.config = resp.responseData;
         this.showMessage('Configuration saved', 'success');
       },
       error: (err) => {
@@ -292,7 +442,7 @@ export class SharepointSyncComponent implements OnInit {
   syncWorkRequests(): void {
     this.syncingWr = true;
     this.lastSyncResult = '';
-    this.http.post<{ message: string }>('/work-requests-api/sync', {}).subscribe({
+    this.http.post<{ message: string }>(`${environment.baseApiUrl}/work-requests-api/sync`, {}).subscribe({
       next: (resp) => {
         this.lastSyncResult = 'WR: ' + resp.message;
         this.syncingWr = false;
@@ -307,7 +457,7 @@ export class SharepointSyncComponent implements OnInit {
   syncJhas(): void {
     this.syncingJha = true;
     this.lastSyncResult = '';
-    this.http.post<{ message: string }>('/jha-api/sync', {}).subscribe({
+    this.http.post<{ message: string }>(`${environment.baseApiUrl}/jha-api/sync`, {}).subscribe({
       next: (resp) => {
         this.lastSyncResult = 'JHA: ' + resp.message;
         this.syncingJha = false;

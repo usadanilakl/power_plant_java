@@ -31,7 +31,8 @@ public class SecurityConfigSpring {
                         "/api/field-sync/**", "/api/sync-updates/**","/api/sync-test/**",
                         "/api/resync/**", "/api/sync-e2e/**", "/api/data-integrity/**",
                         "/api/update/**", "/api/fire-impairment/**",
-                        "/api/pwa/**"
+                        "/api/pwa/**",
+                        "/api/sharepoint-sync/**", "/jha-api/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 

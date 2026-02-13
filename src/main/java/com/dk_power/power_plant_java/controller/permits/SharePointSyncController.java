@@ -53,6 +53,8 @@ public class SharePointSyncController {
             }
         }
 
+        syncSettings.persistToFile();
+
         return ResponseEntity.ok(new NgApiResponse<>(buildConfigMap(), "Sync config updated"));
     }
 
