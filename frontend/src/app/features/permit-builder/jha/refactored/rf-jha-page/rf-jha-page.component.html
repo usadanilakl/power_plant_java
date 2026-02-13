@@ -1,0 +1,22 @@
+<div class="jha-page">
+  <div class="page-toolbar">
+    <button class="action-btn new-btn" (click)="onNewJha()">+ New</button>
+    <button class="action-btn sync-btn" (click)="onTriggerSync()" [disabled]="isSyncing()">
+      {{ isSyncing() ? 'Syncing...' : 'Sync SharePoint' }}
+    </button>
+  </div>
+
+  <app-rf-jha-table
+    (selectedItemsEvent)="onSelectedItems($event)"
+    (rowDoubleClickedEvent)="onRowDoubleClicked($event)"
+  ></app-rf-jha-table>
+</div>
+
+<!-- JHA Form Popup -->
+<app-rf-popup-projection
+  [isOpen]="stateService.isFormOpen()"
+  [fullHeight]="true"
+  (close)="stateService.closeForm()"
+>
+  <app-rf-jha-form [fieldsInput]="stateService.formFields()"></app-rf-jha-form>
+</app-rf-popup-projection>

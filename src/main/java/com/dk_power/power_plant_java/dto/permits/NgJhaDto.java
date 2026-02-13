@@ -32,4 +32,5 @@ public class NgJhaDto extends BaseDto {
     private String submitterEmail;
     private String submitterPhone;
     private String submitterCompany;
+    private Integer attachmentCount;
 }

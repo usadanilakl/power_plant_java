@@ -32,4 +32,6 @@ public class NgWorkRequestDto extends BaseDto {
     private String space;
     private String sharepointId;
     private String status;
+    private Boolean hasJha;
+    private Integer attachmentCount;
 }

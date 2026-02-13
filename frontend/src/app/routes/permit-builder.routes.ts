@@ -12,6 +12,7 @@ import { DailyPermitPackageSideMenuComponent } from '../features/permit-builder/
 import { SafeWorkSideMenuComponent } from '../features/permit-builder/safe-work/safe-work-side-menu/safe-work-side-menu.component';
 import { HotWorkSideMenuComponent } from '../features/permit-builder/hot-work/hot-work-side-menu/hot-work-side-menu.component';
 import { ConfinedSpaceSideMenuComponent } from '../features/permit-builder/confined-space/confined-space-side-menu/confined-space-side-menu.component';
+import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 
 export const PERMIT_BUILDER_ROUTES: Routes = [
   {
@@ -25,6 +26,7 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         data: { leftMenu: JobLogLeftMenuComponent }
       },
       { path: 'work-requests', component: RfWorkRequestPageComponent },
+      { path: 'jhas', component: RfJhaPageComponent },
       {
         path: 'daily-packages',
         component: DailyPermitPackageComponent,

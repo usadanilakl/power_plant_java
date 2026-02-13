@@ -19,17 +19,19 @@
   </div>
   }
   @if (type === 'textarea') {
-    <textarea 
-      [value]="value" 
+    <textarea
+      [value]="value"
       [readonly]="readonly"
+      [placeholder]="placeholder"
       (input)="onInputChange($event)"
       class="form-input-element">
     </textarea>
   } @else {
-    <input 
-      [type]="type" 
-      [value]="value" 
+    <input
+      [type]="type"
+      [value]="value"
       [readonly]="readonly"
+      [placeholder]="placeholder"
       (input)="onInputChange($event)"
       class="form-input-element">
   }

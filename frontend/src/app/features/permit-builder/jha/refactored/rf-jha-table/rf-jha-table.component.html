@@ -1,0 +1,32 @@
+<div class="jha-table-container">
+  @if (errorMessage()) {
+    <div class="error-message">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-indicator">
+      Loading JHAs...
+    </div>
+  }
+
+  <app-table
+    [tableId]="tableId()"
+    [items]="items()"
+    [columns]="columns()"
+    [isTableIsolated]="isTableIsolated()"
+    [columnUniqueOptions]="currentColumnUniqueItems()!"
+    [isLoadingMore]="stateService.loadingUniqueItems()"
+    [initialSearchCriteria]="initialSearchCriteria()"
+
+    (search)="onSearch($event)"
+    (sortChanged)="onTableSortChanged($event)"
+    (loadMoreItems)="onLoadMore($event)"
+    (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
+    (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    (selectedItemsEvent)="selectedItemsEvent.emit($event)"
+    (rowDoubleClicked)="rowDoubleClickedEvent.emit($event)"
+  >
+  </app-table>
+</div>

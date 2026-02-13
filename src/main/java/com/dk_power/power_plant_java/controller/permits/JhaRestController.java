@@ -5,7 +5,9 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.NgJhaDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.Jha;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.mappers.permits.JhaMapper;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJhaService;
 import com.dk_power.power_plant_java.sevice.sync.JhaSyncService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class JhaRestController {
     private final JhaMapper jhaMapper;
     private final JhaSyncService syncService;
     private final JdbcTemplate jdbcTemplate;
+    private final PermitAttachmentRepo permitAttachmentRepo;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<NgJhaDto>>> getPaginated(
@@ -135,6 +138,16 @@ public class JhaRestController {
             Page<String> result = jhaService.getUniqueValuesFiltered(
                     jhaService.getRepo(), column, criteria, page - 1, pageSize, andLogicEnabled);
             return ResponseEntity.ok(new NgApiResponse<>(result, "Unique values fetched"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
+        try {
+            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityId("Jha", id);
+            return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments fetched"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
