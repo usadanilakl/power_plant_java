@@ -61,6 +61,7 @@ public class ServiceFacade {
             @Lazy NgHotWorkService ngHotWorkService,
             @Lazy NgConfinedSpaceService ngConfinedSpaceService,
             @Lazy NgWorkRequestService ngWorkRequestService,
+            @Lazy NgJhaService ngJhaService,
             @Lazy NgDailyPermitPackageService ngDailyPermitPackageService
     ) {
         // Categories
@@ -92,6 +93,7 @@ public class ServiceFacade {
         serviceMap.put(HotWork.class.getSimpleName(), ngHotWorkService);
         serviceMap.put(ConfinedSpace.class.getSimpleName(), ngConfinedSpaceService);
         serviceMap.put(WorkRequest.class.getSimpleName(), ngWorkRequestService);
+        serviceMap.put(Jha.class.getSimpleName(), ngJhaService);
         serviceMap.put(DailyPermitPackage.class.getSimpleName(), ngDailyPermitPackageService);
     }
 

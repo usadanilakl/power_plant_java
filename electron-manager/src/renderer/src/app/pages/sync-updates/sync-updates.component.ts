@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import {
   ElectronService, AppStatus, SyncStatusInfo, StartupAssessment, SyncComponent,
   SyncOptions, SyncExecuteProgress, DeviceConfig, ResourcePackStatus, ElectronUpdateProgress, IpcResult, APP_DISPLAY_NAME
@@ -10,7 +11,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-sync-updates',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
     <div class="page">
       <h1 class="page-title">Sync & Updates</h1>
@@ -198,7 +199,25 @@ import { Subscription } from 'rxjs';
         </div>
       </section>
 
-      <!-- Section 3: Electron Update -->
+      <!-- Section 3: SharePoint Sync shortcut -->
+      <section class="card" *ngIf="appRunning">
+        <div class="card-header">
+          <h2>SharePoint Sync</h2>
+          <span class="sp-status" [class.sp-on]="spEnabled" [class.sp-off]="!spEnabled">
+            {{ spEnabled ? 'Auto-Sync On' : 'Auto-Sync Off' }}
+          </span>
+        </div>
+        <div class="card-body">
+          <p class="hint" style="margin-top:0">Manage SharePoint auto-sync, polling intervals, and trigger manual syncs.</p>
+          <div class="card-actions">
+            <a class="btn btn-secondary" [routerLink]="['/pid-app']" [queryParams]="{ path: 'sync/sharepoint' }">
+              Open SharePoint Sync Settings
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Electron Update -->
       <section class="card" *ngIf="assessment?.electron">
         <div class="card-header">
           <h2>Electron App Update</h2>
@@ -518,6 +537,22 @@ import { Subscription } from 'rxjs';
     .toggle-option input[type="checkbox"] {
       accent-color: var(--accent-primary);
     }
+
+    .sp-status {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    .sp-on {
+      background-color: rgba(80, 200, 120, 0.15);
+      color: var(--accent-success);
+    }
+
+    .sp-off {
+      background-color: var(--bg-secondary);
+      color: var(--text-muted);
+    }
   `]
 })
 export class SyncUpdatesComponent implements OnInit, OnDestroy {
@@ -531,6 +566,9 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
   electronDownloading = false;
   electronProgress: ElectronUpdateProgress | null = null;
 
+  appRunning = false;
+  spEnabled = false;
+
   private statusSub?: Subscription;
   private unsubSyncProgress?: () => void;
   private unsubAssessment?: () => void;
@@ -540,7 +578,11 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     this.statusSub = this.electronService.appStatus$.subscribe(s => {
-      // track app state if needed
+      const wasRunning = this.appRunning;
+      this.appRunning = s.state === 'running' && s.healthStatus === 'healthy';
+      if (this.appRunning && !wasRunning) {
+        this.loadSpSyncConfig();
+      }
     });
 
     this.unsubSyncProgress = this.electronService.onSyncExecuteProgress((progress) => {
@@ -568,6 +610,7 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     await Promise.all([
       this.loadDeviceConfig(),
       this.loadAssessment(),
+      this.loadSpSyncConfig(),
     ]);
   }
 
@@ -595,6 +638,18 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
   async refreshAssessment(): Promise<void> {
     this.assessment = null;
     await this.loadAssessment();
+  }
+
+  private async loadSpSyncConfig(): Promise<void> {
+    try {
+      const resp = await fetch('http://localhost:8082/api/sharepoint-sync/config');
+      if (resp.ok) {
+        const data = await resp.json();
+        this.spEnabled = data?.responseData?.enabled ?? false;
+      }
+    } catch {
+      // Spring Boot not reachable yet
+    }
   }
 
   get needsSync(): boolean {

@@ -46,6 +46,7 @@ public class CentralSyncService {
     private final FieldSyncService fieldSyncService;
     private final ApplicationContext applicationContext;
     private final WorkRequestMergeService workRequestMergeService;
+    private final JhaMergeService jhaMergeService;
     private final SharePointSyncSettings syncIntervals;
 
     // Lazily fetched to avoid circular dependency
@@ -221,6 +222,11 @@ public class CentralSyncService {
                     workRequestMergeService.mergeIfDuplicatesExist();
                 } catch (Exception ex) {
                     log.error("Post-sync WorkRequest merge failed: {}", ex.getMessage(), ex);
+                }
+                try {
+                    jhaMergeService.mergeIfDuplicatesExist();
+                } catch (Exception ex) {
+                    log.error("Post-sync JHA merge failed: {}", ex.getMessage(), ex);
                 }
             }
 

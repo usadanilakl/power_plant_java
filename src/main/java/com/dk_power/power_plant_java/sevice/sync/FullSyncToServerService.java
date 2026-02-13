@@ -113,6 +113,7 @@ public class FullSyncToServerService {
     private final HotWorkRepo hotWorkRepo;
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final WorkRequestRepo workRequestRepo;
+    private final JhaRepo jhaRepo;
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
     private final CommentRepo commentRepo;
     private final FireImpairmentRepo fireImpairmentRepo;
@@ -168,6 +169,7 @@ public class FullSyncToServerService {
         new EntitySyncConfig("HotWork", HotWork.class),
         new EntitySyncConfig("ConfinedSpace", ConfinedSpace.class),
         new EntitySyncConfig("WorkRequest", WorkRequest.class),
+        new EntitySyncConfig("Jha", Jha.class),
         new EntitySyncConfig("DailyPermitPackage", DailyPermitPackage.class),
         new EntitySyncConfig("FireImpairment", FireImpairment.class)
     );
@@ -1284,6 +1286,7 @@ public class FullSyncToServerService {
             case "HotWork" -> hotWorkRepo;
             case "ConfinedSpace" -> confinedSpaceRepo;
             case "WorkRequest" -> workRequestRepo;
+            case "Jha" -> jhaRepo;
             case "DailyPermitPackage" -> dailyPermitPackageRepo;
             case "Comment" -> commentRepo;
             case "FireImpairment" -> fireImpairmentRepo;

@@ -59,6 +59,7 @@ public class EntityTableRegistry {
         Map.entry("HotWork", "hot_work"),          // @Table(name = "hot_work")
         Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
         Map.entry("WorkRequest", "work_request"),  // @Table(name = "work_request")
+        Map.entry("Jha", "jha"),
         Map.entry("DailyPermitPackage", "daily_permit_package"),
 
         // Comments
@@ -98,6 +99,7 @@ public class EntityTableRegistry {
         "HotWork",
         "ConfinedSpace",
         "WorkRequest",
+        "Jha",
         "DailyPermitPackage",
         "FireImpairment"
     );

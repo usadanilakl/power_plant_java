@@ -92,6 +92,7 @@ public class WorkRequestMergeService {
             WorkRequest duplicate = workRequests.get(i);
 
             transferDailyPermitPackageLink(duplicate.getId(), canonical.getId());
+            transferJhaLinks(duplicate.getId(), canonical.getId());
 
             // Soft-delete via JPA so FieldChangeEntityListener fires and creates
             // a FieldChange record — this ensures the deletion syncs to other machines.
@@ -129,6 +130,24 @@ public class WorkRequestMergeService {
         if (updated > 0) {
             log.info("[WorkRequest Merge] Transferred DailyPermitPackage link from ID={} to ID={}",
                 duplicateId, canonicalId);
+        }
+    }
+
+    /**
+     * Transfer JHA foreign keys from a duplicate WorkRequest to the canonical one.
+     * JHA has a @ManyToOne WorkRequest via work_request_id column.
+     * When the duplicate WR is soft-deleted, its JHAs would become orphaned.
+     */
+    private void transferJhaLinks(Long duplicateId, Long canonicalId) {
+        int updated = entityManager.createNativeQuery(
+            "UPDATE jha SET work_request_id = :canId WHERE work_request_id = :dupId")
+            .setParameter("canId", canonicalId)
+            .setParameter("dupId", duplicateId)
+            .executeUpdate();
+
+        if (updated > 0) {
+            log.info("[WorkRequest Merge] Transferred {} JHA link(s) from WR ID={} to WR ID={}",
+                updated, duplicateId, canonicalId);
         }
     }
 }

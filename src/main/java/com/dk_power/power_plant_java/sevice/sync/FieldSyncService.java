@@ -56,6 +56,7 @@ public class FieldSyncService {
     private final EntityTableRegistry entityTableRegistry;
     private final CategoryValueMergeService categoryValueMergeService;
     private final WorkRequestMergeService workRequestMergeService;
+    private final JhaMergeService jhaMergeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -78,7 +79,8 @@ public class FieldSyncService {
             FileObjectSyncHandler fileObjectSyncHandler,
             EntityTableRegistry entityTableRegistry,
             CategoryValueMergeService categoryValueMergeService,
-            WorkRequestMergeService workRequestMergeService) {
+            WorkRequestMergeService workRequestMergeService,
+            JhaMergeService jhaMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -95,6 +97,7 @@ public class FieldSyncService {
         this.entityTableRegistry = entityTableRegistry;
         this.categoryValueMergeService = categoryValueMergeService;
         this.workRequestMergeService = workRequestMergeService;
+        this.jhaMergeService = jhaMergeService;
     }
 
     /**
@@ -573,6 +576,13 @@ public class FieldSyncService {
                     } catch (Exception e) {
                         log.error("WorkRequest merge failed: {}", e.getMessage(), e);
                     }
+
+                    // Merge duplicate JHAs created by independent SharePoint pulls
+                    try {
+                        jhaMergeService.mergeIfDuplicatesExist();
+                    } catch (Exception e) {
+                        log.error("JHA merge failed: {}", e.getMessage(), e);
+                    }
                 }
             });
         } else {
@@ -602,6 +612,13 @@ public class FieldSyncService {
                 workRequestMergeService.mergeIfDuplicatesExist();
             } catch (Exception e) {
                 log.error("WorkRequest merge failed: {}", e.getMessage(), e);
+            }
+
+            // Merge duplicate JHAs created by independent SharePoint pulls
+            try {
+                jhaMergeService.mergeIfDuplicatesExist();
+            } catch (Exception e) {
+                log.error("JHA merge failed: {}", e.getMessage(), e);
             }
         }
 
