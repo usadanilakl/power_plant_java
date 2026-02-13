@@ -99,14 +99,12 @@ export class FormRendererComponent implements OnInit{
       const newFormDefinition = this.formDefinitionInput();
       if (newFormDefinition !== this.formDefinition() && !this.addingItem()) {
         this.formDefinition.set(this.formDefinitionInput());
-        console.log('Form definition changed:', newFormDefinition);
         this.createForm();
       }
       this.addingItem.set(false);
     });
 
     effect(() => {
-      console.log('FormDef: ', this.processedFormDefinition())
       const data = this.formData();
       if (data && this.form) {
         this.form.patchValue(data, { emitEvent: false });
@@ -242,16 +240,9 @@ export class FormRendererComponent implements OnInit{
           const arrayData = this.getNestedValue(dataSource, field.name) || [];
           const fields = this.getFormFieldsFromFormTemplate(field.nestedForm)
 
-          console.log('Creating new FormArray with data:', arrayData);
-          
           const formArray = this.fb.array(
             arrayData.map((item: any) => this.createArrayItem(fields ?? [], item))
           );
-        
-          console.log('FormArray created:', formArray);
-          console.log('FormArray length:', formArray.length);
-          console.log('FormArray value:', formArray.value);
-          
           this.setNestedControl(group, field.name, formArray);
         } else {
           let value = this.getNestedValue(this.formData(), field.name);
@@ -282,9 +273,8 @@ export class FormRendererComponent implements OnInit{
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
-    console.log('Form created:', this.form);
   }
-  
+
   private convertToFormGroup(obj: any): any {
     const result: any = {};
     
@@ -327,30 +317,14 @@ export class FormRendererComponent implements OnInit{
 
 
 private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
-  console.log('=== createArrayItem called ===');
-  console.log('Fields:', fields);
-  console.log('Data:', data);
-  
   const group: { [key: string]: any } = {};
-  
+
   fields.forEach(field => {
     const value = this.getNestedValue(data, field.name) ?? field.initialValue ?? '';
-    console.log(`Field "${field.name}": value = "${value}"`);
-    
-    // Use setNestedControl to support nested paths like "address.street"
     this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
   });
-  
-  console.log('Group before conversion:', group);
-  
-  // Convert nested plain objects to FormGroups recursively
-  const formGroup = this.fb.group(this.convertToFormGroup(group));
-  
-  console.log('FormGroup after conversion:', formGroup);
-  console.log('FormGroup value:', formGroup.value);
-  console.log('=== End createArrayItem ===');
-  
-  return formGroup;
+
+  return this.fb.group(this.convertToFormGroup(group));
 }
 
   // private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
@@ -381,46 +355,19 @@ onArrayItemAdded(formGroup: FormGroup): void {
  * Handles when an item is removed from a form array
  */
 onArrayItemRemoved(event: { index: number, fieldName: string }): void {
-  console.log('=== REMOVAL REQUEST ===');
-  console.log('Field name:', event.fieldName);
-  console.log('Index to remove:', event.index);
-  
   const formArray = this.form.get(event.fieldName) as FormArray;
   if (formArray && event.index >= 0 && event.index < formArray.length) {
-    console.log('Array length before removal:', formArray.length);
-    console.log('Full array before removal:', JSON.stringify(formArray.value, null, 2));
-    console.log('Item being removed:', JSON.stringify(formArray.at(event.index).value, null, 2));
-    
-    // Remove the item from the FormArray
     formArray.removeAt(event.index);
-    
-    console.log('Array length after removal:', formArray.length);
-    console.log('Full array after removal:', JSON.stringify(formArray.value, null, 2));
-    
-    // Emit the updated form value immediately
+
     const originalData = this.formData() || {};
     const formValue = this.form.value;
     const mergedData = this.deepMerge(originalData, formValue);
-    console.log('Emitting merged data:', JSON.stringify(mergedData, null, 2));
     this.formChange.emit(mergedData);
-    
-    // Trigger signal update to refresh the UI
+
     setTimeout(() => {
-      console.log('Triggering signal update...');
-      this.formArrayChanged.update(val => {
-        console.log('Signal updated from', val, 'to', val + 1);
-        return val + 1;
-      });
+      this.formArrayChanged.update(val => val + 1);
     }, 0);
-  } else {
-    console.warn('Invalid removal request:', {
-      formArrayExists: !!formArray,
-      index: event.index,
-      arrayLength: formArray?.length
-    });
   }
-  
-  console.log('=== END REMOVAL REQUEST ===');
 }
 
   private getAllFormFields(): FormField[] {
@@ -498,8 +445,6 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
         updatedFormDefinition.formContainers.splice(index, 1, ...newContainers);
       }
     });
-    // this.formDefinition.set(updatedFormDefinition);
-    console.log('Updated form definition:', updatedFormDefinition);
     return updatedFormDefinition;
   }
 
@@ -510,8 +455,6 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
     const dataSource = this.form && this.form.value ? this.form.value : this.formData();
     const formArrayData = this.getNestedValue(dataSource, key) ?? [];
     // if(!this.formData() || !formArrayData) throw new Error(`No data found for key "${key}"`);
-
-    console.log('Processing form array:', formArrayData);
 
     const mainFormPageHight = this.formDefinition()!.size.height * this.pixelsPerInch;
     const repeatingSectionContainerHeight = section.size?.height?? 0;
@@ -558,8 +501,6 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
       (newContainer.content as FormField).arrayIndexRange = { start: startIndex, end: endIndex };
       readyContainers.push(newContainer);
     }
-
-    console.log(`Processed form array for section "${key}":`, readyContainers);
 
     return readyContainers;
     

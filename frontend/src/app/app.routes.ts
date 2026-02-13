@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
+import { PermitsMonitorComponent } from './features/permit-builder/permits-monitor/permits-monitor.component';
 
 // Feature routes
 import { FILE_ROUTES } from './routes/file.routes';
@@ -15,6 +16,7 @@ export const routes: Routes = [
   // Home page as default
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: 'home', component: HomeComponent },
+  { path: 'permits-monitor', component: PermitsMonitorComponent },
 
   // Feature routes
   ...FILE_ROUTES,

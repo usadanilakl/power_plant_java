@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './invisible-input-field.component.html',
   styleUrl: './invisible-input-field.component.css',
+  host: { 'data-version': 'v2' },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,

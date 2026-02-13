@@ -31,6 +31,7 @@
     "/permit-builder/jobs": {},
     "/permit-builder/safe-works": {},
     "/permit-builder/work-requests": {},
+    "/permits-monitor": {},
     "/print": {},
     "/scheduler": {},
     "/scheduler/flow": {},

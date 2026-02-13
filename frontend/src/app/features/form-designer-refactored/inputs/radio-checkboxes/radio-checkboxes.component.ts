@@ -8,6 +8,7 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
   imports: [FormsModule, NgFor],
   templateUrl: './radio-checkboxes.component.html',
   styleUrl: './radio-checkboxes.component.css',
+  host: { 'data-version': 'v2' },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,

@@ -36,7 +36,8 @@ export class FormRenderingService {
         if (existing) {
           form.addControl(name, existing);
         } else {
-          const value = this.getNestedValue(formData, name);
+          let value = this.getNestedValue(formData, name);
+          value = this.normalizeFieldValue(field, value);
           form.addControl(name, new FormControl(value, field.validators || []));
         }
       }
@@ -110,7 +111,10 @@ export class FormRenderingService {
     const seen = new Set<string>();
 
     for (const container of formDefinition.formContainers) {
-      if (container.contentType === 'formField' && this.isFormField(container.content)) {
+      if (
+        (container.contentType === 'formField' || container.contentType === 'repeatingSection') &&
+        this.isFormField(container.content)
+      ) {
         const field = container.content as FormField;
         const name = field.name || '';
         if (name && !seen.has(name)) {
@@ -168,6 +172,19 @@ export class FormRenderingService {
       styles.fontSize = `${styles.fontSize}px`;
     }
     return styles;
+  }
+
+  private normalizeFieldValue(field: FormField, value: any): any {
+    if (field.type === 'file') {
+      return null;
+    }
+    if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+      return value || [];
+    }
+    if (field.type === 'select' && typeof value === 'object' && value !== null) {
+      return value.id;
+    }
+    return value;
   }
 
   private getNestedValue(obj: any, path: string): any {

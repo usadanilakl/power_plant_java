@@ -12,4 +12,5 @@ import { PrintService } from '../../../../services/ui/print.service';
 export class PrintLayoutComponent {
   printService = inject(PrintService);
   printableForm = this.printService.printableForm;
+  isPreparing = this.printService.isPreparing;
 }

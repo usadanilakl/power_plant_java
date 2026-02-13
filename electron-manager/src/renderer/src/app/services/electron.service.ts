@@ -248,6 +248,7 @@ interface ElectronAPI {
 
   // Permits
   getWorkRequestCount: () => Promise<IpcResult<{ newCount: number; activeCount: number }>>;
+  openPermitsMonitor: () => Promise<IpcResult>;
 
   // Device Identity
   getDeviceConfig: () => Promise<IpcResult<DeviceConfig | null>>;
@@ -509,6 +510,11 @@ export class ElectronService implements OnDestroy {
   async getWorkRequestCount(): Promise<IpcResult<{ newCount: number; activeCount: number }>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.getWorkRequestCount();
+  }
+
+  async openPermitsMonitor(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.openPermitsMonitor();
   }
 
   // Device Identity

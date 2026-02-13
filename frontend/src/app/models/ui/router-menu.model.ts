@@ -43,6 +43,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         icon: 'assignment',
         defaultRoute: '/permit-builder',
         items: [
+            { route: '/permits-monitor', label: 'Permits Monitor' },
             { route: '/permit-builder/daily-packages', label: 'Daily Packages' },
             { route: '/permit-builder/work-requests', label: 'Work Requests' },
             { route: '/permit-builder/jobs', label: 'Job Logs' },

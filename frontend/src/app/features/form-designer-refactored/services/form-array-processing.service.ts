@@ -18,7 +18,7 @@ export class FormArrayProcessingService {
 
     for (const container of formDefinition.formContainers) {
       if (
-        container.contentType === 'formField' &&
+        (container.contentType === 'formField' || container.contentType === 'repeatingSection') &&
         this.isFormField(container.content) &&
         container.content.type === 'form-array'
       ) {

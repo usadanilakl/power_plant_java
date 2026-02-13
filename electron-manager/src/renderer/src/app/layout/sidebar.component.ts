@@ -11,6 +11,7 @@ interface NavItem {
   color: string;
   queryParams?: Record<string, string>;
   badge?: number | null;
+  action?: string;
 }
 
 @Component({
@@ -34,17 +35,30 @@ interface NavItem {
       </div>
 
       <nav class="nav-list">
-        <a *ngFor="let item of navItems"
-           class="nav-item"
-           [routerLink]="item.route"
-           [queryParams]="item.queryParams"
-           routerLinkActive="active"
-           [routerLinkActiveOptions]="{ exact: item.route === '/' }"
-           [title]="collapsed ? item.label : ''">
-          <span class="nav-icon material-icons" [style.color]="item.color">{{ item.icon }}</span>
-          <span class="nav-label">{{ item.label }}</span>
-          <span class="nav-badge" *ngIf="item.badge != null && item.badge > 0">{{ item.badge }}</span>
-        </a>
+        <ng-container *ngFor="let item of navItems">
+          <!-- Action items (open new window etc.) -->
+          <a *ngIf="item.action; else routerItem"
+             class="nav-item"
+             (click)="onNavAction(item)"
+             [title]="collapsed ? item.label : ''">
+            <span class="nav-icon material-icons" [style.color]="item.color">{{ item.icon }}</span>
+            <span class="nav-label">{{ item.label }}</span>
+            <span class="nav-badge" *ngIf="item.badge != null && item.badge > 0">{{ item.badge }}</span>
+          </a>
+          <!-- Regular router items -->
+          <ng-template #routerItem>
+            <a class="nav-item"
+               [routerLink]="item.route"
+               [queryParams]="item.queryParams"
+               routerLinkActive="active"
+               [routerLinkActiveOptions]="{ exact: item.route === '/' }"
+               [title]="collapsed ? item.label : ''">
+              <span class="nav-icon material-icons" [style.color]="item.color">{{ item.icon }}</span>
+              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-badge" *ngIf="item.badge != null && item.badge > 0">{{ item.badge }}</span>
+            </a>
+          </ng-template>
+        </ng-container>
       </nav>
 
       <div class="sidebar-footer">
@@ -338,7 +352,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   navItems: NavItem[] = [
     { label: 'Home', route: '/', icon: 'home', color: '#3b82f6' },
     { label: 'PID App', route: '/pid-app', icon: 'dashboard', color: '#8b5cf6' },
-    { label: 'Permits', route: '/pid-app', icon: 'assignment', color: '#8b5cf6', queryParams: { path: 'permit-builder/work-requests' } },
+    { label: 'Permits', route: '', icon: 'assignment', color: '#8b5cf6', action: 'open-permits-monitor' },
     { label: 'Fire Impairment', route: '/fire-impairment', icon: 'local_fire_department', color: '#ef4444' },
     { label: 'Gate Log', route: '/gate-log', icon: 'badge', color: '#06b6d4' },
     { label: 'Weather', route: '/weather', icon: 'thunderstorm', color: '#f59e0b' },
@@ -371,6 +385,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
         }
       }
     } catch {}
+  }
+
+  onNavAction(item: NavItem): void {
+    if (item.action === 'open-permits-monitor') {
+      this.electronService.openPermitsMonitor();
+    }
   }
 
   get stateLabel(): string {

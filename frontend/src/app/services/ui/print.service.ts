@@ -11,25 +11,26 @@ export interface ReadyToPrintForm {
 })
 export class PrintService {
   printableForm = signal<ReadyToPrintForm | null>(null);
+  isPreparing = signal(false);
 
   printForm(definition: PrintableFormDto, data: any) {
     const dataSignal = signal(data);
+    this.isPreparing.set(true);
     this.printableForm.set({ definition, data: dataSignal });
 
-    console.log('Printing form:', this.printableForm());
-
-    // Use a timeout to allow Angular to render the print component
-    // with the new data before the print dialog opens.
+    // Allow Angular to render the print layout before triggering print.
+    // 500ms gives time for large forms (200+ containers) to fully render.
     setTimeout(() => {
+      this.isPreparing.set(false);
       const electronAPI = (window as any).electronAPI;
       if (electronAPI?.printCurrentPage) {
-        electronAPI.printCurrentPage({ silent: false }).then(() => {
-          this.printableForm.set(null);
-        });
+        electronAPI.printCurrentPage({ silent: false })
+          .then(() => this.printableForm.set(null))
+          .catch(() => this.printableForm.set(null));
       } else {
         window.print();
         this.printableForm.set(null);
       }
-    }, 50);
+    }, 500);
   }
 }

@@ -1,10 +1,13 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { PrintableFormDto } from '../models/printable-form.model';
 import { FormArrayProcessingService } from '../services/form-array-processing.service';
 import { FormRenderingService } from '../services/form-rendering.service';
 import { FormContainerRendererComponent } from './form-container-renderer/form-container-renderer.component';
+import { PrintService } from '../../../services/ui/print.service';
 
 @Component({
   selector: 'app-form-renderer',
@@ -23,9 +26,12 @@ export class FormRendererComponent {
   readOnly = input<boolean>(false);
 
   formSubmit = output<any>();
+  formChange = output<any>();
 
   private arrayProcessingService = inject(FormArrayProcessingService);
   private renderingService = inject(FormRenderingService);
+  private printService = inject(PrintService);
+  private destroyRef = inject(DestroyRef);
 
   readonly pixelsPerInch = 96;
 
@@ -60,7 +66,21 @@ export class FormRendererComponent {
       const data = this.formData();
       if (def) {
         this.form = this.renderingService.createFormFromDefinition(def, data, this.form);
+        this.subscribeToFormChanges();
       }
+    });
+  }
+
+  private subscribeToFormChanges(): void {
+    this.form.valueChanges.pipe(
+      debounceTime(1000),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => {
+      const originalData = this.formData() || {};
+      const formValue = this.form.value;
+      const mergedData = this.renderingService.deepMerge(originalData, formValue);
+      this.formChange.emit(mergedData);
     });
   }
 
@@ -90,12 +110,12 @@ export class FormRendererComponent {
   }
 
   print(): void {
-    // Use Electron's print API when available (better margins/sizing control)
-    const electronAPI = (window as any).electronAPI;
-    if (electronAPI?.printCurrentPage) {
-      electronAPI.printCurrentPage({ silent: false });
-    } else {
-      window.print();
+    const def = this.formDefinition();
+    if (def) {
+      const originalData = this.formData() || {};
+      const formValue = this.form.value;
+      const mergedData = this.renderingService.deepMerge(originalData, formValue);
+      this.printService.printForm(def, mergedData);
     }
   }
 }

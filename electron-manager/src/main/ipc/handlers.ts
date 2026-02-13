@@ -30,6 +30,7 @@ export class IpcHandlers {
   private resourcePackManager: ResourcePackManager;
   private electronUpdateManager: ElectronUpdateManager;
   private mainWindow: BrowserWindow;
+  private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
 
   constructor(mainWindow: BrowserWindow) {
@@ -747,6 +748,38 @@ export class IpcHandlers {
           }
         };
       } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERMITS_OPEN_MONITOR, async () => {
+      try {
+        // If window already exists and not destroyed, focus it
+        if (this.permitsMonitorWindow && !this.permitsMonitorWindow.isDestroyed()) {
+          this.permitsMonitorWindow.focus();
+          return { success: true };
+        }
+
+        const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+        this.permitsMonitorWindow = new BrowserWindow({
+          width: 1200,
+          height: 800,
+          title: 'Permits Monitor',
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false
+          }
+        });
+
+        this.permitsMonitorWindow.on('closed', () => {
+          this.permitsMonitorWindow = null;
+        });
+
+        await this.permitsMonitorWindow.loadURL(`http://localhost:${port}/app/permits-monitor`);
+        console.log('[Permits] Monitor window opened');
+        return { success: true };
+      } catch (error: any) {
+        console.error('[Permits] Failed to open monitor window:', error.message);
         return { success: false, error: error.message };
       }
     });

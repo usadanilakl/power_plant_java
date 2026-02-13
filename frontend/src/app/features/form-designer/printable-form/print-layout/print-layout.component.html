@@ -1,6 +1,15 @@
+@if (isPreparing()) {
+  <div class="print-loading-overlay">
+    <div class="print-loading-content">
+      <div class="print-spinner"></div>
+      <span>Preparing print...</span>
+    </div>
+  </div>
+}
+
 @if (printableForm(); as form) {
-  <app-form-renderer 
-    [formDefinitionInput]="form.definition" 
+  <app-form-renderer
+    [formDefinitionInput]="form.definition"
     [formData]="form.data"
     [readOnly]="true">
   </app-form-renderer>

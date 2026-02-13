@@ -106,6 +106,7 @@ export const IPC_ELECTRON_UPDATE_PROGRESS = 'electron-update:progress';  // send
 
 // Permits (invoke/handle)
 export const IPC_WORK_REQUEST_COUNT = 'permits:work-request-count';
+export const IPC_PERMITS_OPEN_MONITOR = 'permits:open-monitor';
 
 // Menu (invoke/handle + send/on)
 export const IPC_MENU_POPUP = 'menu:popup';

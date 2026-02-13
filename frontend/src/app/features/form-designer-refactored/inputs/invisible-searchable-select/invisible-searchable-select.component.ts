@@ -11,6 +11,7 @@ import { OverlayModule, ConnectedPosition } from '@angular/cdk/overlay';
   imports: [CommonModule, OverlayModule],
   templateUrl: './invisible-searchable-select.component.html',
   styleUrl: './invisible-searchable-select.component.css',
+  host: { 'data-version': 'v2' },
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
