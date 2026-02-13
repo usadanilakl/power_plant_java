@@ -39,8 +39,9 @@ export class RfWorkRequestMapperService {
 
   toTableColumns(
     fields: WorkRequestFieldName[] = [
-      'status', 'dateOfWorkToBePerformed', 'requestedBy', 'company',
-      'location', 'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired'
+      'status', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'workScope',
+      'requestedBy', 'company', 'location', 'attachmentCount', 'hasJha',
+      'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired'
     ]
   ): Column[] {
     const allColumns: { [key in WorkRequestFieldName]?: Column } = {
@@ -98,6 +99,18 @@ export class RfWorkRequestMapperService {
         accessorFn: (item: WorkRequestDto) => item.isVerified ? 'Yes' : 'No',
         conditionalStyling: (item: any) =>
           item.isVerified ? { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' } : { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' }
+      },
+      hasJha: {
+        id: 'hasJha', header: 'JHA', accessorKey: 'hasJha', filterable: true, sortable: true, width: 80,
+        accessorFn: (item: WorkRequestDto) => item.hasJha ? 'Yes' : 'No',
+        conditionalStyling: (item: any) =>
+          item.hasJha ? { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
+      },
+      attachmentCount: {
+        id: 'attachmentCount', header: 'Attachments', accessorKey: 'attachmentCount', filterable: false, sortable: true, width: 110,
+        accessorFn: (item: WorkRequestDto) => item.attachmentCount ? `${item.attachmentCount}` : '0',
+        conditionalStyling: (item: any) =>
+          item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '' }
       },
       name: { id: 'name', header: 'Name', accessorKey: 'name', filterable: true, sortable: true, width: 140 },
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType', filterable: true, sortable: true, width: 120 },

@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.JhaRepo;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -14,6 +16,8 @@ import org.springframework.stereotype.Component;
 public class WorkRequestMapper implements BaseMapper {
     private final ModelMapper modelMapper;
     private final WorkRequestRepo workRequestRepo;
+    private final JhaRepo jhaRepo;
+    private final PermitAttachmentRepo permitAttachmentRepo;
 
     public WorkRequestDto convertToDto(WorkRequest entity) {
         if (entity == null) return null;
@@ -133,7 +137,8 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setSpace(entity.getSpace());
         dto.setSharepointId(entity.getSharepointId());
         if(entity.getPermitStatus()!=null && entity.getPermitStatus().getName()!=null)dto.setStatus(entity.getPermitStatus().getName());
-
+        dto.setHasJha(!jhaRepo.findByWorkRequestId(entity.getId()).isEmpty());
+        dto.setAttachmentCount(permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", entity.getId()).size());
 
         return dto;
     }

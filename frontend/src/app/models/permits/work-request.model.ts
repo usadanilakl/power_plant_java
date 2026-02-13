@@ -23,6 +23,8 @@ export interface WorkRequestModel extends BaseModel {
   space: string | null;
   sharepointId: string | null;
   status: string | null;
+  hasJha: boolean | null;
+  attachmentCount: number | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -41,6 +43,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   space: string | null;
   sharepointId: string | null;
   status: string | null;
+  hasJha: boolean | null;
+  attachmentCount: number | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -59,6 +63,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.space = data.space ?? null;
     this.sharepointId = data.sharepointId ?? null;
     this.status = data.status ?? null;
+    this.hasJha = data.hasJha ?? null;
+    this.attachmentCount = data.attachmentCount ?? null;
   }
 
   // Serialization method
@@ -80,6 +86,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       space: this.space,
       sharepointId: this.sharepointId,
       status: this.status,
+      hasJha: this.hasJha,
+      attachmentCount: this.attachmentCount,
     };
   }
 
@@ -102,6 +110,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       space: json.space || null,
       sharepointId: json.sharepointId || null,
       status: json.status || null,
+      hasJha: json.hasJha ?? null,
+      attachmentCount: json.attachmentCount ?? null,
     });
   }
 
@@ -111,7 +121,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       'id', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
       'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired',
-      'space', 'sharepointId', 'status', 'isVerified', 'name', 'objectType'
+      'space', 'sharepointId', 'status', 'hasJha', 'attachmentCount', 'isVerified', 'name', 'objectType'
     ].includes(key);
   }
   static toFormFields(

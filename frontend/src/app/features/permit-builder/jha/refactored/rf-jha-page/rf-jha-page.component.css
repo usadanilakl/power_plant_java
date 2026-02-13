@@ -1,0 +1,68 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.jha-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color, #444);
+  flex-shrink: 0;
+}
+
+.action-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.new-btn {
+  background-color: var(--accent-color, #4a90d9);
+  color: white;
+}
+
+.new-btn:hover {
+  background-color: var(--accent-hover, #357abd);
+}
+
+.sync-btn {
+  background-color: var(--surface-secondary, #333);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-color, #444);
+}
+
+.sync-btn:hover:not(:disabled) {
+  background-color: var(--surface-hover, #444);
+}
+
+.sync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+app-rf-jha-table {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

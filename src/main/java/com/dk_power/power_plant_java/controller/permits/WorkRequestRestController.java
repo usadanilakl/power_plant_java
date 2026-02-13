@@ -4,8 +4,10 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import com.dk_power.power_plant_java.sevice.sync.WorkRequestSyncService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class WorkRequestRestController {
     private final NgWorkRequestService workRequestService;
     private final WorkRequestSyncService syncService;
     private final WorkRequestMapper workRequestMapper;
+    private final PermitAttachmentRepo permitAttachmentRepo;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<NgWorkRequestDto>>> getPaginated(
@@ -138,6 +141,16 @@ public class WorkRequestRestController {
             return ResponseEntity.ok(new NgApiResponse<>(result, message));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Sync failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
+        try {
+            List<PermitAttachment> attachments = permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", id);
+            return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments fetched"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
 

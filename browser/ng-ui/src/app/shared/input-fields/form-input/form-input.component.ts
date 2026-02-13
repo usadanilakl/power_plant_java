@@ -22,6 +22,7 @@ export class FormInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() type: string = 'text';
   @Input() value: any = '';
+  @Input() placeholder: string = '';
   @Input() customStyle: { [key: string]: any } = {};
   @Output() valueChange = new EventEmitter<any>();
 

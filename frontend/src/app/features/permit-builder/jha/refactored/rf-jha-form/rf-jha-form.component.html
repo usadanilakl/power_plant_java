@@ -1,0 +1,21 @@
+<div class="form-container">
+  <app-rf-reactive-form
+    [entity]="entity()"
+    [fields]="fields()"
+    [title]="'JHA Form'"
+    [showSubmitButton]="true"
+    (formSubmit)="onSubmit($event)"
+  >
+    <ng-container extra-buttons>
+      @if (canDelete()) {
+        <button
+          type="button"
+          class="delete-button"
+          (click)="onDelete()"
+          title="Delete JHA">
+          Delete
+        </button>
+      }
+    </ng-container>
+  </app-rf-reactive-form>
+</div>

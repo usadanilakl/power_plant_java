@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.permits.NgJhaDto;
 import com.dk_power.power_plant_java.entities.permits.Jha;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 public class JhaMapper implements BaseMapper {
     private final ModelMapper modelMapper;
     private final JhaRepo jhaRepo;
+    private final PermitAttachmentRepo permitAttachmentRepo;
 
     public JhaDto convertToDto(Jha entity) {
         if (entity == null) return null;
@@ -104,6 +106,7 @@ public class JhaMapper implements BaseMapper {
         if (entity.getPermitStatus() != null && entity.getPermitStatus().getName() != null) {
             dto.setStatus(entity.getPermitStatus().getName());
         }
+        dto.setAttachmentCount(permitAttachmentRepo.findByEntityTypeAndEntityId("Jha", entity.getId()).size());
         return dto;
     }
 

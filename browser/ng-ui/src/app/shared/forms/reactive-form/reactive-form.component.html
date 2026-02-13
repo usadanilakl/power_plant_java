@@ -83,6 +83,7 @@
                   [label]="field.label"
                   [type]="field.type"
                   [readonly]="field.readonly ?? false"
+                  [placeholder]="field.placeholder ?? ''"
                   [formControl]="getFormControl(field.name)">
                 </app-form-input>
               }

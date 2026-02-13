@@ -1,0 +1,43 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.jha-table-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.error-message {
+  padding: 8px 12px;
+  background-color: var(--status-incomplete, #ffcccc);
+  color: #721c24;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.loading-indicator {
+  padding: 8px 12px;
+  color: var(--text-secondary, #999);
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+app-table {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

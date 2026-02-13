@@ -4,96 +4,96 @@ import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../../../environments/environment';
 import { SpringPaginatedResponse } from '../../../../../models/api/spring-pagenated.response.model';
 import { SpringApiResponse } from '../../../../../models/api/spring-api-response.model';
-import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
+import { JhaDto } from '../../../../../models/permits/jha.model';
 import { SearchCriteria } from '../../../../../models/api/search-criteria.model';
 
 @Injectable({
   providedIn: 'root',
 })
-export class RfWorkRequestApiService {
-  private apiUrl = `${environment.baseApiUrl}/work-requests-api`;
+export class RfJhaApiService {
+  private apiUrl = `${environment.baseApiUrl}/jha-api`;
 
-  private workRequestUpdatedSubject = new Subject<WorkRequestDto>();
-  workRequestUpdated$ = this.workRequestUpdatedSubject.asObservable();
+  private jhaUpdatedSubject = new Subject<JhaDto>();
+  jhaUpdated$ = this.jhaUpdatedSubject.asObservable();
 
-  private workRequestDeletedSubject = new Subject<number>();
-  workRequestDeleted$ = this.workRequestDeletedSubject.asObservable();
+  private jhaDeletedSubject = new Subject<number>();
+  jhaDeleted$ = this.jhaDeletedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
-  getWorkRequests(
+  getJhas(
     page: number = 1,
     pageSize: number = 50
-  ): Observable<SpringPaginatedResponse<WorkRequestDto>> {
+  ): Observable<SpringPaginatedResponse<JhaDto>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
-    return this.http.get<SpringPaginatedResponse<WorkRequestDto>>(
+    return this.http.get<SpringPaginatedResponse<JhaDto>>(
       `${this.apiUrl}/paginated`,
       { params }
     );
   }
 
-  searchWorkRequests(
+  searchJhas(
     criteria: SearchCriteria,
     pageSize: number
-  ): Observable<SpringPaginatedResponse<WorkRequestDto>> {
+  ): Observable<SpringPaginatedResponse<JhaDto>> {
     const params = new HttpParams()
       .set('page', (criteria.page ?? 1).toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<WorkRequestDto>>(
+    return this.http.post<SpringPaginatedResponse<JhaDto>>(
       `${this.apiUrl}/search`,
       criteria,
       { params }
     );
   }
 
-  getWorkRequestById(id: number): Observable<SpringApiResponse<WorkRequestDto>> {
-    return this.http.get<SpringApiResponse<WorkRequestDto>>(
+  getJhaById(id: number): Observable<SpringApiResponse<JhaDto>> {
+    return this.http.get<SpringApiResponse<JhaDto>>(
       `${this.apiUrl}/${id}`
     );
   }
 
-  getEmpty(): Observable<SpringApiResponse<WorkRequestDto>> {
-    return this.http.get<SpringApiResponse<WorkRequestDto>>(
+  getEmpty(): Observable<SpringApiResponse<JhaDto>> {
+    return this.http.get<SpringApiResponse<JhaDto>>(
       `${this.apiUrl}/empty`
     );
   }
 
-  saveWorkRequest(dto: WorkRequestDto): Observable<SpringApiResponse<WorkRequestDto>> {
+  saveJha(dto: JhaDto): Observable<SpringApiResponse<JhaDto>> {
     const saveObservable = dto.id
-      ? this.http.put<SpringApiResponse<WorkRequestDto>>(this.apiUrl, dto.toJson())
-      : this.http.post<SpringApiResponse<WorkRequestDto>>(this.apiUrl, dto.toJson());
+      ? this.http.put<SpringApiResponse<JhaDto>>(this.apiUrl, dto.toJson())
+      : this.http.post<SpringApiResponse<JhaDto>>(this.apiUrl, dto.toJson());
 
     return saveObservable.pipe(
       tap(response => {
         if (response.responseData) {
-          const updated = WorkRequestDto.fromJson(response.responseData);
-          this.workRequestUpdatedSubject.next(updated);
+          const updated = JhaDto.fromJson(response.responseData);
+          this.jhaUpdatedSubject.next(updated);
         }
       })
     );
   }
 
-  deleteWorkRequest(id: number): Observable<SpringApiResponse<WorkRequestDto>> {
-    return this.http.delete<SpringApiResponse<WorkRequestDto>>(
+  deleteJha(id: number): Observable<SpringApiResponse<JhaDto>> {
+    return this.http.delete<SpringApiResponse<JhaDto>>(
       `${this.apiUrl}/${id}`
     ).pipe(
       tap(() => {
-        this.workRequestDeletedSubject.next(id);
+        this.jhaDeletedSubject.next(id);
       })
     );
   }
 
-  changeStatus(id: number, status: string): Observable<SpringApiResponse<WorkRequestDto>> {
-    return this.http.get<SpringApiResponse<WorkRequestDto>>(
+  changeStatus(id: number, status: string): Observable<SpringApiResponse<JhaDto>> {
+    return this.http.get<SpringApiResponse<JhaDto>>(
       `${this.apiUrl}/change-status/${id}/${status}`
     ).pipe(
       tap(response => {
         if (response.responseData) {
-          const updated = WorkRequestDto.fromJson(response.responseData);
-          this.workRequestUpdatedSubject.next(updated);
+          const updated = JhaDto.fromJson(response.responseData);
+          this.jhaUpdatedSubject.next(updated);
         }
       })
     );
@@ -103,12 +103,6 @@ export class RfWorkRequestApiService {
     return this.http.post<SpringApiResponse<number>>(
       `${this.apiUrl}/sync`,
       {}
-    );
-  }
-
-  getByStatus(status: string): Observable<SpringApiResponse<WorkRequestDto[]>> {
-    return this.http.get<SpringApiResponse<WorkRequestDto[]>>(
-      `${this.apiUrl}/by-status/${status}`
     );
   }
 
