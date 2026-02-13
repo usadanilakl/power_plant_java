@@ -121,6 +121,9 @@ export default class App {
       console.log('Spring Boot JAR not found — skipping auto-start');
     }
 
+    // Restore secondary windows that were open at last quit
+    App.ipcHandlers.restoreSecondaryWindows();
+
     // Post-startup checks (after Spring Boot — sync staleness)
     App.postStartupChecks();
 
@@ -610,6 +613,10 @@ export default class App {
     if (App.serverPollTimer) {
       clearInterval(App.serverPollTimer);
       App.serverPollTimer = null;
+    }
+    // Save window layout (positions + which are open) before cleanup destroys windows
+    if (App.ipcHandlers) {
+      App.ipcHandlers.saveAllWindowLayouts();
     }
     if (App.ipcHandlers) {
       await App.ipcHandlers.cleanup();

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.PeerRepository;
@@ -26,6 +27,7 @@ public class PeerDiscoveryService {
     private final PeerRepository peerRepository;
     private final ObjectMapper objectMapper;
     private final SyncEventPublisher syncEventPublisher;
+    private final SharePointSyncSettings syncIntervals;
 
     private DatagramSocket broadcastSocket;
     private DatagramSocket listenSocket;
@@ -96,10 +98,19 @@ public class PeerDiscoveryService {
     }
 
     /**
-     * Broadcast presence to all machines on the network
-     * Runs every sync interval
+     * Scheduled wrapper: polls every 15s, only broadcasts when the configured interval has elapsed.
      */
-    @Scheduled(fixedDelayString = "${sync.interval.seconds:30}000", initialDelay = 5000)
+    @Scheduled(fixedDelay = 15000, initialDelay = 5000)
+    public void scheduledBroadcast() {
+        if (!syncConfig.isDiscoveryEnabled() || !syncIntervals.isPeerBroadcastDue()) return;
+        syncIntervals.markPeerBroadcast();
+        broadcastPresence();
+    }
+
+    /**
+     * Broadcast presence to all machines on the network.
+     * Called by scheduler and also directly from init() / REST API.
+     */
     public void broadcastPresence() {
         if (!syncConfig.isDiscoveryEnabled() || broadcastSocket == null || broadcastSocket.isClosed()) {
             return;

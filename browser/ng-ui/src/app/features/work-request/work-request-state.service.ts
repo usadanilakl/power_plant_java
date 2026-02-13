@@ -187,7 +187,7 @@ export class WorkRequestStateService {
 
   resubmitSelected() {
     const wr = this.getSelectedWorkRequest();
-    const { attachments, files, id, localUuid, sharepointId, submissionStatus, submissionMethod, status, ...draftFields } = wr as any;
+    const { attachments, files, id, localUuid, sharepointId, submissionStatus, submissionMethod, status, jhaStatus, ...draftFields } = wr as any;
     this.workRequestLocalStorageService.saveDraft(draftFields);
     this.selectWorkRequest(new WorkRequest(draftFields));
   }

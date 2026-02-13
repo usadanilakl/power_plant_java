@@ -1,1 +1,6 @@
-<p>jha-table works!</p>
+<p>Click a row to reuse its data in the form.</p>
+<app-table
+    [items]="items()"
+    [columns]="columns"
+    (rowClicked)="onRowClick($event)"
+></app-table>

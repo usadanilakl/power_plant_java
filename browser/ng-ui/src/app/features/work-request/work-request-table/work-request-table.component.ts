@@ -1,6 +1,8 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, output } from '@angular/core';
+import { Router } from '@angular/router';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
+import { JhaStateService } from '../../jha/jha-state.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { WorkRequest } from '../../../models/permits/work-request.model';
 import { TableComponent } from "../../../shared/table/table.component";
@@ -14,10 +16,12 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './work-request-table.component.html',
   styleUrl: './work-request-table.component.css'
 })
-export class WorkRequestTableComponent implements OnInit {
+export class WorkRequestTableComponent {
 
   workRequestStateService = inject(WorkRequestStateService);
   orchestrator = inject(SubmissionOrchestratorService);
+  jhaStateService = inject(JhaStateService);
+  router = inject(Router);
   destroyRef = inject(DestroyRef);
 
   itemsInput = input<WorkRequest[]>();
@@ -32,20 +36,18 @@ export class WorkRequestTableComponent implements OnInit {
 
   isActionMenuOpen = false;
 
-  constructor() { }
-
-  ngOnInit(): void {
-    // Populate items and columns as needed
-    this.actionButtons = [
+  onRowClick({ item }: { item: WorkRequest, event: MouseEvent}){
+    this.workRequestStateService.selectWorkRequest(item);
+    const buttons: ButtonConfig[] = [
       { name: 'Resubmit', action: () => this.resubmitSelected(), color: 'primary' },
       { name: 'Submit via Email', action: () => this.submitViaEmail(), color: 'accent' },
       { name: 'Revoke', action: () => this.Revoke(), color: 'accent' },
       { name: 'Delete', action: () => this.deleteSelected(), color: 'warn' }
     ];
-  }
-
-  onRowClick({ item }: { item: WorkRequest, event: MouseEvent}){
-    this.workRequestStateService.selectWorkRequest(item);
+    if (item.jhaStatus !== 'Completed') {
+      buttons.unshift({ name: 'Fill Out JHA', action: () => this.fillOutJha(), color: 'primary' });
+    }
+    this.actionButtons = buttons;
     this.isActionMenuOpen = true;
   }
 
@@ -68,6 +70,14 @@ export class WorkRequestTableComponent implements OnInit {
 
   deleteSelected(): void {
     this.workRequestStateService.deleteSelected();
+    this.closeActionMenu();
+  }
+
+  fillOutJha(): void {
+    const wr = this.selectedItem();
+    if (!wr) return;
+    this.jhaStateService.selectWorkRequestForJha(new WorkRequest(wr));
+    this.router.navigate(['/jha/form']);
     this.closeActionMenu();
   }
 

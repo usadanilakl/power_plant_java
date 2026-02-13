@@ -1,9 +1,6 @@
-import { IJobStep, JobStep } from "./jha-job-step.model";
-
-
 export interface IJhaPa {
   PwaId: string;
-  WorkRequestId?: number;
+  WorkRequestSharepointId?: string;
   JobName: string;
   Applicability: string;
   AnalysisBy: string;
@@ -16,12 +13,12 @@ export interface IJhaPa {
   HazCom: string;
   HandAndPowerTools: string;
   SpecialTools: string;
-  JobSteps: IJobStep[];
+  JobSteps: string;
 }
 
 export class JhaPa implements IJhaPa {
   PwaId: string;
-  WorkRequestId?: number;
+  WorkRequestSharepointId?: string;
   JobName: string;
   Applicability: string;
   AnalysisBy: string;
@@ -34,11 +31,11 @@ export class JhaPa implements IJhaPa {
   HazCom: string;
   HandAndPowerTools: string;
   SpecialTools: string;
-  JobSteps: JobStep[];
+  JobSteps: string;
 
   constructor(data: Partial<IJhaPa> = {}) {
     this.PwaId = data.PwaId ?? '';
-    this.WorkRequestId = data.WorkRequestId;
+    this.WorkRequestSharepointId = data.WorkRequestSharepointId;
     this.JobName = data.JobName ?? '';
     this.Applicability = data.Applicability ?? '';
     this.AnalysisBy = data.AnalysisBy ?? '';
@@ -51,6 +48,6 @@ export class JhaPa implements IJhaPa {
     this.HazCom = data.HazCom ?? '';
     this.HandAndPowerTools = data.HandAndPowerTools ?? '';
     this.SpecialTools = data.SpecialTools ?? '';
-    this.JobSteps = data.JobSteps?.map(step => new JobStep(step)) ?? [];
+    this.JobSteps = data.JobSteps ?? '[]';
   }
 }

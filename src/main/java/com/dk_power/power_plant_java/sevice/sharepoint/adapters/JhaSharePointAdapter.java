@@ -96,8 +96,7 @@ public class JhaSharePointAdapter {
         req.setActionType("getAll");
         PaResponseDto resp = v2Client.jha(req);
         if (!resp.isSuccess() || resp.getData() == null) {
-            log.warn("[JHA-Adapter] PA getAll failed: {}", resp.getMessage());
-            return Collections.emptyList();
+            throw new RuntimeException("PA-V2 getAll JHAs failed: " + resp.getMessage());
         }
         return resp.getData().stream().map(this::mapFromPaResponse).collect(Collectors.toList());
     }
@@ -183,6 +182,7 @@ public class JhaSharePointAdapter {
 
     private Map<String, Object> jhaToMap(JhaDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("Title", orEmpty(dto.getJobName()));
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
         map.put("JobName", orEmpty(dto.getJobName()));
         map.put("Applicability", orEmpty(dto.getApplicability()));

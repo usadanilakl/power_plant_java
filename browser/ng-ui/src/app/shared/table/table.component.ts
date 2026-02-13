@@ -22,6 +22,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   @Input() deleteItem?: (item: string) => void;
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
+  highlightId = input<string | number | null>(null);
+  highlightField = input<string>('sharepointId');
 
   rowClicked = output<{item: any, event: MouseEvent}>();
   rowDoubleClicked = output<any>();
@@ -558,6 +560,16 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   onRowHover(item: any) {
     this.hoverSubject.next(item);
+  }
+
+  isHighlighted(item: any): boolean {
+    if (this.selectedItems.includes(item)) return true;
+    const hId = this.highlightId();
+    if (hId != null && hId !== '') {
+      const field = this.highlightField();
+      return item[field] == hId;
+    }
+    return false;
   }
 
 

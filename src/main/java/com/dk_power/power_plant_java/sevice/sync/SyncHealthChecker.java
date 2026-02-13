@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class SyncHealthChecker {
     private final JdbcTemplate jdbcTemplate;
     private final RestTemplate restTemplate;
     private final EntityTableRegistry entityTableRegistry;
+    private final SharePointSyncSettings syncIntervals;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -68,10 +70,19 @@ public class SyncHealthChecker {
     private static final int SUGGEST_RESYNC_THRESHOLD = 2;
 
     /**
-     * Background job that runs every 5 minutes to check sync health.
-     * Lightweight - only does count queries and timestamp comparisons.
+     * Scheduled wrapper: polls every 30s, only runs when the configured health-check interval has elapsed.
      */
-    @Scheduled(fixedDelayString = "${sync.health.check.interval:300000}") // Default 5 minutes
+    @Scheduled(fixedDelay = 30000, initialDelay = 60000)
+    public void scheduledHealthCheck() {
+        if (!healthCheckEnabled || !syncIntervals.isHealthCheckDue()) return;
+        syncIntervals.markHealthChecked();
+        checkSyncHealth();
+    }
+
+    /**
+     * Performs the actual sync health check.
+     * Called by scheduler wrapper and also directly from checkNow().
+     */
     public void checkSyncHealth() {
         String syncServerUrl = syncConfig.getSyncServerUrl();
         if (!healthCheckEnabled || syncServerUrl == null || syncServerUrl.isEmpty()) {

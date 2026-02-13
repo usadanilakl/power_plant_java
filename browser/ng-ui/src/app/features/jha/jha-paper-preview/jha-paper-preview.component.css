@@ -1,0 +1,30 @@
+.paper-preview-wrapper {
+  padding: 24px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.paper-page {
+  min-height: 1056px;
+  background-color: #fff;
+  /* Dashed line every 1056px to indicate page breaks */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 1054px,
+      #bbb 1054px,
+      #bbb 1056px
+    );
+  background-size: 100% 1056px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+  zoom: 0.85;
+}
+
+@media print {
+  .paper-preview-wrapper {
+    display: none;
+  }
+}

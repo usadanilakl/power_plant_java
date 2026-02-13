@@ -11,7 +11,7 @@ import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -63,8 +63,9 @@ public class PwaWorkRequestService {
         dto.setTimeSubmitted(timeSubmitted);
 
         // Save locally first
-        workRequestRepo.save(entity);
-        log.info("[PWA Submit] Work request saved locally: localUuid={}", dto.getLocalUuid());
+        entity = workRequestRepo.saveAndFlush(entity);
+        log.info("[PWA Submit] Work request saved locally: id={}, localUuid={}, deleted={}",
+                entity.getId(), dto.getLocalUuid(), entity.getDeleted());
 
         // Save attachments
         if (dto.getAttachments() != null) {

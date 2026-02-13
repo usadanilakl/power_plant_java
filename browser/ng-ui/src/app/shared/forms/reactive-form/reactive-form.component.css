@@ -123,5 +123,48 @@ button[type="button"]:hover {
   .form-layout-grid {
     grid-template-columns: 1fr;
   }
-  
+}
+
+/* Print styles */
+@media print {
+  :host {
+    display: block;
+    width: 7.5in;
+    font-size: 10pt;
+  }
+
+  form {
+    background: #fff;
+    color: #000;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .form-layout-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .form-layout-reactive {
+    gap: 6px;
+  }
+
+  .form-field-layout-reactive {
+    flex: 1 1 calc(33.333% - 12px);
+  }
+
+  .group-title {
+    font-size: 11pt;
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+  }
+
+  fieldset.form-group {
+    break-inside: avoid;
+  }
+
+  button {
+    display: none;
+  }
 }

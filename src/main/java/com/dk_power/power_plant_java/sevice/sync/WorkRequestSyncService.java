@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
@@ -7,10 +8,9 @@ import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -28,22 +28,16 @@ public class WorkRequestSyncService {
     private final WorkRequestMapper workRequestMapper;
     private final NgValueService valueService;
     private final WorkRequestMergeService workRequestMergeService;
-
-    @Value("${sharepoint.sync.enabled:true}")
-    private boolean syncEnabled;
+    private final SharePointSyncSettings syncSettings;
 
     /**
-     * Periodically sync work requests from SharePoint.
-     * Runs every 2 minutes (configurable), with 30s initial delay to let the app start.
+     * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
      */
-    @Scheduled(fixedDelayString = "${sharepoint.sync.interval:120000}", initialDelay = 30000)
+    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
     public void scheduledSync() {
-        if (!syncEnabled) {
-            return;
-        }
+        if (!syncSettings.isWrSyncDue()) return;
+        syncSettings.markWrSynced();
         syncFromSharePoint();
-        // After SP sync transaction commits, merge duplicates that may have been
-        // created by independent SharePoint pulls on different machines
         try {
             workRequestMergeService.mergeIfDuplicatesExist();
         } catch (Exception e) {
@@ -53,7 +47,6 @@ public class WorkRequestSyncService {
 
     /**
      * Sync work requests from SharePoint. Can be called manually or by scheduler.
-     * Returns detailed sync result with counts for created, updated, failed, etc.
      */
     @Transactional
     public SyncResult syncFromSharePoint() {

@@ -1,5 +1,28 @@
-<app-table
-    [items]="items()"
-    [columns]="columns"
-    (rowClicked)="onRowClick($event)"
-></app-table>
+<div class="tabs">
+  <button
+    class="tab"
+    [class.active]="activeTab() === 'needs-jha'"
+    (click)="activeTab.set('needs-jha')"
+  >Needs JHA</button>
+  <button
+    class="tab"
+    [class.active]="activeTab() === 'submitted'"
+    (click)="activeTab.set('submitted')"
+  >Submitted JHAs</button>
+</div>
+
+@if (activeTab() === 'needs-jha') {
+  <app-table
+    [items]="wrItems()"
+    [columns]="wrColumns"
+    [highlightId]="highlightId()"
+    [highlightField]="'sharepointId'"
+    (rowClicked)="onWrRowClick($event)"
+  ></app-table>
+} @else {
+  <app-table
+    [items]="jhaItems()"
+    [columns]="jhaColumns"
+    (rowClicked)="onJhaRowClick($event)"
+  ></app-table>
+}

@@ -10,7 +10,8 @@ import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
-import jakarta.transaction.Transactional;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import java.util.Optional;
 public class PwaJhaService {
 
     private final JhaSharePointAdapter jhaAdapter;
+    private final WorkRequestSharePointAdapter wrAdapter;
     private final JhaRepo jhaRepo;
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
@@ -59,8 +61,9 @@ public class PwaJhaService {
         entity.setSubmitterCompany(dto.getSubmitterCompany());
 
         // Save locally first
-        jhaRepo.save(entity);
-        log.info("[PWA JHA Submit] JHA saved locally: localUuid={}", dto.getLocalUuid());
+        entity = jhaRepo.saveAndFlush(entity);
+        log.info("[PWA JHA Submit] JHA saved locally: id={}, localUuid={}, deleted={}",
+                entity.getId(), dto.getLocalUuid(), entity.getDeleted());
 
         // Save attachments
         if (dto.getAttachments() != null) {
@@ -91,13 +94,30 @@ public class PwaJhaService {
                 log.info("[PWA JHA Submit] JHA created in SharePoint: id={}, localUuid={}",
                         sharepointId, dto.getLocalUuid());
 
-                // Upload attachments to SharePoint
+                // Upload attachments to JHA item in SharePoint
                 if (dto.getAttachments() != null) {
                     for (PaAttachmentDto att : dto.getAttachments()) {
                         try {
                             jhaAdapter.addAttachment(sharepointId, att);
                         } catch (Exception attEx) {
-                            log.warn("[PWA JHA Submit] Failed to upload attachment {}: {}",
+                            log.warn("[PWA JHA Submit] Failed to upload attachment to JHA {}: {}",
+                                    att.getFileName(), attEx.getMessage());
+                        }
+                    }
+                }
+
+                // Also attach to the Work Request item in SharePoint (prefix with "JHA-" to avoid name collisions)
+                String wrSpId = dto.getWorkRequestSharepointId();
+                if (wrSpId != null && !wrSpId.isEmpty() && dto.getAttachments() != null) {
+                    for (PaAttachmentDto att : dto.getAttachments()) {
+                        try {
+                            PaAttachmentDto wrAtt = new PaAttachmentDto();
+                            wrAtt.setBase64Content(att.getBase64Content());
+                            wrAtt.setContentType(att.getContentType());
+                            wrAtt.setFileName("JHA-" + att.getFileName());
+                            wrAdapter.addAttachment(wrSpId, wrAtt);
+                        } catch (Exception attEx) {
+                            log.warn("[PWA JHA Submit] Failed to upload attachment to WR {}: {}",
                                     att.getFileName(), attEx.getMessage());
                         }
                     }
@@ -152,6 +172,7 @@ public class PwaJhaService {
 
     private JhaDto convertToSharePointDto(PwaJhaDto dto) {
         JhaDto spDto = new JhaDto();
+        spDto.setLocalUuid(dto.getLocalUuid());
         spDto.setJobName(dto.getJobName());
         spDto.setApplicability(dto.getApplicability());
         spDto.setAnalysisBy(dto.getAnalysisBy());
@@ -165,6 +186,12 @@ public class PwaJhaService {
         spDto.setHandAndPowerTools(dto.getHandAndPowerTools());
         spDto.setSpecialTools(dto.getSpecialTools());
         spDto.setJobSteps(dto.getJobSteps());
+        spDto.setWorkRequestSharepointId(dto.getWorkRequestSharepointId());
+        spDto.setSubmitterName(dto.getSubmitterName());
+        spDto.setSubmitterEmail(dto.getSubmitterEmail());
+        spDto.setSubmitterPhone(dto.getSubmitterPhone());
+        spDto.setSubmitterCompany(dto.getSubmitterCompany());
+        spDto.setTimeSubmitted(dto.getTimeSubmitted());
         return spDto;
     }
 

@@ -1,24 +1,36 @@
-<button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
-
-@if (jhaStateService.jhaTransfersSignal().length > 0) {
-    <h3>JHA that needs to be filled out</h3>
-    <ul>
-        @for (transfer of jhaStateService.jhaTransfersSignal(); track transfer.requestSharepointId) {
-            <li>
-                Work Request #{{ transfer.requestSharepointId }}: {{ transfer.workScope }} ({{ transfer.dateOfWork | date:'shortDate' }})
-            </li>
-        }
-    </ul>
+@if (selectedWr(); as wr) {
+  <div class="wr-header">
+    <span class="wr-header-label"><span class="wr-header-jha">JHA</span> for Work Request:</span>
+    <span class="wr-header-scope">{{ wr.workScope }}</span>
+    <span class="wr-header-meta">{{ wr.company }} &mdash; {{ wr.dateOfWork | date:'shortDate' }}</span>
+    <span class="wr-header-id">#{{ wr.sharepointId }}</span>
+  </div>
 } @else {
-    <p>No new JHAs need to be filled out at this time.</p>
+  <div class="wr-header wr-header--empty">
+    Select a Work Request from the left panel to begin.
+  </div>
 }
 
-<app-jha-form></app-jha-form>
+<div class="action-bar">
+  <button class="resubmit-button" (click)="openTablePopup()">Use Previous JHA Data</button>
+  <button class="preview-toggle" [class.active]="showPreview" (click)="togglePreview()">
+    {{ showPreview ? 'Hide Preview' : 'Paper Preview' }}
+  </button>
+</div>
+
+<app-jha-form (jhaChanged)="onJhaChanged($event)"></app-jha-form>
+
+@if (showPreview) {
+  <div class="jha-preview-panel">
+    <app-jha-paper-preview [jha]="previewJha()"></app-jha-paper-preview>
+  </div>
+}
+
 <app-popup
-    [title]="'Table contains previously submitted requests from THIS divice and THIS browser'"
+    [title]="'Previously submitted JHAs from this device / browser'"
     [size]="'large'"
     [isOpen]="isTablePopupOpen"
     (close)="closeTablePopup()"
 >
-    <app-jha-table></app-jha-table>
+    <app-jha-table (reused)="onJhaReused()"></app-jha-table>
 </app-popup>

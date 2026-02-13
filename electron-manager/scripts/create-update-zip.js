@@ -5,7 +5,8 @@
  * creates a ZIP with the contents at root level (no nested subfolder).
  * The ZIP can be dropped into the sync server's `electron-updates/` directory.
  *
- * Uses PowerShell Compress-Archive to avoid loading 200MB+ into memory.
+ * Uses .NET ZipFile API via PowerShell with FileShare.ReadWrite so files locked
+ * by Windows Defender / Search Indexer can still be read.
  */
 
 const { execSync } = require('child_process');
@@ -13,13 +14,13 @@ const path = require('path');
 const fs = require('fs');
 
 const rootDir = path.resolve(__dirname, '..');
-const unpackedDir = path.join(rootDir, 'release', 'win-unpacked');
+const unpackedDir = path.join(rootDir, 'build', 'win-unpacked');
 const pkg = require(path.join(rootDir, 'package.json'));
 const version = pkg.version || '1.0.0';
 const productName = pkg.build?.productName || 'DK-Power-Manager';
 const safeName = productName.replace(/\s+/g, '-');
 const zipName = `${safeName}-${version}.zip`;
-const zipPath = path.join(rootDir, 'release', zipName);
+const zipPath = path.join(rootDir, 'build', zipName);
 
 // Verify win-unpacked exists
 if (!fs.existsSync(unpackedDir)) {
@@ -36,16 +37,44 @@ if (fs.existsSync(zipPath)) {
 
 console.log(`Creating ${zipName} from win-unpacked...`);
 
-// Use PowerShell Compress-Archive with -Path 'dir\*' to put contents at root level
-const psCommand = `Compress-Archive -Path '${unpackedDir}\\*' -DestinationPath '${zipPath}' -CompressionLevel Optimal`;
+// Write a temp PowerShell script that uses .NET ZipFile API with FileShare.ReadWrite
+// to handle files locked by antivirus or search indexer.
+const psScriptPath = path.join(rootDir, 'build', '_create-zip.ps1');
+const psScript = `
+Add-Type -Assembly 'System.IO.Compression.FileSystem'
+$source = '${unpackedDir.replace(/'/g, "''")}'
+$dest = '${zipPath.replace(/'/g, "''")}'
+$basePath = (Resolve-Path $source).Path
+$zip = [System.IO.Compression.ZipFile]::Open($dest, 'Create')
+$files = Get-ChildItem -Path $source -Recurse -File
+$total = $files.Count
+$count = 0
+foreach ($f in $files) {
+    $rel = $f.FullName.Substring($basePath.Length + 1)
+    $fs = [System.IO.File]::Open($f.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    $entry = $zip.CreateEntry($rel, [System.IO.Compression.CompressionLevel]::Optimal)
+    $es = $entry.Open()
+    $fs.CopyTo($es)
+    $es.Dispose()
+    $fs.Dispose()
+    $count++
+    if ($count % 25 -eq 0) { Write-Host "  $count / $total files..." }
+}
+$zip.Dispose()
+Write-Host "Zipped $count files"
+`;
+
 try {
-  execSync(`powershell -NoProfile -Command "${psCommand}"`, {
+  fs.writeFileSync(psScriptPath, psScript, 'utf8');
+  execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${psScriptPath}"`, {
     stdio: 'inherit',
-    timeout: 300000 // 5 min
+    timeout: 600000 // 10 min
   });
 } catch (err) {
   console.error('ERROR: Failed to create ZIP.', err.message);
   process.exit(1);
+} finally {
+  try { fs.unlinkSync(psScriptPath); } catch { /* ignore */ }
 }
 
 // Verify

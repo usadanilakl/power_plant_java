@@ -30,6 +30,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla2.isActive">
             Health & Recovery
           </a>
+          <a mat-tab-link
+             routerLink="sharepoint"
+             routerLinkActive
+             #rla3="routerLinkActive"
+             [active]="rla3.isActive">
+            SharePoint
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>

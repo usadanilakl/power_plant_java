@@ -3,14 +3,17 @@ package com.dk_power.power_plant_java.controller.permits;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.NgJhaDto;
+import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.Jha;
 import com.dk_power.power_plant_java.mappers.permits.JhaMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJhaService;
+import com.dk_power.power_plant_java.sevice.sync.JhaSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +25,8 @@ public class JhaRestController {
 
     private final NgJhaService jhaService;
     private final JhaMapper jhaMapper;
+    private final JhaSyncService syncService;
+    private final JdbcTemplate jdbcTemplate;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<NgJhaDto>>> getPaginated(
@@ -143,6 +148,44 @@ public class JhaRestController {
             return ResponseEntity.ok(new NgApiResponse<>(dto, "Status changed to " + status));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/debug/db-check")
+    public ResponseEntity<NgApiResponse<java.util.Map<String, Object>>> debugDbCheck() {
+        java.util.Map<String, Object> info = new java.util.LinkedHashMap<>();
+        try {
+            Long totalCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA", Long.class);
+            Long activeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA WHERE DELETED = FALSE", Long.class);
+            Long deletedCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA WHERE DELETED = TRUE", Long.class);
+            info.put("totalRows", totalCount);
+            info.put("activeRows", activeCount);
+            info.put("deletedRows", deletedCount);
+
+            var rows = jdbcTemplate.queryForList(
+                    "SELECT ID, JOB_NAME, LOCAL_UUID, DELETED, SHAREPOINT_ID, DATE_CREATED FROM JHA ORDER BY ID DESC");
+            info.put("rows", rows.size() > 20 ? rows.subList(0, 20) : rows);
+
+            Long wrCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM WORK_REQUEST", Long.class);
+            info.put("workRequestTotalRows", wrCount);
+
+            String dbUrl = jdbcTemplate.queryForObject("CALL DATABASE_PATH()", String.class);
+            info.put("databasePath", dbUrl);
+        } catch (Exception e) {
+            info.put("error", e.getMessage());
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(info, "DB diagnostic"));
+    }
+
+    @PostMapping("/sync")
+    public ResponseEntity<NgApiResponse<SyncResult>> triggerSync() {
+        try {
+            SyncResult result = syncService.syncFromSharePoint();
+            String message = String.format("Sync completed: created=%d, updated=%d, failed=%d",
+                    result.getCreated(), result.getUpdated(), result.getFailed());
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Sync failed: " + e.getMessage()));
         }
     }
 }

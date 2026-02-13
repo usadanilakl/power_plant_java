@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { JhaStateService } from '../jha-state.service';
 import { FormField } from '../../../models/inputs/form-field.model';
@@ -20,8 +20,9 @@ export class JhaFormComponent {
 
   entityInput = input<Jha>();
   fieldsInput = input<FormField[]>();
+  jhaChanged = output<Jha>();
 
-  
+
   entity = signal<Jha>(new Jha());
   private entityFromState = toSignal(this.jhaStateService.selectedJha$, { initialValue: new Jha() });
   // entity = computed(() => this.entityInput() ?? this.entityFromState());
@@ -39,6 +40,7 @@ export class JhaFormComponent {
 
   onAnyValueChange(jha: Jha) {
     this.jhaStateService.saveDraft(jha);
+    this.jhaChanged.emit(new Jha(jha));
   }
 
   onSubmit(jha: Jha) {
@@ -49,6 +51,7 @@ export class JhaFormComponent {
     const updatedJha = this.entity().addJobStep();
     this.entity.set(updatedJha);
     this.jhaStateService.saveDraft(updatedJha);
+    this.jhaChanged.emit(updatedJha);
   }
 
 }

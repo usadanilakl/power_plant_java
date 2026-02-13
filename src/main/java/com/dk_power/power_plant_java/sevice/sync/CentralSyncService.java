@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
@@ -45,6 +46,7 @@ public class CentralSyncService {
     private final FieldSyncService fieldSyncService;
     private final ApplicationContext applicationContext;
     private final WorkRequestMergeService workRequestMergeService;
+    private final SharePointSyncSettings syncIntervals;
 
     // Lazily fetched to avoid circular dependency
     private ServerSseClient serverSseClient;
@@ -145,13 +147,13 @@ public class CentralSyncService {
     }
 
     /**
-     * Periodic sync with server (backup in case event-driven sync misses something).
+     * Polls every 15s; only runs actual sync when the configured peer interval has elapsed.
      */
-    @Scheduled(fixedDelayString = "${sync.interval.seconds:30}000", initialDelay = 60000)
+    @Scheduled(fixedDelay = 15000, initialDelay = 60000)
     public void periodicSync() {
-        if (!syncConfig.isServerSyncEnabled()) {
-            return;
-        }
+        if (!syncConfig.isServerSyncEnabled()) return;
+        if (!syncIntervals.isPeerSyncDue()) return;
+        syncIntervals.markPeerSynced();
         syncWithServer();
     }
 

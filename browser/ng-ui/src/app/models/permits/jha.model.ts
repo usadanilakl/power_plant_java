@@ -126,7 +126,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
     convertToPaModel(): JhaPa {
       return new JhaPa({
         PwaId: this.localUuid,
-        WorkRequestId: this.workRequestId,
+        WorkRequestSharepointId: this.workRequestSharepointId,
         JobName: this.jobName,
         Applicability: this.applicability,
         AnalysisBy: this.analysisBy,
@@ -139,7 +139,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
         HazCom: this.hazCom,
         HandAndPowerTools: this.handAndPowerTools,
         SpecialTools: this.specialTools,
-        JobSteps: this.jobSteps,
+        JobSteps: JSON.stringify(this.jobSteps),
       });
     }
   getEmailBody(): string {
@@ -166,14 +166,19 @@ export class Jha extends BaseModel<IJha> implements IJha {
         const label = fieldLabels[key] || key;
         const value = (paModel as any)[key];
 
-        if (key === 'JobSteps' && Array.isArray(value) && value.length > 0) {
-          body += `${label}:\n`;
-          value.forEach((step: any, index: number) => {
-            body += `  Step ${index + 1}:\n`;
-            body += `    Description: ${step.description || ''}\n`;
-            body += `    Hazards: ${step.hazards || ''}\n`;
-            body += `    Controls: ${step.controls || ''}\n`;
-          });
+        if (key === 'JobSteps' && value) {
+          try {
+            const steps = typeof value === 'string' ? JSON.parse(value) : value;
+            if (Array.isArray(steps) && steps.length > 0) {
+              body += `${label}:\n`;
+              steps.forEach((step: any, index: number) => {
+                body += `  Step ${index + 1}:\n`;
+                body += `    Description: ${step.description || ''}\n`;
+                body += `    Hazard: ${step.hazard || ''}\n`;
+                body += `    Safety Measures: ${step.safetyMeasures || ''}\n`;
+              });
+            }
+          } catch { /* skip malformed */ }
         } else if (value && typeof value !== 'object') {
           body += `${label}: ${value}\n`;
         }

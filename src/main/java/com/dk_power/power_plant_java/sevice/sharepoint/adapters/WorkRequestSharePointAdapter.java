@@ -98,8 +98,7 @@ public class WorkRequestSharePointAdapter {
         req.setActionType("getAll");
         PaResponseDto resp = v2Client.workRequest(req);
         if (!resp.isSuccess() || resp.getData() == null) {
-            log.warn("[WR-Adapter] PA getAll failed: {}", resp.getMessage());
-            return Collections.emptyList();
+            throw new RuntimeException("PA-V2 getAll WorkRequests failed: " + resp.getMessage());
         }
         return resp.getData().stream().map(this::mapFromPaResponse).collect(Collectors.toList());
     }

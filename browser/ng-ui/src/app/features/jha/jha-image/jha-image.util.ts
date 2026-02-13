@@ -27,64 +27,118 @@ export async function captureJhaAsImage(jha: Jha): Promise<string> {
   }
 }
 
-function buildJhaHtml(jha: Jha): string {
-  const fields = [
-    ['Job Name / Title', jha.jobName],
-    ['Applicability', jha.applicability],
-    ['Analysis By', jha.analysisBy],
-    ['Reviewed By', jha.reviewedBy],
-    ['Approved By', jha.approvedBy],
-    ['Date', jha.date],
-    ['PPE', jha.ppe],
-    ['LOTO', jha.loto],
-    ['Confined Space', jha.confinedSpace],
-    ['HazCom', jha.hazCom],
-    ['Hand & Power Tools', jha.handAndPowerTools],
-    ['Special Tools', jha.specialTools],
+export function buildJhaHtml(jha: Jha): string {
+  const b = '1px solid #000';
+  const cell = 'padding:4px 6px;border:' + b + ';';
+  const hdrCell = 'font-weight:bold;padding:4px 6px;border:' + b + ';';
+  const grayBg = 'background:#d0d0d0;';
+
+  // Job info rows — single full-width cell per row, "Label: Value" inline (matches paper form)
+  const jobInfoRows: [string, string][] = [
+    ['PPE:', jha.ppe],
+    ['LOTO:', jha.loto],
+    ['Confined Space Entry:', jha.confinedSpace],
+    ['Hazard Communication:', jha.hazCom],
+    ['Hand and Power Tools:', jha.handAndPowerTools],
+    ['Special Tools/Equipment:', jha.specialTools],
   ];
 
-  const fieldRows = fields.map(([label, value]) =>
-    `<tr>
-      <td style="font-weight:bold;width:200px;padding:4px 8px;border:1px solid #000;">${esc(label)}</td>
-      <td style="padding:4px 8px;border:1px solid #000;">${esc(value)}</td>
-    </tr>`
+  const jobInfoHtml = jobInfoRows.map(([label, value]) =>
+    `<tr><td style="${cell}"><span style="font-weight:bold;">${esc(label)}</span> ${esc(value)}</td></tr>`
   ).join('');
 
+  // Job steps — 3 columns, number prefix in first column text
   let jobStepsHtml = '';
   if (jha.jobSteps && jha.jobSteps.length > 0) {
     const stepRows = jha.jobSteps.map((step, i) =>
-      `<tr>
-        <td style="text-align:center;padding:4px 8px;border:1px solid #000;">${i + 1}</td>
-        <td style="padding:4px 8px;border:1px solid #000;">${esc(step.description)}</td>
-        <td style="padding:4px 8px;border:1px solid #000;">${esc(step.hazard)}</td>
-        <td style="padding:4px 8px;border:1px solid #000;">${esc(step.safetyMeasures)}</td>
+      `<tr style="vertical-align:top;">
+        <td style="${cell}">${i + 1} ${esc(step.description)}</td>
+        <td style="${cell}">${esc(step.hazard)}</td>
+        <td style="${cell}">${esc(step.safetyMeasures)}</td>
       </tr>`
     ).join('');
 
     jobStepsHtml = `
-      <h3 style="margin:12px 0 4px 0;font-size:14px;">Job Steps</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="background:#e0e0e0;">
-          <th style="width:40px;padding:4px 8px;border:1px solid #000;">#</th>
-          <th style="padding:4px 8px;border:1px solid #000;">Description</th>
-          <th style="padding:4px 8px;border:1px solid #000;">Hazard</th>
-          <th style="padding:4px 8px;border:1px solid #000;">Safety Measures</th>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:-1px;">
+        <tr style="${grayBg}">
+          <th style="${hdrCell}${grayBg}text-align:center;width:33%;">BASIC JOB STEP DESCRIPTION</th>
+          <th style="${hdrCell}${grayBg}text-align:center;width:33%;">OBSERVED/POTWNTIAL HAZARDS</th>
+          <th style="${hdrCell}${grayBg}text-align:center;width:34%;">SAFETY MEASURES NEEDED</th>
         </tr>
         ${stepRows}
-      </table>
-    `;
+      </table>`;
   }
 
   return `
-    <div style="width:816px;padding:24px;font-family:Arial,sans-serif;font-size:12px;background:#fff;color:#000;">
-      <h2 style="text-align:center;margin:0 0 16px 0;font-size:18px;border-bottom:2px solid #000;padding-bottom:8px;">
-        JOB HAZARD ANALYSIS (JHA)
-      </h2>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
-        ${fieldRows}
+    <div style="width:816px;min-height:1056px;box-sizing:border-box;padding:24px;font-family:Arial,sans-serif;font-size:12px;background:#fff;color:#000;">
+      <!-- Header box -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
+        <tr>
+          <td style="border:${b};padding:10px 16px;vertical-align:middle;width:40%;">
+            <span style="font-size:28px;font-weight:bold;font-style:italic;">NAES</span>
+          </td>
+          <td style="border:${b};padding:10px 16px;text-align:right;vertical-align:middle;">
+            <div style="font-size:18px;font-weight:bold;font-style:italic;">Job Hazard Analysis Form</div>
+            <div style="font-size:12px;">Appendix A</div>
+          </td>
+        </tr>
       </table>
+
+      <!-- Job Name -->
+      <table style="width:100%;border-collapse:collapse;margin-top:-1px;">
+        <tr>
+          <td style="${cell}">
+            <div style="font-size:10px;color:#444;">Job Name (or Brief Description):</div>
+            <div style="font-size:13px;">${esc(jha.jobName)}</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Applicability -->
+      <table style="width:100%;border-collapse:collapse;margin-top:-1px;">
+        <tr>
+          <td style="${cell}">
+            <span style="font-size:10px;color:#444;">Applicability:</span>
+            <span style="font-size:12px;">${esc(jha.applicability)}</span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Analysis / Reviewed / Approved — header row then values row -->
+      <table style="width:100%;border-collapse:collapse;margin-top:-1px;font-size:11px;">
+        <tr>
+          <td style="${hdrCell}">ANALISYS BY</td>
+          <td style="${hdrCell}">DATE</td>
+          <td style="${hdrCell}">REVIEWED BY</td>
+          <td style="${hdrCell}">DATE</td>
+          <td style="${hdrCell}">APPROVED BY</td>
+          <td style="${hdrCell}">DATE</td>
+        </tr>
+        <tr>
+          <td style="${cell}font-size:13px;">${esc(jha.analysisBy)}</td>
+          <td style="${cell}">${esc(jha.date)}</td>
+          <td style="${cell}font-size:13px;">${esc(jha.reviewedBy)}</td>
+          <td style="${cell}">${esc(jha.date)}</td>
+          <td style="${cell}font-size:13px;">${esc(jha.approvedBy)}</td>
+          <td style="${cell}">${esc(jha.date)}</td>
+        </tr>
+      </table>
+
+      <!-- Section header -->
+      <div style="${grayBg}border:${b};margin-top:-1px;padding:4px 6px;text-align:center;font-weight:bold;font-size:11px;">
+        CURRENT JOB INFORMATION - KNOWN PROCESSES AND REQUIREMENTS
+      </div>
+
+      <!-- Job info rows — single cell per row -->
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:-1px;">
+        ${jobInfoHtml}
+      </table>
+
+      <!-- Job steps -->
       ${jobStepsHtml}
-      <div style="margin-top:16px;font-size:10px;color:#666;text-align:right;">
+
+      <!-- Footer -->
+      <div style="margin-top:12px;font-size:9px;color:#666;text-align:right;">
         Generated ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}
       </div>
     </div>

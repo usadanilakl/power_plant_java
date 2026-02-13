@@ -264,141 +264,133 @@ export class ElectronUpdateManager {
     // --- Script 1: update-extract.cmd ---
     // Does only the extraction + writes a marker file on success.
     // Can be run as current user or elevated via UAC.
-    const extractScript = `@echo off
-echo Extracting update to: "${installDir}"
-powershell -NoProfile -Command "Expand-Archive -Path '${psZipPath}' -DestinationPath '${psInstallDir}' -Force"
-if not errorlevel 1 (
-    echo OK > "${markerPath}"
-    echo Extraction successful.
-) else (
-    echo Extraction FAILED.
-)
-exit /b %errorlevel%
-`;
+    // CRLF line endings are critical for CMD on Windows.
+    const extractLines = [
+      '@echo off',
+      `echo Extracting update to: "${installDir}"`,
+      `powershell -NoProfile -Command "Expand-Archive -Path '${psZipPath}' -DestinationPath '${psInstallDir}' -Force"`,
+      'if not errorlevel 1 (',
+      `    echo OK > "${markerPath}"`,
+      '    echo Extraction successful.',
+      ') else (',
+      '    echo Extraction FAILED.',
+      ')',
+      'exit /b %errorlevel%',
+    ];
+    const extractScript = extractLines.join('\r\n') + '\r\n';
 
     // --- Script 2: update-elevate.ps1 ---
     // Runs update-extract.cmd with admin privileges (triggers UAC prompt).
-    const elevateScript = `param([string]$ScriptPath)
-Start-Process -FilePath 'cmd.exe' -ArgumentList "/c \`"$ScriptPath\`"" -Verb RunAs -Wait
-`;
+    const elevateScript = `param([string]$ScriptPath)\r\nStart-Process -FilePath 'cmd.exe' -ArgumentList "/c \`"$ScriptPath\`"" -Verb RunAs -Wait\r\n`;
 
     // --- Script 3: update.cmd (main orchestrator) ---
-    const mainScript = `@echo off
-setlocal enabledelayedexpansion
-title DK Power Manager - Updating...
-
-set "LOGFILE=${logFile}"
-set "EXTRACT_CMD=${extractCmdPath}"
-set "ELEVATE_PS=${elevatePsPath}"
-set "MARKER=${markerPath}"
-
-echo ============================================ >> "%LOGFILE%"
-echo [%date% %time%] Update script started >> "%LOGFILE%"
-echo [%date% %time%] PID: ${electronPid} >> "%LOGFILE%"
-echo [%date% %time%] ZIP: ${zipPath} >> "%LOGFILE%"
-echo [%date% %time%] Install: ${installDir} >> "%LOGFILE%"
-
-echo Waiting for DK Power Manager to exit...
-
-set /a WAIT_COUNT=0
-:WAIT_LOOP
-tasklist /fi "PID eq ${electronPid}" 2>nul | find "${electronPid}" >nul
-if not errorlevel 1 (
-    set /a WAIT_COUNT+=1
-    if !WAIT_COUNT! GEQ 60 (
-        echo [%date% %time%] WARNING: Timeout waiting for PID ${electronPid} >> "%LOGFILE%"
-        echo WARNING: Timed out waiting for app to exit. Proceeding...
-        goto EXTRACT
-    )
-    timeout /t 1 /nobreak >nul
-    goto WAIT_LOOP
-)
-echo [%date% %time%] Process exited >> "%LOGFILE%"
-
-:EXTRACT
-REM Extra wait for file handles to release
-timeout /t 2 /nobreak >nul
-
-REM Verify ZIP still exists
-if not exist "${zipPath}" (
-    echo [%date% %time%] ERROR: ZIP not found >> "%LOGFILE%"
-    echo.
-    echo ERROR: Update ZIP not found at:
-    echo   ${zipPath}
-    echo.
-    echo It may have been deleted during app shutdown.
-    echo Log: "%LOGFILE%"
-    echo.
-    echo Press any key to exit...
-    pause >nul
-    exit /b 1
-)
-
-echo Extracting update...
-echo [%date% %time%] Attempting extraction >> "%LOGFILE%"
-
-REM Delete old marker if present
-if exist "%MARKER%" del "%MARKER%" 2>nul
-
-REM Try extraction as current user
-call "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1
-
-if exist "%MARKER%" (
-    echo [%date% %time%] Extraction succeeded >> "%LOGFILE%"
-    goto EXTRACTION_OK
-)
-
-REM Standard extraction failed - try with elevation (UAC)
-echo [%date% %time%] Standard extraction failed, requesting elevation >> "%LOGFILE%"
-echo.
-echo Extraction failed (likely permissions).
-echo Requesting admin privileges - please click Yes on the UAC prompt...
-echo.
-
-powershell -NoProfile -ExecutionPolicy Bypass -File "%ELEVATE_PS%" -ScriptPath "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1
-
-if exist "%MARKER%" (
-    echo [%date% %time%] Elevated extraction succeeded >> "%LOGFILE%"
-    goto EXTRACTION_OK
-)
-
-REM Both attempts failed
-echo [%date% %time%] ERROR: All extraction attempts failed >> "%LOGFILE%"
-echo.
-echo ERROR: Update extraction failed.
-echo.
-echo The update ZIP is preserved. You can retry by clicking
-echo "Apply Update" again from the Sync ^& Updates page.
-echo.
-echo Log: "%LOGFILE%"
-echo.
-echo Press any key to exit...
-pause >nul
-exit /b 1
-
-:EXTRACTION_OK
-del "%MARKER%" 2>nul
-echo [%date% %time%] Extraction complete >> "%LOGFILE%"
-
-REM Copy version tracking file
-if exist "${stagingVersionPath}" (
-    copy /y "${stagingVersionPath}" "${this.versionFilePath}" >nul
-    echo [%date% %time%] Version file copied >> "%LOGFILE%"
-)
-
-REM Cleanup staging directory
-echo Cleaning up...
-rmdir /s /q "${this.stagingDir}" 2>nul
-
-echo.
-echo Update applied successfully!
-echo Relaunching DK Power Manager...
-echo [%date% %time%] Relaunching >> "%LOGFILE%"
-timeout /t 2 /nobreak >nul
-start "" "${exePath}"
-
-exit /b 0
-`;
+    // Use array + join to guarantee CRLF line endings (CMD can choke on bare LF)
+    const mainLines = [
+      '@echo off',
+      'title DK Power Manager - Updating...',
+      '',
+      `set "LOGFILE=${logFile}"`,
+      `set "EXTRACT_CMD=${extractCmdPath}"`,
+      `set "ELEVATE_PS=${elevatePsPath}"`,
+      `set "MARKER=${markerPath}"`,
+      '',
+      'echo ============================================ >> "%LOGFILE%"',
+      'echo [%date% %time%] Update script started >> "%LOGFILE%"',
+      `echo [%date% %time%] PID: ${electronPid} >> "%LOGFILE%"`,
+      `echo [%date% %time%] ZIP: ${zipPath} >> "%LOGFILE%"`,
+      `echo [%date% %time%] Install: ${installDir} >> "%LOGFILE%"`,
+      '',
+      'echo Waiting for DK Power Manager to exit...',
+      `echo [%date% %time%] Waiting for PID ${electronPid} >> "%LOGFILE%"`,
+      '',
+      `powershell -NoProfile -Command "try { Wait-Process -Id ${electronPid} -Timeout 60 -ErrorAction Stop } catch { }"`,
+      '',
+      'echo [%date% %time%] Process exited (or timed out) >> "%LOGFILE%"',
+      '',
+      'REM Extra wait for file handles to release',
+      'timeout /t 3 /nobreak >nul',
+      '',
+      'REM Verify ZIP still exists',
+      `if not exist "${zipPath}" (`,
+      '    echo [%date% %time%] ERROR: ZIP not found >> "%LOGFILE%"',
+      '    echo.',
+      '    echo ERROR: Update ZIP not found at:',
+      `    echo   ${zipPath}`,
+      '    echo.',
+      '    echo It may have been deleted during app shutdown.',
+      '    echo Log: "%LOGFILE%"',
+      '    echo.',
+      '    echo Press any key to exit...',
+      '    pause >nul',
+      '    exit /b 1',
+      ')',
+      '',
+      'echo Extracting update...',
+      'echo [%date% %time%] Attempting extraction >> "%LOGFILE%"',
+      '',
+      'REM Delete old marker if present',
+      'if exist "%MARKER%" del "%MARKER%" 2>nul',
+      '',
+      'REM Try extraction as current user',
+      'call "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1',
+      '',
+      'if exist "%MARKER%" (',
+      '    echo [%date% %time%] Extraction succeeded >> "%LOGFILE%"',
+      '    goto EXTRACTION_OK',
+      ')',
+      '',
+      'REM Standard extraction failed - try with elevation (UAC)',
+      'echo [%date% %time%] Standard extraction failed, requesting elevation >> "%LOGFILE%"',
+      'echo.',
+      'echo Extraction failed (likely permissions).',
+      'echo Requesting admin privileges - please click Yes on the UAC prompt...',
+      'echo.',
+      '',
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "%ELEVATE_PS%" -ScriptPath "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1',
+      '',
+      'if exist "%MARKER%" (',
+      '    echo [%date% %time%] Elevated extraction succeeded >> "%LOGFILE%"',
+      '    goto EXTRACTION_OK',
+      ')',
+      '',
+      'REM Both attempts failed',
+      'echo [%date% %time%] ERROR: All extraction attempts failed >> "%LOGFILE%"',
+      'echo.',
+      'echo ERROR: Update extraction failed.',
+      'echo.',
+      'echo The update ZIP is preserved. You can retry by clicking',
+      'echo "Apply Update" again from the Sync ^& Updates page.',
+      'echo.',
+      'echo Log: "%LOGFILE%"',
+      'echo.',
+      'echo Press any key to exit...',
+      'pause >nul',
+      'exit /b 1',
+      '',
+      ':EXTRACTION_OK',
+      'del "%MARKER%" 2>nul',
+      'echo [%date% %time%] Extraction complete >> "%LOGFILE%"',
+      '',
+      'REM Copy version tracking file',
+      `if exist "${stagingVersionPath}" (`,
+      `    copy /y "${stagingVersionPath}" "${this.versionFilePath}" >nul`,
+      '    echo [%date% %time%] Version file copied >> "%LOGFILE%"',
+      ')',
+      '',
+      'REM Cleanup staging directory',
+      'echo Cleaning up...',
+      `rmdir /s /q "${this.stagingDir}" 2>nul`,
+      '',
+      'echo.',
+      'echo Update applied successfully!',
+      'echo Relaunching DK Power Manager...',
+      'echo [%date% %time%] Relaunching >> "%LOGFILE%"',
+      'timeout /t 2 /nobreak >nul',
+      `start "" "${exePath}"`,
+      '',
+      'exit /b 0',
+    ];
+    const mainScript = mainLines.join('\r\n') + '\r\n';
 
     try {
       // Write all scripts to staging

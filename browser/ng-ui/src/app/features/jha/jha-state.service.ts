@@ -41,6 +41,10 @@ export class JhaStateService {
     private selectedJhaSubject = new BehaviorSubject<Jha>(new Jha());
     selectedJha$ = this.selectedJhaSubject.asObservable();
 
+    private selectedWorkRequestSubject = new BehaviorSubject<WorkRequest | null>(null);
+    selectedWorkRequest$ = this.selectedWorkRequestSubject.asObservable();
+    selectedWorkRequestSignal = toSignal(this.selectedWorkRequestSubject, { initialValue: null });
+
     private jhaTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
     jhaTransfers$: Observable<JhaTransfer[]> = this.jhaTransfersSubject.asObservable();
     jhaTransfersSignal = toSignal(this.jhaTransfersSubject, { initialValue: [] });
@@ -118,15 +122,20 @@ export class JhaStateService {
     }
 
     selectWorkRequestForJha(workRequest: WorkRequest): void {
+      this.selectedWorkRequestSubject.next(workRequest);
+      const current = this.getSelectedJha();
       const d = workRequest.dateOfWork ? new Date(workRequest.dateOfWork) : new Date();
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const newJha = new Jha({
+      const updatedJha = new Jha({
+        ...current,
         jobName: workRequest.workScope,
         date: dateStr,
         workRequestSharepointId: workRequest.sharepointId,
         workRequestLocalUuid: workRequest.localUuid,
+        sharepointId: '',
+        localUuid: current.localUuid || crypto.randomUUID(),
       });
-      this.selectJha(newJha);
+      this.selectJha(updatedJha);
     }
 
     getSelectedJha(): Jha {
@@ -145,6 +154,16 @@ export class JhaStateService {
     }
 
     submitNewRequest(jha: Jha) {
+      const selectedJha = this.getSelectedJha();
+      const submittedWr = this.selectedWorkRequestSubject.value;
+
+      if (!selectedJha.workRequestSharepointId) {
+        this.globalMessageService.showMessage(
+          'Please select a Work Request from the left panel before submitting a JHA.', 'red'
+        );
+        return;
+      }
+
       const formData = jha as any;
       const attachments: IAttachment[] = [
         ...(Array.isArray(formData.files) ? formData.files : []),
@@ -161,7 +180,12 @@ export class JhaStateService {
           type: 'signature'
         });
       }
-      jha = new Jha({ ...formData, attachments });
+      jha = new Jha({
+        ...formData,
+        attachments,
+        workRequestSharepointId: selectedJha.workRequestSharepointId,
+        workRequestLocalUuid: selectedJha.workRequestLocalUuid,
+      });
 
       this.globalMessageService.showMessage('Generating JHA form image...', 'white', 20000);
       from(captureJhaAsImage(jha)).pipe(
@@ -193,6 +217,12 @@ export class JhaStateService {
             tap(() => {
               this.addJhasToList([updatedJha]);
               this.jhaLocalStorageService.clearDraft();
+              if (submittedWr?.id) {
+                this.workRequestDbService.updateWorkRequest({
+                  id: submittedWr.id, jhaStatus: 'Completed'
+                }).subscribe();
+              }
+              this.selectedWorkRequestSubject.next(null);
               this.selectJha(new Jha());
             }),
             map(() => result)
@@ -212,6 +242,33 @@ export class JhaStateService {
           );
         }
       });
+    }
+
+    /** Populate form from a previously submitted JHA, keeping current WR selection. */
+    reuseJhaTemplate(source: Jha): void {
+      const currentWr = this.selectedWorkRequestSubject.value;
+      const current = this.getSelectedJha();
+      const reusedJha = new Jha({
+        ...source,
+        // Clear submission-specific fields
+        sharepointId: '',
+        localUuid: crypto.randomUUID(),
+        submissionStatus: 'draft',
+        attachments: [],
+        // Preserve current WR link (user selects WR separately)
+        workRequestSharepointId: current.workRequestSharepointId,
+        workRequestLocalUuid: current.workRequestLocalUuid,
+        // Override jobName/date from WR if one is selected
+        ...(currentWr ? {
+          jobName: currentWr.workScope,
+          date: (() => {
+            const d = currentWr.dateOfWork ? new Date(currentWr.dateOfWork) : new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })()
+        } : {}),
+      });
+      this.selectJha(reusedJha);
+      this.jhaLocalStorageService.saveDraft(reusedJha);
     }
 
     resubmitSelected() {

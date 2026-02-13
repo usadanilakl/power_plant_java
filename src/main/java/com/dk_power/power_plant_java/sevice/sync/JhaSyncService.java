@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.dto.permits.JhaDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.Jha;
@@ -9,10 +10,9 @@ import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -29,19 +29,16 @@ public class JhaSyncService {
     private final JhaMapper jhaMapper;
     private final NgValueService valueService;
     private final JhaMergeService jhaMergeService;
-
-    @Value("${sharepoint.sync.enabled:true}")
-    private boolean syncEnabled;
+    private final SharePointSyncSettings syncSettings;
 
     /**
-     * Periodically sync JHAs from SharePoint.
-     * Staggered 15s after WR sync (initialDelay=45000 vs WR's 30000).
+     * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
+     * Staggered 15s after WR sync.
      */
-    @Scheduled(fixedDelayString = "${sharepoint.sync.interval:120000}", initialDelay = 45000)
+    @Scheduled(fixedDelay = 30000, initialDelay = 45000)
     public void scheduledSync() {
-        if (!syncEnabled) {
-            return;
-        }
+        if (!syncSettings.isJhaSyncDue()) return;
+        syncSettings.markJhaSynced();
         syncFromSharePoint();
         try {
             jhaMergeService.mergeIfDuplicatesExist();

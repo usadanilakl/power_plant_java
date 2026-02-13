@@ -6,6 +6,7 @@ import { AdminFunctionalitiesComponent } from '../pages/admin/admin-functionalit
 import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.component';
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
+import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-sync.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
@@ -29,7 +30,8 @@ export const STANDALONE_ROUTES: Routes = [
     children: [
       { path: '', redirectTo: 'status', pathMatch: 'full' },
       { path: 'status', component: SyncMonitorComponent },
-      { path: 'recovery', component: SyncResyncComponent }
+      { path: 'recovery', component: SyncResyncComponent },
+      { path: 'sharepoint', component: SharepointSyncComponent }
     ]
   },
   // Full Sync to Server (standalone)

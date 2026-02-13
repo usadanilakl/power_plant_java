@@ -1226,6 +1226,96 @@ export class IpcHandlers {
     this.windowLayoutManager.saveAll(windows);
   }
 
+  /** Restore secondary windows that were open at last quit. */
+  public restoreSecondaryWindows(): void {
+    const openWindows = this.windowLayoutManager.getOpenWindows();
+    if (openWindows.length === 0) return;
+
+    console.log(`[Layout] Restoring secondary windows: [${openWindows.join(', ')}]`);
+
+    for (const id of openWindows) {
+      switch (id) {
+        case 'permits-monitor':
+          this.restorePermitsMonitor();
+          break;
+        case 'pjm-voyager':
+          this.pjmManager.showWindow();
+          break;
+        default:
+          console.log(`[Layout] Unknown window ID '${id}' — skipping`);
+      }
+    }
+  }
+
+  /** Restore permits monitor: open with waiting page, navigate when Spring Boot is healthy. */
+  private restorePermitsMonitor(): void {
+    if (this.permitsMonitorWindow && !this.permitsMonitorWindow.isDestroyed()) {
+      this.permitsMonitorWindow.focus();
+      return;
+    }
+
+    const saved = this.windowLayoutManager.getBounds('permits-monitor');
+    this.permitsMonitorWindow = new BrowserWindow({
+      width: saved?.width ?? 1200,
+      height: saved?.height ?? 800,
+      ...(saved ? { x: saved.x, y: saved.y } : {}),
+      title: 'Permits Monitor',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (saved?.isMaximized) {
+      this.permitsMonitorWindow.maximize();
+    }
+
+    this.windowLayoutManager.trackWindow('permits-monitor', this.permitsMonitorWindow);
+
+    this.permitsMonitorWindow.on('closed', () => {
+      this.permitsMonitorWindow = null;
+    });
+
+    // Check if Spring Boot is already healthy
+    const status = this.springBoot.getStatus();
+    if (status.state === 'running' && status.healthStatus === 'healthy') {
+      const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+      this.permitsMonitorWindow.loadURL(`http://localhost:${port}/app/permits-monitor`);
+      console.log('[Permits] Monitor window restored (Spring Boot already healthy)');
+      return;
+    }
+
+    // Load waiting page
+    const waitingHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Permits Monitor</title>
+<style>body{margin:0;background:#1a1a2e;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;height:100vh}
+.c{text-align:center}h2{font-size:24px;margin-bottom:12px;color:#a78bfa}p{font-size:16px;color:#94a3b8}
+.s{width:40px;height:40px;border:3px solid #334155;border-top-color:#a78bfa;border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}</style></head>
+<body><div class="c"><h2>Permits Monitor</h2><p>Waiting for ${APP_DISPLAY_NAME} to start...</p><div class="s"></div></div></body></html>`;
+
+    this.permitsMonitorWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(waitingHtml)}`);
+    console.log('[Permits] Monitor window restored — waiting for Spring Boot');
+
+    // Poll for Spring Boot health every 3 seconds
+    const win = this.permitsMonitorWindow;
+    const pollInterval = setInterval(() => {
+      if (!win || win.isDestroyed()) {
+        clearInterval(pollInterval);
+        return;
+      }
+      const currentStatus = this.springBoot.getStatus();
+      if (currentStatus.state === 'running' && currentStatus.healthStatus === 'healthy') {
+        clearInterval(pollInterval);
+        const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+        win.loadURL(`http://localhost:${port}/app/permits-monitor`);
+        console.log('[Permits] Spring Boot healthy — loading permits monitor');
+      }
+    }, 3000);
+
+    // Safety: stop polling after 5 minutes
+    setTimeout(() => clearInterval(pollInterval), 300000);
+  }
+
   public async cleanup(): Promise<void> {
     this.gateLogManager.cleanup();
     this.weatherManager.cleanup();
