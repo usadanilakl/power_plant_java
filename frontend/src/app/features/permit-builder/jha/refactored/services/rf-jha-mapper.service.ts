@@ -46,7 +46,7 @@ export class RfJhaMapperService {
         id: 'attachmentCount', header: 'Attachments', accessorKey: 'attachmentCount', filterable: false, sortable: true, width: 110,
         accessorFn: (item: JhaDto) => item.attachmentCount ? `${item.attachmentCount}` : '0',
         conditionalStyling: (item: any) =>
-          item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '' }
+          item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '', 'cursor': '', 'text-decoration': '' }
       },
       submitterName: { id: 'submitterName', header: 'Submitter', accessorKey: 'submitterName', filterable: true, sortable: true, width: 140 },
       submitterEmail: { id: 'submitterEmail', header: 'Submitter Email', accessorKey: 'submitterEmail', filterable: true, sortable: true, width: 180 },

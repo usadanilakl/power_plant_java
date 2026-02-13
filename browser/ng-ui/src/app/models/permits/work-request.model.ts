@@ -75,7 +75,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
 
   getFormFields(): FormField[] {
     return [
-      { name: 'company', label: 'Company', type: 'text', initialValue: this.company, validators: [Validators.required] },
+      { name: 'company', label: 'Company', type: 'text', initialValue: this.company, placeholder: 'e.g. DK Power', validators: [Validators.required] },
       {
         name: 'dateOfWork',
         label: 'Date of Work',
@@ -84,10 +84,10 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         validators: [Validators.required, futureOrPresentDateValidator()]
       },
       { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required] },
-      { name: 'locationOfWork', label: 'Location of Work', type: 'text', initialValue: this.locationOfWork, validators: [Validators.required] },
-      { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, validators: [Validators.required] },
-      { name: 'affectedEquipment', label: 'Affected Equipment', type: 'text', initialValue: this.affectedEquipment, validators: [Validators.required] },
-      { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: this.workScope, validators: [Validators.required] },
+      { name: 'locationOfWork', label: 'Location of Work', type: 'text', initialValue: this.locationOfWork, placeholder: 'e.g. Turbine Hall, Unit 2', validators: [Validators.required] },
+      { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, placeholder: 'Full name', validators: [Validators.required] },
+      { name: 'affectedEquipment', label: 'Affected Equipment', type: 'text', initialValue: this.affectedEquipment, placeholder: 'e.g. Boiler Feed Pump 1A', validators: [Validators.required] },
+      { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: this.workScope, placeholder: 'Describe the work to be performed', validators: [Validators.required] },
       { name: 'isLOTORequired', label: 'LOTO Required?', type: 'radio-group', initialValue: this.isLOTORequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },
       { name: 'isHotWorkRequired', label: 'Hot Work Required?', type: 'radio-group', initialValue: this.isHotWorkRequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },
       {
@@ -95,7 +95,8 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         label: 'Foreman Name',
         type: 'text',
         initialValue: this.foremanName,
-        showWhen: { field: 'isHotWorkRequired', value: 'Yes' }, 
+        placeholder: 'Hot work foreman name',
+        showWhen: { field: 'isHotWorkRequired', value: 'Yes' },
         validators: [Validators.required]
       },
       {
@@ -103,22 +104,24 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         label: 'Fire Watch Name',
         type: 'text',
         initialValue: this.fireWatchName,
-        showWhen: { field: 'isHotWorkRequired', value: 'Yes' }, 
+        placeholder: 'Fire watch person name',
+        showWhen: { field: 'isHotWorkRequired', value: 'Yes' },
         validators: [Validators.required]
       },
-      { 
-        name: 'isConfinedSpaceEntryRequired', 
-        label: 'Confined Space Entry Required?', 
-        type: 'radio-group', 
-        initialValue: this.isConfinedSpaceEntryRequired, 
-        options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], 
-        validators: [Validators.required] 
+      {
+        name: 'isConfinedSpaceEntryRequired',
+        label: 'Confined Space Entry Required?',
+        type: 'radio-group',
+        initialValue: this.isConfinedSpaceEntryRequired,
+        options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}],
+        validators: [Validators.required]
       },
       {
         name: 'spaceToBeEntered',
         label: 'Space to be Entered',
         type: 'text',
         initialValue: this.spaceToBeEntered,
+        placeholder: 'e.g. Condenser A',
         showWhen: { field: 'isConfinedSpaceEntryRequired', value: 'Yes' },
         validators: [Validators.required]
       },

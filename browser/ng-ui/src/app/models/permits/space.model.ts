@@ -45,14 +45,14 @@ export class Space extends BaseModel<ISpace> implements ISpace {
 
   getFormFields(): FormField[] {
     return [
-      { name: 'space', label: 'Space', type: 'text', initialValue: this.space },
-      { name: 'co', label: 'CO', type: 'number', initialValue: this.co },
-      { name: 'oxygen', label: 'Oxygen', type: 'number', initialValue: this.oxygen },
-      { name: 'lel', label: 'LEL', type: 'number', initialValue: this.lel },
-      { name: 'h2s', label: 'H2S', type: 'number', initialValue: this.h2s },
-      { name: 'nh3', label: 'NH3', type: 'number', initialValue: this.nh3 },
-      { name: 'testerName', label: 'Tester Name', type: 'text', initialValue: this.testerName },
-      { name: 'meterSerialNumber', label: 'Meter Serial Number', type: 'number', initialValue: this.meterSerialNumber },
+      { name: 'space', label: 'Space', type: 'text', initialValue: this.space, placeholder: 'e.g. Condenser A' },
+      { name: 'co', label: 'CO', type: 'number', initialValue: this.co, placeholder: 'ppm' },
+      { name: 'oxygen', label: 'Oxygen', type: 'number', initialValue: this.oxygen, placeholder: '%' },
+      { name: 'lel', label: 'LEL', type: 'number', initialValue: this.lel, placeholder: '%' },
+      { name: 'h2s', label: 'H2S', type: 'number', initialValue: this.h2s, placeholder: 'ppm' },
+      { name: 'nh3', label: 'NH3', type: 'number', initialValue: this.nh3, placeholder: 'ppm' },
+      { name: 'testerName', label: 'Tester Name', type: 'text', initialValue: this.testerName, placeholder: 'Name of person testing' },
+      { name: 'meterSerialNumber', label: 'Meter Serial Number', type: 'number', initialValue: this.meterSerialNumber, placeholder: 'Meter S/N' },
     ];
   }
 
@@ -108,7 +108,7 @@ export class Space extends BaseModel<ISpace> implements ISpace {
       MeterSerialNumber: this.meterSerialNumber,
     });
   }
-  
+
   convertToPaOutgoingModel() {
     return{
       Space: this.space,

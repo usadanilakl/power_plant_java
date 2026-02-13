@@ -39,10 +39,10 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
         return [
             { name: 'instrumentTagNumber', label: 'Instrument Tag Number', type: 'text', initialValue: this.instrumentTagNumber, readonly: true },
             { name: 'instrumentDescription', label: 'Instrument Description', type: 'text', initialValue: this.instrumentDescription, readonly: true  },
-            { 
-                name: 'status', 
-                label: 'Status', 
-                type: 'select', 
+            {
+                name: 'status',
+                label: 'Status',
+                type: 'select',
                 initialValue: this.status,
                 options: [
                     { value: 'Normal Operation', label: 'Normal Operation' },
@@ -52,8 +52,8 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
             },
             { name: 'date', label: 'Date', type: 'date', initialValue: this.date, validators: [] },
             { name: 'time', label: 'Time', type: 'time', initialValue: this.time },
-            { name: 'name', label: 'Name', type: 'text', initialValue: this.name },
-            { name: 'comment', label: 'Comment', type: 'textarea', initialValue: this.comment },
+            { name: 'name', label: 'Name', type: 'text', initialValue: this.name, placeholder: 'Your name' },
+            { name: 'comment', label: 'Comment', type: 'textarea', initialValue: this.comment, placeholder: 'Add any notes or observations' },
         ];
     }
 
@@ -61,10 +61,10 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
         return [
             { id: 'instrumentTagNumber', header: 'Tag Number', accessorKey: 'instrumentTagNumber' },
             { id: 'status', header: 'Status', accessorKey: 'status' },
-            { 
-                id: 'date', 
-                header: 'Date', 
-                accessorFn: (item: IInstrumentLogEntry) => new Date(item.date).toLocaleDateString() 
+            {
+                id: 'date',
+                header: 'Date',
+                accessorFn: (item: IInstrumentLogEntry) => new Date(item.date).toLocaleDateString()
             },
             { id: 'time', header: 'Time', accessorKey: 'time' },
             { id: 'name', header: 'Name', accessorKey: 'name' },

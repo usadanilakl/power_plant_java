@@ -110,7 +110,7 @@ export class RfWorkRequestMapperService {
         id: 'attachmentCount', header: 'Attachments', accessorKey: 'attachmentCount', filterable: false, sortable: true, width: 110,
         accessorFn: (item: WorkRequestDto) => item.attachmentCount ? `${item.attachmentCount}` : '0',
         conditionalStyling: (item: any) =>
-          item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '' }
+          item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '', 'cursor': '', 'text-decoration': '' }
       },
       name: { id: 'name', header: 'Name', accessorKey: 'name', filterable: true, sortable: true, width: 140 },
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType', filterable: true, sortable: true, width: 120 },

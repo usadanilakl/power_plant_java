@@ -37,14 +37,14 @@ export class LotoPoint extends BaseModel<ILotoPoint> implements ILotoPoint {
 
   getFormFields(): FormField[] {
     return [
-      { name: 'tagNumber', label: 'Tag Number', type: 'text', initialValue: this.tagNumber },
-      { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description },
-      { name: 'specificLocation', label: 'Specific Location', type: 'text', initialValue: this.specificLocation },
-      { name: 'generalLocation', label: 'General Location', type: 'text', initialValue: this.generalLocation },
-      { name: 'normalPosition', label: 'Normal Position', type: 'text', initialValue: this.normalPosition },
-      { name: 'isolatedPosition', label: 'Isolated Position', type: 'text', initialValue: this.isolatedPosition },
-      { name: 'zeroEnergyMethod', label: 'Zero Energy Method', type: 'text', initialValue: this.zeroEnergyMethod },
-      { name: 'currentPosition', label: 'Current Position', type: 'text', initialValue: this.currentPosition },
+      { name: 'tagNumber', label: 'Tag Number', type: 'text', initialValue: this.tagNumber, placeholder: 'e.g. LOTO-001' },
+      { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description, placeholder: 'e.g. Main Power Breaker for Unit 1' },
+      { name: 'specificLocation', label: 'Specific Location', type: 'text', initialValue: this.specificLocation, placeholder: 'e.g. MCC-A, Cubicle 3' },
+      { name: 'generalLocation', label: 'General Location', type: 'text', initialValue: this.generalLocation, placeholder: 'e.g. Turbine Hall' },
+      { name: 'normalPosition', label: 'Normal Position', type: 'text', initialValue: this.normalPosition, placeholder: 'e.g. Closed' },
+      { name: 'isolatedPosition', label: 'Isolated Position', type: 'text', initialValue: this.isolatedPosition, placeholder: 'e.g. Open' },
+      { name: 'zeroEnergyMethod', label: 'Zero Energy Method', type: 'text', initialValue: this.zeroEnergyMethod, placeholder: 'e.g. Lockout/Tagout' },
+      { name: 'currentPosition', label: 'Current Position', type: 'text', initialValue: this.currentPosition, placeholder: 'e.g. Open' },
     ];
   }
 

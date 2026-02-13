@@ -136,26 +136,26 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   ): FormField[] {
     const allFields: { [key in WorkRequestFieldName]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
-      dateOfWorkToBePerformed: { 
-        name: 'dateOfWorkToBePerformed', 
-        label: 'Date of Work', 
-        type: 'date', 
-        validators: [Validators.required], 
+      dateOfWorkToBePerformed: {
+        name: 'dateOfWorkToBePerformed',
+        label: 'Date of Work',
+        type: 'date',
+        validators: [Validators.required],
         initialValue: dto.dateOfWorkToBePerformed ?? new Date().toISOString().split('T')[0]
       },
-      timeOfWorkToBePerformed: { 
-        name: 'timeOfWorkToBePerformed', 
-        label: 'Time of Work', 
-        type: 'time', 
-        validators: [Validators.required], 
+      timeOfWorkToBePerformed: {
+        name: 'timeOfWorkToBePerformed',
+        label: 'Time of Work',
+        type: 'time',
+        validators: [Validators.required],
         initialValue: dto.timeOfWorkToBePerformed ?? new Date().toTimeString().slice(0, 5)
       },
-      requestedBy: { 
-        name: 'requestedBy', 
-        label: 'Requested By', 
-        type: 'text', 
-        validators: [Validators.required], 
-        initialValue: dto.requestedBy 
+      requestedBy: {
+        name: 'requestedBy',
+        label: 'Requested By',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.requestedBy
       },
       company: {
         name: 'company',
@@ -173,55 +173,55 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         validators: [Validators.required],
         initialValue: dto.location
       },
-      affectedEquipment: { 
-        name: 'affectedEquipment', 
-        label: 'Affected Equipment', 
-        type: 'text', 
-        validators: [Validators.required], 
-        initialValue: dto.affectedEquipment 
+      affectedEquipment: {
+        name: 'affectedEquipment',
+        label: 'Affected Equipment',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.affectedEquipment
       },
-      workScope: { 
-        name: 'workScope', 
-        label: 'Work Scope', 
-        type: 'text', 
-        validators: [Validators.required], 
-        initialValue: dto.workScope 
+      workScope: {
+        name: 'workScope',
+        label: 'Work Scope',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.workScope
       },
-      isHotWorkRequired: { 
-        name: 'isHotWorkRequired', 
-        label: 'Is Hot Work Required', 
-        type: 'checkbox', 
-        initialValue: dto.isHotWorkRequired 
+      isHotWorkRequired: {
+        name: 'isHotWorkRequired',
+        label: 'Is Hot Work Required',
+        type: 'checkbox',
+        initialValue: dto.isHotWorkRequired
       },
-      foreman: { 
-        name: 'foreman', 
-        label: 'Foreman Name', 
-        type: 'text', 
-        initialValue: dto.foreman 
+      foreman: {
+        name: 'foreman',
+        label: 'Foreman Name',
+        type: 'text',
+        initialValue: dto.foreman
       },
-      fireWatch: { 
-        name: 'fireWatch', 
-        label: 'Fire-watch Name', 
-        type: 'text', 
-        initialValue: dto.fireWatch 
+      fireWatch: {
+        name: 'fireWatch',
+        label: 'Fire-watch Name',
+        type: 'text',
+        initialValue: dto.fireWatch
       },
-      isLotoRequired: { 
-        name: 'isLotoRequired', 
-        label: 'Is LOTO Required', 
-        type: 'checkbox', 
-        initialValue: dto.isLotoRequired 
+      isLotoRequired: {
+        name: 'isLotoRequired',
+        label: 'Is LOTO Required',
+        type: 'checkbox',
+        initialValue: dto.isLotoRequired
       },
-      isConfinedSpaceEntryRequired: { 
-        name: 'isConfinedSpaceEntryRequired', 
-        label: 'Is Confined Space Entry Required', 
-        type: 'checkbox', 
-        initialValue: dto.isConfinedSpaceEntryRequired 
+      isConfinedSpaceEntryRequired: {
+        name: 'isConfinedSpaceEntryRequired',
+        label: 'Is Confined Space Entry Required',
+        type: 'checkbox',
+        initialValue: dto.isConfinedSpaceEntryRequired
       },
-      space: { 
-        name: 'space', 
-        label: 'Space to be entered', 
-        type: 'text', 
-        initialValue: dto.space 
+      space: {
+        name: 'space',
+        label: 'Space to be entered',
+        type: 'text',
+        initialValue: dto.space
       },
       sharepointId: {
         name: 'sharepointId',
@@ -251,9 +251,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         initialValue: dto.isVerified?.toString()
       },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      hasJha: { name: 'hasJha', label: 'Has JHA', type: 'checkbox', initialValue: dto.hasJha },
+      attachmentCount: { name: 'attachmentCount', label: 'Attachments', type: 'text', readonly: true, initialValue: dto.attachmentCount },
     };
-  
+
     return fields.map(fieldName => allFields[fieldName]);
   }
 
@@ -291,9 +293,9 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
             item.isConfinedSpaceEntryRequired ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
         },
       space: { id: 'space', header: 'Space', accessorKey: 'space' },
-      sharepointId: { 
-        id: 'sharepointId', 
-        header: 'Sharepoint ID', 
+      sharepointId: {
+        id: 'sharepointId',
+        header: 'Sharepoint ID',
         accessorFn: (item: WorkRequestDto) => {
           if (!item.sharepointId) return '';
           const timestamp = item.sharepointId;
@@ -326,6 +328,14 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         conditionalStyling: (item: any, column: Column) =>
             item.isVerified ? { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' } : { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' }
         },
+      hasJha: {
+        id: 'hasJha', header: 'JHA', accessorKey: 'hasJha',
+        accessorFn: (item: WorkRequestDto) => item.hasJha ? 'Yes' : 'No',
+      },
+      attachmentCount: {
+        id: 'attachmentCount', header: 'Attachments', accessorKey: 'attachmentCount',
+        accessorFn: (item: WorkRequestDto) => item.attachmentCount ? `${item.attachmentCount}` : '0',
+      },
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

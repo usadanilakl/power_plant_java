@@ -77,18 +77,18 @@ export class Jha extends BaseModel<IJha> implements IJha {
 
   getFormFields(): FormField[] {
     return [
-      { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName },
-      { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability },
-      { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy },
-      { name: 'reviewedBy', label: 'Reviewed By', type: 'text', initialValue: this.reviewedBy },
-      { name: 'approvedBy', label: 'Approved By', type: 'text', initialValue: this.approvedBy },
+      { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName, placeholder: 'e.g. Boiler Feed Pump Maintenance' },
+      { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability, placeholder: 'e.g. OPs, Maintenance' },
+      { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy, placeholder: 'Name or initials' },
+      { name: 'reviewedBy', label: 'Reviewed By', type: 'text', initialValue: this.reviewedBy, placeholder: 'Name or initials' },
+      { name: 'approvedBy', label: 'Approved By', type: 'text', initialValue: this.approvedBy, placeholder: 'Name or initials' },
       { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
-      { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe },
-      { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto },
-      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace  },
-      { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
-      { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
-      { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
+      { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe, placeholder: 'e.g. Hard hat, safety glasses, gloves' },
+      { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto, placeholder: 'LOTO requirements, if applicable' },
+      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace, placeholder: 'Confined space requirements, if applicable' },
+      { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom, placeholder: 'Hazardous materials involved, if any' },
+      { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools, placeholder: 'List tools required' },
+      { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools, placeholder: 'List special tools or equipment' },
       { name: 'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId, readonly: true },
       {
         name: 'jobSteps',
@@ -96,15 +96,15 @@ export class Jha extends BaseModel<IJha> implements IJha {
         type: 'form-array',
         initialValue: this.jobSteps,
         fields: [
-          { name: 'description', label: 'Description', type: 'textarea' },
-          { name: 'hazard', label: 'Hazard', type: 'textarea' },
-          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea' }
+          { name: 'description', label: 'Description', type: 'textarea', placeholder: 'What will be done in this step' },
+          { name: 'hazard', label: 'Hazard', type: 'textarea', placeholder: 'Potential hazards for this step' },
+          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea', placeholder: 'How to mitigate the hazard' }
         ]
       },
       { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true, initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
     ];
   }
-  
+
     getTableColumns(): Column[] {
       return [
         { id: 'jobName', header: 'Job Name', accessorKey: 'jobName' },
@@ -118,7 +118,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
         },
       ];
     }
-    
+
     getAttachmentsByType(type: 'photo' | 'signature' | 'document'): IAttachment[] {
       return this.attachments.filter(a => a.type === type);
     }
@@ -222,7 +222,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
       const newJobSteps = [...(this.jobSteps || []), new JobStep()];
       return new Jha({ ...this, jobSteps: newJobSteps });
     }
-  
+
 
 
 }

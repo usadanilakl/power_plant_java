@@ -185,4 +185,24 @@ export class JhaDto extends BaseDto implements JhaModel {
       'isVerified', 'name', 'objectType'
     ].includes(key);
   }
+
+  getFormFields(): FormField[] {
+    return [
+      { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName },
+      { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability },
+      { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy },
+      { name: 'reviewedBy', label: 'Reviewed By', type: 'text', initialValue: this.reviewedBy },
+      { name: 'approvedBy', label: 'Approved By', type: 'text', initialValue: this.approvedBy },
+      { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
+      { name: 'ppe', label: 'PPE', type: 'textarea', initialValue: this.ppe },
+      { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto },
+      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace },
+      { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
+      { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
+      { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
+    ];
+  }
 }
+
+/** @deprecated Use JhaDto instead */
+export { JhaDto as Jha };

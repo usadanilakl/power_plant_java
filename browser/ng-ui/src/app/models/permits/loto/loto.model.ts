@@ -20,7 +20,7 @@ export class Loto extends BaseModel<ILoto> implements ILoto {
 
   getFormFields(): FormField[] {
     return [
-      { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description },
+      { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description, placeholder: 'Describe the LOTO procedure' },
       {
         name: 'lotoPoints',
         label: 'LOTO Points',

@@ -29,11 +29,11 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
 
     getFormFields(): FormField[] {
         return [
-            { name: 'tagNumber', label: 'Tag Number', type: 'text', initialValue: this.tagNumber },
-            { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description },
-            { name: 'vendor', label: 'Vendor', type: 'text', initialValue: this.vendor },
-            { name: 'location', label: 'Location', type: 'text', initialValue: this.location },
-            { name: 'type', label: 'Type', type: 'text', initialValue: this.type },
+            { name: 'tagNumber', label: 'Tag Number', type: 'text', initialValue: this.tagNumber, placeholder: 'e.g. PT-101' },
+            { name: 'description', label: 'Description', type: 'textarea', initialValue: this.description, placeholder: 'Instrument description' },
+            { name: 'vendor', label: 'Vendor', type: 'text', initialValue: this.vendor, placeholder: 'Manufacturer name' },
+            { name: 'location', label: 'Location', type: 'text', initialValue: this.location, placeholder: 'e.g. Turbine Hall' },
+            { name: 'type', label: 'Type', type: 'text', initialValue: this.type, placeholder: 'e.g. Pressure Transmitter' },
         ];
     }
 
