@@ -6,24 +6,29 @@ import { BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import { format } from 'url';
 import { rendererAppName, rendererAppPort } from '../constants';
+import { WindowLayoutManager } from './window-layout.manager';
 
 export class MainWindowManager {
   private window: BrowserWindow | null = null;
   private isDev: boolean;
+  private layoutManager: WindowLayoutManager;
 
-  constructor(isDev: boolean) {
+  constructor(isDev: boolean, layoutManager: WindowLayoutManager) {
     this.isDev = isDev;
+    this.layoutManager = layoutManager;
     this.createWindow();
   }
 
   private createWindow(): void {
+    const saved = this.layoutManager.getBounds('main');
     const workAreaSize = screen.getPrimaryDisplay().workAreaSize;
-    const width = Math.min(1200, workAreaSize.width || 1200);
-    const height = Math.min(800, workAreaSize.height || 800);
+    const width = saved?.width ?? Math.min(1200, workAreaSize.width || 1200);
+    const height = saved?.height ?? Math.min(800, workAreaSize.height || 800);
 
     this.window = new BrowserWindow({
       width,
       height,
+      ...(saved ? { x: saved.x, y: saved.y } : {}),
       minWidth: 800,
       minHeight: 600,
       frame: false,
@@ -39,12 +44,20 @@ export class MainWindowManager {
       }
     });
 
-    this.window.center();
+    if (!saved) {
+      this.window.center();
+    }
 
     // Show window when ready
     this.window.once('ready-to-show', () => {
+      if (saved?.isMaximized) {
+        this.window?.maximize();
+      }
       this.window?.show();
     });
+
+    // Track window position/size for auto-save
+    this.layoutManager.trackWindow('main', this.window);
 
     // Handle window closed
     this.window.on('closed', () => {

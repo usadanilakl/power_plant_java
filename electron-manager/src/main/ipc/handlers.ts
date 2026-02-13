@@ -15,6 +15,7 @@ import { WeatherManager } from '../managers/weather.manager';
 import { PjmManager } from '../managers/pjm.manager';
 import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
+import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus } from '../../shared/types';
 
@@ -29,12 +30,14 @@ export class IpcHandlers {
   private pjmManager: PjmManager;
   private resourcePackManager: ResourcePackManager;
   private electronUpdateManager: ElectronUpdateManager;
+  private windowLayoutManager: WindowLayoutManager;
   private mainWindow: BrowserWindow;
   private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
 
-  constructor(mainWindow: BrowserWindow) {
+  constructor(mainWindow: BrowserWindow, windowLayoutManager: WindowLayoutManager) {
     this.mainWindow = mainWindow;
+    this.windowLayoutManager = windowLayoutManager;
     this.webview = new WebViewManager(mainWindow);
     this.updateManager = new UpdateManager();
     this.syncStatusManager = new SyncStatusManager();
@@ -55,7 +58,7 @@ export class IpcHandlers {
       }
     );
     this.weatherManager.start();
-    this.pjmManager = new PjmManager((status: PjmStatus) => {
+    this.pjmManager = new PjmManager(this.windowLayoutManager, (status: PjmStatus) => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_PJM_STATUS, status);
       }
@@ -135,6 +138,7 @@ export class IpcHandlers {
     this.registerElectronUpdateHandlers();
     this.registerMenuHandlers();
     this.registerPrintHandlers();
+    this.registerLayoutHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -171,6 +175,10 @@ export class IpcHandlers {
 
   public getElectronUpdateManager(): ElectronUpdateManager {
     return this.electronUpdateManager;
+  }
+
+  public getWindowLayoutManager(): WindowLayoutManager {
+    return this.windowLayoutManager;
   }
 
   public setLastAssessment(assessment: StartupAssessment): void {
@@ -761,15 +769,23 @@ export class IpcHandlers {
         }
 
         const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+        const saved = this.windowLayoutManager.getBounds('permits-monitor');
         this.permitsMonitorWindow = new BrowserWindow({
-          width: 1200,
-          height: 800,
+          width: saved?.width ?? 1200,
+          height: saved?.height ?? 800,
+          ...(saved ? { x: saved.x, y: saved.y } : {}),
           title: 'Permits Monitor',
           webPreferences: {
             contextIsolation: true,
             nodeIntegration: false
           }
         });
+
+        if (saved?.isMaximized) {
+          this.permitsMonitorWindow.maximize();
+        }
+
+        this.windowLayoutManager.trackWindow('permits-monitor', this.permitsMonitorWindow);
 
         this.permitsMonitorWindow.on('closed', () => {
           this.permitsMonitorWindow = null;
@@ -944,8 +960,20 @@ export class IpcHandlers {
       try {
         const result = this.electronUpdateManager.applyUpdate();
         if (result.success) {
-          // Batch script is launched — stop Spring Boot and exit so the script can replace files
-          await this.springBoot.stop();
+          // Batch script is launched and waiting for our PID to exit.
+          // Safety timeout: ensure app.exit() runs even if springBoot.stop() hangs.
+          const exitTimeout = setTimeout(() => {
+            console.log('Safety timeout: forcing app exit for update');
+            app.exit(0);
+          }, 15000);
+
+          try {
+            await this.springBoot.stop();
+          } catch (err) {
+            console.warn('Error stopping Spring Boot during update (proceeding with exit):', err);
+          }
+
+          clearTimeout(exitTimeout);
           app.exit(0);
         }
         return result;
@@ -1175,6 +1203,27 @@ export class IpcHandlers {
         return { success: false, error: error.message };
       }
     });
+  }
+
+  private registerLayoutHandlers(): void {
+    ipcMain.handle(events.IPC_LAYOUT_SAVE, async () => {
+      try {
+        this.saveAllWindowLayouts();
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  /** Save layout of all tracked windows (main, permits, voyager). */
+  public saveAllWindowLayouts(): void {
+    const windows: Record<string, BrowserWindow | null> = {
+      'main': this.mainWindow,
+      'permits-monitor': this.permitsMonitorWindow,
+      'pjm-voyager': this.pjmManager.getVoyagerWindow(),
+    };
+    this.windowLayoutManager.saveAll(windows);
   }
 
   public async cleanup(): Promise<void> {

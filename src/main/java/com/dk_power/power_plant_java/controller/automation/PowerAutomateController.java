@@ -6,7 +6,7 @@ import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
-import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,14 +18,14 @@ import java.util.List;
 @RequestMapping("/power-automate")
 public class PowerAutomateController {
 
-    private final SharepointAccessService sharepointAccessService;
+    private final WorkRequestSharePointAdapter wrAdapter;
     private final NgWorkRequestService workRequestService;
     private final WorkRequestMapper workRequestMapper;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<WorkRequestDto>>> getAllRequests() {
         try {
-            List<WorkRequestDto> allRequests = sharepointAccessService.getAllWorkRequests();
+            List<WorkRequestDto> allRequests = wrAdapter.getAll();
             return ResponseEntity.ok(
                     new NgApiResponse<>(allRequests, "Successfully got all items from SharePoint")
             );

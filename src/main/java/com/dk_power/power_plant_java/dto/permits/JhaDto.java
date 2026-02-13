@@ -35,6 +35,13 @@ public class JhaDto extends BasePermitDto {
     private List<JobStep> jobSteps;
     private String sharepointId;
     private String localUuid;
+    private String workRequestSharepointId;
+    private String status;
+    private String timeSubmitted;
+    private String submitterName;
+    private String submitterEmail;
+    private String submitterPhone;
+    private String submitterCompany;
 
     public static JhaDto createTestInstance() {
         JhaDto dto = new JhaDto();

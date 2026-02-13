@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, map, Observable, startWith, switchMap, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, from, map, Observable, startWith, switchMap, tap } from "rxjs";
 import { JhaApiService } from "./jha-api.service";
 import { JhaDbService } from "./jha-db.service";
 import { Jha } from "../../models/permits/jha.model";
@@ -12,6 +12,8 @@ import { IJhaTransfer, JhaTransfer } from "../../models/permits/jha-transfer.mod
 import { WorkRequest } from "../../models/permits/work-request.model";
 import { UserSetupService } from "../../services/user-setup.service";
 import { IAttachment } from "../../models/permits/attachment.model";
+import { SubmissionOrchestratorService } from "../../services/submission-orchestrator.service";
+import { captureJhaAsImage } from "./jha-image/jha-image.util";
 @Injectable({
   providedIn: 'root'
 })
@@ -24,6 +26,7 @@ export class JhaStateService {
     workRequestDbService = inject(WorkRequestDbService);
     routeDataEncoder = inject(RouteDataEncoderService);
     userSetupService = inject(UserSetupService);
+    submissionOrchestrator = inject(SubmissionOrchestratorService);
     destroyRef = inject(DestroyRef);
 
     constructor() {
@@ -160,27 +163,53 @@ export class JhaStateService {
       }
       jha = new Jha({ ...formData, attachments });
 
-      this.globalMessageService.showMessage('Submitting JHA...', 'white', 20000);
-      this.jhaApiService.submitFormToSharepoint(jha).pipe(
-        switchMap(response => {
-          console.log('Submission successful!', response);
-          const updatedJha = new Jha({...jha, sharepointId: response.id, status: 'received'  });
+      this.globalMessageService.showMessage('Generating JHA form image...', 'white', 20000);
+      from(captureJhaAsImage(jha)).pipe(
+        map(base64Png => {
+          const imageAttachment: IAttachment = {
+            fileName: `JHA-${jha.localUuid}.png`,
+            contentType: 'image/png',
+            base64Content: base64Png,
+            type: 'document'
+          };
+          return new Jha({ ...jha, attachments: [...jha.attachments, imageAttachment] });
+        }),
+        tap(() => this.globalMessageService.showMessage('Submitting JHA...', 'white', 20000)),
+        switchMap(jhaWithImage => this.submissionOrchestrator.submitJha(jhaWithImage).pipe(
+          map(result => ({ result, jhaWithImage }))
+        )),
+        switchMap(({ result, jhaWithImage }) => {
+          if (result.requiresEmail) {
+            const emailData = this.submissionOrchestrator.generateJhaEmailContent(jhaWithImage);
+            window.location.href = emailData.mailto;
+            throw new Error(result.message);
+          }
+          const updatedJha = new Jha({
+            ...jhaWithImage,
+            sharepointId: result.sharepointId || '',
+            status: result.success ? 'received' : 'pending'
+          });
           return this.jhaDbService.addJha(updatedJha).pipe(
             tap(() => {
               this.addJhasToList([updatedJha]);
               this.jhaLocalStorageService.clearDraft();
               this.selectJha(new Jha());
-            })
+            }),
+            map(() => result)
           );
         }),
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
-        next: () => {
-          this.globalMessageService.showMessage('JHA submitted successfully.', 'green');
+        next: (result) => {
+          this.globalMessageService.showMessage(
+            result.message || 'JHA submitted successfully.', 'green'
+          );
         },
         error: (err) => {
           console.error('Submission failed!', err);
-          this.globalMessageService.showMessage('Failed to submit JHA. Please try again or submit by email.', 'red');
+          this.globalMessageService.showMessage(
+            err.message || 'Failed to submit JHA. Please try again or submit by email.', 'red'
+          );
         }
       });
     }

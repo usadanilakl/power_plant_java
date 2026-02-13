@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { PjmStatus, PjmConfig } from '../../shared/types';
 import { getWorkingDir } from '../paths';
+import { WindowLayoutManager } from './window-layout.manager';
 
 const PJM_API_BASE = 'https://api.pjm.com/api/v1';
 const DEFAULT_PNODE_ID = 33092371; // ComEd zone aggregate
@@ -29,8 +30,10 @@ export class PjmManager {
   private cachedStatus: PjmStatus = { status: 'unavailable', unit: '$/MWh' };
   private onStatusUpdate: (status: PjmStatus) => void;
   private config: PjmConfig;
+  private layoutManager: WindowLayoutManager;
 
-  constructor(onStatusUpdate: (status: PjmStatus) => void) {
+  constructor(layoutManager: WindowLayoutManager, onStatusUpdate: (status: PjmStatus) => void) {
+    this.layoutManager = layoutManager;
     this.onStatusUpdate = onStatusUpdate;
     this.config = this.loadConfig();
   }
@@ -65,6 +68,10 @@ export class PjmManager {
     return { ...this.config };
   }
 
+  public getVoyagerWindow(): BrowserWindow | null {
+    return this.voyagerWindow && !this.voyagerWindow.isDestroyed() ? this.voyagerWindow : null;
+  }
+
   public saveConfig(newConfig: Partial<PjmConfig>): void {
     this.config = { ...this.config, ...newConfig };
     const configPath = path.join(getWorkingDir(), 'pjm-config.json');
@@ -88,9 +95,11 @@ export class PjmManager {
       return;
     }
 
+    const saved = this.layoutManager.getBounds('pjm-voyager');
     this.voyagerWindow = new BrowserWindow({
-      width: 1400,
-      height: 900,
+      width: saved?.width ?? 1400,
+      height: saved?.height ?? 900,
+      ...(saved ? { x: saved.x, y: saved.y } : {}),
       title: 'PJM Voyager',
       webPreferences: {
         nodeIntegration: false,
@@ -98,6 +107,12 @@ export class PjmManager {
         partition: 'persist:pjm',
       },
     });
+
+    if (saved?.isMaximized) {
+      this.voyagerWindow.maximize();
+    }
+
+    this.layoutManager.trackWindow('pjm-voyager', this.voyagerWindow);
 
     this.voyagerWindow.webContents.loadURL(PJM_LOGIN_URL);
 

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.permits;
 
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.pojo.JobStep;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -7,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
+import org.hibernate.envers.Audited;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -16,11 +19,9 @@ import java.util.List;
 @Table(name = "jha")
 @Getter
 @Setter
-public class Jha {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Audited
+@Where(clause = "deleted=false")
+public class Jha extends BasePermitEntity {
 
     @Column(nullable = false)
     private String jobName;
@@ -43,20 +44,16 @@ public class Jha {
 
     private String sharepointId;
 
-    // WorkRequest relationship
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_request_id")
     private WorkRequest workRequest;
 
     private String workRequestSharepointId;
 
-    // PWA tracking
     private String localUuid;
-    private Boolean deleted = false;
     @Column(name = "time_submitted")
     private String timeSubmitted;
 
-    // Submitter contact info
     private String submitterName;
     private String submitterEmail;
     private String submitterPhone;
@@ -64,7 +61,7 @@ public class Jha {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public List<JobStep> getJobSteps() {
+    public List<JobStep> getJobStepsList() {
         if (jobSteps == null || jobSteps.isEmpty()) {
             return new ArrayList<>();
         }
@@ -75,7 +72,7 @@ public class Jha {
         }
     }
 
-    public void setJobSteps(List<JobStep> steps) {
+    public void setJobStepsList(List<JobStep> steps) {
         try {
             this.jobSteps = mapper.writeValueAsString(steps);
         } catch (JsonProcessingException e) {

@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
-import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
@@ -29,7 +29,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     private final EntityManager entityManager;
     private final WorkRequestRepo workRequestRepo;
     private final WorkRequestMapper workRequestMapper;
-    private final SharepointAccessService sharepointAccessService;
+    private final WorkRequestSharePointAdapter wrAdapter;
     private final NgValueService valueService;
 
     @Override
@@ -126,7 +126,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         entity.setPermitStatus(valueService.createValue("Permit Status", status));
         try {
             if (entity.getSharepointId() != null) {
-                sharepointAccessService.changeWorkRequestStatus(entity.getSharepointId(), status);
+                wrAdapter.changeStatus(entity.getSharepointId(), status);
             }
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to update SharePoint status for id={}: {}", id, e.getMessage());
@@ -140,7 +140,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         entity.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
         try {
             if (entity.getSharepointId() != null) {
-                sharepointAccessService.archiveWorkRequest(entity.getSharepointId());
+                wrAdapter.archive(entity.getSharepointId());
             }
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to archive in SharePoint for id={}: {}", id, e.getMessage());
@@ -159,7 +159,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         entity.setPermitStatus(valueService.createValue("Permit Status", status));
         try {
             if (entity.getSharepointId() != null) {
-                sharepointAccessService.changeWorkRequestStatus(entity.getSharepointId(), status);
+                wrAdapter.changeStatus(entity.getSharepointId(), status);
             }
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to update SharePoint status: {}", e.getMessage());
@@ -175,7 +175,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         if (entity == null) throw new IllegalArgumentException("Work request not found for sharepointId: " + sharepointId);
         entity.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
         try {
-            sharepointAccessService.archiveWorkRequest(sharepointId);
+            wrAdapter.archive(sharepointId);
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to archive in SharePoint: {}", e.getMessage());
         }
@@ -208,7 +208,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
      * @deprecated Used by old PowerAutomateController.
      */
     public List<WorkRequestDto> getAndCombineLocalAndSharepointRequests() {
-        List<WorkRequestDto> spRequests = sharepointAccessService.getAllWorkRequests();
+        List<WorkRequestDto> spRequests = wrAdapter.getAll();
         List<WorkRequest> localActive = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
         List<WorkRequestDto> localDtos = localActive.stream().map(workRequestMapper::convertToDto).toList();
 

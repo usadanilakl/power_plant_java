@@ -169,3 +169,4 @@ global.env
 /electron-manager/config-defaults/
 /data/certificate.pfx
 /exports/**
+/electron-manager/release2/**

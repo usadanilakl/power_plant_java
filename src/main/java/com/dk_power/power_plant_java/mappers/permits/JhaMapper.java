@@ -1,86 +1,228 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.JhaDto;
+import com.dk_power.power_plant_java.dto.permits.NgJhaDto;
 import com.dk_power.power_plant_java.entities.permits.Jha;
-import com.dk_power.power_plant_java.entities.permits.pojo.JobStep;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.JhaRepo;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
 
 @Component
-public class JhaMapper {
+@RequiredArgsConstructor
+public class JhaMapper implements BaseMapper {
+    private final ModelMapper modelMapper;
+    private final JhaRepo jhaRepo;
 
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    public JhaDto toDto(Jha jha) {
-        if (jha == null) {
-            return null;
-        }
-
+    public JhaDto convertToDto(Jha entity) {
+        if (entity == null) return null;
         JhaDto dto = new JhaDto();
-        dto.setId(jha.getId());
-        dto.setJobName(jha.getJobName());
-        dto.setApplicability(jha.getApplicability());
-        dto.setAnalysisBy(jha.getAnalysisBy());
-        dto.setReviewedBy(jha.getReviewedBy());
-        dto.setApprovedBy(jha.getApprovedBy());
-        dto.setDate(jha.getDate() != null ? jha.getDate().format(DATE_FORMATTER) : null);
-        dto.setPpe(jha.getPpe());
-        dto.setLoto(jha.getLoto());
-        dto.setConfinedSpace(jha.getConfinedSpace());
-        dto.setHazCom(jha.getHazCom());
-        dto.setHandAndPowerTools(jha.getHandAndPowerTools());
-        dto.setSpecialTools(jha.getSpecialTools());
-        dto.setSharepointId(jha.getSharepointId());
-
-        // Deserialize stored JSON into a list of JobSteps
-        if (jha.getJobSteps() != null) {
-            try {
-                dto.setJobSteps(jha.getJobSteps());
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to deserialize jobSteps JSON", e);
-            }
-        }
-
+        dto.setId(entity.getId());
+        dto.setJobName(entity.getJobName());
+        dto.setApplicability(entity.getApplicability());
+        dto.setAnalysisBy(entity.getAnalysisBy());
+        dto.setReviewedBy(entity.getReviewedBy());
+        dto.setApprovedBy(entity.getApprovedBy());
+        dto.setDate(entity.getDate() != null ? entity.getDate().toString() : null);
+        dto.setPpe(entity.getPpe());
+        dto.setLoto(entity.getLoto());
+        dto.setConfinedSpace(entity.getConfinedSpace());
+        dto.setHazCom(entity.getHazCom());
+        dto.setHandAndPowerTools(entity.getHandAndPowerTools());
+        dto.setSpecialTools(entity.getSpecialTools());
+        dto.setJobSteps(entity.getJobStepsList());
+        dto.setSharepointId(entity.getSharepointId());
+        dto.setLocalUuid(entity.getLocalUuid());
+        dto.setWorkRequestSharepointId(entity.getWorkRequestSharepointId());
+        dto.setTimeSubmitted(entity.getTimeSubmitted());
+        dto.setSubmitterName(entity.getSubmitterName());
+        dto.setSubmitterEmail(entity.getSubmitterEmail());
+        dto.setSubmitterPhone(entity.getSubmitterPhone());
+        dto.setSubmitterCompany(entity.getSubmitterCompany());
         return dto;
     }
 
-    public Jha toEntity(JhaDto jhaDto) {
-        if (jhaDto == null) {
-            return null;
-        }
-
+    public Jha convertToEntity(JhaDto dto) {
+        if (dto == null) return null;
         Jha entity = new Jha();
-        entity.setId(jhaDto.getId());
-        entity.setJobName(jhaDto.getJobName());
-        entity.setApplicability(jhaDto.getApplicability());
-        entity.setAnalysisBy(jhaDto.getAnalysisBy());
-        entity.setReviewedBy(jhaDto.getReviewedBy());
-        entity.setApprovedBy(jhaDto.getApprovedBy());
-        entity.setDate(jhaDto.getDate() != null ? LocalDate.parse(jhaDto.getDate(), DATE_FORMATTER) : null);
-        entity.setPpe(jhaDto.getPpe());
-        entity.setLoto(jhaDto.getLoto());
-        entity.setConfinedSpace(jhaDto.getConfinedSpace());
-        entity.setHazCom(jhaDto.getHazCom());
-        entity.setHandAndPowerTools(jhaDto.getHandAndPowerTools());
-        entity.setSpecialTools(jhaDto.getSpecialTools());
-        entity.setSharepointId(jhaDto.getSharepointId());
-
-        // Serialize jobSteps list into JSON text
-        if (jhaDto.getJobSteps() != null && !jhaDto.getJobSteps().isEmpty()) {
+        entity.setJobName(dto.getJobName());
+        entity.setApplicability(dto.getApplicability());
+        entity.setAnalysisBy(dto.getAnalysisBy());
+        entity.setReviewedBy(dto.getReviewedBy());
+        entity.setApprovedBy(dto.getApprovedBy());
+        if (dto.getDate() != null && !dto.getDate().isEmpty()) {
             try {
-                entity.setJobSteps(jhaDto.getJobSteps());
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to serialize jobSteps list", e);
-            }
+                entity.setDate(LocalDate.parse(dto.getDate()));
+            } catch (Exception ignored) {}
         }
-
+        entity.setPpe(dto.getPpe());
+        entity.setLoto(dto.getLoto());
+        entity.setConfinedSpace(dto.getConfinedSpace());
+        entity.setHazCom(dto.getHazCom());
+        entity.setHandAndPowerTools(dto.getHandAndPowerTools());
+        entity.setSpecialTools(dto.getSpecialTools());
+        if (dto.getJobSteps() != null) {
+            entity.setJobStepsList(dto.getJobSteps());
+        }
+        entity.setSharepointId(dto.getSharepointId());
         return entity;
+    }
+
+    public NgJhaDto convertToNgDto(Jha entity) {
+        if (entity == null) return null;
+        NgJhaDto dto = new NgJhaDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setNote(entity.getNote());
+        dto.setJobName(entity.getJobName());
+        dto.setApplicability(entity.getApplicability());
+        dto.setAnalysisBy(entity.getAnalysisBy());
+        dto.setReviewedBy(entity.getReviewedBy());
+        dto.setApprovedBy(entity.getApprovedBy());
+        dto.setDate(entity.getDate() != null ? entity.getDate().toString() : null);
+        dto.setPpe(entity.getPpe());
+        dto.setLoto(entity.getLoto());
+        dto.setConfinedSpace(entity.getConfinedSpace());
+        dto.setHazCom(entity.getHazCom());
+        dto.setHandAndPowerTools(entity.getHandAndPowerTools());
+        dto.setSpecialTools(entity.getSpecialTools());
+        dto.setJobSteps(entity.getJobStepsList());
+        dto.setSharepointId(entity.getSharepointId());
+        dto.setLocalUuid(entity.getLocalUuid());
+        dto.setWorkRequestSharepointId(entity.getWorkRequestSharepointId());
+        if (entity.getWorkRequest() != null) {
+            dto.setWorkRequestId(entity.getWorkRequest().getId());
+        }
+        dto.setTimeSubmitted(entity.getTimeSubmitted());
+        dto.setSubmitterName(entity.getSubmitterName());
+        dto.setSubmitterEmail(entity.getSubmitterEmail());
+        dto.setSubmitterPhone(entity.getSubmitterPhone());
+        dto.setSubmitterCompany(entity.getSubmitterCompany());
+        if (entity.getPermitStatus() != null && entity.getPermitStatus().getName() != null) {
+            dto.setStatus(entity.getPermitStatus().getName());
+        }
+        return dto;
+    }
+
+    public Jha convertNgDtoToEntity(NgJhaDto dto) {
+        if (dto == null) return null;
+        Jha entity = new Jha();
+        if (dto.getId() != null && dto.getId() != 0) {
+            entity = jhaRepo.findById(dto.getId()).orElse(new Jha());
+        }
+        entity.setId(dto.getId());
+        entity.setName(dto.getName());
+        entity.setNote(dto.getNote());
+        entity.setJobName(dto.getJobName());
+        entity.setApplicability(dto.getApplicability());
+        entity.setAnalysisBy(dto.getAnalysisBy());
+        entity.setReviewedBy(dto.getReviewedBy());
+        entity.setApprovedBy(dto.getApprovedBy());
+        if (dto.getDate() != null && !dto.getDate().isEmpty()) {
+            try {
+                entity.setDate(LocalDate.parse(dto.getDate()));
+            } catch (Exception ignored) {}
+        }
+        entity.setPpe(dto.getPpe());
+        entity.setLoto(dto.getLoto());
+        entity.setConfinedSpace(dto.getConfinedSpace());
+        entity.setHazCom(dto.getHazCom());
+        entity.setHandAndPowerTools(dto.getHandAndPowerTools());
+        entity.setSpecialTools(dto.getSpecialTools());
+        if (dto.getJobSteps() != null) {
+            entity.setJobStepsList(dto.getJobSteps());
+        }
+        entity.setSharepointId(dto.getSharepointId());
+        entity.setLocalUuid(dto.getLocalUuid());
+        entity.setWorkRequestSharepointId(dto.getWorkRequestSharepointId());
+        return entity;
+    }
+
+    /**
+     * Maps SharePoint DTO to a new Jha entity (used by JhaSyncService).
+     */
+    public Jha fromSharePointDto(JhaDto spDto) {
+        if (spDto == null) return null;
+        Jha entity = new Jha();
+        entity.setJobName(spDto.getJobName());
+        entity.setApplicability(spDto.getApplicability());
+        entity.setAnalysisBy(spDto.getAnalysisBy());
+        entity.setReviewedBy(spDto.getReviewedBy());
+        entity.setApprovedBy(spDto.getApprovedBy());
+        if (spDto.getDate() != null && !spDto.getDate().isEmpty()) {
+            try {
+                entity.setDate(LocalDate.parse(spDto.getDate()));
+            } catch (Exception ignored) {}
+        }
+        entity.setPpe(spDto.getPpe());
+        entity.setLoto(spDto.getLoto());
+        entity.setConfinedSpace(spDto.getConfinedSpace());
+        entity.setHazCom(spDto.getHazCom());
+        entity.setHandAndPowerTools(spDto.getHandAndPowerTools());
+        entity.setSpecialTools(spDto.getSpecialTools());
+        if (spDto.getJobSteps() != null) {
+            entity.setJobStepsList(spDto.getJobSteps());
+        }
+        entity.setSharepointId(spDto.getSharepointId());
+        entity.setLocalUuid(spDto.getLocalUuid());
+        entity.setWorkRequestSharepointId(spDto.getWorkRequestSharepointId());
+        entity.setTimeSubmitted(spDto.getTimeSubmitted());
+        entity.setSubmitterName(spDto.getSubmitterName());
+        entity.setSubmitterEmail(spDto.getSubmitterEmail());
+        entity.setSubmitterPhone(spDto.getSubmitterPhone());
+        entity.setSubmitterCompany(spDto.getSubmitterCompany());
+        return entity;
+    }
+
+    /**
+     * Updates an existing entity's fields from SharePoint data (for sync updates).
+     */
+    public void updateEntityFromSharePoint(Jha entity, JhaDto spDto) {
+        if (entity == null || spDto == null) return;
+        entity.setJobName(spDto.getJobName());
+        entity.setApplicability(spDto.getApplicability());
+        entity.setAnalysisBy(spDto.getAnalysisBy());
+        entity.setReviewedBy(spDto.getReviewedBy());
+        entity.setApprovedBy(spDto.getApprovedBy());
+        if (spDto.getDate() != null && !spDto.getDate().isEmpty()) {
+            try {
+                entity.setDate(LocalDate.parse(spDto.getDate()));
+            } catch (Exception ignored) {}
+        }
+        entity.setPpe(spDto.getPpe());
+        entity.setLoto(spDto.getLoto());
+        entity.setConfinedSpace(spDto.getConfinedSpace());
+        entity.setHazCom(spDto.getHazCom());
+        entity.setHandAndPowerTools(spDto.getHandAndPowerTools());
+        entity.setSpecialTools(spDto.getSpecialTools());
+        if (spDto.getJobSteps() != null) {
+            entity.setJobStepsList(spDto.getJobSteps());
+        }
+        if (entity.getSubmitterName() == null && spDto.getSubmitterName() != null) {
+            entity.setSubmitterName(spDto.getSubmitterName());
+        }
+        if (entity.getSubmitterEmail() == null && spDto.getSubmitterEmail() != null) {
+            entity.setSubmitterEmail(spDto.getSubmitterEmail());
+        }
+        if (entity.getSubmitterPhone() == null && spDto.getSubmitterPhone() != null) {
+            entity.setSubmitterPhone(spDto.getSubmitterPhone());
+        }
+        if (entity.getSubmitterCompany() == null && spDto.getSubmitterCompany() != null) {
+            entity.setSubmitterCompany(spDto.getSubmitterCompany());
+        }
+        if (entity.getLocalUuid() == null && spDto.getLocalUuid() != null) {
+            entity.setLocalUuid(spDto.getLocalUuid());
+        }
+        if (entity.getTimeSubmitted() == null && spDto.getTimeSubmitted() != null) {
+            entity.setTimeSubmitted(spDto.getTimeSubmitted());
+        }
+    }
+
+    @Override
+    public ModelMapper getMapper() {
+        return modelMapper;
     }
 }

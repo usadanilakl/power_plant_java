@@ -1,105 +1,29 @@
 package com.dk_power.power_plant_java.sevice.sharepoint;
 
-import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
-import com.dk_power.power_plant_java.dto.permits.JhaDto;
-import com.dk_power.power_plant_java.dto.permits.SpaceDto;
-import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * Thin facade providing certificate-first / PA-V2-fallback execution.
+ * Entity-specific operations have been moved to adapters
+ * (WorkRequestSharePointAdapter, JhaSharePointAdapter).
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SharepointAccessService {
 
+    @Getter
     private final SharePointCertificateAccess certificateAccess;
-    private final PowerAutomateV2Access v2Access;
 
-    // --- WorkRequest ---
-
-    public List<WorkRequestDto> getAllWorkRequests() {
-        return executeWithFallback(
-                () -> certificateAccess.getAllWorkRequests(),
-                () -> v2Access.getAllWorkRequests(),
-                "getAllWorkRequests"
-        );
-    }
-
-    public String createWorkRequest(WorkRequestDto dto) {
-        return executeWithFallback(
-                () -> certificateAccess.createWorkRequest(dto),
-                () -> v2Access.createWorkRequest(dto),
-                "createWorkRequest"
-        );
-    }
-
-    public void archiveWorkRequest(String sharepointId) {
-        executeWithFallback(
-                () -> { certificateAccess.archiveWorkRequest(sharepointId); return null; },
-                () -> { v2Access.archiveWorkRequest(sharepointId); return null; },
-                "archiveWorkRequest"
-        );
-    }
-
-    public void changeWorkRequestStatus(String sharepointId, String status) {
-        executeWithFallback(
-                () -> { certificateAccess.changeWorkRequestStatus(sharepointId, status); return null; },
-                () -> { v2Access.changeWorkRequestStatus(sharepointId, status); return null; },
-                "changeWorkRequestStatus"
-        );
-    }
-
-    // --- JHA ---
-
-    public List<JhaDto> getAllJhas() {
-        return executeWithFallback(
-                () -> certificateAccess.getAllJhas(),
-                () -> v2Access.getAllJhas(),
-                "getAllJhas"
-        );
-    }
-
-    public String createJha(JhaDto dto) {
-        return executeWithFallback(
-                () -> certificateAccess.createJha(dto),
-                () -> v2Access.createJha(dto),
-                "createJha"
-        );
-    }
-
-    public void updateJha(String sharepointId, JhaDto dto) {
-        executeWithFallback(
-                () -> { certificateAccess.updateJha(sharepointId, dto); return null; },
-                () -> { v2Access.updateJha(sharepointId, dto); return null; },
-                "updateJha"
-        );
-    }
-
-    // --- Attachment ---
-
-    public void addAttachment(String entityType, String sharepointId, PaAttachmentDto attachment) {
-        executeWithFallback(
-                () -> { certificateAccess.addAttachment(entityType, sharepointId, attachment); return null; },
-                () -> { v2Access.addAttachment(entityType, sharepointId, attachment); return null; },
-                "addAttachment"
-        );
-    }
-
-    // --- Confined Space ---
-
-    public List<SpaceDto> getAllSpaces() {
-        return executeWithFallback(
-                () -> certificateAccess.getAllSpaces(),
-                () -> v2Access.getAllSpaces(),
-                "getAllSpaces"
-        );
-    }
-
-    private <T> T executeWithFallback(Supplier<T> primary, Supplier<T> fallback, String operationName) {
+    /**
+     * Execute an operation with certificate access first, falling back to Power Automate V2.
+     */
+    public <T> T executeWithFallback(Supplier<T> primary, Supplier<T> fallback, String operationName) {
         if (certificateAccess.isAvailable()) {
             try {
                 T result = primary.get();

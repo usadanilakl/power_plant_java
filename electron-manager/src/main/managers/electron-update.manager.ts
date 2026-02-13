@@ -232,9 +232,12 @@ export class ElectronUpdateManager {
   }
 
   /**
-   * Apply the staged update by writing an update.cmd batch script and launching it.
-   * The batch script waits for this Electron process to exit, extracts the ZIP over
-   * the install directory, copies electron-version.json, and relaunches the app.
+   * Apply the staged update by writing batch/PS scripts and launching them.
+   * Three scripts are generated:
+   *   1. update.cmd         — main orchestrator (waits for PID, calls extract, handles elevation, relaunches)
+   *   2. update-extract.cmd — just the extraction + success marker (can run normal or elevated)
+   *   3. update-elevate.ps1 — re-launches update-extract.cmd with admin privileges (UAC)
+   *
    * Returns success — the caller must then stop Spring Boot and call app.exit().
    */
   public applyUpdate(): IpcResult {
@@ -246,57 +249,170 @@ export class ElectronUpdateManager {
     const exePath = app.getPath('exe');
     const installDir = path.dirname(exePath);
     const electronPid = process.pid;
-    const cmdPath = path.join(this.stagingDir, 'update.cmd');
 
-    // Write the batch script — uses PID to detect exit (avoids issues with spaces in exe name)
-    const script = `@echo off
+    const cmdPath = path.join(this.stagingDir, 'update.cmd');
+    const extractCmdPath = path.join(this.stagingDir, 'update-extract.cmd');
+    const elevatePsPath = path.join(this.stagingDir, 'update-elevate.ps1');
+    const markerPath = path.join(this.stagingDir, '.update-ok');
+    const stagingVersionPath = path.join(this.stagingDir, 'electron-version.json');
+    const logFile = path.join(this.stagingDir, 'update.log');
+
+    // Escape single quotes for PowerShell string literals
+    const psZipPath = zipPath.replace(/'/g, "''");
+    const psInstallDir = installDir.replace(/'/g, "''");
+
+    // --- Script 1: update-extract.cmd ---
+    // Does only the extraction + writes a marker file on success.
+    // Can be run as current user or elevated via UAC.
+    const extractScript = `@echo off
+echo Extracting update to: "${installDir}"
+powershell -NoProfile -Command "Expand-Archive -Path '${psZipPath}' -DestinationPath '${psInstallDir}' -Force"
+if not errorlevel 1 (
+    echo OK > "${markerPath}"
+    echo Extraction successful.
+) else (
+    echo Extraction FAILED.
+)
+exit /b %errorlevel%
+`;
+
+    // --- Script 2: update-elevate.ps1 ---
+    // Runs update-extract.cmd with admin privileges (triggers UAC prompt).
+    const elevateScript = `param([string]$ScriptPath)
+Start-Process -FilePath 'cmd.exe' -ArgumentList "/c \`"$ScriptPath\`"" -Verb RunAs -Wait
+`;
+
+    // --- Script 3: update.cmd (main orchestrator) ---
+    const mainScript = `@echo off
 setlocal enabledelayedexpansion
 title DK Power Manager - Updating...
 
-echo Waiting for DK Power Manager (PID ${electronPid}) to exit...
+set "LOGFILE=${logFile}"
+set "EXTRACT_CMD=${extractCmdPath}"
+set "ELEVATE_PS=${elevatePsPath}"
+set "MARKER=${markerPath}"
+
+echo ============================================ >> "%LOGFILE%"
+echo [%date% %time%] Update script started >> "%LOGFILE%"
+echo [%date% %time%] PID: ${electronPid} >> "%LOGFILE%"
+echo [%date% %time%] ZIP: ${zipPath} >> "%LOGFILE%"
+echo [%date% %time%] Install: ${installDir} >> "%LOGFILE%"
+
+echo Waiting for DK Power Manager to exit...
+
+set /a WAIT_COUNT=0
 :WAIT_LOOP
 tasklist /fi "PID eq ${electronPid}" 2>nul | find "${electronPid}" >nul
 if not errorlevel 1 (
+    set /a WAIT_COUNT+=1
+    if !WAIT_COUNT! GEQ 60 (
+        echo [%date% %time%] WARNING: Timeout waiting for PID ${electronPid} >> "%LOGFILE%"
+        echo WARNING: Timed out waiting for app to exit. Proceeding...
+        goto EXTRACT
+    )
     timeout /t 1 /nobreak >nul
     goto WAIT_LOOP
 )
+echo [%date% %time%] Process exited >> "%LOGFILE%"
 
+:EXTRACT
 REM Extra wait for file handles to release
 timeout /t 2 /nobreak >nul
 
-echo Extracting update...
-powershell -NoProfile -Command "Expand-Archive -Path '${zipPath.replace(/'/g, "''")}' -DestinationPath '${installDir.replace(/'/g, "''")}' -Force"
-
-if errorlevel 1 (
-    echo ERROR: Failed to extract update. The application may need manual repair.
+REM Verify ZIP still exists
+if not exist "${zipPath}" (
+    echo [%date% %time%] ERROR: ZIP not found >> "%LOGFILE%"
+    echo.
+    echo ERROR: Update ZIP not found at:
+    echo   ${zipPath}
+    echo.
+    echo It may have been deleted during app shutdown.
+    echo Log: "%LOGFILE%"
+    echo.
     echo Press any key to exit...
     pause >nul
     exit /b 1
 )
 
+echo Extracting update...
+echo [%date% %time%] Attempting extraction >> "%LOGFILE%"
+
+REM Delete old marker if present
+if exist "%MARKER%" del "%MARKER%" 2>nul
+
+REM Try extraction as current user
+call "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1
+
+if exist "%MARKER%" (
+    echo [%date% %time%] Extraction succeeded >> "%LOGFILE%"
+    goto EXTRACTION_OK
+)
+
+REM Standard extraction failed - try with elevation (UAC)
+echo [%date% %time%] Standard extraction failed, requesting elevation >> "%LOGFILE%"
+echo.
+echo Extraction failed (likely permissions).
+echo Requesting admin privileges - please click Yes on the UAC prompt...
+echo.
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ELEVATE_PS%" -ScriptPath "%EXTRACT_CMD%" >> "%LOGFILE%" 2>&1
+
+if exist "%MARKER%" (
+    echo [%date% %time%] Elevated extraction succeeded >> "%LOGFILE%"
+    goto EXTRACTION_OK
+)
+
+REM Both attempts failed
+echo [%date% %time%] ERROR: All extraction attempts failed >> "%LOGFILE%"
+echo.
+echo ERROR: Update extraction failed.
+echo.
+echo The update ZIP is preserved. You can retry by clicking
+echo "Apply Update" again from the Sync ^& Updates page.
+echo.
+echo Log: "%LOGFILE%"
+echo.
+echo Press any key to exit...
+pause >nul
+exit /b 1
+
+:EXTRACTION_OK
+del "%MARKER%" 2>nul
+echo [%date% %time%] Extraction complete >> "%LOGFILE%"
+
 REM Copy version tracking file
-if exist "${path.join(this.stagingDir, 'electron-version.json').replace(/'/g, "''")}" (
-    copy /y "${path.join(this.stagingDir, 'electron-version.json')}" "${path.join(this.workingDir, 'electron-version.json')}" >nul
+if exist "${stagingVersionPath}" (
+    copy /y "${stagingVersionPath}" "${this.versionFilePath}" >nul
+    echo [%date% %time%] Version file copied >> "%LOGFILE%"
 )
 
 REM Cleanup staging directory
 echo Cleaning up...
 rmdir /s /q "${this.stagingDir}" 2>nul
 
-echo Update applied successfully. Relaunching...
+echo.
+echo Update applied successfully!
+echo Relaunching DK Power Manager...
+echo [%date% %time%] Relaunching >> "%LOGFILE%"
+timeout /t 2 /nobreak >nul
 start "" "${exePath}"
 
 exit /b 0
 `;
 
     try {
-      fs.writeFileSync(cmdPath, script, { encoding: 'utf8' });
+      // Write all scripts to staging
+      fs.writeFileSync(extractCmdPath, extractScript, { encoding: 'utf8' });
+      fs.writeFileSync(elevatePsPath, elevateScript, { encoding: 'utf8' });
+      fs.writeFileSync(cmdPath, mainScript, { encoding: 'utf8' });
 
-      // Launch the batch script detached
-      const child = spawn('cmd.exe', ['/c', cmdPath], {
+      // Launch detached with proper quoting for paths with spaces.
+      // windowsVerbatimArguments prevents Node from re-escaping our quotes.
+      const child = spawn('cmd.exe', ['/c', `"${cmdPath}"`], {
         detached: true,
         stdio: 'ignore',
-        windowsHide: false // Show the update window so user sees progress
+        windowsHide: false,
+        windowsVerbatimArguments: true
       });
       child.unref();
 
@@ -327,16 +443,39 @@ exit /b 0
     return '';
   }
 
-  /** Clean up staging directory (call on startup) */
+  /**
+   * Clean up staging directory on startup.
+   * Only fully removes staging if the update was successfully applied
+   * (staging checksum matches working dir checksum). Otherwise, preserves
+   * the staged ZIP so the user can retry without re-downloading.
+   */
   public cleanupStaging(): void {
-    if (fs.existsSync(this.stagingDir)) {
+    if (!fs.existsSync(this.stagingDir)) return;
+
+    const stagingVersionPath = path.join(this.stagingDir, 'electron-version.json');
+
+    // If both version files exist and checksums match → update was applied → clean up
+    if (fs.existsSync(stagingVersionPath) && fs.existsSync(this.versionFilePath)) {
       try {
-        fs.rmSync(this.stagingDir, { recursive: true, force: true });
-        console.log('Cleaned up electron update staging directory');
-      } catch (err) {
-        console.warn('Failed to clean up staging directory:', err);
-      }
+        const staged: ElectronVersionRecord = JSON.parse(fs.readFileSync(stagingVersionPath, 'utf8'));
+        const current: ElectronVersionRecord = JSON.parse(fs.readFileSync(this.versionFilePath, 'utf8'));
+        if (staged.checksum === current.checksum) {
+          fs.rmSync(this.stagingDir, { recursive: true, force: true });
+          console.log('Cleaned up staging directory (update applied successfully)');
+          return;
+        }
+      } catch { /* fall through to preserve staging */ }
     }
+
+    // Update not yet applied — preserve ZIP for retry, clean up old scripts
+    const filesToClean = ['update.cmd', 'update-extract.cmd', 'update-elevate.ps1', '.update-ok'];
+    for (const file of filesToClean) {
+      try {
+        const fp = path.join(this.stagingDir, file);
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      } catch { /* ignore */ }
+    }
+    console.log('Staging preserved (update not yet applied); old scripts cleaned');
   }
 
   /** Find the staged ZIP file path, or null if none */

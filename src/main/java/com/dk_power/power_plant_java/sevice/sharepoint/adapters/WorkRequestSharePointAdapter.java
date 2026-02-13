@@ -1,0 +1,213 @@
+package com.dk_power.power_plant_java.sevice.sharepoint.adapters;
+
+import com.dk_power.power_plant_java.clients.PowerAutomateV2Client;
+import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
+import com.dk_power.power_plant_java.dto.pa.PaRequestDto;
+import com.dk_power.power_plant_java.dto.pa.PaResponseDto;
+import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointCertificateAccess;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointDateUtils;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.dk_power.power_plant_java.sevice.sharepoint.SharePointDateUtils.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WorkRequestSharePointAdapter {
+
+    private final SharepointAccessService spService;
+    private final SharePointCertificateAccess certAccess;
+    private final PowerAutomateV2Client v2Client;
+
+    private static final String LIST_TITLE = "Work Requests";
+
+    public List<WorkRequestDto> getAll() {
+        return spService.executeWithFallback(
+                this::certGetAll,
+                this::paGetAll,
+                "getAll WorkRequests"
+        );
+    }
+
+    public String create(WorkRequestDto dto) {
+        return spService.executeWithFallback(
+                () -> certCreate(dto),
+                () -> paCreate(dto),
+                "create WorkRequest"
+        );
+    }
+
+    public void archive(String sharepointId) {
+        changeStatus(sharepointId, "Archived");
+    }
+
+    public void changeStatus(String sharepointId, String status) {
+        spService.executeWithFallback(
+                () -> { certChangeStatus(sharepointId, status); return null; },
+                () -> { paChangeStatus(sharepointId, status); return null; },
+                "changeWorkRequestStatus"
+        );
+    }
+
+    public void addAttachment(String sharepointId, PaAttachmentDto attachment) {
+        spService.executeWithFallback(
+                () -> { certAccess.addListItemAttachment(LIST_TITLE, sharepointId, attachment.getFileName(),
+                        Base64.getDecoder().decode(attachment.getBase64Content())); return null; },
+                () -> {
+                    PaRequestDto req = new PaRequestDto();
+                    req.setActionType("addAttachment");
+                    req.setId(sharepointId);
+                    req.setData(Map.of());
+                    req.setAttachments(List.of(attachment));
+                    v2Client.workRequest(req);
+                    return null;
+                },
+                "addAttachment WorkRequest"
+        );
+    }
+
+    // ====================== Certificate path ======================
+
+    private List<WorkRequestDto> certGetAll() {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
+    private String certCreate(WorkRequestDto dto) {
+        Map<String, Object> body = workRequestToMap(dto, true);
+        return certAccess.createListItem(LIST_TITLE, body);
+    }
+
+    private void certChangeStatus(String sharepointId, String status) {
+        Map<String, Object> body = Map.of("Status", status);
+        certAccess.updateListItem(LIST_TITLE, sharepointId, body);
+    }
+
+    // ====================== Power Automate path ======================
+
+    private List<WorkRequestDto> paGetAll() {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("getAll");
+        PaResponseDto resp = v2Client.workRequest(req);
+        if (!resp.isSuccess() || resp.getData() == null) {
+            log.warn("[WR-Adapter] PA getAll failed: {}", resp.getMessage());
+            return Collections.emptyList();
+        }
+        return resp.getData().stream().map(this::mapFromPaResponse).collect(Collectors.toList());
+    }
+
+    private String paCreate(WorkRequestDto dto) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("create");
+        req.setData(workRequestToMap(dto, false));
+        req.setAttachments(Collections.emptyList());
+        PaResponseDto resp = v2Client.workRequest(req);
+        if (!resp.isSuccess()) {
+            throw new RuntimeException("PA-V2 create WorkRequest failed: " + resp.getMessage());
+        }
+        return resp.getId();
+    }
+
+    private void paChangeStatus(String sharepointId, String status) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("update");
+        req.setId(sharepointId);
+        req.setData(Map.of("Status", status));
+        PaResponseDto resp = v2Client.workRequest(req);
+        if (!resp.isSuccess()) {
+            log.error("[WR-Adapter] PA update status to '{}' failed: {}", status, resp.getMessage());
+        }
+    }
+
+    // ====================== Column mapping ======================
+
+    private WorkRequestDto mapFromSharePoint(JsonNode item) {
+        WorkRequestDto dto = new WorkRequestDto();
+        dto.setSharepointId(item.path("ID").asText(item.path("Id").asText(null)));
+        String rawDateOfWork = item.path("DateOfWork").asText(null);
+        String[] centralDateAndTime = fromSharePointDateTime(rawDateOfWork);
+        dto.setDateOfWorkToBePerformed(centralDateAndTime[0]);
+        dto.setTimeOfWorkToBePerformed(centralDateAndTime[1]);
+        dto.setRequestedBy(item.path("WorkRequestedBy").asText(null));
+        dto.setCompany(item.path("Company").asText(null));
+        dto.setLocation(item.path("LocationOfWork").asText(null));
+        dto.setAffectedEquipment(item.path("AffectedEquipment").asText(null));
+        dto.setWorkScope(item.path("Title").asText(null));
+        dto.setBooleanIsLotoRequired(item.path("IsLOTORequired").asBoolean(false));
+        dto.setBooleanIsHotWorkRequired(item.path("IsHotWorkRequired").asBoolean(false));
+        dto.setBooleanIsConfinedSpaceEntryRequired(item.path("IsConfinedSpaceEntryRequired").asBoolean(false));
+        dto.setForeman(item.path("ForemanName").asText(null));
+        dto.setFireWatch(item.path("FireWatchName").asText(null));
+        dto.setSpace(item.path("SpaceToBeEntered").asText(null));
+        dto.setStatus(item.path("Status").asText(null));
+        dto.setLocalUuid(item.path("PwaId").asText(null));
+        dto.setSubmitterName(item.path("SubmitterName").asText(null));
+        dto.setSubmitterEmail(item.path("SubmitterEmail").asText(null));
+        dto.setSubmitterPhone(item.path("SubmitterPhone").asText(null));
+        dto.setSubmitterCompany(item.path("SubmitterCompany").asText(null));
+        dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
+        return dto;
+    }
+
+    private WorkRequestDto mapFromPaResponse(Map<String, Object> map) {
+        WorkRequestDto dto = new WorkRequestDto();
+        String dateTime = str(map, "DateOfWork");
+        String[] centralDateAndTime = fromSharePointDateTime(dateTime);
+        dto.setDateOfWorkToBePerformed(centralDateAndTime[0]);
+        dto.setTimeOfWorkToBePerformed(centralDateAndTime[1] != null ? centralDateAndTime[1] : "");
+        dto.setRequestedBy(str(map, "WorkRequestedBy"));
+        dto.setCompany(str(map, "Company"));
+        dto.setLocation(str(map, "LocationOfWork"));
+        dto.setAffectedEquipment(str(map, "AffectedEquipment"));
+        dto.setWorkScope(str(map, "WorkScope"));
+        dto.setIsLotoRequired(str(map, "IsLOTORequired"));
+        dto.setIsHotWorkRequired(str(map, "IsHotWorkRequired"));
+        dto.setIsConfinedSpaceEntryRequired(str(map, "IsConfinedSpaceEntryRequired"));
+        dto.setForeman(str(map, "ForemanName"));
+        dto.setFireWatch(str(map, "FireWatchName"));
+        dto.setSpace(str(map, "SpaceToBeEntered"));
+        dto.setSharepointId(str(map, "ID"));
+        dto.setStatus(str(map, "Status"));
+        dto.setLocalUuid(str(map, "PwaId"));
+        return dto;
+    }
+
+    /**
+     * Convert WorkRequestDto to SharePoint column map.
+     * @param useCentralTime true for cert (Central ISO), false for PA (UTC ISO)
+     */
+    private Map<String, Object> workRequestToMap(WorkRequestDto dto, boolean useCentralTime) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("PwaId", orEmpty(dto.getLocalUuid()));
+        map.put("DateOfWork", useCentralTime
+                ? toCentralIso(dto.getDateOfWorkToBePerformed(), dto.getTimeOfWorkToBePerformed())
+                : toUtcIso(dto.getDateOfWorkToBePerformed(), dto.getTimeOfWorkToBePerformed()));
+        map.put("WorkRequestedBy", orEmpty(dto.getRequestedBy()));
+        map.put("Company", orEmpty(dto.getCompany()));
+        map.put("LocationOfWork", orEmpty(dto.getLocation()));
+        map.put("AffectedEquipment", orEmpty(dto.getAffectedEquipment()));
+        map.put("Title", orEmpty(dto.getWorkScope()));
+        map.put("WorkScope", orEmpty(dto.getWorkScope()));
+        map.put("IsLOTORequired", Boolean.TRUE.equals(dto.getIsLotoRequired()));
+        map.put("IsHotWorkRequired", Boolean.TRUE.equals(dto.getIsHotWorkRequired()));
+        map.put("IsConfinedSpaceEntryRequired", Boolean.TRUE.equals(dto.getIsConfinedSpaceEntryRequired()));
+        map.put("ForemanName", orEmpty(dto.getForeman()));
+        map.put("FireWatchName", orEmpty(dto.getFireWatch()));
+        map.put("SpaceToBeEntered", orEmpty(dto.getSpace()));
+        map.put("Status", dto.getStatus() != null ? dto.getStatus() : "Active");
+        map.put("SubmitterName", orEmpty(dto.getSubmitterName()));
+        map.put("SubmitterEmail", orEmpty(dto.getSubmitterEmail()));
+        map.put("SubmitterPhone", orEmpty(dto.getSubmitterPhone()));
+        map.put("SubmitterCompany", orEmpty(dto.getSubmitterCompany()));
+        map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
+        return map;
+    }
+}

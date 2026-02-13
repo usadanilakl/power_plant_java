@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import { MainWindowManager } from './managers/main-window.manager';
+import { WindowLayoutManager } from './managers/window-layout.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
 import { getWorkingDir, ensureWorkingDir, ensureTessdata, provisionDefaultConfigs } from './paths';
@@ -37,7 +38,15 @@ export default class App {
   }
 
   private static async onReady(): Promise<void> {
-    App.mainWindowManager = new MainWindowManager(App.isDevelopmentMode());
+    // Ensure working dir and config files exist BEFORE managers are created
+    // (managers read configs in their constructors)
+    ensureWorkingDir();
+    provisionDefaultConfigs();
+
+    // Create layout manager (reads window-layout.json from working dir)
+    const layoutManager = new WindowLayoutManager();
+
+    App.mainWindowManager = new MainWindowManager(App.isDevelopmentMode(), layoutManager);
     App.mainWindow = App.mainWindowManager.getWindow();
 
     if (!App.mainWindow) {
@@ -46,13 +55,8 @@ export default class App {
       return;
     }
 
-    // Ensure working dir and config files exist BEFORE managers are created
-    // (managers read configs in their constructors)
-    ensureWorkingDir();
-    provisionDefaultConfigs();
-
     // Set up IPC handlers
-    App.ipcHandlers = new IpcHandlers(App.mainWindow);
+    App.ipcHandlers = new IpcHandlers(App.mainWindow, layoutManager);
     App.ipcHandlers.register();
 
     // Create menu
@@ -194,6 +198,21 @@ export default class App {
             label: 'Open Data Folder',
             click: () => {
               shell.openPath(getWorkingDir());
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Save Window Layout',
+            click: () => {
+              if (App.ipcHandlers) {
+                App.ipcHandlers.saveAllWindowLayouts();
+                dialog.showMessageBox(App.mainWindow!, {
+                  type: 'info',
+                  title: 'Layout Saved',
+                  message: 'Window layout has been saved.',
+                  detail: 'Window positions and sizes will be restored on next launch.'
+                });
+              }
             }
           },
           { type: 'separator' },

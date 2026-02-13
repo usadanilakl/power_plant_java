@@ -6,11 +6,10 @@ import com.dk_power.power_plant_java.dto.pwa.PwaJhaDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.entities.permits.Jha;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
-import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
-import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,7 @@ import java.util.Optional;
 @Slf4j
 public class PwaJhaService {
 
-    private final SharepointAccessService sharepointAccess;
+    private final JhaSharePointAdapter jhaAdapter;
     private final JhaRepo jhaRepo;
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
@@ -48,7 +47,7 @@ public class PwaJhaService {
                 .format(DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm a"));
         entity.setTimeSubmitted(timeSubmitted);
         dto.setTimeSubmitted(timeSubmitted);
-        entity.setDeleted(false);
+        entity.setCreatedBy(dto.getSubmitterName() != null ? dto.getSubmitterName() : "PWA");
 
         // Link to WorkRequest
         linkToWorkRequest(entity, dto);
@@ -83,7 +82,7 @@ public class PwaJhaService {
 
         try {
             JhaDto spDto = convertToSharePointDto(dto);
-            sharepointId = sharepointAccess.createJha(spDto);
+            sharepointId = jhaAdapter.create(spDto);
 
             if (sharepointId != null) {
                 entity.setSharepointId(sharepointId);
@@ -96,7 +95,7 @@ public class PwaJhaService {
                 if (dto.getAttachments() != null) {
                     for (PaAttachmentDto att : dto.getAttachments()) {
                         try {
-                            sharepointAccess.addAttachment("Jha", sharepointId, att);
+                            jhaAdapter.addAttachment(sharepointId, att);
                         } catch (Exception attEx) {
                             log.warn("[PWA JHA Submit] Failed to upload attachment {}: {}",
                                     att.getFileName(), attEx.getMessage());
@@ -146,7 +145,7 @@ public class PwaJhaService {
         entity.setHandAndPowerTools(dto.getHandAndPowerTools());
         entity.setSpecialTools(dto.getSpecialTools());
         if (dto.getJobSteps() != null) {
-            entity.setJobSteps(dto.getJobSteps());
+            entity.setJobStepsList(dto.getJobSteps());
         }
         return entity;
     }

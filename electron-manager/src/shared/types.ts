@@ -269,6 +269,19 @@ export interface SyncExecuteProgress {
   error?: string;
 }
 
+// Window Layout
+export interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isMaximized: boolean;
+}
+
+export interface WindowLayoutConfig {
+  [windowId: string]: WindowBounds;
+}
+
 // Settings
 export interface AppSettings {
   springBoot: {

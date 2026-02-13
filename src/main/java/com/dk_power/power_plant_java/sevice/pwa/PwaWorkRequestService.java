@@ -10,7 +10,7 @@ import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
-import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +27,7 @@ import java.util.Optional;
 @Slf4j
 public class PwaWorkRequestService {
 
-    private final SharepointAccessService sharepointAccess;
+    private final WorkRequestSharePointAdapter wrAdapter;
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
@@ -97,7 +97,7 @@ public class PwaWorkRequestService {
             }
 
             WorkRequestDto spDto = convertToSharePointDto(dto);
-            sharepointId = sharepointAccess.createWorkRequest(spDto);
+            sharepointId = wrAdapter.create(spDto);
 
             if (sharepointId != null) {
                 entity.setSharepointId(sharepointId);
@@ -110,7 +110,7 @@ public class PwaWorkRequestService {
                 if (dto.getAttachments() != null) {
                     for (PaAttachmentDto att : dto.getAttachments()) {
                         try {
-                            sharepointAccess.addAttachment("WorkRequest", sharepointId, att);
+                            wrAdapter.addAttachment(sharepointId, att);
                         } catch (Exception attEx) {
                             log.warn("[PWA Submit] Failed to upload attachment {} to SharePoint: {}",
                                     att.getFileName(), attEx.getMessage());
@@ -191,7 +191,7 @@ public class PwaWorkRequestService {
     private String findExistingSharePointId(String localUuid) {
         if (localUuid == null || localUuid.isEmpty()) return null;
         try {
-            List<WorkRequestDto> existing = sharepointAccess.getAllWorkRequests();
+            List<WorkRequestDto> existing = wrAdapter.getAll();
             return existing.stream()
                     .filter(wr -> localUuid.equals(wr.getLocalUuid()))
                     .map(WorkRequestDto::getSharepointId)
