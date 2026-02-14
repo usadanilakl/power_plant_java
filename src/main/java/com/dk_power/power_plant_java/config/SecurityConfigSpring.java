@@ -82,6 +82,7 @@ public class SecurityConfigSpring {
                     "/api/resource-packs/", "/api/sync-updates/",
                     "/api/sync-test/", "/api/sync-e2e/",
                     "/api/data-integrity/", "/api/backup/",
+                    "/api/attachments/",
                     "/h2-console/"
                 )).permitAll()
 

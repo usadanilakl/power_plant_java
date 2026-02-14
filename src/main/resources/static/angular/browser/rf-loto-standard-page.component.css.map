@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-page.component.css"],
+  "sourcesContent": [".header-menus {\r\n  display: flex;\r\n  flex-direction: row;\r\n  align-items: center;\r\n  gap: 16px;\r\n  width: 100%;\r\n}\r\n\r\n.menu-container {\r\n  flex: 1;\r\n}\r\n\r\n.empty-state {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  height: 100%;\r\n  width: 100%;\r\n}\r\n\r\n.empty-state-content {\r\n  display: flex;\r\n  flex-direction: column;\r\n  align-items: center;\r\n  gap: 12px;\r\n  color: #999;\r\n}\r\n\r\n.empty-state-icon {\r\n  font-size: 48px;\r\n}\r\n\r\n.empty-state-content p {\r\n  font-size: 16px;\r\n  margin: 0;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,eAAa;AACb,OAAK;AACL,SAAO;AACT;AAEA,CAAC;AACC,QAAM;AACR;AAEA,CAAC;AACC,WAAS;AACT,eAAa;AACb,mBAAiB;AACjB,UAAQ;AACR,SAAO;AACT;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,eAAa;AACb,OAAK;AACL,SAAO;AACT;AAEA,CAAC;AACC,aAAW;AACb;AAEA,CAZC,oBAYoB;AACnB,aAAW;AACX,UAAQ;AACV;",
+  "names": []
+}

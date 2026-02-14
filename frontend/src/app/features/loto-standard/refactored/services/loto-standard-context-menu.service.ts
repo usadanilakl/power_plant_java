@@ -141,8 +141,8 @@ export class LotoStandardContextMenuService extends ContextMenuService {
     });
     this.apiService.saveLotoStandard(updated).subscribe({
       next: (response) => {
-        console.log('Verified status updated:', response.responseData);
-        // Refresh table or update local state
+        const savedItem = LotoStandardDto.fromJson(response.responseData);
+        this.stateService.updateLotoStandardInList(savedItem);
       },
       error: (error) => {
         console.error('Failed to update verified status:', error);
