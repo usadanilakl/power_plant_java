@@ -15,4 +15,6 @@ public interface UserRepo extends BaseRepository<User> {
     boolean existsByEmail(String email);
 
     User findByWindowsUsername(String windowsUsername);
+
+    User findFirstByRoleAndIsActiveTrue(String role);
 }

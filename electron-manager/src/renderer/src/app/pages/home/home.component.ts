@@ -171,6 +171,16 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
               <span>Maximo</span>
               <span class="material-icons ext-arrow">open_in_new</span>
             </a>
+            <a class="ext-link" (click)="openLink('permits')">
+              <span class="material-icons ext-link-icon">security</span>
+              <span>Permits</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
+            <a class="ext-link" (click)="openLink('turnover-sheet')">
+              <span class="material-icons ext-link-icon">swap_horiz</span>
+              <span>Turn Over Sheet</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
           </div>
         </div>
       </div>
@@ -703,7 +713,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly externalLinks: Record<string, string> = {
     'toi': 'https://jpowerusa.sharepoint.com/sites/JG/External/Forms/AllItems.aspx?id=%2Fsites%2FJG%2FExternal%2F60%20%2D%20Operations%2F60%2E11%20TIO%2DTMOD&viewid=88b99ea1%2D77a0%2D4798%2Dbc16%2D64e9eec8fa6a',
     'work-requests': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/External/60%20-%20Operations/60.18%20Leads/Advanced%20Work%20Request/Advanced%20Work%20Request%20Log.xlsx?d=w3324dfbe805c45a38d2e7af0df93fbdc&csf=1&web=1&e=S12SEW',
-    'maximo': ''
+    'maximo': '',
+    'permits': 'https://jpowerusa.sharepoint.com/sites/JG/SitePages/Confined-Spaces.aspx',
+    'turnover-sheet': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B0645E9F2-2CEB-4351-901C-D70C70FF775A%7D&file=Turnover%20With%20Gads(right%20click-open-open%20in%20app%20f9%20to%20refresh)new2%20-%20Copy.xlsm&action=default&mobileredirect=true'
   };
 
   openLink(key: string): void {

@@ -29,13 +29,37 @@ The `DesktopAutoAuthFilter` automatically authenticates requests from localhost 
    - If found and active → creates `UsernamePasswordAuthenticationToken` in SecurityContext
 4. Result cached per OS username to avoid DB hit on every request
 
+### Admin Fallback (current behavior)
+
+If no `User` matches the OS username, the filter falls back to the first active admin user (`ROLE_ADMIN`). This means **any desktop user is auto-authenticated** without needing a matching `windowsUsername` entry.
+
+The lookup order in `resolveUser()`:
+1. `userRepo.findByWindowsUsername(osUsername)` — exact match
+2. `userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN")` — fallback
+
 ### Desktop Auth Table
 
 | OS Username | User.windowsUsername | Result |
 |-------------|---------------------|--------|
-| `usada` | `usada` | Auto-authenticated as admin |
-| `usada` | (no match) | Filter skips, user sees login page |
+| `usada` | `usada` | Auto-authenticated as that user |
+| `dklokov` | `dklokov` | Auto-authenticated as that user |
+| `anyone` | (no match) | Auto-authenticated as first active admin (fallback) |
 | (any) | (remote IP) | Filter skips entirely |
+
+### To restore strict matching (require windowsUsername)
+
+In `DesktopAutoAuthFilter.resolveUser()`, remove the fallback block:
+
+```java
+// DELETE these lines to require exact windowsUsername match:
+if (cachedUser == null) {
+    cachedUser = userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN");
+    log.info("No user with windowsUsername='{}', falling back to admin: {}",
+             windowsUsername, cachedUser != null ? cachedUser.getEmail() : "none");
+}
+```
+
+With that removed, unrecognized OS usernames will see the login page instead of being auto-authenticated.
 
 **File:** `config/security/DesktopAutoAuthFilter.java`
 

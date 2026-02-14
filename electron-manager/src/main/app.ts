@@ -11,7 +11,7 @@ import { MainWindowManager } from './managers/main-window.manager';
 import { WindowLayoutManager } from './managers/window-layout.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
-import { getWorkingDir, ensureWorkingDir, ensureTessdata, provisionDefaultConfigs } from './paths';
+import { getWorkingDir, getGuidesPath, ensureWorkingDir, ensureTessdata, provisionDefaultConfigs } from './paths';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -295,6 +295,13 @@ export default class App {
       {
         label: 'Help',
         submenu: [
+          {
+            label: 'Open Guides',
+            click: () => {
+              shell.openPath(getGuidesPath());
+            }
+          },
+          { type: 'separator' },
           {
             label: 'About',
             click: () => {

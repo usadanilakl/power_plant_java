@@ -1118,6 +1118,14 @@ export class IpcHandlers {
         case 'help':
           template = [
             {
+              label: 'Open Guides',
+              click: () => {
+                const { getGuidesPath } = require('../paths');
+                shell.openPath(getGuidesPath());
+              }
+            },
+            { type: 'separator' },
+            {
               label: 'About',
               click: () => {
                 dialog.showMessageBox(win, {

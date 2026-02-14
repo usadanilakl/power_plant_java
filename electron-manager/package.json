@@ -62,6 +62,13 @@
         "filter": [
           "*.json"
         ]
+      },
+      {
+        "from": "../qa-data",
+        "to": "qa-data",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {

@@ -71,6 +71,15 @@ export function ensureTessdata(): void {
   console.log('Tessdata deployed successfully');
 }
 
+/** Get the path to the bundled qa-data/guides folder. */
+export function getGuidesPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'qa-data');
+  }
+  // Dev: dist/main/main/ → up 4 → <project>/qa-data
+  return path.resolve(__dirname, '..', '..', '..', '..', 'qa-data');
+}
+
 /** Get the path to bundled config-defaults (read-only, for seeding working dir). */
 function getConfigDefaultsPath(): string {
   if (app.isPackaged) {

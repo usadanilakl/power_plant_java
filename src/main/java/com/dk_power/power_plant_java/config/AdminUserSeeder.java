@@ -42,5 +42,25 @@ public class AdminUserSeeder {
 
         userRepo.save(admin);
         log.info("Default admin user created: {} (windowsUsername=usada)", adminEmail);
+
+        // Second admin
+        String dkEmail = "dklokov@power-plant.local";
+        if (userRepo.findByEmail(dkEmail) == null) {
+            User dk = User.builder()
+                .username("dklokov")
+                .firstName("D")
+                .lastName("Klokov")
+                .name("D Klokov")
+                .email(dkEmail)
+                .role("ROLE_ADMIN")
+                .password(passwordEncoder.encode("admin"))
+                .isActive(true)
+                .windowsUsername("dklokov")
+                .build();
+            userRepo.save(dk);
+            log.info("Admin user created: {} (windowsUsername=dklokov)", dkEmail);
+        }
+
+        
     }
 }
