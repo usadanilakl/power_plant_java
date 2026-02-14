@@ -28,6 +28,9 @@ public class PermitAttachment {
 
     private LocalDateTime createdAt;
 
+    private String originMachineId;
+    private Boolean syncedToServer;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

@@ -74,6 +74,14 @@ public class WorkRequestSharePointAdapter {
         );
     }
 
+    public List<PaAttachmentDto> getAttachments(String sharepointId) {
+        return spService.executeWithFallback(
+                () -> certGetAttachments(sharepointId),
+                () -> paGetAttachments(sharepointId),
+                "getAttachments WorkRequest"
+        );
+    }
+
     // ====================== Certificate path ======================
 
     private List<WorkRequestDto> certGetAll() {
@@ -89,6 +97,21 @@ public class WorkRequestSharePointAdapter {
     private void certChangeStatus(String sharepointId, String status) {
         Map<String, Object> body = Map.of("Status", status);
         certAccess.updateListItem(LIST_TITLE, sharepointId, body);
+    }
+
+    private List<PaAttachmentDto> certGetAttachments(String sharepointId) {
+        List<JsonNode> attachmentNodes = certAccess.getListItemAttachments(LIST_TITLE, sharepointId);
+        List<PaAttachmentDto> result = new ArrayList<>();
+        for (JsonNode node : attachmentNodes) {
+            String fileName = node.path("FileName").asText();
+            byte[] content = certAccess.downloadListItemAttachment(LIST_TITLE, sharepointId, fileName);
+            PaAttachmentDto dto = new PaAttachmentDto();
+            dto.setFileName(fileName);
+            dto.setContentType(guessContentType(fileName));
+            dto.setBase64Content(Base64.getEncoder().encodeToString(content));
+            result.add(dto);
+        }
+        return result;
     }
 
     // ====================== Power Automate path ======================
@@ -124,6 +147,23 @@ public class WorkRequestSharePointAdapter {
         if (!resp.isSuccess()) {
             log.error("[WR-Adapter] PA update status to '{}' failed: {}", status, resp.getMessage());
         }
+    }
+
+    private List<PaAttachmentDto> paGetAttachments(String sharepointId) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("getAttachments");
+        req.setId(sharepointId);
+        PaResponseDto resp = v2Client.workRequest(req);
+        if (!resp.isSuccess() || resp.getData() == null) {
+            throw new RuntimeException("PA-V2 getAttachments WorkRequest failed: " + resp.getMessage());
+        }
+        return resp.getData().stream().map(map -> {
+            PaAttachmentDto dto = new PaAttachmentDto();
+            dto.setFileName(str(map, "fileName"));
+            dto.setContentType(str(map, "contentType"));
+            dto.setBase64Content(str(map, "base64Content"));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     // ====================== Column mapping ======================
@@ -208,5 +248,15 @@ public class WorkRequestSharePointAdapter {
         map.put("SubmitterCompany", orEmpty(dto.getSubmitterCompany()));
         map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
         return map;
+    }
+
+    private static String guessContentType(String fileName) {
+        if (fileName == null) return "application/octet-stream";
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        return "application/octet-stream";
     }
 }

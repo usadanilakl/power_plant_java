@@ -29,6 +29,7 @@ public class WorkRequestSyncService {
     private final NgValueService valueService;
     private final WorkRequestMergeService workRequestMergeService;
     private final SharePointSyncSettings syncSettings;
+    private final PermitAttachmentSyncService permitAttachmentSyncService;
 
     /**
      * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
@@ -87,6 +88,11 @@ public class WorkRequestSyncService {
                         workRequestRepo.save(entity);
                         result.incrementCreated();
                         log.debug("[SharePoint Sync] Created new work request: sharepointId={}", remote.getSharepointId());
+                        try {
+                            permitAttachmentSyncService.syncAttachmentsForWorkRequest(entity.getId(), remote.getSharepointId());
+                        } catch (Exception attEx) {
+                            log.warn("[SharePoint Sync] Attachment sync failed for WR spId={}: {}", remote.getSharepointId(), attEx.getMessage());
+                        }
                     } else {
                         // Existing record — update fields and status if changed
                         String existingStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : "";

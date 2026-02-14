@@ -30,6 +30,7 @@ public class JhaSyncService {
     private final NgValueService valueService;
     private final JhaMergeService jhaMergeService;
     private final SharePointSyncSettings syncSettings;
+    private final PermitAttachmentSyncService permitAttachmentSyncService;
 
     /**
      * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
@@ -80,6 +81,11 @@ public class JhaSyncService {
                         jhaRepo.save(entity);
                         result.incrementCreated();
                         log.debug("[JHA Sync] Created new JHA: sharepointId={}", remote.getSharepointId());
+                        try {
+                            permitAttachmentSyncService.syncAttachmentsForJha(entity.getId(), remote.getSharepointId());
+                        } catch (Exception attEx) {
+                            log.warn("[JHA Sync] Attachment sync failed for JHA spId={}: {}", remote.getSharepointId(), attEx.getMessage());
+                        }
                     } else {
                         String existingStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : "";
                         boolean statusChanged = !existingStatus.equalsIgnoreCase(remoteStatus);

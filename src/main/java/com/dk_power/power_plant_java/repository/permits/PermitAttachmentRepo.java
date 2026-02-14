@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface PermitAttachmentRepo extends JpaRepository<PermitAttachment, Long> {
     List<PermitAttachment> findByEntityTypeAndEntityId(String entityType, Long entityId);
+    boolean existsByEntityTypeAndEntityIdAndFileName(String entityType, Long entityId, String fileName);
+    List<PermitAttachment> findBySyncedToServerFalseOrSyncedToServerIsNull();
 }

@@ -149,6 +149,43 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    public List<JsonNode> getListItemAttachments(String listTitle, String itemId) {
+        ResponseEntity<String> response = sendGetRequest(
+                "/_api/web/lists/getbytitle('" + listTitle + "')/items(" + itemId + ")/AttachmentFiles"
+        );
+        try {
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode items = root.has("value") ? root.path("value") : root.path("d").path("results");
+            List<JsonNode> result = new ArrayList<>();
+            for (JsonNode item : items) {
+                result.add(item);
+            }
+            log.debug("[SharePoint] Fetched {} attachments for item {} in '{}'", result.size(), itemId, listTitle);
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse attachments for item " + itemId + " in '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] downloadListItemAttachment(String listTitle, String itemId, String fileName) {
+        String endpoint = String.format(
+                "/_api/web/lists/getbytitle('%s')/items(%s)/AttachmentFiles('%s')/$value",
+                listTitle, itemId, fileName);
+
+        String fullUrl = siteUrl + endpoint;
+        HttpHeaders headers = createHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            log.debug("[SharePoint] Downloaded attachment '{}' ({} bytes) from item {} in '{}'",
+                    fileName, response.getBody().length, itemId, listTitle);
+            return response.getBody();
+        }
+        throw new RuntimeException("Failed to download attachment '" + fileName + "' from item " + itemId + ": " + response.getStatusCode());
+    }
+
     // ====================== Auth & HTTP ======================
 
     private void authenticate() {
