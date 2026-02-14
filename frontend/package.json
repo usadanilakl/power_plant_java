@@ -5,8 +5,10 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:frontend": "ng build --configuration production --base-href=/angular/browser/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "build:backend": "cd .. && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 /home/dk-power/.m2/wrapper/dists/apache-maven-3.9.11-bin/6mqf5t809d9geo83kj4ttckcbc/apache-maven-3.9.11/bin/mvn clean package -DskipTests",
     "serve:ssr:frontend": "node dist/frontend/server/server.mjs"
   },
   "private": true,
