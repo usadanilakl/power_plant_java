@@ -18,13 +18,11 @@ import java.util.Set;
 @Table(name = "esp_devices")
 public class EspDevice extends BaseAuditEntity {
     
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String ipAddress;
-    
-    @Column(nullable = false)
+
     private String name; // e.g., "ESP-1", "ESP-2"
-    
-    @Column(nullable = false)
+
     private Boolean isActive = true;
     
     private String description;

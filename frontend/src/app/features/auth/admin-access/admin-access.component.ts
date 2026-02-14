@@ -162,8 +162,8 @@ export class AdminAccessComponent implements OnInit {
     this.http.get<GrantInfo[]>(`${this.adminUrl}/pending`, { withCredentials: true }).subscribe({
       next: (data) => this.pendingRequests = data,
       error: (err) => {
-        if (err.error?.error === 'LAN_REQUIRED') {
-          this.lanError = 'Access management is only available from within the plant network.';
+        if (err.error?.error === 'LOCALHOST_REQUIRED') {
+          this.lanError = 'Access management is only available from the desktop application.';
         }
       }
     });

@@ -1,19 +1,37 @@
 # Authentication
 
-## Login Flow (Web)
+## Access Tiers
+
+| # | Scenario | Auth | Access | accessLevel |
+|---|----------|------|--------|-------------|
+| 1 | **Desktop** (localhost) | Auto-login via `DesktopAutoAuthFilter` | Full | `FULL` |
+| 2 | **LAN** (internal IP) | Manual login (session) | Full (role-restricted) | `FULL` |
+| 3 | **External** (public IP) | Manual login (session) | Restricted | `RESTRICTED` |
+| 4 | **External + grant** | Manual login + ACCESS_TOKEN cookie | Full (role-restricted) | `FULL` |
+
+- Tiers 1-2: no grant needed. `AccessGrantFilter` bypasses localhost/LAN.
+- Tier 3: automatic after login. User can access `/api/auth/*` and static resources only.
+- Tier 4: requires admin approval from localhost (desktop Electron instance).
+
+## Login Flow
 
 1. Client sends `POST /api/auth/login` with `{ email, password }`
 2. `AuthController` authenticates via Spring's `AuthenticationManager`
 3. `UserDetailsServiceImpl` loads user by email from `UserRepo`
 4. `CustomUserDetails` wraps the `User` entity for Spring Security
-5. On success: Spring creates `JSESSIONID` cookie, controller returns user info:
+5. Spring Security 6.x: context explicitly saved to session via `HttpSessionSecurityContextRepository.saveContext()`
+6. Response includes origin-aware `accessLevel`:
    ```json
-   { "id": 123, "name": "John", "email": "john@test.local", "role": "ROLE_EMPLOYEE", "isActive": true }
+   { "id": 123, "name": "John", "email": "john@test.local", "role": "ROLE_EMPLOYEE", "isActive": true, "accessLevel": "FULL" }
    ```
-6. On failure: 401 with `{ "error": "INVALID_CREDENTIALS", "message": "Invalid email or password" }`
-7. Controller updates `user.lastLoginDate` and logs the login with client IP
+7. On failure: 401 with `{ "error": "INVALID_CREDENTIALS", "message": "Invalid email or password" }`
+8. Controller updates `user.lastLoginDate` and logs the login with client IP
 
-**File:** `controller/auth/AuthController.java` — `POST /api/auth/login`
+**Frontend routing after login:**
+- `accessLevel: "FULL"` → navigates to `/home` (or returnUrl)
+- `accessLevel: "RESTRICTED"` or `"PENDING"` → navigates to `/access-request`
+
+**File:** `controller/auth/AuthController.java`
 
 ## Desktop Auto-Auth
 
@@ -22,22 +40,20 @@ The `DesktopAutoAuthFilter` automatically authenticates requests from localhost 
 ### How It Works
 
 1. Filter runs **before** `UsernamePasswordAuthenticationFilter` in the chain
-2. Only activates for loopback IPs: `127.0.0.1`, `0:0:0:0:0:0:0:1`, `::1`
+2. Only activates for loopback IPs via `NetworkUtils.isLoopbackRequest()`: `127.0.0.1`, `0:0:0:0:0:0:0:1`, `::1`
 3. If no existing authentication in SecurityContext:
    - Reads `System.getProperty("user.name")` (OS username)
    - Looks up `User` by `windowsUsername` field via `UserRepo.findByWindowsUsername()`
    - If found and active → creates `UsernamePasswordAuthenticationToken` in SecurityContext
 4. Result cached per OS username to avoid DB hit on every request
 
-### Admin Fallback (current behavior)
+### Admin Fallback
 
 If no `User` matches the OS username, the filter falls back to the first active admin user (`ROLE_ADMIN`). This means **any desktop user is auto-authenticated** without needing a matching `windowsUsername` entry.
 
 The lookup order in `resolveUser()`:
 1. `userRepo.findByWindowsUsername(osUsername)` — exact match
 2. `userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN")` — fallback
-
-### Desktop Auth Table
 
 | OS Username | User.windowsUsername | Result |
 |-------------|---------------------|--------|
@@ -46,26 +62,11 @@ The lookup order in `resolveUser()`:
 | `anyone` | (no match) | Auto-authenticated as first active admin (fallback) |
 | (any) | (remote IP) | Filter skips entirely |
 
-### To restore strict matching (require windowsUsername)
-
-In `DesktopAutoAuthFilter.resolveUser()`, remove the fallback block:
-
-```java
-// DELETE these lines to require exact windowsUsername match:
-if (cachedUser == null) {
-    cachedUser = userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN");
-    log.info("No user with windowsUsername='{}', falling back to admin: {}",
-             windowsUsername, cachedUser != null ? cachedUser.getEmail() : "none");
-}
-```
-
-With that removed, unrecognized OS usernames will see the login page instead of being auto-authenticated.
-
 **File:** `config/security/DesktopAutoAuthFilter.java`
 
 ## Current User (/me)
 
-`GET /api/auth/me` returns the current user's info plus their access level:
+`GET /api/auth/me` returns the current user's info plus origin-aware access level:
 
 ```json
 {
@@ -78,14 +79,23 @@ With that removed, unrecognized OS usernames will see the login page instead of 
 }
 ```
 
-Access level logic:
-- Has approved, non-expired `AccessGrant` → `"FULL"`
-- Has pending `AccessGrant` → `"PENDING"`
-- Otherwise → `"RESTRICTED"`
+Access level is computed by `computeAccessLevel(User, HttpServletRequest)`:
+- **Localhost or LAN** → always `"FULL"` (matches `AccessGrantFilter` bypass)
+- **External** + valid approved grant → `"FULL"`
+- **External** + pending grant → `"PENDING"`
+- **External** + no grant → `"RESTRICTED"`
 
-Note: Desktop users via auto-auth always get effective full access (bypasses `AccessGrantFilter`), but `accessLevel` in `/me` response still reflects their grant status.
+## Restricted Access (External, No Grant)
 
-## Access Grant Flow (Full Web Access)
+After login from outside the network, the user gets `accessLevel: "RESTRICTED"` and is routed to `/access-request`. They can access:
+
+- `/api/auth/*` endpoints (login, logout, me, profile, access-status, request-access)
+- Static resources (Angular SPA loads normally)
+- Everything else → 403 `{ "error": "FULL_ACCESS_REQUIRED" }`
+
+The `authInterceptor` catches 403 `FULL_ACCESS_REQUIRED` responses and redirects to `/access-request` as a safety net (in case the user manually navigates to a protected page).
+
+## Full Access Grant Flow (External)
 
 ### 1. User Requests Access
 
@@ -95,38 +105,72 @@ Note: Desktop users via auto-auth always get effective full access (bypasses `Ac
 - Records client IP and User-Agent
 - Prevents duplicates — returns `ALREADY_PENDING` or `ALREADY_APPROVED`
 
-### 2. Admin Approves
+### 2. Admin Approves (localhost only)
 
-`POST /api/auth/admin/approve/{id}` (requires ADMIN role + LAN IP)
+`POST /api/auth/admin/approve/{id}` — requires **ADMIN role + localhost IP**
 
-- Sets `status: APPROVED`
-- Generates UUID `accessToken`
-- Sets `expiresAt = now + 24 hours`
-- Sets `lastActiveAt = now`
-- Records approving admin
+All admin grant endpoints (`/api/auth/admin/**`) are **localhost-only**:
+- `SecurityConfigSpring`: `localhostMatcher` + `denyAll` fallback blocks non-localhost
+- `AccessAdminController`: every endpoint checks `NetworkUtils.isLoopbackRequest()`
+- Not available from LAN or external — only the desktop (Electron) instance
 
-Response: `{ "success": true, "accessToken": "uuid...", "expiresAt": "...", "user": "email" }`
+Admin endpoints:
+- `GET /api/auth/admin/pending` — list pending requests
+- `GET /api/auth/admin/active-grants` — list valid approved grants
+- `POST /api/auth/admin/approve/{id}` — approve (generates token, 24h expiry)
+- `POST /api/auth/admin/deny/{id}` — deny
+- `POST /api/auth/admin/revoke/{id}` — revoke
 
-### 3. Token Validation
+Approve response: `{ "success": true, "accessToken": "uuid...", "expiresAt": "...", "user": "email" }`
+
+**File:** `controller/auth/AccessAdminController.java`
+
+### 3. Cookie Delivery
+
+When the user polls `GET /api/auth/access-status` and has an APPROVED grant, the server sets the `ACCESS_TOKEN` cookie in the HTTP response. The frontend's access-request page polls every 10 seconds, so the cookie is set as soon as approval happens.
+
+Cookie properties: `HttpOnly`, `Path=/`, max-age matches remaining grant lifetime.
+
+### 4. Token Validation
 
 `AccessGrantFilter` runs **after** authentication on every request to protected endpoints:
 
-1. Reads `ACCESS_TOKEN` cookie
-2. Looks up `AccessGrant` by token
-3. Validates: `status == APPROVED`, not past `expiresAt`, `lastActiveAt` within 1 hour
-4. Updates `lastActiveAt` (throttled to max once per 5 minutes)
-5. If invalid → 403 `{ "error": "FULL_ACCESS_REQUIRED", "message": "..." }`
+1. Exempt paths (`/api/auth/`, static resources) → pass through
+2. Localhost → pass through (full access)
+3. LAN → pass through (full access)
+4. External + unauthenticated → pass through (Spring Security handles 401)
+5. External + authenticated → check `ACCESS_TOKEN` cookie:
+   - Valid grant → update `lastActiveAt` (throttled to every 5 min), pass through
+   - Missing/invalid/expired → 403 `FULL_ACCESS_REQUIRED`
 
-### 4. Expiration & Cleanup
+**File:** `config/security/AccessGrantFilter.java`
+
+### 5. Expiration & Cleanup
+
+Grant expires when **either** condition is met (whichever comes first):
+- **24 hours** since approval (hard limit)
+- **1 hour** of inactivity (no requests)
 
 `AccessGrantCleanupService` runs every 5 minutes (`@Scheduled(fixedRate = 300000)`):
 
-- Marks `APPROVED` grants as `EXPIRED` when:
-  - `expiresAt` has passed (24-hour max lifetime)
-  - `lastActiveAt` older than 1 hour (inactivity timeout)
+- Marks `APPROVED` grants as `EXPIRED` when either limit is hit
 - Deletes old resolved grants (>30 days) to prevent table growth
 
 **File:** `sevice/users/AccessGrantCleanupService.java`
+
+### E2E Flow Summary
+
+```
+External user → login → accessLevel: RESTRICTED → /access-request page
+  → clicks "Request Full Access" → POST /api/auth/request-access → PENDING
+  → polls GET /api/auth/access-status every 10s
+
+Admin on desktop → /admin/access-management → sees pending request
+  → clicks Approve → POST /api/auth/admin/approve/{id} → token generated
+
+External user → next poll → access-status returns APPROVED + sets ACCESS_TOKEN cookie
+  → navigates to /home → AccessGrantFilter validates cookie → full access
+```
 
 ### AccessGrant Entity
 
@@ -141,12 +185,42 @@ AccessGrant {
   requestedAt: LocalDateTime
   approvedAt: LocalDateTime
   expiresAt: LocalDateTime (24h after approval)
-  lastActiveAt: LocalDateTime (updated on each valid request)
+  lastActiveAt: LocalDateTime (updated on each valid request, throttled 5 min)
   approvedBy: User (FK, the admin who approved)
 }
 ```
 
 **File:** `entities/users/AccessGrant.java`
+
+## Network Utilities
+
+`NetworkUtils` provides IP classification helpers used across the security layer:
+
+| Method | Checks | Used By |
+|--------|--------|---------|
+| `isLoopbackRequest()` | `127.*`, `::1` | `DesktopAutoAuthFilter`, `AccessGrantFilter`, `AccessAdminController`, `SecurityConfigSpring.localhostMatcher` |
+| `isInternalRequest()` | Loopback + RFC 1918 (`10.*`, `192.168.*`, `172.16-31.*`) + link-local | `AccessGrantFilter`, `SecurityConfigSpring.lanOnlyMatcher`, `computeAccessLevel()` |
+| `getClientIp()` | Extracts IP from `X-Forwarded-For` header or `remoteAddr` | All of the above |
+
+**File:** `config/NetworkUtils.java`
+
+## Security Filter Chain
+
+Order in `SecurityConfigSpring`:
+
+1. **Public endpoints** — permitAll (login, logout, static resources, sharepoint-sync, actuator)
+2. **LAN-only endpoints** — `lanOnlyMatcher` permitAll (sync, files, update, h2-console, attachments, backup)
+3. **Localhost-only admin** — `localhostMatcher` hasRole ADMIN (`/api/auth/admin/**`)
+4. **Non-localhost admin** — denyAll (`/api/auth/admin/**` fallback)
+5. **Admin pages** — hasRole ADMIN (`/admin/**`, `/users/**`, `/ng/users/**`)
+6. **Auth endpoints** — authenticated (`/api/auth/**`)
+7. **Everything else** — authenticated (AccessGrantFilter handles external access check)
+
+Custom filters:
+- `DesktopAutoAuthFilter` — **before** `UsernamePasswordAuthenticationFilter`
+- `AccessGrantFilter` — **after** `UsernamePasswordAuthenticationFilter`
+
+**File:** `config/SecurityConfigSpring.java`
 
 ## Logout
 
@@ -158,7 +232,7 @@ AccessGrant {
 
 ## User Profile (Self-Service)
 
-Authenticated users can view and edit their own profile.
+Authenticated users can view and edit their own profile. Available in restricted access (under `/api/auth/*`).
 
 ### View Profile
 
@@ -201,33 +275,23 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 
 | Component | Purpose |
 |-----------|---------|
-| `auth.service.ts` | Login/logout/profile API calls, `currentUser$` and `isLoggedIn$` observables |
-| `auth.interceptor.ts` | Adds `withCredentials: true`, redirects on 401/403 |
-| `auth.guard.ts` | Route guard: redirects to `/login` if not authenticated |
-| `admin.guard.ts` | Route guard: requires `ROLE_ADMIN` |
-| `login.component.ts` | Login form UI |
+| `auth.service.ts` | Login/logout/profile API calls, `currentUser$` and `isLoggedIn$` observables, `accessLevel` tracking |
+| `auth.interceptor.ts` | Adds `withCredentials: true`, redirects 401 → `/login`, redirects 403 `FULL_ACCESS_REQUIRED` → `/access-request` |
+| `auth.guard.ts` | Route guard: waits for auth check, redirects to `/login` if not authenticated |
+| `admin.guard.ts` | Route guard: requires `ROLE_ADMIN`, redirects to `/home` |
+| `login.component.ts` | Login form UI, routes to `/access-request` if restricted |
 | `profile.component.ts` | User profile page (view info, edit name, change password) |
 | `user-profile.component.ts` | Header avatar icon with dropdown (profile link + sign out) |
-| `access-request.component.ts` | Request full access + status polling |
-| `admin-access.component.ts` | Admin: approve/deny/revoke grants |
+| `access-request.component.ts` | External user: request full access + 10s status polling |
+| `admin-access.component.ts` | Admin (localhost only): approve/deny/revoke grants |
 
-### User Profile Icon
+### Routes
 
-The `UserProfileComponent` (in `shared/user-profile/`) renders a circular avatar with the user's initials in the main layout header. Clicking it opens a dropdown showing:
-- User name, email, and role
-- **My Profile** — navigates to `/profile`
-- **Sign out** — calls `authService.logout()`
-
-The dropdown closes on outside click via `@HostListener('document:click')`.
-
-### Profile Page
-
-Route: `/profile` (requires `authGuard`)
-
-The `ProfileComponent` (in `features/auth/profile/`) displays:
-- Header with large avatar, name, and role badge
-- Read-only info: email, username, OS username, active status, last login
-- Editable fields: first name, last name (with Save Changes button)
-- Change password section with confirmation field
-
-On save, calls `PUT /api/auth/profile` and refreshes the cached user via `authService.checkAuthStatus()`.
+```
+/login                    — LoginComponent (public)
+/access-request           — AccessRequestComponent (authGuard)
+/profile                  — ProfileComponent (authGuard)
+/admin/access-management  — AdminAccessComponent (authGuard, adminGuard)
+/admin/users              — UserManagementComponent (authGuard, adminGuard)
+/home                     — HomeComponent (authGuard)
+```

@@ -86,8 +86,9 @@ public class SecurityConfigSpring {
                     "/h2-console/"
                 )).permitAll()
 
-                // Admin-only endpoints
-                .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
+                // Admin-only endpoints — admin grant approval is localhost-only
+                .requestMatchers(localhostMatcher("/api/auth/admin/")).hasRole("ADMIN")
+                .requestMatchers("/api/auth/admin/**").denyAll() // Block non-localhost
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
@@ -160,6 +161,25 @@ public class SecurityConfigSpring {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    /**
+     * RequestMatcher that allows requests ONLY from localhost (loopback)
+     * for the specified URL path prefixes.
+     */
+    private RequestMatcher localhostMatcher(String... prefixes) {
+        return (HttpServletRequest request) -> {
+            String path = request.getRequestURI();
+            boolean pathMatches = false;
+            for (String prefix : prefixes) {
+                if (path.startsWith(prefix)) {
+                    pathMatches = true;
+                    break;
+                }
+            }
+            if (!pathMatches) return false;
+            return NetworkUtils.isLoopbackRequest(request);
+        };
     }
 
     /**

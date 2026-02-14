@@ -7,7 +7,9 @@ import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.AccessGrantRepository;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +17,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -34,15 +38,18 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest,
+                                   HttpServletRequest request, HttpServletResponse response) {
         try {
             Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.email(), loginRequest.password())
             );
-            SecurityContextHolder.getContext().setAuthentication(auth);
 
-            // Update session
-            request.getSession(true);
+            // Spring Security 6.x requires explicit context save to session
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+            new HttpSessionSecurityContextRepository().saveContext(context, request, response);
 
             CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
             User user = userRepo.findByEmail(loginRequest.email());
@@ -53,7 +60,9 @@ public class AuthController {
 
             log.info("Login successful: {} from {}", loginRequest.email(), NetworkUtils.getClientIp(request));
 
-            return ResponseEntity.ok(buildUserResponse(userDetails, user));
+            Map<String, Object> resp = buildUserResponse(userDetails, user);
+            resp.put("accessLevel", computeAccessLevel(user, request));
+            return ResponseEntity.ok(resp);
         } catch (AuthenticationException e) {
             log.warn("Login failed for {}: {}", loginRequest.email(), e.getMessage());
             return ResponseEntity.status(401).body(Map.of(
@@ -64,7 +73,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser() {
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
@@ -74,16 +83,8 @@ public class AuthController {
         User user = userRepo.findById(userDetails.getId()).orElse(null);
 
         Map<String, Object> response = buildUserResponse(userDetails, user);
-
-        // Include access grant status if exists
         if (user != null) {
-            var grant = accessGrantRepository.findFirstByUserAndStatusOrderByRequestedAtDesc(user, GrantStatus.APPROVED);
-            if (grant.isPresent() && isGrantValid(grant.get())) {
-                response.put("accessLevel", "FULL");
-            } else {
-                var pending = accessGrantRepository.findFirstByUserAndStatusOrderByRequestedAtDesc(user, GrantStatus.PENDING);
-                response.put("accessLevel", pending.isPresent() ? "PENDING" : "RESTRICTED");
-            }
+            response.put("accessLevel", computeAccessLevel(user, request));
         }
 
         return ResponseEntity.ok(response);
@@ -136,7 +137,7 @@ public class AuthController {
     }
 
     @GetMapping("/access-status")
-    public ResponseEntity<?> getAccessStatus() {
+    public ResponseEntity<?> getAccessStatus(HttpServletResponse httpResponse) {
         CustomUserDetails userDetails = getCurrentUserDetails();
         if (userDetails == null) return ResponseEntity.status(401).build();
 
@@ -146,10 +147,20 @@ public class AuthController {
         // Check approved first
         var approved = accessGrantRepository.findFirstByUserAndStatusOrderByRequestedAtDesc(user, GrantStatus.APPROVED);
         if (approved.isPresent() && isGrantValid(approved.get())) {
+            AccessGrant grant = approved.get();
+
+            // Set ACCESS_TOKEN cookie so AccessGrantFilter can validate subsequent requests
+            Cookie accessCookie = new Cookie("ACCESS_TOKEN", grant.getAccessToken());
+            accessCookie.setPath("/");
+            accessCookie.setHttpOnly(true);
+            accessCookie.setSecure(false); // Allow over HTTP for internal network
+            accessCookie.setMaxAge((int) java.time.Duration.between(LocalDateTime.now(), grant.getExpiresAt()).getSeconds());
+            httpResponse.addCookie(accessCookie);
+
             return ResponseEntity.ok(Map.of(
                 "status", "APPROVED",
-                "expiresAt", approved.get().getExpiresAt().toString(),
-                "lastActiveAt", approved.get().getLastActiveAt() != null ? approved.get().getLastActiveAt().toString() : ""
+                "expiresAt", grant.getExpiresAt().toString(),
+                "lastActiveAt", grant.getLastActiveAt() != null ? grant.getLastActiveAt().toString() : ""
             ));
         }
 
@@ -218,6 +229,25 @@ public class AuthController {
         response.put("role", user != null ? user.getRole() : "");
         response.put("isActive", user != null ? user.getIsActive() : true);
         return response;
+    }
+
+    /**
+     * Determine effective access level based on request origin and grants.
+     * Localhost/LAN always get FULL (AccessGrantFilter bypasses them).
+     * External users need an approved grant for FULL.
+     */
+    private String computeAccessLevel(User user, HttpServletRequest request) {
+        // Localhost and LAN always have full access
+        if (NetworkUtils.isInternalRequest(request)) {
+            return "FULL";
+        }
+        // External: check grants
+        var grant = accessGrantRepository.findFirstByUserAndStatusOrderByRequestedAtDesc(user, GrantStatus.APPROVED);
+        if (grant.isPresent() && isGrantValid(grant.get())) {
+            return "FULL";
+        }
+        var pending = accessGrantRepository.findFirstByUserAndStatusOrderByRequestedAtDesc(user, GrantStatus.PENDING);
+        return pending.isPresent() ? "PENDING" : "RESTRICTED";
     }
 
     private boolean isGrantValid(AccessGrant grant) {

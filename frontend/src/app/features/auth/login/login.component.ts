@@ -171,8 +171,12 @@ export class LoginComponent {
     this.errorMessage = '';
 
     this.authService.login(this.email, this.password).subscribe({
-      next: () => {
-        this.router.navigate([this.returnUrl]);
+      next: (user) => {
+        if (user.accessLevel && user.accessLevel !== 'FULL') {
+          this.router.navigate(['/access-request']);
+        } else {
+          this.router.navigate([this.returnUrl]);
+        }
       },
       error: (err) => {
         this.isLoading = false;

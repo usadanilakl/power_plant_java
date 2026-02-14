@@ -38,7 +38,7 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         // Only auto-auth for localhost requests
-        if (!isLoopbackRequest(request)) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -75,11 +75,6 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
         log.debug("Desktop auto-auth: {} → user '{}'", windowsUser, user.getName());
 
         filterChain.doFilter(request, response);
-    }
-
-    private boolean isLoopbackRequest(HttpServletRequest request) {
-        String ip = NetworkUtils.getClientIp(request);
-        return "127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip);
     }
 
     private synchronized User resolveUser(String windowsUsername) {

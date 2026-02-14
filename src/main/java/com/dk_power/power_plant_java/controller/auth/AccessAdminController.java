@@ -1,14 +1,12 @@
 package com.dk_power.power_plant_java.controller.auth;
 
 import com.dk_power.power_plant_java.config.NetworkUtils;
-import com.dk_power.power_plant_java.config.security.AccessGrantFilter;
 import com.dk_power.power_plant_java.entities.users.AccessGrant;
 import com.dk_power.power_plant_java.entities.users.AccessGrant.GrantStatus;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.AccessGrantRepository;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +20,7 @@ import java.util.*;
 
 /**
  * Admin endpoints for managing web access grants.
- * Requires ADMIN role. Access approval endpoints additionally require LAN IP.
+ * Requires ADMIN role + localhost (desktop) access only.
  */
 @RestController
 @RequestMapping("/api/auth/admin")
@@ -35,10 +33,10 @@ public class AccessAdminController {
 
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingRequests(HttpServletRequest request) {
-        if (!NetworkUtils.isInternalRequest(request)) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
-                "error", "LAN_REQUIRED",
-                "message", "Access management is only available from within the network"
+                "error", "LOCALHOST_REQUIRED",
+                "message", "Access management is only available from the desktop application"
             ));
         }
 
@@ -48,10 +46,10 @@ public class AccessAdminController {
 
     @GetMapping("/active-grants")
     public ResponseEntity<?> getActiveGrants(HttpServletRequest request) {
-        if (!NetworkUtils.isInternalRequest(request)) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
-                "error", "LAN_REQUIRED",
-                "message", "Access management is only available from within the network"
+                "error", "LOCALHOST_REQUIRED",
+                "message", "Access management is only available from the desktop application"
             ));
         }
 
@@ -71,10 +69,10 @@ public class AccessAdminController {
     public ResponseEntity<?> approveRequest(@PathVariable Long id,
                                             HttpServletRequest request,
                                             HttpServletResponse response) {
-        if (!NetworkUtils.isInternalRequest(request)) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
             return ResponseEntity.status(403).body(Map.of(
-                "error", "LAN_REQUIRED",
-                "message", "Access approval is only available from within the network"
+                "error", "LOCALHOST_REQUIRED",
+                "message", "Access approval is only available from the desktop application"
             ));
         }
 
@@ -118,8 +116,8 @@ public class AccessAdminController {
 
     @PostMapping("/deny/{id}")
     public ResponseEntity<?> denyRequest(@PathVariable Long id, HttpServletRequest request) {
-        if (!NetworkUtils.isInternalRequest(request)) {
-            return ResponseEntity.status(403).body(Map.of("error", "LAN_REQUIRED"));
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
         AccessGrant grant = accessGrantRepository.findById(id).orElse(null);
@@ -134,8 +132,8 @@ public class AccessAdminController {
 
     @PostMapping("/revoke/{id}")
     public ResponseEntity<?> revokeGrant(@PathVariable Long id, HttpServletRequest request) {
-        if (!NetworkUtils.isInternalRequest(request)) {
-            return ResponseEntity.status(403).body(Map.of("error", "LAN_REQUIRED"));
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
         }
 
         AccessGrant grant = accessGrantRepository.findById(id).orElse(null);

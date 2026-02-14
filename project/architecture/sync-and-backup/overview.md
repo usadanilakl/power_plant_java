@@ -234,6 +234,7 @@ resource-packs.base-path=${user.dir}/resource-packs
 | [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure, runtime toggle |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
 | [trash-system.md](trash-system.md) | Staged file deletion with restore capability, retention period, automatic cleanup |
+| [device-identity.md](device-identity.md) | Device number, machine ID, config files, Electron ↔ Spring Boot config flow, ID generation partitioning |
 
 # E2E Test Coverage
 

@@ -1135,9 +1135,9 @@ public class FieldSyncService {
      * avoiding the ID generator entirely. This prevents ID collisions when multiple
      * entities are created in the same sync batch.
      *
-     * The previous approach (save with auto-generated ID, then UPDATE to target ID)
-     * caused collisions because the ID generator's sequence wasn't aware of the
-     * target IDs being used.
+     * Queries INFORMATION_SCHEMA to discover NOT NULL columns beyond the base set
+     * and includes default values for them. This handles stale NOT NULL constraints
+     * left in the database by ddl-auto=update (which never drops constraints).
      */
     @SuppressWarnings("unchecked")
     private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
@@ -1153,13 +1153,29 @@ public class FieldSyncService {
             // Get the table name for native SQL
             String tableName = getTableName(entityType);
 
-            // Insert directly with the target ID using native SQL.
-            // This bypasses the ID generator entirely, avoiding collision issues.
-            // We only insert the ID and let subsequent field changes populate the rest.
-            // Include required columns: id, object_type, deleted, date_created, date_modified
+            // Query NOT NULL columns beyond the base set so we can provide defaults.
+            // ddl-auto=update never removes NOT NULL constraints, so the DB may have
+            // stale constraints even if the Java annotations were removed.
+            List<Object[]> notNullCols = entityManager.createNativeQuery(
+                "SELECT COLUMN_NAME, TYPE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_NAME = :tableName AND IS_NULLABLE = 'NO' " +
+                "AND COLUMN_NAME NOT IN ('ID', 'OBJECT_TYPE', 'DELETED', 'DATE_CREATED', 'DATE_MODIFIED')")
+                .setParameter("tableName", tableName.toUpperCase())
+                .getResultList();
+
+            // Build dynamic INSERT including defaults for NOT NULL columns
+            StringBuilder columns = new StringBuilder("id, object_type, deleted, date_created, date_modified");
+            StringBuilder values = new StringBuilder(":id, :objectType, false, :now, :now");
+
+            for (Object[] col : notNullCols) {
+                String colName = ((String) col[0]).toLowerCase();
+                String typeName = ((String) col[1]).toUpperCase();
+                columns.append(", ").append(colName);
+                values.append(", ").append(defaultValueForType(typeName));
+            }
+
             int inserted = entityManager.createNativeQuery(
-                "INSERT INTO " + tableName + " (id, object_type, deleted, date_created, date_modified) " +
-                "VALUES (:id, :objectType, false, :now, :now)")
+                "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + values + ")")
                 .setParameter("id", entityId)
                 .setParameter("objectType", entityType)
                 .setParameter("now", java.time.LocalDateTime.now())
@@ -1188,6 +1204,15 @@ public class FieldSyncService {
             log.error("Failed to create entity {} with ID {}: {}", entityType, entityId, e.getMessage(), e);
             return null;
         }
+    }
+
+    /** Return an SQL literal default value appropriate for the given H2 column type. */
+    private String defaultValueForType(String typeName) {
+        if (typeName.contains("BOOLEAN")) return "false";
+        if (typeName.contains("INT") || typeName.contains("DOUBLE") || typeName.contains("FLOAT")
+                || typeName.contains("DECIMAL") || typeName.contains("NUMERIC")) return "0";
+        if (typeName.contains("DATE") || typeName.contains("TIMESTAMP")) return "CURRENT_TIMESTAMP";
+        return "''"; // VARCHAR, CHAR, CLOB, TEXT, etc.
     }
 
     /**

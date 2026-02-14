@@ -77,7 +77,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         }
 
         // Skip for localhost requests (desktop auto-auth has full access)
-        if (isLoopbackRequest(request)) {
+        if (NetworkUtils.isLoopbackRequest(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -89,18 +89,10 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         }
 
         // At this point: external request to a protected endpoint.
-        // Must have a valid session AND a valid ACCESS_TOKEN.
+        // Must have a valid session AND a valid ACCESS_TOKEN (regardless of role).
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             // Not authenticated — Spring Security will handle 401
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Check for ADMIN role — admins always have full access
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-        if (isAdmin) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -159,11 +151,6 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             if (path.startsWith(prefix)) return true;
         }
         return false;
-    }
-
-    private boolean isLoopbackRequest(HttpServletRequest request) {
-        String ip = NetworkUtils.getClientIp(request);
-        return "127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip);
     }
 
     private String getAccessTokenFromCookie(HttpServletRequest request) {

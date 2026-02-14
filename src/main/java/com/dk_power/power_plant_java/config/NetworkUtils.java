@@ -15,6 +15,20 @@ public class NetworkUtils {
         return isInternalIp(ip);
     }
 
+    /**
+     * Check if the request originates from localhost (loopback only).
+     */
+    public static boolean isLoopbackRequest(HttpServletRequest request) {
+        String ip = getClientIp(request);
+        return isLoopbackIp(ip);
+    }
+
+    public static boolean isLoopbackIp(String ip) {
+        if (ip == null) return false;
+        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) return true;
+        return ip.startsWith("127.");
+    }
+
     public static boolean isInternalIp(String ip) {
         if (ip == null) return false;
 
