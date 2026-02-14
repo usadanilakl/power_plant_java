@@ -22,6 +22,9 @@ import java.util.UUID;
 @Slf4j
 public class SyncConfig {
 
+    @Value("${sync.role:}")
+    private String syncRole;
+
     @Value("${sync.machine.id:}")
     private String machineId;
 
@@ -84,6 +87,10 @@ public class SyncConfig {
         return syncServerEnabled && syncServerUrl != null && !syncServerUrl.isEmpty();
     }
 
+    public boolean isHubMode() {
+        return "hub".equalsIgnoreCase(syncRole);
+    }
+
     public boolean isSyncRuntimeEnabled() {
         return syncRuntimeEnabled;
     }
@@ -128,7 +135,12 @@ public class SyncConfig {
         }
 
         // Load sync server config from file (overrides application.properties)
-        loadSyncServerConfigFromFile();
+        // Hub mode uses profile-defined config exclusively — file cannot override it
+        if (!isHubMode()) {
+            loadSyncServerConfigFromFile();
+        } else {
+            log.info("Hub mode: skipping sync-config.properties file (using profile config)");
+        }
 
         log.info("===========================================");
         log.info("DEVICE IDENTITY");
@@ -340,6 +352,10 @@ public class SyncConfig {
      * @param enabled Whether sync is enabled
      */
     public synchronized void saveSyncServerConfig(String url, boolean enabled) {
+        if (isHubMode()) {
+            log.warn("Hub mode: ignoring sync server config change (hub uses profile config)");
+            return;
+        }
         this.syncServerUrl = url;
         this.syncServerEnabled = enabled;
 
