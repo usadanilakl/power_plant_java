@@ -60,7 +60,7 @@
                 }
               ],
               "outputHashing": "all",
-              "baseHref": "/app/"
+              "baseHref": "/angular/browser/"
             },
             "development": {
               "optimization": false,
