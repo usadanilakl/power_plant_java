@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/form-designer-refactored/form-designer-left-menu/form-designer-left-menu.component.css"],
+  "sourcesContent": [".menu-container {\r\n  padding: 10px;\r\n  border-right: 1px solid #ccc;\r\n  height: 100%;\r\n}\r\n\r\n.form-list {\r\n  list-style-type: none;\r\n  padding: 0;\r\n  margin: 0;\r\n}\r\n\r\n.form-item {\r\n  padding: 8px 12px;\r\n  cursor: pointer;\r\n  border-bottom: 1px solid #eee;\r\n}\r\n\r\n.form-item:hover {\r\n  background-color: #f0f0f0;\r\n}\r\n\r\n.form-item:last-child {\r\n  border-bottom: none;\r\n}\r\n\r\n.create-new {\r\n  font-weight: bold;\r\n  color: #007bff;\r\n  border-top: 2px solid #ccc;\r\n  margin-top: 10px;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,gBAAc,IAAI,MAAM;AACxB,UAAQ;AACV;AAEA,CAAC;AACC,mBAAiB;AACjB,WAAS;AACT,UAAQ;AACV;AAEA,CAAC;AACC,WAAS,IAAI;AACb,UAAQ;AACR,iBAAe,IAAI,MAAM;AAC3B;AAEA,CANC,SAMS;AACR,oBAAkB;AACpB;AAEA,CAVC,SAUS;AACR,iBAAe;AACjB;AAEA,CAAC;AACC,eAAa;AACb,SAAO;AACP,cAAY,IAAI,MAAM;AACtB,cAAY;AACd;",
+  "names": []
+}

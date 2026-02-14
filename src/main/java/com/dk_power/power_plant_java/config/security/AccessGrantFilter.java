@@ -1,0 +1,185 @@
+package com.dk_power.power_plant_java.config.security;
+
+import com.dk_power.power_plant_java.config.NetworkUtils;
+import com.dk_power.power_plant_java.entities.users.AccessGrant;
+import com.dk_power.power_plant_java.entities.users.AccessGrant.GrantStatus;
+import com.dk_power.power_plant_java.repository.users.AccessGrantRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Validates ACCESS_TOKEN cookie for endpoints requiring full web access.
+ * Desktop (localhost) and LAN requests bypass this filter.
+ * Only external authenticated requests to protected endpoints are checked.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class AccessGrantFilter extends OncePerRequestFilter {
+
+    private final AccessGrantRepository accessGrantRepository;
+    private final ObjectMapper objectMapper;
+
+    public static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
+
+    // Endpoints that DON'T require full access (public, auth, restricted-tier)
+    private static final Set<String> EXEMPT_PREFIXES = Set.of(
+            "/api/auth/",
+            "/api/sharepoint-sync/",
+            "/power-automate/",
+            "/actuator/",
+            "/app/",
+            // LAN-only endpoints are handled by SecurityFilterChain IP check, not this filter
+            "/api/sync/",
+            "/api/field-sync/",
+            "/api/resync/",
+            "/api/files/",
+            "/api/update/",
+            "/api/electron-update/",
+            "/api/resource-packs/",
+            "/api/sync-updates/",
+            "/api/data-integrity/",
+            "/h2-console/"
+    );
+
+    // Static resources
+    private static final Set<String> STATIC_PREFIXES = Set.of(
+            "/bootstrap-", "/functions/", "/interact.js-main/",
+            "/my_styles/", "/background/", "/uploads/",
+            "/favicon", "/assets/"
+    );
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String path = request.getRequestURI();
+
+        // Skip for exempt endpoints
+        if (isExempt(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Skip for localhost requests (desktop auto-auth has full access)
+        if (isLoopbackRequest(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Skip for LAN requests (internal network has full access)
+        if (NetworkUtils.isInternalRequest(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // At this point: external request to a protected endpoint.
+        // Must have a valid session AND a valid ACCESS_TOKEN.
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            // Not authenticated — Spring Security will handle 401
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Check for ADMIN role — admins always have full access
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (isAdmin) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Check ACCESS_TOKEN cookie
+        String accessToken = getAccessTokenFromCookie(request);
+        if (accessToken == null) {
+            sendFullAccessRequired(response, "No access token. Request full access from an administrator.");
+            return;
+        }
+
+        // Validate the grant
+        var grantOpt = accessGrantRepository.findByAccessToken(accessToken);
+        if (grantOpt.isEmpty()) {
+            sendFullAccessRequired(response, "Invalid access token.");
+            return;
+        }
+
+        AccessGrant grant = grantOpt.get();
+
+        if (grant.getStatus() != GrantStatus.APPROVED) {
+            sendFullAccessRequired(response, "Access grant is " + grant.getStatus().name().toLowerCase() + ".");
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (grant.getExpiresAt() != null && now.isAfter(grant.getExpiresAt())) {
+            grant.setStatus(GrantStatus.EXPIRED);
+            accessGrantRepository.save(grant);
+            sendFullAccessRequired(response, "Access grant has expired (24h maximum).");
+            return;
+        }
+
+        if (grant.getLastActiveAt() != null && now.isAfter(grant.getLastActiveAt().plusHours(1))) {
+            grant.setStatus(GrantStatus.EXPIRED);
+            accessGrantRepository.save(grant);
+            sendFullAccessRequired(response, "Access grant expired due to inactivity (1 hour).");
+            return;
+        }
+
+        // Update lastActiveAt (throttled: only if >5 min since last update)
+        if (grant.getLastActiveAt() == null || now.isAfter(grant.getLastActiveAt().plusMinutes(5))) {
+            grant.setLastActiveAt(now);
+            accessGrantRepository.save(grant);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private boolean isExempt(String path) {
+        for (String prefix : EXEMPT_PREFIXES) {
+            if (path.startsWith(prefix)) return true;
+        }
+        for (String prefix : STATIC_PREFIXES) {
+            if (path.startsWith(prefix)) return true;
+        }
+        return false;
+    }
+
+    private boolean isLoopbackRequest(HttpServletRequest request) {
+        String ip = NetworkUtils.getClientIp(request);
+        return "127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip);
+    }
+
+    private String getAccessTokenFromCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        for (Cookie cookie : request.getCookies()) {
+            if (ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void sendFullAccessRequired(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json");
+        objectMapper.writeValue(response.getWriter(),
+                Map.of("error", "FULL_ACCESS_REQUIRED", "message", message));
+    }
+}

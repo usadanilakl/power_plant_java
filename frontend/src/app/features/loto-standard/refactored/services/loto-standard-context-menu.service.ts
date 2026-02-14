@@ -1,4 +1,4 @@
-import { inject, Injectable } from "@angular/core";
+import { inject, Injectable, signal } from "@angular/core";
 import { ContextMenuService } from "../../../../shared/menu/context-menu/context-menu.service";
 import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-menu.component";
 import { LotoStandardDto, LotoStandardModel } from "../../../../models/loto/loto-standard.model";
@@ -12,6 +12,9 @@ import { map } from "rxjs";
 export class LotoStandardContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoStandardStateService);
   private apiService = inject(RfLotoStandardApiService);
+
+  /** Signal to trigger the counterpart standard dialog from the page component */
+  counterpartDialogSourceId = signal<number | null>(null);
 
   customMenuActions: ContextMenuAction[] = [
       {
@@ -31,6 +34,12 @@ export class LotoStandardContextMenuService extends ContextMenuService {
         label: 'Duplicate Standard',
         icon: '📑',
         action: (item) => this.handleDuplicate(item),
+      },
+      {
+        id: 'generate-counterpart',
+        label: 'Generate Counterpart',
+        icon: '🔄',
+        action: (item) => this.handleGenerateCounterpart(item),
       },
       {
         id: 'divider3',
@@ -116,6 +125,12 @@ export class LotoStandardContextMenuService extends ContextMenuService {
     });
     this.stateService.setSelectedItem(duplicate);
     this.stateService.openForm();
+  }
+
+  private handleGenerateCounterpart(item: LotoStandardDto): void {
+    if (item?.id) {
+      this.counterpartDialogSourceId.set(item.id);
+    }
   }
 
   private handleToggleVerified(item: LotoStandardDto): void {

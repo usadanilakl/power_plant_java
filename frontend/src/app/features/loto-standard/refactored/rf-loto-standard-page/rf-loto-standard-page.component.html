@@ -6,25 +6,24 @@
     <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
   <ng-container left-menu>
-    <app-rf-loto-standard-left-menu></app-rf-loto-standard-left-menu>
+    <app-rf-loto-standard-left-panel></app-rf-loto-standard-left-panel>
   </ng-container>
   <ng-container main-content>
-    <router-outlet></router-outlet>
+    @if (stateService.selectedItem()) {
+      <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-state-content">
+          <span class="empty-state-icon">📋</span>
+          <p>Select a LOTO Standard from the left panel to view details</p>
+        </div>
+      </div>
+    }
   </ng-container>
   <ng-container bottom-menu>
     <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
   </ng-container>
 </app-main-layout>
-
-<!-- LOTO Standard Form Popup -->
-<app-rf-popup-projection
-  [isOpen]="stateService.isLotoStandardFormOpen()"
-  [size]="'auto'"
-  [fullHeight]="true"
-  (close)="stateService.closeForm()"
->
-  <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>
-</app-rf-popup-projection>
 
 <!-- LOTO Point Form Popup -->
 <app-rf-popup-projection
@@ -46,3 +45,12 @@
 
 <!-- Export Dialog -->
 <app-export-dialog></app-export-dialog>
+
+<!-- Counterpart Standard Dialog -->
+@if (contextMenuService.counterpartDialogSourceId()) {
+  <app-counterpart-standard-dialog
+    [sourceStandardId]="contextMenuService.counterpartDialogSourceId()!"
+    (standardCreated)="onCounterpartCreated($event)"
+    (dialogClosed)="contextMenuService.counterpartDialogSourceId.set(null)"
+  ></app-counterpart-standard-dialog>
+}

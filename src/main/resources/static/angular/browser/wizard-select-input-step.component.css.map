@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;87079e44eb8684ca85dd9fb0c3e8522b5bd2803b6fde7c9520fd554217464d7c;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/steps/wizard-select-input-step.component.ts"],
+  "sourcesContent": ["\n    .select-input-container {\n      padding: 10px 0;\n    }\n\n    .full-width {\n      width: 100%;\n    }\n\n    .create-new-container {\n      display: flex;\n      align-items: center;\n      gap: 12px;\n      margin-top: 16px;\n      padding-top: 16px;\n      border-top: 1px dashed #e0e0e0;\n    }\n\n    .or-text {\n      color: #999;\n      font-size: 14px;\n    }\n\n    .loading-indicator {\n      text-align: center;\n      color: #666;\n      padding: 10px;\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,WAAS,KAAK;AAChB;AAEA,CAAC;AACC,SAAO;AACT;AAEA,CAAC;AACC,WAAS;AACT,eAAa;AACb,OAAK;AACL,cAAY;AACZ,eAAa;AACb,cAAY,IAAI,OAAO;AACzB;AAEA,CAAC;AACC,SAAO;AACP,aAAW;AACb;AAEA,CAAC;AACC,cAAY;AACZ,SAAO;AACP,WAAS;AACX;",
+  "names": []
+}

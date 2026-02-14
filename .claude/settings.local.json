@@ -49,7 +49,9 @@
       "Bash(git reset:*)",
       "Bash(node -e:*)",
       "Bash(du:*)",
-      "Bash(JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 /home/dk-power/.m2/wrapper/dists/apache-maven-3.9.11-bin/6mqf5t809d9geo83kj4ttckcbc/apache-maven-3.9.11/bin/mvn compile:*)"
+      "Bash(JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 /home/dk-power/.m2/wrapper/dists/apache-maven-3.9.11-bin/6mqf5t809d9geo83kj4ttckcbc/apache-maven-3.9.11/bin/mvn compile:*)",
+      "Bash(.\\\\mvnw.cmd compile:*)",
+      "Bash(cmd /c \"mvnw.cmd compile 2>&1 | findstr /i \"\"ERROR BUILD\"\"\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"

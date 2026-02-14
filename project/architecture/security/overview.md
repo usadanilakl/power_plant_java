@@ -1,48 +1,89 @@
-## SpringBoot Security is used.
+# Security System Overview
 
-## Security Sections
+## Status: DONE
 
-# Public
-    - Submit Request to sharepoint
-    - Get an update for specific sharepoint item
-    - Send an update for specific sharepoint item
+The power plant application uses a **4-tier access model** to protect the hub when it's internet-exposed. All tiers are implemented end-to-end: Spring Security filter chain, custom filters, REST controllers, Angular guards/interceptors, and scheduled cleanup.
 
-# Restricted
-    - user authenticates via login page with SpringBoot Security
-    - use cookies for token management
-    - user can access restricted endpoints (their permit history, some logs and other...)
+## 4-Tier Access Model
 
-# Full Web Access
-    - user authenticates via login page with SpringBoot Security
-    - use cookies for token management
-    - user needs a manual approval from machine in network to allow full access from outside of network:
-        - User Sends request to server for full access
-        - Admin page provides UI to monitor and control access (accessible only from within network)
-        - Operator from in-network machine accesses the page and manually grants access. 
-        - Secondary token is generated and sent to client, also client device ID is registered
-        - Using restricted token, full access token and device id - user gains full web access. 
-        - Set full access inactivity exparation - if client is inactive for an hour, revoke token. 
-        - Max length of full access token is 24 hours. 
+| Tier | Who | Authentication | Access Level |
+|------|-----|---------------|-------------|
+| **Public** | Anyone | None | SharePoint webhooks, health check, login endpoint |
+| **Restricted** | Logged-in user | Email + password → `JSESSIONID` cookie | Own permits/logs (read-only), request full access |
+| **Full Web** | Approved user | Login + admin-approved `ACCESS_TOKEN` cookie | Full CRUD via Angular |
+| **Full Desktop** | Local operator | Auto-auth via Windows username | Full CRUD locally |
 
-# Full Desktop Access
-    - Desktop client auth: 
-        - on springboot loading - get current windows user. 
-        - if current user is in users DB and machine is in network - allow access
-        - if machine is not in network - need web access. 
-        - if user is not registered - register first.
-        (Is it possible to keep desktop clients communication with server via http://local-ip:port instead of routing through public entry point??)
+## Auth Flow
 
+```
+                        INTERNET
+  ┌──────────────────────────────────────────────────────┐
+  │  Browser ──HTTPS──► Hub:8082                         │
+  │    1. POST /api/auth/login → JSESSIONID (Restricted) │
+  │    2. POST /api/auth/request-access → PENDING        │
+  │    3. Admin on LAN approves → ACCESS_TOKEN (Full)    │
+  └──────────────────────────────────────────────────────┘
 
-## Role Restrictions
+                        LAN (plant network)
+  ┌──────────────────────────────────────────────────────┐
+  │  Desktop (Electron) ──► localhost:8082               │
+  │    Auto-auth: OS username → User.windowsUsername     │
+  │    Full access without login                         │
+  │                                                      │
+  │  Sync: /api/sync/**, /api/field-sync/**              │
+  │    LAN IP whitelist, no auth needed                  │
+  │                                                      │
+  │  Admin: /api/auth/admin/** (LAN + ROLE_ADMIN)        │
+  │    Approve/deny/revoke web access requests           │
+  └──────────────────────────────────────────────────────┘
+```
 
-# Admin
+## Cookies
 
-# Employee
+| Cookie | Purpose | Lifetime |
+|--------|---------|----------|
+| `JSESSIONID` | Spring Security session (login state) | 24h (configurable) |
+| `ACCESS_TOKEN` | Full web access grant (UUID → DB lookup) | 24h max, 1h inactivity |
 
-# Contractor
+Both cookies are HTTP-only (set by Spring Security). Full web access requires **both** cookies + a valid `AccessGrant` in the database.
 
-TODO:
-1. Set up User on backend - entity, repo, dto, mapper, services, controllers
-2. Set up SpringBoot Security flow (refactor current)
-3. Set up User and Auth in frontend - models, services, login page, profile page, users CRUD page, 
-4. Define Security borders in Controllers on backend and frontend.
+## Roles
+
+| Role | Value | Web Access | Desktop Access |
+|------|-------|-----------|----------------|
+| Admin | `ROLE_ADMIN` | Full + user management + access approval | Full (auto-auth) |
+| Employee | `ROLE_EMPLOYEE` | Full (requires admin approval) | Full (auto-auth) |
+| Contractor | `ROLE_CONTRACTOR` | Restricted only (read-only) | Restricted |
+
+## Endpoint Access Map
+
+| Category | Endpoints | Auth Required |
+|----------|-----------|--------------|
+| Public | `/api/auth/login`, `/api/auth/logout`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
+| LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
+| Restricted | `/api/auth/me`, `/api/auth/profile`, `/api/auth/request-access`, `/api/auth/access-status` | Session cookie |
+| Full access | `/ng/**`, `/api/**`, `/browser/**`, `/print/**` | Session + AccessGrant (or localhost) |
+| Admin | `/api/auth/admin/**`, `/ng/users/**`, `/admin/**` | ROLE_ADMIN + LAN |
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `config/SecurityConfigSpring.java` | SecurityFilterChain, BCrypt, CORS |
+| `config/security/DesktopAutoAuthFilter.java` | Localhost auto-auth via OS username |
+| `config/security/AccessGrantFilter.java` | ACCESS_TOKEN cookie validation |
+| `config/NetworkUtils.java` | LAN IP detection |
+| `config/AdminUserSeeder.java` | Seed default admin on startup |
+| `controller/auth/AuthController.java` | Login, /me, profile, request-access |
+| `controller/auth/AccessAdminController.java` | Approve/deny/revoke grants |
+| `controller/angular/NgUserController.java` | User CRUD (admin) |
+| `entities/users/AccessGrant.java` | Access grant entity |
+| `sevice/users/AccessGrantCleanupService.java` | Scheduled expiration cleanup |
+
+## Detail Documentation
+
+- [Authentication](./authentication.md) — Login flows, desktop auto-auth, token lifecycle
+- [Authorization](./authorization.md) — Roles, endpoint rules, filter chain
+- [User Management](./user-management.md) — User CRUD, admin seeding, desktop mapping
+- [Settings](./settings.md) — Configuration properties reference
+- [Testing](./testing.md) — E2E test suite, running tests

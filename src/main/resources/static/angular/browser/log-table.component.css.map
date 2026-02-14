@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/log/log-table/log-table.component.css"],
+  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  overflow: hidden;\n  width: 100%;\n  height: 100%;\n}\n\n.log-table-container {\n  width: 100%;\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n  position: relative;\n  flex: 1;\n  min-height: 0;\n}\n\n.error-message {\n  padding: 12px;\n  margin-bottom: 12px;\n  background-color: #ffebee;\n  color: #c62828;\n  border: 1px solid #ef5350;\n  border-radius: 4px;\n  flex-shrink: 0;\n}\n\n.loading-indicator {\n  padding: 12px;\n  text-align: center;\n  color: var(--secondary-text);\n  font-size: 14px;\n  flex-shrink: 0;\n}\n\napp-table {\n  flex: 1;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n}\n"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACV,SAAO;AACP,UAAQ;AACV;AAEA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACT,kBAAgB;AAChB,YAAU;AACV,QAAM;AACN,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,iBAAe;AACf,oBAAkB;AAClB,SAAO;AACP,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACf,eAAa;AACf;AAEA,CAAC;AACC,WAAS;AACT,cAAY;AACZ,SAAO,IAAI;AACX,aAAW;AACX,eAAa;AACf;AAEA;AACE,QAAM;AACN,YAAU;AACV,WAAS;AACT,kBAAgB;AAChB,cAAY;AACd;",
+  "names": []
+}

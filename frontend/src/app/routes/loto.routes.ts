@@ -7,7 +7,6 @@ import { LotoBoxGridComponent } from '../features/loto/loto-boxes/loto-box-grid/
 import { LockTableComponent } from '../features/loto/lock-table/lock-table.component';
 import { EspDeviceListComponent } from '../features/esp/esp-device-list/esp-device-list.component';
 import { RfLotoStandardPageComponent } from '../features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-page.component';
-import { RfLotoStandardMainTableViewComponent } from '../features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-main-table-view.component';
 import { LotoBuilderContainerComponent } from '../features/loto-standard/refactored/loto-builder/loto-builder-container.component';
 import { LotoSideMenuComponent } from '../features/loto/loto-side-menu/loto-side-menu.component';
 
@@ -32,9 +31,6 @@ export const LOTO_ROUTES: Routes = [
   {
     path: 'loto-standard',
     component: RfLotoStandardPageComponent,
-    children: [
-      { path: '', component: RfLotoStandardMainTableViewComponent }
-    ]
   },
   {
     path: 'loto-builder',

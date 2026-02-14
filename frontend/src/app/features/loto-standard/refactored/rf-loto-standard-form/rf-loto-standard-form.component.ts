@@ -17,6 +17,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/loto-standard-image-viewer.component';
+import { CounterpartStandardDialogComponent } from '../counterpart-standard-dialog/counterpart-standard-dialog.component';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -27,6 +28,7 @@ type LotoStandardFieldName = keyof LotoStandardDto;
     RfReactiveFormComponent,
     DoubleLotoPointTableComponent,
     LotoStandardImageViewerComponent,
+    CounterpartStandardDialogComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
   styleUrl: './rf-loto-standard-form.component.css',
@@ -168,6 +170,9 @@ export class RfLotoStandardFormComponent {
   selectedLotoPoints = computed(() => {
     return this.entity().lotoPoints || [];
   });
+
+  // Counterpart dialog
+  showCounterpartDialog = signal<boolean>(false);
 
   /**
    * Carousel state
@@ -320,5 +325,15 @@ export class RfLotoStandardFormComponent {
     if (current > 0) {
       this.currentSlide.set(current - 1);
     }
+  }
+
+  openCounterpartDialog(): void {
+    this.showCounterpartDialog.set(true);
+  }
+
+  onCounterpartCreated(created: LotoStandardDto): void {
+    this.showCounterpartDialog.set(false);
+    // Optionally load the newly created standard
+    this.stateService.setSelectedItem(created);
   }
 }

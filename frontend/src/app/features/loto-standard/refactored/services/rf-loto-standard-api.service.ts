@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated.response.model';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
+import { CounterpartStandardPreviewDto } from '../../../../models/loto/counterpart-standard-preview.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoStandardIdDto } from '../../../../models/loto/loto-standard-id.model';
@@ -188,6 +189,16 @@ export class RfLotoStandardApiService {
     return this.http.put<SpringApiResponse<LotoStandardDto>>(
       `${this.apiUrl}/${standardId}/reorder-loto-points`,
       lotoPointIds
+    );
+  }
+
+  /**
+   * Generate counterpart standard preview.
+   * Returns categorized counterpart LOTO points for each point in the source standard.
+   */
+  generateCounterpartPreview(standardId: number): Observable<SpringApiResponse<CounterpartStandardPreviewDto>> {
+    return this.http.get<SpringApiResponse<CounterpartStandardPreviewDto>>(
+      `${this.apiUrl}/${standardId}/counterpart-preview`
     );
   }
 }

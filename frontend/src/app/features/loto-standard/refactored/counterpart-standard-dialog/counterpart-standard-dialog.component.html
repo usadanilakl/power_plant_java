@@ -1,0 +1,178 @@
+<div class="dialog-overlay" (click)="close()">
+  <div class="dialog-container" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h2>Generate Counterpart Standard</h2>
+      <button class="close-btn" (click)="close()">&#x2715;</button>
+    </div>
+
+    @if (loading()) {
+      <div class="dialog-content loading-state">
+        <div class="spinner"></div>
+        <p>Loading counterpart preview...</p>
+      </div>
+    } @else if (preview()) {
+      <div class="dialog-content">
+        <!-- Standard Name/Description -->
+        <div class="standard-info">
+          <div class="form-row">
+            <label>Name</label>
+            <input
+              type="text"
+              [value]="newStandardName()"
+              (input)="onNameInput($event)"
+              placeholder="New standard name"
+            />
+          </div>
+          <div class="form-row">
+            <label>Description</label>
+            <input
+              type="text"
+              [value]="newStandardDescription()"
+              (input)="onDescriptionInput($event)"
+              placeholder="Description"
+            />
+          </div>
+          <div class="unit-info">
+            <span class="unit-badge source">Unit {{ preview()!.sourceUnit }}</span>
+            <span class="arrow">&#x2192;</span>
+            <span class="unit-badge target">Unit {{ preview()!.targetUnit }}</span>
+            <span class="count">{{ totalCount() }} points</span>
+          </div>
+        </div>
+
+        <div class="sections-container">
+          <!-- Section: Confirmed Counterparts -->
+          @if (confirmedItems().length > 0) {
+            <div class="section">
+              <div class="section-header confirmed">
+                <span class="section-icon">&#x2714;</span>
+                Confirmed Counterparts ({{ confirmedItems().length }})
+              </div>
+              @for (item of confirmedItems(); track item.sourceIndex) {
+                <div class="item-row">
+                  <div class="item-main">
+                    <span class="item-tag">{{ item.counterpartPoint?.tagNumber }}</span>
+                    <span class="item-desc">{{ item.counterpartPoint?.description }}</span>
+                  </div>
+                  <div class="item-source">
+                    from: {{ item.sourcePoint.tagNumber }}
+                  </div>
+                  <div class="item-actions">
+                    <button class="btn btn-use-original" (click)="useOriginal(item)">Use Original</button>
+                    <button class="btn btn-remove" (click)="removeItem(item)">Remove</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Section: Suggested Counterparts -->
+          @if (suggestedItems().length > 0) {
+            <div class="section">
+              <div class="section-header suggested">
+                <span class="section-icon">&#x2728;</span>
+                Suggested Counterparts ({{ suggestedItems().length }})
+              </div>
+              @for (item of suggestedItems(); track item.sourceIndex) {
+                <div class="item-row" [class.has-duplicates]="item.hasMultipleMatches">
+                  <div class="item-main">
+                    <span class="item-tag">{{ item.counterpartPoint?.tagNumber }}</span>
+                    <span class="item-desc">{{ item.counterpartPoint?.description }}</span>
+                  </div>
+                  <div class="item-source">
+                    from: {{ item.sourcePoint.tagNumber }}
+                    @if (item.hasMultipleMatches && item.allMatches) {
+                      <span class="duplicates-badge">{{ item.allMatches.length }} matches</span>
+                    }
+                  </div>
+                  @if (item.hasMultipleMatches && item.allMatches) {
+                    <div class="duplicates-list">
+                      @for (match of item.allMatches; track match.id) {
+                        <button
+                          class="match-option"
+                          [class.selected]="match.id === item.counterpartPoint?.id"
+                          (click)="selectMatch(item, match)"
+                        >
+                          {{ match.tagNumber }} - {{ match.description }}
+                        </button>
+                      }
+                    </div>
+                  }
+                  <div class="item-actions">
+                    <button class="btn btn-use-original" (click)="useOriginal(item)">Use Original</button>
+                    <button class="btn btn-remove" (click)="removeItem(item)">Remove</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Section: No Counterpart Found -->
+          @if (originalItems().length > 0) {
+            <div class="section">
+              <div class="section-header original">
+                <span class="section-icon">&#x26A0;</span>
+                No Counterpart Found ({{ originalItems().length }})
+              </div>
+              @for (item of originalItems(); track item.sourceIndex) {
+                <div class="item-row original-item">
+                  <div class="item-main">
+                    <span class="item-tag">{{ item.sourcePoint.tagNumber }}</span>
+                    <span class="item-desc">{{ item.sourcePoint.description }}</span>
+                  </div>
+                  <div class="item-source">original point</div>
+                  <div class="item-actions">
+                    <button class="btn btn-remove" (click)="removeItem(item)">Remove</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Section: Non-Unit Items -->
+          @if (nonCounterpartItems().length > 0) {
+            <div class="section">
+              <div class="section-header non-counterpart">
+                <span class="section-icon">&#x2796;</span>
+                Non-Unit Items ({{ nonCounterpartItems().length }})
+              </div>
+              @for (item of nonCounterpartItems(); track item.sourceIndex) {
+                <div class="item-row">
+                  <div class="item-main">
+                    <span class="item-tag">{{ item.counterpartPoint?.tagNumber }}</span>
+                    <span class="item-desc">{{ item.counterpartPoint?.description }}</span>
+                  </div>
+                  <div class="item-source">shared item</div>
+                  <div class="item-actions">
+                    <button class="btn btn-remove" (click)="removeItem(item)">Remove</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (totalCount() === 0 && !loading()) {
+            <div class="empty-state">
+              <p>All items have been removed. Add items back or cancel.</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="dialog-footer">
+      <button class="action-btn cancel-btn" (click)="close()">Cancel</button>
+      <button
+        class="action-btn primary-btn"
+        (click)="accept()"
+        [disabled]="loading() || saving() || totalCount() === 0"
+      >
+        @if (saving()) {
+          Saving...
+        } @else {
+          Accept & Create Standard
+        }
+      </button>
+    </div>
+  </div>
+</div>

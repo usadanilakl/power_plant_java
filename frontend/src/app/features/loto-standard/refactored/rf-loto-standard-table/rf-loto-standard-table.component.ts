@@ -108,6 +108,9 @@ export class RfLotoStandardTableComponent implements OnInit {
   private loadInitialData(): void {
     if (this.inputItems()) return; // If items are provided, no need to load initial data.
 
+    // Skip if state service already loaded data (e.g. from its own init)
+    if (this.items$().length > 0) return;
+
     this.isLoading.set(true);
     this.errorMessage.set(null);
 

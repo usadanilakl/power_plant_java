@@ -45,4 +45,7 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "last_login_date")
     private LocalDateTime lastLoginDate;
+
+    @Column(name = "windows_username")
+    private String windowsUsername;
 }

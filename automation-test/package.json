@@ -36,6 +36,14 @@
     "test:sync-concurrency": "playwright test tests/sync/sync-stress-concurrency.spec.ts",
     "test:sync-files": "playwright test tests/sync/sync-file-operations.spec.ts",
 
+    "test:auth": "playwright test tests/auth/",
+    "test:auth:headed": "playwright test tests/auth/ --headed",
+    "test:auth:login": "playwright test tests/auth/auth-login.spec.ts",
+    "test:auth:access": "playwright test tests/auth/auth-access-grant.spec.ts",
+    "test:auth:users": "playwright test tests/auth/auth-user-crud.spec.ts",
+    "test:auth:desktop": "playwright test tests/auth/auth-desktop-auto.spec.ts",
+    "test:auth:protection": "playwright test tests/auth/auth-endpoint-protection.spec.ts",
+
     "test:one": "playwright test --headed -g",
 
     "codegen": "playwright codegen http://localhost:4200"

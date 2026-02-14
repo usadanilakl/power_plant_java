@@ -2,13 +2,14 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
 .form-container {
   width: 100%;
-  min-width: 90vw;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -187,7 +188,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: auto; /* This section handles its own scrolling */
+  overflow: hidden; /* Double table handles its own internal scrolling */
 }
 
 .loto-points-section h3 {
@@ -201,7 +202,8 @@
 .loto-points-section app-double-loto-point-table {
   flex: 1;
   min-height: 0;
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -244,4 +246,19 @@
   flex: 1;
   color: #999;
   font-size: 16px;
+}
+
+.counterpart-btn {
+  padding: 6px 14px;
+  background: transparent;
+  color: #4fc3f7;
+  border: 1px solid #2a4a5a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.counterpart-btn:hover {
+  background: #1a3a4a;
 }

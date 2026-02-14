@@ -250,11 +250,6 @@ export class RfLotoStandardLeftMenuComponent implements OnInit {
    */
   onItemDoubleClick(item: NestedItem): void {
     this.onItemClick(item);
-
-    // Open the form if it's a LOTO standard
-    if (item.objectType === 'LotoStandard') {
-      this.stateService.openForm();
-    }
   }
 
   /**
@@ -276,8 +271,7 @@ export class RfLotoStandardLeftMenuComponent implements OnInit {
    * Create new LOTO standard
    */
   createNew(): void {
-    // this.stateService.createNew();
-    this.stateService.openForm();
+    this.stateService.openNewLotoStandardForm();
   }
 
   /**

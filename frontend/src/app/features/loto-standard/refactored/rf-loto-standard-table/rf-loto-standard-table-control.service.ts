@@ -18,8 +18,7 @@ export class LotoStandardTableControlService extends TableControlsService {
           {
             name: 'Add New LOTO Standard',
             action: () => {
-              this.stateService.setSelectedItem(new LotoStandardDto());
-              this.stateService.openForm();
+              this.stateService.openNewLotoStandardForm();
             },
             color: 'accent' as ButtonColor,
             icon: 'add_box',

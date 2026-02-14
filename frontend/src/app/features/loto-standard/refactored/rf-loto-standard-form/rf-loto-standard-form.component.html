@@ -54,7 +54,9 @@
             (formSubmit)="onSubmit($event)"
           >
             <ng-container extra-buttons>
-              <!-- Future: Add clipboard functionality for standards -->
+              @if (entity().id) {
+                <button type="button" class="counterpart-btn" (click)="openCounterpartDialog()">Generate Counterpart</button>
+              }
             </ng-container>
           </app-rf-reactive-form>
         </div>
@@ -107,3 +109,12 @@
     ›
   </button>
 </div>
+
+<!-- Counterpart Standard Dialog -->
+@if (showCounterpartDialog() && entity().id) {
+  <app-counterpart-standard-dialog
+    [sourceStandardId]="entity().id!"
+    (standardCreated)="onCounterpartCreated($event)"
+    (dialogClosed)="showCounterpartDialog.set(false)"
+  ></app-counterpart-standard-dialog>
+}

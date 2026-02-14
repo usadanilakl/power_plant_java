@@ -20,8 +20,8 @@ public class UserDto extends BaseDto {
     private String lastName;
     private String email;
     private String role;
-    private String password;
     private Boolean isActive;
     private LocalDateTime lastLoginDate;
+    private String windowsUsername;
 
 }

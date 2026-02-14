@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.CounterpartStandardPreviewDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
@@ -313,6 +314,22 @@ public class NgLotoStandardController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error reordering LOTO points: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Generate counterpart standard preview.
+     * Returns a categorized list of counterpart LOTO points for each point in the source standard.
+     */
+    @GetMapping("/{id}/counterpart-preview")
+    public ResponseEntity<NgApiResponse<CounterpartStandardPreviewDto>> generateCounterpartPreview(
+            @PathVariable Long id) {
+        try {
+            CounterpartStandardPreviewDto preview = lotoStandardService.generateCounterpartPreview(id);
+            return ResponseEntity.ok(new NgApiResponse<>(preview, "Counterpart preview generated successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
 }

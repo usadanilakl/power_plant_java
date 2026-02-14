@@ -2,11 +2,14 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.CounterpartStandardPreviewDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.mappers.permits.LotoStandardMapper;
+import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
@@ -190,6 +193,101 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         standard.reorderLotoPoints(lotoPoints);
         LotoStandard savedStandard = save(standard);
         return toDto(savedStandard);
+    }
+
+    /**
+     * Generate a counterpart standard preview.
+     * For each LOTO point in the source standard, finds or suggests a counterpart
+     * point for the other unit (01 <-> 02).
+     */
+    @Transactional(readOnly = true)
+    public CounterpartStandardPreviewDto generateCounterpartPreview(Long sourceStandardId) {
+        LotoStandard source = getEntityById(sourceStandardId);
+        if (source == null) {
+            throw new EntityNotFoundException("LotoStandard not found with id: " + sourceStandardId);
+        }
+
+        List<LotoPoint> sourcePoints = source.getLotoPoints();
+        if (sourcePoints == null || sourcePoints.isEmpty()) {
+            throw new IllegalArgumentException("Source standard has no LOTO points");
+        }
+
+        String sourceUnit = detectSourceUnit(sourcePoints);
+        String targetUnit = "01".equals(sourceUnit) ? "02" : "01";
+
+        LotoPointRepo lotoPointRepo = (LotoPointRepo) ngLotoPointService.getRepo();
+
+        List<CounterpartStandardPreviewDto.CounterpartItemDto> items = new ArrayList<>();
+
+        for (int i = 0; i < sourcePoints.size(); i++) {
+            LotoPoint sourcePoint = sourcePoints.get(i);
+            LotoPointDto sourceDto = ngLotoPointService.toDto(sourcePoint);
+
+            CounterpartStandardPreviewDto.CounterpartItemDto item = new CounterpartStandardPreviewDto.CounterpartItemDto();
+            item.setSourcePoint(sourceDto);
+            item.setSourceIndex(i);
+
+            String tag = sourcePoint.getTagNumber();
+
+            // Case 1: Tag doesn't start with 01 or 02 -> non-counterpart
+            if (tag == null || (!tag.startsWith("01") && !tag.startsWith("02"))) {
+                item.setCategory("non-counterpart");
+                item.setCounterpartPoint(sourceDto);
+                items.add(item);
+                continue;
+            }
+
+            // Case 2: counterpartId is set -> confirmed
+            if (sourcePoint.getCounterpartId() != null) {
+                LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(sourcePoint.getCounterpartId());
+                if (counterpart != null) {
+                    item.setCategory("confirmed");
+                    item.setCounterpartPoint(ngLotoPointService.toDto(counterpart));
+                    items.add(item);
+                    continue;
+                }
+                // counterpartId was set but entity not found - fall through to tag search
+            }
+
+            // Case 3: Search by swapped tag number
+            String destTag = targetUnit + tag.substring(2);
+            List<LotoPoint> matches = lotoPointRepo.findByTagNumber(destTag);
+
+            if (matches != null && !matches.isEmpty()) {
+                item.setCategory("suggested");
+                item.setCounterpartPoint(ngLotoPointService.toDto(matches.get(0)));
+                if (matches.size() > 1) {
+                    item.setHasMultipleMatches(true);
+                    item.setAllMatches(matches.stream()
+                            .map(ngLotoPointService::toDto)
+                            .toList());
+                }
+                items.add(item);
+            } else {
+                // Case 4: No counterpart found -> original
+                item.setCategory("original");
+                item.setCounterpartPoint(sourceDto);
+                items.add(item);
+            }
+        }
+
+        CounterpartStandardPreviewDto preview = new CounterpartStandardPreviewDto();
+        preview.setSourceStandard(toDto(source));
+        preview.setSourceUnit(sourceUnit);
+        preview.setTargetUnit(targetUnit);
+        preview.setItems(items);
+
+        return preview;
+    }
+
+    private String detectSourceUnit(List<LotoPoint> points) {
+        for (LotoPoint p : points) {
+            if (p.getTagNumber() != null) {
+                if (p.getTagNumber().startsWith("01")) return "01";
+                if (p.getTagNumber().startsWith("02")) return "02";
+            }
+        }
+        return "01";
     }
 
     /**

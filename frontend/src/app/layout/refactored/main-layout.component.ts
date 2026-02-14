@@ -7,10 +7,11 @@ import { TourTriggerComponent } from "../../shared/tour/tour-trigger.component";
 import { SyncIndicatorComponent } from "../../shared/sync-indicator/sync-indicator.component";
 import { GuideTriggerComponent } from "../../shared/guide/guide-trigger/guide-trigger.component";
 import { QaToggleComponent } from "../../shared/qa/qa-toggle/qa-toggle.component";
+import { UserProfileComponent } from "../../shared/user-profile/user-profile.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent, UserProfileComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

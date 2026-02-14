@@ -57,10 +57,10 @@ export class RfLotoStandardClickService extends TableClickService {
     // Fetch full entity from server instead of using incomplete table data
     if (normalizedItem?.id) {
       this.lotoStandardStateService.loadItemById(normalizedItem.id);
-      // Use formFieldKey if available (for nested accessors), otherwise use accessorKey
+      // Set the field to focus on — form is always visible in main area
       const fieldKey = column.formFieldKey || column.accessorKey;
       const field = fieldKey as keyof LotoStandardModel;
-      this.lotoStandardStateService.openForm([field]);
+      this.lotoStandardStateService.formFields.set([field]);
     } else {
       console.warn('Cannot load item: no ID found', normalizedItem);
     }

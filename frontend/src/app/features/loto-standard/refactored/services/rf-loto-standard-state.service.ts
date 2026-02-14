@@ -59,8 +59,8 @@ export class RfLotoStandardStateService {
   isLotoStandardFormOpen = signal<boolean>(false);
 
   constructor() {
-    // Don't auto-load drafts on service initialization
-    // Drafts will be loaded by the form component's effect when appropriate
+    // Load initial data so both tree view and table have items
+    this.loadInitialData();
 
     // Subscribe to SSE sync updates for real-time reactivity
     this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')
@@ -68,6 +68,33 @@ export class RfLotoStandardStateService {
       .subscribe((event) => {
         this.handleSyncUpdate(event);
       });
+  }
+
+  /**
+   * Load initial page of LOTO standards into the shared subject.
+   * Called once on service init so data is available regardless of which
+   * panel mode (tree vs table) is active.
+   */
+  private loadInitialData(): void {
+    this.apiService
+      .getLotoStandards(this.currentPage, this.pageSize)
+      .pipe(
+        tap((response) => {
+          if (
+            response.responseData?.content &&
+            response.responseData.content.length > 0
+          ) {
+            this.addLotoStandards(response.responseData.content);
+            this.incrementPage();
+          }
+        }),
+        catchError((error) => {
+          console.error('Error loading initial LOTO standards:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   /**
@@ -93,7 +120,12 @@ export class RfLotoStandardStateService {
           }
         }),
         catchError((error) => {
-          console.error('Error reloading synced LOTO standard:', error);
+          if (error.status === 404) {
+            // Entity was soft-deleted — remove from local list
+            this.removeLotoStandardById(entityId);
+          } else {
+            console.error('Error reloading synced LOTO standard:', error);
+          }
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef)
@@ -207,8 +239,6 @@ export class RfLotoStandardStateService {
       .pipe(
         tap((response) => {
           this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
-          // Open form after loading the item
-          this.openForm();
         }),
         catchError((error) => {
           console.error('Error loading LOTO Standard:', error);
@@ -230,12 +260,13 @@ export class RfLotoStandardStateService {
           // Clear the draft after successful save
           this.clearDraftForItem(lotoStandardId);
           // Update the selected item with the saved data
-          this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
+          const savedItem = LotoStandardDto.fromJson(response.responseData);
+          this.setSelectedItem(savedItem);
+          // Push into shared list so table + left menu react
+          this.updateLotoStandardInList(savedItem);
           // Show success message
           const action = isNew ? 'created' : 'updated';
           this.messageService.showSuccess(`LOTO Standard ${action} successfully`);
-          // Close the form
-          this.closeForm();
         }),
         catchError((error) => {
           console.error('Error saving LOTO Standard:', error);
@@ -484,5 +515,13 @@ export class RfLotoStandardStateService {
   closeForm(): void {
     this.isLotoStandardFormOpen.set(false);
     this.selectedItem.set(null);
+  }
+
+  /**
+   * Deselect the current item (clears form in inline layout)
+   */
+  deselectItem(): void {
+    this.selectedItem.set(null);
+    this.formFields.set([]);
   }
 }

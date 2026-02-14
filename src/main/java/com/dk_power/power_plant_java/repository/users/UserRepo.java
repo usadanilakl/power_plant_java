@@ -13,4 +13,6 @@ public interface UserRepo extends BaseRepository<User> {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    User findByWindowsUsername(String windowsUsername);
 }
