@@ -75,8 +75,10 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
     {
         label: 'Admin',
         icon: 'admin_panel_settings',
-        defaultRoute: '/backup',
+        defaultRoute: '/admin/users',
         items: [
+            { route: '/admin/users', label: 'User Management' },
+            { route: '/admin/access-management', label: 'Access Management' },
             { route: '/backup', label: 'Backup' },
             { route: '/sync', label: 'Sync Dashboard' },
             { route: '/full-sync-to-server', label: 'Full Sync to Server' },

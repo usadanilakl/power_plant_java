@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;b201acc97d4216d070e01c3c0872435aca14f1b51c29c1ca2e41cc084595a65e;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/wizard-dialog/wizard-breadcrumb.component.ts"],
-  "sourcesContent": ["\n    .breadcrumb-container {\n      display: flex;\n      align-items: center;\n      font-size: 12px;\n      color: var(--secondary-text, #666);\n      margin-bottom: 4px;\n    }\n\n    .separator {\n      font-size: 14px;\n      width: 14px;\n      height: 14px;\n      margin: 0 2px;\n      color: var(--secondary-text, #999);\n    }\n\n    .breadcrumb-item {\n      padding: 2px 6px;\n      border-radius: 4px;\n    }\n\n    .breadcrumb-item.active {\n      color: var(--accent-color, #1976d2);\n      font-weight: 500;\n    }\n\n    .breadcrumb-item.clickable {\n      cursor: pointer;\n    }\n\n    .breadcrumb-item.clickable:hover {\n      background: var(--accent-color-shadow, rgba(0, 123, 255, 0.15));\n      color: var(--accent-color, #1976d2);\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,eAAa;AACb,aAAW;AACX,SAAO,IAAI,gBAAgB,EAAE;AAC7B,iBAAe;AACjB;AAEA,CAAC;AACC,aAAW;AACX,SAAO;AACP,UAAQ;AACR,UAAQ,EAAE;AACV,SAAO,IAAI,gBAAgB,EAAE;AAC/B;AAEA,CAAC;AACC,WAAS,IAAI;AACb,iBAAe;AACjB;AAEA,CALC,eAKe,CAAC;AACf,SAAO,IAAI,cAAc,EAAE;AAC3B,eAAa;AACf;AAEA,CAVC,eAUe,CAAC;AACf,UAAQ;AACV;AAEA,CAdC,eAce,CAJC,SAIS;AACxB,cAAY,IAAI,qBAAqB,EAAE,KAAK,CAAC,EAAE,GAAG,EAAE,GAAG,EAAE;AACzD,SAAO,IAAI,cAAc,EAAE;AAC7B;",
-  "names": []
-}

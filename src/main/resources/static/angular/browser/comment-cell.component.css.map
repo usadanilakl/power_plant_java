@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;4fb6de665c59aeb2b459a3fbde8316e3593eaab2587e44af78f219c753ac2c1a;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/comments-dialog/comment-cell.component.ts"],
-  "sourcesContent": ["\n    .comment-cell {\n      display: flex;\n      align-items: center;\n      gap: 6px;\n      cursor: pointer;\n      width: 100%;\n      overflow: hidden;\n    }\n\n    .comment-cell:hover {\n      color: var(--primary-color, #1976d2);\n    }\n\n    .comment-preview-text {\n      flex: 1;\n      overflow: hidden;\n      text-overflow: ellipsis;\n      white-space: nowrap;\n      font-size: 13px;\n    }\n\n    .comment-badge {\n      background: var(--primary-color, #1976d2);\n      color: white;\n      border-radius: 50%;\n      min-width: 20px;\n      height: 20px;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-size: 11px;\n      font-weight: 600;\n      flex-shrink: 0;\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,eAAa;AACb,OAAK;AACL,UAAQ;AACR,SAAO;AACP,YAAU;AACZ;AAEA,CATC,YASY;AACX,SAAO,IAAI,eAAe,EAAE;AAC9B;AAEA,CAAC;AACC,QAAM;AACN,YAAU;AACV,iBAAe;AACf,eAAa;AACb,aAAW;AACb;AAEA,CAAC;AACC,cAAY,IAAI,eAAe,EAAE;AACjC,SAAO;AACP,iBAAe;AACf,aAAW;AACX,UAAQ;AACR,WAAS;AACT,eAAa;AACb,mBAAiB;AACjB,aAAW;AACX,eAAa;AACb,eAAa;AACf;",
-  "names": []
-}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;2a528f0a50379e0b444d6c1d79cc02ac2c801d068d247e4bdeed527e247470b1;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-trigger/guide-trigger.component.ts"],
-  "sourcesContent": ["\n    .guide-trigger-btn {\n      color: inherit;\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,SAAO;AACT;",
-  "names": []
-}

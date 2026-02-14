@@ -56,5 +56,7 @@ export class UserService {
     return this.http.post<SpringApiResponse<void>>(`${this.apiUrl}/${id}/change-password`, payload);
   }
 
-  // If there are any other User-specific operations, you can add them here
+  getRoles(): Observable<{ roles: string[] }> {
+    return this.http.get<{ roles: string[] }>(`${this.apiUrl}/roles`);
+  }
 }

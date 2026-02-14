@@ -4,6 +4,7 @@ import { PermitsMonitorComponent } from './features/permit-builder/permits-monit
 import { LoginComponent } from './features/auth/login/login.component';
 import { AccessRequestComponent } from './features/auth/access-request/access-request.component';
 import { AdminAccessComponent } from './features/auth/admin-access/admin-access.component';
+import { UserManagementComponent } from './features/admin/user-management/user-management.component';
 import { ProfileComponent } from './features/auth/profile/profile.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
@@ -30,6 +31,7 @@ export const routes: Routes = [
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
 
   // Admin routes
+  { path: 'admin/users', component: UserManagementComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/access-management', component: AdminAccessComponent, canActivate: [authGuard, adminGuard] },
 
   // Feature routes (all protected)
