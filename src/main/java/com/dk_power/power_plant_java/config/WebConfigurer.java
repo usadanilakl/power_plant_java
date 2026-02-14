@@ -57,6 +57,20 @@ public class WebConfigurer implements WebMvcConfigurer {
                 });
 
 
+        // Serve Angular app at /app/** with SPA fallback
+        registry.addResourceHandler("/app/**")
+                .addResourceLocations("classpath:/static/angular/browser/")
+                .setCachePeriod(3600)
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver() {
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                        Resource requestedResource = location.createRelative(resourcePath);
+                        return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
+                                : new ClassPathResource("/static/angular/browser/index.html");
+                    }
+                });
+
         registry.addResourceHandler("/brady/**")
                 .addResourceLocations("classpath:/static/brady/")
                 .resourceChain(true)
@@ -109,7 +123,6 @@ public class WebConfigurer implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/app/**").setViewName("forward:/angular/browser/index.csr.html");
         registry.addViewController("/print/**").setViewName("forward:/brady/index.html");
         registry.addViewController("/brows/**").setViewName("forward:/browser/index.html");
         registry.addViewController("/work-request").setViewName("forward:/browser/automation/permits/work-request/work-request-table/index.html");

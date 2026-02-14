@@ -2,6 +2,7 @@
 import { Component, input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-pdf-display-iframe',
@@ -29,13 +30,13 @@ export class PdfDisplayIframeComponent implements OnInit {
 
   ngOnInit() {
     if (this.pdfSrc()) {
-      const fullUrl = `http://localhost:8082/${this.pdfSrc()}`;
+      const fullUrl = `${environment.baseApiUrl}/${this.pdfSrc()}`;
       this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
     }
   }
 
   updateUrl(url: string){
-    const fullUrl = `http://localhost:8082/${url}`;
+    const fullUrl = `${environment.baseApiUrl}/${url}`;
     this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
   }
 }

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/form-designer-refactored/form-renderer/form-renderer.component.css"],
-  "sourcesContent": [":host {\r\n  display: block;\r\n  width: 100%;\r\n  height: 100%;\r\n  overflow: auto;\r\n  background-color: #f0f0f0;\r\n  padding: 20px;\r\n  box-sizing: border-box;\r\n}\r\n\r\n.form-sheet {\r\n  background-color: white;\r\n  color: black;\r\n  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\r\n  margin: 0 auto 20px auto;\r\n  position: relative;\r\n  /* Allow form-array containers to extend beyond the page for add/remove buttons */\r\n  overflow: visible;\r\n}\r\n\r\n.form-container {\r\n  position: absolute;\r\n  display: flex;\r\n}\r\n\r\n.form-actions {\r\n  text-align: center;\r\n  margin-top: 20px;\r\n}\r\n\r\n.form-actions button {\r\n  margin: 0 10px;\r\n  padding: 10px 20px;\r\n}\r\n\r\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,SAAO;AACP,UAAQ;AACR,YAAU;AACV,oBAAkB;AAClB,WAAS;AACT,cAAY;AACd;AAEA,CAAC;AACC,oBAAkB;AAClB,SAAO;AACP,cAAY,EAAE,EAAE,KAAK,KAAK,CAAC,EAAE,CAAC,EAAE,CAAC,EAAE;AACnC,UAAQ,EAAE,KAAK,KAAK;AACpB,YAAU;AAEV,YAAU;AACZ;AAEA,CAAC;AACC,YAAU;AACV,WAAS;AACX;AAEA,CAAC;AACC,cAAY;AACZ,cAAY;AACd;AAEA,CALC,aAKa;AACZ,UAAQ,EAAE;AACV,WAAS,KAAK;AAChB;",
-  "names": []
-}

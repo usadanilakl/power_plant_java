@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, computed, DestroyRef, effect, ElementRef, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
+import { environment } from '../../../../environments/environment';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
@@ -15,6 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   styleUrl: './image-zoom-interactive.component.css'
 })
 export class ImageZoomInteractiveComponent implements AfterViewInit, OnInit{
+  readonly baseApiUrl = environment.baseApiUrl;
   imageUrl = input<string>();
   imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();

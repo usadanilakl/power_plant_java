@@ -16,6 +16,7 @@ import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import com.dk_power.power_plant_java.sevice.loto.loto_box.LotoBoxInitializationService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import com.dk_power.power_plant_java.config.SyncConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -46,6 +47,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final NgLotoPointService lotoPointService;
     private final NgEquipmentService equipmentService;
     private final EquipmentRefactorService equipmentRefactorService;
+    private final SyncConfig syncConfig;
 
     @Value("${files.root.path}")
     private String filesRoot;
@@ -120,7 +122,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
 
         System.err.println("=====================================================");
-        System.out.println("App is Ready: open browser and type: http://localhost:8082");
+        System.out.println("App is Ready: open browser and type: http://localhost:" + syncConfig.getSyncPort());
 
 //        equipmentRefactorService.splitAllEquipmentWithMultipleLotoPoints();
 

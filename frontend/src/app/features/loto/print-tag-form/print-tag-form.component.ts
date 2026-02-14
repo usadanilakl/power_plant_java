@@ -1,6 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoService } from '../../../services/loto/loto.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -46,7 +47,7 @@ export class PrintTagFormComponent implements OnInit {
       'Content-Type': 'application/json'
     });
 
-    this.http.post('http://localhost:8082/ng/loto-points/tagging', tagData, { headers: headers })
+    this.http.post(`${environment.baseApiUrl}/ng/loto-points/tagging`, tagData, { headers: headers })
       .subscribe(
         response => {
           // Handle success (e.g., show a success message)
@@ -59,7 +60,7 @@ export class PrintTagFormComponent implements OnInit {
   }
 
   printTag() {
-    const url = `http://localhost:8082/print/tag/${encodeURIComponent(this.tagNumber)}/${encodeURIComponent(this.description)}`;
+    const url = `${environment.baseApiUrl}/print/tag/${encodeURIComponent(this.tagNumber)}/${encodeURIComponent(this.description)}`;
     window.open(url, '_blank');
   }
 }

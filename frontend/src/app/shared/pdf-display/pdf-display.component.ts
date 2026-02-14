@@ -1,5 +1,6 @@
 import { Component, input, Input, PLATFORM_ID, Inject, OnInit } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { environment } from '../../../environments/environment';
 import { PDFProgressData } from 'ng2-pdf-viewer';
 
 @Component({
@@ -41,7 +42,7 @@ export class PdfDisplayComponent implements OnInit {
       const { PdfViewerComponent } = await import('ng2-pdf-viewer');
       this.pdfViewerComponent = PdfViewerComponent;
       this.pdfViewerInputs = {
-        src: 'http://localhost:8082/' + this.pdfSrc(),
+        src: environment.baseApiUrl + '/' + this.pdfSrc(),
         render_text: true,
         original_size: false,
         show_all: true,
