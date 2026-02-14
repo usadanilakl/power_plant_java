@@ -238,7 +238,10 @@ export class RfLotoStandardStateService {
       .getLotoStandardById(id + '')
       .pipe(
         tap((response) => {
-          this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
+          const item = LotoStandardDto.fromJson(response.responseData);
+          this.setSelectedItem(item);
+          // Ensure item is in the shared list (handles newly created items too)
+          this.updateLotoStandardInList(item);
         }),
         catchError((error) => {
           console.error('Error loading LOTO Standard:', error);

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;1acfa3bb402ae0fec85979c9ab90bec2be0883961bc8b4bb65c6c517f5e3cd03;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/log/log-db-table/log-db-table.component.ts"],
+  "sourcesContent": ["\n      :host {\n        display: flex;\n        flex-direction: column;\n        flex: 1;\n        min-height: 0;\n        overflow: hidden;\n        width: 100%;\n        height: 100%;\n      }\n      .table-wrapper {\n        width: 100%;\n        height: 100%;\n        display: flex;\n        flex-direction: column;\n        flex: 1;\n        min-height: 0;\n      }\n    "],
+  "mappings": ";AACM;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACV,SAAO;AACP,UAAQ;AACV;AACA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACd;",
+  "names": []
+}

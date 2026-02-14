@@ -31,13 +31,13 @@ public class User extends BaseAuditEntity {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email", unique = true)
     private String email;
 
-    @Column(name = "role", nullable = false)
+    @Column(name = "role")
     private String role;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "password")
     private String password;
 
     @Column(name = "is_active")

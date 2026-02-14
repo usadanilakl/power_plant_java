@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;23321c06744302758cd51808d0fc7e0fed487db1a8ee22b10fc121e324e17d6d;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/loto-points/refactored/rf-loto-point-left-panel/rf-loto-point-nav-table.component.ts"],
+  "sourcesContent": ["\n    :host {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n\n    :host app-rf-loto-point-table {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n  "],
+  "mappings": ";AACI;AACE,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;AAEA,MAAM;AACJ,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;",
+  "names": []
+}

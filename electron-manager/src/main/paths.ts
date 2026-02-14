@@ -15,6 +15,7 @@
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execSync } from 'child_process';
 
 const WORKING_DIR_SUFFIX = path.join('managed_apps', 'pid');
 
@@ -46,11 +47,23 @@ export function getTessdataSourcePath(): string {
   return path.resolve(__dirname, '..', '..', '..', '..', 'tessdata');
 }
 
-/** Ensure the working directory tree exists. Call once at startup. */
+/** Ensure the working directory tree exists and is writable by all users. Call once at startup. */
 export function ensureWorkingDir(): void {
   const dir = getWorkingDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+  }
+
+  // In packaged mode, grant the Users group full control on the shared ProgramData folder
+  // so any Windows user can write logs, DB, config, and layout files.
+  if (app.isPackaged && process.platform === 'win32') {
+    const programData = process.env.PROGRAMDATA || 'C:\\ProgramData';
+    const rootDir = path.join(programData, 'DK Power Manager');
+    try {
+      execSync(`icacls "${rootDir}" /grant Users:(OI)(CI)F /T /Q`, { windowsHide: true });
+    } catch (err: any) {
+      console.warn('[Paths] Failed to set folder permissions:', err.message);
+    }
   }
 }
 
