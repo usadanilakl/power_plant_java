@@ -279,8 +279,9 @@ public class FullSyncToServerService {
             // Phase 1: Check server safety (0% -> safetyWeight%)
             currentStatus.setPhase("Checking server safety");
             currentStatus.setProgressPercent(0);
-            if (!checkServerImportSafety(force)) {
-                currentStatus.setPhase("Failed: Server has existing data and force=false");
+            String safetyError = checkServerImportSafety(force);
+            if (safetyError != null) {
+                currentStatus.setPhase("Failed: " + safetyError);
                 currentStatus.setSuccess(false);
                 return;
             }
@@ -403,10 +404,12 @@ public class FullSyncToServerService {
 
     /**
      * Check if server is safe for import (empty or force enabled).
+     * Returns the server message, or null if safe.
      */
-    private boolean checkServerImportSafety(boolean force) {
+    private String checkServerImportSafety(boolean force) {
         try {
             String url = syncConfig.getSyncServerUrl() + "/api/resync/import/safety-check?force=" + force;
+            log.info("Safety check: {} (force={})", url, force);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
@@ -422,12 +425,15 @@ public class FullSyncToServerService {
                 Boolean safe = (Boolean) body.get("safe");
                 String message = (String) body.get("message");
                 log.info("Server safety check: safe={}, message={}", safe, message);
-                return Boolean.TRUE.equals(safe);
+                if (Boolean.TRUE.equals(safe)) {
+                    return null; // safe
+                }
+                return message != null ? message : "Server rejected import (safe=false)";
             }
-            return false;
+            return "Empty response from server safety check";
         } catch (Exception e) {
-            log.error("Safety check failed: {}", e.getMessage());
-            return false;
+            log.error("Safety check failed: {}", e.getMessage(), e);
+            return "Safety check request failed: " + e.getMessage();
         }
     }
 
