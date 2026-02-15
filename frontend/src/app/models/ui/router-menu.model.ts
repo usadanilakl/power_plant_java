@@ -3,6 +3,7 @@ export interface RouterMenuItem {
     label: string;
     guideId?: string;
     guideMessage?: string;
+    requiresFullAccess?: boolean;
 }
 
 export interface RouterMenuGroup {
@@ -10,6 +11,7 @@ export interface RouterMenuGroup {
     icon?: string;
     defaultRoute: string;
     items: RouterMenuItem[];
+    requiresFullAccess?: boolean;
 }
 
 export type RouterMenuItems = RouterMenuItem[];
@@ -21,6 +23,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'Files',
         icon: 'folder',
         defaultRoute: '/file',
+        requiresFullAccess: true,
         items: [
             { route: '/file', label: 'View Files' },
             { route: '/tag-number', label: 'Create New Tag' },
@@ -31,6 +34,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'LOTO',
         icon: 'lock',
         defaultRoute: '/loto',
+        requiresFullAccess: true,
         items: [
             { route: '/loto', label: 'LOTO' },
             { route: '/loto-points', label: 'Loto Points', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
@@ -42,6 +46,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'Permits',
         icon: 'assignment',
         defaultRoute: '/permit-builder',
+        requiresFullAccess: true,
         items: [
             { route: '/permits-monitor', label: 'Permits Monitor' },
             { route: '/permit-builder/daily-packages', label: 'Daily Packages' },
@@ -58,6 +63,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'Form Designer',
         icon: 'edit_document',
         defaultRoute: '/form-designer',
+        requiresFullAccess: true,
         items: [
             { route: '/form-designer/forms', label: 'Existing Forms' },
             { route: '/form-designer/design', label: 'Design' },
@@ -68,6 +74,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'Log',
         icon: 'forum',
         defaultRoute: '/log',
+        requiresFullAccess: true,
         items: [
             { route: '/log', label: 'System Log' }
         ]
@@ -76,6 +83,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         label: 'Admin',
         icon: 'admin_panel_settings',
         defaultRoute: '/admin/users',
+        requiresFullAccess: true,
         items: [
             { route: '/admin/users', label: 'User Management' },
             { route: '/admin/access-management', label: 'Access Management' },

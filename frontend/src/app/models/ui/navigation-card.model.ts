@@ -13,6 +13,7 @@ export interface NavigationCard {
   reactiveGuideId?: string;
   /** Message to show when this card is highlighted by a reactive guide */
   reactiveGuideMessage?: string;
+  requiresFullAccess?: boolean;
 }
 
 export interface NavigationCardGroup {
@@ -22,6 +23,7 @@ export interface NavigationCardGroup {
   color: string;
   defaultRoute: string;
   items: NavigationCard[];
+  requiresFullAccess?: boolean;
 }
 
 export type NavigationCards = NavigationCard[];
@@ -35,6 +37,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'folder',
     color: '#3498db',
     defaultRoute: '/file',
+    requiresFullAccess: true,
     items: [
       { title: 'View Files', description: 'View and edit equipment files', icon: 'folder', route: '/file', color: '#3498db' },
       { title: 'Create Tag', description: 'Create new equipment tag numbers', icon: 'add_circle', route: '/tag-number', color: '#16a085' },
@@ -47,6 +50,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'lock',
     color: '#e74c3c',
     defaultRoute: '/loto',
+    requiresFullAccess: true,
     items: [
       { title: 'LOTO', description: 'Manage LOTO procedures', icon: 'lock', route: '/loto', color: '#e74c3c' },
       { title: 'Loto Points', description: 'Manage isolation points', icon: 'location_on', route: '/loto-points', color: '#9b59b6' },
@@ -60,6 +64,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'assignment',
     color: '#f39c12',
     defaultRoute: '/permit-builder',
+    requiresFullAccess: true,
     items: [
       { title: 'Daily Packages', description: 'Daily permit packages', icon: 'event_note', route: '/permit-builder/daily-packages', color: '#f39c12' },
       { title: 'Work Requests', description: 'Work request permits from SharePoint', icon: 'request_page', route: '/permit-builder/work-requests', color: '#e67e22' },
@@ -76,6 +81,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'edit_document',
     color: '#34495e',
     defaultRoute: '/form-designer',
+    requiresFullAccess: true,
     items: [
       { title: 'Form Designer', description: 'Design printable forms', icon: 'edit_document', route: '/form-designer', color: '#34495e' }
     ]
@@ -86,6 +92,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'forum',
     color: '#607d8b',
     defaultRoute: '/log',
+    requiresFullAccess: true,
     items: [
       { title: 'System Log', description: 'View all comments across the system', icon: 'forum', route: '/log', color: '#607d8b' }
     ]
@@ -96,6 +103,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     icon: 'admin_panel_settings',
     color: '#c0392b',
     defaultRoute: '/backup',
+    requiresFullAccess: true,
     items: [
       { title: 'Backup', description: 'Backup and restore data', icon: 'backup', route: '/backup', color: '#8e44ad' },
       { title: 'Sync Dashboard', description: 'Monitor sync status & recovery', icon: 'sync', route: '/sync', color: '#27ae60' },

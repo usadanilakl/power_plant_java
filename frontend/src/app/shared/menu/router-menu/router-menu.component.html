@@ -1,13 +1,13 @@
 
 <nav class="router-menu" [ngClass]="layout()">
-  @if (useGrouped() && groupedMenu()) {
+  @if (useGrouped() && filteredGroupedMenu()) {
     <div class="menu-container">
       <!-- Primary row: Home + Group links -->
       <ul class="primary-menu">
         <li class="home-link">
           <a routerLink="/">Home</a>
         </li>
-        @for (group of groupedMenu(); track group.label) {
+        @for (group of filteredGroupedMenu(); track group.label) {
           <li class="menu-group-link" [class.active]="isGroupActive(group)">
             <a [routerLink]="group.defaultRoute">{{ group.label }}</a>
           </li>

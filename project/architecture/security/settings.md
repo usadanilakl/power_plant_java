@@ -23,7 +23,7 @@ server.servlet.session.timeout=24h
 ```
 
 Session creation policy: `IF_REQUIRED` — created on login, not on every request.
-Maximum concurrent sessions per user: 5.
+Maximum concurrent sessions per user: unlimited (`maximumSessions(-1)`).
 
 ### Password Encoding
 
@@ -69,7 +69,7 @@ DesktopAutoAuthFilter  ← before UsernamePasswordAuthenticationFilter
 UsernamePasswordAuthenticationFilter
   ↓
 AccessGrantFilter      ← after UsernamePasswordAuthenticationFilter
-  ↓                       (validates ACCESS_TOKEN for full-access endpoints)
+  ↓                       (validates ACCESS_TOKEN + @RestrictedAllowed for external)
 AuthorizationFilter    ← Spring Security's built-in authorization
   ↓
 Controller
@@ -97,7 +97,9 @@ Added to `app.config.ts` via `withInterceptors([authInterceptor])`.
 Behavior:
 - Adds `withCredentials: true` to all HTTP requests (sends cookies cross-origin)
 - On 401 response → redirects to `/login` (with `returnUrl` query param)
+  - Skips redirect for auth-checking URLs (`/api/auth/me`, `/api/auth/profile`, `/api/auth/access-status`)
 - On 403 with `FULL_ACCESS_REQUIRED` error → redirects to `/access-request`
+  - Skips redirect if already on `/access-request` (prevents redirect loops)
 
 ### Route Guards
 
@@ -107,17 +109,37 @@ Behavior:
 
 **File:** `frontend/src/app/guards/admin.guard.ts`
 - Checks `user.role === 'ROLE_ADMIN'`
-- Redirects to `/` if not admin
+- Redirects to `/home` if not admin
+
+**File:** `frontend/src/app/guards/full-access.guard.ts`
+- Checks `user.accessLevel === 'FULL'`
+- Redirects to `/home` if not full access
+- Applied to all feature route sets (files, LOTO, permits, form designer, log, standalone)
 
 ### Route Configuration
 
 **File:** `frontend/src/app/app.routes.ts`
 
 - `/login` — public (no guard)
-- `/profile` — requires `authGuard` (self-service profile page)
+- `/home` — requires `authGuard`
+- `/profile` — requires `authGuard`
 - `/access-request` — requires `authGuard`
 - `/admin/access-management` — requires `authGuard` + `adminGuard`
-- All feature routes — wrapped with `authGuard`
+- `/admin/users` — requires `authGuard` + `adminGuard`
+- All feature routes (`FILE_ROUTES`, `LOTO_ROUTES`, `LOTO_POINTS_ROUTES`, `PERMIT_BUILDER_ROUTES`, `SCHEDULER_ROUTES`, `FORM_DESIGNER_ROUTES`, `STANDALONE_ROUTES`, `LOG_ROUTES`) — requires `authGuard` + `fullAccessGuard`
+- `/permits-monitor` — requires `authGuard` + `fullAccessGuard`
+
+### Navigation Filtering
+
+Menu and home page cards are filtered by access level. Groups and items with `requiresFullAccess: true` are hidden for restricted users.
+
+**Files:**
+- `models/ui/router-menu.model.ts` — `requiresFullAccess` flag on `RouterMenuItem` and `RouterMenuGroup`
+- `models/ui/navigation-card.model.ts` — `requiresFullAccess` flag on `NavigationCard` and `NavigationCardGroup`
+- `shared/menu/router-menu/router-menu.component.ts` — `filteredGroupedMenu` computed signal
+- `pages/home/home.component.ts` — `filteredGroupedCards` computed signal
+
+Currently all 6 nav groups (Files, LOTO, Permits, Form Designer, Log, Admin) are marked `requiresFullAccess: true`. As restricted-area features are built out, remove the flag from relevant groups.
 
 ### Header User Profile Icon
 

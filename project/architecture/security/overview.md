@@ -9,9 +9,9 @@ The power plant application uses a **4-tier access model** to protect the hub wh
 | Tier | Who | Authentication | Access Level |
 |------|-----|---------------|-------------|
 | **Public** | Anyone | None | SharePoint webhooks, health check, login endpoint |
-| **Restricted** | Logged-in user | Email + password → `JSESSIONID` cookie | Own permits/logs (read-only), request full access |
-| **Full Web** | Approved user | Login + admin-approved `ACCESS_TOKEN` cookie | Full CRUD via Angular |
-| **Full Desktop** | Local operator | Auto-auth via Windows username | Full CRUD locally |
+| **Restricted** | Logged-in external user | Email + password → `JSESSIONID` cookie | `@RestrictedAllowed` endpoints + `/api/auth/*`, request full access |
+| **Full Web** | Approved external user | Login + admin-approved `ACCESS_TOKEN` cookie | Full CRUD via Angular |
+| **Full Desktop/LAN** | Local operator / LAN user | Desktop: auto-auth via Windows username. LAN: manual login | Full CRUD |
 
 ## Auth Flow
 
@@ -21,7 +21,7 @@ The power plant application uses a **4-tier access model** to protect the hub wh
   │  Browser ──HTTPS──► Hub:8082                         │
   │    1. POST /api/auth/login → JSESSIONID (Restricted) │
   │    2. POST /api/auth/request-access → PENDING        │
-  │    3. Admin on LAN approves → ACCESS_TOKEN (Full)    │
+  │    3. Admin on localhost approves → ACCESS_TOKEN      │
   └──────────────────────────────────────────────────────┘
 
                         LAN (plant network)
@@ -30,10 +30,13 @@ The power plant application uses a **4-tier access model** to protect the hub wh
   │    Auto-auth: OS username → User.windowsUsername     │
   │    Full access without login                         │
   │                                                      │
+  │  LAN user ──► 10.x.x.x:8082                         │
+  │    Manual login → full access (no grant needed)      │
+  │                                                      │
   │  Sync: /api/sync/**, /api/field-sync/**              │
   │    LAN IP whitelist, no auth needed                  │
   │                                                      │
-  │  Admin: /api/auth/admin/** (LAN + ROLE_ADMIN)        │
+  │  Admin: /api/auth/admin/** (localhost + ROLE_ADMIN)   │
   │    Approve/deny/revoke web access requests           │
   └──────────────────────────────────────────────────────┘
 ```
@@ -45,25 +48,37 @@ The power plant application uses a **4-tier access model** to protect the hub wh
 | `JSESSIONID` | Spring Security session (login state) | 24h (configurable) |
 | `ACCESS_TOKEN` | Full web access grant (UUID → DB lookup) | 24h max, 1h inactivity |
 
-Both cookies are HTTP-only (set by Spring Security). Full web access requires **both** cookies + a valid `AccessGrant` in the database.
+Both cookies are HTTP-only (set by Spring Security). Full web access from external requires **both** cookies + a valid `AccessGrant` in the database.
 
 ## Roles
 
-| Role | Value | Web Access | Desktop Access |
-|------|-------|-----------|----------------|
-| Admin | `ROLE_ADMIN` | Full + user management + access approval | Full (auto-auth) |
-| Employee | `ROLE_EMPLOYEE` | Full (requires admin approval) | Full (auto-auth) |
-| Contractor | `ROLE_CONTRACTOR` | Restricted only (read-only) | Restricted |
+| Role | Value | External (no grant) | External (with grant) | Desktop/LAN |
+|------|-------|--------------------|-----------------------|-------------|
+| Admin | `ROLE_ADMIN` | Restricted + admin grant approval (localhost only) | Full + user management | Full (auto-auth) |
+| Employee | `ROLE_EMPLOYEE` | Restricted | Full | Full (auto-auth) |
+| Contractor | `ROLE_CONTRACTOR` | Restricted | Full (if approved) | Full (on LAN/localhost) |
+
+All roles are equal at the `AccessGrantFilter` level — no role-based bypass. Access tiers are determined by **network origin** (localhost/LAN/external) and **grant status**, not role. Roles only matter for Spring Security's `hasRole()` rules (admin pages, user management).
+
+## Restricted Access (`@RestrictedAllowed`)
+
+External users without a grant can access endpoints annotated with `@RestrictedAllowed`. This is the mechanism for building out the restricted area incrementally. See [Restricted Access](./restricted-access.md) for details.
+
+Currently annotated controllers:
+- `RfValueController` (`/ng/rf-values/**`) — reference data (categories/values for UI dropdowns)
+- `NgValueController` (`/ng/values/**`) — legacy value endpoints
 
 ## Endpoint Access Map
 
 | Category | Endpoints | Auth Required |
 |----------|-----------|--------------|
 | Public | `/api/auth/login`, `/api/auth/logout`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
-| LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
-| Restricted | `/api/auth/me`, `/api/auth/profile`, `/api/auth/request-access`, `/api/auth/access-status` | Session cookie |
-| Full access | `/ng/**`, `/api/**`, `/browser/**`, `/print/**` | Session + AccessGrant (or localhost) |
-| Admin | `/api/auth/admin/**`, `/ng/users/**`, `/admin/**` | ROLE_ADMIN + LAN |
+| LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/api/electron-update/**`, `/api/resource-packs/**`, `/api/sync-updates/**`, `/api/data-integrity/**`, `/api/backup/**`, `/api/attachments/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
+| Restricted (exempt) | `/api/auth/*` (me, profile, request-access, access-status) | Session cookie |
+| Restricted (annotated) | `@RestrictedAllowed` controllers/methods (currently: `/ng/rf-values/**`, `/ng/values/**`) | Session cookie |
+| Full access | All other `/ng/**`, `/api/**`, `/browser/**`, `/print/**` | Session + AccessGrant (or localhost/LAN) |
+| Admin | `/api/auth/admin/**` | ROLE_ADMIN + **localhost only** |
+| Admin pages | `/ng/users/**`, `/admin/**`, `/users/**` | ROLE_ADMIN |
 
 ## Key Files
 
@@ -71,7 +86,8 @@ Both cookies are HTTP-only (set by Spring Security). Full web access requires **
 |------|---------|
 | `config/SecurityConfigSpring.java` | SecurityFilterChain, BCrypt, CORS |
 | `config/security/DesktopAutoAuthFilter.java` | Localhost auto-auth via OS username |
-| `config/security/AccessGrantFilter.java` | ACCESS_TOKEN cookie validation |
+| `config/security/AccessGrantFilter.java` | ACCESS_TOKEN validation + `@RestrictedAllowed` check |
+| `config/security/RestrictedAllowed.java` | Annotation for restricted-tier endpoint access |
 | `config/NetworkUtils.java` | LAN IP detection |
 | `config/AdminUserSeeder.java` | Seed default admin on startup |
 | `controller/auth/AuthController.java` | Login, /me, profile, request-access |
@@ -79,11 +95,14 @@ Both cookies are HTTP-only (set by Spring Security). Full web access requires **
 | `controller/angular/NgUserController.java` | User CRUD (admin) |
 | `entities/users/AccessGrant.java` | Access grant entity |
 | `sevice/users/AccessGrantCleanupService.java` | Scheduled expiration cleanup |
+| `frontend/.../guards/full-access.guard.ts` | Route guard for full-access-only routes |
 
 ## Detail Documentation
 
 - [Authentication](./authentication.md) — Login flows, desktop auto-auth, token lifecycle
 - [Authorization](./authorization.md) — Roles, endpoint rules, filter chain
+- [Restricted Access](./restricted-access.md) — `@RestrictedAllowed` annotation, frontend guards, extending the restricted area
 - [User Management](./user-management.md) — User CRUD, admin seeding, desktop mapping
 - [Settings](./settings.md) — Configuration properties reference
 - [Testing](./testing.md) — E2E test suite, running tests
+- [External Tunnel](./external-tunnel.md) — LocalXpose tunnel for testing external access tiers

@@ -16,6 +16,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -34,6 +37,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
 
     private final AccessGrantRepository accessGrantRepository;
     private final ObjectMapper objectMapper;
+    private final RequestMappingHandlerMapping handlerMapping;
 
     public static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
 
@@ -93,6 +97,13 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             // Not authenticated — Spring Security will handle 401
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Check if the target handler is annotated with @RestrictedAllowed
+        // (restricted external users can access these without a grant)
+        if (isRestrictedAllowed(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -161,6 +172,29 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             }
         }
         return null;
+    }
+
+    /**
+     * Check if the target handler method/class is annotated with @RestrictedAllowed.
+     * Fails closed: if handler can't be resolved, returns false (requires full access).
+     */
+    private boolean isRestrictedAllowed(HttpServletRequest request) {
+        try {
+            HandlerExecutionChain chain = handlerMapping.getHandler(request);
+            if (chain == null) return false;
+
+            Object handler = chain.getHandler();
+            if (!(handler instanceof HandlerMethod handlerMethod)) return false;
+
+            // Method-level annotation takes priority
+            if (handlerMethod.getMethodAnnotation(RestrictedAllowed.class) != null) return true;
+
+            // Fall back to class-level annotation
+            return handlerMethod.getBeanType().getAnnotation(RestrictedAllowed.class) != null;
+        } catch (Exception e) {
+            log.warn("Could not resolve handler for restricted-access check: {}", e.getMessage());
+            return false;
+        }
     }
 
     private void sendFullAccessRequired(HttpServletResponse response, String message) throws IOException {

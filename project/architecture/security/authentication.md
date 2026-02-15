@@ -10,7 +10,7 @@
 | 4 | **External + grant** | Manual login + ACCESS_TOKEN cookie | Full (role-restricted) | `FULL` |
 
 - Tiers 1-2: no grant needed. `AccessGrantFilter` bypasses localhost/LAN.
-- Tier 3: automatic after login. User can access `/api/auth/*` and static resources only.
+- Tier 3: automatic after login. User can access `/api/auth/*`, `@RestrictedAllowed` endpoints, and static resources.
 - Tier 4: requires admin approval from localhost (desktop Electron instance).
 
 ## Login Flow
@@ -89,11 +89,14 @@ Access level is computed by `computeAccessLevel(User, HttpServletRequest)`:
 
 After login from outside the network, the user gets `accessLevel: "RESTRICTED"` and is routed to `/access-request`. They can access:
 
-- `/api/auth/*` endpoints (login, logout, me, profile, access-status, request-access)
+- `/api/auth/*` endpoints (login, logout, me, profile, access-status, request-access) — exempt in `AccessGrantFilter`
+- Endpoints annotated with `@RestrictedAllowed` (currently: `/ng/rf-values/**`, `/ng/values/**`) — checked by `AccessGrantFilter` via handler resolution
 - Static resources (Angular SPA loads normally)
 - Everything else → 403 `{ "error": "FULL_ACCESS_REQUIRED" }`
 
-The `authInterceptor` catches 403 `FULL_ACCESS_REQUIRED` responses and redirects to `/access-request` as a safety net (in case the user manually navigates to a protected page).
+The `authInterceptor` catches 403 `FULL_ACCESS_REQUIRED` responses and redirects to `/access-request` (unless the user is already on that page, to prevent redirect loops).
+
+See [Restricted Access](./restricted-access.md) for the `@RestrictedAllowed` annotation system and how to extend the restricted area.
 
 ## Full Access Grant Flow (External)
 
@@ -139,7 +142,9 @@ Cookie properties: `HttpOnly`, `Path=/`, max-age matches remaining grant lifetim
 2. Localhost → pass through (full access)
 3. LAN → pass through (full access)
 4. External + unauthenticated → pass through (Spring Security handles 401)
-5. External + authenticated → check `ACCESS_TOKEN` cookie:
+5. External + authenticated → check `@RestrictedAllowed` annotation:
+   - Handler annotated → pass through (restricted users can access)
+6. External + authenticated + not annotated → check `ACCESS_TOKEN` cookie:
    - Valid grant → update `lastActiveAt` (throttled to every 5 min), pass through
    - Missing/invalid/expired → 403 `FULL_ACCESS_REQUIRED`
 
@@ -209,7 +214,7 @@ AccessGrant {
 Order in `SecurityConfigSpring`:
 
 1. **Public endpoints** — permitAll (login, logout, static resources, sharepoint-sync, actuator)
-2. **LAN-only endpoints** — `lanOnlyMatcher` permitAll (sync, files, update, h2-console, attachments, backup)
+2. **LAN-only endpoints** — `lanOnlyMatcher` permitAll (sync, files, update, electron-update, resource-packs, sync-updates, data-integrity, backup, attachments, h2-console)
 3. **Localhost-only admin** — `localhostMatcher` hasRole ADMIN (`/api/auth/admin/**`)
 4. **Non-localhost admin** — denyAll (`/api/auth/admin/**` fallback)
 5. **Admin pages** — hasRole ADMIN (`/admin/**`, `/users/**`, `/ng/users/**`)
@@ -276,9 +281,10 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 | Component | Purpose |
 |-----------|---------|
 | `auth.service.ts` | Login/logout/profile API calls, `currentUser$` and `isLoggedIn$` observables, `accessLevel` tracking |
-| `auth.interceptor.ts` | Adds `withCredentials: true`, redirects 401 → `/login`, redirects 403 `FULL_ACCESS_REQUIRED` → `/access-request` |
+| `auth.interceptor.ts` | Adds `withCredentials: true`, redirects 401 → `/login`, redirects 403 `FULL_ACCESS_REQUIRED` → `/access-request` (with loop prevention) |
 | `auth.guard.ts` | Route guard: waits for auth check, redirects to `/login` if not authenticated |
 | `admin.guard.ts` | Route guard: requires `ROLE_ADMIN`, redirects to `/home` |
+| `full-access.guard.ts` | Route guard: requires `accessLevel === 'FULL'`, redirects to `/home` |
 | `login.component.ts` | Login form UI, routes to `/access-request` if restricted |
 | `profile.component.ts` | User profile page (view info, edit name, change password) |
 | `user-profile.component.ts` | Header avatar icon with dropdown (profile link + sign out) |
@@ -291,7 +297,21 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 /login                    — LoginComponent (public)
 /access-request           — AccessRequestComponent (authGuard)
 /profile                  — ProfileComponent (authGuard)
+/home                     — HomeComponent (authGuard)
 /admin/access-management  — AdminAccessComponent (authGuard, adminGuard)
 /admin/users              — UserManagementComponent (authGuard, adminGuard)
-/home                     — HomeComponent (authGuard)
+/permits-monitor          — PermitsMonitorComponent (authGuard, fullAccessGuard)
+/file/**, /loto/**, etc.  — Feature routes (authGuard, fullAccessGuard)
+```
+
+### Deferred Service Preloading
+
+Services that preload reference data (`RfValueService`, `RfLotoStandardStateService`) defer their initial API calls until the user has `accessLevel === 'FULL'`. This prevents a flood of 403 errors for restricted external users, since these services are injected by globally-rendered components (`WizardDialogComponent` in `app.component.html`).
+
+Pattern:
+```typescript
+authService.currentUser$.pipe(
+    filter(user => user != null && user.accessLevel === 'FULL'),
+    take(1)
+).subscribe(() => this.loadInitialData());
 ```

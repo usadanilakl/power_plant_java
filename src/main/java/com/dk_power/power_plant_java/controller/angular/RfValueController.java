@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.angular;
 
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.categories.CategoryDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.sevice.angular.RfValueService;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/ng/rf-values")
 @RequiredArgsConstructor
+@RestrictedAllowed
 public class RfValueController {
     private final RfValueService rfValueService;
 

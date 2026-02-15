@@ -6,6 +6,7 @@ import { NgClass } from '@angular/common';
 import { GuideDirective } from '../../guide/guide.directive';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-router-menu',
@@ -16,6 +17,7 @@ import { filter, map, startWith } from 'rxjs';
 })
 export class RouterMenuComponent {
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   groupedMenu = input<GroupedRouterMenu>(GROUPED_MAIN_MENU);
@@ -31,11 +33,29 @@ export class RouterMenuComponent {
     )
   );
 
+  private currentUser = toSignal(this.authService.currentUser$);
+
+  /** Grouped menu filtered by access level — hides groups/items requiring full access for restricted users */
+  filteredGroupedMenu = computed<GroupedRouterMenu>(() => {
+    const groups = this.groupedMenu();
+    const hasFullAccess = this.currentUser()?.accessLevel === 'FULL';
+
+    if (hasFullAccess) return groups;
+
+    return groups
+      .filter(group => !group.requiresFullAccess)
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => !item.requiresFullAccess)
+      }))
+      .filter(group => group.items.length > 0);
+  });
+
   activeGroup = computed<RouterMenuGroup | null>(() => {
     const url = this.currentUrl();
     if (!url) return null;
 
-    const groups = this.groupedMenu();
+    const groups = this.filteredGroupedMenu();
     for (const group of groups) {
       for (const item of group.items) {
         if (url.startsWith(item.route)) {

@@ -8,6 +8,7 @@ import { UserManagementComponent } from './features/admin/user-management/user-m
 import { ProfileComponent } from './features/auth/profile/profile.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
+import { fullAccessGuard } from './guards/full-access.guard';
 
 // Feature routes
 import { FILE_ROUTES } from './routes/file.routes';
@@ -23,10 +24,9 @@ export const routes: Routes = [
   // Public routes
   { path: 'login', component: LoginComponent },
 
-  // Auth-protected routes
+  // Accessible to all authenticated users (including restricted external)
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: 'home', component: HomeComponent, canActivate: [authGuard] },
-  { path: 'permits-monitor', component: PermitsMonitorComponent, canActivate: [authGuard] },
   { path: 'access-request', component: AccessRequestComponent, canActivate: [authGuard] },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
 
@@ -34,13 +34,14 @@ export const routes: Routes = [
   { path: 'admin/users', component: UserManagementComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/access-management', component: AdminAccessComponent, canActivate: [authGuard, adminGuard] },
 
-  // Feature routes (all protected)
-  ...FILE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...LOTO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...LOTO_POINTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...PERMIT_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...SCHEDULER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...FORM_DESIGNER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...STANDALONE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] })),
-  ...LOG_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard] }))
+  // Full-access feature routes (restricted users redirected to /home)
+  { path: 'permits-monitor', component: PermitsMonitorComponent, canActivate: [authGuard, fullAccessGuard] },
+  ...FILE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...LOTO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...LOTO_POINTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...PERMIT_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...SCHEDULER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...FORM_DESIGNER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...STANDALONE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...LOG_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

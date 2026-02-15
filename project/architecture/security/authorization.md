@@ -2,15 +2,16 @@
 
 ## Roles & Permissions
 
-| Role | Value | Web (no grant) | Web (with grant) | Desktop (localhost) | Admin functions |
-|------|-------|---------------|-----------------|--------------------| --------------- |
-| Admin | `ROLE_ADMIN` | Full access | Full access | Full access | Yes |
+| Role | Value | External (no grant) | External (with grant) | Desktop/LAN | Admin functions |
+|------|-------|--------------------|-----------------------|-------------|-----------------|
+| Admin | `ROLE_ADMIN` | Restricted | Full access | Full access | Yes |
 | Employee | `ROLE_EMPLOYEE` | Restricted | Full access | Full access | No |
-| Contractor | `ROLE_CONTRACTOR` | Restricted | Restricted | Restricted | No |
+| Contractor | `ROLE_CONTRACTOR` | Restricted | Full access (if approved) | Full access | No |
 
-- **Admin** always bypasses `AccessGrantFilter` regardless of token status
-- **Employee** needs an approved `AccessGrant` for full web access, but gets full access on desktop via auto-auth
-- **Contractor** is always restricted to read-only subset — cannot request or receive full access
+- **No role-based bypass** in `AccessGrantFilter` — all roles are treated equally. Access tiers are determined by network origin (localhost/LAN/external) and grant status, not role.
+- **Admin** gets extra Spring Security `hasRole()` rules: user management (`/ng/users/**`), admin pages (`/admin/**`), and grant approval endpoints (`/api/auth/admin/**`, localhost-only).
+- **Employee** and **Contractor** have identical access at the filter level. Role-specific restrictions are enforced at the Spring Security authorization layer or business logic, not the access grant filter.
+- **Desktop/LAN** users of all roles get full access — `AccessGrantFilter` bypasses localhost and LAN IPs entirely.
 
 ## Endpoint Access Matrix
 
@@ -25,18 +26,39 @@
 | `GET /api/auth/me` | | x | | | |
 | `POST /api/auth/request-access` | | x | | | |
 | `GET /api/auth/access-status` | | x | | | |
-| `/ng/**` (Angular API) | | | x | | |
+| `GET/PUT /api/auth/profile` | | x | | | |
+| `@RestrictedAllowed` endpoints | | x | x | | |
+| `/ng/**` (remaining Angular API) | | | x | | |
 | `/api/**` (remaining) | | | x | | |
 | `/browser/**`, `/print/**` | | | x | | |
-| `/api/auth/admin/**` | | | | x | x |
+| `/api/auth/admin/**` | | | | x | localhost only |
 | `/ng/users/**` | | | | x | |
 | `/admin/**`, `/users/**` | | | | x | |
 | `/api/sync/**` | | | | | x |
 | `/api/field-sync/**` | | | | | x |
 | `/api/resync/**` | | | | | x |
 | `/api/files/**` | | | | | x |
-| `/api/update/**` | | | | | x |
+| `/api/update/**`, `/api/electron-update/**` | | | | | x |
+| `/api/resource-packs/**`, `/api/sync-updates/**` | | | | | x |
+| `/api/data-integrity/**`, `/api/backup/**` | | | | | x |
+| `/api/attachments/**` | | | | | x |
 | `/h2-console/**` | | | | | x |
+
+## `@RestrictedAllowed` Annotation
+
+Endpoints annotated with `@RestrictedAllowed` are accessible to restricted external users (authenticated but no grant). This is the mechanism for incrementally opening endpoints to restricted users.
+
+- **Class-level**: all methods in the controller are accessible
+- **Method-level**: only that specific method is accessible
+- **Absent** (default): requires full access (secure by default)
+
+Currently annotated:
+- `RfValueController` (`/ng/rf-values/**`) — reference data for UI dropdowns
+- `NgValueController` (`/ng/values/**`) — legacy value endpoints
+
+See [Restricted Access](./restricted-access.md) for full details.
+
+**File:** `config/security/RestrictedAllowed.java`
 
 ## SecurityFilterChain Configuration
 
@@ -45,14 +67,16 @@
 The filter chain is configured in this order:
 
 1. **CORS** — configurable allowed origins via `security.cors.allowed-origins`
-2. **Session** — `IF_REQUIRED`, max 5 concurrent sessions per user
+2. **Session** — `IF_REQUIRED`, unlimited concurrent sessions (`maximumSessions(-1)`)
 3. **CSRF** — disabled for API/sync endpoints
 4. **Frame options** — disabled (for H2 console)
 5. **Authorization rules** — endpoint matchers in order:
    - Public endpoints → `permitAll()`
    - LAN-only endpoints → custom `lanOnlyMatcher()` → `permitAll()` (only if internal IP)
-   - Admin endpoints → `hasRole("ADMIN")`
-   - Auth endpoints → `authenticated()`
+   - Localhost admin → `localhostMatcher("/api/auth/admin/")` → `hasRole("ADMIN")`
+   - Non-localhost admin fallback → `"/api/auth/admin/**"` → `denyAll()`
+   - Admin pages → `hasRole("ADMIN")` (`/admin/**`, `/users/**`, `/ng/users/**`)
+   - Auth endpoints → `authenticated()` (`/api/auth/**`)
    - Everything else → `authenticated()`
 6. **Exception handling** — REST JSON responses (not redirects):
    - 401: `{ "error": "UNAUTHORIZED", "message": "Authentication required" }`
@@ -81,15 +105,29 @@ IP resolution order:
 1. `X-Forwarded-For` header (first IP if comma-separated)
 2. `request.getRemoteAddr()` fallback
 
-## AccessGrantFilter Bypass Rules
+## AccessGrantFilter Decision Flow
 
-The filter skips validation for:
+The filter processes requests in this exact order:
 
-- **Loopback IPs** — desktop has full access
-- **LAN IPs** — internal network has full access
-- **ADMIN role** — admins always have full access
-- **Exempt paths** — auth endpoints, public endpoints, static resources, sync endpoints
-- **Unauthenticated requests** — Spring Security handles 401 before this filter runs
+```
+Request
+  │
+  ├─ Exempt path? (/api/auth/*, static, sync, etc.) ──► PASS
+  │
+  ├─ Localhost? ──► PASS (full access)
+  │
+  ├─ LAN (internal IP)? ──► PASS (full access)
+  │
+  ├─ Not authenticated? ──► PASS (Spring Security handles 401)
+  │
+  ├─ @RestrictedAllowed annotation? ──► PASS (restricted users allowed)
+  │
+  ├─ ACCESS_TOKEN cookie present?
+  │     ├─ Valid grant (APPROVED, not expired) ──► PASS + update lastActiveAt
+  │     └─ Invalid/expired ──► 403 FULL_ACCESS_REQUIRED
+  │
+  └─ No cookie ──► 403 FULL_ACCESS_REQUIRED
+```
 
 When validation fails, the filter returns:
 ```json
@@ -106,3 +144,12 @@ The `lanOnlyMatcher()` in `SecurityConfigSpring` creates a `RequestMatcher` that
 3. Only matches (permits) if **both** path and IP match
 
 External IPs hitting LAN-only paths fall through to the `anyRequest().authenticated()` rule, which returns 401/403.
+
+## Localhost Matcher
+
+The `localhostMatcher()` in `SecurityConfigSpring` creates a `RequestMatcher` that:
+1. Checks if request path matches the prefix (`/api/auth/admin/`)
+2. Checks if request IP is loopback via `NetworkUtils.isLoopbackRequest()`
+3. Only matches if **both** path and IP match
+
+Non-localhost requests to `/api/auth/admin/**` fall through to the `denyAll()` rule, blocking LAN and external access to admin grant endpoints.
