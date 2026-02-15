@@ -102,15 +102,20 @@ public class HubBulkImportService {
                 .message("Backup size exceeds maximum: " + maxImportSize + " bytes").build();
         }
 
+        log.info("Starting import: {} bytes, machineId={}, force={}", backupData.length, machineId, force);
+
         SafetyCheckResult safety = checkImportSafety(force);
+        log.info("Safety check: safe={}, isEmpty={}, message={}", safety.isSafe(), safety.isEmpty(), safety.getMessage());
         if (!safety.isSafe()) {
             return ImportResult.builder().success(false).message(safety.getMessage()).build();
         }
 
         long startTime = System.currentTimeMillis();
         Path tempPath = Paths.get(tempDir);
+        log.info("Creating temp directory: {}", tempPath);
         Files.createDirectories(tempPath);
         Path extractDir = tempPath.resolve("import-" + System.currentTimeMillis());
+        log.info("Creating extract directory: {}", extractDir);
         Files.createDirectories(extractDir);
 
         long entitiesImported = 0;
@@ -119,6 +124,7 @@ public class HubBulkImportService {
         try {
             log.info("Extracting backup ({} bytes) to {}", backupData.length, extractDir);
             extractZip(backupData, extractDir);
+            log.info("Extraction complete");
 
             Path h2DbFile = extractDir.resolve("database.mv.db");
             if (!Files.exists(h2DbFile)) {
@@ -133,10 +139,12 @@ public class HubBulkImportService {
 
             String h2Url = "jdbc:h2:" + extractDir.resolve("database") +
                 ";MODE=LEGACY;ACCESS_MODE_DATA=r";
+            log.info("Opening source H2 database: {}", h2Url);
 
             // Use a single raw JDBC connection for ALL target operations.
             // This ensures SET REFERENTIAL_INTEGRITY FALSE applies to all DELETEs and INSERTs.
             try (Connection targetConn = dataSource.getConnection()) {
+                log.info("Got target connection, disabling autocommit");
                 targetConn.setAutoCommit(false);
 
                 try {
@@ -145,7 +153,9 @@ public class HubBulkImportService {
                         log.info("Disabled referential integrity for bulk import");
                     }
 
+                    log.info("Connecting to source database...");
                     try (Connection sourceConn = DriverManager.getConnection(h2Url, "sa", "")) {
+                        log.info("Source database connected successfully");
                         if (!safety.isEmpty()) {
                             log.info("Clearing existing hub table data (force import)");
                             clearTables(targetConn);
@@ -197,10 +207,10 @@ public class HubBulkImportService {
                     .durationMs(durationMs).machineId(machineId)
                     .build();
             }
-        } catch (SQLException e) {
-            log.error("Database import failed: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Database import failed ({}): {}", e.getClass().getName(), e.getMessage(), e);
             return ImportResult.builder().success(false)
-                .message("Database error: " + e.getMessage()).build();
+                .message("Database error (" + e.getClass().getSimpleName() + "): " + e.getMessage()).build();
         } finally {
             cleanupDirectory(extractDir);
         }

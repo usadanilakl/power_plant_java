@@ -252,11 +252,11 @@ public class HubResyncController {
             HubBulkImportService.ImportResult result = bulkImportService.importDatabaseBackup(
                 file.getBytes(), machineId, force);
             return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
-        } catch (IOException e) {
-            log.error("Database import failed: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("Database import failed: {} ({})", e.getMessage(), e.getClass().getName(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(HubBulkImportService.ImportResult.builder()
-                    .success(false).message("Import failed: " + e.getMessage()).build());
+                    .success(false).message("Import failed: " + e.getClass().getSimpleName() + ": " + e.getMessage()).build());
         }
     }
 
