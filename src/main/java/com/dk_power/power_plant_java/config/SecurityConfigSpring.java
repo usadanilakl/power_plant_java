@@ -34,7 +34,7 @@ public class SecurityConfigSpring {
     private final DesktopAutoAuthFilter desktopAutoAuthFilter;
     private final AccessGrantFilter accessGrantFilter;
 
-    @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io}")
+    @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io,https://*.loclx.io}")
     private String allowedOrigins;
 
     @Bean

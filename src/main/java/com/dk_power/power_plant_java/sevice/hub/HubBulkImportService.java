@@ -7,9 +7,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -88,7 +86,12 @@ public class HubBulkImportService {
             .build();
     }
 
-    @Transactional
+    /**
+     * Import a database backup into the hub's production tables.
+     * Uses a single raw JDBC connection throughout to ensure SET REFERENTIAL_INTEGRITY FALSE
+     * applies to all DELETE and INSERT operations (Spring's DataSourceUtils returns different
+     * pool connections without transaction binding, which breaks this).
+     */
     public ImportResult importDatabaseBackup(byte[] backupData, String machineId, boolean force)
             throws IOException {
         if (backupData == null || backupData.length == 0) {
@@ -114,46 +117,73 @@ public class HubBulkImportService {
         long joinRecordsImported = 0;
 
         try {
+            log.info("Extracting backup ({} bytes) to {}", backupData.length, extractDir);
             extractZip(backupData, extractDir);
 
             Path h2DbFile = extractDir.resolve("database.mv.db");
             if (!Files.exists(h2DbFile)) {
+                try (var files = Files.list(extractDir)) {
+                    String extracted = files.map(p -> p.getFileName().toString()).reduce("", (a, b) -> a + ", " + b);
+                    log.error("database.mv.db not found. Extracted files: [{}]", extracted);
+                }
                 return ImportResult.builder().success(false)
                     .message("Database file not found in backup").build();
             }
+            log.info("Found database file: {} ({} bytes)", h2DbFile, Files.size(h2DbFile));
 
             String h2Url = "jdbc:h2:" + extractDir.resolve("database") +
                 ";MODE=LEGACY;ACCESS_MODE_DATA=r";
 
-            Connection targetConn = DataSourceUtils.getConnection(dataSource);
-            try (Statement stmt = targetConn.createStatement()) {
-                stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
-                log.info("Disabled referential integrity for bulk import");
-            }
+            // Use a single raw JDBC connection for ALL target operations.
+            // This ensures SET REFERENTIAL_INTEGRITY FALSE applies to all DELETEs and INSERTs.
+            try (Connection targetConn = dataSource.getConnection()) {
+                targetConn.setAutoCommit(false);
 
-            try {
-                try (Connection sourceConn = DriverManager.getConnection(h2Url, "sa", "")) {
-                    if (!safety.isEmpty()) {
-                        log.info("Clearing existing hub table data (force import)");
-                        clearTables();
+                try {
+                    try (Statement stmt = targetConn.createStatement()) {
+                        stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+                        log.info("Disabled referential integrity for bulk import");
                     }
 
-                    for (String entityType : entityTableRegistry.getSyncOrder()) {
-                        String tableName = entityTableRegistry.getTableName(entityType);
-                        long copied = copyTable(sourceConn, tableName);
-                        entitiesImported += copied;
-                        if (copied > 0) {
-                            log.info("Imported {} {} entities", copied, entityType);
+                    try (Connection sourceConn = DriverManager.getConnection(h2Url, "sa", "")) {
+                        if (!safety.isEmpty()) {
+                            log.info("Clearing existing hub table data (force import)");
+                            clearTables(targetConn);
+                        }
+
+                        for (String entityType : entityTableRegistry.getSyncOrder()) {
+                            String tableName = entityTableRegistry.getTableName(entityType);
+                            long copied = copyTable(sourceConn, targetConn, tableName);
+                            entitiesImported += copied;
+                            if (copied > 0) {
+                                log.info("Imported {} {} entities", copied, entityType);
+                            }
+                        }
+
+                        for (String joinTable : JOIN_TABLES) {
+                            long copied = copyTable(sourceConn, targetConn, joinTable);
+                            joinRecordsImported += copied;
+                            if (copied > 0) {
+                                log.debug("Imported {} {} join records", copied, joinTable);
+                            }
                         }
                     }
 
-                    for (String joinTable : JOIN_TABLES) {
-                        long copied = copyTable(sourceConn, joinTable);
-                        joinRecordsImported += copied;
-                        if (copied > 0) {
-                            log.debug("Imported {} {} join records", copied, joinTable);
-                        }
+                    targetConn.commit();
+                    log.info("Import transaction committed successfully");
+                } catch (SQLException e) {
+                    try { targetConn.rollback(); } catch (SQLException re) {
+                        log.error("Rollback failed: {}", re.getMessage());
                     }
+                    throw e;
+                } finally {
+                    try (Statement stmt = targetConn.createStatement()) {
+                        stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+                        log.info("Re-enabled referential integrity");
+                    } catch (SQLException e) {
+                        log.error("Failed to re-enable referential integrity: {}", e.getMessage());
+                    }
+                    targetConn.setAutoCommit(true);
                 }
 
                 long durationMs = System.currentTimeMillis() - startTime;
@@ -166,13 +196,6 @@ public class HubBulkImportService {
                     .joinRecordsImported(joinRecordsImported)
                     .durationMs(durationMs).machineId(machineId)
                     .build();
-            } finally {
-                try (Statement stmt = targetConn.createStatement()) {
-                    stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
-                    log.info("Re-enabled referential integrity");
-                } catch (SQLException e) {
-                    log.error("Failed to re-enable referential integrity: {}", e.getMessage());
-                }
             }
         } catch (SQLException e) {
             log.error("Database import failed: {}", e.getMessage(), e);
@@ -242,7 +265,6 @@ public class HubBulkImportService {
             .build();
     }
 
-    @Transactional
     public ImportResult importFull(byte[] databaseData, byte[] filesData, String machineId, boolean force)
             throws IOException {
         long startTime = System.currentTimeMillis();
@@ -427,12 +449,12 @@ public class HubBulkImportService {
         return counts;
     }
 
-    private void clearTables() {
+    private void clearTables(Connection conn) throws SQLException {
         for (String joinTable : JOIN_TABLES) {
-            try {
-                entityManager.createNativeQuery("TRUNCATE TABLE " + joinTable).executeUpdate();
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("DELETE FROM " + joinTable);
             } catch (Exception e) {
-                log.debug("Could not truncate join table {}: {}", joinTable, e.getMessage());
+                log.debug("Could not clear join table {}: {}", joinTable, e.getMessage());
             }
         }
         // Reverse order to handle dependencies
@@ -440,16 +462,15 @@ public class HubBulkImportService {
         Collections.reverse(reversed);
         for (String entityType : reversed) {
             String tableName = entityTableRegistry.getTableName(entityType);
-            try {
-                entityManager.createNativeQuery("TRUNCATE TABLE " + tableName).executeUpdate();
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("DELETE FROM " + tableName);
             } catch (Exception e) {
-                log.debug("Could not truncate table {}: {}", tableName, e.getMessage());
+                log.debug("Could not clear table {}: {}", tableName, e.getMessage());
             }
         }
-        entityManager.flush();
     }
 
-    private long copyTable(Connection sourceConn, String tableName) throws SQLException {
+    private long copyTable(Connection sourceConn, Connection targetConn, String tableName) throws SQLException {
         long sourceCount;
         try (Statement stmt = sourceConn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + tableName)) {
@@ -470,7 +491,6 @@ public class HubBulkImportService {
         }
         if (sourceColumns.isEmpty()) return 0;
 
-        Connection targetConn = DataSourceUtils.getConnection(dataSource);
         Set<String> targetColumns = new LinkedHashSet<>();
         try (Statement stmt = targetConn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT * FROM " + tableName + " WHERE 1=0")) {
