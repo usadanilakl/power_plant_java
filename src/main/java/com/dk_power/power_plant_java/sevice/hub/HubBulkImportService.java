@@ -34,7 +34,7 @@ public class HubBulkImportService {
     private final DataSource dataSource;
     private final EntityTableRegistry entityTableRegistry;
 
-    @Value("${sync.import.temp-dir:${java.io.tmpdir}/sync-import}")
+    @Value("${sync.import.temp-dir:${user.dir}/sync-import-tmp}")
     private String tempDir;
 
     @Value("${sync.import.max-file-size:524288000}")
