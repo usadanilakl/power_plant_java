@@ -1157,7 +1157,7 @@ public class FieldSyncService {
             // ddl-auto=update never removes NOT NULL constraints, so the DB may have
             // stale constraints even if the Java annotations were removed.
             List<Object[]> notNullCols = entityManager.createNativeQuery(
-                "SELECT COLUMN_NAME, DATA_TYPE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+                "SELECT COLUMN_NAME, TYPE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
                 "WHERE TABLE_NAME = :tableName AND IS_NULLABLE = 'NO' " +
                 "AND COLUMN_NAME NOT IN ('ID', 'OBJECT_TYPE', 'DELETED', 'DATE_CREATED', 'DATE_MODIFIED')")
                 .setParameter("tableName", tableName.toUpperCase())

@@ -25,7 +25,7 @@ public class WorkRequest extends BasePermitEntity {
     private String location;
     private String affectedEquipment;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String workScope;
 
     private Boolean isHotWorkRequired;

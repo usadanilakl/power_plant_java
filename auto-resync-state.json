@@ -1,9 +1,9 @@
 {
-  "escalationLevel" : 3,
-  "lastAttemptTime" : 1771120531.521856700,
+  "escalationLevel" : 5,
+  "lastAttemptTime" : 1771125647.692851900,
   "lastAttemptSuccess" : false,
-  "lastAttemptDate" : "2026-02-11",
+  "lastAttemptDate" : "2026-01-31",
   "lastAttemptMessage" : "Partial sync failed: Transaction silently rolled back because it has been marked as rollback-only",
-  "autoResyncExhausted" : false,
+  "autoResyncExhausted" : true,
   "autoResyncInProgress" : false
 }

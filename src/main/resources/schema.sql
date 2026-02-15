@@ -5,9 +5,9 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
     MAXVALUE 999999999
     CYCLE;
 
--- Update work_scope column length
-      ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope VARCHAR(5000);
-      ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope VARCHAR(5000);
+-- Widen work_scope to TEXT (unlimited length)
+      ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope TEXT;
+      ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope TEXT;
 
 -- Update alias column to TEXT to support longer values (e.g., JSON data)
       ALTER TABLE IF EXISTS val_table ALTER COLUMN alias TEXT;
