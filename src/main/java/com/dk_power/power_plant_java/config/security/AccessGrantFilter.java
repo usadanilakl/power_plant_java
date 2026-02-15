@@ -59,7 +59,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
 
     // Static resources
     private static final Set<String> STATIC_PREFIXES = Set.of(
-            "/bootstrap-", "/functions/", "/interact.js-main/",
+            "/angular/", "/bootstrap-", "/functions/", "/interact.js-main/",
             "/my_styles/", "/background/", "/uploads/",
             "/favicon", "/assets/"
     );

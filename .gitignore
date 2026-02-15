@@ -146,6 +146,7 @@ Thumbs.db
 /uploads/**
 token.properties
 machine-id.properties
+localxpose.pid
 
 /frontend/.angular/
 
