@@ -107,7 +107,7 @@ public class FieldSyncService {
     @Async
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        if (syncConfig.isHub()) {
+        if (syncConfig.isHubMode()) {
             log.info("Hub mode - skipping client-side startup sync (hub receives data via bulk import and SSE)");
             return;
         }
@@ -134,7 +134,7 @@ public class FieldSyncService {
     @Async
     @EventListener
     public void onPeerOnline(SyncEventPublisher.PeerOnlineEvent event) {
-        if (syncConfig.isHub() || syncConfig.isServerSyncEnabled()) {
+        if (syncConfig.isHubMode() || syncConfig.isServerSyncEnabled()) {
             return; // Hub or server sync handles this
         }
 

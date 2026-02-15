@@ -102,7 +102,7 @@ public class ServerSseClient {
     @Async
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        if (syncConfig.isHub()) {
+        if (syncConfig.isHubMode()) {
             log.info("Hub mode - SSE client will not start (hub IS the server)");
             return;
         }
