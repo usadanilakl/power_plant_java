@@ -23,7 +23,7 @@ public class AdminUserSeeder {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedAdminUser() {
-        if (syncConfig.isHub()) {
+        if (syncConfig.isHubMode()) {
             log.info("Hub mode - skipping admin user seed (users will come from bulk import)");
             return;
         }
