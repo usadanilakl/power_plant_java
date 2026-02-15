@@ -88,6 +88,10 @@ public class CentralSyncService {
     @Async
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
+        if (syncConfig.isHub()) {
+            log.info("Hub mode - CentralSyncService client sync disabled (hub IS the server)");
+            return;
+        }
         if (!syncConfig.isServerSyncEnabled()) {
             log.info("Central server sync is disabled");
             return;
@@ -113,8 +117,8 @@ public class CentralSyncService {
     @Async
     @EventListener
     public void onChangesDetected(SyncEventPublisher.ChangesDetectedEvent event) {
-        if (!syncConfig.isServerSyncEnabled()) {
-            return; // Let peer-to-peer handle it
+        if (syncConfig.isHub() || !syncConfig.isServerSyncEnabled()) {
+            return; // Hub is the server; or let peer-to-peer handle it
         }
 
         if (event.getChanges() == null || event.getChanges().isEmpty()) {
@@ -152,7 +156,7 @@ public class CentralSyncService {
      */
     @Scheduled(fixedDelay = 15000, initialDelay = 60000)
     public void periodicSync() {
-        if (!syncConfig.isServerSyncEnabled()) return;
+        if (syncConfig.isHub() || !syncConfig.isServerSyncEnabled()) return;
         if (!syncIntervals.isPeerSyncDue()) return;
         syncIntervals.markPeerSynced();
         syncWithServer();

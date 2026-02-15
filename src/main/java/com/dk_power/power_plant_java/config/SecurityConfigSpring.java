@@ -26,6 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.core.annotation.Order;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -37,7 +39,31 @@ public class SecurityConfigSpring {
     @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io,https://*.loclx.io}")
     private String allowedOrigins;
 
+    /**
+     * Separate filter chain for static resources — completely bypasses security processing.
+     * No CORS, CSRF, session, or custom filters run for these paths.
+     * This is needed because Angular uses &lt;script type="module"&gt; which sends
+     * an Origin header, and CorsProcessor rejects tunnel/proxy origins before
+     * AccessGrantFilter or permitAll() ever get a chance to run.
+     */
     @Bean
+    @Order(0)
+    public SecurityFilterChain staticResourcesChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher(
+                "/angular/**", "/app/**", "/assets/**",
+                "/bootstrap-5.3.3-dist/**", "/functions/**",
+                "/interact.js-main/**", "/my_styles/**",
+                "/background/**", "/uploads/**", "/favicon.ico"
+            )
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.disable());
+        return http.build();
+    }
+
+    @Bean
+    @Order(1)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,16 @@ public class AdminUserSeeder {
 
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final SyncConfig syncConfig;
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedAdminUser() {
+        if (syncConfig.isHub()) {
+            log.info("Hub mode - skipping admin user seed (users will come from bulk import)");
+            return;
+        }
+
         String adminEmail = "admin@power-plant.local";
 
         if (userRepo.findByEmail(adminEmail) != null) {
