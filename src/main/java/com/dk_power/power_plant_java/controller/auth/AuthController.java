@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.auth;
 
 import com.dk_power.power_plant_java.config.NetworkUtils;
+import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.entities.users.AccessGrant;
 import com.dk_power.power_plant_java.entities.users.AccessGrant.GrantStatus;
 import com.dk_power.power_plant_java.entities.users.User;
@@ -198,6 +199,49 @@ public class AuthController {
         return ResponseEntity.ok(profile);
     }
 
+    @RestrictedAllowed
+    @GetMapping("/profile/sessions")
+    public ResponseEntity<?> getMyAccessGrants() {
+        CustomUserDetails userDetails = getCurrentUserDetails();
+        if (userDetails == null) return ResponseEntity.status(401).build();
+
+        User user = userRepo.findById(userDetails.getId()).orElse(null);
+        if (user == null) return ResponseEntity.status(401).build();
+
+        List<Map<String, Object>> grants = accessGrantRepository.findByUserOrderByRequestedAtDesc(user)
+            .stream().map(this::toGrantSummary).toList();
+        return ResponseEntity.ok(grants);
+    }
+
+    @PostMapping("/profile/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest req) {
+        CustomUserDetails userDetails = getCurrentUserDetails();
+        if (userDetails == null) return ResponseEntity.status(401).build();
+
+        User user = userRepo.findById(userDetails.getId()).orElse(null);
+        if (user == null) return ResponseEntity.status(401).build();
+
+        if (!passwordEncoder.matches(req.currentPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "WRONG_PASSWORD",
+                "message", "Current password is incorrect"
+            ));
+        }
+
+        if (req.newPassword() == null || req.newPassword().length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "WEAK_PASSWORD",
+                "message", "New password must be at least 8 characters"
+            ));
+        }
+
+        user.setPassword(passwordEncoder.encode(req.newPassword()));
+        userRepo.save(user);
+        log.info("Password changed by user: {}", user.getEmail());
+
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+    }
+
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest req) {
         CustomUserDetails userDetails = getCurrentUserDetails();
@@ -265,6 +309,20 @@ public class AuthController {
         return null;
     }
 
+    private Map<String, Object> toGrantSummary(AccessGrant grant) {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("id", grant.getId());
+        info.put("status", grant.getStatus());
+        info.put("requestIp", grant.getRequestIp());
+        info.put("deviceInfo", grant.getDeviceInfo());
+        info.put("requestedAt", grant.getRequestedAt() != null ? grant.getRequestedAt().toString() : null);
+        info.put("approvedAt", grant.getApprovedAt() != null ? grant.getApprovedAt().toString() : null);
+        info.put("expiresAt", grant.getExpiresAt() != null ? grant.getExpiresAt().toString() : null);
+        info.put("lastActiveAt", grant.getLastActiveAt() != null ? grant.getLastActiveAt().toString() : null);
+        return info;
+    }
+
     public record LoginRequest(String email, String password) {}
     public record UpdateProfileRequest(String firstName, String lastName, String password) {}
+    public record ChangePasswordRequest(String currentPassword, String newPassword) {}
 }

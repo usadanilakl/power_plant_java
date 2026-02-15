@@ -27,4 +27,8 @@ public interface AccessGrantRepository extends JpaRepository<AccessGrant, Long> 
     @Modifying
     @Query("DELETE FROM AccessGrant g WHERE g.status IN ('EXPIRED', 'REVOKED', 'DENIED') AND g.requestedAt < :cutoff")
     int deleteOldGrants(LocalDateTime cutoff);
+
+    List<AccessGrant> findByUserOrderByRequestedAtDesc(User user);
+
+    List<AccessGrant> findAllByOrderByRequestedAtDesc();
 }
