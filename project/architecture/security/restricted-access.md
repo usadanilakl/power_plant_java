@@ -47,6 +47,7 @@ public @interface RestrictedAllowed {}
 |------------|------|-------|--------|
 | `RfValueController` | `/ng/rf-values/**` | Class-level | Reference data (categories/values) needed for UI dropdowns |
 | `NgValueController` | `/ng/values/**` | Class-level | Legacy value endpoints also used by UI components |
+| `AuthController` | `/api/auth/profile/sessions` | Method-level | User's own grant history needed for profile Sessions tab |
 
 ## Frontend Restricted Access
 

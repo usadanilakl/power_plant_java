@@ -146,6 +146,59 @@ public class AccessAdminController {
         return ResponseEntity.ok(Map.of("success", true, "message", "Access grant revoked"));
     }
 
+    @PostMapping("/prolong/{id}")
+    public ResponseEntity<?> prolongGrant(@PathVariable Long id,
+                                          @RequestBody ProlongRequest req,
+                                          HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED",
+                "message", "Grant prolongation is only available from the desktop application"));
+        }
+
+        AccessGrant grant = accessGrantRepository.findById(id).orElse(null);
+        if (grant == null) return ResponseEntity.notFound().build();
+
+        if (grant.getStatus() != GrantStatus.APPROVED) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "INVALID_STATE",
+                "message", "Only APPROVED grants can be prolonged (current: " + grant.getStatus() + ")"
+            ));
+        }
+
+        int hours = req.hours() != null ? req.hours() : 24;
+        if (hours < 1 || hours > 72) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "INVALID_DURATION",
+                "message", "Duration must be between 1 and 72 hours"
+            ));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        grant.setExpiresAt(now.plusHours(hours));
+        grant.setLastActiveAt(now);
+        accessGrantRepository.save(grant);
+
+        log.info("Access prolonged: user={}, hours={}, newExpiry={}",
+            grant.getUser().getEmail(), hours, grant.getExpiresAt());
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Grant extended by " + hours + " hours",
+            "expiresAt", grant.getExpiresAt().toString()
+        ));
+    }
+
+    @GetMapping("/grant-history")
+    public ResponseEntity<?> getGrantHistory(HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED",
+                "message", "Grant history is only available from the desktop application"));
+        }
+
+        List<AccessGrant> allGrants = accessGrantRepository.findAllByOrderByRequestedAtDesc();
+        return ResponseEntity.ok(allGrants.stream().map(this::toGrantInfo).toList());
+    }
+
     private Map<String, Object> toGrantInfo(AccessGrant grant) {
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("id", grant.getId());
@@ -172,4 +225,6 @@ public class AccessAdminController {
         }
         return null;
     }
+
+    public record ProlongRequest(Integer hours) {}
 }

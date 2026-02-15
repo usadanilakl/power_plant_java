@@ -58,6 +58,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             "/api/resource-packs/",
             "/api/sync-updates/",
             "/api/data-integrity/",
+            "/api/attachments/",
             "/h2-console/"
     );
 

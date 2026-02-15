@@ -27,11 +27,15 @@
 | `POST /api/auth/request-access` | | x | | | |
 | `GET /api/auth/access-status` | | x | | | |
 | `GET/PUT /api/auth/profile` | | x | | | |
+| `POST /api/auth/profile/change-password` | | x | | | |
+| `GET /api/auth/profile/sessions` | | x | | | |
 | `@RestrictedAllowed` endpoints | | x | x | | |
 | `/ng/**` (remaining Angular API) | | | x | | |
 | `/api/**` (remaining) | | | x | | |
 | `/browser/**`, `/print/**` | | | x | | |
 | `/api/auth/admin/**` | | | | x | localhost only |
+| `POST /api/auth/admin/prolong/{id}` | | | | x | localhost only |
+| `GET /api/auth/admin/grant-history` | | | | x | localhost only |
 | `/ng/users/**` | | | | x | |
 | `/admin/**`, `/users/**` | | | | x | |
 | `/api/sync/**` | | | | | x |
@@ -55,6 +59,7 @@ Endpoints annotated with `@RestrictedAllowed` are accessible to restricted exter
 Currently annotated:
 - `RfValueController` (`/ng/rf-values/**`) — reference data for UI dropdowns
 - `NgValueController` (`/ng/values/**`) — legacy value endpoints
+- `AuthController` (`/api/auth/profile/sessions`) — user's own grant history (method-level)
 
 See [Restricted Access](./restricted-access.md) for full details.
 

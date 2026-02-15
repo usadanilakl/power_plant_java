@@ -41,6 +41,22 @@ export interface AccessStatus {
   requestId?: number;
 }
 
+export interface AccessGrantSummary {
+  id: number;
+  status: string;
+  requestIp: string;
+  deviceInfo: string;
+  requestedAt: string;
+  approvedAt: string | null;
+  expiresAt: string | null;
+  lastActiveAt: string | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -127,6 +143,14 @@ export class AuthService {
           this.checkAuthStatus();
         })
       );
+  }
+
+  getMyAccessGrants(): Observable<AccessGrantSummary[]> {
+    return this.http.get<AccessGrantSummary[]>(`${this.authUrl}/profile/sessions`, { withCredentials: true });
+  }
+
+  changePasswordVerified(req: ChangePasswordRequest): Observable<any> {
+    return this.http.post(`${this.authUrl}/profile/change-password`, req, { withCredentials: true });
   }
 
   isAdmin(): boolean {

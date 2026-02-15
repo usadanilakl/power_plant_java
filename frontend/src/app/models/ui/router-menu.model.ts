@@ -20,6 +20,15 @@ export type GroupedRouterMenu = RouterMenuGroup[];
 // Grouped main menu items
 export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
     {
+        label: 'My Account',
+        icon: 'account_circle',
+        defaultRoute: '/profile',
+        items: [
+            { route: '/profile', label: 'My Profile' },
+            { route: '/access-request', label: 'Access Request' }
+        ]
+    },
+    {
         label: 'Files',
         icon: 'folder',
         defaultRoute: '/file',

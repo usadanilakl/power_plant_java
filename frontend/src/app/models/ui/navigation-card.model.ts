@@ -32,6 +32,17 @@ export type GroupedNavigationCards = NavigationCardGroup[];
 // Grouped navigation cards for home page
 export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
   {
+    label: 'My Account',
+    description: 'Profile settings and access management',
+    icon: 'account_circle',
+    color: '#5c6bc0',
+    defaultRoute: '/profile',
+    items: [
+      { title: 'My Profile', description: 'View and edit your profile, security settings', icon: 'person', route: '/profile', color: '#5c6bc0' },
+      { title: 'Access Request', description: 'Request or check full access status', icon: 'vpn_key', route: '/access-request', color: '#7e57c2' }
+    ]
+  },
+  {
     label: 'Files',
     description: 'Manage equipment files, tags, and printing',
     icon: 'folder',

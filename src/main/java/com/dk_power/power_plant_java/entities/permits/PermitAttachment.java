@@ -31,6 +31,23 @@ public class PermitAttachment {
     private String originMachineId;
     private Boolean syncedToServer;
 
+    @Column(name = "synced_to_machines", columnDefinition = "TEXT")
+    private String syncedToMachines;  // Pipe-delimited: |MACHINE_1|MACHINE_2|
+
+    public void addSyncedMachine(String machineId) {
+        String delimitedId = "|" + machineId + "|";
+        if (syncedToMachines == null || syncedToMachines.isEmpty()) {
+            syncedToMachines = delimitedId;
+        } else if (!syncedToMachines.contains(delimitedId)) {
+            syncedToMachines += delimitedId;
+        }
+    }
+
+    public boolean isSyncedTo(String machineId) {
+        if (syncedToMachines == null || syncedToMachines.isEmpty()) return false;
+        return syncedToMachines.contains("|" + machineId + "|");
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

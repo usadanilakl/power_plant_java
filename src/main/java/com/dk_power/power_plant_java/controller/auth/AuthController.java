@@ -138,7 +138,7 @@ public class AuthController {
     }
 
     @GetMapping("/access-status")
-    public ResponseEntity<?> getAccessStatus(HttpServletResponse httpResponse) {
+    public ResponseEntity<?> getAccessStatus(HttpServletRequest request, HttpServletResponse httpResponse) {
         CustomUserDetails userDetails = getCurrentUserDetails();
         if (userDetails == null) return ResponseEntity.status(401).build();
 
@@ -154,7 +154,7 @@ public class AuthController {
             Cookie accessCookie = new Cookie("ACCESS_TOKEN", grant.getAccessToken());
             accessCookie.setPath("/");
             accessCookie.setHttpOnly(true);
-            accessCookie.setSecure(false); // Allow over HTTP for internal network
+            accessCookie.setSecure(request.isSecure() || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto")));
             accessCookie.setMaxAge((int) java.time.Duration.between(LocalDateTime.now(), grant.getExpiresAt()).getSeconds());
             httpResponse.addCookie(accessCookie);
 

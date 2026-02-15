@@ -123,6 +123,8 @@ Admin endpoints:
 - `POST /api/auth/admin/approve/{id}` — approve (generates token, 24h expiry)
 - `POST /api/auth/admin/deny/{id}` — deny
 - `POST /api/auth/admin/revoke/{id}` — revoke
+- `POST /api/auth/admin/prolong/{id}` — extend approved grant expiry (1-72 hours)
+- `GET /api/auth/admin/grant-history` — all grants, all statuses
 
 Approve response: `{ "success": true, "accessToken": "uuid...", "expiresAt": "...", "user": "email" }`
 
@@ -162,6 +164,15 @@ Grant expires when **either** condition is met (whichever comes first):
 - Deletes old resolved grants (>30 days) to prevent table growth
 
 **File:** `sevice/users/AccessGrantCleanupService.java`
+
+### 6. Prolong Grant
+
+`POST /api/auth/admin/prolong/{id}` — extends the expiry of an approved grant (localhost-only, admin).
+
+- Accepts `hours` parameter (1-72 hours)
+- Adds the specified hours to the grant's current `expiresAt` timestamp
+- Only works on grants with `APPROVED` status
+- Available from the admin access management page
 
 ### E2E Flow Summary
 
@@ -274,7 +285,23 @@ Or change password:
 
 Only non-null fields are applied. Password is BCrypt-encoded before storage. The `name` field is auto-computed as `firstName + " " + lastName`.
 
-**File:** `controller/auth/AuthController.java` — `GET/PUT /api/auth/profile`
+### Change Password (Verified)
+
+`POST /api/auth/profile/change-password` — verified password change requiring current password confirmation.
+
+```json
+{ "currentPassword": "oldPassword", "newPassword": "newSecurePassword" }
+```
+
+- Verifies `currentPassword` matches the user's existing BCrypt-encoded password before applying the change
+- Returns 400 if current password is incorrect
+- New password is BCrypt-encoded before storage
+
+### Session History
+
+`GET /api/auth/profile/sessions` — returns the current user's own grant history (all statuses). Annotated with `@RestrictedAllowed` so restricted external users can view their own session history from the profile Sessions tab.
+
+**File:** `controller/auth/AuthController.java` — `GET/PUT /api/auth/profile`, `POST /api/auth/profile/change-password`, `GET /api/auth/profile/sessions`
 
 ## Angular Frontend Integration
 
@@ -286,10 +313,10 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 | `admin.guard.ts` | Route guard: requires `ROLE_ADMIN`, redirects to `/home` |
 | `full-access.guard.ts` | Route guard: requires `accessLevel === 'FULL'`, redirects to `/home` |
 | `login.component.ts` | Login form UI, routes to `/access-request` if restricted |
-| `profile.component.ts` | User profile page (view info, edit name, change password) |
-| `user-profile.component.ts` | Header avatar icon with dropdown (profile link + sign out) |
-| `access-request.component.ts` | External user: request full access + 10s status polling |
-| `admin-access.component.ts` | Admin (localhost only): approve/deny/revoke grants |
+| `profile.component.ts` | Tabbed profile page (Profile/Security/Sessions/Preferences tabs), password strength meter, verified password change |
+| `user-profile.component.ts` | Header avatar icon with dropdown (profile link, access level badge, sign out). Badge shows `RESTRICTED`/`PENDING` (hidden when `FULL`) |
+| `access-request.component.ts` | External user: request full access + 10s status polling, progress steps, countdown timer, "Request Again" on denied/expired |
+| `admin-access.component.ts` | Admin (localhost only): approve/deny/revoke/prolong grants, stats bar, grant history, auto-refresh, revoke confirmation dialog |
 
 ### Routes
 
@@ -303,6 +330,12 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 /permits-monitor          — PermitsMonitorComponent (authGuard, fullAccessGuard)
 /file/**, /loto/**, etc.  — Feature routes (authGuard, fullAccessGuard)
 ```
+
+### Navigation
+
+- **"My Account" nav group**: visible to ALL users (no `requiresFullAccess` flag), contains profile and account-related routes
+- **"My Account" home card group**: visible to ALL users, provides quick access to profile and account features from the home page
+- **Access level badge**: shown in the header dropdown next to the user's name. Displays `RESTRICTED` or `PENDING` badge; hidden when access level is `FULL`
 
 ### Deferred Service Preloading
 

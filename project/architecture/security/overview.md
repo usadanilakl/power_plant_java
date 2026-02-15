@@ -67,6 +67,7 @@ External users without a grant can access endpoints annotated with `@RestrictedA
 Currently annotated controllers:
 - `RfValueController` (`/ng/rf-values/**`) — reference data (categories/values for UI dropdowns)
 - `NgValueController` (`/ng/values/**`) — legacy value endpoints
+- `AuthController` (`/api/auth/profile/sessions`) — user's own grant history (method-level)
 
 ## Endpoint Access Map
 
@@ -74,10 +75,10 @@ Currently annotated controllers:
 |----------|-----------|--------------|
 | Public | `/api/auth/login`, `/api/auth/logout`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
 | LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/api/electron-update/**`, `/api/resource-packs/**`, `/api/sync-updates/**`, `/api/data-integrity/**`, `/api/backup/**`, `/api/attachments/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
-| Restricted (exempt) | `/api/auth/*` (me, profile, request-access, access-status) | Session cookie |
-| Restricted (annotated) | `@RestrictedAllowed` controllers/methods (currently: `/ng/rf-values/**`, `/ng/values/**`) | Session cookie |
+| Restricted (exempt) | `/api/auth/*` (me, profile, profile/change-password, request-access, access-status) | Session cookie |
+| Restricted (annotated) | `@RestrictedAllowed` controllers/methods (currently: `/ng/rf-values/**`, `/ng/values/**`, `/api/auth/profile/sessions`) | Session cookie |
 | Full access | All other `/ng/**`, `/api/**`, `/browser/**`, `/print/**` | Session + AccessGrant (or localhost/LAN) |
-| Admin | `/api/auth/admin/**` | ROLE_ADMIN + **localhost only** |
+| Admin | `/api/auth/admin/**` (approve, deny, revoke, prolong, grant-history) | ROLE_ADMIN + **localhost only** |
 | Admin pages | `/ng/users/**`, `/admin/**`, `/users/**` | ROLE_ADMIN |
 
 ## Key Files

@@ -20,12 +20,18 @@ import { AuthService } from '../../services/auth.service';
             <div class="user-name">{{ user.name }}</div>
             <div class="user-email">{{ user.email }}</div>
             <div class="user-role">{{ formatRole(user.role) }}</div>
+            <div class="access-badge restricted" *ngIf="user.accessLevel === 'RESTRICTED'">Restricted Access</div>
+            <div class="access-badge pending" *ngIf="user.accessLevel === 'PENDING'">Access Pending</div>
           </div>
         </div>
         <div class="dropdown-divider"></div>
         <button class="dropdown-item" (click)="goToProfile()">
           <span class="item-icon">&#x2699;</span>
           My Profile
+        </button>
+        <button class="dropdown-item" *ngIf="user.accessLevel !== 'FULL'" (click)="goToAccessRequest()">
+          <span class="item-icon">&#x1F511;</span>
+          Access Request
         </button>
         <button class="dropdown-item last" (click)="logout()">
           <span class="item-icon">&#x2BBD;</span>
@@ -128,6 +134,28 @@ import { AuthService } from '../../services/auth.service';
       margin-top: 2px;
     }
 
+    .access-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+
+    .access-badge.restricted {
+      background: rgba(230, 126, 34, 0.2);
+      color: #e67e22;
+      border: 1px solid rgba(230, 126, 34, 0.3);
+    }
+
+    .access-badge.pending {
+      background: rgba(241, 196, 15, 0.2);
+      color: #f1c40f;
+      border: 1px solid rgba(241, 196, 15, 0.3);
+    }
+
     .dropdown-divider {
       height: 1px;
       background: var(--border-color, #333);
@@ -198,6 +226,11 @@ export class UserProfileComponent {
   goToProfile(): void {
     this.isOpen = false;
     this.router.navigate(['/profile']);
+  }
+
+  goToAccessRequest(): void {
+    this.isOpen = false;
+    this.router.navigate(['/access-request']);
   }
 
   logout(): void {
