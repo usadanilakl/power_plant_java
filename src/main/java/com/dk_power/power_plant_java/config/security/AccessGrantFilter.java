@@ -10,8 +10,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -31,13 +31,20 @@ import java.util.Set;
  * Only external authenticated requests to protected endpoints are checked.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class AccessGrantFilter extends OncePerRequestFilter {
 
     private final AccessGrantRepository accessGrantRepository;
     private final ObjectMapper objectMapper;
     private final RequestMappingHandlerMapping handlerMapping;
+
+    public AccessGrantFilter(AccessGrantRepository accessGrantRepository,
+                             ObjectMapper objectMapper,
+                             @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
+        this.accessGrantRepository = accessGrantRepository;
+        this.objectMapper = objectMapper;
+        this.handlerMapping = handlerMapping;
+    }
 
     public static final String ACCESS_TOKEN_COOKIE = "ACCESS_TOKEN";
 
