@@ -3,7 +3,7 @@ import {
   LotoStandardDto,
   LotoStandardFieldName,
 } from '../../../../models/loto/loto-standard.model';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, filter, take } from 'rxjs';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { RfLotoStandardApiService } from './rf-loto-standard-api.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { LotoStandardLocalStorageService } from './rf-loto-standard-local-storage.service';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../services/sync/sync-update.service';
+import { AuthService, AuthUser } from '../../../../services/auth.service';
 
 @Injectable({
   providedIn: 'root',
@@ -59,8 +60,16 @@ export class RfLotoStandardStateService {
   isLotoStandardFormOpen = signal<boolean>(false);
 
   constructor() {
-    // Load initial data so both tree view and table have items
-    this.loadInitialData();
+    const authService = inject(AuthService);
+
+    // Defer initial data load until user has FULL access (avoids 403 flood for restricted users)
+    authService.currentUser$.pipe(
+      filter((user): user is AuthUser => user != null && user.accessLevel === 'FULL'),
+      take(1),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.loadInitialData();
+    });
 
     // Subscribe to SSE sync updates for real-time reactivity
     this.syncUpdateService.getEntityTypeUpdates$('LotoStandard')

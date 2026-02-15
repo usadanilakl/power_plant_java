@@ -23,8 +23,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
         }
       } else if (error.status === 403 && error.error?.error === 'FULL_ACCESS_REQUIRED') {
-        // Authenticated but needs full access approval
-        router.navigate(['/access-request']);
+        // Authenticated but needs full access approval — don't redirect if already there
+        if (router.url !== '/access-request') {
+          router.navigate(['/access-request']);
+        }
       }
       return throwError(() => error);
     })

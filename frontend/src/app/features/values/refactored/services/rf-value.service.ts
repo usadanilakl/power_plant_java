@@ -2,9 +2,11 @@ import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core'
 import { RfValueApiService } from './rf-value-api.service';
 import { RfValueDto, RfCategoryDto } from '../models/rf-value.model';
 import { Option } from '../../../../models/option.model';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, filter, take } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SyncUpdateService } from '../../../../services/sync/sync-update.service';
+import { AuthService, AuthUser } from '../../../../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -24,11 +26,17 @@ export class RfValueService {
   private sseSubscription: Subscription | null = null;
 
   constructor() {
-    // Load categories on init
-    this.loadCategories();
+    const authService = inject(AuthService);
 
-    // Preload common value categories for loto points
-    this.preloadCommonCategories();
+    // Defer preloading until user has FULL access (avoids 403 flood for restricted users)
+    authService.currentUser$.pipe(
+      filter((user): user is AuthUser => user != null && user.accessLevel === 'FULL'),
+      take(1),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.loadCategories();
+      this.preloadCommonCategories();
+    });
 
     // Subscribe to SSE updates for Value entities
     this.subscribeToValueUpdates();
