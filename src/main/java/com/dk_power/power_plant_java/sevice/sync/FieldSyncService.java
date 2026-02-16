@@ -1269,13 +1269,27 @@ public class FieldSyncService {
             change.getTimestamp(), change.getOriginMachineId());
 
         if (!exists) {
-            change.addSyncedMachine(syncConfig.getMachineId());
+            // Create a NEW entity to avoid Hibernate persistence context conflicts.
+            // The incoming 'change' may be a managed entity (e.g., when called from
+            // HubSyncService.syncExchange with already-saved changes), and mutating its
+            // ID with setId(null) causes "identifier was altered" errors at flush time.
+            FieldChange newChange = new FieldChange();
+            newChange.setEntityType(change.getEntityType());
+            newChange.setEntityId(change.getEntityId());
+            newChange.setFieldName(change.getFieldName());
+            newChange.setOldValue(change.getOldValue());
+            newChange.setNewValue(change.getNewValue());
+            newChange.setTimestamp(change.getTimestamp());
+            newChange.setOriginMachineId(change.getOriginMachineId());
+            newChange.setOriginMachineName(change.getOriginMachineName());
+            newChange.setChangeType(change.getChangeType());
+            newChange.setRelationshipType(change.getRelationshipType());
+            newChange.setReceivedAt(Instant.now());
+            newChange.addSyncedMachine(syncConfig.getMachineId());
             // Also mark as synced to SERVER since this change came FROM the server
             // This prevents the change from being sent back to the server in the next periodic sync
-            change.addSyncedMachine("SERVER");
-            // Generate new ID for our copy
-            change.setId(null);
-            fieldChangeRepository.save(change);
+            newChange.addSyncedMachine("SERVER");
+            fieldChangeRepository.save(newChange);
         }
     }
 
