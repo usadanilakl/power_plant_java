@@ -8,6 +8,7 @@ import {
   signal,
   effect,
   computed,
+  HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfWorkRequestApiService } from '../services/rf-work-request-api.service';
@@ -87,6 +88,12 @@ export class RfWorkRequestTableComponent implements OnInit {
   contextMenuVisible = signal<boolean>(false);
   contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
   selectedWorkRequest = signal<WorkRequestDto | null>(null);
+  private lastMousePosition = { x: 0, y: 0 };
+
+  @HostListener('document:mousemove', ['$event'])
+  onMouseMove(event: MouseEvent): void {
+    this.lastMousePosition = { x: event.clientX, y: event.clientY };
+  }
 
   contextMenuActions = computed<ContextMenuAction[]>(() => {
     const wr = this.selectedWorkRequest();
@@ -321,10 +328,9 @@ export class RfWorkRequestTableComponent implements OnInit {
 
   // ====================== Context Menu Handlers ======================
 
-  onRowRightClick(event: MouseEvent, item: WorkRequestDto): void {
-    event.preventDefault();
+  onRowRightClick = (item: WorkRequestDto): void => {
     this.selectedWorkRequest.set(item);
-    this.contextMenuPosition.set({ x: event.clientX, y: event.clientY });
+    this.contextMenuPosition.set({ x: this.lastMousePosition.x, y: this.lastMousePosition.y });
     this.contextMenuVisible.set(true);
   }
 
