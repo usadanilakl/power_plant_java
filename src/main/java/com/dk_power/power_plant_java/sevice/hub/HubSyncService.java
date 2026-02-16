@@ -248,11 +248,25 @@ public class HubSyncService {
                 }
 
                 if (shouldAcceptChange(change, latestChanges)) {
-                    change.setId(null); // Ensure new UUID is generated
-                    change.setReceivedAt(Instant.now());
-                    change.addSyncedMachine(machineId);    // Mark as synced to origin client
-                    change.addSyncedMachine(hubMachineId);  // Mark as synced to hub itself
-                    FieldChange saved = fieldChangeRepository.save(change);
+                    // Create a NEW entity to avoid Hibernate persistence context conflicts.
+                    // The incoming 'change' may share a UUID with a managed entity loaded by
+                    // findLatestChangesForEntities(), and mutating its ID (setId(null)) would
+                    // cause "identifier was altered" errors at commit time.
+                    FieldChange newChange = new FieldChange();
+                    newChange.setEntityType(change.getEntityType());
+                    newChange.setEntityId(change.getEntityId());
+                    newChange.setFieldName(change.getFieldName());
+                    newChange.setOldValue(change.getOldValue());
+                    newChange.setNewValue(change.getNewValue());
+                    newChange.setTimestamp(change.getTimestamp());
+                    newChange.setOriginMachineId(change.getOriginMachineId());
+                    newChange.setOriginMachineName(change.getOriginMachineName());
+                    newChange.setChangeType(change.getChangeType());
+                    newChange.setRelationshipType(change.getRelationshipType());
+                    newChange.setReceivedAt(Instant.now());
+                    newChange.addSyncedMachine(machineId);    // Mark as synced to origin client
+                    newChange.addSyncedMachine(hubMachineId);  // Mark as synced to hub itself
+                    FieldChange saved = fieldChangeRepository.save(newChange);
                     result.savedChanges.add(saved);
                     result.changesReceived++;
                 } else {

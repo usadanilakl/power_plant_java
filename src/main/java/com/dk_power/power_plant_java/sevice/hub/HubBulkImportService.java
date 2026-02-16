@@ -167,7 +167,10 @@ public class HubBulkImportService {
                             long copied = copyTable(sourceConn, targetConn, tableName);
                             entitiesImported += copied;
                             if (copied > 0) {
-                                log.info("Imported {} {} entities", copied, entityType);
+                                log.info("Imported {} {} entities (table: {})", copied, entityType, tableName);
+                            } else {
+                                // Log even zero-copy tables to help diagnose missing entities
+                                log.info("Imported 0 {} entities (table: {})", entityType, tableName);
                             }
                         }
 
@@ -182,6 +185,24 @@ public class HubBulkImportService {
 
                     targetConn.commit();
                     log.info("Import transaction committed successfully");
+
+                    // Post-import verification: count rows in each table
+                    log.info("=== Post-import verification ===");
+                    for (String entityType : entityTableRegistry.getSyncOrder()) {
+                        String tableName = entityTableRegistry.getTableName(entityType);
+                        try (Statement stmt = targetConn.createStatement();
+                             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + tableName)) {
+                            rs.next();
+                            long count = rs.getLong(1);
+                            if (count == 0) {
+                                log.warn("VERIFY: {} ({}) is EMPTY after import!", entityType, tableName);
+                            } else {
+                                log.info("VERIFY: {} ({}) = {} rows", entityType, tableName, count);
+                            }
+                        } catch (SQLException ve) {
+                            log.warn("VERIFY: Could not count {} ({}): {}", entityType, tableName, ve.getMessage());
+                        }
+                    }
                 } catch (SQLException e) {
                     try { targetConn.rollback(); } catch (SQLException re) {
                         log.error("Rollback failed: {}", re.getMessage());
@@ -488,9 +509,13 @@ public class HubBulkImportService {
             rs.next();
             sourceCount = rs.getLong(1);
         } catch (SQLException e) {
+            log.warn("Table {} not found in source database: {}", tableName, e.getMessage());
             return 0;
         }
-        if (sourceCount == 0) return 0;
+        if (sourceCount == 0) {
+            log.debug("Table {} is empty in source, skipping", tableName);
+            return 0;
+        }
 
         Set<String> sourceColumns = new LinkedHashSet<>();
         try (Statement stmt = sourceConn.createStatement();
@@ -500,7 +525,10 @@ public class HubBulkImportService {
                 sourceColumns.add(meta.getColumnName(i).toUpperCase());
             }
         }
-        if (sourceColumns.isEmpty()) return 0;
+        if (sourceColumns.isEmpty()) {
+            log.warn("Table {} has no columns in source", tableName);
+            return 0;
+        }
 
         Set<String> targetColumns = new LinkedHashSet<>();
         try (Statement stmt = targetConn.createStatement();
@@ -510,12 +538,27 @@ public class HubBulkImportService {
                 targetColumns.add(meta.getColumnName(i).toUpperCase());
             }
         } catch (SQLException e) {
+            log.warn("Table {} not found in target database: {}", tableName, e.getMessage());
             return 0;
         }
 
         List<String> columns = sourceColumns.stream()
             .filter(targetColumns::contains).toList();
-        if (columns.isEmpty()) return 0;
+        if (columns.isEmpty()) {
+            log.error("Table {} has NO matching columns! source={}, target={}", tableName, sourceColumns, targetColumns);
+            return 0;
+        }
+
+        if (sourceColumns.size() != columns.size()) {
+            Set<String> unmatchedSource = new LinkedHashSet<>(sourceColumns);
+            unmatchedSource.removeAll(targetColumns);
+            Set<String> unmatchedTarget = new LinkedHashSet<>(targetColumns);
+            unmatchedTarget.removeAll(sourceColumns);
+            log.info("Table {} column mismatch: {} matched, source-only={}, target-only={}",
+                tableName, columns.size(), unmatchedSource, unmatchedTarget);
+        }
+
+        log.debug("Table {} import: {} source rows, {} columns matched", tableName, sourceCount, columns.size());
 
         String columnList = String.join(", ", columns);
         String valuePlaceholders = String.join(", ", columns.stream().map(c -> "?").toList());
