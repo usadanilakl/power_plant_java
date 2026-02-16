@@ -7,6 +7,7 @@ import { MainLayoutComponent } from '../../layout/refactored/main-layout.compone
 import {
   AdminFunctionalitiesService,
   FileIntegrityResult,
+  FixExtensionsResult,
   SplitEquipmentResult,
   AssignAttributesResult,
   CounterpartAssociationResult
@@ -23,6 +24,7 @@ export class AdminFunctionalitiesComponent {
   // Loading states
   loading = {
     fileIntegrity: false,
+    fixExtensions: false,
     splitEquipment: false,
     assignAttributes: false,
     counterparts: false
@@ -30,6 +32,7 @@ export class AdminFunctionalitiesComponent {
 
   // Results
   fileIntegrityResult: FileIntegrityResult | null = null;
+  fixExtensionsResult: FixExtensionsResult | null = null;
   splitEquipmentResult: SplitEquipmentResult | null = null;
   assignAttributesResult: AssignAttributesResult | null = null;
   counterpartResult: CounterpartAssociationResult | null = null;
@@ -37,6 +40,7 @@ export class AdminFunctionalitiesComponent {
   // Error messages
   errors = {
     fileIntegrity: '',
+    fixExtensions: '',
     splitEquipment: '',
     assignAttributes: '',
     counterparts: ''
@@ -46,6 +50,7 @@ export class AdminFunctionalitiesComponent {
   expandedSections = {
     orphanedFiles: false,
     missingFiles: false,
+    fixedFiles: false,
     splitEquipment: false,
     linkedPairs: false,
     skippedPoints: false
@@ -53,7 +58,7 @@ export class AdminFunctionalitiesComponent {
 
   constructor(private adminService: AdminFunctionalitiesService) {}
 
-  // 1. File Integrity Check
+  // File Integrity Check
   checkFileIntegrity(dryRun: boolean = true) {
     this.loading.fileIntegrity = true;
     this.errors.fileIntegrity = '';
@@ -71,7 +76,29 @@ export class AdminFunctionalitiesComponent {
     });
   }
 
-  // 2. Split Equipment
+  // Fix File Extensions
+  fixFileExtensions(dryRun: boolean = true) {
+    if (!dryRun && !confirm('This will update extensions on all FileObjects based on actual files on disk. Continue?')) {
+      return;
+    }
+
+    this.loading.fixExtensions = true;
+    this.errors.fixExtensions = '';
+    this.fixExtensionsResult = null;
+
+    this.adminService.fixFileExtensions(dryRun).subscribe({
+      next: (response) => {
+        this.fixExtensionsResult = response.responseData;
+        this.loading.fixExtensions = false;
+      },
+      error: (error) => {
+        this.errors.fixExtensions = error.error?.message || error.message || 'An error occurred';
+        this.loading.fixExtensions = false;
+      }
+    });
+  }
+
+  // Split Equipment
   splitEquipment() {
     if (!confirm('This will split all equipment with multiple loto points. Continue?')) {
       return;
@@ -93,7 +120,7 @@ export class AdminFunctionalitiesComponent {
     });
   }
 
-  // 3. Assign Equipment Attributes to LotoPoints
+  // Assign Equipment Attributes to LotoPoints
   assignAttributes() {
     if (!confirm('This will assign Location and EqType from Equipment to LotoPoints. Continue?')) {
       return;
@@ -115,7 +142,7 @@ export class AdminFunctionalitiesComponent {
     });
   }
 
-  // 4. Associate Counterparts
+  // Associate Counterparts
   associateCounterparts(dryRun: boolean = true) {
     if (!dryRun && !confirm('This will link all matching U1/U2 loto point pairs. Continue?')) {
       return;

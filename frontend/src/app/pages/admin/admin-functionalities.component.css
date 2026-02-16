@@ -192,3 +192,27 @@ table td {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-left: 4px solid #28a745;
 }
+
+.sub-section {
+  margin-bottom: 10px;
+}
+
+.sub-section h4 {
+  color: #495057;
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.sub-divider {
+  border: none;
+  border-top: 1px solid #e9ecef;
+  margin: 20px 0;
+}
+
+code {
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}

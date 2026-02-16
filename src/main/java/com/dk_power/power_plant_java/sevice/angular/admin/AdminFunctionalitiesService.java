@@ -155,6 +155,125 @@ public class AdminFunctionalitiesService {
     }
 
     // ============================================================
+    // 1b. Fix File Extensions
+    // Scans the filesystem for each FileObject and sets the extensions
+    // field based on which extension folders actually contain files
+    // ============================================================
+
+    public Map<String, Object> fixFileExtensions(boolean dryRun) {
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> fixedFiles = new ArrayList<>();
+        List<Map<String, Object>> errorFiles = new ArrayList<>();
+        int totalChecked = 0;
+        int totalFixed = 0;
+        int alreadyCorrect = 0;
+
+        try {
+            Path uploadsPath = Paths.get(projectRootPath, "uploads");
+            if (!Files.exists(uploadsPath)) {
+                result.put("error", "Uploads directory not found: " + uploadsPath);
+                result.put("success", false);
+                return result;
+            }
+
+            // Get all extension directories (pdf, jpg, dwg, etc.)
+            List<String> availableExtensions;
+            try (Stream<Path> extDirs = Files.list(uploadsPath)) {
+                availableExtensions = extDirs
+                    .filter(Files::isDirectory)
+                    .map(p -> p.getFileName().toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+            }
+
+            logger.info("Available extension folders: {}", availableExtensions);
+
+            if (!dryRun) {
+                syncContext.startSync();
+            }
+            try {
+                List<FileObject> allFiles = fileRepo.findAll();
+                for (FileObject fo : allFiles) {
+                    totalChecked++;
+                    if (fo.getFileNumber() == null || fo.getVendor() == null || fo.getFileType() == null) {
+                        continue;
+                    }
+
+                    String vendorName = fo.getVendor().getName();
+                    String fileTypeName = fo.getFileType().getName();
+                    String fileNumber = fo.getFileNumber();
+
+                    // Check each extension folder for files matching this fileNumber
+                    Set<String> foundExtensions = new LinkedHashSet<>();
+                    for (String ext : availableExtensions) {
+                        Path folder = Paths.get(projectRootPath, "uploads", ext, fileTypeName, vendorName);
+                        if (Files.exists(folder)) {
+                            try (Stream<Path> filesInDir = Files.list(folder)) {
+                                boolean hasFile = filesInDir.anyMatch(p -> {
+                                    String name = p.getFileName().toString();
+                                    String baseName = name.contains(".")
+                                        ? name.substring(0, name.lastIndexOf('.'))
+                                        : name;
+                                    // Match exact fileNumber or fileNumber-revN
+                                    return baseName.equals(fileNumber)
+                                        || baseName.matches("^" + java.util.regex.Pattern.quote(fileNumber) + "-rev\\d+$");
+                                });
+                                if (hasFile) {
+                                    foundExtensions.add(ext);
+                                }
+                            }
+                        }
+                    }
+
+                    String newExtensions = String.join(",", foundExtensions);
+                    String currentExtensions = fo.getExtensions();
+                    boolean needsFix = !newExtensions.equals(currentExtensions != null ? currentExtensions : "");
+
+                    if (needsFix) {
+                        totalFixed++;
+                        Map<String, Object> fixed = new LinkedHashMap<>();
+                        fixed.put("id", fo.getId());
+                        fixed.put("fileNumber", fileNumber);
+                        fixed.put("name", fo.getName() != null ? fo.getName() : "N/A");
+                        fixed.put("oldExtensions", currentExtensions != null ? currentExtensions : "(null)");
+                        fixed.put("newExtensions", newExtensions.isEmpty() ? "(none found)" : newExtensions);
+                        fixedFiles.add(fixed);
+
+                        if (!dryRun && !newExtensions.isEmpty()) {
+                            fo.setExtensions(newExtensions);
+                            // Also set singular extension to first found
+                            fo.setExtension(foundExtensions.iterator().next());
+                            fileRepo.save(fo);
+                        }
+                    } else {
+                        alreadyCorrect++;
+                    }
+                }
+            } finally {
+                if (!dryRun) {
+                    syncContext.endSync();
+                }
+            }
+
+            result.put("success", true);
+            result.put("dryRun", dryRun);
+            result.put("totalChecked", totalChecked);
+            result.put("totalFixed", totalFixed);
+            result.put("alreadyCorrect", alreadyCorrect);
+            result.put("availableExtensions", availableExtensions);
+            result.put("fixedFiles", fixedFiles);
+            result.put("errorFiles", errorFiles);
+
+        } catch (Exception e) {
+            logger.error("Error fixing file extensions", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+
+        return result;
+    }
+
+    // ============================================================
     // 2. Split Equipment with Multiple LotoPoints
     // Delegates to existing EquipmentRefactorService
     // ============================================================

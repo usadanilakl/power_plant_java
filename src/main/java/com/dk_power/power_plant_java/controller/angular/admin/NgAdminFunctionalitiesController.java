@@ -39,6 +39,29 @@ public class NgAdminFunctionalitiesController {
     }
 
     /**
+     * Fix file extensions - scans filesystem for each FileObject and updates
+     * the extensions field based on which extension folders contain matching files.
+     * @param dryRun If true, only reports what would change without updating
+     */
+    @PostMapping("/fix-file-extensions")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> fixFileExtensions(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.fixFileExtensions(dryRun);
+            String message = dryRun
+                ? "File extensions check completed (dry run)"
+                : "File extensions fix completed";
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error fixing file extensions: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Split equipment with multiple loto points into separate equipment entries.
      * Each equipment will have exactly one loto point after this operation.
      */

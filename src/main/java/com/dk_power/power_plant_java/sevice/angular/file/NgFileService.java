@@ -380,20 +380,33 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String oldFileNumber = oldEntity.getFileNumber();
         String oldFileType = oldEntity.getFileType().getName();
         String oldVendor = oldEntity.getVendor().getName();
+        String oldExtensions = oldEntity.getExtensions();
+        String oldExtension = oldEntity.getExtension();
+        String oldBaseLink = oldEntity.getBaseLink();
 
-
-//        List<File> revisions = FileUtil.getRevisionsByFileNumber(oldFileNumber, Paths.get(projectRootPath, oldEntity.buildFileLink("pdf")).toString());
         List<File> extensionFiles = getFilesWithAllExtensions(oldEntity);
 
+        // convertIdDtoToEntity loads the SAME managed entity and mutates it in place
         FileObject updatedEntity = convertIdDtoToEntity(file);
         updatedEntity.buildFileLink();
 
-        System.out.println("old file number - " + oldFileNumber + " - new file number" + updatedEntity.getFileNumber());
+        logger.info("updateFileObject: old=[number={}, type={}, vendor={}] new=[number={}, type={}, vendor={}] filesFound={}",
+                oldFileNumber, oldFileType, oldVendor,
+                updatedEntity.getFileNumber(),
+                updatedEntity.getFileType() != null ? updatedEntity.getFileType().getName() : "null",
+                updatedEntity.getVendor() != null ? updatedEntity.getVendor().getName() : "null",
+                extensionFiles.size());
 
         // Check if relevant fields have changed
         boolean needsFileUpdate = !oldFileNumber.equals(updatedEntity.getFileNumber()) ||
                 !oldFileType.equals(updatedEntity.getFileType().getName()) ||
                 !oldVendor.equals(updatedEntity.getVendor().getName());
+
+        if (needsFileUpdate && extensionFiles.isEmpty()) {
+            logger.warn("File update needed but no physical files found at old path! " +
+                    "extensions={}, extension={}, baseLink={}",
+                    oldExtensions, oldExtension, oldBaseLink);
+        }
 
         if (needsFileUpdate) {
             // Move files to new locations
@@ -402,7 +415,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 String name = FileUtil.renameFileWithRevisions(oldFile, updatedEntity.getFileNumber());
                 String newPath = Paths.get(projectRootPath, updatedEntity.buildFolder(extension), name).toString();
                 try {
-                    System.out.println("Moving file: " + oldFile.toPath() + " to " + newPath );
+                    logger.info("Moving file: {} -> {}", oldFile.toPath(), newPath);
                     FileUtil.moveFileAndCleanup(oldFile.toPath(), Paths.get(newPath));
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to move file: " + oldFile.getName(), e);
@@ -432,7 +445,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     private List<File> getFilesWithAllExtensions(FileObject file) {
         List<File> files = new ArrayList<>();
-        for (String extension : file.getExtensionsArray()) {
+        List<String> exts = file.getExtensionsArray();
+        // Fall back to singular extension field if extensions (plural) is not set
+        if (exts.isEmpty() && file.getExtension() != null && !file.getExtension().isEmpty()) {
+            exts = List.of(file.getExtension());
+        }
+        for (String extension : exts) {
             Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
             if (Files.exists(folder)) {
                 files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumber(), folder.toString()));

@@ -14,90 +14,167 @@
         </div>
       </div>
 
-      <!-- 1. File Integrity Check -->
+      <!-- 1. Files -->
       <div class="admin-section">
-        <h3>1. File Integrity Check</h3>
-        <p class="description">
-          Compares physical files in the uploads folder with database entries.
-          Identifies orphaned files (no database entry) and missing files (database entry but no physical file).
-        </p>
-        <div class="button-group">
-          <button (click)="checkFileIntegrity(true)" [disabled]="loading.fileIntegrity">
-            {{ loading.fileIntegrity ? 'Checking...' : 'Check (Dry Run)' }}
-          </button>
-        </div>
+        <h3>1. Files</h3>
 
-        <div class="error" *ngIf="errors.fileIntegrity">{{ errors.fileIntegrity }}</div>
-
-        <div class="result" *ngIf="fileIntegrityResult">
-          <div class="result-summary">
-            <span class="badge">Files Scanned: {{ fileIntegrityResult.filesScanned }}</span>
-            <span class="badge">Entities Checked: {{ fileIntegrityResult.entitiesChecked }}</span>
-            <span class="badge warning" *ngIf="fileIntegrityResult.orphanedCount > 0">
-              Orphaned Files: {{ fileIntegrityResult.orphanedCount }}
-            </span>
-            <span class="badge success" *ngIf="fileIntegrityResult.orphanedCount === 0">
-              Orphaned Files: 0
-            </span>
-            <span class="badge warning" *ngIf="fileIntegrityResult.missingCount > 0">
-              Missing Files: {{ fileIntegrityResult.missingCount }}
-            </span>
-            <span class="badge success" *ngIf="fileIntegrityResult.missingCount === 0">
-              Missing Files: 0
-            </span>
+        <!-- 1a. File Integrity Check -->
+        <div class="sub-section">
+          <h4>File Integrity Check</h4>
+          <p class="description">
+            Compares physical files in the uploads folder with database entries.
+            Identifies orphaned files (no database entry) and missing files (database entry but no physical file).
+          </p>
+          <div class="button-group">
+            <button (click)="checkFileIntegrity(true)" [disabled]="loading.fileIntegrity">
+              {{ loading.fileIntegrity ? 'Checking...' : 'Check (Dry Run)' }}
+            </button>
           </div>
 
-          <!-- Orphaned Files -->
-          <div class="details-section" *ngIf="fileIntegrityResult.orphanedCount > 0">
-            <button class="toggle-btn" (click)="toggleSection('orphanedFiles')">
-              {{ expandedSections.orphanedFiles ? 'Hide' : 'Show' }} Orphaned Files
-            </button>
-            <div class="details-list" *ngIf="expandedSections.orphanedFiles">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Path</th>
-                    <th>File Number</th>
-                    <th>Type</th>
-                    <th>Vendor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let file of fileIntegrityResult.orphanedFiles">
-                    <td>{{ file.path }}</td>
-                    <td>{{ file.fileNumber }}</td>
-                    <td>{{ file.fileType }}</td>
-                    <td>{{ file.vendor }}</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="error" *ngIf="errors.fileIntegrity">{{ errors.fileIntegrity }}</div>
+
+          <div class="result" *ngIf="fileIntegrityResult">
+            <div class="result-summary">
+              <span class="badge">Files Scanned: {{ fileIntegrityResult.filesScanned }}</span>
+              <span class="badge">Entities Checked: {{ fileIntegrityResult.entitiesChecked }}</span>
+              <span class="badge warning" *ngIf="fileIntegrityResult.orphanedCount > 0">
+                Orphaned Files: {{ fileIntegrityResult.orphanedCount }}
+              </span>
+              <span class="badge success" *ngIf="fileIntegrityResult.orphanedCount === 0">
+                Orphaned Files: 0
+              </span>
+              <span class="badge warning" *ngIf="fileIntegrityResult.missingCount > 0">
+                Missing Files: {{ fileIntegrityResult.missingCount }}
+              </span>
+              <span class="badge success" *ngIf="fileIntegrityResult.missingCount === 0">
+                Missing Files: 0
+              </span>
+            </div>
+
+            <!-- Orphaned Files -->
+            <div class="details-section" *ngIf="fileIntegrityResult.orphanedCount > 0">
+              <button class="toggle-btn" (click)="toggleSection('orphanedFiles')">
+                {{ expandedSections.orphanedFiles ? 'Hide' : 'Show' }} Orphaned Files
+              </button>
+              <div class="details-list" *ngIf="expandedSections.orphanedFiles">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Path</th>
+                      <th>File Number</th>
+                      <th>Type</th>
+                      <th>Vendor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let file of fileIntegrityResult.orphanedFiles">
+                      <td>{{ file.path }}</td>
+                      <td>{{ file.fileNumber }}</td>
+                      <td>{{ file.fileType }}</td>
+                      <td>{{ file.vendor }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Missing Files -->
+            <div class="details-section" *ngIf="fileIntegrityResult.missingCount > 0">
+              <button class="toggle-btn" (click)="toggleSection('missingFiles')">
+                {{ expandedSections.missingFiles ? 'Hide' : 'Show' }} Missing Files
+              </button>
+              <div class="details-list" *ngIf="expandedSections.missingFiles">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>File Number</th>
+                      <th>Name</th>
+                      <th>Expected Path</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let file of fileIntegrityResult.missingFiles">
+                      <td>{{ file.id }}</td>
+                      <td>{{ file.fileNumber }}</td>
+                      <td>{{ file.name }}</td>
+                      <td>{{ file.expectedPath }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Missing Files -->
-          <div class="details-section" *ngIf="fileIntegrityResult.missingCount > 0">
-            <button class="toggle-btn" (click)="toggleSection('missingFiles')">
-              {{ expandedSections.missingFiles ? 'Hide' : 'Show' }} Missing Files
+        <hr class="sub-divider">
+
+        <!-- 1b. Fix File Extensions -->
+        <div class="sub-section">
+          <h4>Fix File Extensions</h4>
+          <p class="description">
+            Scans the filesystem for each FileObject and sets the <code>extensions</code> field
+            based on which extension folders actually contain matching files (e.g. pdf, jpg, dwg).
+            This fixes file move operations that rely on extensions being set correctly.
+          </p>
+          <div class="button-group">
+            <button (click)="fixFileExtensions(true)" [disabled]="loading.fixExtensions">
+              {{ loading.fixExtensions ? 'Scanning...' : 'Preview (Dry Run)' }}
             </button>
-            <div class="details-list" *ngIf="expandedSections.missingFiles">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>File Number</th>
-                    <th>Name</th>
-                    <th>Expected Path</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let file of fileIntegrityResult.missingFiles">
-                    <td>{{ file.id }}</td>
-                    <td>{{ file.fileNumber }}</td>
-                    <td>{{ file.name }}</td>
-                    <td>{{ file.expectedPath }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <button (click)="fixFileExtensions(false)" [disabled]="loading.fixExtensions" class="action-btn">
+              {{ loading.fixExtensions ? 'Fixing...' : 'Fix Extensions' }}
+            </button>
+          </div>
+
+          <div class="error" *ngIf="errors.fixExtensions">{{ errors.fixExtensions }}</div>
+
+          <div class="result" *ngIf="fixExtensionsResult">
+            <div class="result-summary">
+              <span class="badge" [class.info]="fixExtensionsResult.dryRun">
+                {{ fixExtensionsResult.dryRun ? 'DRY RUN' : 'EXECUTED' }}
+              </span>
+              <span class="badge">Checked: {{ fixExtensionsResult.totalChecked }}</span>
+              <span class="badge" [class.warning]="fixExtensionsResult.totalFixed > 0"
+                                  [class.success]="fixExtensionsResult.totalFixed === 0">
+                Need Fix: {{ fixExtensionsResult.totalFixed }}
+              </span>
+              <span class="badge success">Already Correct: {{ fixExtensionsResult.alreadyCorrect }}</span>
+            </div>
+
+            <div class="result-summary" *ngIf="fixExtensionsResult.availableExtensions?.length">
+              <span class="badge info">
+                Extension Folders: {{ fixExtensionsResult.availableExtensions.join(', ') }}
+              </span>
+            </div>
+
+            <!-- Fixed Files Details -->
+            <div class="details-section" *ngIf="fixExtensionsResult.fixedFiles?.length && fixExtensionsResult.fixedFiles.length > 0">
+              <button class="toggle-btn" (click)="toggleSection('fixedFiles')">
+                {{ expandedSections.fixedFiles ? 'Hide' : 'Show' }} {{ fixExtensionsResult.dryRun ? 'Files to Fix' : 'Fixed Files' }}
+                ({{ fixExtensionsResult.fixedFiles.length }})
+              </button>
+              <div class="details-list" *ngIf="expandedSections.fixedFiles">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>File Number</th>
+                      <th>Name</th>
+                      <th>Old Extensions</th>
+                      <th>New Extensions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let file of fixExtensionsResult.fixedFiles">
+                      <td>{{ file.id }}</td>
+                      <td>{{ file.fileNumber }}</td>
+                      <td>{{ file.name }}</td>
+                      <td>{{ file.oldExtensions }}</td>
+                      <td>{{ file.newExtensions }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

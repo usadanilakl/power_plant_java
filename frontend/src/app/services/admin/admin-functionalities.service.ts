@@ -55,6 +55,25 @@ export interface AssignAttributesResult {
   error?: string;
 }
 
+export interface FixExtensionsResult {
+  success: boolean;
+  dryRun: boolean;
+  totalChecked: number;
+  totalFixed: number;
+  alreadyCorrect: number;
+  availableExtensions: string[];
+  fixedFiles: FixedFileItem[];
+  error?: string;
+}
+
+export interface FixedFileItem {
+  id: number;
+  fileNumber: string;
+  name: string;
+  oldExtensions: string;
+  newExtensions: string;
+}
+
 export interface CounterpartAssociationResult {
   success: boolean;
   dryRun: boolean;
@@ -96,6 +115,19 @@ export class AdminFunctionalitiesService {
     const params = new HttpParams().set('dryRun', dryRun.toString());
     return this.http.post<SpringApiResponse<FileIntegrityResult>>(
       `${this.apiUrl}/restore-file-integrity`,
+      {},
+      { params }
+    );
+  }
+
+  /**
+   * Fix file extensions - scans filesystem and updates extensions field on FileObjects
+   * @param dryRun If true, only reports what would change without updating
+   */
+  fixFileExtensions(dryRun: boolean = true): Observable<SpringApiResponse<FixExtensionsResult>> {
+    const params = new HttpParams().set('dryRun', dryRun.toString());
+    return this.http.post<SpringApiResponse<FixExtensionsResult>>(
+      `${this.apiUrl}/fix-file-extensions`,
       {},
       { params }
     );
