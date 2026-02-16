@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.hub;
 
+import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.sync.EntityTableRegistry;
 import jakarta.persistence.EntityManager;
 import lombok.Builder;
@@ -8,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -33,6 +35,7 @@ public class HubBulkImportService {
     private final EntityManager entityManager;
     private final DataSource dataSource;
     private final EntityTableRegistry entityTableRegistry;
+    private final FieldChangeRepository fieldChangeRepository;
 
     @Value("${sync.import.temp-dir:${user.dir}/sync-import-tmp}")
     private String tempDir;
@@ -54,10 +57,12 @@ public class HubBulkImportService {
 
     public HubBulkImportService(EntityManager entityManager,
                                  DataSource dataSource,
-                                 EntityTableRegistry entityTableRegistry) {
+                                 EntityTableRegistry entityTableRegistry,
+                                 FieldChangeRepository fieldChangeRepository) {
         this.entityManager = entityManager;
         this.dataSource = dataSource;
         this.entityTableRegistry = entityTableRegistry;
+        this.fieldChangeRepository = fieldChangeRepository;
     }
 
     public SafetyCheckResult checkImportSafety(boolean force) {
@@ -216,6 +221,16 @@ public class HubBulkImportService {
                         log.error("Failed to re-enable referential integrity: {}", e.getMessage());
                     }
                     targetConn.setAutoCommit(true);
+                }
+
+                // Mark all existing FieldChanges as synced to the importing client.
+                // The client already has all data (it just exported it), so pending
+                // FieldChanges are redundant and would cause PK violations on the client.
+                try {
+                    int marked = markAllFieldChangesSyncedTo(machineId);
+                    log.info("Marked {} existing FieldChanges as synced to {}", marked, machineId);
+                } catch (Exception e) {
+                    log.warn("Failed to mark FieldChanges as synced to {}: {}", machineId, e.getMessage());
                 }
 
                 long durationMs = System.currentTimeMillis() - startTime;
@@ -462,6 +477,15 @@ public class HubBulkImportService {
             .totalSize(session.getTotalSize())
             .startedAt(session.getStartedAt())
             .build();
+    }
+
+    /**
+     * Mark all existing FieldChanges as synced to the given machine.
+     * Called after successful bulk import — the client already has all entity data.
+     */
+    @Transactional
+    public int markAllFieldChangesSyncedTo(String machineId) {
+        return fieldChangeRepository.markAllChangesSyncedTo(machineId);
     }
 
     // ==================== Private helpers ====================

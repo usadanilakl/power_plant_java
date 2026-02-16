@@ -1157,6 +1157,7 @@ public class FieldSyncService {
      * left in the database by ddl-auto=update (which never drops constraints).
      */
     @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked")
     private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
         try {
             // First check if entity already exists (might have been created earlier in this batch
@@ -1169,6 +1170,30 @@ public class FieldSyncService {
 
             // Get the table name for native SQL
             String tableName = getTableName(entityType);
+
+            // Check for soft-deleted entities: @Where(clause = "deleted = false") makes them
+            // invisible to JPA, but the row still exists with deleted=true.
+            // If found, un-delete the row instead of trying to INSERT (which would cause PK violation).
+            Long existingCount = ((Number) entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
+                .setParameter("id", entityId)
+                .getSingleResult()).longValue();
+
+            if (existingCount > 0) {
+                entityManager.createNativeQuery(
+                    "UPDATE " + tableName + " SET deleted = false, date_modified = :now WHERE id = :id")
+                    .setParameter("id", entityId)
+                    .setParameter("now", java.time.LocalDateTime.now())
+                    .executeUpdate();
+                entityManager.flush();
+                entityManager.clear();
+
+                BaseIdEntity reactivated = (BaseIdEntity) service.getEntityById(entityId);
+                if (reactivated != null) {
+                    log.debug("Entity {}#{} was soft-deleted, re-activated", entityType, entityId);
+                    return reactivated;
+                }
+            }
 
             // Query NOT NULL columns beyond the base set so we can provide defaults.
             // ddl-auto=update never removes NOT NULL constraints, so the DB may have
@@ -1219,6 +1244,7 @@ public class FieldSyncService {
 
         } catch (Exception e) {
             log.error("Failed to create entity {} with ID {}: {}", entityType, entityId, e.getMessage(), e);
+            log.error("Failed to create entity {}#{} from sync", entityType, entityId);
             return null;
         }
     }

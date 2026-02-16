@@ -64,6 +64,12 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query("DELETE FROM FieldChange fc WHERE fc.timestamp < :before")
     int deleteChangesBefore(@Param("before") Instant before);
 
+    // Mark ALL existing changes as synced to a machine (used after bulk import — the client already has all data)
+    @Modifying
+    @Query(value = "UPDATE FIELD_CHANGE SET SYNCED_TO_MACHINES = CONCAT(COALESCE(SYNCED_TO_MACHINES, ''), CONCAT('|', :machineId, '|')) " +
+           "WHERE SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL", nativeQuery = true)
+    int markAllChangesSyncedTo(@Param("machineId") String machineId);
+
     // Check if change already exists (for deduplication)
     boolean existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
         String entityType, Long entityId, String fieldName, Instant timestamp, String originMachineId);

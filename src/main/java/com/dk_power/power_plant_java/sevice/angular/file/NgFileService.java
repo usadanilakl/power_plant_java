@@ -434,7 +434,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<File> files = new ArrayList<>();
         for (String extension : file.getExtensionsArray()) {
             Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
-            files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumber(), folder.toString()));
+            if (Files.exists(folder)) {
+                files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumber(), folder.toString()));
+            }
         }
         return files;
     }
@@ -443,7 +445,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<File> files = new ArrayList<>();
         for (String extension : file.getExtensions()) {
             Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
-            files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumberAsString(), folder.toString()));
+            if (Files.exists(folder)) {
+                files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumberAsString(), folder.toString()));
+            }
         }
         return files;
     }
@@ -453,7 +457,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         for (String extension : extensions) {
             String currentExtension = FileUtil.getFileExtension(link);
             Path folder = Paths.get(projectRootPath, link.replaceAll(currentExtension, extension)).getParent();
-            files.addAll(FileUtil.getRevisionsByFileNumber(FileUtil.getNameFromPathWithoutExtension(link), folder.toString()));
+            if (Files.exists(folder)) {
+                files.addAll(FileUtil.getRevisionsByFileNumber(FileUtil.getNameFromPathWithoutExtension(link), folder.toString()));
+            }
         }
         return files;
     }
