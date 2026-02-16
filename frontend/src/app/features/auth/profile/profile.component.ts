@@ -3,15 +3,20 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, UserProfile, AccessGrantSummary } from '../../../services/auth.service';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { ThemeService } from '../../../shared/theme-toggle/theme.service';
 import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
   template: `
-    <app-main-layout pageTitle="My Profile">
+    <app-main-layout header="My Profile">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
       <div class="profile-container">
         <!-- Tabs -->
         <div class="tabs">
@@ -185,6 +190,7 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
           </div>
         </div>
       </div>
+      </ng-container>
     </app-main-layout>
   `,
   styles: [`

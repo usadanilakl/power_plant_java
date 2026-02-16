@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
 
 interface GrantInfo {
@@ -23,9 +24,13 @@ interface GrantInfo {
 @Component({
   selector: 'app-admin-access',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
   template: `
-    <app-main-layout pageTitle="Access Management">
+    <app-main-layout header="Access Management">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
       <div class="admin-container">
 
         <div *ngIf="lanError" class="error-box">{{ lanError }}</div>
@@ -184,6 +189,7 @@ interface GrantInfo {
           </div>
         </div>
       </div>
+      </ng-container>
     </app-main-layout>
   `,
   styles: [`

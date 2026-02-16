@@ -8,7 +8,6 @@ import {
   signal,
   effect,
   computed,
-  HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfWorkRequestApiService } from '../services/rf-work-request-api.service';
@@ -32,7 +31,9 @@ import { TableClickService } from '../../../../../shared/table/refactored/servic
 import { TableControlsService } from '../../../../../shared/table/refactored/services/table-controls.service';
 import { TableDataService } from '../../../../../shared/table/refactored/services/table-data.service';
 import { WorkRequestTableControlService } from './rf-work-request-table-control.service';
-import { ContextMenuComponent, ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
+import { WorkRequestTableClickService } from './rf-work-request-table-click.service';
+import { ContextMenuComponent } from '../../../../../shared/menu/context-menu/context-menu.component';
+import { WorkRequestContextMenuService } from '../services/work-request-context-menu.service';
 
 @Component({
   selector: 'app-rf-work-request-table',
@@ -48,7 +49,7 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../../shared/m
     TableSortService,
     TableResizeService,
     TableSyncService,
-    TableClickService,
+    { provide: TableClickService, useClass: WorkRequestTableClickService },
     { provide: TableControlsService, useClass: WorkRequestTableControlService },
     TableDataService,
   ],
@@ -58,6 +59,7 @@ export class RfWorkRequestTableComponent implements OnInit {
   protected stateService = inject(RfWorkRequestStateService);
   private mapperService = inject(RfWorkRequestMapperService);
   private destroyRef = inject(DestroyRef);
+  protected contextMenuService = inject(WorkRequestContextMenuService);
 
   // Inputs
   tableId = input<string>('rf-work-request-table');
@@ -82,44 +84,6 @@ export class RfWorkRequestTableComponent implements OnInit {
 
   currentColumnUniqueItems = computed(() => {
     return this.stateService.currentColumnUniqueItems();
-  });
-
-  // Context menu state
-  contextMenuVisible = signal<boolean>(false);
-  contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
-  selectedWorkRequest = signal<WorkRequestDto | null>(null);
-  private lastMousePosition = { x: 0, y: 0 };
-
-  @HostListener('document:mousemove', ['$event'])
-  onMouseMove(event: MouseEvent): void {
-    this.lastMousePosition = { x: event.clientX, y: event.clientY };
-  }
-
-  contextMenuActions = computed<ContextMenuAction[]>(() => {
-    const wr = this.selectedWorkRequest();
-    if (!wr) return [];
-
-    return [
-      {
-        id: 'request-details',
-        label: 'Request More Details',
-        icon: 'email',
-        action: (item) => this.requestMoreDetails(item)
-      },
-      {
-        id: 'cancel',
-        label: 'Cancel',
-        icon: 'cancel',
-        action: (item) => this.cancelWorkRequest(item)
-      },
-      { id: 'divider1', label: '', divider: true, action: () => {} },
-      {
-        id: 'view',
-        label: 'View Details',
-        icon: 'visibility',
-        action: (item) => this.viewWorkRequest(item)
-      }
-    ];
   });
 
   constructor() {
@@ -326,44 +290,4 @@ export class RfWorkRequestTableComponent implements OnInit {
       .subscribe();
   }
 
-  // ====================== Context Menu Handlers ======================
-
-  onRowRightClick = (item: WorkRequestDto): void => {
-    this.selectedWorkRequest.set(item);
-    this.contextMenuPosition.set({ x: this.lastMousePosition.x, y: this.lastMousePosition.y });
-    this.contextMenuVisible.set(true);
-  }
-
-  onContextMenuAction(event: { action: ContextMenuAction; item: any }): void {
-    console.log('[WR Table] Context menu action:', event.action.id);
-    this.contextMenuVisible.set(false);
-  }
-
-  requestMoreDetails(item: WorkRequestDto): void {
-    if (!item.id) return;
-
-    const message = prompt('Optional: Add details about what information is needed');
-    if (message !== null) {  // User didn't cancel prompt
-      this.stateService.requestMoreDetails(item.id, message || undefined);
-    }
-  }
-
-  cancelWorkRequest(item: WorkRequestDto): void {
-    if (!item.id) return;
-
-    const confirmed = confirm(
-      `Are you sure you want to cancel this work request?\n\n` +
-      `Work Scope: ${item.workScope}\n` +
-      `Location: ${item.location}`
-    );
-
-    if (confirmed) {
-      this.stateService.cancelWorkRequest(item.id);
-    }
-  }
-
-  viewWorkRequest(item: WorkRequestDto): void {
-    // Trigger double-click behavior
-    this.rowDoubleClickedEvent.emit(item);
-  }
 }

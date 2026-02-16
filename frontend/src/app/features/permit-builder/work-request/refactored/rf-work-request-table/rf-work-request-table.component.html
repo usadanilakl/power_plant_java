@@ -27,16 +27,14 @@
     (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
     (selectedItemsEvent)="selectedItemsEvent.emit($event)"
     (rowDoubleClicked)="rowDoubleClickedEvent.emit($event)"
-    (contextmenu)="onRowRightClick($event, $event)"
   >
   </app-table>
 
   <app-context-menu
-    [selectedItem]="selectedWorkRequest()"
-    [isVisible]="contextMenuVisible()"
-    [position]="contextMenuPosition()"
-    [actions]="contextMenuActions()"
-    (closeMenu)="contextMenuVisible.set(false)"
-    (actionSelected)="onContextMenuAction($event)"
+    [selectedItem]="contextMenuService.contextMenuSelectedItem()"
+    [isVisible]="contextMenuService.contextMenuVisible()"
+    [position]="contextMenuService.contextMenuPosition()"
+    [actions]="contextMenuService.contextMenuActions"
+    (closeMenu)="contextMenuService.closeContextMenu()"
   />
 </div>

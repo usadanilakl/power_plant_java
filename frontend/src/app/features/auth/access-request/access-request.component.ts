@@ -3,13 +3,18 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService, AccessStatus, AccessGrantSummary } from '../../../services/auth.service';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 
 @Component({
   selector: 'app-access-request',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent],
+  imports: [CommonModule, MainLayoutComponent, RouterMenuComponent],
   template: `
-    <app-main-layout pageTitle="Access Request">
+    <app-main-layout header="Access Request">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
       <div class="access-container">
 
         <!-- Progress Steps -->
@@ -107,6 +112,7 @@ import { MainLayoutComponent } from '../../../layout/refactored/main-layout.comp
           </table>
         </div>
       </div>
+      </ng-container>
     </app-main-layout>
   `,
   styles: [`
