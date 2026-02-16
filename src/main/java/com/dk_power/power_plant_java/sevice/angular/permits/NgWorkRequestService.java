@@ -31,6 +31,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     private final WorkRequestMapper workRequestMapper;
     private final WorkRequestSharePointAdapter wrAdapter;
     private final NgValueService valueService;
+    private final com.dk_power.power_plant_java.sevice.email.EmailFacadeService emailFacadeService;
 
     @Override
     public WorkRequestRepo getRepo() {
@@ -145,6 +146,96 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to archive in SharePoint for id={}: {}", id, e.getMessage());
         }
+        WorkRequest saved = save(entity);
+        return workRequestMapper.convertToNgDto(saved);
+    }
+
+    // ====================== Action Methods (Request Details, Cancel) ======================
+
+    /**
+     * Sends email to work request submitter requesting additional information.
+     * Updates status to "Pending More Info".
+     */
+    public NgWorkRequestDto requestMoreDetails(Long id, String additionalMessage) {
+        WorkRequest entity = getEntityById(id);
+
+        // Validate submitter email exists
+        if (entity.getSubmitterEmail() == null || entity.getSubmitterEmail().isEmpty()) {
+            throw new IllegalStateException("Cannot request details - no submitter email on record");
+        }
+
+        // Build email request
+        com.dk_power.power_plant_java.dto.email.EmailRequest emailRequest =
+                com.dk_power.power_plant_java.dto.email.EmailRequest.builder()
+                        .to(entity.getSubmitterEmail())
+                        .subject("Additional Information Required - Work Request #" + id)
+                        .body(buildRequestDetailsEmailBody(entity, additionalMessage))
+                        .build();
+
+        // Send email (facade handles fallback)
+        try {
+            emailFacadeService.sendEmail(emailRequest);
+            log.info("[WorkRequest] Request details email sent to {} for id={}", entity.getSubmitterEmail(), id);
+        } catch (Exception e) {
+            log.error("[WorkRequest] Failed to send request details email for id={}: {}", id, e.getMessage(), e);
+            throw new RuntimeException("Failed to send request details email", e);
+        }
+
+        // Update status to indicate pending more info
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Pending More Info"));
+        WorkRequest saved = save(entity);
+
+        return workRequestMapper.convertToNgDto(saved);
+    }
+
+    /**
+     * Builds email body for requesting more details.
+     */
+    private String buildRequestDetailsEmailBody(WorkRequest entity, String additionalMessage) {
+        StringBuilder body = new StringBuilder();
+        body.append("Additional information is required for your work request:\n\n");
+        body.append("Work Scope: ").append(entity.getWorkScope()).append("\n");
+        body.append("Date of Work: ").append(entity.getDateOfWorkToBePerformed()).append("\n");
+        body.append("Location: ").append(entity.getLocation()).append("\n\n");
+
+        if (additionalMessage != null && !additionalMessage.isEmpty()) {
+            body.append("Specific Details Needed:\n").append(additionalMessage).append("\n\n");
+        }
+
+        body.append("Please provide the requested information by replying to this email.\n");
+        body.append("\nThank you,\nJ Power USA Operations");
+
+        return body.toString();
+    }
+
+    /**
+     * Cancels a work request by updating status to "Cancelled".
+     * Also updates SharePoint if synchronized.
+     */
+    public NgWorkRequestDto cancelWorkRequest(Long id) {
+        WorkRequest entity = getEntityById(id);
+
+        // Prevent cancelling already cancelled items
+        if (entity.getPermitStatus() != null &&
+                "Cancelled".equalsIgnoreCase(entity.getPermitStatus().getName())) {
+            throw new IllegalStateException("Work request already cancelled");
+        }
+
+        // Update local H2 database
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Cancelled"));
+
+        // Update SharePoint if synchronized
+        if (entity.getSharepointId() != null) {
+            try {
+                wrAdapter.changeStatus(entity.getSharepointId(), "Cancelled");
+                log.info("[WorkRequest] SharePoint status updated to Cancelled for id={}", id);
+            } catch (Exception e) {
+                log.warn("[WorkRequest] Failed to update SharePoint status for cancelled WR id={}: {}",
+                        id, e.getMessage());
+                // Don't fail the operation - H2 is source of truth, sync will retry later
+            }
+        }
+
         WorkRequest saved = save(entity);
         return workRequestMapper.convertToNgDto(saved);
     }

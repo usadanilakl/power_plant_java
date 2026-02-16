@@ -4,6 +4,8 @@ import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { forkJoin } from 'rxjs';
+import { ContextMenuComponent, ContextMenuAction } from '../../../shared/menu/context-menu/context-menu.component';
+import { RfWorkRequestApiService } from '../work-request/refactored/services/rf-work-request-api.service';
 
 interface WorkRequest {
   id: number;
@@ -62,7 +64,7 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-permits-monitor',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ContextMenuComponent],
   template: `
     <div class="monitor-container">
       <div class="monitor-header">
@@ -110,7 +112,9 @@ interface ApiResponse<T> {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let wr of allWorkRequests">
+                  <tr *ngFor="let wr of allWorkRequests"
+                      (contextmenu)="onRowRightClick($event, wr)"
+                      style="cursor: pointer">
                     <td><span class="status-chip" [class]="'status-' + (wr.status || '').toLowerCase()">{{ wr.status }}</span></td>
                     <td>{{ wr.dateOfWorkToBePerformed | date:'shortDate' }}</td>
                     <td>{{ wr.requestedBy }}</td>
@@ -284,6 +288,14 @@ interface ApiResponse<T> {
         <span>Loading...</span>
       </div>
     </div>
+
+    <app-context-menu
+      [selectedItem]="selectedWorkRequest"
+      [isVisible]="contextMenuVisible"
+      [position]="contextMenuPosition"
+      [actions]="contextMenuActions"
+      (closeMenu)="contextMenuVisible = false"
+    />
   `,
   styles: [`
     :host {
@@ -560,7 +572,30 @@ export class PermitsMonitorComponent implements OnInit {
 
   private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  // Context menu state
+  contextMenuVisible = false;
+  contextMenuPosition = { x: 0, y: 0 };
+  selectedWorkRequest: WorkRequest | null = null;
+
+  contextMenuActions: ContextMenuAction[] = [
+    {
+      id: 'request-details',
+      label: 'Request More Details',
+      icon: 'email',
+      action: (item) => this.requestMoreDetails(item)
+    },
+    {
+      id: 'cancel',
+      label: 'Cancel',
+      icon: 'cancel',
+      action: (item) => this.cancelWorkRequest(item)
+    }
+  ];
+
+  constructor(
+    private http: HttpClient,
+    private wrApiService: RfWorkRequestApiService
+  ) {}
 
   ngOnInit(): void {
     this.loadData();
@@ -621,5 +656,49 @@ export class PermitsMonitorComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  // ====================== Context Menu Handlers ======================
+
+  onRowRightClick(event: MouseEvent, wr: WorkRequest): void {
+    event.preventDefault();
+    this.selectedWorkRequest = wr;
+    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
+    this.contextMenuVisible = true;
+  }
+
+  requestMoreDetails(item: WorkRequest): void {
+    if (!item.id) return;
+
+    const message = prompt('Optional: Add details about what information is needed');
+    if (message !== null) {  // User didn't cancel prompt
+      this.wrApiService.requestMoreDetails(item.id, message || undefined).subscribe({
+        next: () => {
+          console.log('[PermitsMonitor] More details requested');
+          this.loadData(); // Refresh
+        },
+        error: (err) => console.error('[PermitsMonitor] Request details failed:', err)
+      });
+    }
+  }
+
+  cancelWorkRequest(item: WorkRequest): void {
+    if (!item.id) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to cancel this work request?\n\n` +
+      `Work Scope: ${item.workScope}\n` +
+      `Location: ${item.location}`
+    );
+
+    if (confirmed) {
+      this.wrApiService.cancelWorkRequest(item.id).subscribe({
+        next: () => {
+          console.log('[PermitsMonitor] Work request cancelled');
+          this.loadData(); // Refresh
+        },
+        error: (err) => console.error('[PermitsMonitor] Cancel failed:', err)
+      });
+    }
   }
 }

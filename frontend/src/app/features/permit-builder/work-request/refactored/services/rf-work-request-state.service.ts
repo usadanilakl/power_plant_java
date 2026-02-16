@@ -344,4 +344,42 @@ export class RfWorkRequestStateService {
     this.isFormOpen.set(false);
     this.selectedItem.set(null);
   }
+
+  // ====================== Action Methods ======================
+
+  requestMoreDetails(id: number, message?: string): void {
+    this.apiService.requestMoreDetails(id, message).pipe(
+      tap((response) => {
+        if (response.responseData) {
+          this.messageService.showSuccess('Email sent requesting more details');
+          // Item will be updated via workRequestUpdated$ subscription
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Request more details failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to send request';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  cancelWorkRequest(id: number): void {
+    this.apiService.cancelWorkRequest(id).pipe(
+      tap((response) => {
+        if (response.responseData) {
+          this.messageService.showSuccess('Work request cancelled successfully');
+          // Item will be updated via workRequestUpdated$ subscription
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Cancel failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to cancel work request';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
 }

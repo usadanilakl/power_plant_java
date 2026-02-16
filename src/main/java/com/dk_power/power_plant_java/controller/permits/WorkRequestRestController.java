@@ -164,4 +164,37 @@ public class WorkRequestRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }
+
+    // ====================== Action Endpoints ======================
+
+    @PostMapping("/request-details/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> requestMoreDetails(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> payload) {
+        try {
+            String additionalMessage = payload != null ? payload.get("message") : null;
+            NgWorkRequestDto dto = workRequestService.requestMoreDetails(id, additionalMessage);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "More details requested successfully"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Cannot request details: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to request details: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/cancel/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> cancelWorkRequest(@PathVariable Long id) {
+        try {
+            NgWorkRequestDto dto = workRequestService.cancelWorkRequest(id);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Work request cancelled"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to cancel: " + e.getMessage()));
+        }
+    }
 }

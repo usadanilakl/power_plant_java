@@ -136,4 +136,35 @@ export class RfWorkRequestApiService {
       { params }
     );
   }
+
+  // ====================== Action Methods ======================
+
+  requestMoreDetails(id: number, message?: string): Observable<SpringApiResponse<WorkRequestDto>> {
+    const payload = message ? { message } : {};
+    return this.http.post<SpringApiResponse<WorkRequestDto>>(
+      `${this.apiUrl}/request-details/${id}`,
+      payload
+    ).pipe(
+      tap(response => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.workRequestUpdatedSubject.next(updated);
+        }
+      })
+    );
+  }
+
+  cancelWorkRequest(id: number): Observable<SpringApiResponse<WorkRequestDto>> {
+    return this.http.post<SpringApiResponse<WorkRequestDto>>(
+      `${this.apiUrl}/cancel/${id}`,
+      {}
+    ).pipe(
+      tap(response => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.workRequestUpdatedSubject.next(updated);
+        }
+      })
+    );
+  }
 }

@@ -31,11 +31,12 @@ import { TableClickService } from '../../../../../shared/table/refactored/servic
 import { TableControlsService } from '../../../../../shared/table/refactored/services/table-controls.service';
 import { TableDataService } from '../../../../../shared/table/refactored/services/table-data.service';
 import { WorkRequestTableControlService } from './rf-work-request-table-control.service';
+import { ContextMenuComponent, ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
 
 @Component({
   selector: 'app-rf-work-request-table',
   standalone: true,
-  imports: [CommonModule, TableComponent],
+  imports: [CommonModule, TableComponent, ContextMenuComponent],
   templateUrl: './rf-work-request-table.component.html',
   styleUrl: './rf-work-request-table.component.css',
   providers: [
@@ -80,6 +81,38 @@ export class RfWorkRequestTableComponent implements OnInit {
 
   currentColumnUniqueItems = computed(() => {
     return this.stateService.currentColumnUniqueItems();
+  });
+
+  // Context menu state
+  contextMenuVisible = signal<boolean>(false);
+  contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+  selectedWorkRequest = signal<WorkRequestDto | null>(null);
+
+  contextMenuActions = computed<ContextMenuAction[]>(() => {
+    const wr = this.selectedWorkRequest();
+    if (!wr) return [];
+
+    return [
+      {
+        id: 'request-details',
+        label: 'Request More Details',
+        icon: 'email',
+        action: (item) => this.requestMoreDetails(item)
+      },
+      {
+        id: 'cancel',
+        label: 'Cancel',
+        icon: 'cancel',
+        action: (item) => this.cancelWorkRequest(item)
+      },
+      { id: 'divider1', label: '', divider: true, action: () => {} },
+      {
+        id: 'view',
+        label: 'View Details',
+        icon: 'visibility',
+        action: (item) => this.viewWorkRequest(item)
+      }
+    ];
   });
 
   constructor() {
@@ -284,5 +317,47 @@ export class RfWorkRequestTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  // ====================== Context Menu Handlers ======================
+
+  onRowRightClick(event: MouseEvent, item: WorkRequestDto): void {
+    event.preventDefault();
+    this.selectedWorkRequest.set(item);
+    this.contextMenuPosition.set({ x: event.clientX, y: event.clientY });
+    this.contextMenuVisible.set(true);
+  }
+
+  onContextMenuAction(event: { action: ContextMenuAction; item: any }): void {
+    console.log('[WR Table] Context menu action:', event.action.id);
+    this.contextMenuVisible.set(false);
+  }
+
+  requestMoreDetails(item: WorkRequestDto): void {
+    if (!item.id) return;
+
+    const message = prompt('Optional: Add details about what information is needed');
+    if (message !== null) {  // User didn't cancel prompt
+      this.stateService.requestMoreDetails(item.id, message || undefined);
+    }
+  }
+
+  cancelWorkRequest(item: WorkRequestDto): void {
+    if (!item.id) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to cancel this work request?\n\n` +
+      `Work Scope: ${item.workScope}\n` +
+      `Location: ${item.location}`
+    );
+
+    if (confirmed) {
+      this.stateService.cancelWorkRequest(item.id);
+    }
+  }
+
+  viewWorkRequest(item: WorkRequestDto): void {
+    // Trigger double-click behavior
+    this.rowDoubleClickedEvent.emit(item);
   }
 }

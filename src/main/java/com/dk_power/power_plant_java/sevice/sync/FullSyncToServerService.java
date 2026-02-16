@@ -14,6 +14,10 @@ import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.entities.forms.PrintableForm;
+import com.dk_power.power_plant_java.entities.forms.FormContainer;
+import com.dk_power.power_plant_java.entities.scheduler.Flow;
+import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.equipment.*;
@@ -25,6 +29,10 @@ import com.dk_power.power_plant_java.repository.permits.*;
 import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
 import com.dk_power.power_plant_java.repository.fire_impairment.FireImpairmentRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
+import com.dk_power.power_plant_java.repository.forms.FormContainerRepo;
+import com.dk_power.power_plant_java.repository.scheduler.FlowRepository;
+import com.dk_power.power_plant_java.repository.scheduler.TaskRepository;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
@@ -113,6 +121,11 @@ public class FullSyncToServerService {
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
     private final CommentRepo commentRepo;
     private final FireImpairmentRepo fireImpairmentRepo;
+    private final PrintableFormRepo printableFormRepo;
+    private final FormContainerRepo formContainerRepo;
+    private final JobLogRepo jobLogRepo;
+    private final FlowRepository flowRepository;
+    private final TaskRepository taskRepository;
 
     // Sync state
     private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
@@ -163,7 +176,12 @@ public class FullSyncToServerService {
         new EntitySyncConfig("WorkRequest", WorkRequest.class),
         new EntitySyncConfig("Jha", Jha.class),
         new EntitySyncConfig("DailyPermitPackage", DailyPermitPackage.class),
-        new EntitySyncConfig("FireImpairment", FireImpairment.class)
+        new EntitySyncConfig("JobLog", JobLog.class),
+        new EntitySyncConfig("FireImpairment", FireImpairment.class),
+        new EntitySyncConfig("PrintableForm", PrintableForm.class),
+        new EntitySyncConfig("FormContainer", FormContainer.class),
+        new EntitySyncConfig("Flow", Flow.class),
+        new EntitySyncConfig("Task", Task.class)
     );
 
     /**
@@ -557,7 +575,12 @@ public class FullSyncToServerService {
         counts.put("ConfinedSpace", confinedSpaceRepo.count());
         counts.put("WorkRequest", workRequestRepo.count());
         counts.put("DailyPermitPackage", dailyPermitPackageRepo.count());
+        counts.put("JobLog", jobLogRepo.count());
         counts.put("FireImpairment", fireImpairmentRepo.count());
+        counts.put("PrintableForm", printableFormRepo.count());
+        counts.put("FormContainer", formContainerRepo.count());
+        counts.put("Flow", flowRepository.count());
+        counts.put("Task", taskRepository.count());
         return counts;
     }
 
@@ -815,6 +838,8 @@ public class FullSyncToServerService {
                         fileObjectSyncHandler.uploadSingleFile(
                             file, "FileObject", fo.getId(), file.getAbsolutePath());
                         uploaded++;
+                        // Update filesArchived so UI can show progress
+                        currentStatus.setFilesArchived(uploaded);
                     } catch (Exception e) {
                         log.warn("Failed to upload {}: {}", file.getName(), e.getMessage());
                         failed++;
@@ -870,8 +895,13 @@ public class FullSyncToServerService {
             case "WorkRequest" -> workRequestRepo;
             case "Jha" -> jhaRepo;
             case "DailyPermitPackage" -> dailyPermitPackageRepo;
+            case "JobLog" -> jobLogRepo;
             case "Comment" -> commentRepo;
             case "FireImpairment" -> fireImpairmentRepo;
+            case "PrintableForm" -> printableFormRepo;
+            case "FormContainer" -> formContainerRepo;
+            case "Flow" -> flowRepository;
+            case "Task" -> taskRepository;
             default -> null;
         };
     }
