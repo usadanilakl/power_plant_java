@@ -32,6 +32,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     private final WorkRequestSharePointAdapter wrAdapter;
     private final NgValueService valueService;
     private final com.dk_power.power_plant_java.sevice.email.EmailFacadeService emailFacadeService;
+    private final com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService emailCorrespondenceService;
 
     @Override
     public WorkRequestRepo getRepo() {
@@ -164,12 +165,15 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
             throw new IllegalStateException("Cannot request details - no submitter email on record");
         }
 
+        String subject = "Additional Information Required - Work Request #" + id;
+        String body = buildRequestDetailsEmailBody(entity, additionalMessage);
+
         // Build email request
         com.dk_power.power_plant_java.dto.email.EmailRequest emailRequest =
                 com.dk_power.power_plant_java.dto.email.EmailRequest.builder()
                         .to(entity.getSubmitterEmail())
-                        .subject("Additional Information Required - Work Request #" + id)
-                        .body(buildRequestDetailsEmailBody(entity, additionalMessage))
+                        .subject(subject)
+                        .body(body)
                         .build();
 
         // Send email (facade handles fallback)
@@ -179,6 +183,22 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         } catch (Exception e) {
             log.error("[WorkRequest] Failed to send request details email for id={}: {}", id, e.getMessage(), e);
             throw new RuntimeException("Failed to send request details email", e);
+        }
+
+        // Save outbound correspondence (polymorphic tracking)
+        try {
+            emailCorrespondenceService.saveOutbound(
+                "WorkRequest",
+                id,
+                subject,
+                body,
+                entity.getSubmitterEmail(),
+                "Request Details"
+            );
+            log.debug("[WorkRequest] Saved outbound correspondence for id={}", id);
+        } catch (Exception e) {
+            log.error("[WorkRequest] Failed to save correspondence for id={}: {}", id, e.getMessage(), e);
+            // Don't throw - email was sent successfully, just logging failed
         }
 
         // Update status to indicate pending more info

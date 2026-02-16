@@ -47,8 +47,9 @@ public class ClientDataExportService {
         "LotoBox", "Lock", "ZeroEnergy", "HeatTrace", "Highlight",
         "ElectricalPanel", "EqBreaker", "HtPanel", "HtBreaker",
         "EspDevice", "LedStrip",
-        "SafeWork", "HotWork", "ConfinedSpace", "WorkRequest", "DailyPermitPackage",
-        "FireImpairment"
+        "SafeWork", "HotWork", "ConfinedSpace", "WorkRequest", "Jha",
+        "DailyPermitPackage", "JobLog", "FireImpairment",
+        "PrintableForm", "FormContainer", "Flow", "Task"
     );
 
     /**
@@ -64,7 +65,8 @@ public class ClientDataExportService {
         new String[]{"ht_pid", "ht_id", "pid_id"},
         new String[]{"breaker_eq", "br_id", "eq_id"},
         new String[]{"daily_permit_package_lotos", "daily_permit_package_id", "loto_id"},
-        new String[]{"permit_equipment", "permit_id", "equipment_id"}
+        new String[]{"permit_equipment", "permit_id", "equipment_id"},
+        new String[]{"task_dependencies", "dependent_task_id", "prerequisite_task_id"}
     );
 
     /**
@@ -584,7 +586,7 @@ public class ClientDataExportService {
             case "LotoStandard" -> "loto_standard";
             case "LotoSnapshot" -> "loto_snapshot";
             case "LotoBox" -> "loto_boxes";
-            case "Lock" -> "lock_table";
+            case "Lock" -> "lock";
             case "ZeroEnergy" -> "zero_energy";
             case "HeatTrace" -> "heat_trace";
             case "Highlight" -> "highlight";
@@ -602,6 +604,13 @@ public class ClientDataExportService {
             case "DailyPermitPackage" -> "daily_permit_package";
             case "Comment" -> "comment";
             case "FireImpairment" -> "fire_impairment";
+            case "Jha" -> "jha";
+            case "JobLog" -> "job_log";
+            case "PrintableForm" -> "printable_form";
+            case "FormContainer" -> "form_container";
+            case "Flow" -> "flow";
+            case "Task" -> "task";
+            case "Role" -> "roles";
             default -> entityType.toLowerCase();
         };
     }

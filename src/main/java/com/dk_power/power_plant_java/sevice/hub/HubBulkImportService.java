@@ -45,7 +45,8 @@ public class HubBulkImportService {
 
     private static final List<String> JOIN_TABLES = List.of(
         "eq_loto_point", "file_point", "loto_standard_loto_point", "loto_standard_groups",
-        "ht_equipment", "ht_pid", "breaker_eq", "daily_permit_package_lotos", "permit_equipment"
+        "ht_equipment", "ht_pid", "breaker_eq", "daily_permit_package_lotos", "permit_equipment",
+        "task_dependencies"
     );
 
     private final Map<String, ChunkedUploadSession> activeUploads = new ConcurrentHashMap<>();

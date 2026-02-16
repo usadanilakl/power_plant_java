@@ -5,6 +5,9 @@ import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientCertificateCredential;
 import com.dk_power.power_plant_java.dto.email.EmailAttachment;
 import com.dk_power.power_plant_java.dto.email.EmailRequest;
+import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,6 +18,10 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -173,5 +180,178 @@ public class ApiEmailService {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
+    }
+
+    /**
+     * Get messages from inbox since a specific date.
+     * Used for email polling to track correspondence responses.
+     *
+     * @param userEmail Email address to query
+     * @param since Get emails received after this date/time
+     * @param pageSize Maximum number of messages to retrieve
+     * @return List of GraphEmailMessage objects
+     */
+    public List<GraphEmailMessage> getMessagesSince(String userEmail, LocalDateTime since, int pageSize) {
+        if (credential == null) {
+            log.warn("[Email] Cannot read emails - ClientCertificateCredential not available");
+            return Collections.emptyList();
+        }
+
+        ensureValidToken();
+
+        String sinceFilter = since.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String graphApiUrl = String.format(
+            "https://graph.microsoft.com/v1.0/users/%s/messages?" +
+            "$filter=receivedDateTime ge %sZ&" +
+            "$top=%d&" +
+            "$select=id,subject,body,sender,toRecipients,sentDateTime,receivedDateTime," +
+            "internetMessageId,conversationId,isRead,internetMessageHeaders&" +
+            "$orderby=receivedDateTime desc",
+            userEmail,
+            sinceFilter,
+            pageSize
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(emailAccessToken);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        HttpEntity<String> httpRequest = new HttpEntity<>(headers);
+
+        log.debug("[Email] Fetching messages since {} from {}", since, userEmail);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                graphApiUrl,
+                HttpMethod.GET,
+                httpRequest,
+                String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return parseGraphMessages(response.getBody());
+            } else {
+                log.error("[Email] Failed to fetch messages. Status: {}", response.getStatusCode());
+                return Collections.emptyList();
+            }
+        } catch (Exception e) {
+            log.error("[Email] Error fetching messages", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Parses Graph API JSON response into GraphEmailMessage objects.
+     */
+    private List<GraphEmailMessage> parseGraphMessages(String jsonResponse) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(jsonResponse);
+            JsonNode valueArray = root.get("value");
+
+            if (valueArray == null || !valueArray.isArray()) {
+                return Collections.emptyList();
+            }
+
+            List<GraphEmailMessage> messages = new ArrayList<>();
+            for (JsonNode messageNode : valueArray) {
+                try {
+                    GraphEmailMessage message = GraphEmailMessage.builder()
+                        .id(getTextValue(messageNode, "id"))
+                        .subject(getTextValue(messageNode, "subject"))
+                        .bodyContent(extractBodyContent(messageNode))
+                        .senderEmail(extractSenderEmail(messageNode))
+                        .sentDateTime(parseDateTime(messageNode.get("sentDateTime")))
+                        .receivedDateTime(parseDateTime(messageNode.get("receivedDateTime")))
+                        .internetMessageId(getTextValue(messageNode, "internetMessageId"))
+                        .conversationId(getTextValue(messageNode, "conversationId"))
+                        .isRead(messageNode.has("isRead") ? messageNode.get("isRead").asBoolean() : false)
+                        .headers(extractHeaders(messageNode))
+                        .build();
+                    messages.add(message);
+                } catch (Exception e) {
+                    log.warn("[Email] Failed to parse individual message: {}", e.getMessage());
+                }
+            }
+
+            log.info("[Email] Parsed {} messages from Graph API response", messages.size());
+            return messages;
+
+        } catch (Exception e) {
+            log.error("[Email] Failed to parse Graph API response", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Extracts body content from Graph API message node.
+     */
+    private String extractBodyContent(JsonNode messageNode) {
+        if (!messageNode.has("body")) return "";
+        JsonNode bodyNode = messageNode.get("body");
+        if (bodyNode.has("content")) {
+            return bodyNode.get("content").asText();
+        }
+        return "";
+    }
+
+    /**
+     * Extracts sender email address from Graph API message node.
+     */
+    private String extractSenderEmail(JsonNode messageNode) {
+        if (!messageNode.has("sender")) return "";
+        JsonNode senderNode = messageNode.get("sender");
+        if (senderNode.has("emailAddress") && senderNode.get("emailAddress").has("address")) {
+            return senderNode.get("emailAddress").get("address").asText();
+        }
+        return "";
+    }
+
+    /**
+     * Extracts internet message headers from Graph API message node.
+     */
+    private List<GraphEmailMessage.InternetMessageHeader> extractHeaders(JsonNode messageNode) {
+        if (!messageNode.has("internetMessageHeaders")) return Collections.emptyList();
+
+        JsonNode headersArray = messageNode.get("internetMessageHeaders");
+        if (!headersArray.isArray()) return Collections.emptyList();
+
+        List<GraphEmailMessage.InternetMessageHeader> headers = new ArrayList<>();
+        for (JsonNode headerNode : headersArray) {
+            if (headerNode.has("name") && headerNode.has("value")) {
+                headers.add(GraphEmailMessage.InternetMessageHeader.builder()
+                    .name(headerNode.get("name").asText())
+                    .value(headerNode.get("value").asText())
+                    .build());
+            }
+        }
+        return headers;
+    }
+
+    /**
+     * Parses ISO 8601 datetime string to LocalDateTime.
+     */
+    private LocalDateTime parseDateTime(JsonNode node) {
+        if (node == null || node.isNull()) return null;
+        try {
+            String dateTimeStr = node.asText();
+            // Remove 'Z' suffix and parse
+            if (dateTimeStr.endsWith("Z")) {
+                dateTimeStr = dateTimeStr.substring(0, dateTimeStr.length() - 1);
+            }
+            return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception e) {
+            log.warn("[Email] Failed to parse datetime: {}", node.asText());
+            return null;
+        }
+    }
+
+    /**
+     * Safely extracts text value from JSON node.
+     */
+    private String getTextValue(JsonNode node, String fieldName) {
+        if (!node.has(fieldName)) return null;
+        JsonNode fieldNode = node.get(fieldName);
+        return fieldNode.isNull() ? null : fieldNode.asText();
     }
 }
