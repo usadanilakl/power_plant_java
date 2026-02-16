@@ -1157,7 +1157,6 @@ public class FieldSyncService {
      * left in the database by ddl-auto=update (which never drops constraints).
      */
     @SuppressWarnings("unchecked")
-    @SuppressWarnings("unchecked")
     private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
         try {
             // First check if entity already exists (might have been created earlier in this batch
