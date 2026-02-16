@@ -264,8 +264,8 @@ public class ClientDataExportService {
     private long copyTableData(Connection sourceConn, Connection tempConn, String tableName, String entityType)
             throws SQLException {
 
-        String selectSql = "SELECT * FROM " + tableName + " WHERE deleted = false";
-        String countSql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = false";
+        String selectSql = "SELECT * FROM " + tableName + " WHERE deleted IS NOT TRUE";
+        String countSql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted IS NOT TRUE";
 
         // First, check if the table exists and get count
         long totalRows;
@@ -393,7 +393,7 @@ public class ClientDataExportService {
      * Get count of records in a table.
      */
     private long getTableCount(Connection conn, String tableName) {
-        String sql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = false";
+        String sql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted IS NOT TRUE";
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             rs.next();

@@ -213,6 +213,26 @@ public class HubBulkImportService {
                             log.warn("VERIFY: Could not count {} ({}): {}", entityType, tableName, ve.getMessage());
                         }
                     }
+                    // Normalize NULL deleted values — some entities may have deleted=NULL
+                    // instead of deleted=false, making them invisible to @Where and exports.
+                    int totalNormalized = 0;
+                    for (String entityType : entityTableRegistry.getSyncOrder()) {
+                        String tableName = entityTableRegistry.getTableName(entityType);
+                        try (Statement stmt = targetConn.createStatement()) {
+                            int fixed = stmt.executeUpdate(
+                                "UPDATE " + tableName + " SET deleted = false WHERE deleted IS NULL");
+                            if (fixed > 0) {
+                                totalNormalized += fixed;
+                                log.info("Normalized {} NULL deleted values in {}", fixed, tableName);
+                            }
+                        } catch (SQLException ne) {
+                            log.debug("Could not normalize {}: {}", tableName, ne.getMessage());
+                        }
+                    }
+                    if (totalNormalized > 0) {
+                        targetConn.commit();
+                        log.info("Committed normalization: {} total NULL deleted values fixed", totalNormalized);
+                    }
                 } catch (SQLException e) {
                     try { targetConn.rollback(); } catch (SQLException re) {
                         log.error("Rollback failed: {}", re.getMessage());

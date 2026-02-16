@@ -26,6 +26,7 @@ public class BaseIdEntity {
     @GenericGenerator(name = "device-prefixed", strategy = "com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator")
     @Where(clause = "deleted = false")
     private Long id;
+    @ColumnDefault("false")
     private Boolean deleted = false;
     private Boolean isVerified = false;
     private String name;

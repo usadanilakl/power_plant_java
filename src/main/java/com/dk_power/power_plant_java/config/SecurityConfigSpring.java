@@ -58,7 +58,8 @@ public class SecurityConfigSpring {
             )
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.disable());
+            .cors(cors -> cors.disable())
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
         return http.build();
     }
 
