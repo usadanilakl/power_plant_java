@@ -47,6 +47,29 @@ public class HubResyncController {
         return ResponseEntity.ok(resyncService.getHealth());
     }
 
+    /**
+     * Sync health endpoint for Angular frontend polling.
+     * Hub is always in-sync with itself — returns a static healthy response.
+     */
+    @GetMapping("/sync-health")
+    public ResponseEntity<Map<String, Object>> getSyncHealth() {
+        return ResponseEntity.ok(Map.of(
+            "syncStatus", "IN_SYNC",
+            "message", "Hub mode - this instance is the sync source",
+            "serverReachable", true,
+            "entityDifference", 0,
+            "fileDifference", 0,
+            "suggestResync", false,
+            "consecutiveOutOfSyncCount", 0,
+            "checkTime", java.time.Instant.now().toString()
+        ));
+    }
+
+    @PostMapping("/sync-health/check")
+    public ResponseEntity<Map<String, Object>> forceSyncHealthCheck() {
+        return getSyncHealth();
+    }
+
     @GetMapping("/database/json")
     public ResponseEntity<Map<String, Object>> exportDatabaseJson() {
         log.info("Database JSON export requested");

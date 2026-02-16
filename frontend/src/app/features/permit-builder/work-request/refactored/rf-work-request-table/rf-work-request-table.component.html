@@ -29,12 +29,4 @@
     (rowDoubleClicked)="rowDoubleClickedEvent.emit($event)"
   >
   </app-table>
-
-  <app-context-menu
-    [selectedItem]="contextMenuService.contextMenuSelectedItem()"
-    [isVisible]="contextMenuService.contextMenuVisible()"
-    [position]="contextMenuService.contextMenuPosition()"
-    [actions]="contextMenuService.contextMenuActions"
-    (closeMenu)="contextMenuService.closeContextMenu()"
-  />
 </div>

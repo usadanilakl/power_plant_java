@@ -32,13 +32,12 @@ import { TableControlsService } from '../../../../../shared/table/refactored/ser
 import { TableDataService } from '../../../../../shared/table/refactored/services/table-data.service';
 import { WorkRequestTableControlService } from './rf-work-request-table-control.service';
 import { WorkRequestTableClickService } from './rf-work-request-table-click.service';
-import { ContextMenuComponent } from '../../../../../shared/menu/context-menu/context-menu.component';
 import { WorkRequestContextMenuService } from '../services/work-request-context-menu.service';
 
 @Component({
   selector: 'app-rf-work-request-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ContextMenuComponent],
+  imports: [CommonModule, TableComponent],
   templateUrl: './rf-work-request-table.component.html',
   styleUrl: './rf-work-request-table.component.css',
   providers: [

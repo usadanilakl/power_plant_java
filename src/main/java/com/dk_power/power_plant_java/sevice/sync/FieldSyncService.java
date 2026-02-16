@@ -319,6 +319,14 @@ public class FieldSyncService {
                 }
             });
             return result != null ? result : 0;
+        } catch (org.springframework.transaction.UnexpectedRollbackException e) {
+            // setRollbackOnly() inside the lambda causes TransactionTemplate.execute()
+            // to throw UnexpectedRollbackException when it tries to commit.
+            // This is expected when applyIncomingChangesInternal fails — the transaction
+            // was already rolled back, just return 0 and let the caller continue.
+            log.warn("Transaction rolled back during incoming changes (batch of {}): {}",
+                incomingChanges.size(), e.getMessage());
+            return 0;
         } finally {
             syncContext.endSync();
         }

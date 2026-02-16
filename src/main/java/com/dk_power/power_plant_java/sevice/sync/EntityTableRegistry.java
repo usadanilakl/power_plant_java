@@ -66,7 +66,18 @@ public class EntityTableRegistry {
         Map.entry("Comment", "comment"),
 
         // Fire Impairment
-        Map.entry("FireImpairment", "fire_impairment")
+        Map.entry("FireImpairment", "fire_impairment"),
+
+        // Permits - additional
+        Map.entry("JobLog", "job_log"),
+
+        // Forms
+        Map.entry("PrintableForm", "printable_form"),
+        Map.entry("FormContainer", "form_container"),
+
+        // Scheduler
+        Map.entry("Flow", "flow"),
+        Map.entry("Task", "task")
     );
 
     /**
@@ -101,7 +112,12 @@ public class EntityTableRegistry {
         "WorkRequest",
         "Jha",
         "DailyPermitPackage",
-        "FireImpairment"
+        "JobLog",
+        "FireImpairment",
+        "PrintableForm",
+        "FormContainer",
+        "Flow",
+        "Task"
     );
 
     /**
