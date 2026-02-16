@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.sevice.hub;
 
-import com.dk_power.power_plant_java.config.HubSyncConfig;
 import com.dk_power.power_plant_java.entities.hub.HubSyncedFile;
 import com.dk_power.power_plant_java.repository.hub.HubSyncedFileRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -23,7 +23,8 @@ import java.util.Optional;
 
 /**
  * File storage and tracking service for hub mode.
- * Stores files on disk and tracks which clients have downloaded them.
+ * Stores files in the profile-specific uploads directory (files.root.path)
+ * and tracks which clients have downloaded them via HubSyncedFile records.
  */
 @Service
 @ConditionalOnProperty(name = "sync.role", havingValue = "hub")
@@ -31,11 +32,12 @@ import java.util.Optional;
 public class HubFileService {
 
     private final HubSyncedFileRepository syncedFileRepository;
-    private final HubSyncConfig hubSyncConfig;
 
-    public HubFileService(HubSyncedFileRepository syncedFileRepository, HubSyncConfig hubSyncConfig) {
+    @Value("${files.root.path}")
+    private String filesRootPath;
+
+    public HubFileService(HubSyncedFileRepository syncedFileRepository) {
         this.syncedFileRepository = syncedFileRepository;
-        this.hubSyncConfig = hubSyncConfig;
     }
 
     /**
@@ -66,12 +68,10 @@ public class HubFileService {
             extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
         }
 
-        // Store on disk: {storagePath}/{entityType}/{entityId}/{hash}.{ext}
-        Path storageDir = Path.of(hubSyncConfig.getFileStoragePath(), entityType, String.valueOf(entityId));
-        Files.createDirectories(storageDir);
-
-        String storedFileName = hash + (extension.isEmpty() ? "" : "." + extension);
-        Path filePath = storageDir.resolve(storedFileName);
+        // Store in profile-specific uploads directory using original path structure
+        String relativePath = extractRelativePath(originalPath, originalFilename, entityType, entityId);
+        Path filePath = Path.of(filesRootPath).resolve(relativePath);
+        Files.createDirectories(filePath.getParent());
         Files.write(filePath, content);
 
         // Create tracking record
@@ -155,6 +155,37 @@ public class HubFileService {
         Long totalBytes = syncedFileRepository.totalStorageUsed();
         long totalFiles = syncedFileRepository.count();
         return new StorageStats(totalBytes != null ? totalBytes : 0, totalFiles);
+    }
+
+    /**
+     * Extract the relative path within the uploads directory from an original absolute path.
+     * Handles profile-specific prefixes (uploads-prod, uploads-dev, uploads-test, uploads)
+     * and both / and \ separators (Windows paths from clients).
+     * Falls back to {entityType}/{entityId}/{filename} if no uploads prefix is found.
+     */
+    String extractRelativePath(String originalPath, String originalFilename,
+                                       String entityType, Long entityId) {
+        if (originalPath != null && !originalPath.isEmpty()) {
+            // Normalize separators to forward slash for matching
+            String normalized = originalPath.replace('\\', '/');
+
+            // Check for known uploads prefixes (longer first to avoid partial match)
+            String[] prefixes = {"uploads-prod/", "uploads-dev/", "uploads-test/", "uploads/"};
+            for (String prefix : prefixes) {
+                int idx = normalized.indexOf(prefix);
+                if (idx >= 0) {
+                    String relative = normalized.substring(idx + prefix.length());
+                    if (!relative.isEmpty()) {
+                        return relative;
+                    }
+                }
+            }
+        }
+
+        // Fallback: use entityType/entityId/filename structure
+        String filename = (originalFilename != null && !originalFilename.isEmpty())
+            ? originalFilename : "file";
+        return entityType + "/" + entityId + "/" + filename;
     }
 
     private String computeSha256(byte[] data) {

@@ -948,8 +948,9 @@ public class FileObjectSyncHandler {
 
     /**
      * Upload a single file to sync server.
+     * Package-accessible so FullSyncToServerService can use it for direct bulk uploads.
      */
-    private void uploadSingleFile(File file, String entityType, Long entityId, String originalPath) {
+    void uploadSingleFile(File file, String entityType, Long entityId, String originalPath) {
         String uploadUrl = syncConfig.getSyncServerUrl() + "/api/files/upload";
 
         HttpHeaders headers = new HttpHeaders();
@@ -1135,8 +1136,9 @@ public class FileObjectSyncHandler {
 
     /**
      * Get all physical files for a FileObject (all extensions and revisions).
+     * Package-accessible so FullSyncToServerService can use it for direct bulk uploads.
      */
-    private List<File> getAllPhysicalFiles(FileObject fileObject) {
+    List<File> getAllPhysicalFiles(FileObject fileObject) {
         List<File> files = new ArrayList<>();
 
         for (String extension : fileObject.getExtensionsArray()) {

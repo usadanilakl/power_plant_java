@@ -171,3 +171,6 @@ global.env
 /data/certificate.pfx
 /exports/**
 /electron-manager/release2/**
+
+# Backend port file for Angular dev server
+backend-port.txt

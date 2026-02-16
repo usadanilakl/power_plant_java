@@ -266,7 +266,7 @@ public class HubSyncController {
         health.put("status", "healthy");
 
         try {
-            File storageDir = new File(hubSyncConfig.getFileStoragePath());
+            File storageDir = new File(hubSyncConfig.getFilesRootPath());
             boolean storageExists = storageDir.exists();
             boolean storageWritable = storageDir.canWrite();
             long freeSpaceBytes = storageDir.getFreeSpace();
