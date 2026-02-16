@@ -91,6 +91,11 @@ public class FieldSyncService {
         this.syncUpdateController = syncUpdateController;
         this.eventPublisher = eventPublisher;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        // REQUIRES_NEW ensures entity application runs in its own transaction.
+        // Without this, when called from @Transactional methods (e.g. HubSyncService.syncExchange),
+        // a rollback here would also roll back the caller's saved FieldChanges.
+        this.transactionTemplate.setPropagationBehavior(
+            org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.ngFileService = ngFileService;
         this.fileRepo = fileRepo;
         this.fileObjectSyncHandler = fileObjectSyncHandler;

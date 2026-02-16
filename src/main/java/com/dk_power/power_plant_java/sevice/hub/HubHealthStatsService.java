@@ -91,13 +91,14 @@ public class HubHealthStatsService {
         Map<String, Long> entityCounts = getEntityCounts();
         long totalEntities = entityCounts.values().stream().mapToLong(Long::longValue).sum();
 
-        long fileCount = countUploadFiles();
+        long[] fileStats = countUploadFilesAndSize();
         Instant latestChangeTime = fieldChangeQueryService.findLatestChangeTime();
 
         return HealthStats.builder()
             .entityCounts(entityCounts)
             .totalEntities(totalEntities)
-            .fileCount(fileCount)
+            .fileCount(fileStats[0])
+            .totalFileBytes(fileStats[1])
             .latestChangeTime(latestChangeTime)
             .totalFieldChanges(fieldChangeRepository.count())
             .build();
@@ -123,16 +124,21 @@ public class HubHealthStatsService {
             .build();
     }
 
-    private long countUploadFiles() {
+    private long[] countUploadFilesAndSize() {
         try {
             Path uploadsDir = Path.of(filesRootPath);
-            if (!Files.isDirectory(uploadsDir)) return 0;
+            if (!Files.isDirectory(uploadsDir)) return new long[]{0, 0};
+            long[] result = {0, 0}; // [count, totalBytes]
             try (var stream = Files.walk(uploadsDir)) {
-                return stream.filter(Files::isRegularFile).count();
+                stream.filter(Files::isRegularFile).forEach(p -> {
+                    result[0]++;
+                    try { result[1] += Files.size(p); } catch (Exception ignored) {}
+                });
             }
+            return result;
         } catch (IOException e) {
             log.debug("Could not count upload files: {}", e.getMessage());
-            return 0;
+            return new long[]{0, 0};
         }
     }
 
@@ -144,6 +150,7 @@ public class HubHealthStatsService {
         private Map<String, Long> entityCounts;
         private long totalEntities;
         private long fileCount;
+        private long totalFileBytes;
         private Instant latestChangeTime;
         private long totalFieldChanges;
     }

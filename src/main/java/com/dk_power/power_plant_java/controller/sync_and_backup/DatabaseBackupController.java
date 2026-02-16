@@ -65,8 +65,9 @@ public class DatabaseBackupController {
         try {
             List<String> backups = h2BackupService.listSharedBackups();
             return ResponseEntity.ok(backups);
-        } catch (IOException e) {
-            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            // Directory may not exist (hub mode, different machine, etc.) — return empty list
+            return ResponseEntity.ok(List.of());
         }
     }
 }

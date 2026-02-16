@@ -301,6 +301,35 @@ public class HubSyncController {
     }
 
     // -------------------------------------------------------------------
+    // Failed sync items (stubs — hub applies changes directly, no separate failure table)
+    // -------------------------------------------------------------------
+
+    @GetMapping("/failed/count")
+    public ResponseEntity<Map<String, Long>> getFailedCount() {
+        return ResponseEntity.ok(Map.of("count", 0L));
+    }
+
+    @GetMapping("/failed")
+    public ResponseEntity<List<?>> getFailedItems() {
+        return ResponseEntity.ok(List.of());
+    }
+
+    @PostMapping("/failed/{id}/retry")
+    public ResponseEntity<Map<String, Object>> retryFailed(@PathVariable Long id) {
+        return ResponseEntity.ok(Map.of("success", true, "message", "No failed items in hub mode"));
+    }
+
+    @DeleteMapping("/failed/{id}")
+    public ResponseEntity<Void> dismissFailed(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/failed/retry-all")
+    public ResponseEntity<Map<String, Object>> retryAllFailed() {
+        return ResponseEntity.ok(Map.of("success", true, "retried", 0));
+    }
+
+    // -------------------------------------------------------------------
     // Helpers / DTOs
     // -------------------------------------------------------------------
 

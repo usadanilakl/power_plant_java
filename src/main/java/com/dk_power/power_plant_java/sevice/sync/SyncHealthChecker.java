@@ -184,13 +184,19 @@ public class SyncHealthChecker {
         stats.setEntityCounts(entityCounts);
         stats.setTotalEntities(totalEntities);
 
-        // File count
+        // File count and total size
         try {
             Path uploadsPath = getUploadsPath();
             if (Files.exists(uploadsPath)) {
+                long[] countAndSize = {0, 0}; // [count, totalBytes]
                 try (Stream<Path> walk = Files.walk(uploadsPath)) {
-                    stats.setFileCount(walk.filter(Files::isRegularFile).count());
+                    walk.filter(Files::isRegularFile).forEach(p -> {
+                        countAndSize[0]++;
+                        try { countAndSize[1] += Files.size(p); } catch (Exception ignored) {}
+                    });
                 }
+                stats.setFileCount(countAndSize[0]);
+                stats.setTotalFileBytes(countAndSize[1]);
             }
         } catch (Exception e) {
             log.debug("Could not count files: {}", e.getMessage());
@@ -456,6 +462,7 @@ public class SyncHealthChecker {
         private Map<String, Long> entityCounts = new HashMap<>();
         private long totalEntities;
         private long fileCount;
+        private long totalFileBytes;
         private Instant latestChangeTime;
         private long recentChangeCount;
         private long pendingSyncCount;
@@ -466,6 +473,7 @@ public class SyncHealthChecker {
         private Map<String, Long> entityCounts = new HashMap<>();
         private long totalEntities;
         private long fileCount;
+        private long totalFileBytes;
         private Instant latestChangeTime;
         private long totalFieldChanges;
     }
