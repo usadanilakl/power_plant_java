@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -68,6 +69,20 @@ public class FileObjectSyncHandler {
 
     @Value("${project.root:}")
     private String projectRootPath;
+
+    /**
+     * Resolve a path that includes a baseLink prefix to the actual filesystem path.
+     * Strips the first path component (baseLink) and resolves against profile-specific filesRootPath.
+     */
+    private Path resolveToFileSystem(String pathWithBaseLink) {
+        String normalized = pathWithBaseLink.replace("\\", "/");
+        int firstSlash = normalized.indexOf('/');
+        if (firstSlash >= 0) {
+            String relativePart = normalized.substring(firstSlash + 1);
+            return Paths.get(filesRootPath).resolve(relativePart);
+        }
+        return Paths.get(filesRootPath).resolve(pathWithBaseLink);
+    }
 
     // Retry configuration with exponential backoff
     private static final int MAX_RETRIES = 10;  // Increased for better offline handling
@@ -248,14 +263,21 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        // Always handle path changes to delete old files locally
+        // Move files from old path to new path if path-affecting fields changed
+        boolean filesMoved = false;
         if (!pathChanges.isEmpty()) {
-            handleIncomingPathChanges(fileObject, pathChanges);
+            filesMoved = handleIncomingPathChanges(fileObject, pathChanges);
         }
 
-        // Only queue file downloads if server sync is enabled
-        if (serverSyncEnabled && (!pathChanges.isEmpty() || hasContentChange)) {
-            queueFileDownload(fileObject);
+        // Queue file downloads from server only when needed:
+        // - Content changed (hash/extensions) -> always download latest version
+        // - Path changed but files not found locally -> download from server
+        if (serverSyncEnabled) {
+            if (hasContentChange) {
+                queueFileDownload(fileObject);
+            } else if (!pathChanges.isEmpty() && !filesMoved) {
+                queueFileDownload(fileObject);
+            }
         }
     }
 
@@ -291,27 +313,30 @@ public class FileObjectSyncHandler {
     /**
      * Handle multiple path changes from incoming sync together.
      * The entity already has new values, but local files are at old paths.
-     * We need to delete the old files before downloading new ones.
+     * Moves files from old location to new location instead of deleting them.
      *
-     * By handling all changes together, we can correctly reconstruct the OLD path
-     * using all the old values, not mixing old and new.
+     * @return true if files were successfully moved locally
      */
-    private void handleIncomingPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
+    private boolean handleIncomingPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
         log.info("Path change for FileObject #{}: fields={}", fileObject.getId(), pathChanges.keySet());
 
-        // Delete old files using the combined old values
-        deleteOldFilesAfterPathChanges(fileObject, pathChanges);
+        // Move files from old path to new path
+        return moveFilesAfterPathChanges(fileObject, pathChanges);
     }
 
     /**
-     * Delete old files when path-affecting fields change from sync.
+     * Move files from old path to new path when path-affecting fields change from sync.
      * Reconstructs the complete old path using ALL old field values together.
      * Handles all extensions and revision files.
+     *
+     * @return true if any files were moved successfully
      */
-    private void deleteOldFilesAfterPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
+    private boolean moveFilesAfterPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
         if (pathChanges.isEmpty()) {
-            return;
+            return false;
         }
+
+        boolean anyMoved = false;
 
         try {
             // Get current values from entity (these are the NEW values)
@@ -330,92 +355,117 @@ public class FileObjectSyncHandler {
                 oldFileNumber = stripJsonQuotes(pathChanges.get("fileNumber").getOldValue());
             }
             if (pathChanges.containsKey("fileType")) {
-                // oldValue is the ID of the old Value entity, need to look up its name
                 String oldFileTypeId = pathChanges.get("fileType").getOldValue();
                 oldFileType = resolveValueNameById(oldFileTypeId);
                 log.info("FileType change: oldId={} resolved to '{}'", oldFileTypeId, oldFileType);
             }
             if (pathChanges.containsKey("vendor")) {
-                // oldValue is the ID of the old Value entity, need to look up its name
                 String oldVendorId = pathChanges.get("vendor").getOldValue();
                 oldVendor = resolveValueNameById(oldVendorId);
                 log.info("Vendor change: oldId={} resolved to '{}'", oldVendorId, oldVendor);
             }
             if (pathChanges.containsKey("extension")) {
-                // Parse old extensions - could be comma-separated or single value
                 String oldExtValue = stripJsonQuotes(pathChanges.get("extension").getOldValue());
                 if (oldExtValue != null && !oldExtValue.isEmpty()) {
                     oldExtensions = Arrays.asList(oldExtValue.split(","));
                 }
             }
 
-            // Get the base link from the FileObject (e.g., "uploads" or "uploads-test")
-            String baseLink = fileObject.getBaseLink() != null ? fileObject.getBaseLink() : filesRootPath;
+            log.info("Moving files: old=[number={}, type={}, vendor={}, ext={}] -> new=[number={}, type={}, vendor={}]",
+                oldFileNumber, oldFileType, oldVendor, oldExtensions,
+                currentFileNumber, currentFileType, currentVendor);
 
-            log.info("Deleting old files: fileNumber={}, fileType={}, vendor={}, extensions={}, baseLink={}",
-                oldFileNumber, oldFileType, oldVendor, oldExtensions, baseLink);
-
-            // Delete old files for EACH OLD extension (not current!)
+            // Move files for EACH extension
             for (String extension : oldExtensions) {
                 String trimmedExt = extension.trim();
                 if (trimmedExt.isEmpty()) continue;
 
-                // Build old folder path: {baseLink}/{extension}/{fileType}/{vendor}
-                String oldFolder = String.format("%s/%s/%s/%s",
-                    baseLink,
+                // Build relative folder paths (without baseLink — resolve against filesRootPath)
+                String oldRelativeFolder = String.format("%s/%s/%s",
                     trimmedExt,
                     oldFileType != null ? oldFileType : "",
                     oldVendor != null ? oldVendor : "");
 
-                // Build new folder path for comparison
-                String newFolder = String.format("%s/%s/%s/%s",
-                    baseLink,
+                String newRelativeFolder = String.format("%s/%s/%s",
                     trimmedExt,
                     currentFileType != null ? currentFileType : "",
                     currentVendor != null ? currentVendor : "");
 
-                // Skip deletion if paths haven't actually changed
-                // This happens when Value FK changes but names are identical (e.g., dedup
-                // re-points vendor from Value#20 to Value#10, both named "Acme")
-                if (oldFolder.equals(newFolder) && Objects.equals(oldFileNumber, currentFileNumber)) {
-                    log.debug("Path unchanged for extension {} (same name, different ID), skipping deletion", trimmedExt);
+                // Skip if paths haven't actually changed (e.g., Value FK changed but names identical)
+                if (oldRelativeFolder.equals(newRelativeFolder) && Objects.equals(oldFileNumber, currentFileNumber)) {
+                    log.debug("Path unchanged for extension {} (same name, different ID), skipping", trimmedExt);
                     continue;
                 }
 
-                Path oldFolderPath = Paths.get(projectRootPath, oldFolder);
+                Path oldFolderPath = Paths.get(filesRootPath).resolve(oldRelativeFolder);
+                Path newFolderPath = Paths.get(filesRootPath).resolve(newRelativeFolder);
 
                 if (Files.exists(oldFolderPath)) {
-                    // Find files matching the old file number (including revisions like -rev1, -rev2)
                     List<File> oldFiles = FileUtil.getRevisionsByFileNumber(oldFileNumber, oldFolderPath.toString());
 
-                    log.info("Found {} files to delete in {} for fileNumber {}",
+                    log.info("Found {} files to move in {} for fileNumber {}",
                         oldFiles.size(), oldFolderPath, oldFileNumber);
 
-                    // Safety guard: check if the file still belongs to an active FileObject
-                    FileObject owner = findActiveOwner(oldFileNumber, oldFolder);
-                    if (owner != null) {
-                        log.warn("Files at {} belong to active FileObject #{}, skipping deletion and queueing upload",
+                    if (oldFiles.isEmpty()) continue;
+
+                    // Safety guard: check if files belong to a different active FileObject
+                    FileObject owner = findActiveOwnerByRelativeFolder(oldFileNumber, oldRelativeFolder);
+                    if (owner != null && !owner.getId().equals(fileObject.getId())) {
+                        log.warn("Files at {} belong to active FileObject #{}, skipping move",
                             oldFolderPath, owner.getId());
-                        queueFileUpload(owner);
-                        continue; // Don't delete — file is still needed
+                        continue;
                     }
+
+                    // Create target directory
+                    Files.createDirectories(newFolderPath);
 
                     for (File oldFile : oldFiles) {
                         try {
-                            Files.deleteIfExists(oldFile.toPath());
-                            log.info("Deleted old file after path change: {}", oldFile.getAbsolutePath());
+                            String oldFileName = oldFile.getName();
+                            String newFileName = oldFileName;
+                            // Rename file if fileNumber changed
+                            if (!Objects.equals(oldFileNumber, currentFileNumber) && oldFileNumber != null) {
+                                newFileName = oldFileName.replaceFirst(
+                                    java.util.regex.Pattern.quote(oldFileNumber), currentFileNumber);
+                            }
+                            Path targetPath = newFolderPath.resolve(newFileName);
+                            Files.move(oldFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                            log.info("Moved file: {} -> {}", oldFile.toPath(), targetPath);
+                            anyMoved = true;
                         } catch (IOException e) {
-                            log.warn("Failed to delete old file {}: {}", oldFile.getAbsolutePath(), e.getMessage());
+                            log.warn("Failed to move file {}: {}", oldFile.getAbsolutePath(), e.getMessage());
                         }
                     }
 
-                    // Try to clean up empty directories
+                    // Clean up empty old directories
                     cleanupEmptyDirectories(oldFolderPath);
                 }
             }
         } catch (Exception e) {
-            log.error("Error deleting old files for FileObject #{}: {}", fileObject.getId(), e.getMessage());
+            log.error("Error moving files for FileObject #{}: {}", fileObject.getId(), e.getMessage());
         }
+
+        return anyMoved;
+    }
+
+    /**
+     * Check if a file belongs to an active FileObject using relative folder paths.
+     */
+    private FileObject findActiveOwnerByRelativeFolder(String fileNumber, String relativeFolder) {
+        if (fileNumber == null || relativeFolder == null) return null;
+        FileObject fo = fileRepo.findByFileNumber(fileNumber);
+        if (fo == null) return null;
+        for (String ext : fo.getExtensionsArray()) {
+            try {
+                String currentRelFolder = fo.buildRelativeFolder(ext.trim());
+                if (currentRelFolder != null && currentRelFolder.equals(relativeFolder)) {
+                    return fo;
+                }
+            } catch (Exception e) {
+                // buildRelativeFolder can return null if fileType/vendor is null
+            }
+        }
+        return null;
     }
 
     /**
@@ -423,7 +473,7 @@ public class FileObjectSyncHandler {
      */
     private void cleanupEmptyDirectories(Path directory) {
         try {
-            Path uploadsRoot = Paths.get(projectRootPath, "uploads");
+            Path uploadsRoot = Paths.get(filesRootPath);
             Path current = directory;
 
             while (current != null && !current.equals(uploadsRoot) && Files.exists(current)) {
@@ -1091,19 +1141,21 @@ public class FileObjectSyncHandler {
             log.debug("File integrity verified for {}", fileName);
         }
 
-        // Determine target path
-        // Use the folder from FileObject but preserve the exact fileName from server
-        // This ensures revision files (-rev1, -rev2) are saved with correct names
+        // Determine target path using profile-specific filesRootPath
         String ext = extension != null && !extension.isEmpty() ? extension : "pdf";
-        String folder = fileObject.buildFolder(ext);
+        String relFolder = fileObject.buildRelativeFolder(ext);
 
         Path targetPath;
-        if (fileName != null && !fileName.isEmpty()) {
-            // Use exact fileName from server (includes revision suffix)
-            targetPath = Paths.get(projectRootPath, folder, fileName);
+        if (fileName != null && !fileName.isEmpty() && relFolder != null) {
+            targetPath = Paths.get(filesRootPath).resolve(relFolder).resolve(fileName);
         } else {
-            // Fallback to buildFileLink if no fileName provided
-            targetPath = Paths.get(projectRootPath, fileObject.buildFileLink(ext));
+            // Fallback to buildFileLink with path resolution
+            String fileLink = fileObject.buildFileLink(ext);
+            targetPath = fileLink != null ? resolveToFileSystem(fileLink) : null;
+        }
+
+        if (targetPath == null) {
+            throw new IOException("Cannot determine target path for file " + fileName);
         }
 
         // Create parent directories
@@ -1142,7 +1194,9 @@ public class FileObjectSyncHandler {
         List<File> files = new ArrayList<>();
 
         for (String extension : fileObject.getExtensionsArray()) {
-            Path folder = Paths.get(projectRootPath, fileObject.buildFolder(extension));
+            String relFolder = fileObject.buildRelativeFolder(extension);
+            if (relFolder == null) continue;
+            Path folder = Paths.get(filesRootPath).resolve(relFolder);
             if (Files.exists(folder)) {
                 List<File> extensionFiles = FileUtil.getRevisionsByFileNumber(
                     fileObject.getFileNumber(), folder.toString());
@@ -1170,7 +1224,8 @@ public class FileObjectSyncHandler {
         if (fileLink == null || fileLink.isEmpty()) {
             return null;
         }
-        return Paths.get(projectRootPath, fileLink).toString();
+        // Resolve against profile-specific filesRootPath (strip baseLink prefix)
+        return resolveToFileSystem(fileLink).toString();
     }
 
     private record FileObjectSnapshot(

@@ -54,10 +54,9 @@ public class AuthController {
 
             CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
             User user = userRepo.findByEmail(loginRequest.email());
-            if (user != null) {
-                user.setLastLoginDate(LocalDateTime.now());
-                userRepo.save(user);
-            }
+            // Lightweight native SQL update — avoids full entity save, entity listeners,
+            // and lock contention with sync transactions on the USERS table
+            userRepo.updateLastLoginDate(LocalDateTime.now(), loginRequest.email());
 
             log.info("Login successful: {} from {}", loginRequest.email(), NetworkUtils.getClientIp(request));
 
