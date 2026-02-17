@@ -20,7 +20,7 @@ import java.util.Objects;
 @Setter
 //@EntityListeners(AuditingEntityListener.class)
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class BaseAuditEntity extends BaseIdEntity {
 //    @CreatedDate
 //    @Temporal(TemporalType.TIMESTAMP)

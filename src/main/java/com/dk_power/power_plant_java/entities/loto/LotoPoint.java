@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private String unit;
     private String tagged;

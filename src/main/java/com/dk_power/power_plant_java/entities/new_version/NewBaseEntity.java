@@ -18,13 +18,13 @@ import java.util.UUID;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class NewBaseEntity  {
 
     @Id
     @GeneratedValue(generator = "device-prefixed")
     @GenericGenerator(name = "device-prefixed", strategy = "com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator")
-    @Where(clause = "deleted = false")
+    @Where(clause = "deleted IS NOT TRUE")
     private Long id;
     private Boolean deleted = false;
     private String name;

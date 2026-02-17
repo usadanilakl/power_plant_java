@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 @EntityListeners(FieldChangeEntityListener.class)
 public class EmailCorrespondence extends BaseAuditEntity implements Referenceable {
 

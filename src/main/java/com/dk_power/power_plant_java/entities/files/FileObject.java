@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Entity
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class FileObject extends BaseAuditEntity implements Referenceable {
 
     public FileObject(String name, Value fileType, String fileLink, Value sytem, String fileNumber, Value vendor) {
@@ -146,6 +146,26 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     public String buildFolder(String ext){
         // Don't modify this.extension - just compute and return the path
         return baseLink+"/"+ext+"/"+fileType.getName()+"/"+vendor.getName();
+    }
+
+    /**
+     * Build relative path from uploads root (without baseLink prefix).
+     * E.g., "jpg/PID/vendor/file.jpg" — use with filesRootPath to get actual filesystem path.
+     */
+    public String buildRelativePath(String ext){
+        if(fileType == null || fileType.getName()==null) return null;
+        if(vendor == null || vendor.getName()==null) return null;
+        return ext+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+ext;
+    }
+
+    /**
+     * Build relative folder from uploads root (without baseLink prefix).
+     * E.g., "jpg/PID/vendor" — use with filesRootPath to get actual filesystem path.
+     */
+    public String buildRelativeFolder(String ext){
+        if(fileType == null || fileType.getName()==null) return null;
+        if(vendor == null || vendor.getName()==null) return null;
+        return ext+"/"+fileType.getName()+"/"+vendor.getName();
     }
 
     /**

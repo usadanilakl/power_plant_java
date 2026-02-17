@@ -15,7 +15,7 @@ import org.hibernate.envers.Audited;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class ZeroEnergy extends BaseAuditEntity {
 
     @ManyToOne

@@ -20,7 +20,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class HeatTrace extends BaseEquipment {
     /***********************************Breaker*********************************************/
     @ManyToOne(cascade = CascadeType.ALL)

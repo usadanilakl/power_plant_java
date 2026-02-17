@@ -60,7 +60,7 @@ public class AdminFunctionalitiesService {
         int entitiesChecked = 0;
 
         try {
-            Path uploadsPath = Paths.get(projectRootPath, "uploads");
+            Path uploadsPath = Paths.get(filesRootPath);
 
             if (!Files.exists(uploadsPath)) {
                 result.put("error", "Uploads directory not found: " + uploadsPath);
@@ -104,7 +104,11 @@ public class AdminFunctionalitiesService {
                 entitiesChecked++;
                 String fileLink = fo.getFileLink();
                 if (fileLink != null) {
-                    Path physicalPath = Paths.get(projectRootPath, fileLink);
+                    // Resolve fileLink (which includes baseLink prefix) against profile-specific path
+                    String normalized = fileLink.replace("\\", "/");
+                    int firstSlash = normalized.indexOf('/');
+                    String relPath = firstSlash >= 0 ? normalized.substring(firstSlash + 1) : normalized;
+                    Path physicalPath = Paths.get(filesRootPath).resolve(relPath);
                     if (!Files.exists(physicalPath)) {
                         Map<String, String> missing = new HashMap<>();
                         missing.put("id", fo.getId().toString());
@@ -176,7 +180,7 @@ public class AdminFunctionalitiesService {
         int alreadyCorrect = 0;
 
         try {
-            Path uploadsPath = Paths.get(projectRootPath, "uploads");
+            Path uploadsPath = Paths.get(filesRootPath);
             if (!Files.exists(uploadsPath)) {
                 result.put("error", "Uploads directory not found: " + uploadsPath);
                 result.put("success", false);
@@ -213,7 +217,7 @@ public class AdminFunctionalitiesService {
                     // Check each extension folder for files matching this fileNumber
                     Set<String> foundExtensions = new LinkedHashSet<>();
                     for (String ext : availableExtensions) {
-                        Path folder = Paths.get(projectRootPath, "uploads", ext, fileTypeName, vendorName);
+                        Path folder = Paths.get(filesRootPath, ext, fileTypeName, vendorName);
                         if (Files.exists(folder)) {
                             try (Stream<Path> filesInDir = Files.list(folder)) {
                                 boolean hasFile = filesInDir.anyMatch(p -> {

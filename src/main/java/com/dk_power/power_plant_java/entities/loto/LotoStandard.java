@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class LotoStandard extends BaseAuditEntity {
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(

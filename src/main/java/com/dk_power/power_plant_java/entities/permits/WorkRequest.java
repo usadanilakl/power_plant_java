@@ -15,7 +15,7 @@ import java.util.List;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class WorkRequest extends BasePermitEntity {
 
     private String dateOfWorkToBePerformed;

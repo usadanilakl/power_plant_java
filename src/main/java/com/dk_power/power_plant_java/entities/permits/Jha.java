@@ -20,7 +20,7 @@ import java.util.List;
 @Getter
 @Setter
 @Audited
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class Jha extends BasePermitEntity {
 
     private String jobName;

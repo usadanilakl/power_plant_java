@@ -14,7 +14,7 @@ import org.hibernate.annotations.Where;
 @Getter
 @Setter
 @NoArgsConstructor
-@Where(clause = "deleted = false")
+@Where(clause = "deleted IS NOT TRUE")
 public class FireImpairment extends BaseIdEntity {
 
     private String email;

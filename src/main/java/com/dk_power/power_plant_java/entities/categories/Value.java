@@ -17,7 +17,7 @@ import org.hibernate.envers.Audited;
 @Setter
 @Audited
 @Table(name = "val_table")
-@Where(clause = "deleted = false")
+@Where(clause = "deleted IS NOT TRUE")
 @EntityListeners(FieldChangeEntityListener.class)
 public class Value extends BaseAuditEntity implements Referenceable {
     public Value(String name) {

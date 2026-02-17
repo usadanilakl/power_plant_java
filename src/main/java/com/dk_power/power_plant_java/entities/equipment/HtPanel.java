@@ -20,7 +20,7 @@ import static org.hibernate.envers.RelationTargetAuditMode.NOT_AUDITED;
 @Getter
 @NoArgsConstructor
 @Audited(targetAuditMode = NOT_AUDITED)
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class HtPanel extends BaseElectricalPanel {
     @OneToMany(mappedBy = "panel")
     @JsonBackReference

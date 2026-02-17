@@ -24,7 +24,7 @@ import java.util.Map;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 @Audited
 public class Highlight extends BaseAuditEntity {
 

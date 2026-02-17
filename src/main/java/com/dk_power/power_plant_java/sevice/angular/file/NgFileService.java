@@ -68,6 +68,21 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     @Value("${project.root}")
     String projectRootPath;
 
+    /**
+     * Resolve a path that includes a baseLink prefix (e.g., "uploads/jpg/PID/vendor/file.jpg")
+     * to the actual filesystem path using the profile-specific filesRootPath.
+     * Strips the first path component (baseLink) and resolves the remainder against filesRootPath.
+     */
+    private Path resolveToFileSystem(String pathWithBaseLink) {
+        String normalized = pathWithBaseLink.replace("\\", "/");
+        int firstSlash = normalized.indexOf('/');
+        if (firstSlash >= 0) {
+            String relativePart = normalized.substring(firstSlash + 1);
+            return Paths.get(filesRootPath).resolve(relativePart);
+        }
+        return Paths.get(filesRootPath).resolve(pathWithBaseLink);
+    }
+
     @Override
     public FileObject getEntity() {
         return new FileObject();
@@ -165,12 +180,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public String uploadFile(MultipartFile file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(projectRootPath, fileLink);
+        Path path = resolveToFileSystem(fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
     public String uploadFile(File file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(projectRootPath, fileLink);
+        Path path = resolveToFileSystem(fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
@@ -413,7 +428,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             for (File oldFile : extensionFiles) {
                 String extension = FileUtil.getFileExtension(oldFile.getName());
                 String name = FileUtil.renameFileWithRevisions(oldFile, updatedEntity.getFileNumber());
-                String newPath = Paths.get(projectRootPath, updatedEntity.buildFolder(extension), name).toString();
+                String newPath = Paths.get(filesRootPath, updatedEntity.buildRelativeFolder(extension), name).toString();
                 try {
                     logger.info("Moving file: {} -> {}", oldFile.toPath(), newPath);
                     FileUtil.moveFileAndCleanup(oldFile.toPath(), Paths.get(newPath));
@@ -451,7 +466,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             exts = List.of(file.getExtension());
         }
         for (String extension : exts) {
-            Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
+            Path folder = Paths.get(filesRootPath, file.buildRelativeFolder(extension));
             if (Files.exists(folder)) {
                 files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumber(), folder.toString()));
             }
@@ -462,7 +477,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private List<File> getFilesWithAllExtensions(FileDto file) {
         List<File> files = new ArrayList<>();
         for (String extension : file.getExtensions()) {
-            Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
+            Path folder = resolveToFileSystem(file.buildFileLink(extension)).getParent();
             if (Files.exists(folder)) {
                 files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumberAsString(), folder.toString()));
             }
@@ -474,7 +489,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<File> files = new ArrayList<>();
         for (String extension : extensions) {
             String currentExtension = FileUtil.getFileExtension(link);
-            Path folder = Paths.get(projectRootPath, link.replaceAll(currentExtension, extension)).getParent();
+            Path folder = resolveToFileSystem(link.replaceAll(currentExtension, extension)).getParent();
             if (Files.exists(folder)) {
                 files.addAll(FileUtil.getRevisionsByFileNumber(FileUtil.getNameFromPathWithoutExtension(link), folder.toString()));
             }
@@ -583,7 +598,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             for (File f : filesWithAllExtensions) {
                 String extension = FileUtil.getFileExtension(f.getName());
                 try {
-                    Path targetPath = Paths.get(projectRootPath, newPath.replaceAll(currentExtension, extension));
+                    Path targetPath = resolveToFileSystem(newPath.replaceAll(currentExtension, extension));
                     logger.info("Moving file from {} to {}", f.toPath(), targetPath);
                     // Only try to move if source file exists
                     if (f.exists()) {

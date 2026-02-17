@@ -27,7 +27,7 @@ import java.util.Set;
 @Setter
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 public class Equipment extends BaseEquipment implements Referenceable {
     //private String name;
 //    private String tagNumber;

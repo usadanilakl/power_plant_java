@@ -20,7 +20,7 @@ import java.util.Set;
 @Setter
 @Audited
 @Entity
-@Where(clause = "deleted = false")
+@Where(clause = "deleted IS NOT TRUE")
 @EntityListeners(FieldChangeEntityListener.class)
 public class Category extends BaseAuditEntity {
     public Category(String name) {

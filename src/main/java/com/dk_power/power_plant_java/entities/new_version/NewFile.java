@@ -16,7 +16,7 @@ import java.util.Optional;
 @Getter
 @Setter
 @Entity
-@Where(clause = "deleted=false")
+@Where(clause = "deleted IS NOT TRUE")
 
 public class NewFile extends NewBaseEntity{
     @ManyToOne(cascade = CascadeType.ALL)
