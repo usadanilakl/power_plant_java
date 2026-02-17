@@ -61,7 +61,14 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
         }
 
         // Look up user by windowsUsername (with TTL cache to avoid DB hit every request)
-        User user = resolveUser(windowsUser);
+        User user;
+        try {
+            user = resolveUser(windowsUser);
+        } catch (Exception e) {
+            log.debug("Desktop auto-auth: DB lookup failed for '{}': {}", windowsUser, e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
         if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
             filterChain.doFilter(request, response);
             return;

@@ -864,6 +864,7 @@ public class FieldSyncService {
 
                     try {
                         entity = (BaseIdEntity) entityManager.merge(entity);
+                        entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     } catch (Exception e) {
                         if (isPrimaryKeyViolation(e)) {
                             log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
