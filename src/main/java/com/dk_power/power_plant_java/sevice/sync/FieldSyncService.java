@@ -39,6 +39,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -72,6 +73,10 @@ public class FieldSyncService {
 
     // Cache of tables whose VARCHAR NOT NULL columns have been ALTERed to nullable
     private final Set<String> preparedTables = ConcurrentHashMap.newKeySet();
+
+    // Guard to prevent concurrent merge operations in afterCommit callbacks.
+    // During cold resync, many sync batches commit simultaneously — only one merge should run.
+    private final AtomicBoolean mergeInProgress = new AtomicBoolean(false);
 
     public FieldSyncService(
             FieldChangeRepository fieldChangeRepository,
@@ -607,33 +612,23 @@ public class FieldSyncService {
                         }
                     }
 
-                    // Merge duplicate Categories and Values created by independent clients
-                    // Called directly — @Transactional on the service method handles the transaction
-                    try {
-                        categoryValueMergeService.mergeIfDuplicatesExist();
-                    } catch (Exception e) {
-                        log.error("Category/Value merge failed: {}", e.getMessage(), e);
-                    }
-
-                    // Merge duplicate WorkRequests created by independent SharePoint pulls
-                    try {
-                        workRequestMergeService.mergeIfDuplicatesExist();
-                    } catch (Exception e) {
-                        log.error("WorkRequest merge failed: {}", e.getMessage(), e);
-                    }
-
-                    // Merge duplicate JHAs created by independent SharePoint pulls
-                    try {
-                        jhaMergeService.mergeIfDuplicatesExist();
-                    } catch (Exception e) {
-                        log.error("JHA merge failed: {}", e.getMessage(), e);
-                    }
-
-                    // Merge duplicate EmailCorrespondence created by independent inbox polls
-                    try {
-                        emailCorrespondenceMergeService.mergeIfDuplicatesExist();
-                    } catch (Exception e) {
-                        log.error("EmailCorrespondence merge failed: {}", e.getMessage(), e);
+                    // Merge duplicates created by independent clients.
+                    // Guard with AtomicBoolean: during cold resync many batches commit concurrently,
+                    // and concurrent REQUIRES_NEW merge transactions cause H2 table lock timeouts.
+                    // Only one merge runs at a time; others skip — next sync cycle picks up remaining dupes.
+                    if (mergeInProgress.compareAndSet(false, true)) {
+                        try {
+                            categoryValueMergeService.mergeIfDuplicatesExist();
+                            workRequestMergeService.mergeIfDuplicatesExist();
+                            jhaMergeService.mergeIfDuplicatesExist();
+                            emailCorrespondenceMergeService.mergeIfDuplicatesExist();
+                        } catch (Exception e) {
+                            log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
+                        } finally {
+                            mergeInProgress.set(false);
+                        }
+                    } else {
+                        log.debug("Merge already in progress on another thread, skipping");
                     }
                 }
             });
@@ -652,25 +647,17 @@ public class FieldSyncService {
                 handleValueNameChangesForFileStructure(valueNameChanges);
             }
 
-            // Merge duplicate Categories and Values created by independent clients
-            try {
-                categoryValueMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("Category/Value merge failed: {}", e.getMessage(), e);
-            }
-
-            // Merge duplicate WorkRequests created by independent SharePoint pulls
-            try {
-                workRequestMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("WorkRequest merge failed: {}", e.getMessage(), e);
-            }
-
-            // Merge duplicate JHAs created by independent SharePoint pulls
-            try {
-                jhaMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("JHA merge failed: {}", e.getMessage(), e);
+            // Merge duplicates — same guard as afterCommit path
+            if (mergeInProgress.compareAndSet(false, true)) {
+                try {
+                    categoryValueMergeService.mergeIfDuplicatesExist();
+                    workRequestMergeService.mergeIfDuplicatesExist();
+                    jhaMergeService.mergeIfDuplicatesExist();
+                } catch (Exception e) {
+                    log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
+                } finally {
+                    mergeInProgress.set(false);
+                }
             }
         }
 
