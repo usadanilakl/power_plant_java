@@ -92,6 +92,7 @@ public class SecurityConfigSpring {
                 // Public endpoints — no auth required
                 .requestMatchers(
                     "/api/auth/login", "/api/auth/logout",
+                    "/api/auth/forgot-password", "/api/auth/reset-password",
                     "/api/sharepoint-sync/**", "/power-automate/**",
                     "/actuator/health",
                     "/app/**", "/angular/**",

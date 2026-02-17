@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="login-container">
       <div class="login-card">
@@ -20,13 +20,13 @@ import { AuthService } from '../../../services/auth.service';
 
         <form (ngSubmit)="onLogin()">
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="credential">Email or Username</label>
             <input
-              id="email"
-              type="email"
-              [(ngModel)]="email"
-              name="email"
-              placeholder="Enter your email"
+              id="credential"
+              type="text"
+              [(ngModel)]="credential"
+              name="credential"
+              placeholder="Enter your email or username"
               required
               autofocus
             />
@@ -42,6 +42,7 @@ import { AuthService } from '../../../services/auth.service';
               placeholder="Enter your password"
               required
             />
+            <a routerLink="/forgot-password" class="forgot-link">Forgot password?</a>
           </div>
 
           <button type="submit" [disabled]="isLoading" class="login-btn">
@@ -138,10 +139,23 @@ import { AuthService } from '../../../services/auth.service';
       margin-bottom: 16px;
       font-size: 14px;
     }
+
+    .forgot-link {
+      display: inline-block;
+      margin-top: 6px;
+      color: #888;
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .forgot-link:hover {
+      color: #aaa;
+      text-decoration: underline;
+    }
   `]
 })
 export class LoginComponent {
-  email = '';
+  credential = '';
   password = '';
   errorMessage = '';
   isLoading = false;
@@ -162,15 +176,15 @@ export class LoginComponent {
   }
 
   onLogin(): void {
-    if (!this.email || !this.password) {
-      this.errorMessage = 'Please enter email and password';
+    if (!this.credential || !this.password) {
+      this.errorMessage = 'Please enter your credentials';
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.authService.login(this.email, this.password).subscribe({
+    this.authService.login(this.credential, this.password).subscribe({
       next: (user) => {
         if (user.accessLevel && user.accessLevel !== 'FULL') {
           this.router.navigate(['/access-request']);

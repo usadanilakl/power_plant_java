@@ -27,7 +27,6 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  overflow: hidden;
   z-index: 100;
 }
 

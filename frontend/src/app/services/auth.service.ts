@@ -84,8 +84,8 @@ export class AuthService {
     return this.isLoggedInSubject.value;
   }
 
-  login(email: string, password: string): Observable<AuthUser> {
-    return this.http.post<AuthUser>(`${this.authUrl}/login`, { email, password }, { withCredentials: true })
+  login(credential: string, password: string): Observable<AuthUser> {
+    return this.http.post<AuthUser>(`${this.authUrl}/login`, { credential, password }, { withCredentials: true })
       .pipe(
         tap(user => {
           this.currentUserSubject.next(user);
@@ -151,6 +151,14 @@ export class AuthService {
 
   changePasswordVerified(req: ChangePasswordRequest): Observable<any> {
     return this.http.post(`${this.authUrl}/profile/change-password`, req, { withCredentials: true });
+  }
+
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post(`${this.authUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.authUrl}/reset-password`, { token, newPassword });
   }
 
   isAdmin(): boolean {

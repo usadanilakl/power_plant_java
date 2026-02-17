@@ -65,6 +65,9 @@ public class EntityTableRegistry {
         // Comments
         Map.entry("Comment", "comment"),
 
+        // Email Correspondence
+        Map.entry("EmailCorrespondence", "email_correspondence"),
+
         // Fire Impairment
         Map.entry("FireImpairment", "fire_impairment"),
 
@@ -88,6 +91,7 @@ public class EntityTableRegistry {
         "Category",
         "Value",
         "Comment",
+        "EmailCorrespondence",
         "User",
         "FileObject",
         "Equipment",

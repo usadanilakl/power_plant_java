@@ -62,4 +62,19 @@ public interface EmailCorrespondenceRepo extends BaseRepository<EmailCorresponde
      */
     List<EmailCorrespondence> findByIsReadFalseAndDirectionOrderBySentDateTimeDesc(
         EmailCorrespondence.Direction direction);
+
+    /**
+     * Find graphMessageIds that appear more than once (duplicates from multi-client polling).
+     * Returns rows of [graphMessageId, count].
+     */
+    @Query("SELECT e.graphMessageId, COUNT(e) FROM EmailCorrespondence e " +
+           "WHERE e.graphMessageId IS NOT NULL " +
+           "GROUP BY e.graphMessageId HAVING COUNT(e) > 1")
+    List<Object[]> findDuplicateGraphMessageIds();
+
+    /**
+     * Find all correspondence with the given graphMessageId, ordered by ID ascending.
+     * Used to determine canonical (lowest ID) during deduplication.
+     */
+    List<EmailCorrespondence> findByGraphMessageIdOrderByIdAsc(String graphMessageId);
 }

@@ -6,6 +6,8 @@ import { AccessRequestComponent } from './features/auth/access-request/access-re
 import { AdminAccessComponent } from './features/auth/admin-access/admin-access.component';
 import { UserManagementComponent } from './features/admin/user-management/user-management.component';
 import { ProfileComponent } from './features/auth/profile/profile.component';
+import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 import { fullAccessGuard } from './guards/full-access.guard';
@@ -23,6 +25,8 @@ import { LOG_ROUTES } from './routes/log.routes';
 export const routes: Routes = [
   // Public routes
   { path: 'login', component: LoginComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
 
   // Accessible to all authenticated users (including restricted external)
   { path: '', redirectTo: '/home', pathMatch: 'full' },

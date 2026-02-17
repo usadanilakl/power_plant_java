@@ -8,6 +8,7 @@ import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/bra
 import { EngraverManagerComponent } from "./shared/engraver-manager/engraver-manager.component";
 import { WizardDialogComponent } from "./shared/guide/guide-form";
 import { CommentsDialogComponent } from "./shared/comments-dialog/comments-dialog.component";
+import { CorrespondenceDialogComponent } from "./shared/correspondence-dialog/correspondence-dialog.component";
 import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
 
 @Component({
@@ -23,6 +24,7 @@ import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
     EngraverManagerComponent,
     WizardDialogComponent,
     CommentsDialogComponent,
+    CorrespondenceDialogComponent,
     QaDialogComponent,
   ],
   templateUrl: './app.component.html',

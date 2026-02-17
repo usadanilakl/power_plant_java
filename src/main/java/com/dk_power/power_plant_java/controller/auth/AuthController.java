@@ -2,17 +2,22 @@ package com.dk_power.power_plant_java.controller.auth;
 
 import com.dk_power.power_plant_java.config.NetworkUtils;
 import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
+import com.dk_power.power_plant_java.dto.email.EmailRequest;
 import com.dk_power.power_plant_java.entities.users.AccessGrant;
 import com.dk_power.power_plant_java.entities.users.AccessGrant.GrantStatus;
+import com.dk_power.power_plant_java.entities.users.PasswordResetToken;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.AccessGrantRepository;
+import com.dk_power.power_plant_java.repository.users.PasswordResetTokenRepository;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.email.EmailFacadeService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,13 +42,18 @@ public class AuthController {
     private final UserRepo userRepo;
     private final AccessGrantRepository accessGrantRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailFacadeService emailFacadeService;
+
+    @Value("${email.graph.from:}")
+    private String emailFrom;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest,
                                    HttpServletRequest request, HttpServletResponse response) {
         try {
             Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.email(), loginRequest.password())
+                new UsernamePasswordAuthenticationToken(loginRequest.credential(), loginRequest.password())
             );
 
             // Spring Security 6.x requires explicit context save to session
@@ -53,18 +63,18 @@ public class AuthController {
             new HttpSessionSecurityContextRepository().saveContext(context, request, response);
 
             CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
-            User user = userRepo.findByEmail(loginRequest.email());
+            User user = userRepo.findById(userDetails.getId()).orElse(null);
             // Lightweight native SQL update — avoids full entity save, entity listeners,
             // and lock contention with sync transactions on the USERS table
-            userRepo.updateLastLoginDate(LocalDateTime.now(), loginRequest.email());
+            userRepo.updateLastLoginById(LocalDateTime.now(), userDetails.getId());
 
-            log.info("Login successful: {} from {}", loginRequest.email(), NetworkUtils.getClientIp(request));
+            log.info("Login successful: {} from {}", loginRequest.credential(), NetworkUtils.getClientIp(request));
 
             Map<String, Object> resp = buildUserResponse(userDetails, user);
             resp.put("accessLevel", computeAccessLevel(user, request));
             return ResponseEntity.ok(resp);
         } catch (AuthenticationException e) {
-            log.warn("Login failed for {}: {}", loginRequest.email(), e.getMessage());
+            log.warn("Login failed for {}: {}", loginRequest.credential(), e.getMessage());
             return ResponseEntity.status(401).body(Map.of(
                 "error", "INVALID_CREDENTIALS",
                 "message", "Invalid email or password"
@@ -264,6 +274,101 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req, HttpServletRequest request) {
+        // Always return success to avoid leaking whether an email exists
+        String genericMessage = "If an account with that email exists, a password reset link has been sent.";
+
+        User user = userRepo.findByEmail(req.email());
+        if (user == null) {
+            log.info("Password reset requested for unknown email: {}", req.email());
+            return ResponseEntity.ok(Map.of("message", genericMessage));
+        }
+
+        // Generate token
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+            .user(user)
+            .token(token)
+            .expiresAt(LocalDateTime.now().plusHours(1))
+            .createdAt(LocalDateTime.now())
+            .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        // Build reset URL from the request
+        String baseUrl = request.getScheme() + "://" + request.getServerName();
+        int port = request.getServerPort();
+        if ((request.getScheme().equals("http") && port != 80) ||
+            (request.getScheme().equals("https") && port != 443)) {
+            baseUrl += ":" + port;
+        }
+        String resetLink = baseUrl + "/app/reset-password?token=" + token;
+
+        // Send email
+        try {
+            emailFacadeService.sendEmail(EmailRequest.builder()
+                .to(user.getEmail())
+                .from(emailFrom)
+                .subject("Password Reset - Power Plant Manager")
+                .body("Hello " + user.getName() + ",\n\n"
+                    + "A password reset was requested for your account.\n\n"
+                    + "Click the link below to reset your password:\n"
+                    + resetLink + "\n\n"
+                    + "This link expires in 1 hour.\n\n"
+                    + "If you did not request this, please ignore this email.\n")
+                .build());
+            log.info("Password reset email sent to {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage());
+        }
+
+        return ResponseEntity.ok(Map.of("message", genericMessage));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest req) {
+        var tokenOpt = passwordResetTokenRepository.findByToken(req.token());
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "INVALID_TOKEN",
+                "message", "Invalid or expired reset link."
+            ));
+        }
+
+        PasswordResetToken resetToken = tokenOpt.get();
+
+        if (resetToken.isUsed()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "TOKEN_USED",
+                "message", "This reset link has already been used."
+            ));
+        }
+
+        if (LocalDateTime.now().isAfter(resetToken.getExpiresAt())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "TOKEN_EXPIRED",
+                "message", "This reset link has expired. Please request a new one."
+            ));
+        }
+
+        if (req.newPassword() == null || req.newPassword().length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "WEAK_PASSWORD",
+                "message", "Password must be at least 8 characters."
+            ));
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(req.newPassword()));
+        userRepo.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        log.info("Password reset completed for user: {}", user.getEmail());
+        return ResponseEntity.ok(Map.of("message", "Password has been reset successfully. You can now sign in."));
+    }
+
     private Map<String, Object> buildUserResponse(CustomUserDetails userDetails, User user) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", userDetails.getId());
@@ -321,7 +426,9 @@ public class AuthController {
         return info;
     }
 
-    public record LoginRequest(String email, String password) {}
+    public record LoginRequest(String credential, String password) {}
     public record UpdateProfileRequest(String firstName, String lastName, String password) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+    public record ForgotPasswordRequest(String email) {}
+    public record ResetPasswordRequest(String token, String newPassword) {}
 }

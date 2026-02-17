@@ -57,6 +57,7 @@ public class FieldSyncService {
     private final CategoryValueMergeService categoryValueMergeService;
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
+    private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -80,7 +81,8 @@ public class FieldSyncService {
             EntityTableRegistry entityTableRegistry,
             CategoryValueMergeService categoryValueMergeService,
             WorkRequestMergeService workRequestMergeService,
-            JhaMergeService jhaMergeService) {
+            JhaMergeService jhaMergeService,
+            EmailCorrespondenceMergeService emailCorrespondenceMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -103,6 +105,7 @@ public class FieldSyncService {
         this.categoryValueMergeService = categoryValueMergeService;
         this.workRequestMergeService = workRequestMergeService;
         this.jhaMergeService = jhaMergeService;
+        this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
     }
 
     /**
@@ -599,6 +602,13 @@ public class FieldSyncService {
                         jhaMergeService.mergeIfDuplicatesExist();
                     } catch (Exception e) {
                         log.error("JHA merge failed: {}", e.getMessage(), e);
+                    }
+
+                    // Merge duplicate EmailCorrespondence created by independent inbox polls
+                    try {
+                        emailCorrespondenceMergeService.mergeIfDuplicatesExist();
+                    } catch (Exception e) {
+                        log.error("EmailCorrespondence merge failed: {}", e.getMessage(), e);
                     }
                 }
             });

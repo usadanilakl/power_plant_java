@@ -119,21 +119,21 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         // Check ACCESS_TOKEN cookie
         String accessToken = getAccessTokenFromCookie(request);
         if (accessToken == null) {
-            sendFullAccessRequired(response, "No access token. Request full access from an administrator.");
+            sendFullAccessRequired(request, response, "No access token. Request full access from an administrator.");
             return;
         }
 
         // Validate the grant
         var grantOpt = accessGrantRepository.findByAccessToken(accessToken);
         if (grantOpt.isEmpty()) {
-            sendFullAccessRequired(response, "Invalid access token.");
+            sendFullAccessRequired(request, response, "Invalid access token.");
             return;
         }
 
         AccessGrant grant = grantOpt.get();
 
         if (grant.getStatus() != GrantStatus.APPROVED) {
-            sendFullAccessRequired(response, "Access grant is " + grant.getStatus().name().toLowerCase() + ".");
+            sendFullAccessRequired(request, response, "Access grant is " + grant.getStatus().name().toLowerCase() + ".");
             return;
         }
 
@@ -142,14 +142,14 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         if (grant.getExpiresAt() != null && now.isAfter(grant.getExpiresAt())) {
             grant.setStatus(GrantStatus.EXPIRED);
             accessGrantRepository.save(grant);
-            sendFullAccessRequired(response, "Access grant has expired (24h maximum).");
+            sendFullAccessRequired(request, response, "Access grant has expired (24h maximum).");
             return;
         }
 
         if (grant.getLastActiveAt() != null && now.isAfter(grant.getLastActiveAt().plusHours(1))) {
             grant.setStatus(GrantStatus.EXPIRED);
             accessGrantRepository.save(grant);
-            sendFullAccessRequired(response, "Access grant expired due to inactivity (1 hour).");
+            sendFullAccessRequired(request, response, "Access grant expired due to inactivity (1 hour).");
             return;
         }
 
@@ -205,7 +205,14 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         }
     }
 
-    private void sendFullAccessRequired(HttpServletResponse response, String message) throws IOException {
+    private void sendFullAccessRequired(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        // Browser page navigation → redirect to Angular access-request page
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/html")) {
+            response.sendRedirect("/app/access-request");
+            return;
+        }
+        // API/AJAX request → JSON error
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json");
         objectMapper.writeValue(response.getWriter(),

@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
+import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
@@ -27,6 +28,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.*;
 import com.dk_power.power_plant_java.repository.permits.*;
 import com.dk_power.power_plant_java.repository.base_repositories.CommentRepo;
+import com.dk_power.power_plant_java.repository.base_repositories.EmailCorrespondenceRepo;
 import com.dk_power.power_plant_java.repository.fire_impairment.FireImpairmentRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
@@ -120,6 +122,7 @@ public class FullSyncToServerService {
     private final JhaRepo jhaRepo;
     private final DailyPermitPackageRepo dailyPermitPackageRepo;
     private final CommentRepo commentRepo;
+    private final EmailCorrespondenceRepo emailCorrespondenceRepo;
     private final FireImpairmentRepo fireImpairmentRepo;
     private final PrintableFormRepo printableFormRepo;
     private final FormContainerRepo formContainerRepo;
@@ -152,6 +155,7 @@ public class FullSyncToServerService {
         new EntitySyncConfig("Category", Category.class),
         new EntitySyncConfig("Value", Value.class),
         new EntitySyncConfig("Comment", Comment.class),
+        new EntitySyncConfig("EmailCorrespondence", EmailCorrespondence.class),
         new EntitySyncConfig("User", User.class),
         new EntitySyncConfig("FileObject", FileObject.class),
         new EntitySyncConfig("Equipment", Equipment.class),
@@ -552,6 +556,7 @@ public class FullSyncToServerService {
         counts.put("Category", categoryRepo.count());
         counts.put("Value", valueRepo.count());
         counts.put("Comment", commentRepo.count());
+        counts.put("EmailCorrespondence", emailCorrespondenceRepo.count());
         counts.put("User", userRepo.count());
         counts.put("FileObject", fileRepo.count());
         counts.put("Equipment", equipmentRepo.count());
@@ -897,6 +902,7 @@ public class FullSyncToServerService {
             case "DailyPermitPackage" -> dailyPermitPackageRepo;
             case "JobLog" -> jobLogRepo;
             case "Comment" -> commentRepo;
+            case "EmailCorrespondence" -> emailCorrespondenceRepo;
             case "FireImpairment" -> fireImpairmentRepo;
             case "PrintableForm" -> printableFormRepo;
             case "FormContainer" -> formContainerRepo;

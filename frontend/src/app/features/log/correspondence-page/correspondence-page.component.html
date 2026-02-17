@@ -1,0 +1,108 @@
+<div class="correspondence-page">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search..."
+        [(ngModel)]="searchQuery"
+      />
+      <select class="filter-select" [(ngModel)]="filterDirection">
+        <option value="">All Directions</option>
+        <option value="OUTBOUND">Sent</option>
+        <option value="INBOUND">Received</option>
+      </select>
+      <select class="filter-select" [(ngModel)]="filterEntityType">
+        <option value="">All Types</option>
+        @for (type of uniqueEntityTypes(); track type) {
+          <option [value]="type">{{ type }}</option>
+        }
+      </select>
+    </div>
+    <div class="toolbar-right">
+      @if (unreadCount() > 0) {
+        <span class="unread-indicator">{{ unreadCount() }} unread</span>
+      }
+      <button class="btn btn-secondary" (click)="load()" [disabled]="isLoading()">
+        Refresh
+      </button>
+      <button class="btn btn-primary" (click)="triggerPoll()" [disabled]="isPolling()">
+        {{ isPolling() ? 'Checking...' : 'Check Inbox' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  @if (isLoading()) {
+    <div class="loading-state">Loading correspondence...</div>
+  } @else if (filteredItems().length === 0) {
+    <div class="empty-state">No correspondence found</div>
+  } @else {
+    <div class="table-container">
+      <table class="correspondence-table">
+        <thead>
+          <tr>
+            <th (click)="sort('sentDateTime')" class="sortable">
+              Date <span class="sort-icon">{{ getSortIcon('sentDateTime') }}</span>
+            </th>
+            <th (click)="sort('direction')" class="sortable">
+              Direction <span class="sort-icon">{{ getSortIcon('direction') }}</span>
+            </th>
+            <th (click)="sort('entityType')" class="sortable">
+              Entity Type <span class="sort-icon">{{ getSortIcon('entityType') }}</span>
+            </th>
+            <th (click)="sort('entityId')" class="sortable">
+              Entity ID <span class="sort-icon">{{ getSortIcon('entityId') }}</span>
+            </th>
+            <th (click)="sort('subject')" class="sortable">
+              Subject <span class="sort-icon">{{ getSortIcon('subject') }}</span>
+            </th>
+            <th (click)="sort('sender')" class="sortable">
+              From <span class="sort-icon">{{ getSortIcon('sender') }}</span>
+            </th>
+            <th (click)="sort('recipient')" class="sortable">
+              To <span class="sort-icon">{{ getSortIcon('recipient') }}</span>
+            </th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredItems(); track item.id) {
+            <tr
+              class="table-row"
+              [class.unread]="!item.isRead && item.direction === 'INBOUND'"
+              (click)="openDialog(item)"
+            >
+              <td class="cell-date">{{ formatDate(item.sentDateTime) }}</td>
+              <td>
+                <span class="direction-badge" [class.badge-out]="item.direction === 'OUTBOUND'" [class.badge-in]="item.direction === 'INBOUND'">
+                  {{ item.direction === 'OUTBOUND' ? 'Sent' : 'Received' }}
+                </span>
+              </td>
+              <td>
+                <span class="entity-type">{{ item.entityType }}</span>
+              </td>
+              <td class="cell-id">#{{ item.entityId }}</td>
+              <td class="cell-subject">{{ item.subject }}</td>
+              <td class="cell-email">{{ item.sender }}</td>
+              <td class="cell-email">{{ item.recipient }}</td>
+              <td>
+                @if (!item.isRead && item.direction === 'INBOUND') {
+                  <span class="status-badge status-unread">New</span>
+                } @else {
+                  <span class="status-badge status-read">Read</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>
+
+<!-- Correspondence dialog (shared) -->
+<app-correspondence-dialog></app-correspondence-dialog>

@@ -18,6 +18,11 @@ public interface UserRepo extends BaseRepository<User> {
     @Query(value = "UPDATE users SET last_login_date = :date WHERE email = :email", nativeQuery = true)
     void updateLastLoginDate(@Param("date") LocalDateTime date, @Param("email") String email);
 
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE users SET last_login_date = :date WHERE id = :id", nativeQuery = true)
+    void updateLastLoginById(@Param("date") LocalDateTime date, @Param("id") Long id);
+
     User findByEmail(String email);
 
     User findByUsername(String username);

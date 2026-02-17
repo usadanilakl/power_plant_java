@@ -1,0 +1,236 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.correspondence-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 12px;
+  gap: 10px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #333);
+  min-width: 200px;
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-color, #fff);
+  color: var(--text-primary, #333);
+  min-width: 130px;
+}
+
+.unread-indicator {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success-color, #388e3c);
+  background: rgba(56, 142, 60, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--primary-color, #1976d2);
+  color: white;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-bg, #e0e0e0);
+  color: var(--text-primary, #333);
+}
+
+.loading-state,
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+}
+
+.table-container {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.correspondence-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.correspondence-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--table-header-bg, #f5f5f5);
+  z-index: 1;
+}
+
+.correspondence-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  border-bottom: 2px solid var(--border-color, #ddd);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.correspondence-table th.sortable {
+  cursor: pointer;
+}
+
+.correspondence-table th.sortable:hover {
+  background: var(--table-header-hover, #ebebeb);
+}
+
+.sort-icon {
+  margin-left: 4px;
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.correspondence-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  vertical-align: middle;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-row {
+  cursor: pointer;
+}
+
+.table-row:hover {
+  background: var(--row-hover, rgba(0, 0, 0, 0.03));
+}
+
+.table-row.unread {
+  background: rgba(56, 142, 60, 0.04);
+  font-weight: 500;
+}
+
+.cell-date {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  white-space: nowrap;
+}
+
+.cell-id {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.cell-subject {
+  font-weight: 500;
+  max-width: 280px;
+}
+
+.cell-email {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  max-width: 160px;
+}
+
+.direction-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.badge-out {
+  background: var(--primary-light, #e3f2fd);
+  color: var(--primary-color, #1976d2);
+}
+
+.badge-in {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.entity-type {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--secondary-bg, #f5f5f5);
+  border-radius: 4px;
+  color: var(--text-secondary, #666);
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.status-unread {
+  background: rgba(56, 142, 60, 0.12);
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.status-read {
+  background: var(--secondary-bg, #f5f5f5);
+  color: var(--text-secondary, #888);
+}

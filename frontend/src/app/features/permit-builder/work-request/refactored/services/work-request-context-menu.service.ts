@@ -3,12 +3,14 @@ import { ContextMenuService } from '../../../../../shared/menu/context-menu/cont
 import { ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { RfWorkRequestStateService } from './rf-work-request-state.service';
+import { CorrespondenceDialogService } from '../../../../../shared/correspondence-dialog/correspondence-dialog.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class WorkRequestContextMenuService extends ContextMenuService {
   private stateService = inject(RfWorkRequestStateService);
+  private correspondenceDialogService = inject(CorrespondenceDialogService);
 
   constructor() {
     super();
@@ -34,6 +36,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         label: '',
         divider: true,
         action: () => {},
+      },
+      {
+        id: 'correspondence',
+        label: 'View Correspondence',
+        icon: '📬',
+        action: (item) => this.handleViewCorrespondence(item),
       },
       {
         id: 'view',
@@ -72,6 +80,13 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
     if (confirmed) {
       this.stateService.cancelWorkRequest(item.id);
+      this.closeContextMenu();
+    }
+  }
+
+  private handleViewCorrespondence(item: WorkRequestDto): void {
+    if (item?.id) {
+      this.correspondenceDialogService.open('WorkRequest', item.id);
       this.closeContextMenu();
     }
   }
