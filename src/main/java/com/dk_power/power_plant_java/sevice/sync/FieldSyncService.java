@@ -863,7 +863,7 @@ public class FieldSyncService {
                     }
 
                     try {
-                        entityManager.persist(entity);
+                        entity = (BaseIdEntity) entityManager.merge(entity);
                     } catch (Exception e) {
                         if (isPrimaryKeyViolation(e)) {
                             log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
