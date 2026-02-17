@@ -188,10 +188,8 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
     @Transactional
     public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
-        System.out.println(lotoPointDto.getIsoPos() + " - Processing LotoPoint");
         LotoPoint entity = convertIdDtoToEntity(lotoPointDto);
         entity = lotoPointRepo.save(entity);
-        System.out.println("entity.getIsoPos().getName() = " + entity.getIsoPos().getName());
         Long savedLpId = entity.getId();
 
         // Get the new equipment IDs from the DTO

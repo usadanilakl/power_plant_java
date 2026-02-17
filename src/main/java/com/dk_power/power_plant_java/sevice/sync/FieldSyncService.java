@@ -883,15 +883,8 @@ public class FieldSyncService {
             }
 
             if (modified) {
-                try {
-                    service.save(entity);
-                    entityManager.flush(); // Flush per entity to detect issues immediately
-                    log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
-                } catch (Exception e) {
-                    log.warn("Failed to save {}#{}, skipping: {}", entityType, entityId, e.getMessage());
-                    entityManager.clear(); // Reset persistence context after failure
-                    return 0;
-                }
+                service.save(entity);
+                log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
             }
 
         } catch (Exception e) {
@@ -1282,8 +1275,29 @@ public class FieldSyncService {
             return newEntity;
 
         } catch (Exception e) {
-            log.error("Failed to create entity {} with ID {}: {}", entityType, entityId, e.getMessage(), e);
-            log.error("Failed to create entity {}#{} from sync", entityType, entityId);
+            // PK violation means entity already exists (race condition with SharePoint sync,
+            // cascade creation, or concurrent sync). Try to load it instead of failing.
+            if (e.getMessage() != null && (e.getMessage().contains("primary key violation")
+                    || e.getMessage().contains("PRIMARY KEY") || e.getMessage().contains("23505"))) {
+                log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
+                entityManager.clear(); // Clear stale state after failed INSERT
+                BaseIdEntity existing = (BaseIdEntity) service.getEntityById(entityId);
+                if (existing != null) return existing;
+                // Try native SQL in case @Where filters it out
+                Long count = ((Number) entityManager.createNativeQuery(
+                    "SELECT COUNT(*) FROM " + getTableName(entityType) + " WHERE id = :id")
+                    .setParameter("id", entityId).getSingleResult()).longValue();
+                if (count > 0) {
+                    entityManager.createNativeQuery(
+                        "UPDATE " + getTableName(entityType) + " SET deleted = false WHERE id = :id")
+                        .setParameter("id", entityId).executeUpdate();
+                    entityManager.flush();
+                    entityManager.clear();
+                    existing = (BaseIdEntity) service.getEntityById(entityId);
+                    if (existing != null) return existing;
+                }
+            }
+            log.error("Failed to create entity {}#{} from sync: {}", entityType, entityId, e.getMessage());
             return null;
         }
     }
