@@ -15,23 +15,28 @@
 
 ## Login Flow
 
-1. Client sends `POST /api/auth/login` with `{ email, password }`
+1. Client sends `POST /api/auth/login` with `{ credential, password }` — credential can be **email or username**
 2. `AuthController` authenticates via Spring's `AuthenticationManager`
-3. `UserDetailsServiceImpl` loads user by email from `UserRepo`
+3. `UserDetailsServiceImpl.loadUserByUsername()` tries email first, then username:
+   - `userRepo.findByEmail(credential)` — if found, use it
+   - `userRepo.findByUsername(credential)` — fallback if email lookup returned null
 4. `CustomUserDetails` wraps the `User` entity for Spring Security
 5. Spring Security 6.x: context explicitly saved to session via `HttpSessionSecurityContextRepository.saveContext()`
-6. Response includes origin-aware `accessLevel`:
+6. Post-auth: user looked up by `userDetails.getId()` (not by credential string) to ensure correct user regardless of login method
+7. Response includes origin-aware `accessLevel`:
    ```json
    { "id": 123, "name": "John", "email": "john@test.local", "role": "ROLE_EMPLOYEE", "isActive": true, "accessLevel": "FULL" }
    ```
-7. On failure: 401 with `{ "error": "INVALID_CREDENTIALS", "message": "Invalid email or password" }`
-8. Controller updates `user.lastLoginDate` and logs the login with client IP
+8. On failure: 401 with `{ "error": "INVALID_CREDENTIALS", "message": "Invalid email or password" }`
+9. Controller updates `user.lastLoginDate` via `updateLastLoginById()` (by user ID, not email) and logs the login with client IP
 
 **Frontend routing after login:**
 - `accessLevel: "FULL"` → navigates to `/home` (or returnUrl)
 - `accessLevel: "RESTRICTED"` or `"PENDING"` → navigates to `/access-request`
 
-**File:** `controller/auth/AuthController.java`
+**Files:**
+- `controller/auth/AuthController.java`
+- `sevice/users/impl/UserDetailsServiceImpl.java` — email + username lookup
 
 ## Desktop Auto-Auth
 
@@ -92,9 +97,11 @@ After login from outside the network, the user gets `accessLevel: "RESTRICTED"` 
 - `/api/auth/*` endpoints (login, logout, me, profile, access-status, request-access) — exempt in `AccessGrantFilter`
 - Endpoints annotated with `@RestrictedAllowed` (currently: `/ng/rf-values/**`, `/ng/values/**`) — checked by `AccessGrantFilter` via handler resolution
 - Static resources (Angular SPA loads normally)
-- Everything else → 403 `{ "error": "FULL_ACCESS_REQUIRED" }`
+- Everything else:
+  - **Browser page navigation** (`Accept: text/html`) → HTTP redirect to `/app/access-request`
+  - **API/AJAX requests** → 403 JSON `{ "error": "FULL_ACCESS_REQUIRED" }`
 
-The `authInterceptor` catches 403 `FULL_ACCESS_REQUIRED` responses and redirects to `/access-request` (unless the user is already on that page, to prevent redirect loops).
+The `authInterceptor` catches 403 `FULL_ACCESS_REQUIRED` API responses and redirects to `/access-request` (unless the user is already on that page, to prevent redirect loops). Browser navigations (e.g., user clicks Back/Forward) are handled server-side by `AccessGrantFilter` redirecting to the Angular access-request page.
 
 See [Restricted Access](./restricted-access.md) for the `@RestrictedAllowed` annotation system and how to extend the restricted area.
 
@@ -224,7 +231,7 @@ AccessGrant {
 
 Order in `SecurityConfigSpring`:
 
-1. **Public endpoints** — permitAll (login, logout, static resources, sharepoint-sync, actuator)
+1. **Public endpoints** — permitAll (login, logout, forgot-password, reset-password, static resources, sharepoint-sync, actuator)
 2. **LAN-only endpoints** — `lanOnlyMatcher` permitAll (sync, files, update, electron-update, resource-packs, sync-updates, data-integrity, backup, attachments, h2-console)
 3. **Localhost-only admin** — `localhostMatcher` hasRole ADMIN (`/api/auth/admin/**`)
 4. **Non-localhost admin** — denyAll (`/api/auth/admin/**` fallback)
@@ -245,6 +252,72 @@ Custom filters:
 - Invalidates the HTTP session
 - Deletes `JSESSIONID` and `ACCESS_TOKEN` cookies
 - Returns `{ "success": true, "message": "Logged out" }`
+
+## Forgot Password / Reset Password
+
+Self-service password reset flow for users who forget their password. No authentication required — these are public endpoints.
+
+### Flow
+
+```
+Login page → "Forgot password?" link → /forgot-password page
+  → User enters email → POST /api/auth/forgot-password
+  → Server sends email with reset link (via EmailFacadeService)
+  → User clicks link → /app/reset-password?token={uuid}
+  → Angular reset-password page → new password + confirm
+  → POST /api/auth/reset-password { token, newPassword }
+  → Success → "Go to Login" button
+```
+
+### Backend
+
+`POST /api/auth/forgot-password` `{ email }` — **public (no auth required)**
+- Finds user by email, generates UUID token with 1h expiry
+- Sends reset email via `EmailFacadeService` (API primary, manual fallback)
+- Always returns 200 with generic message to avoid revealing whether email exists
+- Reset link format: `{baseUrl}/app/reset-password?token={uuid}`
+
+`POST /api/auth/reset-password` `{ token, newPassword }` — **public (no auth required)**
+- Validates token: exists, not used, not expired
+- New password minimum 8 characters
+- BCrypt-encodes and saves new password
+- Marks token as used (single-use)
+
+### PasswordResetToken Entity
+
+```
+PasswordResetToken {
+  id: Long (IDENTITY)
+  user: User (FK)
+  token: String (UUID, unique)
+  expiresAt: LocalDateTime (1h after creation)
+  used: boolean (default false)
+  createdAt: LocalDateTime
+}
+```
+
+Standalone entity — does **not** extend `BaseIdEntity` (no sync needed, no entity listeners). Follows the same pattern as `AccessGrant`.
+
+**Files:**
+- `entities/users/PasswordResetToken.java`
+- `repository/users/PasswordResetTokenRepository.java`
+- `controller/auth/AuthController.java` — forgot-password + reset-password endpoints
+
+### Frontend
+
+| Component | Route | Purpose |
+|-----------|-------|---------|
+| `forgot-password.component.ts` | `/forgot-password` (public) | Email input, "Send Reset Link" button, success/error states |
+| `reset-password.component.ts` | `/reset-password` (public) | New password + confirm, strength meter, token from query params |
+
+Both pages match the login page's dark-theme styling.
+
+### Security
+
+- Both endpoints added to `SecurityConfigSpring` permitAll list (alongside login/logout)
+- Token is single-use and expires after 1 hour
+- Generic response on forgot-password prevents email enumeration
+- Email sending failure is logged but doesn't affect the response (silent fail)
 
 ## User Profile (Self-Service)
 
@@ -307,12 +380,14 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 
 | Component | Purpose |
 |-----------|---------|
-| `auth.service.ts` | Login/logout/profile API calls, `currentUser$` and `isLoggedIn$` observables, `accessLevel` tracking |
+| `auth.service.ts` | Login (by email or username)/logout/profile/forgot-password/reset-password API calls, `currentUser$` and `isLoggedIn$` observables, `accessLevel` tracking |
 | `auth.interceptor.ts` | Adds `withCredentials: true`, redirects 401 → `/login`, redirects 403 `FULL_ACCESS_REQUIRED` → `/access-request` (with loop prevention) |
 | `auth.guard.ts` | Route guard: waits for auth check, redirects to `/login` if not authenticated |
 | `admin.guard.ts` | Route guard: requires `ROLE_ADMIN`, redirects to `/home` |
 | `full-access.guard.ts` | Route guard: requires `accessLevel === 'FULL'`, redirects to `/home` |
-| `login.component.ts` | Login form UI, routes to `/access-request` if restricted |
+| `login.component.ts` | Login form UI (email or username), "Forgot password?" link, routes to `/access-request` if restricted |
+| `forgot-password.component.ts` | Email input for password reset link request |
+| `reset-password.component.ts` | New password + confirm + strength meter, reads token from query params |
 | `profile.component.ts` | Tabbed profile page (Profile/Security/Sessions/Preferences tabs), password strength meter, verified password change |
 | `user-profile.component.ts` | Header avatar icon with dropdown (profile link, access level badge, sign out). Badge shows `RESTRICTED`/`PENDING` (hidden when `FULL`) |
 | `access-request.component.ts` | External user: request full access + 10s status polling, progress steps, countdown timer, "Request Again" on denied/expired |
@@ -322,6 +397,8 @@ Only non-null fields are applied. Password is BCrypt-encoded before storage. The
 
 ```
 /login                    — LoginComponent (public)
+/forgot-password          — ForgotPasswordComponent (public)
+/reset-password           — ResetPasswordComponent (public)
 /access-request           — AccessRequestComponent (authGuard)
 /profile                  — ProfileComponent (authGuard)
 /home                     — HomeComponent (authGuard)
