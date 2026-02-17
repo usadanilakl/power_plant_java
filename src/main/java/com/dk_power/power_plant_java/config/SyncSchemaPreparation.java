@@ -19,13 +19,11 @@ import java.util.Set;
 /**
  * Prepares the database schema for sync entity creation.
  *
- * createEntityFromSync() uses native SQL INSERT to create placeholder entities.
- * VARCHAR NOT NULL columns with CHECK constraints (e.g., enum columns like
- * EmailCorrespondence.direction) reject empty-string defaults, causing INSERT failures.
- *
- * This component ALTERs VARCHAR NOT NULL columns to be nullable at startup,
- * allowing createEntityFromSync() to skip string defaults entirely.
- * The real values are set immediately after by applyFieldChange() calls.
+ * Sync creates entities via JPA persist with pre-applied field values.
+ * However, ManyToOne FK columns may be null when the referenced entity
+ * hasn't been created yet (resolved later by the three-pass retry).
+ * This component ALTERs ALL NOT NULL columns to nullable at startup,
+ * ensuring persist succeeds even with unresolved references.
  */
 @Component
 @RequiredArgsConstructor
@@ -56,9 +54,7 @@ public class SyncSchemaPreparation {
                 ResultSet rs = stmt.executeQuery(
                     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
                     "WHERE TABLE_NAME = '" + tableName + "' " +
-                    "AND IS_NULLABLE = 'NO' " +
-                    "AND (DATA_TYPE LIKE '%CHAR%' OR DATA_TYPE LIKE '%CLOB%' " +
-                    "     OR DATA_TYPE = 'TEXT' OR DATA_TYPE LIKE '%CHARACTER%')");
+                    "AND IS_NULLABLE = 'NO'");
 
                 while (rs.next()) {
                     String colName = rs.getString("COLUMN_NAME");
@@ -80,7 +76,7 @@ public class SyncSchemaPreparation {
             }
 
             if (totalAltered > 0) {
-                log.info("Sync schema preparation: altered {} VARCHAR NOT NULL columns to nullable", totalAltered);
+                log.info("Sync schema preparation: altered {} NOT NULL columns to nullable", totalAltered);
             }
 
         } catch (Exception e) {

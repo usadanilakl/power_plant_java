@@ -49,8 +49,8 @@ public class BaseIdEntity {
 
     @PrePersist
     protected void onCreate() {
-        dateCreated = LocalDateTime.now();
-        dateModified = LocalDateTime.now();
+        if (dateCreated == null) dateCreated = LocalDateTime.now();
+        if (dateModified == null) dateModified = LocalDateTime.now();
     }
 
     @PreUpdate

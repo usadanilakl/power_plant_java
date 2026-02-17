@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.id.IdentifierGenerator;
@@ -40,6 +41,12 @@ public class DevicePrefixedIdGenerator implements IdentifierGenerator {
 
     @Override
     public Object generate(SharedSessionContractImplementor session, Object object) throws HibernateException {
+        // If ID is pre-set (e.g., from sync), preserve it — don't generate a new one.
+        if (object instanceof BaseIdEntity) {
+            Long existingId = ((BaseIdEntity) object).getId();
+            if (existingId != null) return existingId;
+        }
+
         long deviceNumber = getDeviceNumber();
 
         class IdGeneratorWork implements Work {

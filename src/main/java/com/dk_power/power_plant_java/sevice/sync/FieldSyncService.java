@@ -31,14 +31,9 @@ import org.springframework.web.client.RestTemplate;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import javax.sql.DataSource;
 import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -64,15 +59,10 @@ public class FieldSyncService {
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
-    private final DataSource dataSource;
-
     @PersistenceContext
     private EntityManager entityManager;
 
     private volatile boolean syncing = false;
-
-    // Cache of tables whose VARCHAR NOT NULL columns have been ALTERed to nullable
-    private final Set<String> preparedTables = ConcurrentHashMap.newKeySet();
 
     // Guard to prevent concurrent merge operations in afterCommit callbacks.
     // During cold resync, many sync batches commit simultaneously — only one merge should run.
@@ -96,8 +86,7 @@ public class FieldSyncService {
             CategoryValueMergeService categoryValueMergeService,
             WorkRequestMergeService workRequestMergeService,
             JhaMergeService jhaMergeService,
-            EmailCorrespondenceMergeService emailCorrespondenceMergeService,
-            DataSource dataSource) {
+            EmailCorrespondenceMergeService emailCorrespondenceMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -121,7 +110,6 @@ public class FieldSyncService {
         this.workRequestMergeService = workRequestMergeService;
         this.jhaMergeService = jhaMergeService;
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
-        this.dataSource = dataSource;
     }
 
     /**
@@ -844,22 +832,73 @@ public class FieldSyncService {
                     return 0;
                 }
 
-                // Create new entity from sync
-                entity = createEntityFromSync(entityType, entityId, service);
-                if (entity == null) {
-                    log.error("Failed to create entity {}#{} from sync", entityType, entityId);
-                    return 0;
-                }
-                log.info("Created new entity {}#{} from sync", entityType, entityId);
+                // Check for soft-deleted entity (hidden by @Where clause)
+                String tableName = getTableName(entityType);
+                Long existingCount = ((Number) entityManager.createNativeQuery(
+                    "SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
+                    .setParameter("id", entityId).getSingleResult()).longValue();
 
-                // Save the CREATE change
+                if (existingCount > 0) {
+                    // Row exists but is soft-deleted — re-activate it
+                    entityManager.createNativeQuery(
+                        "UPDATE " + tableName + " SET deleted = false, date_modified = :now WHERE id = :id")
+                        .setParameter("id", entityId)
+                        .setParameter("now", java.time.LocalDateTime.now()).executeUpdate();
+                    entityManager.flush();
+                    entityManager.clear();
+                    entity = (BaseIdEntity) service.getEntityById(entityId);
+                    log.info("Re-activated soft-deleted entity {}#{}", entityType, entityId);
+                } else {
+                    // Truly new entity — create via JPA with ALL field values pre-applied
+                    entity = (BaseIdEntity) service.getEntity();
+                    entity.setId(entityId);
+
+                    // Apply ALL field changes to the in-memory entity BEFORE persist.
+                    // This ensures NOT NULL columns have real values (no dummy defaults).
+                    for (FieldChange change : changes) {
+                        if (!"_entity_".equals(change.getFieldName())
+                                && shouldApplyChange(change, latestChangesMap)) {
+                            applyFieldChange(entity, change, failedManyToOneRefs);
+                        }
+                    }
+
+                    try {
+                        entityManager.persist(entity);
+                    } catch (Exception e) {
+                        if (isPrimaryKeyViolation(e)) {
+                            log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
+                            entityManager.clear();
+                            entity = (BaseIdEntity) service.getEntityById(entityId);
+                            if (entity == null) {
+                                log.error("Failed to load existing entity {}#{} after PK violation", entityType, entityId);
+                                return 0;
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
+                    log.info("Created new entity {}#{} from sync", entityType, entityId);
+                }
+
+                // Save the CREATE change record
                 saveIncomingChange(changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE)
                     .findFirst().orElse(null));
                 appliedCount++;
+
+                // For new entities, field changes were already applied above.
+                // Save field change records and return.
+                for (FieldChange change : changes) {
+                    if (!"_entity_".equals(change.getFieldName())
+                            && shouldApplyChange(change, latestChangesMap)) {
+                        saveIncomingChange(change);
+                        appliedCount++;
+                    }
+                }
+                return appliedCount;
             }
 
-            // Apply field changes using LWW with pre-fetched map
+            // Apply field changes to EXISTING entity using LWW with pre-fetched map
             boolean modified = false;
             for (FieldChange change : changes) {
                 if ("_entity_".equals(change.getFieldName())) {
@@ -1167,191 +1206,6 @@ public class FieldSyncService {
         return null;
     }
 
-    /**
-     * Create a new entity from sync with the specified ID.
-     *
-     * Uses native SQL INSERT to directly create the entity with the target ID,
-     * avoiding the ID generator entirely. This prevents ID collisions when multiple
-     * entities are created in the same sync batch.
-     *
-     * Queries INFORMATION_SCHEMA to discover NOT NULL columns beyond the base set
-     * and includes default values for them. This handles stale NOT NULL constraints
-     * left in the database by ddl-auto=update (which never drops constraints).
-     */
-    @SuppressWarnings("unchecked")
-    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, SyncableService service) {
-        try {
-            // First check if entity already exists (might have been created earlier in this batch
-            // or in a previous sync)
-            BaseIdEntity existing = (BaseIdEntity) service.getEntityById(entityId);
-            if (existing != null) {
-                log.debug("Entity {}#{} already exists, returning existing", entityType, entityId);
-                return existing;
-            }
-
-            // Get the table name for native SQL
-            String tableName = getTableName(entityType);
-
-            // Ensure VARCHAR NOT NULL columns are nullable (handles enum columns with CHECK constraints).
-            // This is a lazy fallback for when SyncSchemaPreparation hasn't run yet
-            // (e.g., hub receives sync request before ApplicationReadyEvent fires).
-            ensureTablePreparedForSync(tableName);
-
-            // Check for soft-deleted entities: @Where(clause = "deleted = false") makes them
-            // invisible to JPA, but the row still exists with deleted=true.
-            // If found, un-delete the row instead of trying to INSERT (which would cause PK violation).
-            Long existingCount = ((Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
-                .setParameter("id", entityId)
-                .getSingleResult()).longValue();
-
-            if (existingCount > 0) {
-                entityManager.createNativeQuery(
-                    "UPDATE " + tableName + " SET deleted = false, date_modified = :now WHERE id = :id")
-                    .setParameter("id", entityId)
-                    .setParameter("now", java.time.LocalDateTime.now())
-                    .executeUpdate();
-                entityManager.flush();
-                entityManager.clear();
-
-                BaseIdEntity reactivated = (BaseIdEntity) service.getEntityById(entityId);
-                if (reactivated != null) {
-                    log.debug("Entity {}#{} was soft-deleted, re-activated", entityType, entityId);
-                    return reactivated;
-                }
-            }
-
-            // Query NOT NULL columns beyond the base set so we can provide defaults.
-            // ddl-auto=update never removes NOT NULL constraints, so the DB may have
-            // stale constraints even if the Java annotations were removed.
-            List<Object[]> notNullCols = entityManager.createNativeQuery(
-                "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
-                "WHERE TABLE_NAME = :tableName AND IS_NULLABLE = 'NO' " +
-                "AND COLUMN_NAME NOT IN ('ID', 'OBJECT_TYPE', 'DELETED', 'DATE_CREATED', 'DATE_MODIFIED')")
-                .setParameter("tableName", tableName.toUpperCase())
-                .getResultList();
-
-            // Build dynamic INSERT including defaults for NOT NULL columns
-            StringBuilder columns = new StringBuilder("id, object_type, deleted, date_created, date_modified");
-            StringBuilder values = new StringBuilder(":id, :objectType, false, :now, :now");
-
-            for (Object[] col : notNullCols) {
-                String colName = ((String) col[0]).toLowerCase();
-                String typeName = ((String) col[1]).toUpperCase();
-                // Skip VARCHAR/CHAR/CLOB columns — they were made nullable at startup by
-                // SyncSchemaPreparation. This avoids CHECK constraint violations on enum
-                // columns (e.g., EmailCorrespondence.direction). Real values are set
-                // immediately after by applyFieldChange() calls.
-                if (typeName.contains("VARCHAR") || typeName.contains("CHAR")
-                        || typeName.contains("CLOB") || typeName.contains("TEXT")
-                        || typeName.contains("CHARACTER")) {
-                    continue;
-                }
-                columns.append(", ").append(colName);
-                values.append(", ").append(defaultValueForType(typeName));
-            }
-
-            int inserted = entityManager.createNativeQuery(
-                "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + values + ")")
-                .setParameter("id", entityId)
-                .setParameter("objectType", entityType)
-                .setParameter("now", java.time.LocalDateTime.now())
-                .executeUpdate();
-
-            if (inserted == 0) {
-                log.error("Failed to insert entity {}#{} via native SQL", entityType, entityId);
-                return null;
-            }
-
-            entityManager.flush();
-            entityManager.clear(); // Clear cache to load the newly inserted entity
-
-            // Load the entity via JPA for further operations
-            BaseIdEntity newEntity = (BaseIdEntity) service.getEntityById(entityId);
-
-            if (newEntity == null) {
-                log.error("Entity {}#{} was inserted but could not be loaded", entityType, entityId);
-                return null;
-            }
-
-            log.debug("Created entity {}#{} via direct INSERT", entityType, entityId);
-            return newEntity;
-
-        } catch (Exception e) {
-            // PK violation means entity already exists (race condition with SharePoint sync,
-            // cascade creation, or concurrent sync). Try to load it instead of failing.
-            if (e.getMessage() != null && (e.getMessage().contains("primary key violation")
-                    || e.getMessage().contains("PRIMARY KEY") || e.getMessage().contains("23505"))) {
-                log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
-                entityManager.clear(); // Clear stale state after failed INSERT
-                BaseIdEntity existing = (BaseIdEntity) service.getEntityById(entityId);
-                if (existing != null) return existing;
-                // Try native SQL in case @Where filters it out
-                Long count = ((Number) entityManager.createNativeQuery(
-                    "SELECT COUNT(*) FROM " + getTableName(entityType) + " WHERE id = :id")
-                    .setParameter("id", entityId).getSingleResult()).longValue();
-                if (count > 0) {
-                    entityManager.createNativeQuery(
-                        "UPDATE " + getTableName(entityType) + " SET deleted = false WHERE id = :id")
-                        .setParameter("id", entityId).executeUpdate();
-                    entityManager.flush();
-                    entityManager.clear();
-                    existing = (BaseIdEntity) service.getEntityById(entityId);
-                    if (existing != null) return existing;
-                }
-            }
-            log.error("Failed to create entity {}#{} from sync: {}", entityType, entityId, e.getMessage());
-            return null;
-        }
-    }
-
-    /** Return an SQL literal default value appropriate for the given H2 column type. */
-    /**
-     * Lazily ensure VARCHAR NOT NULL columns in this table are nullable.
-     * Uses a separate JDBC connection so the ALTER isn't part of the sync transaction.
-     * Caches results so each table is only prepared once per JVM lifetime.
-     */
-    private void ensureTablePreparedForSync(String tableName) {
-        String upperTable = tableName.toUpperCase();
-        if (preparedTables.contains(upperTable)) return;
-
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            List<String> columnsToAlter = new ArrayList<>();
-            ResultSet rs = stmt.executeQuery(
-                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-                "WHERE TABLE_NAME = '" + upperTable + "' " +
-                "AND IS_NULLABLE = 'NO' " +
-                "AND COLUMN_NAME NOT IN ('ID', 'OBJECT_TYPE', 'DELETED', 'DATE_CREATED', 'DATE_MODIFIED') " +
-                "AND (DATA_TYPE LIKE '%CHAR%' OR DATA_TYPE LIKE '%CLOB%' " +
-                "     OR DATA_TYPE = 'TEXT' OR DATA_TYPE LIKE '%CHARACTER%')");
-            while (rs.next()) {
-                columnsToAlter.add(rs.getString("COLUMN_NAME"));
-            }
-            rs.close();
-
-            for (String col : columnsToAlter) {
-                try {
-                    stmt.executeUpdate("ALTER TABLE " + upperTable + " ALTER COLUMN " + col + " SET NULL");
-                    log.debug("Lazy sync prep: altered {}.{} to nullable", upperTable, col);
-                } catch (Exception ignored) {}
-            }
-        } catch (Exception e) {
-            log.debug("Lazy table preparation for {}: {}", upperTable, e.getMessage());
-        }
-
-        preparedTables.add(upperTable);
-    }
-
-    /** Return an SQL literal default value appropriate for the given H2 column type. */
-    private String defaultValueForType(String typeName) {
-        if (typeName.contains("BOOLEAN")) return "false";
-        if (typeName.contains("INT") || typeName.contains("DOUBLE") || typeName.contains("FLOAT")
-                || typeName.contains("DECIMAL") || typeName.contains("NUMERIC")) return "0";
-        if (typeName.contains("DATE") || typeName.contains("TIMESTAMP")) return "CURRENT_TIMESTAMP";
-        return "''"; // VARCHAR, CHAR, CLOB, TEXT, etc.
-    }
 
     /**
      * Save an incoming change to our log (mark as synced to us and to server)
@@ -1504,6 +1358,19 @@ public class FieldSyncService {
      */
     private String getTableName(String entityType) {
         return entityTableRegistry.getTableName(entityType);
+    }
+
+    private boolean isPrimaryKeyViolation(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            String msg = cause.getMessage();
+            if (msg != null && (msg.contains("primary key violation")
+                    || msg.contains("PRIMARY KEY") || msg.contains("23505"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     /**
