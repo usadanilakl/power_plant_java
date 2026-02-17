@@ -88,10 +88,12 @@ Frontend Change → Backend → Local H2 DB → Sync Server/Hub → SSE Broadcas
 From [EntityTableRegistry.java](../../../src/main/java/com/dk_power/power_plant_java/sevice/sync/EntityTableRegistry.java):
 
 ```
-Category          # Base: no dependencies
-Value             # Depends on: Category
-User              # Base
-FileObject        # Base
+Category               # Base: no dependencies
+Value                  # Depends on: Category
+Comment                # Depends on: Value (commentType)
+EmailCorrespondence    # Depends on: Value (correspondenceType)
+User                   # Base
+FileObject             # Base
 Equipment         # Depends on: FileObject, Value, Category
 LotoPoint         # Depends on: FileObject, Equipment, Value
 Loto              # Depends on: LotoPoint
@@ -135,6 +137,18 @@ When adding a new entity type, register it in all of these:
     [Server repositories](../../../../sync-server/src/main/java/com/dk_power/sync_server/repository/domain/)
 
 See [comment.md](../base/comment.md) for a complete example of registering a new entity (steps 13–18).
+See [email-correspondence.md](../../features/email/email-correspondence.md) for a complete worked example including deduplication.
+
+## Post-Sync Deduplication
+
+After each sync batch is applied, merge services run in `FieldSyncService.afterCommit()` to resolve duplicates created by concurrent independent actions:
+
+| Service | Dedup Key | Detail |
+|---------|-----------|--------|
+| `CategoryValueMergeService` | name (case-insensitive) | [category-value-deduplication.md](category-value-deduplication.md) |
+| `WorkRequestMergeService` | `sharepointId` | Two clients poll SharePoint simultaneously |
+| `JhaMergeService` | `sharepointId` | Two clients pull same JHA from SharePoint |
+| `EmailCorrespondenceMergeService` | `graphMessageId` | [email-correspondence-deduplication.md](email-correspondence-deduplication.md) |
 
 # Configuration reference
 

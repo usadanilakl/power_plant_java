@@ -49,7 +49,7 @@ User extends BaseAuditEntity {
   firstName: String
   lastName: String
   name: String          — computed: firstName + " " + lastName
-  email: String         — unique, not null (login identifier)
+  email: String         — unique, not null (login identifier — can also login by username)
   role: String          — "ROLE_ADMIN" | "ROLE_EMPLOYEE" | "ROLE_CONTRACTOR"
   password: String      — BCrypt-encoded, never exposed in API responses
   isActive: Boolean     — soft-disable (user can't login)
@@ -144,6 +144,9 @@ Fields exposed in API responses:
 **File:** `repository/users/UserRepo.java`
 
 Key methods:
-- `findByEmail(String)` — login lookup
+- `findByEmail(String)` — login lookup (primary)
+- `findByUsername(String)` — login lookup (fallback when email not found)
 - `findByWindowsUsername(String)` — desktop auto-auth lookup
 - `existsByEmail(String)` — duplicate check on create
+- `updateLastLoginDate(LocalDateTime, String)` — lightweight login timestamp update by email
+- `updateLastLoginById(LocalDateTime, Long)` — lightweight login timestamp update by user ID (used when login credential may be username)

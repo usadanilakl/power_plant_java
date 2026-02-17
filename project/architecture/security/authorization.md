@@ -19,6 +19,8 @@
 |-----------------|--------|-----------|------|-------|---------|
 | `POST /api/auth/login` | x | | | | |
 | `POST /api/auth/logout` | x | | | | |
+| `POST /api/auth/forgot-password` | x | | | | |
+| `POST /api/auth/reset-password` | x | | | | |
 | `GET /actuator/health` | x | | | | |
 | `/app/**`, `/angular/**`, static assets | x | | | | |
 | `/api/sharepoint-sync/**` | x | | | | |
@@ -134,9 +136,11 @@ Request
   └─ No cookie ──► 403 FULL_ACCESS_REQUIRED
 ```
 
-When validation fails, the filter returns:
+When validation fails, the response depends on the request type:
+- **Browser navigation** (`Accept: text/html`) → HTTP redirect to `/app/access-request`
+- **API/AJAX request** → 403 JSON:
 ```json
-{ "error": "FULL_ACCESS_REQUIRED", "message": "Full access required. Request access from an administrator." }
+{ "error": "FULL_ACCESS_REQUIRED", "message": "No access token. Request full access from an administrator." }
 ```
 
 **File:** `config/security/AccessGrantFilter.java`

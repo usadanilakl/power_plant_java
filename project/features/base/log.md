@@ -1,4 +1,17 @@
-# Log Page (Comments Database View)
+# Log Page
+
+The Log page is a shell at `/log` with two sub-tabs in the secondary nav:
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/log/table` | `LogDbTableComponent` | All Comments across the system |
+| `/log/correspondence` | `CorrespondencePageComponent` | All EmailCorrespondence across the system |
+
+See also: [email-correspondence.md](../email/email-correspondence.md)
+
+---
+
+## System Log Tab (Comments Database View)
 
 Displays all comments across the entire system in a searchable, filterable, paginated table.
 Uses the existing Comment entity — no new entity needed.
@@ -84,7 +97,7 @@ public List<String> getGlobalSearchColumns() {
 ## Frontend
 
 ### 3. Create routing
-Create [routes/log.routes.ts](../../../frontend/src/app/routes/log.routes.ts):
+[routes/log.routes.ts](../../../frontend/src/app/routes/log.routes.ts):
 ```typescript
 export const LOG_ROUTES: Routes = [
   {
@@ -93,11 +106,14 @@ export const LOG_ROUTES: Routes = [
     children: [
       { path: '', redirectTo: 'table', pathMatch: 'full' },
       { path: 'table', component: LogDbTableComponent },
+      { path: 'correspondence', component: CorrespondencePageComponent },
     ]
   }
 ];
 ```
 Register `LOG_ROUTES` in [app.routes.ts](../../../frontend/src/app/app.routes.ts).
+
+Nav tabs defined in [router-menu.model.ts](../../../frontend/src/app/models/ui/router-menu.model.ts) — Log group items point to `/log/table` and `/log/correspondence`.
 
 ### 4. Create LogApiService
 [services/log-api.service.ts](../../../frontend/src/app/features/log/services/log-api.service.ts)

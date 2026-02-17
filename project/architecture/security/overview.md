@@ -9,7 +9,7 @@ The power plant application uses a **4-tier access model** to protect the hub wh
 | Tier | Who | Authentication | Access Level |
 |------|-----|---------------|-------------|
 | **Public** | Anyone | None | SharePoint webhooks, health check, login endpoint |
-| **Restricted** | Logged-in external user | Email + password → `JSESSIONID` cookie | `@RestrictedAllowed` endpoints + `/api/auth/*`, request full access |
+| **Restricted** | Logged-in external user | Email/username + password → `JSESSIONID` cookie | `@RestrictedAllowed` endpoints + `/api/auth/*`, request full access |
 | **Full Web** | Approved external user | Login + admin-approved `ACCESS_TOKEN` cookie | Full CRUD via Angular |
 | **Full Desktop/LAN** | Local operator / LAN user | Desktop: auto-auth via Windows username. LAN: manual login | Full CRUD |
 
@@ -73,7 +73,7 @@ Currently annotated controllers:
 
 | Category | Endpoints | Auth Required |
 |----------|-----------|--------------|
-| Public | `/api/auth/login`, `/api/auth/logout`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
+| Public | `/api/auth/login`, `/api/auth/logout`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
 | LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/api/electron-update/**`, `/api/resource-packs/**`, `/api/sync-updates/**`, `/api/data-integrity/**`, `/api/backup/**`, `/api/attachments/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
 | Restricted (exempt) | `/api/auth/*` (me, profile, profile/change-password, request-access, access-status) | Session cookie |
 | Restricted (annotated) | `@RestrictedAllowed` controllers/methods (currently: `/ng/rf-values/**`, `/ng/values/**`, `/api/auth/profile/sessions`) | Session cookie |
@@ -91,16 +91,18 @@ Currently annotated controllers:
 | `config/security/RestrictedAllowed.java` | Annotation for restricted-tier endpoint access |
 | `config/NetworkUtils.java` | LAN IP detection |
 | `config/AdminUserSeeder.java` | Seed default admin on startup |
-| `controller/auth/AuthController.java` | Login, /me, profile, request-access |
+| `controller/auth/AuthController.java` | Login (email/username), /me, profile, request-access, forgot-password, reset-password |
 | `controller/auth/AccessAdminController.java` | Approve/deny/revoke grants |
 | `controller/angular/NgUserController.java` | User CRUD (admin) |
 | `entities/users/AccessGrant.java` | Access grant entity |
+| `entities/users/PasswordResetToken.java` | Password reset token entity (1h expiry, single-use) |
+| `repository/users/PasswordResetTokenRepository.java` | Token lookup by UUID |
 | `sevice/users/AccessGrantCleanupService.java` | Scheduled expiration cleanup |
 | `frontend/.../guards/full-access.guard.ts` | Route guard for full-access-only routes |
 
 ## Detail Documentation
 
-- [Authentication](./authentication.md) — Login flows, desktop auto-auth, token lifecycle
+- [Authentication](./authentication.md) — Login flows (email/username), desktop auto-auth, forgot/reset password, token lifecycle
 - [Authorization](./authorization.md) — Roles, endpoint rules, filter chain
 - [Restricted Access](./restricted-access.md) — `@RestrictedAllowed` annotation, frontend guards, extending the restricted area
 - [User Management](./user-management.md) — User CRUD, admin seeding, desktop mapping

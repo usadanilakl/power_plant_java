@@ -48,7 +48,14 @@
 4. WR Table and Permit Monitor are providing way to view/sort/search WR
     - Both Table item and Permit Monitor WR item on click open WR Action Popup:
         - Generate permits []()
-        - Request more details 
+        - Request more details
+            - Sends email to submitter via EmailFacadeService
+            - Saves OUTBOUND EmailCorrespondence record (entityType="WorkRequest", entityId=id)
+            - Sets WR status to "Pending More Info"
+            - See: [email-correspondence.md](../../../features/email/email-correspondence.md)
+        - View Correspondence (right-click context menu)
+            - Opens CorrespondenceDialogComponent showing full email thread for this WR
+            - Inbound replies auto-polled from operations@jpowerusa.com every 10 min
         - Attach to existing Job
         - Cancel
             - Update Local H2
