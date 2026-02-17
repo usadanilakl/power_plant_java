@@ -54,9 +54,9 @@
             <!-- Orphaned Files -->
             <div class="details-section" *ngIf="fileIntegrityResult.orphanedCount > 0">
               <button class="toggle-btn" (click)="toggleSection('orphanedFiles')">
-                {{ expandedSections.orphanedFiles ? 'Hide' : 'Show' }} Orphaned Files
+                {{ expandedSections['orphanedFiles'] ? 'Hide' : 'Show' }} Orphaned Files
               </button>
-              <div class="details-list" *ngIf="expandedSections.orphanedFiles">
+              <div class="details-list" *ngIf="expandedSections['orphanedFiles']">
                 <table>
                   <thead>
                     <tr>
@@ -81,9 +81,9 @@
             <!-- Missing Files -->
             <div class="details-section" *ngIf="fileIntegrityResult.missingCount > 0">
               <button class="toggle-btn" (click)="toggleSection('missingFiles')">
-                {{ expandedSections.missingFiles ? 'Hide' : 'Show' }} Missing Files
+                {{ expandedSections['missingFiles'] ? 'Hide' : 'Show' }} Missing Files
               </button>
-              <div class="details-list" *ngIf="expandedSections.missingFiles">
+              <div class="details-list" *ngIf="expandedSections['missingFiles']">
                 <table>
                   <thead>
                     <tr>
@@ -150,10 +150,10 @@
             <!-- Fixed Files Details -->
             <div class="details-section" *ngIf="fixExtensionsResult.fixedFiles?.length && fixExtensionsResult.fixedFiles.length > 0">
               <button class="toggle-btn" (click)="toggleSection('fixedFiles')">
-                {{ expandedSections.fixedFiles ? 'Hide' : 'Show' }} {{ fixExtensionsResult.dryRun ? 'Files to Fix' : 'Fixed Files' }}
+                {{ expandedSections['fixedFiles'] ? 'Hide' : 'Show' }} {{ fixExtensionsResult.dryRun ? 'Files to Fix' : 'Fixed Files' }}
                 ({{ fixExtensionsResult.fixedFiles.length }})
               </button>
-              <div class="details-list" *ngIf="expandedSections.fixedFiles">
+              <div class="details-list" *ngIf="expandedSections['fixedFiles']">
                 <table>
                   <thead>
                     <tr>
@@ -205,9 +205,9 @@
 
           <div class="details-section" *ngIf="splitEquipmentResult?.splitEquipment?.length && splitEquipmentResult.splitEquipment.length > 0">
             <button class="toggle-btn" (click)="toggleSection('splitEquipment')">
-              {{ expandedSections.splitEquipment ? 'Hide' : 'Show' }} Split Equipment Details
+              {{ expandedSections['splitEquipment'] ? 'Hide' : 'Show' }} Split Equipment Details
             </button>
-            <div class="details-list" *ngIf="expandedSections.splitEquipment">
+            <div class="details-list" *ngIf="expandedSections['splitEquipment']">
               <table>
                 <thead>
                   <tr>
@@ -289,9 +289,9 @@
           <!-- Linked Pairs -->
           <div class="details-section" *ngIf="counterpartResult?.linkedPairs?.length && counterpartResult.linkedPairs.length > 0">
             <button class="toggle-btn" (click)="toggleSection('linkedPairs')">
-              {{ expandedSections.linkedPairs ? 'Hide' : 'Show' }} Linked Pairs
+              {{ expandedSections['linkedPairs'] ? 'Hide' : 'Show' }} Linked Pairs
             </button>
-            <div class="details-list" *ngIf="expandedSections.linkedPairs">
+            <div class="details-list" *ngIf="expandedSections['linkedPairs']">
               <table>
                 <thead>
                   <tr>
@@ -316,9 +316,9 @@
           <!-- Skipped Points -->
           <div class="details-section" *ngIf="counterpartResult?.skippedPoints?.length && counterpartResult.skippedPoints.length > 0">
             <button class="toggle-btn" (click)="toggleSection('skippedPoints')">
-              {{ expandedSections.skippedPoints ? 'Hide' : 'Show' }} Skipped Points
+              {{ expandedSections['skippedPoints'] ? 'Hide' : 'Show' }} Skipped Points
             </button>
-            <div class="details-list" *ngIf="expandedSections.skippedPoints">
+            <div class="details-list" *ngIf="expandedSections['skippedPoints']">
               <table>
                 <thead>
                   <tr>
@@ -339,6 +339,111 @@
           </div>
         </div>
       </div>
+      <!-- 5. Sync Queue Monitoring & Control -->
+      <div class="admin-section sync-section">
+        <h3>5. Sync Queue Monitoring & Control</h3>
+        <p class="description">
+          Monitor and manage the FieldChange sync queue. Changes are tracked here and pushed to other machines during sync.
+        </p>
+
+        <div class="button-group">
+          <button (click)="loadSyncQueueStatus()" [disabled]="loading.syncQueue">
+            {{ loading.syncQueue ? 'Loading...' : 'Refresh Status' }}
+          </button>
+        </div>
+
+        <div class="error" *ngIf="errors.syncQueue">{{ errors.syncQueue }}</div>
+
+        <div class="success-msg" *ngIf="syncActionMessage">{{ syncActionMessage }}</div>
+
+        <div class="result" *ngIf="syncQueueStatus">
+          <div class="result-summary">
+            <span class="badge" [class.warning]="syncQueueStatus.totalChanges > 1000"
+                                [class.success]="syncQueueStatus.totalChanges <= 1000">
+              Total Changes: {{ syncQueueStatus.totalChanges }}
+            </span>
+            <span class="badge" [class.warning]="syncQueueStatus.pendingForServer > 0"
+                                [class.success]="syncQueueStatus.pendingForServer === 0">
+              Pending for Server: {{ syncQueueStatus.pendingForServer }}
+            </span>
+          </div>
+
+          <div class="result-summary" *ngIf="syncQueueStatus.oldestChange">
+            <span class="badge info">Oldest: {{ syncQueueStatus.oldestChange }}</span>
+            <span class="badge info">Newest: {{ syncQueueStatus.newestChange }}</span>
+          </div>
+
+          <div class="result-summary" *ngIf="syncQueueStatus.originMachines?.length">
+            <span class="badge" *ngFor="let m of syncQueueStatus.originMachines">
+              Origin: {{ m }}
+            </span>
+          </div>
+
+          <!-- Entity Breakdown -->
+          <div class="details-section" *ngIf="getEntityBreakdownEntries().length > 0">
+            <button class="toggle-btn" (click)="toggleSection('entityBreakdown')">
+              {{ expandedSections['entityBreakdown'] ? 'Hide' : 'Show' }} Entity Breakdown
+              ({{ getEntityBreakdownEntries().length }} types)
+            </button>
+            <div class="details-list" *ngIf="expandedSections['entityBreakdown']">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Entity Type</th>
+                    <th>Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let entry of getEntityBreakdownEntries()">
+                    <td>{{ entry[0] }}</td>
+                    <td>{{ entry[1] }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <hr class="sub-divider">
+
+        <!-- Actions -->
+        <div class="sub-section">
+          <h4>Mark as Synced</h4>
+          <div class="button-group">
+            <button class="action-btn" (click)="markAllSyncedToServer()" [disabled]="loading.syncAction">
+              Mark All Synced to Server
+            </button>
+          </div>
+          <div class="button-group">
+            <input type="text" [(ngModel)]="markSyncedMachineId" placeholder="Machine ID (e.g. OPI)"
+                   class="input-field">
+            <button class="action-btn" (click)="markAllSyncedToMachine()"
+                    [disabled]="loading.syncAction || !markSyncedMachineId.trim()">
+              Mark Synced to Machine
+            </button>
+          </div>
+        </div>
+
+        <hr class="sub-divider">
+
+        <div class="sub-section">
+          <h4>Cleanup</h4>
+          <div class="button-group">
+            <label>Older than</label>
+            <input type="number" [(ngModel)]="clearOldDays" min="1" max="365" class="input-field input-small">
+            <label>days</label>
+            <button (click)="clearOldChanges()" [disabled]="loading.syncAction">
+              Clear Old Changes
+            </button>
+          </div>
+          <div class="button-group">
+            <button class="danger-btn" (click)="clearAllChanges()" [disabled]="loading.syncAction">
+              Clear ALL Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </ng-container>
 </app-main-layout>

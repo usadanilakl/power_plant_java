@@ -216,3 +216,43 @@ code {
   border-radius: 3px;
   font-size: 13px;
 }
+
+/* Sync Queue section */
+.sync-section {
+  border-left: 4px solid #007bff;
+}
+
+.input-field {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.input-small {
+  width: 70px;
+}
+
+.danger-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.danger-btn:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.success-msg {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.button-group label {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #555;
+}

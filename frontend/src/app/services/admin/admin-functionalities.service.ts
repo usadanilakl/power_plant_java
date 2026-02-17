@@ -99,6 +99,21 @@ export interface SkippedPoint {
   reason: string;
 }
 
+export interface SyncQueueStatus {
+  totalChanges: number;
+  pendingForServer: number;
+  entityBreakdown: { [entityType: string]: number };
+  originMachines: string[];
+  oldestChange: string | null;
+  newestChange: string | null;
+}
+
+export interface SyncQueueActionResult {
+  success: boolean;
+  message: string;
+  affected: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -163,6 +178,46 @@ export class AdminFunctionalitiesService {
       `${this.apiUrl}/associate-counterparts`,
       {},
       { params }
+    );
+  }
+
+  // ==================== Sync Queue ====================
+
+  getSyncQueueStatus(): Observable<SpringApiResponse<SyncQueueStatus>> {
+    return this.http.get<SpringApiResponse<SyncQueueStatus>>(
+      `${this.apiUrl}/sync-queue/status`
+    );
+  }
+
+  markAllSyncedToServer(): Observable<SpringApiResponse<SyncQueueActionResult>> {
+    return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
+      `${this.apiUrl}/sync-queue/mark-synced-to-server`,
+      {}
+    );
+  }
+
+  markAllSyncedToMachine(machineId: string): Observable<SpringApiResponse<SyncQueueActionResult>> {
+    const params = new HttpParams().set('machineId', machineId);
+    return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
+      `${this.apiUrl}/sync-queue/mark-synced`,
+      {},
+      { params }
+    );
+  }
+
+  clearOldChanges(days: number): Observable<SpringApiResponse<SyncQueueActionResult>> {
+    const params = new HttpParams().set('days', days.toString());
+    return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
+      `${this.apiUrl}/sync-queue/clear-old`,
+      {},
+      { params }
+    );
+  }
+
+  clearAllChanges(): Observable<SpringApiResponse<SyncQueueActionResult>> {
+    return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
+      `${this.apiUrl}/sync-queue/clear-all`,
+      {}
     );
   }
 }

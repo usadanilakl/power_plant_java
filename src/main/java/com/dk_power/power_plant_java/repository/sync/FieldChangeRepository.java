@@ -70,6 +70,24 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
            "WHERE SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL", nativeQuery = true)
     int markAllChangesSyncedTo(@Param("machineId") String machineId);
 
+    // Get distinct origin machine IDs (for admin monitoring)
+    @Query("SELECT DISTINCT fc.originMachineId FROM FieldChange fc")
+    List<String> findDistinctOriginMachineIds();
+
+    // Get distinct synced machine IDs (for admin monitoring — extracts from pipe-delimited string)
+    // Note: this is a simple approach; for full extraction, use the service layer
+    @Query("SELECT COUNT(fc) FROM FieldChange fc")
+    long countTotal();
+
+    // Count changes by entity type
+    @Query("SELECT fc.entityType, COUNT(fc) FROM FieldChange fc GROUP BY fc.entityType ORDER BY COUNT(fc) DESC")
+    List<Object[]> countByEntityType();
+
+    // Delete all FieldChanges
+    @Modifying
+    @Query("DELETE FROM FieldChange fc")
+    int deleteAllChanges();
+
     // Check if change already exists (for deduplication)
     boolean existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
         String entityType, Long entityId, String fieldName, Instant timestamp, String originMachineId);

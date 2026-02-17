@@ -10,7 +10,8 @@ import {
   FixExtensionsResult,
   SplitEquipmentResult,
   AssignAttributesResult,
-  CounterpartAssociationResult
+  CounterpartAssociationResult,
+  SyncQueueStatus
 } from '../../services/admin/admin-functionalities.service';
 
 @Component({
@@ -27,7 +28,9 @@ export class AdminFunctionalitiesComponent {
     fixExtensions: false,
     splitEquipment: false,
     assignAttributes: false,
-    counterparts: false
+    counterparts: false,
+    syncQueue: false,
+    syncAction: false
   };
 
   // Results
@@ -36,6 +39,12 @@ export class AdminFunctionalitiesComponent {
   splitEquipmentResult: SplitEquipmentResult | null = null;
   assignAttributesResult: AssignAttributesResult | null = null;
   counterpartResult: CounterpartAssociationResult | null = null;
+  syncQueueStatus: SyncQueueStatus | null = null;
+  syncActionMessage: string = '';
+
+  // Sync queue controls
+  clearOldDays: number = 30;
+  markSyncedMachineId: string = '';
 
   // Error messages
   errors = {
@@ -43,17 +52,19 @@ export class AdminFunctionalitiesComponent {
     fixExtensions: '',
     splitEquipment: '',
     assignAttributes: '',
-    counterparts: ''
+    counterparts: '',
+    syncQueue: ''
   };
 
   // Expanded sections for details
-  expandedSections = {
+  expandedSections: { [key: string]: boolean } = {
     orphanedFiles: false,
     missingFiles: false,
     fixedFiles: false,
     splitEquipment: false,
     linkedPairs: false,
-    skippedPoints: false
+    skippedPoints: false,
+    entityBreakdown: false
   };
 
   constructor(private adminService: AdminFunctionalitiesService) {}
@@ -164,7 +175,112 @@ export class AdminFunctionalitiesComponent {
     });
   }
 
-  toggleSection(section: keyof typeof this.expandedSections) {
+  toggleSection(section: string) {
     this.expandedSections[section] = !this.expandedSections[section];
+  }
+
+  // ==================== Sync Queue ====================
+
+  getEntityBreakdownEntries(): [string, number][] {
+    if (!this.syncQueueStatus?.entityBreakdown) return [];
+    return Object.entries(this.syncQueueStatus.entityBreakdown);
+  }
+
+  loadSyncQueueStatus() {
+    this.loading.syncQueue = true;
+    this.errors.syncQueue = '';
+    this.syncActionMessage = '';
+
+    this.adminService.getSyncQueueStatus().subscribe({
+      next: (response) => {
+        this.syncQueueStatus = response.responseData;
+        this.loading.syncQueue = false;
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed to load sync queue status';
+        this.loading.syncQueue = false;
+      }
+    });
+  }
+
+  markAllSyncedToServer() {
+    if (!confirm('Mark ALL changes as synced to SERVER? This means the server will not receive these changes.')) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.markAllSyncedToServer().subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  markAllSyncedToMachine() {
+    if (!this.markSyncedMachineId.trim()) return;
+    if (!confirm(`Mark ALL changes as synced to "${this.markSyncedMachineId}"?`)) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.markAllSyncedToMachine(this.markSyncedMachineId.trim()).subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  clearOldChanges() {
+    if (!confirm(`Delete all sync changes older than ${this.clearOldDays} days?`)) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.clearOldChanges(this.clearOldDays).subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  clearAllChanges() {
+    if (!confirm('DELETE ALL sync changes? This cannot be undone. All machines will need a fresh bulk sync.')) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.clearAllChanges().subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
   }
 }

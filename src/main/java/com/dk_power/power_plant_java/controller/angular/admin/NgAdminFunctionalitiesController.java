@@ -118,4 +118,73 @@ public class NgAdminFunctionalitiesController {
                 .body(new NgApiResponse<>(null, "Error associating counterparts: " + e.getMessage()));
         }
     }
+
+    // ==================== Sync Queue Monitoring & Control ====================
+
+    @GetMapping("/sync-queue/status")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getSyncQueueStatus() {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.getSyncQueueStatus();
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Sync queue status retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error getting sync queue status: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync-queue/mark-synced-to-server")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> markAllSyncedToServer() {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.markAllSyncedToServer();
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Changes marked as synced to SERVER"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync-queue/mark-synced")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> markAllSyncedToMachine(
+            @RequestParam String machineId) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.markAllSyncedToMachine(machineId);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Changes marked as synced to " + machineId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync-queue/clear-old")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> clearOldChanges(
+            @RequestParam(defaultValue = "30") int days) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.clearOldChanges(days);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Old changes cleared"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync-queue/clear-all")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> clearAllChanges() {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.clearAllChanges();
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "All changes cleared"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 }

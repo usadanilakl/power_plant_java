@@ -1,10 +1,12 @@
 package com.dk_power.power_plant_java.sevice.angular.admin;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
 import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import jakarta.transaction.Transactional;
@@ -12,11 +14,14 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -31,6 +36,8 @@ public class AdminFunctionalitiesService {
     private final LotoPointRepo lotoPointRepo;
     private final EquipmentRefactorService equipmentRefactorService;
     private final SyncContext syncContext;
+    private final FieldChangeRepository fieldChangeRepository;
+    private final SyncConfig syncConfig;
 
     @Value("${files.root.path}")
     private String filesRootPath;
@@ -477,6 +484,128 @@ public class AdminFunctionalitiesService {
             result.put("error", e.getMessage());
         }
 
+        return result;
+    }
+
+    // ============================================================
+    // 5. Sync Queue Monitoring & Control
+    // View pending FieldChanges, mark as synced, or clear queue
+    // ============================================================
+
+    public Map<String, Object> getSyncQueueStatus() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            long totalChanges = fieldChangeRepository.countTotal();
+            String myMachineId = syncConfig.getMachineId();
+            String serverUrl = syncConfig.getSyncServerUrl();
+            boolean isHub = syncConfig.isHubMode();
+
+            result.put("success", true);
+            result.put("totalChanges", totalChanges);
+            result.put("machineId", myMachineId);
+            result.put("machineName", syncConfig.getMachineName());
+            result.put("syncRole", isHub ? "hub" : "peer");
+
+            // Pending for SERVER (central sync)
+            long pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER");
+            result.put("pendingForServer", pendingForServer);
+            result.put("serverUrl", serverUrl != null ? serverUrl : "not configured");
+
+            // Breakdown by entity type
+            List<Object[]> entityCounts = fieldChangeRepository.countByEntityType();
+            List<Map<String, Object>> breakdown = new ArrayList<>();
+            for (Object[] row : entityCounts) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("entityType", row[0]);
+                entry.put("count", row[1]);
+                breakdown.add(entry);
+            }
+            result.put("byEntityType", breakdown);
+
+            // Distinct origin machines
+            List<String> originMachines = fieldChangeRepository.findDistinctOriginMachineIds();
+            result.put("originMachines", originMachines);
+
+            // Oldest and newest change timestamps
+            var firstPage = fieldChangeRepository.findAll(PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("timestamp").ascending()));
+            var lastPage = fieldChangeRepository.findAll(PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("timestamp").descending()));
+            if (!firstPage.isEmpty()) {
+                result.put("oldestChange", firstPage.getContent().get(0).getTimestamp().toString());
+            }
+            if (!lastPage.isEmpty()) {
+                result.put("newestChange", lastPage.getContent().get(0).getTimestamp().toString());
+            }
+
+        } catch (Exception e) {
+            logger.error("Error getting sync queue status", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
+    public Map<String, Object> markAllSyncedToServer() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int marked = fieldChangeRepository.markAllChangesSyncedTo("SERVER");
+            result.put("success", true);
+            result.put("markedCount", marked);
+            result.put("message", "Marked " + marked + " changes as synced to SERVER");
+            logger.info("Admin: marked {} FieldChanges as synced to SERVER", marked);
+        } catch (Exception e) {
+            logger.error("Error marking changes as synced", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
+    public Map<String, Object> markAllSyncedToMachine(String machineId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int marked = fieldChangeRepository.markAllChangesSyncedTo(machineId);
+            result.put("success", true);
+            result.put("markedCount", marked);
+            result.put("message", "Marked " + marked + " changes as synced to " + machineId);
+            logger.info("Admin: marked {} FieldChanges as synced to {}", marked, machineId);
+        } catch (Exception e) {
+            logger.error("Error marking changes as synced to {}", machineId, e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
+    public Map<String, Object> clearOldChanges(int days) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Instant cutoff = Instant.now().minus(days, ChronoUnit.DAYS);
+            int deleted = fieldChangeRepository.deleteChangesBefore(cutoff);
+            result.put("success", true);
+            result.put("deletedCount", deleted);
+            result.put("message", "Deleted " + deleted + " changes older than " + days + " days");
+            logger.info("Admin: deleted {} FieldChanges older than {} days", deleted, days);
+        } catch (Exception e) {
+            logger.error("Error clearing old changes", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
+    public Map<String, Object> clearAllChanges() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int deleted = fieldChangeRepository.deleteAllChanges();
+            result.put("success", true);
+            result.put("deletedCount", deleted);
+            result.put("message", "Deleted all " + deleted + " FieldChanges");
+            logger.info("Admin: deleted ALL {} FieldChanges", deleted);
+        } catch (Exception e) {
+            logger.error("Error clearing all changes", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
         return result;
     }
 }
