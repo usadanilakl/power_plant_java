@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.config;
 
-import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.sync.SyncContext;
@@ -19,20 +18,14 @@ public class AdminUserSeeder {
 
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
-    private final SyncConfig syncConfig;
     private final SyncContext syncContext;
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedAdminUser() {
-        if (syncConfig.isHubMode()) {
-            log.info("Hub mode - skipping admin user seed (users will come from bulk import)");
-            return;
-        }
-
         // Wrap in SyncContext to suppress FieldChange generation.
         // Seeded admin users are local bootstrap data — they should NOT sync to other machines.
-        // Each machine creates its own local admin independently on startup.
+        // Each machine (including hub) creates its own local admin independently on startup.
         syncContext.executeInSyncContext(() -> seedUsers());
     }
 
