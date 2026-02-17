@@ -31,9 +31,14 @@ import org.springframework.web.client.RestTemplate;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import javax.sql.DataSource;
 import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,11 +63,15 @@ public class FieldSyncService {
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
+    private final DataSource dataSource;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     private volatile boolean syncing = false;
+
+    // Cache of tables whose VARCHAR NOT NULL columns have been ALTERed to nullable
+    private final Set<String> preparedTables = ConcurrentHashMap.newKeySet();
 
     public FieldSyncService(
             FieldChangeRepository fieldChangeRepository,
@@ -82,7 +91,8 @@ public class FieldSyncService {
             CategoryValueMergeService categoryValueMergeService,
             WorkRequestMergeService workRequestMergeService,
             JhaMergeService jhaMergeService,
-            EmailCorrespondenceMergeService emailCorrespondenceMergeService) {
+            EmailCorrespondenceMergeService emailCorrespondenceMergeService,
+            DataSource dataSource) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -106,6 +116,7 @@ public class FieldSyncService {
         this.workRequestMergeService = workRequestMergeService;
         this.jhaMergeService = jhaMergeService;
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
+        this.dataSource = dataSource;
     }
 
     /**
@@ -1194,6 +1205,11 @@ public class FieldSyncService {
             // Get the table name for native SQL
             String tableName = getTableName(entityType);
 
+            // Ensure VARCHAR NOT NULL columns are nullable (handles enum columns with CHECK constraints).
+            // This is a lazy fallback for when SyncSchemaPreparation hasn't run yet
+            // (e.g., hub receives sync request before ApplicationReadyEvent fires).
+            ensureTablePreparedForSync(tableName);
+
             // Check for soft-deleted entities: @Where(clause = "deleted = false") makes them
             // invisible to JPA, but the row still exists with deleted=true.
             // If found, un-delete the row instead of trying to INSERT (which would cause PK violation).
@@ -1300,6 +1316,45 @@ public class FieldSyncService {
             log.error("Failed to create entity {}#{} from sync: {}", entityType, entityId, e.getMessage());
             return null;
         }
+    }
+
+    /** Return an SQL literal default value appropriate for the given H2 column type. */
+    /**
+     * Lazily ensure VARCHAR NOT NULL columns in this table are nullable.
+     * Uses a separate JDBC connection so the ALTER isn't part of the sync transaction.
+     * Caches results so each table is only prepared once per JVM lifetime.
+     */
+    private void ensureTablePreparedForSync(String tableName) {
+        String upperTable = tableName.toUpperCase();
+        if (preparedTables.contains(upperTable)) return;
+
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+
+            List<String> columnsToAlter = new ArrayList<>();
+            ResultSet rs = stmt.executeQuery(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_NAME = '" + upperTable + "' " +
+                "AND IS_NULLABLE = 'NO' " +
+                "AND COLUMN_NAME NOT IN ('ID', 'OBJECT_TYPE', 'DELETED', 'DATE_CREATED', 'DATE_MODIFIED') " +
+                "AND (DATA_TYPE LIKE '%CHAR%' OR DATA_TYPE LIKE '%CLOB%' " +
+                "     OR DATA_TYPE = 'TEXT' OR DATA_TYPE LIKE '%CHARACTER%')");
+            while (rs.next()) {
+                columnsToAlter.add(rs.getString("COLUMN_NAME"));
+            }
+            rs.close();
+
+            for (String col : columnsToAlter) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE " + upperTable + " ALTER COLUMN " + col + " SET NULL");
+                    log.debug("Lazy sync prep: altered {}.{} to nullable", upperTable, col);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            log.debug("Lazy table preparation for {}: {}", upperTable, e.getMessage());
+        }
+
+        preparedTables.add(upperTable);
     }
 
     /** Return an SQL literal default value appropriate for the given H2 column type. */
