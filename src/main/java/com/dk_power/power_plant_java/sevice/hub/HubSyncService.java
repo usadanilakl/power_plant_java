@@ -6,10 +6,7 @@ import com.dk_power.power_plant_java.entities.hub.HubClientInfo;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.hub.HubClientInfoRepository;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
-import com.dk_power.power_plant_java.sevice.sync.CategoryValueMergeService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
-import com.dk_power.power_plant_java.sevice.sync.JhaMergeService;
-import com.dk_power.power_plant_java.sevice.sync.WorkRequestMergeService;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -42,9 +39,6 @@ public class HubSyncService {
     private final FieldSyncService fieldSyncService;
     private final SyncConfig syncConfig;
     private final HubSyncConfig hubSyncConfig;
-    private final WorkRequestMergeService workRequestMergeService;
-    private final JhaMergeService jhaMergeService;
-    private final CategoryValueMergeService categoryValueMergeService;
 
     // -------------------------------------------------------------------
     // Main sync exchange
@@ -92,8 +86,9 @@ public class HubSyncService {
             // Broadcast to other connected clients via SSE (batched)
             broadcastChangesInBatches(result.savedChanges, machineId);
 
-            // Run dedup checks
-            runDedupChecks(result.savedChanges);
+            // Dedup is handled by FieldSyncService afterCommit callback —
+            // no need to run again here (double-execution was causing excessive
+            // FieldChange generation and broadcaster spam).
         }
 
         return SyncResponse.builder()
@@ -332,39 +327,6 @@ public class HubSyncService {
             int end = Math.min(i + sseBatchSize, changes.size());
             List<FieldChange> batch = changes.subList(i, end);
             hubSseService.broadcastChanges(batch, originMachineId);
-        }
-    }
-
-    private void runDedupChecks(List<FieldChange> savedChanges) {
-        boolean hasWorkRequestChanges = savedChanges.stream()
-            .anyMatch(c -> "WorkRequest".equals(c.getEntityType()));
-        boolean hasJhaChanges = savedChanges.stream()
-            .anyMatch(c -> "Jha".equals(c.getEntityType()));
-        boolean hasCategoryValueChanges = savedChanges.stream()
-            .anyMatch(c -> "Category".equals(c.getEntityType()) || "Value".equals(c.getEntityType()));
-
-        if (hasCategoryValueChanges) {
-            try {
-                categoryValueMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("Category/Value merge failed: {}", e.getMessage());
-            }
-        }
-
-        if (hasWorkRequestChanges) {
-            try {
-                workRequestMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("WorkRequest merge failed: {}", e.getMessage());
-            }
-        }
-
-        if (hasJhaChanges) {
-            try {
-                jhaMergeService.mergeIfDuplicatesExist();
-            } catch (Exception e) {
-                log.error("JHA merge failed: {}", e.getMessage());
-            }
         }
     }
 

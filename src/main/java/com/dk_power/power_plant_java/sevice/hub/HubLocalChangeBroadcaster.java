@@ -34,7 +34,7 @@ public class HubLocalChangeBroadcaster {
         }
 
         String hubMachineId = syncConfig.getMachineId();
-        log.info("Hub broadcasting {} local changes to connected clients", event.getChanges().size());
+        log.debug("Hub broadcasting {} local changes to connected clients", event.getChanges().size());
 
         // Broadcast hub's own changes to all connected clients
         // The hub's machineId is excluded so the hub doesn't receive its own changes back

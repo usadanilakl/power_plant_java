@@ -32,6 +32,8 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
     private final UserRepo userRepo;
     private String cachedWindowsUsername;
     private User cachedUser;
+    private long cacheTimestamp;
+    private static final long CACHE_TTL_MS = 30_000; // Re-query every 30 seconds
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -58,36 +60,62 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Look up user by windowsUsername (with simple cache to avoid DB hit every request)
+        // Look up user by windowsUsername (with TTL cache to avoid DB hit every request)
         User user = resolveUser(windowsUser);
         if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Create authentication token
-        Set<SimpleGrantedAuthority> authorities = Set.of(new SimpleGrantedAuthority(user.getRole()));
-        CustomUserDetails userDetails = new CustomUserDetails(user, authorities);
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+        // Guard against incomplete sync data (password/email may arrive in later batch)
+        if (user.getEmail() == null || user.getEmail().isBlank()
+                || user.getPassword() == null || user.getPassword().isBlank()
+                || user.getRole() == null || user.getRole().isBlank()) {
+            log.debug("Desktop auto-auth: user '{}' has incomplete data, skipping", user.getName());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        SecurityContextHolder.getContext().setAuthentication(auth);
-        log.debug("Desktop auto-auth: {} → user '{}'", windowsUser, user.getName());
+        // Create authentication token
+        try {
+            Set<SimpleGrantedAuthority> authorities = Set.of(new SimpleGrantedAuthority(user.getRole()));
+            CustomUserDetails userDetails = new CustomUserDetails(user, authorities);
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            log.debug("Desktop auto-auth: {} → user '{}'", windowsUser, user.getName());
+        } catch (Exception e) {
+            log.debug("Desktop auto-auth failed for user '{}': {}", user.getEmail(), e.getMessage());
+            invalidateCache();
+        }
 
         filterChain.doFilter(request, response);
     }
 
     private synchronized User resolveUser(String windowsUsername) {
-        if (windowsUsername.equals(cachedWindowsUsername) && cachedUser != null) {
+        long now = System.currentTimeMillis();
+        if (windowsUsername.equals(cachedWindowsUsername)
+                && cachedUser != null
+                && (now - cacheTimestamp) < CACHE_TTL_MS) {
             return cachedUser;
         }
         cachedUser = userRepo.findByWindowsUsername(windowsUsername);
         if (cachedUser == null) {
             cachedUser = userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN");
-            log.info("No user with windowsUsername='{}', falling back to admin: {}",
-                     windowsUsername, cachedUser != null ? cachedUser.getEmail() : "none");
+            if (cachedUser != null) {
+                log.info("No user with windowsUsername='{}', falling back to admin: {}",
+                         windowsUsername, cachedUser.getEmail());
+            }
         }
         cachedWindowsUsername = windowsUsername;
+        cacheTimestamp = now;
         return cachedUser;
+    }
+
+    private synchronized void invalidateCache() {
+        cachedUser = null;
+        cachedWindowsUsername = null;
+        cacheTimestamp = 0;
     }
 }

@@ -294,7 +294,7 @@ public class NgValueService {
         List<Category> categories = categoryRepo.findByAlias(alias);
         if (categories.isEmpty()) return null;
         if (categories.size() > 1) {
-            log.warn("Multiple categories found with alias '{}', using first (id={})",
+            log.debug("Multiple categories found with alias '{}', using first (id={})",
                     alias, categories.get(0).getId());
         }
         return categories.get(0);

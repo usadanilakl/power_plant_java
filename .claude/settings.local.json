@@ -53,7 +53,8 @@
       "Bash(.\\\\mvnw.cmd compile:*)",
       "Bash(cmd /c \"mvnw.cmd compile 2>&1 | findstr /i \"\"ERROR BUILD\"\"\")",
       "WebFetch(domain:localxpose.io)",
-      "Bash(mvn package:*)"
+      "Bash(mvn package:*)",
+      "Bash(mvn clean package:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"
