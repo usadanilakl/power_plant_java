@@ -257,8 +257,8 @@ public class FieldChangeTracker {
                         // might have uninitialized/null fields due to Hibernate proxy behavior.
                         // This is a protective measure - it's unlikely someone intentionally clears a name.
                         if ("name".equals(fieldInfo.fieldName) && oldValue != null && newValue == null) {
-                            log.warn("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
-                                "(likely cascade false-positive, not a real user change)",
+                            log.debug("Skipping suspicious 'name' change {}.{}: '{}' -> null " +
+                                "(cascade false-positive)",
                                 entityType, fieldInfo.fieldName, truncateValue(oldValue));
                             continue;
                         }

@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.config;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -19,6 +20,7 @@ public class AdminUserSeeder {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final SyncConfig syncConfig;
+    private final SyncContext syncContext;
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
@@ -28,6 +30,13 @@ public class AdminUserSeeder {
             return;
         }
 
+        // Wrap in SyncContext to suppress FieldChange generation.
+        // Seeded admin users are local bootstrap data — they should NOT sync to other machines.
+        // Each machine creates its own local admin independently on startup.
+        syncContext.executeInSyncContext(() -> seedUsers());
+    }
+
+    private void seedUsers() {
         String adminEmail = "admin@power-plant.local";
 
         if (userRepo.findByEmail(adminEmail) != null) {
@@ -67,7 +76,5 @@ public class AdminUserSeeder {
             userRepo.save(dk);
             log.info("Admin user created: {} (windowsUsername=dklokov)", dkEmail);
         }
-
-        
     }
 }

@@ -92,7 +92,7 @@ public class FieldChangeEntityListener {
                     log.debug("Tracked update of {} #{}",
                         newState.getClass().getSimpleName(), newState.getId());
                 } else {
-                    log.warn("No original state captured for {} #{}, cannot track changes",
+                    log.debug("No original state captured for {} #{}, cannot track changes",
                         newState.getClass().getSimpleName(), newState.getId());
                 }
             } catch (Exception e) {

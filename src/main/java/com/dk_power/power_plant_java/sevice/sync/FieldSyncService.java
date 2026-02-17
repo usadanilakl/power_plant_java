@@ -463,7 +463,12 @@ public class FieldSyncService {
 
         // Flush to ensure all entities are persisted before ManyToMany pass
         if (!manyToManyChanges.isEmpty()) {
-            entityManager.flush();
+            try {
+                entityManager.flush();
+            } catch (Exception e) {
+                log.warn("Flush failed before ManyToMany pass: {}", e.getMessage());
+                entityManager.clear();
+            }
         }
 
         // SECOND PASS: Process ManyToMany changes (after all entities exist)
@@ -507,7 +512,12 @@ public class FieldSyncService {
         // entityManager.clear() calls during createEntityFromSync(). We must re-load them
         // from the database to get a managed instance before modifying and saving.
         if (!failedManyToOneRefs.isEmpty()) {
-            entityManager.flush(); // Ensure all entities are persisted before retry
+            try {
+                entityManager.flush(); // Ensure all entities are persisted before retry
+            } catch (Exception e) {
+                log.warn("Flush failed before ManyToOne retry pass: {}", e.getMessage());
+                entityManager.clear();
+            }
             log.debug("Third pass: retrying {} failed ManyToOne references", failedManyToOneRefs.size());
 
             for (FailedManyToOneReference failedRef : failedManyToOneRefs) {
@@ -542,7 +552,7 @@ public class FieldSyncService {
                         log.debug("Retry succeeded: set {}.{} -> entity #{}",
                             entityType, failedRef.change.getFieldName(), failedRef.referencedId);
                     } else {
-                        log.warn("Retry failed: referenced entity {}#{} still not found",
+                        log.debug("Retry failed: referenced entity {}#{} still not found (will resolve in next sync)",
                             failedRef.field.getType().getSimpleName(), failedRef.referencedId);
                     }
                 } catch (Exception e) {
@@ -553,6 +563,10 @@ public class FieldSyncService {
                 }
             }
         }
+
+        // Log batch summary
+        log.info("Sync batch: applied {} of {} changes, {} ManyToOne deferred to retry",
+            totalApplied, incomingChanges.size(), failedManyToOneRefs.size());
 
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data
@@ -869,8 +883,15 @@ public class FieldSyncService {
             }
 
             if (modified) {
-                service.save(entity);
-                log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
+                try {
+                    service.save(entity);
+                    entityManager.flush(); // Flush per entity to detect issues immediately
+                    log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
+                } catch (Exception e) {
+                    log.warn("Failed to save {}#{}, skipping: {}", entityType, entityId, e.getMessage());
+                    entityManager.clear(); // Reset persistence context after failure
+                    return 0;
+                }
             }
 
         } catch (Exception e) {
@@ -964,7 +985,7 @@ public class FieldSyncService {
                                 log.debug("ManyToOne reference {}#{} not found yet - queued for retry",
                                     field.getType().getSimpleName(), referencedId);
                             } else {
-                                log.warn("Related entity {}#{} not found - may not be synced yet",
+                                log.debug("Related entity {}#{} not found - will resolve in next sync",
                                     field.getType().getSimpleName(), referencedId);
                             }
                             return false;
@@ -1221,6 +1242,15 @@ public class FieldSyncService {
             for (Object[] col : notNullCols) {
                 String colName = ((String) col[0]).toLowerCase();
                 String typeName = ((String) col[1]).toUpperCase();
+                // Skip VARCHAR/CHAR/CLOB columns — they were made nullable at startup by
+                // SyncSchemaPreparation. This avoids CHECK constraint violations on enum
+                // columns (e.g., EmailCorrespondence.direction). Real values are set
+                // immediately after by applyFieldChange() calls.
+                if (typeName.contains("VARCHAR") || typeName.contains("CHAR")
+                        || typeName.contains("CLOB") || typeName.contains("TEXT")
+                        || typeName.contains("CHARACTER")) {
+                    continue;
+                }
                 columns.append(", ").append(colName);
                 values.append(", ").append(defaultValueForType(typeName));
             }
