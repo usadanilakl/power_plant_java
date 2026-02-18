@@ -279,7 +279,7 @@ public class AuthController {
         // Always return success to avoid leaking whether an email exists
         String genericMessage = "If an account with that email exists, a password reset link has been sent.";
 
-        User user = userRepo.findByEmail(req.email());
+        User user = userRepo.findFirstByEmailOrderByIdAsc(req.email());
         if (user == null) {
             log.info("Password reset requested for unknown email: {}", req.email());
             return ResponseEntity.ok(Map.of("message", genericMessage));

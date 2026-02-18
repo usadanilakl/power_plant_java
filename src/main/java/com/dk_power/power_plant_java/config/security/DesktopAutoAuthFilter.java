@@ -107,7 +107,7 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
                 && (now - cacheTimestamp) < CACHE_TTL_MS) {
             return cachedUser;
         }
-        cachedUser = userRepo.findByWindowsUsername(windowsUsername);
+        cachedUser = userRepo.findFirstByWindowsUsernameOrderByIdAsc(windowsUsername);
         if (cachedUser == null) {
             cachedUser = userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN");
             if (cachedUser != null) {

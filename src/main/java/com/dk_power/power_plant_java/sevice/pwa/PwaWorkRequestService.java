@@ -41,7 +41,7 @@ public class PwaWorkRequestService {
     @Transactional
     public PwaSubmissionResult submitWorkRequest(PwaWorkRequestDto dto) {
         // Check for duplicate by localUuid
-        Optional<WorkRequest> existing = workRequestRepo.findByLocalUuid(dto.getLocalUuid());
+        Optional<WorkRequest> existing = workRequestRepo.findFirstByLocalUuidOrderByIdAsc(dto.getLocalUuid());
         if (existing.isPresent()) {
             log.info("[PWA Submit] Duplicate detected for localUuid={}", dto.getLocalUuid());
             return PwaSubmissionResult.duplicate(existing.get().getSharepointId(), dto.getLocalUuid());
@@ -134,7 +134,7 @@ public class PwaWorkRequestService {
      * Check status by localUuid
      */
     public PwaStatusResult getStatus(String localUuid) {
-        return workRequestRepo.findByLocalUuid(localUuid)
+        return workRequestRepo.findFirstByLocalUuidOrderByIdAsc(localUuid)
                 .map(this::toStatusResult)
                 .orElse(null);
     }

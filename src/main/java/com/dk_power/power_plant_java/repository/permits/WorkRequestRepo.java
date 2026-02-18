@@ -10,12 +10,10 @@ import java.util.Optional;
 public interface WorkRequestRepo extends PermitRepo<WorkRequest> {
     boolean existsBySharepointId(String id);
 
-    Optional<WorkRequest> findBySharepointId(String id);
-
     List<WorkRequest> findAllBySharepointId(String id);
 
     Optional<WorkRequest> findFirstBySharepointIdOrderByIdAsc(String id);
 
     // PWA tracking
-    Optional<WorkRequest> findByLocalUuid(String localUuid);
+    Optional<WorkRequest> findFirstByLocalUuidOrderByIdAsc(String localUuid);
 }

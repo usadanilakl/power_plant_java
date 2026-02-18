@@ -1,11 +1,14 @@
 package com.dk_power.power_plant_java.sevice.email;
 
+import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.repository.base_repositories.EmailCorrespondenceRepo;
+import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +28,8 @@ public class EmailPollingService {
     private final ApiEmailService apiEmailService;
     private final EmailResponseMatcherService matcherService;
     private final EmailCorrespondenceRepo correspondenceRepo;
+    private final SyncConfig syncConfig;
+    @Lazy private final CentralSyncService centralSyncService;
 
     @Value("${email.graph.from}")
     private String monitoredEmail;
@@ -34,9 +39,12 @@ public class EmailPollingService {
     /**
      * Scheduled task to poll for new email responses.
      * Runs every 10 minutes by default (configurable via email.poll.interval).
+     * When hub is online, only hub polls — clients receive data via sync.
+     * When hub is offline, clients poll for themselves (offline capability preserved).
      */
     @Scheduled(fixedDelayString = "${email.poll.interval:600000}") // 10 minutes default
     public void pollForNewResponses() {
+        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
         try {
             log.info("[EmailPoll] Checking for emails since {}", lastPollTime);
 

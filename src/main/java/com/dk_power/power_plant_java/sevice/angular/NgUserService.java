@@ -93,12 +93,12 @@ public class NgUserService implements NgCrudService<User, UserDto, UserRepo, Use
 
     // Add any additional methods specific to User here
     public UserDto findByUsername(String username) {
-        User user = repo.findByUsername(username);
+        User user = repo.findFirstByUsernameOrderByIdAsc(username);
         return user != null ? toDto(user) : null;
     }
 
     public UserDto findByEmail(String email) {
-        User user = repo.findByEmail(email);
+        User user = repo.findFirstByEmailOrderByIdAsc(email);
         return user != null ? toDto(user) : null;
     }
 

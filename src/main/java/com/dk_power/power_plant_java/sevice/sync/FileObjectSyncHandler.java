@@ -453,7 +453,7 @@ public class FileObjectSyncHandler {
      */
     private FileObject findActiveOwnerByRelativeFolder(String fileNumber, String relativeFolder) {
         if (fileNumber == null || relativeFolder == null) return null;
-        FileObject fo = fileRepo.findByFileNumber(fileNumber);
+        FileObject fo = fileRepo.findFirstByFileNumberOrderByIdAsc(fileNumber);
         if (fo == null) return null;
         for (String ext : fo.getExtensionsArray()) {
             try {
@@ -599,7 +599,7 @@ public class FileObjectSyncHandler {
     private FileObject findActiveOwner(String fileNumber, String folderPath) {
         if (fileNumber == null || folderPath == null) return null;
 
-        FileObject fo = fileRepo.findByFileNumber(fileNumber);
+        FileObject fo = fileRepo.findFirstByFileNumberOrderByIdAsc(fileNumber);
         if (fo == null) return null; // @Where filters deleted=false
 
         // Check if any of the FileObject's current extension folders match

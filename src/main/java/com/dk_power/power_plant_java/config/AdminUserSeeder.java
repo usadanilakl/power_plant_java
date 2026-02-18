@@ -27,7 +27,13 @@ public class AdminUserSeeder {
         // Wrap in SyncContext to suppress FieldChange generation.
         // Seeded admin users are local bootstrap data — they should NOT sync to other machines.
         // Each machine (including hub) creates its own local admin independently on startup.
-        syncContext.executeInSyncContext(() -> seedUsers());
+        syncContext.executeInSyncContext(() -> {
+            try {
+                seedUsers();
+            } catch (Exception e) {
+                log.error("Admin user seeder failed (non-fatal): {}", e.getMessage());
+            }
+        });
     }
 
     private void seedUsers() {
@@ -38,7 +44,7 @@ public class AdminUserSeeder {
     }
 
     private void seedIfMissing(String windowsUsername, String username, String firstName, String lastName) {
-        User existing = userRepo.findByWindowsUsername(windowsUsername);
+        User existing = userRepo.findFirstByWindowsUsernameOrderByIdAsc(windowsUsername);
         if (existing != null) {
             log.info("User with windowsUsername='{}' already exists ({}), skipping seed",
                      windowsUsername, existing.getEmail());

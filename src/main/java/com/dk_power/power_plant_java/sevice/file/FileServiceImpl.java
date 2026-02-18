@@ -420,7 +420,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileObject getByFileLink(String fileLink) {
-        return fileRepo.findByFileLink(fileLink);
+        return fileRepo.findFirstByFileLinkOrderByIdAsc(fileLink);
     }
 
     public List<FileObject> getIfNumberContains(String pid) {
@@ -433,7 +433,7 @@ public class FileServiceImpl implements FileService {
     }
 
     public FileObject getFileByNumber(String s) {
-        return fileRepo.findByFileNumber(s);
+        return fileRepo.findFirstByFileNumberOrderByIdAsc(s);
     }
     @Override
     public FileObject getEntity() {

@@ -83,7 +83,7 @@ public class AdminFunctionalitiesService {
 
                     if (pathInfo != null) {
                         // Check if FileObject exists in database
-                        FileObject existingFile = fileRepo.findByFileNumber(pathInfo.fileNumber);
+                        FileObject existingFile = fileRepo.findFirstByFileNumberOrderByIdAsc(pathInfo.fileNumber);
 
                         if (existingFile == null) {
                             Map<String, String> orphaned = new HashMap<>();

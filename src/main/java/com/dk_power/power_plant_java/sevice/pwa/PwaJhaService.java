@@ -36,7 +36,7 @@ public class PwaJhaService {
     @Transactional
     public PwaSubmissionResult submitJha(PwaJhaDto dto) {
         // Check for duplicate by localUuid
-        Optional<Jha> existing = jhaRepo.findByLocalUuid(dto.getLocalUuid());
+        Optional<Jha> existing = jhaRepo.findFirstByLocalUuidOrderByIdAsc(dto.getLocalUuid());
         if (existing.isPresent()) {
             log.info("[PWA JHA Submit] Duplicate detected for localUuid={}", dto.getLocalUuid());
             return PwaSubmissionResult.duplicate(existing.get().getSharepointId(), dto.getLocalUuid());
@@ -136,12 +136,12 @@ public class PwaJhaService {
         // Try linking by WorkRequest SharePoint ID first
         if (dto.getWorkRequestSharepointId() != null && !dto.getWorkRequestSharepointId().isEmpty()) {
             entity.setWorkRequestSharepointId(dto.getWorkRequestSharepointId());
-            workRequestRepo.findBySharepointId(dto.getWorkRequestSharepointId())
+            workRequestRepo.findFirstBySharepointIdOrderByIdAsc(dto.getWorkRequestSharepointId())
                     .ifPresent(entity::setWorkRequest);
         }
         // Fall back to linking by WorkRequest localUuid
         else if (dto.getWorkRequestLocalUuid() != null && !dto.getWorkRequestLocalUuid().isEmpty()) {
-            workRequestRepo.findByLocalUuid(dto.getWorkRequestLocalUuid())
+            workRequestRepo.findFirstByLocalUuidOrderByIdAsc(dto.getWorkRequestLocalUuid())
                     .ifPresent(wr -> {
                         entity.setWorkRequest(wr);
                         entity.setWorkRequestSharepointId(wr.getSharepointId());

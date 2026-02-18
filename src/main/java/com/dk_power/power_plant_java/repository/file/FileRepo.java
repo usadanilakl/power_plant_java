@@ -26,8 +26,8 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByFileTypeWithRelationships(Value fileType);
     @Query("SELECT DISTINCT e.system.name FROM FileObject e")
     List<String> getSystems();
-    FileObject findByName(String name);
-    FileObject findByFileNumber(String number);
+    FileObject findFirstByNameOrderByIdAsc(String name);
+    FileObject findFirstByFileNumberOrderByIdAsc(String number);
     List<FileObject> findByFileNumberContaining(String text);
     List<FileObject> findByNameContaining(String tag);
 
@@ -39,7 +39,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDtoLight(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor,e.fileType) FROM FileObject e WHERE e.completed = false")
     List<FileDtoLight> getAllIncompleteLight();
 
-    FileObject findByFileLink(String fileLink);
+    FileObject findFirstByFileLinkOrderByIdAsc(String fileLink);
 
     List<FileObject> findBySystem(Value oldVal);
 

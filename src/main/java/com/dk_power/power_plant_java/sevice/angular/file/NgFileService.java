@@ -167,13 +167,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     private FileObject getFileByNumber(String fileNumber) {
-        return fileRepo.findByFileNumber(fileNumber);
+        return fileRepo.findFirstByFileNumberOrderByIdAsc(fileNumber);
     }
 
     public FileDto findByFileLink(String imageUrl) {
         // Remove "http://localhost:port/" if present
         String url = imageUrl.trim().replaceFirst("^(https?://localhost(:\\d+)?)/", "");
-        FileObject byFileLink = fileRepo.findByFileLink(url);
+        FileObject byFileLink = fileRepo.findFirstByFileLinkOrderByIdAsc(url);
         if (byFileLink == null) throw new RuntimeException("File not found for link: " + imageUrl);
         // Now use the cleaned url to find the FileObject
         return this.toDto(byFileLink);
@@ -926,12 +926,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     public FileDto getFileByLink(String fileLink) {
         String pdfLink = fileLink.replaceAll("jpg","pdf");
-        FileObject entityByFileLink = fileRepo.findByFileLink(pdfLink);
+        FileObject entityByFileLink = fileRepo.findFirstByFileLinkOrderByIdAsc(pdfLink);
         System.out.println(entityByFileLink);
         if(entityByFileLink == null){
             String fileNumber = FileObject.getFileNumberFromLink(fileLink);
             System.out.println("FileNumber: " + fileNumber);
-            entityByFileLink = fileRepo.findByFileNumber(fileNumber);
+            entityByFileLink = fileRepo.findFirstByFileNumberOrderByIdAsc(fileNumber);
             System.out.println(entityByFileLink);
         }
         if (entityByFileLink == null) return null;

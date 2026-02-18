@@ -23,15 +23,15 @@ public interface UserRepo extends BaseRepository<User> {
     @Query(value = "UPDATE users SET last_login_date = :date WHERE id = :id", nativeQuery = true)
     void updateLastLoginById(@Param("date") LocalDateTime date, @Param("id") Long id);
 
-    User findByEmail(String email);
+    User findFirstByEmailOrderByIdAsc(String email);
 
-    User findByUsername(String username);
+    User findFirstByUsernameOrderByIdAsc(String username);
 
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
 
-    User findByWindowsUsername(String windowsUsername);
+    User findFirstByWindowsUsernameOrderByIdAsc(String windowsUsername);
 
     User findFirstByRoleAndIsActiveTrue(String role);
 }

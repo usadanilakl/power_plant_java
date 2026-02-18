@@ -1432,7 +1432,7 @@ public class FullResyncService {
             fileNumber = fileNumber.replaceAll("-rev\\d+$", "");
 
             // Check if there's a non-deleted FileObject with this fileNumber
-            FileObject fo = fileRepo.findByFileNumber(fileNumber);
+            FileObject fo = fileRepo.findFirstByFileNumberOrderByIdAsc(fileNumber);
             if (fo != null && !Boolean.TRUE.equals(fo.getDeleted())) {
                 // Verify the path actually matches by checking the file's expected location
                 String foPath = fo.getFileLink();

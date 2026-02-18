@@ -282,7 +282,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
      * @deprecated Used by old WorkRequestController.
      */
     public WorkRequestDto completeWorkRequestBySharepointId(String sharepointId) {
-        WorkRequest entity = workRequestRepo.findBySharepointId(sharepointId).orElse(null);
+        WorkRequest entity = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).orElse(null);
         if (entity == null) throw new IllegalArgumentException("Work request not found for sharepointId: " + sharepointId);
         entity.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
         try {
