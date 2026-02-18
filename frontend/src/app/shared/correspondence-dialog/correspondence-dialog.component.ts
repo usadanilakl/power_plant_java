@@ -14,7 +14,7 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
     @if (dialogService.isVisible()) {
       <app-rf-popup-projection
         [isOpen]="true"
-        [title]="'Email Correspondence - ' + dialogService.entityType() + ' #' + dialogService.entityId()"
+        [title]="'Email Correspondence — ' + dialogService.entityType() + ' #' + dialogService.entityId()"
         [zIndex]="20000"
         (close)="close()"
       >
@@ -50,7 +50,9 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
                      [class.inbound]="item.direction === 'INBOUND'"
                      [class.unread]="!item.isRead && item.direction === 'INBOUND'">
                   <div class="email-header">
-                    <span class="direction-badge" [class.badge-out]="item.direction === 'OUTBOUND'" [class.badge-in]="item.direction === 'INBOUND'">
+                    <span class="direction-badge"
+                          [class.badge-out]="item.direction === 'OUTBOUND'"
+                          [class.badge-in]="item.direction === 'INBOUND'">
                       {{ item.direction === 'OUTBOUND' ? 'Sent' : 'Received' }}
                     </span>
                     @if (!item.isRead && item.direction === 'INBOUND') {
@@ -67,7 +69,7 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
                     <span class="meta-sep">→</span>
                     <span><strong>To:</strong> {{ item.recipient }}</span>
                   </div>
-                  <div class="email-body">{{ stripHtml(item.bodyContent) }}</div>
+                  <div class="email-body">{{ formatBody(item.bodyContent) }}</div>
                 </div>
               }
             }
@@ -80,62 +82,86 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
   styles: [`
     .correspondence-dialog-content {
       padding: 16px;
-      min-width: 500px;
-      max-width: 700px;
+      min-width: 540px;
+      max-width: 740px;
+      background: var(--primary-background, #fff);
+      color: var(--primary-text, #212529);
     }
 
     .filter-toolbar {
       display: flex;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .search-input {
       flex: 1;
-      padding: 6px 10px;
-      border: 1px solid var(--border-color, #ddd);
+      padding: 7px 10px;
+      border: 1px solid var(--border-color, #dee2e6);
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
-      background: var(--input-bg, #fff);
-      color: var(--text-primary, #333);
+      background: var(--card-background, #fff);
+      color: var(--primary-text, #212529);
+      box-sizing: border-box;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-color, #007bff);
+      box-shadow: 0 0 0 2px var(--accent-color-shadow, rgba(0,123,255,0.2));
     }
 
     .filter-select {
-      padding: 6px 10px;
-      border: 1px solid var(--border-color, #ddd);
+      padding: 7px 10px;
+      border: 1px solid var(--border-color, #dee2e6);
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
-      background: var(--bg-color, #fff);
-      min-width: 110px;
+      background: var(--card-background, #fff);
+      color: var(--primary-text, #212529);
+      min-width: 120px;
+      box-sizing: border-box;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--accent-color, #007bff);
     }
 
     .correspondence-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      max-height: 480px;
+      max-height: 500px;
       overflow-y: auto;
+      padding-right: 4px;
     }
 
     .email-item {
-      padding: 12px;
-      border: 1px solid var(--border-color, #ddd);
+      padding: 14px 16px;
+      border: 1px solid var(--border-color, #dee2e6);
+      border-left-width: 4px;
       border-radius: 6px;
-      background: var(--bg-color, #fff);
+      background: var(--card-background, #fff);
+      box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,0.08));
+      transition: box-shadow 0.15s ease;
+    }
+
+    .email-item:hover {
+      box-shadow: var(--card-shadow, 0 2px 6px rgba(0,0,0,0.12));
     }
 
     .email-item.outbound {
-      border-left: 3px solid var(--primary-color, #1976d2);
+      border-left-color: var(--accent-color, #007bff);
     }
 
     .email-item.inbound {
-      border-left: 3px solid var(--success-color, #388e3c);
+      border-left-color: #4caf50;
     }
 
     .email-item.unread {
-      background: var(--unread-bg, rgba(56, 142, 60, 0.05));
+      background: var(--secondary-background, #f0f2f5);
     }
 
     .email-header {
@@ -148,53 +174,57 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
 
     .direction-badge {
       font-size: 11px;
-      padding: 2px 8px;
+      padding: 2px 9px;
       border-radius: 10px;
       font-weight: 600;
+      letter-spacing: 0.3px;
     }
 
     .badge-out {
-      background: var(--primary-light, #e3f2fd);
-      color: var(--primary-color, #1976d2);
+      background: var(--accent-color, #007bff);
+      color: #fff;
     }
 
     .badge-in {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #4caf50;
+      color: #fff;
     }
 
     .unread-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--success-color, #388e3c);
+      background: #4caf50;
       flex-shrink: 0;
     }
 
     .type-badge {
       font-size: 11px;
-      padding: 2px 6px;
-      background: var(--secondary-bg, #f5f5f5);
+      padding: 2px 7px;
+      background: var(--secondary-background, #f0f2f5);
+      border: 1px solid var(--border-color, #dee2e6);
       border-radius: 4px;
-      color: var(--text-secondary, #666);
+      color: var(--secondary-text, #495057);
     }
 
     .email-date {
       margin-left: auto;
       font-size: 12px;
-      color: var(--text-secondary, #888);
+      color: var(--secondary-text, #6c757d);
+      white-space: nowrap;
     }
 
     .email-subject {
       font-weight: 600;
       font-size: 14px;
-      margin-bottom: 4px;
+      color: var(--primary-text, #212529);
+      margin-bottom: 5px;
     }
 
     .email-meta {
       font-size: 12px;
-      color: var(--text-secondary, #666);
-      margin-bottom: 8px;
+      color: var(--secondary-text, #6c757d);
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -202,26 +232,24 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
     }
 
     .meta-sep {
-      color: var(--text-muted, #aaa);
+      color: var(--border-color, #dee2e6);
     }
 
     .email-body {
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.6;
       white-space: pre-wrap;
-      color: var(--text-primary, #333);
-      max-height: 100px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 4;
-      -webkit-box-orient: vertical;
+      color: var(--primary-text, #212529);
+      border-top: 1px solid var(--border-color, #dee2e6);
+      padding-top: 10px;
+      word-break: break-word;
     }
 
     .loading-state, .empty-state {
       text-align: center;
-      padding: 32px;
-      color: var(--text-secondary, #888);
+      padding: 40px 20px;
+      color: var(--secondary-text, #6c757d);
+      font-size: 14px;
     }
   `]
 })
@@ -300,8 +328,19 @@ export class CorrespondenceDialogComponent {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  stripHtml(html: string): string {
+  formatBody(html: string): string {
     if (!html) return '';
-    return html.replace(/<[^>]*>/g, '').trim();
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\\n/g, '\n')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
   }
 }

@@ -446,7 +446,7 @@ public class FieldSyncService {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
+                int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
                 totalApplied += applied;
 
                 // Queue broadcast for after transaction commits
@@ -476,7 +476,7 @@ public class FieldSyncService {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
+                int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
                 totalApplied += applied;
 
                 if (applied > 0) {
@@ -521,7 +521,7 @@ public class FieldSyncService {
                     List<FieldChange> changes = idEntry.getValue();
 
                     // Pass null for failedManyToOneRefs - ManyToMany uses different logic
-                    int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, null);
+                    int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, null);
                     totalApplied += applied;
 
                     if (applied > 0) {
@@ -804,6 +804,36 @@ public class FieldSyncService {
      * @param failedManyToOneRefs Optional list to collect failed ManyToOne references for retry.
      *                            Pass null to skip collection (e.g., during retry pass).
      */
+    /**
+     * Wrap applyEntityChangesBatched in its own REQUIRES_NEW sub-transaction.
+     * This isolates each entity's processing so one flush failure doesn't poison the entire batch.
+     *
+     * When Hibernate's flush() fails (e.g., unique constraint violation), it calls
+     * markRollbackOnly() on the transaction BEFORE rethrowing. entityManager.clear() only
+     * resets the persistence context, NOT the rollback-only flag. The transaction is doomed.
+     * With REQUIRES_NEW, only the single entity's sub-transaction rolls back.
+     */
+    private int applyEntityInSubTransaction(String entityType, Long entityId,
+                                             List<FieldChange> changes,
+                                             Map<String, FieldChange> latestChangesMap,
+                                             List<FailedManyToOneReference> failedManyToOneRefs) {
+        try {
+            Integer result = transactionTemplate.execute(status ->
+                applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs)
+            );
+            return result != null ? result : 0;
+        } catch (Exception e) {
+            // Sub-transaction rolled back (Hibernate marked it rollback-only after constraint violation).
+            // Mark changes as received in the OUTER transaction so they stop retrying.
+            log.warn("Entity {}#{} sub-transaction rolled back, marking {} changes as received: {}",
+                entityType, entityId, changes.size(), e.getMessage());
+            for (FieldChange change : changes) {
+                saveIncomingChange(change);
+            }
+            return 0;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private int applyEntityChangesBatched(String entityType, Long entityId, List<FieldChange> changes,
                                           Map<String, FieldChange> latestChangesMap,
