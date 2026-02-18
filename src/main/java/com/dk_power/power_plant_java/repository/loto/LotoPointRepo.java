@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +26,10 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByIsoPos(Value oldVal);
 
     List<LotoPoint> findByTagNumber(String tag);
+
+    @Query("SELECT lp FROM LotoPoint lp WHERE UPPER(lp.tagNumber) IN :tagNumbers")
+    List<LotoPoint> findByTagNumberUpperIn(@Param("tagNumbers") Collection<String> tagNumbers);
+
     @Query("SELECT new com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDtoLight(e.id,e.unit,e.tagged,e.tagNumber,e.description,e.specificLocation,e.normalPosition, e.isolatedPosition,e.oldId,e.objectType)FROM LotoPoint e")
     List<LotoPointDtoLight> getAllLight();
 

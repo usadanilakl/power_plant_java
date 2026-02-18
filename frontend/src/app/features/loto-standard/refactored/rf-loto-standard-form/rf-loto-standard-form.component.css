@@ -191,12 +191,35 @@
   overflow: hidden; /* Double table handles its own internal scrolling */
 }
 
-.loto-points-section h3 {
+.loto-points-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0 0 16px 0;
+  flex-shrink: 0;
+}
+
+.loto-points-header h3 {
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #333;
-  flex-shrink: 0;
+}
+
+.bulk-add-btn {
+  padding: 6px 14px;
+  background: transparent;
+  color: #66bb6a;
+  border: 1px solid #2e5e2e;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.bulk-add-btn:hover {
+  background: #1a3a1a;
 }
 
 .loto-points-section app-double-loto-point-table {

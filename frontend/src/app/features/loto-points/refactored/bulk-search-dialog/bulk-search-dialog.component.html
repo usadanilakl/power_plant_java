@@ -1,0 +1,202 @@
+<div class="dialog-overlay" (click)="close()">
+  <div class="dialog-container" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h2>Bulk Search LOTO Points</h2>
+      <button class="close-btn" (click)="close()">&#x2715;</button>
+    </div>
+
+    <div class="dialog-content">
+      <!-- Tab Navigation -->
+      <div class="tab-nav">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'text'"
+          (click)="activeTab.set('text')"
+        >
+          Search by Text
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'image'"
+          (click)="activeTab.set('image')"
+        >
+          Search by Image
+        </button>
+      </div>
+
+      <!-- Text Tab -->
+      @if (activeTab() === 'text') {
+        <div class="input-area">
+          <textarea
+            [value]="searchText()"
+            (input)="onSearchTextInput($event)"
+            placeholder="Paste tag numbers here (e.g. 01-ACC-HEX-01B, 02-VHLS811, 01MAM30AA101-H01)..."
+            rows="4"
+            class="search-textarea"
+          ></textarea>
+          <button
+            class="search-btn"
+            (click)="performSearch()"
+            [disabled]="!searchText().trim() || loading()"
+          >
+            @if (loading()) { Searching... } @else { Search }
+          </button>
+        </div>
+      }
+
+      <!-- Image Tab -->
+      @if (activeTab() === 'image') {
+        <div class="input-area">
+          <app-image-text-extractor
+            (textSubmitted)="onImageTextSubmitted($event)"
+          ></app-image-text-extractor>
+        </div>
+      }
+
+      <!-- Loading -->
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Searching for LOTO points...</p>
+        </div>
+      }
+
+      <!-- Results -->
+      @if (hasResults() && !loading()) {
+        <div class="results-area">
+          <div class="results-summary">
+            {{ result()!.totalDetectedTags }} tag(s) detected &middot;
+            {{ selectedCount() }} selected
+            <span class="summary-actions">
+              <button class="link-btn" (click)="selectAllExact()">Select All Exact</button>
+              <button class="link-btn" (click)="deselectAll()">Deselect All</button>
+            </span>
+          </div>
+
+          <div class="sections-container">
+            <!-- Exact Matches -->
+            @if (result()!.exactMatches.length > 0) {
+              <div class="section">
+                <div class="section-header exact">
+                  <span class="section-icon">&#x2714;</span>
+                  Exact Matches ({{ result()!.exactMatches.length }})
+                </div>
+                @for (match of result()!.exactMatches; track match.detectedTag) {
+                  @for (point of match.matchingPoints; track point.id) {
+                    <div
+                      class="item-row"
+                      [class.selected]="isSelected(point)"
+                      (click)="togglePointSelection(point)"
+                    >
+                      <input
+                        type="checkbox"
+                        [checked]="isSelected(point)"
+                        class="item-checkbox"
+                      />
+                      <span class="item-tag">{{ point.tagNumber }}</span>
+                      <span class="item-desc">{{ point.description }}</span>
+                      <span class="item-unit">{{ point.unit }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            }
+
+            <!-- Duplicate Matches -->
+            @if (result()!.duplicateMatches.length > 0) {
+              <div class="section">
+                <div class="section-header duplicate">
+                  <span class="section-icon">&#x26A0;</span>
+                  Duplicates - Select One ({{ result()!.duplicateMatches.length }})
+                </div>
+                @for (match of result()!.duplicateMatches; track match.detectedTag) {
+                  <div class="duplicate-group">
+                    <div class="duplicate-tag">
+                      Tag: <strong>{{ match.detectedTag }}</strong>
+                      <span class="duplicates-badge">{{ match.matchingPoints.length }} matches</span>
+                    </div>
+                    @for (point of match.matchingPoints; track point.id) {
+                      <div
+                        class="item-row"
+                        [class.selected]="getDuplicateSelection(match.detectedTag)?.id === point.id"
+                        (click)="selectDuplicate(match.detectedTag, point)"
+                      >
+                        <input
+                          type="radio"
+                          [name]="'dup-' + match.detectedTag"
+                          [checked]="getDuplicateSelection(match.detectedTag)?.id === point.id"
+                          class="item-checkbox"
+                        />
+                        <span class="item-tag">{{ point.tagNumber }}</span>
+                        <span class="item-desc">{{ point.description }}</span>
+                        <span class="item-unit">{{ point.unit }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Partial Matches -->
+            @if (result()!.partialMatches.length > 0) {
+              <div class="section">
+                <div class="section-header partial">
+                  <span class="section-icon">&#x2728;</span>
+                  Partial Matches ({{ result()!.partialMatches.length }})
+                </div>
+                @for (match of result()!.partialMatches; track match.detectedTag) {
+                  <div class="partial-group">
+                    <div class="partial-tag">Fragment: <strong>{{ match.detectedTag }}</strong></div>
+                    @for (point of match.matchingPoints; track point.id) {
+                      <div
+                        class="item-row"
+                        [class.selected]="isSelected(point)"
+                        (click)="togglePointSelection(point)"
+                      >
+                        <input
+                          type="checkbox"
+                          [checked]="isSelected(point)"
+                          class="item-checkbox"
+                        />
+                        <span class="item-tag">{{ point.tagNumber }}</span>
+                        <span class="item-desc">{{ point.description }}</span>
+                        <span class="item-unit">{{ point.unit }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Not Found -->
+            @if (result()!.notFound.length > 0) {
+              <div class="section">
+                <div class="section-header not-found">
+                  <span class="section-icon">&#x2796;</span>
+                  Not Found ({{ result()!.notFound.length }})
+                </div>
+                @for (tag of result()!.notFound; track tag) {
+                  <div class="item-row not-found-item">
+                    <span class="item-tag">{{ tag }}</span>
+                    <span class="item-desc">No matching LOTO point</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="dialog-footer">
+      <button class="action-btn cancel-btn" (click)="close()">Cancel</button>
+      <button
+        class="action-btn primary-btn"
+        (click)="confirmSelection()"
+        [disabled]="selectedCount() === 0"
+      >
+        Add {{ selectedCount() }} Selected
+      </button>
+    </div>
+  </div>
+</div>

@@ -865,7 +865,35 @@ public class FieldSyncService {
                     .setParameter("id", entityId).getSingleResult()).longValue();
 
                 if (existingCount > 0) {
-                    // Row exists but is soft-deleted — re-activate it
+                    // Row exists but is soft-deleted — check LWW before re-activating.
+                    // The merge service may have intentionally soft-deleted this entity (dedup).
+                    // If the local "deleted=true" change is newer than the incoming CREATE,
+                    // the deletion wins — don't re-activate or we get an infinite oscillation.
+                    String deletedKey = FieldChange.buildChangeKey(entityType, entityId, "deleted");
+                    FieldChange localDeletedChange = latestChangesMap.get(deletedKey);
+                    FieldChange incomingCreate = changes.stream()
+                        .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE
+                                  && "_entity_".equals(c.getFieldName()))
+                        .findFirst().orElse(null);
+
+                    boolean localDeletionIsNewer = localDeletedChange != null
+                        && "true".equals(localDeletedChange.getNewValue())
+                        && incomingCreate != null
+                        && !incomingCreate.getTimestamp().isAfter(localDeletedChange.getTimestamp());
+
+                    if (localDeletionIsNewer) {
+                        // Local deletion wins — save incoming changes as received (so they stop
+                        // arriving) but don't re-activate the entity.
+                        log.info("Skipping re-activation of {}#{} — local deletion is newer " +
+                            "(local: {}, incoming: {})", entityType, entityId,
+                            localDeletedChange.getTimestamp(), incomingCreate.getTimestamp());
+                        for (FieldChange change : changes) {
+                            saveIncomingChange(change);
+                        }
+                        return changes.size();
+                    }
+
+                    // Local deletion is older or doesn't exist — re-activate
                     entityManager.createNativeQuery(
                         "UPDATE " + tableName + " SET deleted = false, date_modified = :now WHERE id = :id")
                         .setParameter("id", entityId)

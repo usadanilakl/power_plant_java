@@ -78,6 +78,28 @@
   font-style: italic;
 }
 
+.points-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bulk-add-btn {
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--primary-color, #2196F3);
+  border: 1px solid var(--primary-color, #2196F3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.bulk-add-btn:hover {
+  background: rgba(33, 150, 243, 0.1);
+}
+
 .form-input,
 .form-textarea {
   padding: 10px 12px;

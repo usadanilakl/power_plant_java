@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.Map;
@@ -37,11 +39,38 @@ public ResponseEntity<String> getText(@RequestBody Map<String,String> data){
         
         return ResponseEntity.ok(extractedText);
     } catch (Exception e) {
-        logger.error("Error processing image. Path: {}, Error: {}", 
+        logger.error("Error processing image. Path: {}, Error: {}",
                       imagePath, e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                              .body("Error processing image: " + e.getMessage());
     }
 }
+
+    @PostMapping(value = "/extract-text", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> extractTextFromUpload(@RequestParam("image") MultipartFile imageFile) {
+        if (imageFile.isEmpty()) {
+            return ResponseEntity.badRequest().body("Image file is required");
+        }
+        File tempFile = null;
+        try {
+            String originalName = imageFile.getOriginalFilename();
+            String suffix = originalName != null && originalName.contains(".")
+                    ? originalName.substring(originalName.lastIndexOf('.'))
+                    : ".jpg";
+            tempFile = File.createTempFile("ocr-upload-", suffix);
+            imageFile.transferTo(tempFile);
+
+            String extractedText = ocrService.extractTextFromImage(tempFile);
+            return ResponseEntity.ok(extractedText);
+        } catch (Exception e) {
+            logger.error("Error extracting text from uploaded image: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error extracting text: " + e.getMessage());
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
+        }
+    }
 
 }

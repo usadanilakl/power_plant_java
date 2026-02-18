@@ -65,7 +65,12 @@
       <!-- Slide 2: Double LOTO Point Table -->
       <div class="carousel-slide">
         <div class="slide-content loto-points-section">
-          <h3>LOTO Points</h3>
+          <div class="loto-points-header">
+            <h3>LOTO Points</h3>
+            @if (entity().id) {
+              <button type="button" class="bulk-add-btn" (click)="showBulkSearchDialog.set(true)">Bulk Add</button>
+            }
+          </div>
           <app-double-loto-point-table
             [selectedItems]="selectedLotoPoints()"
             (itemAdded)="onLotoPointAdded($event)"
@@ -117,4 +122,12 @@
     (standardCreated)="onCounterpartCreated($event)"
     (dialogClosed)="showCounterpartDialog.set(false)"
   ></app-counterpart-standard-dialog>
+}
+
+<!-- Bulk Search Dialog -->
+@if (showBulkSearchDialog()) {
+  <app-bulk-search-dialog
+    (pointsSelected)="onBulkPointsSelected($event)"
+    (dialogClosed)="showBulkSearchDialog.set(false)"
+  ></app-bulk-search-dialog>
 }

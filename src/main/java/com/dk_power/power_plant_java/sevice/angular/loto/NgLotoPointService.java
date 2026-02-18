@@ -2,9 +2,10 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointSummaryDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.*;
+import com.dk_power.power_plant_java.util.TagNumberDetector;
+import com.dk_power.power_plant_java.util.TagNumberDetector.DetectedTag;
+import com.dk_power.power_plant_java.util.TagNumberDetector.TagMatchType;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -36,6 +37,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final LotoPointMapper lotoPointMapper;
     private final NgEquipmentService equipmentService;
     private final FuzzySearchService fuzzySearchService;
+    private final TagNumberDetector tagNumberDetector;
 
 
     @Override
@@ -1221,6 +1223,85 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                                 .collect(Collectors.toList())
                         : new java.util.ArrayList<>())
                 .build();
+    }
+
+    public BulkSearchResultDto bulkSearchByText(String rawText) {
+        List<DetectedTag> detected = tagNumberDetector.detectTagNumbers(rawText);
+
+        List<DetectedTag> fullTags = detected.stream()
+                .filter(d -> d.matchType() == TagMatchType.FULL).toList();
+        List<DetectedTag> partialTags = detected.stream()
+                .filter(d -> d.matchType() == TagMatchType.PARTIAL).toList();
+
+        List<BulkSearchMatchDto> exactMatches = new ArrayList<>();
+        List<BulkSearchMatchDto> duplicateMatches = new ArrayList<>();
+        List<BulkSearchMatchDto> partialMatches = new ArrayList<>();
+        List<String> notFound = new ArrayList<>();
+
+        // Batch query all FULL tags at once for efficiency
+        Map<String, List<LotoPoint>> exactResultsByTag = Collections.emptyMap();
+        if (!fullTags.isEmpty()) {
+            Set<String> upperTags = fullTags.stream()
+                    .map(d -> d.normalized().toUpperCase())
+                    .collect(Collectors.toSet());
+            List<LotoPoint> allExact = lotoPointRepo.findByTagNumberUpperIn(upperTags);
+            exactResultsByTag = allExact.stream()
+                    .collect(Collectors.groupingBy(lp -> lp.getTagNumber().toUpperCase()));
+        }
+
+        // Classify each FULL tag
+        for (DetectedTag tag : fullTags) {
+            String upper = tag.normalized().toUpperCase();
+            List<LotoPoint> matches = exactResultsByTag.getOrDefault(upper, Collections.emptyList());
+
+            if (matches.size() == 1) {
+                exactMatches.add(new BulkSearchMatchDto(tag.normalized(), "FULL", toLightDtos(matches)));
+            } else if (matches.size() > 1) {
+                duplicateMatches.add(new BulkSearchMatchDto(tag.normalized(), "FULL", toLightDtos(matches)));
+            } else {
+                // No exact match - try partial (LIKE) as fallback
+                List<LotoPoint> partialResults = lotoPointRepo.findByTagNumberContaining(tag.normalized());
+                if (!partialResults.isEmpty()) {
+                    partialMatches.add(new BulkSearchMatchDto(tag.normalized(), "FULL", toLightDtos(partialResults)));
+                } else {
+                    notFound.add(tag.normalized());
+                }
+            }
+        }
+
+        // Process PARTIAL tags with LIKE queries
+        for (DetectedTag tag : partialTags) {
+            List<LotoPoint> matches = lotoPointRepo.findByTagNumberContaining(tag.normalized());
+            if (!matches.isEmpty()) {
+                partialMatches.add(new BulkSearchMatchDto(tag.normalized(), "PARTIAL", toLightDtos(matches)));
+            } else {
+                notFound.add(tag.normalized());
+            }
+        }
+
+        BulkSearchResultDto result = new BulkSearchResultDto();
+        result.setSearchText(rawText);
+        result.setExactMatches(exactMatches);
+        result.setDuplicateMatches(duplicateMatches);
+        result.setPartialMatches(partialMatches);
+        result.setNotFound(notFound);
+        result.setTotalDetectedTags(detected.size());
+        return result;
+    }
+
+    private List<LotoPointDtoLight> toLightDtos(List<LotoPoint> points) {
+        return points.stream().map(lp -> new LotoPointDtoLight(
+                lp.getId(),
+                lp.getUnit(),
+                lp.getTagged(),
+                lp.getTagNumber(),
+                lp.getDescription(),
+                lp.getSpecificLocation(),
+                lp.getNormalPosition(),
+                lp.getIsolatedPosition(),
+                lp.getOldId(),
+                lp.getObjectType()
+        )).toList();
     }
 
 }

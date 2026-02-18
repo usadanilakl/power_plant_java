@@ -18,6 +18,8 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/loto-standard-image-viewer.component';
 import { CounterpartStandardDialogComponent } from '../counterpart-standard-dialog/counterpart-standard-dialog.component';
+import { BulkSearchDialogComponent } from '../../../loto-points/refactored/bulk-search-dialog/bulk-search-dialog.component';
+import { LotoPointDtoLight } from '../../../../models/loto/bulk-search-result.model';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -29,6 +31,7 @@ type LotoStandardFieldName = keyof LotoStandardDto;
     DoubleLotoPointTableComponent,
     LotoStandardImageViewerComponent,
     CounterpartStandardDialogComponent,
+    BulkSearchDialogComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
   styleUrl: './rf-loto-standard-form.component.css',
@@ -173,6 +176,9 @@ export class RfLotoStandardFormComponent {
 
   // Counterpart dialog
   showCounterpartDialog = signal<boolean>(false);
+
+  // Bulk search dialog
+  showBulkSearchDialog = signal<boolean>(false);
 
   /**
    * Carousel state
@@ -335,5 +341,22 @@ export class RfLotoStandardFormComponent {
     this.showCounterpartDialog.set(false);
     // Optionally load the newly created standard
     this.stateService.setSelectedItem(created);
+  }
+
+  onBulkPointsSelected(points: LotoPointDtoLight[]): void {
+    this.showBulkSearchDialog.set(false);
+    for (const light of points) {
+      const dto = new LotoPointDto({
+        id: light.id,
+        tagNumber: light.tagNumber,
+        description: light.description,
+        unit: light.unit,
+        specificLocation: light.specificLocation,
+        normalPosition: light.normalPosition,
+        isolatedPosition: light.isolatedPosition,
+        oldId: light.oldId,
+      });
+      this.onLotoPointAdded(dto);
+    }
   }
 }

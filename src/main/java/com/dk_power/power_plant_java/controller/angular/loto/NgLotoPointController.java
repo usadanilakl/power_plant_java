@@ -4,9 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointSummaryDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.*;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
@@ -670,6 +668,24 @@ public class NgLotoPointController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk-search")
+    public ResponseEntity<NgApiResponse<BulkSearchResultDto>> bulkSearch(
+            @RequestBody Map<String, String> request) {
+        try {
+            String searchText = request.get("text");
+            if (searchText == null || searchText.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "Search text is required"));
+            }
+            BulkSearchResultDto result = ngLotoPointService.bulkSearchByText(searchText);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Bulk search completed"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
 }

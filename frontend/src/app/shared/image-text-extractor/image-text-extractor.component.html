@@ -1,0 +1,46 @@
+<div class="extractor-container">
+  <div class="upload-area">
+    <label class="file-label">
+      <input
+        type="file"
+        accept="image/*"
+        (change)="onFileSelected($event)"
+        class="file-input"
+      />
+      <span class="file-button">Choose Image</span>
+    </label>
+    @if (imagePreviewUrl()) {
+      <button class="clear-btn" (click)="clear()">Clear</button>
+    }
+  </div>
+
+  @if (imagePreviewUrl()) {
+    <div class="preview-area">
+      <img [src]="imagePreviewUrl()" alt="Uploaded image" class="image-preview" />
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Extracting text...</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-message">{{ errorMessage() }}</div>
+  }
+
+  @if (extractedText() && !loading()) {
+    <div class="text-area">
+      <label class="text-label">Extracted Text (editable)</label>
+      <textarea
+        [value]="extractedText()"
+        (input)="onTextChange($any($event.target).value)"
+        rows="6"
+        class="text-input"
+      ></textarea>
+      <button class="submit-btn" (click)="submitText()">Use This Text</button>
+    </div>
+  }
+</div>

@@ -33,7 +33,10 @@
 
     <!-- LOTO Points List -->
     <div class="form-field">
-      <label>LOTO Points <span class="reorder-hint">(drag to reorder)</span></label>
+      <div class="points-label-row">
+        <label>LOTO Points <span class="reorder-hint">(drag to reorder)</span></label>
+        <button type="button" class="bulk-add-btn" (click)="showBulkSearch.set(true)">Bulk Add</button>
+      </div>
       <div class="points-list" cdkDropList (cdkDropListDropped)="onDrop($event)">
         @if (lotoPoints().length === 0) {
           <div class="empty-state">
@@ -86,3 +89,11 @@
     </button>
   </div>
 </div>
+
+<!-- Bulk Search Dialog -->
+@if (showBulkSearch()) {
+  <app-bulk-search-dialog
+    (pointsSelected)="onBulkPointsSelected($event)"
+    (dialogClosed)="showBulkSearch.set(false)"
+  ></app-bulk-search-dialog>
+}

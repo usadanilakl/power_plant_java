@@ -10,6 +10,7 @@ import { LotoPointIdDto } from '../../../../models/loto/loto-point-id.model';
 import { FileDto } from '../../../../models/file/file.model';
 import { LotoPointSummaryDto } from '../../../../models/loto/loto-point-summary.model';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { BulkSearchResultDto } from '../../../../models/loto/bulk-search-result.model';
 
 
 @Injectable({
@@ -427,6 +428,13 @@ export class RfLotoPointApiService {
         sourceLotoPointIds,
         sourceUnit
       }
+    );
+  }
+
+  bulkSearchByText(text: string): Observable<SpringApiResponse<BulkSearchResultDto>> {
+    return this.http.post<SpringApiResponse<BulkSearchResultDto>>(
+      `${this.apiUrl}/bulk-search`,
+      { text }
     );
   }
 }
