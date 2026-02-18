@@ -35,6 +35,7 @@ import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
@@ -68,6 +69,13 @@ public class FieldSyncService {
     // Guard to prevent concurrent merge operations in afterCommit callbacks.
     // During cold resync, many sync batches commit simultaneously — only one merge should run.
     private final AtomicBoolean mergeInProgress = new AtomicBoolean(false);
+
+    // Serialize all applyIncomingChanges calls across threads.
+    // Multiple callers (CentralSyncService, ServerSseClient, pending-sync, HubSyncService)
+    // can invoke concurrently — concurrent REQUIRES_NEW transactions race to CREATE the same
+    // entities, causing PK violations that mark the Hibernate session rollback-only and kill
+    // entire batches. H2 doesn't benefit from concurrent writes anyway.
+    private final ReentrantLock applyChangesLock = new ReentrantLock();
 
     public FieldSyncService(
             FieldChangeRepository fieldChangeRepository,
@@ -319,6 +327,18 @@ public class FieldSyncService {
      * @return number of changes actually applied
      */
     public int applyIncomingChanges(List<FieldChange> incomingChanges) {
+        // Serialize across all callers (CentralSyncService, ServerSseClient, pending-sync, etc.)
+        // Each batch runs in REQUIRES_NEW transaction — without serialization, concurrent threads
+        // race to CREATE the same entity, causing PK violations that poison the Hibernate session.
+        applyChangesLock.lock();
+        try {
+            return applyIncomingChangesLocked(incomingChanges);
+        } finally {
+            applyChangesLock.unlock();
+        }
+    }
+
+    private int applyIncomingChangesLocked(List<FieldChange> incomingChanges) {
         // Mark that we're processing sync - prevents infinite loop
         // When entities are saved, the EntityListener won't broadcast these changes
         syncContext.startSync();

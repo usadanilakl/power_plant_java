@@ -184,10 +184,13 @@ public class UserMergeService {
     /**
      * Re-point User references in non-synced entities that aren't in SYNC_ORDER.
      * Uses native SQL since these entities don't have SyncableService implementations.
+     * IMPORTANT: Must check table existence BEFORE running SQL — on fresh DBs these
+     * tables may not exist, and a failed native SQL marks the Hibernate session
+     * rollback-only (even if caught), which would silently kill the entire merge.
      */
     private void refactorNonSyncedReferences(Long duplicateId, Long canonicalId) {
         // PasswordResetToken — ephemeral tokens, just delete for the duplicate user
-        try {
+        if (tableExists("PASSWORD_RESET_TOKEN")) {
             int deleted = entityManager.createNativeQuery(
                 "DELETE FROM password_reset_token WHERE user_id = :dupId")
                 .setParameter("dupId", duplicateId)
@@ -195,12 +198,10 @@ public class UserMergeService {
             if (deleted > 0) {
                 log.debug("Deleted {} password reset tokens for duplicate User #{}", deleted, duplicateId);
             }
-        } catch (Exception e) {
-            log.debug("No password_reset_token table or error: {}", e.getMessage());
         }
 
         // AccessGrant — re-point user_id and approved_by_id
-        try {
+        if (tableExists("ACCESS_GRANT")) {
             int updated = entityManager.createNativeQuery(
                 "UPDATE access_grant SET user_id = :canId WHERE user_id = :dupId")
                 .setParameter("canId", canonicalId)
@@ -214,8 +215,15 @@ public class UserMergeService {
             if (updated > 0) {
                 log.debug("Re-pointed {} access grants from User #{} to #{}", updated, duplicateId, canonicalId);
             }
-        } catch (Exception e) {
-            log.debug("No access_grant table or error: {}", e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean tableExists(String tableName) {
+        List<Object> result = entityManager.createNativeQuery(
+            "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = :name")
+            .setParameter("name", tableName)
+            .getResultList();
+        return !result.isEmpty();
     }
 }
