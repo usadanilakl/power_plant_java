@@ -334,9 +334,12 @@ public class SyncHealthChecker {
 
     /**
      * Get current sync health status (called by controllers/UI).
+     * Attaches live timer info (nextCheckDueAt, healthCheckIntervalMs) computed from current settings.
      */
     public SyncHealthResult getCurrentHealth() {
-        return currentHealth.get();
+        SyncHealthResult result = currentHealth.get();
+        attachTimerInfo(result);
+        return result;
     }
 
     /**
@@ -344,7 +347,9 @@ public class SyncHealthChecker {
      */
     public SyncHealthResult checkNow() {
         checkSyncHealth();
-        return currentHealth.get();
+        SyncHealthResult result = currentHealth.get();
+        attachTimerInfo(result);
+        return result;
     }
 
     /**
@@ -416,6 +421,19 @@ public class SyncHealthChecker {
         log.info("Recorded successful sync at {}", lastSuccessfulSyncTime.get());
     }
 
+    /**
+     * Attach live timer info to a result so the UI can display a countdown.
+     */
+    private void attachTimerInfo(SyncHealthResult result) {
+        if (result == null) return;
+        long intervalMs = syncIntervals.getHealthCheckIntervalMs();
+        long lastCheck = syncIntervals.getLastHealthCheckTime();
+        result.setHealthCheckIntervalMs(intervalMs);
+        if (lastCheck > 0) {
+            result.setNextCheckDueAt(Instant.ofEpochMilli(lastCheck + intervalMs));
+        }
+    }
+
     private Path getUploadsPath() {
         Path filesPath = Paths.get(filesRootPath);
         if (filesPath.isAbsolute()) {
@@ -455,6 +473,10 @@ public class SyncHealthChecker {
         private String recommendation;              // Human-readable recommendation message
         private int consecutiveOutOfSyncCount;      // How many consecutive checks were out of sync
         private AutoResyncService.AutoResyncState autoResyncState; // Current auto-resync escalation state
+
+        // Timer fields for UI countdown
+        private Instant nextCheckDueAt;             // When the next health check will run
+        private long healthCheckIntervalMs;         // Current interval in milliseconds
     }
 
     @Data

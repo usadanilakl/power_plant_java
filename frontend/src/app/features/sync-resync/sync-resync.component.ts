@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ElementRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Subject, interval, EMPTY } from 'rxjs';
+import { Subject, Subscription, interval, EMPTY } from 'rxjs';
 import { takeUntil, switchMap } from 'rxjs/operators';
 import {
   FullResyncService,
@@ -96,6 +96,10 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   autoResyncLoading = false;
   autoResyncToggling = false;
 
+  // Next check countdown
+  nextCheckCountdown = '';
+  private countdownSub: Subscription | null = null;
+
   constructor(
     private resyncService: FullResyncService,
     private syncStatusService: SyncStatusService,
@@ -121,6 +125,11 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
         .subscribe(progress => {
           this.restartProgress = progress;
         });
+
+      // Start countdown ticker (every second)
+      this.countdownSub = interval(1000)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => this.updateCountdown());
     }
   }
 
@@ -184,6 +193,53 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       },
       error: (err) => console.debug('Could not load sync health check:', err.message)
     });
+  }
+
+  /**
+   * Compute the countdown string from nextCheckDueAt.
+   */
+  private updateCountdown(): void {
+    if (!this.syncHealthCheck?.nextCheckDueAt) {
+      this.nextCheckCountdown = '';
+      return;
+    }
+
+    const dueAt = this.parseTimestamp(this.syncHealthCheck.nextCheckDueAt);
+    if (!dueAt) {
+      this.nextCheckCountdown = '';
+      return;
+    }
+
+    const remainingMs = dueAt - Date.now();
+    if (remainingMs <= 0) {
+      this.nextCheckCountdown = 'due now';
+      return;
+    }
+
+    const totalSec = Math.ceil(remainingMs / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    this.nextCheckCountdown = min > 0
+      ? `${min}m ${sec.toString().padStart(2, '0')}s`
+      : `${sec}s`;
+  }
+
+  /**
+   * Parse various Java Instant serialization formats into epoch millis.
+   */
+  private parseTimestamp(ts: any): number | null {
+    if (!ts) return null;
+    if (typeof ts === 'number') {
+      return ts < 10000000000 ? ts * 1000 : ts;
+    }
+    if (typeof ts === 'object' && ts.epochSecond) {
+      return ts.epochSecond * 1000;
+    }
+    if (typeof ts === 'string') {
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d.getTime();
+    }
+    return null;
   }
 
   /**

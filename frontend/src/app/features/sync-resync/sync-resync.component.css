@@ -147,6 +147,11 @@ h2 {
   color: #856404 !important;
 }
 
+.countdown-text {
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
+}
+
 /* Warning/Error Boxes */
 .warning-box,
 .error-box {

@@ -82,6 +82,9 @@ Frontend Change → Backend → Local H2 DB → Sync Server/Hub → SSE Broadcas
 8. **Per-client change tracking** — server tracks `syncedToMachines` per FieldChange using `|MACHINE_ID|` delimiter format.
 9. **Batched processing** — all sync operations use pagination (default 500 per batch).
 10. **Failed sync item tracking** — ManyToMany failures are tracked in `failed_sync_item` table for visibility and retry, rather than rolling back entire transactions.
+11. **Duplicate-tolerant queries** — all single-return `findBy*` methods use `findFirstBy*OrderByIdAsc` to prevent `NonUniqueResultException` crashes when duplicates exist during the window between sync arrival and merge execution. See [duplicate-tolerance.md](duplicate-tolerance.md).
+12. **Conditional external polling** — external data sources (SharePoint, Graph email) are polled by the hub when online; clients only poll when hub is unreachable, preserving offline capability. See [duplicate-tolerance.md](duplicate-tolerance.md#conditional-external-polling).
+13. **Concurrent batch serialization** — `FieldSyncService.applyIncomingChanges()` uses a `ReentrantLock` to prevent multiple callers (SSE, polling, reconnect) from racing to create the same entities simultaneously.
 
 ## Entity dependency order (SYNC_ORDER)
 
@@ -135,6 +138,20 @@ When adding a new entity type, register it in all of these:
     [Server repositories](../../../../sync-server/src/main/java/com/dk_power/sync_server/repository/domain/)
 
 See [comment.md](../base/comment.md) for a complete example of registering a new entity (steps 13–18).
+
+## Post-Sync Deduplication
+
+After each sync batch is applied, merge services run in `FieldSyncService.afterCommit()` to resolve duplicates created by concurrent independent actions:
+
+| Service | Dedup Key | Detail |
+|---------|-----------|--------|
+| `CategoryValueMergeService` | name (case-insensitive) | [category-value-deduplication.md](category-value-deduplication.md) |
+| `WorkRequestMergeService` | `sharepointId` | Two clients poll SharePoint simultaneously |
+| `JhaMergeService` | `sharepointId` | Two clients pull same JHA from SharePoint |
+| `EmailCorrespondenceMergeService` | `graphMessageId` | [email-correspondence-deduplication.md](email-correspondence-deduplication.md) |
+| `UserMergeService` | `windowsUsername` | Handles non-synced FK tables (`password_reset_token`, `access_grant`) with `INFORMATION_SCHEMA` safety checks |
+
+All merge services follow the same pattern: detect duplicates → keep lowest ID (canonical) → re-point FKs → soft-delete duplicate. See [duplicate-tolerance.md](duplicate-tolerance.md) for the full architecture.
 
 # Configuration reference
 
@@ -233,6 +250,7 @@ resource-packs.base-path=${user.dir}/resource-packs
 | [hub-peer-sync.md](hub-peer-sync.md) | Hub-peer architecture, endpoints, conditional controller isolation, migration |
 | [auto-resync.md](auto-resync.md) | Automatic resync with escalation on health check failure, runtime toggle |
 | [category-value-deduplication.md](category-value-deduplication.md) | Category/Value deduplication logic, SyncContext clearing |
+| [duplicate-tolerance.md](duplicate-tolerance.md) | Duplicate-tolerant queries, merge service architecture, conditional external polling |
 | [trash-system.md](trash-system.md) | Staged file deletion with restore capability, retention period, automatic cleanup |
 
 # E2E Test Coverage

@@ -82,6 +82,10 @@
               <label>Last Check</label>
               <span>{{ formatTimestamp(syncHealthCheck.checkTime) }}</span>
             </div>
+            <div class="info-item" *ngIf="nextCheckCountdown">
+              <label>Next Check</label>
+              <span class="countdown-text">{{ nextCheckCountdown }}</span>
+            </div>
             <div class="info-item">
               <label>Server Reachable</label>
               <span>{{ syncHealthCheck.serverReachable ? 'Yes' : 'No' }}</span>

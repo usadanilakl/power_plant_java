@@ -186,6 +186,17 @@ sync.import.max-file-size=524288000
 
 6. **Bulk import safety** — Since the hub has real production data, `importDatabaseBackup()` requires `force=true` and warns about overwriting production data.
 
+7. **Conditional external polling** — External data sources (SharePoint work requests/JHAs, Graph email inbox) are polled by the hub when it's online; clients only poll when hub is unreachable, preserving offline capability. Uses `CentralSyncService.isServerAvailable()` to detect hub status. Guard pattern in all polling services:
+   ```java
+   if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
+   ```
+   Affected services:
+   - `WorkRequestSyncService.scheduledSync()` — SharePoint work request polling
+   - `JhaSyncService.scheduledSync()` — SharePoint JHA polling
+   - `EmailPollingService.pollForNewResponses()` — Graph email inbox polling
+
+   This dramatically reduces duplicate entity formation from concurrent SharePoint/email polling across machines.
+
 ## Coexistence with Sync-Server
 
 Hub-peer and the separate sync-server can run **side-by-side** but NOT as a unified network:

@@ -140,6 +140,9 @@ export interface SyncHealthCheckResult {
   lastSuccessfulSyncTime: string | null; // When was the last successful sync
   recommendation: string | null;       // Human-readable recommendation message
   consecutiveOutOfSyncCount: number;   // How many consecutive checks were out of sync
+  // Timer fields
+  nextCheckDueAt: string | null;       // ISO-8601 / epoch — when next check runs
+  healthCheckIntervalMs: number;       // Current interval in milliseconds
 }
 
 // Partial Sync interfaces

@@ -96,8 +96,9 @@ When an incoming email is polled, `EmailResponseMatcherService` matches it to an
 
 [EmailPollingService.java](../../../src/main/java/com/dk_power/power_plant_java/sevice/email/EmailPollingService.java)
 - `@Scheduled(fixedDelayString = "${email.poll.interval:600000}")` — every 10 minutes
+- **Conditional polling**: hub always polls; clients only poll when hub is unreachable (`!syncConfig.isHubMode() && centralSyncService.isServerAvailable()` → skip). This prevents duplicate correspondence records when multiple machines poll the same inbox simultaneously. When hub goes offline, clients resume polling for themselves (full offline capability preserved).
 - Skips already-processed messages (by `graphMessageId`)
-- `triggerManualPoll()` exposed via REST for manual trigger
+- `triggerManualPoll()` exposed via REST for manual trigger (bypasses conditional check)
 
 ### Controller
 [NgEmailCorrespondenceController.java](../../../src/main/java/com/dk_power/power_plant_java/controller/angular/NgEmailCorrespondenceController.java)
