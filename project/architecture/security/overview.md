@@ -73,7 +73,7 @@ Currently annotated controllers:
 
 | Category | Endpoints | Auth Required |
 |----------|-----------|--------------|
-| Public | `/api/auth/login`, `/api/auth/logout`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
+| Public | `/api/auth/login`, `/api/auth/logout`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/api/pwa/**`, `/actuator/health`, `/app/**`, `/api/sharepoint-sync/**`, `/power-automate/**` | None |
 | LAN-only | `/api/sync/**`, `/api/field-sync/**`, `/api/resync/**`, `/api/files/**`, `/api/update/**`, `/api/electron-update/**`, `/api/resource-packs/**`, `/api/sync-updates/**`, `/api/data-integrity/**`, `/api/backup/**`, `/api/attachments/**`, `/h2-console/**` | IP whitelist (RFC 1918) |
 | Restricted (exempt) | `/api/auth/*` (me, profile, profile/change-password, request-access, access-status) | Session cookie |
 | Restricted (annotated) | `@RestrictedAllowed` controllers/methods (currently: `/ng/rf-values/**`, `/ng/values/**`, `/api/auth/profile/sessions`) | Session cookie |

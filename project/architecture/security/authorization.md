@@ -23,6 +23,7 @@
 | `POST /api/auth/reset-password` | x | | | | |
 | `GET /actuator/health` | x | | | | |
 | `/app/**`, `/angular/**`, static assets | x | | | | |
+| `/api/pwa/**` (PWA submissions) | x | | | | |
 | `/api/sharepoint-sync/**` | x | | | | |
 | `/power-automate/**` | x | | | | |
 | `GET /api/auth/me` | | x | | | |

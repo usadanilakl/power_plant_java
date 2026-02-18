@@ -940,6 +940,12 @@ public class FieldSyncService {
                     log.info("Created new entity {}#{} from sync", entityType, entityId);
                 }
 
+                // Advance the shared id_seq if this entity's ID falls in our device's range.
+                // Sync creates entities with pre-set IDs (bypassing the ID generator), so the
+                // sequence isn't incremented. Without this, local inserts can generate IDs that
+                // collide with synced entities (PK violation on saveAndFlush).
+                advanceSequencePastIfNeeded(entityId);
+
                 // Save the CREATE change record
                 saveIncomingChange(changes.stream()
                     .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE)
@@ -1480,6 +1486,42 @@ public class FieldSyncService {
     private String truncate(String s) {
         if (s == null) return "null";
         return s.length() > 50 ? s.substring(0, 47) + "..." : s;
+    }
+
+    /**
+     * Advance the shared id_seq sequence if a synced entity's ID falls in the local device's range.
+     *
+     * Sync creates entities with pre-set IDs (bypassing DevicePrefixedIdGenerator), so the
+     * sequence is never incremented. If a synced entity uses an ID in OUR device's range
+     * (e.g., from a cold-resync restore or hub migration), future local inserts will generate
+     * the same ID → PK violation. This method ensures the sequence stays ahead.
+     */
+    private void advanceSequencePastIfNeeded(Long entityId) {
+        if (entityId == null) return;
+        int deviceNumber = syncConfig.getDeviceNumber();
+        if (deviceNumber < 1 || deviceNumber > 9) return;
+
+        long multiplier = 1_000_000_000L;
+        long rangeStart = (long) deviceNumber * multiplier;
+        long rangeEnd = rangeStart + multiplier;
+
+        if (entityId < rangeStart || entityId >= rangeEnd) return; // Not our range
+
+        long suffix = entityId % multiplier;
+        try {
+            // NEXT VALUE consumes one value — unavoidable in H2 (no CURRENT VALUE syntax)
+            Long currentSeq = ((Number) entityManager.createNativeQuery(
+                "SELECT NEXT VALUE FOR id_seq").getSingleResult()).longValue();
+            if (currentSeq <= suffix) {
+                long newStart = suffix + 1;
+                entityManager.createNativeQuery(
+                    "ALTER SEQUENCE id_seq RESTART WITH " + newStart).executeUpdate();
+                log.warn("Advanced id_seq: {} -> {} (synced entity ID {} is in device {} range)",
+                    currentSeq, newStart, entityId, deviceNumber);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to advance id_seq after syncing entity ID {}: {}", entityId, e.getMessage());
+        }
     }
 
     /**

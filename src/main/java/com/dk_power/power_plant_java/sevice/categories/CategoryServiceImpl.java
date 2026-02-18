@@ -140,13 +140,17 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public Set<ValueDto> getValuesOfCat(String category) {
-        Set<Value> values = getCategoryByName(category).getValues();
+        Category cat = getCategoryByName(category);
+        if (cat == null) return Set.of();
+        Set<Value> values = cat.getValues();
         return valueService.convertAllToDto(values);
     }
 
     @Override
     public Set<ValueDto> getVAluesOfCatWithAlias(String category) {
-        Set<Value> values = getByAlias(category).getValues();
+        Category cat = getByAlias(category);
+        if (cat == null) return Set.of();
+        Set<Value> values = cat.getValues();
         return valueService.convertAllToDto(values);
     }
 
