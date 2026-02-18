@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +40,8 @@ public class HubSyncService {
     private final FieldSyncService fieldSyncService;
     private final SyncConfig syncConfig;
     private final HubSyncConfig hubSyncConfig;
+
+    private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
 
     // -------------------------------------------------------------------
     // Main sync exchange
@@ -80,7 +83,14 @@ public class HubSyncService {
                 int applied = fieldSyncService.applyIncomingChanges(result.savedChanges);
                 log.debug("Applied {} changes to hub entities", applied);
             } catch (Exception e) {
-                log.error("Failed to apply changes to hub entities: {}", e.getMessage());
+                log.error("Failed to apply changes to hub entities, retrying: {}", e.getMessage());
+                try {
+                    int retried = fieldSyncService.applyIncomingChanges(result.savedChanges);
+                    log.info("Retry succeeded: applied {} changes to hub entities", retried);
+                } catch (Exception retry) {
+                    log.error("Retry also failed — scheduling for periodic retry: {}", retry.getMessage());
+                    pendingEntityRetry.set(true);
+                }
             }
 
             // Broadcast to other connected clients via SSE (batched)
@@ -176,6 +186,28 @@ public class HubSyncService {
                 hubClientInfoRepository.save(client);
                 log.debug("Marked client {} as offline", client.getMachineName());
             }
+        }
+    }
+
+    @Scheduled(fixedDelay = 60_000, initialDelay = 120_000)
+    public void retryPendingEntityApplication() {
+        if (!pendingEntityRetry.compareAndSet(true, false)) return;
+
+        log.info("Retrying pending hub entity application...");
+        List<FieldChange> unapplied = fieldChangeRepository.findRecentIncomingChanges(
+            syncConfig.getMachineId(), Instant.now().minus(1, ChronoUnit.HOURS));
+
+        if (unapplied.isEmpty()) {
+            log.info("No unapplied changes found for retry");
+            return;
+        }
+
+        try {
+            int applied = fieldSyncService.applyIncomingChanges(unapplied);
+            log.info("Periodic retry: applied {} changes to hub entities", applied);
+        } catch (Exception e) {
+            log.error("Periodic retry failed — will retry next cycle: {}", e.getMessage());
+            pendingEntityRetry.set(true);
         }
     }
 

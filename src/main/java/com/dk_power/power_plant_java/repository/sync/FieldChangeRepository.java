@@ -112,4 +112,10 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query("SELECT CONCAT(fc.entityType, ':', fc.entityId, ':', fc.fieldName, ':', fc.timestamp, ':', fc.originMachineId) " +
            "FROM FieldChange fc WHERE fc.entityType = :entityType AND fc.entityId IN :entityIds")
     List<String> findExistingChangeKeys(@Param("entityType") String entityType, @Param("entityIds") List<Long> entityIds);
+
+    // Get recent incoming changes (from other machines) for hub entity retry
+    @Query("SELECT fc FROM FieldChange fc WHERE fc.originMachineId != :hubMachineId " +
+           "AND fc.receivedAt >= :since ORDER BY fc.receivedAt ASC")
+    List<FieldChange> findRecentIncomingChanges(@Param("hubMachineId") String hubMachineId,
+                                                 @Param("since") Instant since);
 }

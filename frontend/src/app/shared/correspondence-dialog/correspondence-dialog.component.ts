@@ -133,8 +133,6 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
       display: flex;
       flex-direction: column;
       gap: 10px;
-      max-height: 500px;
-      overflow-y: auto;
       padding-right: 4px;
     }
 
@@ -335,6 +333,8 @@ export class CorrespondenceDialogComponent {
       .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
       .replace(/<\/p>/gi, '\n')
       .replace(/<[^>]*>/g, '')
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\r/g, '')
       .replace(/\\n/g, '\n')
       .replace(/&nbsp;/g, ' ')
       .replace(/&amp;/g, '&')

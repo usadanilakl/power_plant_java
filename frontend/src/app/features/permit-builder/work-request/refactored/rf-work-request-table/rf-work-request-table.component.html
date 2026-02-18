@@ -30,3 +30,10 @@
   >
   </app-table>
 </div>
+
+<ng-template #correspondenceCellTemplate let-item>
+  <app-correspondence-cell
+    [entityType]="'WorkRequest'"
+    [entityId]="item.id">
+  </app-correspondence-cell>
+</ng-template>

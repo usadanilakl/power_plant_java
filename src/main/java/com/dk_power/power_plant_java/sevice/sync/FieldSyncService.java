@@ -61,6 +61,7 @@ public class FieldSyncService {
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
     private final UserMergeService userMergeService;
+    private final DedupKeyResolver dedupKeyResolver;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -96,7 +97,8 @@ public class FieldSyncService {
             WorkRequestMergeService workRequestMergeService,
             JhaMergeService jhaMergeService,
             EmailCorrespondenceMergeService emailCorrespondenceMergeService,
-            UserMergeService userMergeService) {
+            UserMergeService userMergeService,
+            DedupKeyResolver dedupKeyResolver) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -121,6 +123,7 @@ public class FieldSyncService {
         this.jhaMergeService = jhaMergeService;
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
         this.userMergeService = userMergeService;
+        this.dedupKeyResolver = dedupKeyResolver;
     }
 
     /**
@@ -429,6 +432,10 @@ public class FieldSyncService {
         // Collect failed ManyToOne references for retry in third pass
         List<FailedManyToOneReference> failedManyToOneRefs = new ArrayList<>();
 
+        // Pre-save dedup: track ID remappings when a duplicate is redirected to an existing entity.
+        // Key: entityType -> {incomingId -> existingId}
+        Map<String, Map<Long, Long>> idRemapTable = new HashMap<>();
+
         // FIRST PASS: Process non-ManyToMany changes in SYNC_ORDER (dependency order)
         // This ensures base entities (Category, Value, FileObject) are created before
         // entities that reference them (Equipment, LotoPoint), preventing ManyToOne failures.
@@ -446,14 +453,14 @@ public class FieldSyncService {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs, idRemapTable);
                 totalApplied += applied;
 
                 // Queue broadcast for after transaction commits
                 if (applied > 0) {
-                    // Capture values for lambda
+                    // Capture values for lambda — use canonical ID if this entity was remapped
                     final String type = entityType;
-                    final Long id = entityId;
+                    final Long id = DedupKeyResolver.resolveRemappedId(entityType, entityId, idRemapTable);
                     final List<FieldChange> changeList = new ArrayList<>(changes);
                     pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
                 }
@@ -476,7 +483,7 @@ public class FieldSyncService {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs);
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs, idRemapTable);
                 totalApplied += applied;
 
                 if (applied > 0) {
@@ -521,7 +528,7 @@ public class FieldSyncService {
                     List<FieldChange> changes = idEntry.getValue();
 
                     // Pass null for failedManyToOneRefs - ManyToMany uses different logic
-                    int applied = applyEntityInSubTransaction(entityType, entityId, changes, latestChangesMap, null);
+                    int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, null, idRemapTable);
                     totalApplied += applied;
 
                     if (applied > 0) {
@@ -549,25 +556,30 @@ public class FieldSyncService {
 
             for (FailedManyToOneReference failedRef : failedManyToOneRefs) {
                 try {
+                    // Resolve remapped IDs before retry
+                    String refTypeName = failedRef.field.getType().getSimpleName();
+                    Long referencedId = DedupKeyResolver.resolveRemappedId(refTypeName, failedRef.referencedId, idRemapTable);
+                    String entityType = failedRef.change.getEntityType();
+                    Long ownerEntityId = DedupKeyResolver.resolveRemappedId(entityType, failedRef.entity.getId(), idRemapTable);
+
                     // Re-fetch the referenced entity - it should exist now
-                    Object referencedEntity = entityManager.find(failedRef.field.getType(), failedRef.referencedId);
+                    Object referencedEntity = entityManager.find(failedRef.field.getType(), referencedId);
 
                     if (referencedEntity != null) {
                         // Re-load the owning entity to get a MANAGED instance.
                         // The original failedRef.entity may be detached due to entityManager.clear()
                         // calls in createEntityFromSync(). Setting a field on a detached entity
                         // via reflection does NOT persist the change.
-                        String entityType = failedRef.change.getEntityType();
                         SyncableService service = serviceFacade.getService(entityType);
                         if (service == null) {
                             log.warn("No service for {} - cannot retry ManyToOne reference", entityType);
                             continue;
                         }
 
-                        BaseIdEntity managedEntity = (BaseIdEntity) service.getEntityById(failedRef.entity.getId());
+                        BaseIdEntity managedEntity = (BaseIdEntity) service.getEntityById(ownerEntityId);
                         if (managedEntity == null) {
                             log.warn("Could not re-load {}#{} for ManyToOne retry",
-                                entityType, failedRef.entity.getId());
+                                entityType, ownerEntityId);
                             continue;
                         }
 
@@ -577,10 +589,10 @@ public class FieldSyncService {
                         saveIncomingChange(failedRef.change);
                         totalApplied++;
                         log.debug("Retry succeeded: set {}.{} -> entity #{}",
-                            entityType, failedRef.change.getFieldName(), failedRef.referencedId);
+                            entityType, failedRef.change.getFieldName(), referencedId);
                     } else {
                         log.debug("Retry failed: referenced entity {}#{} still not found (will resolve in next sync)",
-                            failedRef.field.getType().getSimpleName(), failedRef.referencedId);
+                            refTypeName, referencedId);
                     }
                 } catch (Exception e) {
                     log.error("Error retrying ManyToOne reference {}.{}: {}",
@@ -801,43 +813,19 @@ public class FieldSyncService {
      * Apply changes to a single entity using LWW per field with pre-fetched latest changes.
      * This version uses a pre-populated map to avoid N+1 queries.
      *
+     * Pre-save dedup: Before creating a new entity, checks if an entity with the same
+     * natural key already exists. If so, redirects the CREATE to an UPDATE on the existing
+     * entity and records the ID mapping in idRemapTable for downstream reference resolution.
+     *
      * @param failedManyToOneRefs Optional list to collect failed ManyToOne references for retry.
      *                            Pass null to skip collection (e.g., during retry pass).
+     * @param idRemapTable        In-batch ID remap table for dedup redirects.
      */
-    /**
-     * Wrap applyEntityChangesBatched in its own REQUIRES_NEW sub-transaction.
-     * This isolates each entity's processing so one flush failure doesn't poison the entire batch.
-     *
-     * When Hibernate's flush() fails (e.g., unique constraint violation), it calls
-     * markRollbackOnly() on the transaction BEFORE rethrowing. entityManager.clear() only
-     * resets the persistence context, NOT the rollback-only flag. The transaction is doomed.
-     * With REQUIRES_NEW, only the single entity's sub-transaction rolls back.
-     */
-    private int applyEntityInSubTransaction(String entityType, Long entityId,
-                                             List<FieldChange> changes,
-                                             Map<String, FieldChange> latestChangesMap,
-                                             List<FailedManyToOneReference> failedManyToOneRefs) {
-        try {
-            Integer result = transactionTemplate.execute(status ->
-                applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap, failedManyToOneRefs)
-            );
-            return result != null ? result : 0;
-        } catch (Exception e) {
-            // Sub-transaction rolled back (Hibernate marked it rollback-only after constraint violation).
-            // Mark changes as received in the OUTER transaction so they stop retrying.
-            log.warn("Entity {}#{} sub-transaction rolled back, marking {} changes as received: {}",
-                entityType, entityId, changes.size(), e.getMessage());
-            for (FieldChange change : changes) {
-                saveIncomingChange(change);
-            }
-            return 0;
-        }
-    }
-
     @SuppressWarnings("unchecked")
     private int applyEntityChangesBatched(String entityType, Long entityId, List<FieldChange> changes,
                                           Map<String, FieldChange> latestChangesMap,
-                                          List<FailedManyToOneReference> failedManyToOneRefs) {
+                                          List<FailedManyToOneReference> failedManyToOneRefs,
+                                          Map<String, Map<Long, Long>> idRemapTable) {
         int appliedCount = 0;
 
         try {
@@ -862,7 +850,7 @@ public class FieldSyncService {
                     if (!"_entity_".equals(change.getFieldName()) &&
                         !"deleted".equals(change.getFieldName())) {
                         // Pass null for failedManyToOneRefs - no retry needed for deleted entities
-                        applyFieldChange(entity, change, null);
+                        applyFieldChange(entity, change, null, idRemapTable);
                         saveIncomingChange(change);
                         appliedCount++;
                     }
@@ -933,7 +921,57 @@ public class FieldSyncService {
                     entity = (BaseIdEntity) service.getEntityById(entityId);
                     log.info("Re-activated soft-deleted entity {}#{}", entityType, entityId);
                 } else {
-                    // Truly new entity — create via JPA with ALL field values pre-applied
+                    // ===== PRE-SAVE DEDUP CHECK =====
+                    // Before creating, check if an entity with the same natural key already exists.
+                    // If so, redirect this CREATE to an UPDATE on the existing entity.
+                    Long existingDupId = dedupKeyResolver.findExistingByNaturalKey(
+                        entityType, entityId, changes, idRemapTable);
+
+                    if (existingDupId != null) {
+                        // REDIRECT: Don't create a duplicate. Apply changes to existing entity via LWW.
+                        log.info("Pre-save dedup: {}#{} matches existing #{}. Redirecting.",
+                            entityType, entityId, existingDupId);
+                        idRemapTable.computeIfAbsent(entityType, k -> new HashMap<>())
+                            .put(entityId, existingDupId);
+
+                        entity = (BaseIdEntity) service.getEntityById(existingDupId);
+                        if (entity == null) {
+                            log.warn("Pre-save dedup: existing entity {}#{} not found after dedup query — skipping",
+                                entityType, existingDupId);
+                            for (FieldChange change : changes) {
+                                saveIncomingChange(change);
+                            }
+                            return 0;
+                        }
+
+                        // Fetch LWW history for the EXISTING entity (not the incoming one)
+                        Map<String, FieldChange> existingLatestMap =
+                            batchFetchLatestChanges(entityType, List.of(existingDupId));
+
+                        // Apply field changes via LWW to the existing entity
+                        boolean modified = false;
+                        for (FieldChange change : changes) {
+                            if ("_entity_".equals(change.getFieldName())) continue;
+                            if (shouldApplyChange(change, existingLatestMap)) {
+                                boolean applied = applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
+                                if (applied) modified = true;
+                            }
+                        }
+
+                        if (modified) {
+                            service.save(entity);
+                            entityManager.flush();
+                        }
+
+                        // Mark ALL incoming changes as received (stops retransmission)
+                        for (FieldChange change : changes) {
+                            saveIncomingChange(change);
+                        }
+                        return changes.size();
+                    }
+
+                    // ===== NORMAL CREATE PATH =====
+                    // No natural key duplicate — create the entity normally
                     entity = (BaseIdEntity) service.getEntity();
                     entity.setId(entityId);
 
@@ -942,43 +980,12 @@ public class FieldSyncService {
                     for (FieldChange change : changes) {
                         if (!"_entity_".equals(change.getFieldName())
                                 && shouldApplyChange(change, latestChangesMap)) {
-                            applyFieldChange(entity, change, failedManyToOneRefs);
+                            applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
                         }
                     }
 
-                    try {
-                        entity = (BaseIdEntity) entityManager.merge(entity);
-                        entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
-                    } catch (Exception e) {
-                        entityManager.clear();
-                        if (isPrimaryKeyViolation(e)) {
-                            entity = (BaseIdEntity) service.getEntityById(entityId);
-                            if (entity != null) {
-                                // True PK violation: entity with this ID exists — use it
-                                log.info("Entity {}#{} already exists (PK conflict), using existing", entityType, entityId);
-                            } else {
-                                // Unique constraint violation: a different entity has a conflicting value
-                                // (e.g., same email from AdminUserSeeder). Skip this entity — the locally-
-                                // seeded entity serves the same purpose. Mark changes as received so sync
-                                // stops retrying.
-                                log.warn("Skipped CREATE for {}#{} — unique constraint conflict with existing entity (session cleared): {}",
-                                    entityType, entityId, e.getMessage());
-                                for (FieldChange change : changes) {
-                                    saveIncomingChange(change);
-                                }
-                                return 0;
-                            }
-                        } else {
-                            // Non-constraint error (e.g., data type mismatch, null violation).
-                            // Skip this entity to avoid poisoning the batch.
-                            log.warn("Skipped CREATE for {}#{} due to error (session cleared): {}",
-                                entityType, entityId, e.getMessage());
-                            for (FieldChange change : changes) {
-                                saveIncomingChange(change);
-                            }
-                            return 0;
-                        }
-                    }
+                    entity = (BaseIdEntity) entityManager.merge(entity);
+                    entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     log.info("Created new entity {}#{} from sync", entityType, entityId);
                 }
 
@@ -1021,7 +1028,7 @@ public class FieldSyncService {
 
                 // Check if we should apply this change (LWW) using pre-fetched map
                 if (shouldApplyChange(change, latestChangesMap)) {
-                    boolean applied = applyFieldChange(entity, change, failedManyToOneRefs);
+                    boolean applied = applyFieldChange(entity, change, failedManyToOneRefs, idRemapTable);
                     if (applied) {
                         modified = true;
                         appliedChanges.add(change);
@@ -1033,41 +1040,19 @@ public class FieldSyncService {
             }
 
             if (modified) {
-                try {
-                    service.save(entity);
-                    entityManager.flush(); // Flush immediately to catch constraint violations per-entity
-                    // Flush succeeded — now safe to mark changes as received
-                    for (FieldChange change : appliedChanges) {
-                        saveIncomingChange(change);
-                    }
-                    appliedCount += appliedChanges.size();
-                    log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
-                } catch (Exception saveEx) {
-                    // Unique constraint or other violation for this entity.
-                    // Clear the persistence context so the dirty entity doesn't poison
-                    // subsequent entities in the batch.
-                    entityManager.clear();
-                    log.warn("Skipped UPDATE for {}#{} due to constraint violation (session cleared): {}",
-                        entityType, entityId, saveEx.getMessage());
-                    // Mark ALL incoming changes as received so they stop arriving in future sync cycles.
-                    // The exception was caught here (not by Spring), so the transaction is still active
-                    // and these saves will commit.
-                    for (FieldChange change : changes) {
-                        saveIncomingChange(change);
-                    }
-                    return 0;
+                service.save(entity);
+                entityManager.flush(); // Flush immediately — dedup prevents constraint violations
+                // Flush succeeded — now safe to mark changes as received
+                for (FieldChange change : appliedChanges) {
+                    saveIncomingChange(change);
                 }
+                appliedCount += appliedChanges.size();
+                log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
             }
 
         } catch (Exception e) {
-            // Safety net: clear session to prevent a dirty/failed entity from poisoning
-            // subsequent entities via auto-flush.
-            entityManager.clear();
-            log.error("Error applying changes to {}#{} (session cleared): {}", entityType, entityId, e.getMessage());
-            // Mark changes as received so they stop retrying
-            for (FieldChange change : changes) {
-                try { saveIncomingChange(change); } catch (Exception ignored) {}
-            }
+            log.error("Error applying changes to {}#{}: {}", entityType, entityId, e.getMessage());
+            throw e; // Propagate — let the caller handle
         }
 
         return appliedCount;
@@ -1109,10 +1094,12 @@ public class FieldSyncService {
      * @param change The field change to apply
      * @param failedManyToOneRefs Optional list to collect failed ManyToOne references for retry.
      *                            Pass null to skip collection (e.g., during retry pass).
+     * @param idRemapTable In-batch ID remap table for dedup redirects.
      * @return true if the change was applied successfully
      */
     private boolean applyFieldChange(BaseIdEntity entity, FieldChange change,
-                                     List<FailedManyToOneReference> failedManyToOneRefs) {
+                                     List<FailedManyToOneReference> failedManyToOneRefs,
+                                     Map<String, Map<Long, Long>> idRemapTable) {
         try {
             Field field = findField(entity.getClass(), change.getFieldName());
             if (field == null) {
@@ -1133,7 +1120,7 @@ public class FieldSyncService {
             // We cannot use JPA collections because cascade behavior causes issues when
             // referenced entities exist but aren't in the current persistence context.
             if ("ManyToMany".equals(change.getRelationshipType())) {
-                return applyManyToManyChange(entity, field, change);
+                return applyManyToManyChange(entity, field, change, idRemapTable);
             }
 
             field.setAccessible(true);
@@ -1145,6 +1132,11 @@ public class FieldSyncService {
                 if (!cleanedJson.isEmpty()) {
                     try {
                         Long referencedId = Long.parseLong(cleanedJson);
+
+                        // Check remap table — the referenced entity may have been deduplicated
+                        String refType = field.getType().getSimpleName();
+                        referencedId = DedupKeyResolver.resolveRemappedId(refType, referencedId, idRemapTable);
+
                         Object referencedEntity = entityManager.find(field.getType(), referencedId);
 
                         if (referencedEntity != null) {
@@ -1155,10 +1147,10 @@ public class FieldSyncService {
                             if (failedManyToOneRefs != null) {
                                 failedManyToOneRefs.add(new FailedManyToOneReference(entity, change, field, referencedId));
                                 log.debug("ManyToOne reference {}#{} not found yet - queued for retry",
-                                    field.getType().getSimpleName(), referencedId);
+                                    refType, referencedId);
                             } else {
                                 log.debug("Related entity {}#{} not found - will resolve in next sync",
-                                    field.getType().getSimpleName(), referencedId);
+                                    refType, referencedId);
                             }
                             return false;
                         }
@@ -1170,7 +1162,7 @@ public class FieldSyncService {
                 }
             }
 
-            Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType());
+            Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType(), idRemapTable);
 
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
@@ -1201,7 +1193,8 @@ public class FieldSyncService {
      * @param change the field change containing the new value (list of IDs)
      * @return true if applied successfully
      */
-    private boolean applyManyToManyChange(BaseIdEntity entity, Field field, FieldChange change) {
+    private boolean applyManyToManyChange(BaseIdEntity entity, Field field, FieldChange change,
+                                          Map<String, Map<Long, Long>> idRemapTable) {
         try {
             // Get the @JoinTable annotation to find the join table name and column names
             jakarta.persistence.JoinTable joinTable = field.getAnnotation(jakarta.persistence.JoinTable.class);
@@ -1218,6 +1211,10 @@ public class FieldSyncService {
 
             Long ownerId = entity.getId();
 
+            // Resolve target entity type for remap table lookups
+            Class<?> targetType = resolveCollectionElementType(field);
+            String targetTypeName = targetType != null ? targetType.getSimpleName() : null;
+
             // Parse the new value - should be a JSON array of IDs like [123, 456]
             String json = change.getNewValue();
             List<Long> newIds = new ArrayList<>();
@@ -1231,7 +1228,12 @@ public class FieldSyncService {
                         for (String idStr : json.split(",")) {
                             idStr = idStr.trim().replace("\"", "");
                             if (!idStr.isEmpty()) {
-                                newIds.add(Long.parseLong(idStr));
+                                Long parsedId = Long.parseLong(idStr);
+                                // Remap ID if the referenced entity was deduplicated
+                                if (targetTypeName != null) {
+                                    parsedId = DedupKeyResolver.resolveRemappedId(targetTypeName, parsedId, idRemapTable);
+                                }
+                                newIds.add(parsedId);
                             }
                         }
                     }
@@ -1399,7 +1401,8 @@ public class FieldSyncService {
      * 4. Using repository.findById() would return null for deleted entities, breaking the relationship
      */
     @SuppressWarnings("unchecked")
-    private Object deserializeValue(String json, Class<?> targetType, String relationshipType) {
+    private Object deserializeValue(String json, Class<?> targetType, String relationshipType,
+                                    Map<String, Map<Long, Long>> idRemapTable) {
         if (json == null || "null".equals(json)) return null;
 
         try {
@@ -1413,6 +1416,9 @@ public class FieldSyncService {
 
                 try {
                     Long relatedId = Long.parseLong(cleanedJson);
+
+                    // Check remap table — the referenced entity may have been deduplicated
+                    relatedId = DedupKeyResolver.resolveRemappedId(targetType.getSimpleName(), relatedId, idRemapTable);
 
                     // Use find() to get the actual entity from the database.
                     // We cannot use getReference() because it may return a proxy that hasn't been
@@ -1500,19 +1506,6 @@ public class FieldSyncService {
      */
     private String getTableName(String entityType) {
         return entityTableRegistry.getTableName(entityType);
-    }
-
-    private boolean isPrimaryKeyViolation(Exception e) {
-        Throwable cause = e;
-        while (cause != null) {
-            String msg = cause.getMessage();
-            if (msg != null && (msg.contains("primary key violation")
-                    || msg.contains("PRIMARY KEY") || msg.contains("23505"))) {
-                return true;
-            }
-            cause = cause.getCause();
-        }
-        return false;
     }
 
     /**

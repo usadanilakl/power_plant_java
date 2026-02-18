@@ -6,6 +6,8 @@ import { environment } from '../../../../environments/environment';
 import { forkJoin } from 'rxjs';
 import { ContextMenuComponent, ContextMenuAction } from '../../../shared/menu/context-menu/context-menu.component';
 import { RfWorkRequestApiService } from '../work-request/refactored/services/rf-work-request-api.service';
+import { CorrespondenceCellComponent } from '../../../shared/correspondence-dialog/correspondence-cell.component';
+import { CorrespondenceDialogService } from '../../../shared/correspondence-dialog/correspondence-dialog.service';
 
 interface WorkRequest {
   id: number;
@@ -64,7 +66,7 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-permits-monitor',
   standalone: true,
-  imports: [CommonModule, RouterModule, ContextMenuComponent],
+  imports: [CommonModule, RouterModule, ContextMenuComponent, CorrespondenceCellComponent],
   template: `
     <div class="monitor-container">
       <div class="monitor-header">
@@ -109,6 +111,7 @@ interface ApiResponse<T> {
                     <th>Requested By</th>
                     <th>Location</th>
                     <th>Work Scope</th>
+                    <th>Responses</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,6 +123,12 @@ interface ApiResponse<T> {
                     <td>{{ wr.requestedBy }}</td>
                     <td>{{ wr.location }}</td>
                     <td class="truncate">{{ wr.workScope }}</td>
+                    <td>
+                      <app-correspondence-cell
+                        [entityType]="'WorkRequest'"
+                        [entityId]="wr.id">
+                      </app-correspondence-cell>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -589,12 +598,22 @@ export class PermitsMonitorComponent implements OnInit {
       label: 'Cancel',
       icon: 'cancel',
       action: (item) => this.cancelWorkRequest(item)
+    },
+    {
+      id: 'correspondence',
+      label: 'View Correspondence',
+      icon: 'mail_outline',
+      action: (item) => {
+        this.correspondenceDialogService.open('WorkRequest', item.id);
+        this.contextMenuVisible = false;
+      }
     }
   ];
 
   constructor(
     private http: HttpClient,
-    private wrApiService: RfWorkRequestApiService
+    private wrApiService: RfWorkRequestApiService,
+    private correspondenceDialogService: CorrespondenceDialogService
   ) {}
 
   ngOnInit(): void {
