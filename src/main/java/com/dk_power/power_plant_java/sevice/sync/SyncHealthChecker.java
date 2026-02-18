@@ -431,6 +431,9 @@ public class SyncHealthChecker {
         result.setHealthCheckIntervalMs(intervalMs);
         if (lastCheck > 0) {
             result.setNextCheckDueAt(Instant.ofEpochMilli(lastCheck + intervalMs));
+        } else {
+            // No check has run yet — show "due now" so the timer is visible immediately
+            result.setNextCheckDueAt(Instant.now());
         }
     }
 
