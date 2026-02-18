@@ -59,6 +59,7 @@ public class FieldSyncService {
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
+    private final UserMergeService userMergeService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -86,7 +87,8 @@ public class FieldSyncService {
             CategoryValueMergeService categoryValueMergeService,
             WorkRequestMergeService workRequestMergeService,
             JhaMergeService jhaMergeService,
-            EmailCorrespondenceMergeService emailCorrespondenceMergeService) {
+            EmailCorrespondenceMergeService emailCorrespondenceMergeService,
+            UserMergeService userMergeService) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -110,6 +112,7 @@ public class FieldSyncService {
         this.workRequestMergeService = workRequestMergeService;
         this.jhaMergeService = jhaMergeService;
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
+        this.userMergeService = userMergeService;
     }
 
     /**
@@ -610,6 +613,7 @@ public class FieldSyncService {
                             workRequestMergeService.mergeIfDuplicatesExist();
                             jhaMergeService.mergeIfDuplicatesExist();
                             emailCorrespondenceMergeService.mergeIfDuplicatesExist();
+                            userMergeService.mergeIfDuplicatesExist();
                         } catch (Exception e) {
                             log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                         } finally {
@@ -641,6 +645,8 @@ public class FieldSyncService {
                     categoryValueMergeService.mergeIfDuplicatesExist();
                     workRequestMergeService.mergeIfDuplicatesExist();
                     jhaMergeService.mergeIfDuplicatesExist();
+                    emailCorrespondenceMergeService.mergeIfDuplicatesExist();
+                    userMergeService.mergeIfDuplicatesExist();
                 } catch (Exception e) {
                     log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                 } finally {
@@ -867,12 +873,17 @@ public class FieldSyncService {
                         entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     } catch (Exception e) {
                         if (isPrimaryKeyViolation(e)) {
-                            log.info("Entity {}#{} already exists (PK violation), loading existing", entityType, entityId);
                             entityManager.clear();
                             entity = (BaseIdEntity) service.getEntityById(entityId);
-                            if (entity == null) {
-                                log.error("Failed to load existing entity {}#{} after PK violation", entityType, entityId);
-                                return 0;
+                            if (entity != null) {
+                                // True PK violation: entity with this ID exists — use it
+                                log.info("Entity {}#{} already exists (PK conflict), using existing", entityType, entityId);
+                            } else {
+                                // Unique constraint violation: different entity has a conflicting value.
+                                // Hibernate marked the session rollback-only — batch is doomed.
+                                // Abort early to avoid wasting time on remaining entities.
+                                log.error("Entity {}#{} unique constraint conflict (session is rollback-only), aborting batch", entityType, entityId);
+                                throw new RuntimeException("Unique constraint conflict creating " + entityType + "#" + entityId, e);
                             }
                         } else {
                             throw e;

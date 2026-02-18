@@ -19,6 +19,7 @@ public class AdminUserSeeder {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final SyncContext syncContext;
+    private final SyncConfig syncConfig;
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
@@ -30,44 +31,38 @@ public class AdminUserSeeder {
     }
 
     private void seedUsers() {
-        String adminEmail = "admin@power-plant.local";
+        // Check by windowsUsername (not email) to detect both seeded and synced users.
+        // If sync has already brought the real user, skip seeding to avoid email conflicts.
+        seedIfMissing("usada", "admin", "System", "Administrator");
+        seedIfMissing("dklokov", "dklokov", "D", "Klokov");
+    }
 
-        if (userRepo.findByEmail(adminEmail) != null) {
-            log.info("Default admin user already exists, skipping seed");
+    private void seedIfMissing(String windowsUsername, String username, String firstName, String lastName) {
+        User existing = userRepo.findByWindowsUsername(windowsUsername);
+        if (existing != null) {
+            log.info("User with windowsUsername='{}' already exists ({}), skipping seed",
+                     windowsUsername, existing.getEmail());
             return;
         }
 
-        User admin = User.builder()
-            .username("admin")
-            .firstName("System")
-            .lastName("Administrator")
-            .name("System Administrator")
-            .email(adminEmail)
+        // Use machine-specific email to avoid unique constraint conflicts when synced users
+        // arrive from other machines with the same logical email (e.g., admin@power-plant.local)
+        String machineId = syncConfig.getMachineId();
+        String email = username + "-" + machineId + "@localhost";
+
+        User user = User.builder()
+            .username(username)
+            .firstName(firstName)
+            .lastName(lastName)
+            .name(firstName + " " + lastName)
+            .email(email)
             .role("ROLE_ADMIN")
             .password(passwordEncoder.encode("admin"))
             .isActive(true)
-            .windowsUsername("usada")
+            .windowsUsername(windowsUsername)
             .build();
 
-        userRepo.save(admin);
-        log.info("Default admin user created: {} (windowsUsername=usada)", adminEmail);
-
-        // Second admin
-        String dkEmail = "dklokov@power-plant.local";
-        if (userRepo.findByEmail(dkEmail) == null) {
-            User dk = User.builder()
-                .username("dklokov")
-                .firstName("D")
-                .lastName("Klokov")
-                .name("D Klokov")
-                .email(dkEmail)
-                .role("ROLE_ADMIN")
-                .password(passwordEncoder.encode("admin"))
-                .isActive(true)
-                .windowsUsername("dklokov")
-                .build();
-            userRepo.save(dk);
-            log.info("Admin user created: {} (windowsUsername=dklokov)", dkEmail);
-        }
+        userRepo.save(user);
+        log.info("Admin user created: {} (windowsUsername={})", email, windowsUsername);
     }
 }
