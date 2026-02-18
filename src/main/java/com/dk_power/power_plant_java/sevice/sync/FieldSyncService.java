@@ -920,21 +920,33 @@ public class FieldSyncService {
                         entity = (BaseIdEntity) entityManager.merge(entity);
                         entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     } catch (Exception e) {
+                        entityManager.clear();
                         if (isPrimaryKeyViolation(e)) {
-                            entityManager.clear();
                             entity = (BaseIdEntity) service.getEntityById(entityId);
                             if (entity != null) {
                                 // True PK violation: entity with this ID exists — use it
                                 log.info("Entity {}#{} already exists (PK conflict), using existing", entityType, entityId);
                             } else {
-                                // Unique constraint violation: different entity has a conflicting value.
-                                // Hibernate marked the session rollback-only — batch is doomed.
-                                // Abort early to avoid wasting time on remaining entities.
-                                log.error("Entity {}#{} unique constraint conflict (session is rollback-only), aborting batch", entityType, entityId);
-                                throw new RuntimeException("Unique constraint conflict creating " + entityType + "#" + entityId, e);
+                                // Unique constraint violation: a different entity has a conflicting value
+                                // (e.g., same email from AdminUserSeeder). Skip this entity — the locally-
+                                // seeded entity serves the same purpose. Mark changes as received so sync
+                                // stops retrying.
+                                log.warn("Skipped CREATE for {}#{} — unique constraint conflict with existing entity (session cleared): {}",
+                                    entityType, entityId, e.getMessage());
+                                for (FieldChange change : changes) {
+                                    saveIncomingChange(change);
+                                }
+                                return 0;
                             }
                         } else {
-                            throw e;
+                            // Non-constraint error (e.g., data type mismatch, null violation).
+                            // Skip this entity to avoid poisoning the batch.
+                            log.warn("Skipped CREATE for {}#{} due to error (session cleared): {}",
+                                entityType, entityId, e.getMessage());
+                            for (FieldChange change : changes) {
+                                saveIncomingChange(change);
+                            }
+                            return 0;
                         }
                     }
                     log.info("Created new entity {}#{} from sync", entityType, entityId);
@@ -986,8 +998,24 @@ public class FieldSyncService {
             }
 
             if (modified) {
-                service.save(entity);
-                log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
+                try {
+                    service.save(entity);
+                    entityManager.flush(); // Flush immediately to catch constraint violations per-entity
+                    log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
+                } catch (Exception saveEx) {
+                    // Unique constraint or other violation for this entity.
+                    // Clear the persistence context so the dirty entity doesn't poison
+                    // subsequent entities in the batch (Hibernate marks session rollback-only).
+                    entityManager.clear();
+                    log.warn("Skipped UPDATE for {}#{} due to constraint violation (session cleared): {}",
+                        entityType, entityId, saveEx.getMessage());
+                    // Save incoming changes as received (new transaction via REQUIRES_NEW in saveIncomingChange's repo)
+                    // so they don't keep arriving in future sync cycles
+                    for (FieldChange change : changes) {
+                        saveIncomingChange(change);
+                    }
+                    return 0;
+                }
             }
 
         } catch (Exception e) {
