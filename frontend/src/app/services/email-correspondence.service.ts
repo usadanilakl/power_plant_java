@@ -15,7 +15,7 @@ import { SearchCriteria } from '../models/api/search-criteria.model';
 })
 export class EmailCorrespondenceService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/ng/email-correspondence`;
+  private apiUrl = `${environment.apiUrl}/email-correspondence`;
 
   /**
    * Get correspondence for a specific entity (polymorphic query)
