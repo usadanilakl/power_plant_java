@@ -977,7 +977,13 @@ public class FieldSyncService {
             }
 
             // Apply field changes to EXISTING entity using LWW with pre-fetched map
+            // IMPORTANT: Do NOT call saveIncomingChange() here — it triggers Hibernate auto-flush,
+            // which pushes the dirty entity UPDATE to the DB before our explicit flush().
+            // If the entity has a unique constraint conflict (e.g., duplicate email), the auto-flush
+            // exception fires outside the try-catch, poisoning the entire batch.
+            // Instead, collect applied changes and save them AFTER the flush succeeds.
             boolean modified = false;
+            List<FieldChange> appliedChanges = new java.util.ArrayList<>();
             for (FieldChange change : changes) {
                 if ("_entity_".equals(change.getFieldName())) {
                     continue; // Skip entity-level markers
@@ -988,8 +994,7 @@ public class FieldSyncService {
                     boolean applied = applyFieldChange(entity, change, failedManyToOneRefs);
                     if (applied) {
                         modified = true;
-                        appliedCount++;
-                        saveIncomingChange(change);
+                        appliedChanges.add(change);
                     }
                 } else {
                     log.debug("Skipping change for {}.{} - local change is newer or equal",
@@ -1001,16 +1006,22 @@ public class FieldSyncService {
                 try {
                     service.save(entity);
                     entityManager.flush(); // Flush immediately to catch constraint violations per-entity
+                    // Flush succeeded — now safe to mark changes as received
+                    for (FieldChange change : appliedChanges) {
+                        saveIncomingChange(change);
+                    }
+                    appliedCount += appliedChanges.size();
                     log.debug("Applied {} changes to {}#{}", appliedCount, entityType, entityId);
                 } catch (Exception saveEx) {
                     // Unique constraint or other violation for this entity.
                     // Clear the persistence context so the dirty entity doesn't poison
-                    // subsequent entities in the batch (Hibernate marks session rollback-only).
+                    // subsequent entities in the batch.
                     entityManager.clear();
                     log.warn("Skipped UPDATE for {}#{} due to constraint violation (session cleared): {}",
                         entityType, entityId, saveEx.getMessage());
-                    // Save incoming changes as received (new transaction via REQUIRES_NEW in saveIncomingChange's repo)
-                    // so they don't keep arriving in future sync cycles
+                    // Mark ALL incoming changes as received so they stop arriving in future sync cycles.
+                    // The exception was caught here (not by Spring), so the transaction is still active
+                    // and these saves will commit.
                     for (FieldChange change : changes) {
                         saveIncomingChange(change);
                     }
@@ -1019,7 +1030,14 @@ public class FieldSyncService {
             }
 
         } catch (Exception e) {
-            log.error("Error applying changes to {}#{}: {}", entityType, entityId, e.getMessage());
+            // Safety net: clear session to prevent a dirty/failed entity from poisoning
+            // subsequent entities via auto-flush.
+            entityManager.clear();
+            log.error("Error applying changes to {}#{} (session cleared): {}", entityType, entityId, e.getMessage());
+            // Mark changes as received so they stop retrying
+            for (FieldChange change : changes) {
+                try { saveIncomingChange(change); } catch (Exception ignored) {}
+            }
         }
 
         return appliedCount;
