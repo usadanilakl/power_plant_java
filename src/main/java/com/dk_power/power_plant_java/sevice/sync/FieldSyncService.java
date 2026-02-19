@@ -69,6 +69,13 @@ public class FieldSyncService {
     // Safe to use as plain field because applyChangesLock ensures single-threaded access.
     private boolean skipSaveFieldChanges = false;
 
+    // Persistent dedup remap table — lives in memory across batches.
+    // Loaded from DB once on first use (for JVM restart recovery), then kept in-memory.
+    // New remaps are added in-memory AND persisted to DB as write-behind.
+    // Safe as plain field because applyChangesLock ensures single-threaded access.
+    private Map<String, Map<Long, Long>> idRemapTable;
+    private boolean idRemapTableLoaded = false;
+
     private volatile boolean syncing = false;
 
     // Guard to prevent concurrent merge operations in afterCommit callbacks.
@@ -447,8 +454,11 @@ public class FieldSyncService {
 
         // Pre-save dedup: track ID remappings when a duplicate is redirected to an existing entity.
         // Key: entityType -> {incomingId -> existingId}
-        // Load persistent remaps so cross-batch references resolve correctly.
-        Map<String, Map<Long, Long>> idRemapTable = loadPersistentRemaps();
+        // Load from DB once on first use (JVM restart recovery), then stays in memory.
+        if (!idRemapTableLoaded) {
+            idRemapTable = loadPersistentRemaps();
+            idRemapTableLoaded = true;
+        }
 
         // FIRST PASS: Process non-ManyToMany changes in SYNC_ORDER (dependency order)
         // This ensures base entities (Category, Value, FileObject) are created before

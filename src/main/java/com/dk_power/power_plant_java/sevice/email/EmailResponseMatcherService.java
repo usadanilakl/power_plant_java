@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.email;
 import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.repository.base_repositories.EmailCorrespondenceRepo;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,8 @@ import java.util.regex.Pattern;
 @Slf4j
 public class EmailResponseMatcherService {
     private final EmailCorrespondenceRepo correspondenceRepo;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Matches an incoming email to an entity using multiple strategies.
@@ -78,6 +82,8 @@ public class EmailResponseMatcherService {
             Matcher wrMatcher = wrPattern.matcher(subject);
             if (wrMatcher.find()) {
                 long entityId = Long.parseLong(wrMatcher.group(1));
+                // The ID in the subject may belong to a dedup'd WR — resolve to canonical ID
+                entityId = resolveRemappedId("WorkRequest", entityId);
                 log.debug("[EmailMatcher] Matched via subject pattern to WorkRequest #{}", entityId);
                 return Optional.of(new CorrespondenceMatch(
                     "WorkRequest",
@@ -111,6 +117,32 @@ public class EmailResponseMatcherService {
             .map(GraphEmailMessage.InternetMessageHeader::getValue)
             .findFirst()
             .orElse(null);
+    }
+
+    /**
+     * Check the dedup_id_remap table for a remapped ID.
+     * When a WR is dedup'd (e.g., #2000000127 → #1000000127), the email subject
+     * still contains the original ID. This resolves it to the canonical one.
+     */
+    private long resolveRemappedId(String entityType, long originalId) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Number> rows = entityManager.createNativeQuery(
+                "SELECT remapped_id FROM dedup_id_remap " +
+                "WHERE entity_type = :type AND original_id = :origId")
+                .setParameter("type", entityType)
+                .setParameter("origId", originalId)
+                .getResultList();
+            if (!rows.isEmpty()) {
+                long remapped = rows.get(0).longValue();
+                log.info("[EmailMatcher] Resolved dedup remap: {}#{} -> #{}",
+                    entityType, originalId, remapped);
+                return remapped;
+            }
+        } catch (Exception e) {
+            log.debug("[EmailMatcher] Could not check dedup remap: {}", e.getMessage());
+        }
+        return originalId;
     }
 
     /**
