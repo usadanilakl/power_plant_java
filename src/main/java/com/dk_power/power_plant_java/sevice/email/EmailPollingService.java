@@ -89,8 +89,10 @@ public class EmailPollingService {
         if (match.isPresent()) {
             saveInboundCorrespondence(message, match.get());
         } else {
-            log.warn("[EmailPoll] Could not match email to entity - Subject: {}, From: {}",
+            // Save unmatched email for later retry — outbound records may arrive via sync
+            log.warn("[EmailPoll] Could not match email to entity - saving for later retry. Subject: {}, From: {}",
                 message.getSubject(), message.getSenderEmail());
+            saveUnmatchedCorrespondence(message);
         }
     }
 
@@ -124,6 +126,75 @@ public class EmailPollingService {
 
         } catch (Exception e) {
             log.error("[EmailPoll] Failed to save correspondence for message: {}", message.getId(), e);
+        }
+    }
+
+    /**
+     * Saves an unmatched inbound email for later retry.
+     * The outbound record it replies to may not have synced yet — once sync
+     * delivers it, the retry scheduler will match and link the email.
+     */
+    private void saveUnmatchedCorrespondence(GraphEmailMessage message) {
+        try {
+            EmailCorrespondence correspondence = new EmailCorrespondence();
+            correspondence.setEntityType(null);   // unlinked
+            correspondence.setEntityId(null);      // unlinked
+            correspondence.setDirection(EmailCorrespondence.Direction.INBOUND);
+            correspondence.setSubject(message.getSubject());
+            correspondence.setBodyContent(message.getBodyContent());
+            correspondence.setSender(message.getSenderEmail());
+            correspondence.setRecipient(monitoredEmail);
+            correspondence.setSentDateTime(message.getSentDateTime());
+            correspondence.setInternetMessageId(message.getInternetMessageId());
+            correspondence.setConversationId(message.getConversationId());
+            correspondence.setGraphMessageId(message.getId());
+            correspondence.setIsRead(false);
+            correspondence.setNeedsAttention(true);  // flag for attention since unlinked
+
+            correspondenceRepo.save(correspondence);
+            log.info("[EmailPoll] Saved UNLINKED correspondence for later retry - Subject: {}",
+                message.getSubject());
+        } catch (Exception e) {
+            log.error("[EmailPoll] Failed to save unmatched correspondence: {}", message.getId(), e);
+        }
+    }
+
+    /**
+     * Periodically retry matching unlinked email correspondence.
+     * Once outbound records arrive via sync, the matcher can link them.
+     */
+    @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)  // every 5 min
+    public void retryUnlinkedEmails() {
+        List<EmailCorrespondence> unlinked = correspondenceRepo.findByEntityIdIsNull();
+        if (unlinked.isEmpty()) return;
+
+        log.info("[EmailPoll] Retrying {} unlinked emails", unlinked.size());
+        int matched = 0;
+
+        for (EmailCorrespondence email : unlinked) {
+            // Build a lightweight GraphEmailMessage for the matcher
+            GraphEmailMessage msg = new GraphEmailMessage();
+            msg.setSubject(email.getSubject());
+            msg.setInternetMessageId(email.getInternetMessageId());
+            msg.setConversationId(email.getConversationId());
+            msg.setId(email.getGraphMessageId());
+
+            Optional<EmailResponseMatcherService.CorrespondenceMatch> match =
+                matcherService.matchEmailToEntity(msg);
+
+            if (match.isPresent()) {
+                email.setEntityType(match.get().getEntityType());
+                email.setEntityId(match.get().getEntityId());
+                email.setNeedsAttention(false);
+                correspondenceRepo.save(email);
+                matched++;
+                log.info("[EmailPoll] Retry matched email to {} #{} - Subject: {}",
+                    match.get().getEntityType(), match.get().getEntityId(), email.getSubject());
+            }
+        }
+
+        if (matched > 0) {
+            log.info("[EmailPoll] Retry matched {} of {} unlinked emails", matched, unlinked.size());
         }
     }
 

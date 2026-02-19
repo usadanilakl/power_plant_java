@@ -64,6 +64,11 @@ public interface EmailCorrespondenceRepo extends BaseRepository<EmailCorresponde
         EmailCorrespondence.Direction direction);
 
     /**
+     * Find unlinked correspondence (entityId is null) for retry matching.
+     */
+    List<EmailCorrespondence> findByEntityIdIsNull();
+
+    /**
      * Find graphMessageIds that appear more than once (duplicates from multi-client polling).
      * Returns rows of [graphMessageId, count].
      */

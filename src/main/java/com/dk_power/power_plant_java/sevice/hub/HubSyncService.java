@@ -80,12 +80,12 @@ public class HubSyncService {
         if (!result.savedChanges.isEmpty()) {
             // Apply to hub's own real entities
             try {
-                int applied = fieldSyncService.applyIncomingChanges(result.savedChanges);
+                int applied = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
                 log.debug("Applied {} changes to hub entities", applied);
             } catch (Exception e) {
                 log.error("Failed to apply changes to hub entities, retrying: {}", e.getMessage());
                 try {
-                    int retried = fieldSyncService.applyIncomingChanges(result.savedChanges);
+                    int retried = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
                     log.info("Retry succeeded: applied {} changes to hub entities", retried);
                 } catch (Exception retry) {
                     log.error("Retry also failed — scheduling for periodic retry: {}", retry.getMessage());
@@ -203,7 +203,7 @@ public class HubSyncService {
         }
 
         try {
-            int applied = fieldSyncService.applyIncomingChanges(unapplied);
+            int applied = fieldSyncService.applyIncomingChanges(unapplied, true);
             log.info("Periodic retry: applied {} changes to hub entities", applied);
         } catch (Exception e) {
             log.error("Periodic retry failed — will retry next cycle: {}", e.getMessage());

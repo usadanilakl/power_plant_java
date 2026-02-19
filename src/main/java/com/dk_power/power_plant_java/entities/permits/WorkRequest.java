@@ -25,8 +25,7 @@ public class WorkRequest extends BasePermitEntity {
     private String location;
     private String affectedEquipment;
 
-    @Column(columnDefinition = "TEXT")
-    private String workScope;
+    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
 
     private Boolean isHotWorkRequired;
     private String foreman;

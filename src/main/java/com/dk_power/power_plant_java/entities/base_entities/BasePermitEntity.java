@@ -20,6 +20,7 @@ import java.util.Set;
 @Audited
 //@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public class BasePermitEntity extends BaseAuditEntity {
+    @Column(columnDefinition = "TEXT")
     private String workScope;
     @ManyToOne
     @JoinColumn(name="system_id")

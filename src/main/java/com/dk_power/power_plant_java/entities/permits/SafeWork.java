@@ -22,7 +22,7 @@ public class SafeWork extends BasePermitEntity {
     private String time;
     private String companyPerson;
     private String location;
-    private String workScope;
+    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
     private String specialInstructions;
     private String requestedBy;
 

@@ -24,7 +24,7 @@ public class ConfinedSpace extends BasePermitEntity {
     private String date;
     private String time;
     private String space;
-    private String workScope;
+    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
     private String issuedTo;
     private String duration;
 

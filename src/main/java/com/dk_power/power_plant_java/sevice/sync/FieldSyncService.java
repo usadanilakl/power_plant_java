@@ -4,8 +4,10 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.sync.DedupIdRemap;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
+import com.dk_power.power_plant_java.repository.sync.DedupIdRemapRepository;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
@@ -62,8 +64,13 @@ public class FieldSyncService {
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
     private final UserMergeService userMergeService;
     private final DedupKeyResolver dedupKeyResolver;
+    private final DedupIdRemapRepository dedupIdRemapRepository;
     @PersistenceContext
     private EntityManager entityManager;
+
+    // Set by applyIncomingChanges overload to skip re-saving FieldChanges.
+    // Safe to use as plain field because applyChangesLock ensures single-threaded access.
+    private boolean skipSaveFieldChanges = false;
 
     private volatile boolean syncing = false;
 
@@ -98,7 +105,8 @@ public class FieldSyncService {
             JhaMergeService jhaMergeService,
             EmailCorrespondenceMergeService emailCorrespondenceMergeService,
             UserMergeService userMergeService,
-            DedupKeyResolver dedupKeyResolver) {
+            DedupKeyResolver dedupKeyResolver,
+            DedupIdRemapRepository dedupIdRemapRepository) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -124,6 +132,7 @@ public class FieldSyncService {
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
         this.userMergeService = userMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
+        this.dedupIdRemapRepository = dedupIdRemapRepository;
     }
 
     /**
@@ -330,13 +339,22 @@ public class FieldSyncService {
      * @return number of changes actually applied
      */
     public int applyIncomingChanges(List<FieldChange> incomingChanges) {
+        return applyIncomingChanges(incomingChanges, false);
+    }
+
+    /**
+     * @param skipSave true when FieldChanges are already saved (hub path) — prevents duplicates
+     */
+    public int applyIncomingChanges(List<FieldChange> incomingChanges, boolean skipSave) {
         // Serialize across all callers (CentralSyncService, ServerSseClient, pending-sync, etc.)
         // Each batch runs in REQUIRES_NEW transaction — without serialization, concurrent threads
         // race to CREATE the same entity, causing PK violations that poison the Hibernate session.
         applyChangesLock.lock();
         try {
+            this.skipSaveFieldChanges = skipSave;
             return applyIncomingChangesLocked(incomingChanges);
         } finally {
+            this.skipSaveFieldChanges = false;
             applyChangesLock.unlock();
         }
     }
@@ -434,7 +452,8 @@ public class FieldSyncService {
 
         // Pre-save dedup: track ID remappings when a duplicate is redirected to an existing entity.
         // Key: entityType -> {incomingId -> existingId}
-        Map<String, Map<Long, Long>> idRemapTable = new HashMap<>();
+        // Load persistent remaps so cross-batch references resolve correctly.
+        Map<String, Map<Long, Long>> idRemapTable = loadPersistentRemaps();
 
         // FIRST PASS: Process non-ManyToMany changes in SYNC_ORDER (dependency order)
         // This ensures base entities (Category, Value, FileObject) are created before
@@ -933,6 +952,8 @@ public class FieldSyncService {
                             entityType, entityId, existingDupId);
                         idRemapTable.computeIfAbsent(entityType, k -> new HashMap<>())
                             .put(entityId, existingDupId);
+                        // Persist so future batches can resolve references to this ID
+                        persistDedupRemap(entityType, entityId, existingDupId);
 
                         entity = (BaseIdEntity) service.getEntityById(existingDupId);
                         if (entity == null) {
@@ -1164,6 +1185,23 @@ public class FieldSyncService {
 
             Object value = deserializeValue(change.getNewValue(), field.getType(), change.getRelationshipType(), idRemapTable);
 
+            // Remap polymorphic association IDs (entityId on EmailCorrespondence/Comment).
+            // These are plain Long fields (not @ManyToOne) so dedup remap doesn't apply automatically.
+            if ("entityId".equals(change.getFieldName()) && value instanceof Long rawId) {
+                Field entityTypeField = findField(entity.getClass(), "entityType");
+                if (entityTypeField != null) {
+                    entityTypeField.setAccessible(true);
+                    String refType = (String) entityTypeField.get(entity);
+                    if (refType != null) {
+                        Long remapped = DedupKeyResolver.resolveRemappedId(refType, rawId, idRemapTable);
+                        if (!remapped.equals(rawId)) {
+                            log.debug("Remapped polymorphic entityId {}#{} -> #{}", refType, rawId, remapped);
+                            value = remapped;
+                        }
+                    }
+                }
+            }
+
             // Only set if deserialization succeeded (null is valid for clearing)
             if (change.getNewValue() == null || value != null || "null".equals(change.getNewValue())) {
                 field.set(entity, value);
@@ -1356,6 +1394,8 @@ public class FieldSyncService {
      */
     private void saveIncomingChange(FieldChange change) {
         if (change == null) return;
+        // Hub already saved FieldChanges in processIncomingChangesBatched — skip to avoid duplicates
+        if (skipSaveFieldChanges) return;
 
         // Check if we already have this exact change
         boolean exists = fieldChangeRepository.existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
@@ -1384,6 +1424,40 @@ public class FieldSyncService {
             // This prevents the change from being sent back to the server in the next periodic sync
             newChange.addSyncedMachine("SERVER");
             fieldChangeRepository.save(newChange);
+        }
+    }
+
+    /**
+     * Load all persistent dedup remaps into an in-memory map.
+     * Called at the start of each applyIncomingChangesInternal() so that
+     * cross-batch ManyToOne references to dedup-redirected IDs resolve correctly.
+     */
+    private Map<String, Map<Long, Long>> loadPersistentRemaps() {
+        Map<String, Map<Long, Long>> table = new HashMap<>();
+        try {
+            for (DedupIdRemap remap : dedupIdRemapRepository.findAll()) {
+                table.computeIfAbsent(remap.getEntityType(), k -> new HashMap<>())
+                     .put(remap.getOriginalId(), remap.getRemappedId());
+            }
+            if (!table.isEmpty()) {
+                int total = table.values().stream().mapToInt(Map::size).sum();
+                log.debug("Loaded {} persistent dedup remaps", total);
+            }
+        } catch (Exception e) {
+            log.warn("Could not load persistent dedup remaps: {}", e.getMessage());
+        }
+        return table;
+    }
+
+    /**
+     * Persist a new dedup remap so future batches can resolve it.
+     */
+    private void persistDedupRemap(String entityType, Long originalId, Long remappedId) {
+        try {
+            dedupIdRemapRepository.save(new DedupIdRemap(entityType, originalId, remappedId));
+        } catch (Exception e) {
+            // Unique constraint violation means it already exists — that's fine
+            log.debug("Dedup remap already persisted: {}#{} -> #{}", entityType, originalId, remappedId);
         }
     }
 

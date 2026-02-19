@@ -93,6 +93,7 @@ public class WorkRequestMergeService {
 
             transferDailyPermitPackageLink(duplicate.getId(), canonical.getId());
             transferJhaLinks(duplicate.getId(), canonical.getId());
+            transferEmailCorrespondenceLinks(duplicate.getId(), canonical.getId());
 
             // Soft-delete via JPA so FieldChangeEntityListener fires and creates
             // a FieldChange record — this ensures the deletion syncs to other machines.
@@ -130,6 +131,25 @@ public class WorkRequestMergeService {
         if (updated > 0) {
             log.info("[WorkRequest Merge] Transferred DailyPermitPackage link from ID={} to ID={}",
                 duplicateId, canonicalId);
+        }
+    }
+
+    /**
+     * Transfer EmailCorrespondence polymorphic links from a duplicate WorkRequest to the canonical one.
+     * EmailCorrespondence uses entityType + entityId (plain columns, not FK) to link to WorkRequest.
+     * Without this, emails pointing to the soft-deleted duplicate become orphaned.
+     */
+    private void transferEmailCorrespondenceLinks(Long duplicateId, Long canonicalId) {
+        int updated = entityManager.createNativeQuery(
+            "UPDATE email_correspondence SET entity_id = :canId " +
+            "WHERE entity_type = 'WorkRequest' AND entity_id = :dupId")
+            .setParameter("canId", canonicalId)
+            .setParameter("dupId", duplicateId)
+            .executeUpdate();
+
+        if (updated > 0) {
+            log.info("[WorkRequest Merge] Transferred {} EmailCorrespondence link(s) from WR ID={} to WR ID={}",
+                updated, duplicateId, canonicalId);
         }
     }
 

@@ -79,9 +79,12 @@ public class FieldChangeTracker {
      */
     private List<CachedFieldInfo> buildFieldCache(Class<?> clazz) {
         List<CachedFieldInfo> cachedFields = new ArrayList<>();
+        Set<String> seenFieldNames = new HashSet<>();
         Class<?> current = clazz;
         while (current != null && current != Object.class) {
             for (Field field : current.getDeclaredFields()) {
+                // Skip shadowed fields — subclass field takes priority (encountered first)
+                if (!seenFieldNames.add(field.getName())) continue;
                 boolean shouldTrack = computeShouldTrackField(field);
                 String relationshipType = computeRelationshipType(field);
                 cachedFields.add(new CachedFieldInfo(field, shouldTrack, relationshipType));
