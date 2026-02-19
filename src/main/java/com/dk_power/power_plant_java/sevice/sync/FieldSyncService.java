@@ -4,10 +4,8 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.sync.DedupIdRemap;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
-import com.dk_power.power_plant_java.repository.sync.DedupIdRemapRepository;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
@@ -64,7 +62,6 @@ public class FieldSyncService {
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
     private final UserMergeService userMergeService;
     private final DedupKeyResolver dedupKeyResolver;
-    private final DedupIdRemapRepository dedupIdRemapRepository;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -105,8 +102,7 @@ public class FieldSyncService {
             JhaMergeService jhaMergeService,
             EmailCorrespondenceMergeService emailCorrespondenceMergeService,
             UserMergeService userMergeService,
-            DedupKeyResolver dedupKeyResolver,
-            DedupIdRemapRepository dedupIdRemapRepository) {
+            DedupKeyResolver dedupKeyResolver) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
@@ -132,7 +128,6 @@ public class FieldSyncService {
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
         this.userMergeService = userMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
-        this.dedupIdRemapRepository = dedupIdRemapRepository;
     }
 
     /**
@@ -1432,12 +1427,18 @@ public class FieldSyncService {
      * Called at the start of each applyIncomingChangesInternal() so that
      * cross-batch ManyToOne references to dedup-redirected IDs resolve correctly.
      */
+    @SuppressWarnings("unchecked")
     private Map<String, Map<Long, Long>> loadPersistentRemaps() {
         Map<String, Map<Long, Long>> table = new HashMap<>();
         try {
-            for (DedupIdRemap remap : dedupIdRemapRepository.findAll()) {
-                table.computeIfAbsent(remap.getEntityType(), k -> new HashMap<>())
-                     .put(remap.getOriginalId(), remap.getRemappedId());
+            List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT entity_type, original_id, remapped_id FROM dedup_id_remap")
+                .getResultList();
+            for (Object[] row : rows) {
+                String type = (String) row[0];
+                Long origId = ((Number) row[1]).longValue();
+                Long remapId = ((Number) row[2]).longValue();
+                table.computeIfAbsent(type, k -> new HashMap<>()).put(origId, remapId);
             }
             if (!table.isEmpty()) {
                 int total = table.values().stream().mapToInt(Map::size).sum();
@@ -1451,13 +1452,27 @@ public class FieldSyncService {
 
     /**
      * Persist a new dedup remap so future batches can resolve it.
+     * Uses native SQL MERGE INTO (H2 upsert) instead of JPA save() to avoid
+     * poisoning the Hibernate session on unique constraint violations.
+     * JPA save() adds the entity to the persistence context BEFORE the INSERT;
+     * if the INSERT fails, the dirty entity stays in the context and any
+     * subsequent auto-flush triggers "null id in DedupIdRemap entry", rolling
+     * back the entire sync batch.
      */
     private void persistDedupRemap(String entityType, Long originalId, Long remappedId) {
         try {
-            dedupIdRemapRepository.save(new DedupIdRemap(entityType, originalId, remappedId));
+            entityManager.createNativeQuery(
+                "MERGE INTO dedup_id_remap (entity_type, original_id, remapped_id, created_at) " +
+                "KEY (entity_type, original_id) " +
+                "VALUES (:entityType, :originalId, :remappedId, :createdAt)")
+                .setParameter("entityType", entityType)
+                .setParameter("originalId", originalId)
+                .setParameter("remappedId", remappedId)
+                .setParameter("createdAt", Instant.now())
+                .executeUpdate();
         } catch (Exception e) {
-            // Unique constraint violation means it already exists — that's fine
-            log.debug("Dedup remap already persisted: {}#{} -> #{}", entityType, originalId, remappedId);
+            log.warn("Could not persist dedup remap: {}#{} -> #{}: {}",
+                entityType, originalId, remappedId, e.getMessage());
         }
     }
 
