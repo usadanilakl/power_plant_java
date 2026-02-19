@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * Uses multiple strategies:
  * 1. In-Reply-To header matching (most reliable)
  * 2. Conversation ID matching (thread-based)
- * 3. Subject pattern matching (fallback)
+ * 3. Subject pattern matching via SharePoint ID (hub-independent)
  */
 @Service
 @RequiredArgsConstructor
@@ -30,6 +30,9 @@ public class EmailResponseMatcherService {
     private final EmailCorrespondenceRepo correspondenceRepo;
     @PersistenceContext
     private EntityManager entityManager;
+
+    // Pattern for SharePoint-tagged Work Request: [SP:xxx]
+    private static final Pattern SP_PATTERN = Pattern.compile("\\[SP:([^\\]]+)\\]");
 
     /**
      * Matches an incoming email to an entity using multiple strategies.
@@ -74,26 +77,27 @@ public class EmailResponseMatcherService {
             }
         }
 
-        // Strategy 3: Subject pattern matching
+        // Strategy 3: Match via SharePoint ID in subject — hub-independent
+        // Subject format: "... [SP:abc123] ..."
         String subject = incomingEmail.getSubject();
         if (subject != null && !subject.isEmpty()) {
-            // Pattern for Work Request: "Work Request #123" or "WR #123"
-            Pattern wrPattern = Pattern.compile("(?:Work Request|WR)\\s*#(\\d+)", Pattern.CASE_INSENSITIVE);
-            Matcher wrMatcher = wrPattern.matcher(subject);
-            if (wrMatcher.find()) {
-                long entityId = Long.parseLong(wrMatcher.group(1));
-                // The ID in the subject may belong to a dedup'd WR — resolve to canonical ID
-                entityId = resolveRemappedId("WorkRequest", entityId);
-                log.debug("[EmailMatcher] Matched via subject pattern to WorkRequest #{}", entityId);
-                return Optional.of(new CorrespondenceMatch(
-                    "WorkRequest",
-                    entityId,
-                    incomingEmail.getConversationId()
-                ));
+            Matcher spMatcher = SP_PATTERN.matcher(subject);
+            if (spMatcher.find()) {
+                String sharepointId = spMatcher.group(1);
+                Long entityId = findWorkRequestBySharepointId(sharepointId);
+                if (entityId != null) {
+                    log.debug("[EmailMatcher] Matched via SharePoint ID [SP:{}] to WorkRequest #{}",
+                        sharepointId, entityId);
+                    return Optional.of(new CorrespondenceMatch(
+                        "WorkRequest",
+                        entityId,
+                        incomingEmail.getConversationId()
+                    ));
+                } else {
+                    log.warn("[EmailMatcher] SharePoint ID [SP:{}] found in subject but no matching WorkRequest",
+                        sharepointId);
+                }
             }
-
-            // Add more patterns for other entity types as needed
-            // Example: JHA, LotoPoint, etc.
         }
 
         log.warn("[EmailMatcher] Could not match email with subject: {}", incomingEmail.getSubject());
@@ -102,10 +106,6 @@ public class EmailResponseMatcherService {
 
     /**
      * Extracts a specific header value from the email.
-     *
-     * @param email The email message
-     * @param headerName The header name to extract (case-insensitive)
-     * @return The header value, or null if not found
      */
     private String extractHeader(GraphEmailMessage email, String headerName) {
         if (email.getHeaders() == null) {
@@ -120,29 +120,24 @@ public class EmailResponseMatcherService {
     }
 
     /**
-     * Check the dedup_id_remap table for a remapped ID.
-     * When a WR is dedup'd (e.g., #2000000127 → #1000000127), the email subject
-     * still contains the original ID. This resolves it to the canonical one.
+     * Find the active (non-deleted) WorkRequest by sharepointId.
+     * Returns the H2 entity ID for correspondence linking.
      */
-    private long resolveRemappedId(String entityType, long originalId) {
+    @SuppressWarnings("unchecked")
+    private Long findWorkRequestBySharepointId(String sharepointId) {
         try {
-            @SuppressWarnings("unchecked")
             List<Number> rows = entityManager.createNativeQuery(
-                "SELECT remapped_id FROM dedup_id_remap " +
-                "WHERE entity_type = :type AND original_id = :origId")
-                .setParameter("type", entityType)
-                .setParameter("origId", originalId)
+                "SELECT id FROM work_request WHERE sharepoint_id = :spId AND deleted = false ORDER BY id")
+                .setParameter("spId", sharepointId)
                 .getResultList();
             if (!rows.isEmpty()) {
-                long remapped = rows.get(0).longValue();
-                log.info("[EmailMatcher] Resolved dedup remap: {}#{} -> #{}",
-                    entityType, originalId, remapped);
-                return remapped;
+                return rows.get(0).longValue();
             }
         } catch (Exception e) {
-            log.debug("[EmailMatcher] Could not check dedup remap: {}", e.getMessage());
+            log.warn("[EmailMatcher] Error looking up WorkRequest by sharepointId '{}': {}",
+                sharepointId, e.getMessage());
         }
-        return originalId;
+        return null;
     }
 
     /**

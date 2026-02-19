@@ -165,7 +165,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
             throw new IllegalStateException("Cannot request details - no submitter email on record");
         }
 
-        String subject = "Additional Information Required - Work Request #" + id;
+        String subject = buildEmailSubject(entity);
         String body = buildRequestDetailsEmailBody(entity, additionalMessage);
 
         // Build email request
@@ -206,6 +206,22 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         WorkRequest saved = save(entity);
 
         return workRequestMapper.convertToNgDto(saved);
+    }
+
+    /**
+     * Builds email subject with SharePoint ID (for hub-independent matching)
+     * and affected equipment (for user visibility).
+     * Format: "Additional Information Required - Work Request [SP:abc123] - Boiler Feed Pump"
+     */
+    private String buildEmailSubject(WorkRequest entity) {
+        StringBuilder sb = new StringBuilder("Additional Information Required - Work Request");
+        if (entity.getSharepointId() != null && !entity.getSharepointId().isEmpty()) {
+            sb.append(" [SP:").append(entity.getSharepointId()).append("]");
+        }
+        if (entity.getAffectedEquipment() != null && !entity.getAffectedEquipment().isEmpty()) {
+            sb.append(" - ").append(entity.getAffectedEquipment());
+        }
+        return sb.toString();
     }
 
     /**
