@@ -16,6 +16,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -89,6 +92,75 @@ public class ApiEmailService {
     }
 
     /**
+     * Sends email via Graph API using create-draft-then-send approach.
+     * Returns metadata (graphMessageId, internetMessageId, conversationId)
+     * needed for matching inbound replies to outbound correspondence.
+     */
+    public SentEmailMetadata sendEmailAndGetMetadata(EmailRequest request) {
+        if (credential == null) {
+            throw new RuntimeException("ClientCertificateCredential not available for email sending");
+        }
+
+        ensureValidToken();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(emailAccessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Step 1: Create draft message (returns full message object with metadata)
+        String draftBody = buildMessageJson(request);
+        String createUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail + "/messages";
+
+        log.debug("[Email] Creating draft message for {}", request.getTo());
+        ResponseEntity<String> draftResponse = restTemplate.exchange(
+                createUrl, HttpMethod.POST, new HttpEntity<>(draftBody, headers), String.class);
+
+        if (!draftResponse.getStatusCode().is2xxSuccessful() || draftResponse.getBody() == null) {
+            throw new RuntimeException("Failed to create draft email: " + draftResponse.getStatusCode());
+        }
+
+        // Parse draft response to extract metadata
+        SentEmailMetadata metadata;
+        String graphMessageId;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode draft = mapper.readTree(draftResponse.getBody());
+            graphMessageId = getTextValue(draft, "id");
+            String internetMessageId = getTextValue(draft, "internetMessageId");
+            String conversationId = getTextValue(draft, "conversationId");
+            metadata = new SentEmailMetadata(graphMessageId, internetMessageId, conversationId);
+            log.debug("[Email] Draft created: graphId={}, internetMsgId={}, convId={}",
+                    graphMessageId, internetMessageId, conversationId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse draft response", e);
+        }
+
+        // Step 2: Send the draft
+        String sendUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail
+                + "/messages/" + graphMessageId + "/send";
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                sendUrl, HttpMethod.POST, new HttpEntity<>(headers), String.class);
+
+        if (!sendResponse.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Failed to send draft email: " + sendResponse.getStatusCode());
+        }
+
+        log.info("[Email] Email sent via draft-then-send to {}", request.getTo());
+        return metadata;
+    }
+
+    /**
+     * Metadata returned after sending an email via the draft approach.
+     */
+    @Getter
+    @AllArgsConstructor
+    public static class SentEmailMetadata {
+        private final String graphMessageId;
+        private final String internetMessageId;
+        private final String conversationId;
+    }
+
+    /**
      * Authenticates and acquires Graph API token.
      */
     private void authenticate() {
@@ -116,13 +188,18 @@ public class ApiEmailService {
     }
 
     /**
-     * Builds Graph API request body JSON.
-     * Supports to/cc/subject/body/attachments.
+     * Builds Graph API sendMail request body JSON (wraps message in sendMail envelope).
      */
     private String buildRequestBody(EmailRequest request) {
+        return "{\"message\": " + buildMessageJson(request) + ",\"saveToSentItems\": \"true\"}";
+    }
+
+    /**
+     * Builds just the message JSON object (used for both sendMail wrapper and create-draft).
+     */
+    private String buildMessageJson(EmailRequest request) {
         StringBuilder json = new StringBuilder();
         json.append("{");
-        json.append("\"message\": {");
 
         // Subject
         json.append("\"subject\": \"").append(escapeJson(request.getSubject())).append("\",");
@@ -161,10 +238,7 @@ public class ApiEmailService {
             json.append("]");
         }
 
-        json.append("},");
-        json.append("\"saveToSentItems\": \"true\"");
         json.append("}");
-
         return json.toString();
     }
 

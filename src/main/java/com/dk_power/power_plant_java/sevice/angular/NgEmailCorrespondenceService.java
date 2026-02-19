@@ -118,6 +118,18 @@ public class NgEmailCorrespondenceService
     public EmailCorrespondence saveOutbound(String entityType, Long entityId,
                                             String subject, String body,
                                             String recipient, String correspondenceTypeName) {
+        return saveOutbound(entityType, entityId, subject, body, recipient, correspondenceTypeName,
+                null, null, null);
+    }
+
+    /**
+     * Save outbound correspondence with Graph API metadata for reply matching.
+     */
+    public EmailCorrespondence saveOutbound(String entityType, Long entityId,
+                                            String subject, String body,
+                                            String recipient, String correspondenceTypeName,
+                                            String graphMessageId, String internetMessageId,
+                                            String conversationId) {
         EmailCorrespondence correspondence = new EmailCorrespondence();
         correspondence.setEntityType(entityType);
         correspondence.setEntityId(entityId);
@@ -128,6 +140,9 @@ public class NgEmailCorrespondenceService
         correspondence.setRecipient(recipient);
         correspondence.setSentDateTime(LocalDateTime.now());
         correspondence.setIsRead(true); // Outbound always "read"
+        correspondence.setGraphMessageId(graphMessageId);
+        correspondence.setInternetMessageId(internetMessageId);
+        correspondence.setConversationId(conversationId);
 
         // Set correspondence type
         ValueDto type = valueService.getValueFromCategory("Correspondence Type", correspondenceTypeName);

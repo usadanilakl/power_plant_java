@@ -112,6 +112,10 @@ export class CorrespondencePageComponent implements OnInit {
   openDialog(item: EmailCorrespondenceDto): void {
     if (item.entityType && item.entityId) {
       this.dialogService.open(item.entityType, item.entityId);
+    } else {
+      // Unlinked item — show in standalone mode
+      const title = item.subject || 'Email Details';
+      this.dialogService.openWithItems(title, [item]);
     }
   }
 

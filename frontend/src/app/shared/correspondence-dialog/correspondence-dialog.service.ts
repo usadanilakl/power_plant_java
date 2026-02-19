@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
+import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.model';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,8 @@ export class CorrespondenceDialogService {
   private _isVisible = signal(false);
   private _entityType = signal('');
   private _entityId = signal(0);
+  private _preloadedItems = signal<EmailCorrespondenceDto[] | null>(null);
+  private _dialogTitle = signal('');
   private _onOpen = new Subject<void>();
 
   // Correspondence change notification for real-time updates
@@ -23,6 +26,8 @@ export class CorrespondenceDialogService {
   isVisible = this._isVisible.asReadonly();
   entityType = this._entityType.asReadonly();
   entityId = this._entityId.asReadonly();
+  preloadedItems = this._preloadedItems.asReadonly();
+  dialogTitle = this._dialogTitle.asReadonly();
   onOpen$ = this._onOpen.asObservable();
 
   constructor() {
@@ -53,6 +58,17 @@ export class CorrespondenceDialogService {
   open(entityType: string, entityId: number): void {
     this._entityType.set(entityType);
     this._entityId.set(entityId);
+    this._preloadedItems.set(null);
+    this._dialogTitle.set('');
+    this._isVisible.set(true);
+    this._onOpen.next();
+  }
+
+  openWithItems(title: string, items: EmailCorrespondenceDto[]): void {
+    this._entityType.set('');
+    this._entityId.set(0);
+    this._preloadedItems.set(items);
+    this._dialogTitle.set(title);
     this._isVisible.set(true);
     this._onOpen.next();
   }
@@ -61,5 +77,7 @@ export class CorrespondenceDialogService {
     this._isVisible.set(false);
     this._entityType.set('');
     this._entityId.set(0);
+    this._preloadedItems.set(null);
+    this._dialogTitle.set('');
   }
 }

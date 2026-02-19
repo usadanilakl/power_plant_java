@@ -14,7 +14,7 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
     @if (dialogService.isVisible()) {
       <app-rf-popup-projection
         [isOpen]="true"
-        [title]="'Email Correspondence — ' + dialogService.entityType() + ' #' + dialogService.entityId()"
+        [title]="getTitle()"
         [zIndex]="20000"
         (close)="close()"
       >
@@ -287,7 +287,22 @@ export class CorrespondenceDialogComponent {
     this.loadCorrespondence();
   });
 
+  getTitle(): string {
+    const custom = this.dialogService.dialogTitle();
+    if (custom) return custom;
+    return 'Email Correspondence — ' + this.dialogService.entityType() + ' #' + this.dialogService.entityId();
+  }
+
   loadCorrespondence(): void {
+    // If preloaded items are provided, use them directly
+    const preloaded = this.dialogService.preloadedItems();
+    if (preloaded) {
+      this.correspondence.set(preloaded);
+      this.isLoading.set(false);
+      this.markAllAsRead(preloaded);
+      return;
+    }
+
     const entityType = this.dialogService.entityType();
     const entityId = this.dialogService.entityId();
     if (!entityType || !entityId) return;

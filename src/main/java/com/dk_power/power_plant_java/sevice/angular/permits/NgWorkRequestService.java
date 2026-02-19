@@ -176,16 +176,17 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                         .body(body)
                         .build();
 
-        // Send email (facade handles fallback)
+        // Send email with metadata capture (draft-then-send for reply matching)
+        com.dk_power.power_plant_java.sevice.email.ApiEmailService.SentEmailMetadata emailMetadata = null;
         try {
-            emailFacadeService.sendEmail(emailRequest);
+            emailMetadata = emailFacadeService.sendEmailWithMetadata(emailRequest);
             log.info("[WorkRequest] Request details email sent to {} for id={}", entity.getSubmitterEmail(), id);
         } catch (Exception e) {
             log.error("[WorkRequest] Failed to send request details email for id={}: {}", id, e.getMessage(), e);
             throw new RuntimeException("Failed to send request details email", e);
         }
 
-        // Save outbound correspondence (polymorphic tracking)
+        // Save outbound correspondence with Graph API metadata for reply matching
         try {
             emailCorrespondenceService.saveOutbound(
                 "WorkRequest",
@@ -193,9 +194,13 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                 subject,
                 body,
                 entity.getSubmitterEmail(),
-                "Request Details"
+                "Request Details",
+                emailMetadata != null ? emailMetadata.getGraphMessageId() : null,
+                emailMetadata != null ? emailMetadata.getInternetMessageId() : null,
+                emailMetadata != null ? emailMetadata.getConversationId() : null
             );
-            log.debug("[WorkRequest] Saved outbound correspondence for id={}", id);
+            log.debug("[WorkRequest] Saved outbound correspondence for id={} (metadata={})",
+                    id, emailMetadata != null ? "captured" : "unavailable");
         } catch (Exception e) {
             log.error("[WorkRequest] Failed to save correspondence for id={}: {}", id, e.getMessage(), e);
             // Don't throw - email was sent successfully, just logging failed
