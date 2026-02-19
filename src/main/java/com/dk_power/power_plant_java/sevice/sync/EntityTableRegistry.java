@@ -88,12 +88,12 @@ public class EntityTableRegistry {
      * Categories and Values first (base entities), then entities that reference them.
      */
     public static final List<String> SYNC_ORDER = List.of(
+        // Tier 1: Base lookup entities (no dependencies)
         "Category",
         "Value",
-        "Comment",
-        "EmailCorrespondence",
         "User",
         "FileObject",
+        // Tier 2: Equipment & spatial (depend on Value/Category)
         "Equipment",
         "LotoPoint",
         "Loto",
@@ -110,6 +110,7 @@ public class EntityTableRegistry {
         "HtBreaker",
         "EspDevice",
         "LedStrip",
+        // Tier 3: Permits & work management (depend on Value, Equipment)
         "SafeWork",
         "HotWork",
         "ConfinedSpace",
@@ -121,7 +122,11 @@ public class EntityTableRegistry {
         "PrintableForm",
         "FormContainer",
         "Flow",
-        "Task"
+        "Task",
+        // Tier 4: Polymorphic entities (entityType + entityId → reference ANY entity above)
+        // MUST be last so dedup remaps for referenced entities exist before entityId is applied.
+        "Comment",
+        "EmailCorrespondence"
     );
 
     /**
