@@ -14,6 +14,7 @@ export interface EmailCorrespondenceModel extends BaseModel {
   internetMessageId?: string;
   conversationId?: string;
   graphMessageId?: string;
+  linkedSharepointId?: string;
   isRead: boolean;
   needsAttention: boolean;
   createdBy: string;
@@ -34,6 +35,7 @@ export class EmailCorrespondenceDto extends BaseDto implements EmailCorresponden
   internetMessageId?: string;
   conversationId?: string;
   graphMessageId?: string;
+  linkedSharepointId?: string;
   isRead: boolean;
   needsAttention: boolean;
   createdBy: string;
@@ -54,6 +56,7 @@ export class EmailCorrespondenceDto extends BaseDto implements EmailCorresponden
     this.internetMessageId = data.internetMessageId;
     this.conversationId = data.conversationId;
     this.graphMessageId = data.graphMessageId;
+    this.linkedSharepointId = data.linkedSharepointId;
     this.isRead = data.isRead ?? false;
     this.needsAttention = data.needsAttention ?? false;
     this.createdBy = data.createdBy || '';
@@ -75,6 +78,7 @@ export class EmailCorrespondenceDto extends BaseDto implements EmailCorresponden
       internetMessageId: this.internetMessageId,
       conversationId: this.conversationId,
       graphMessageId: this.graphMessageId,
+      linkedSharepointId: this.linkedSharepointId,
       isRead: this.isRead,
       needsAttention: this.needsAttention,
     };
@@ -107,6 +111,7 @@ export class EmailCorrespondenceDto extends BaseDto implements EmailCorresponden
       internetMessageId: json.internetMessageId,
       conversationId: json.conversationId,
       graphMessageId: json.graphMessageId,
+      linkedSharepointId: json.linkedSharepointId,
       isRead: json.isRead ?? false,
       needsAttention: json.needsAttention ?? false,
       createdBy: json.createdBy || '',

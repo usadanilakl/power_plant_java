@@ -197,7 +197,8 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                 "Request Details",
                 emailMetadata != null ? emailMetadata.getGraphMessageId() : null,
                 emailMetadata != null ? emailMetadata.getInternetMessageId() : null,
-                emailMetadata != null ? emailMetadata.getConversationId() : null
+                emailMetadata != null ? emailMetadata.getConversationId() : null,
+                entity.getSharepointId()
             );
             log.debug("[WorkRequest] Saved outbound correspondence for id={} (metadata={})",
                     id, emailMetadata != null ? "captured" : "unavailable");
@@ -214,14 +215,16 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     }
 
     /**
-     * Builds email subject with SharePoint ID (for hub-independent matching)
-     * and affected equipment (for user visibility).
+     * Builds email subject with SharePoint ID or PWA UUID (for matching on reply).
      * Format: "Additional Information Required - Work Request [SP:abc123] - Boiler Feed Pump"
+     * Fallback: "Additional Information Required - Work Request [PWA:uuid] - Boiler Feed Pump"
      */
     private String buildEmailSubject(WorkRequest entity) {
         StringBuilder sb = new StringBuilder("Additional Information Required - Work Request");
         if (entity.getSharepointId() != null && !entity.getSharepointId().isEmpty()) {
             sb.append(" [SP:").append(entity.getSharepointId()).append("]");
+        } else if (entity.getLocalUuid() != null && !entity.getLocalUuid().isEmpty()) {
+            sb.append(" [PWA:").append(entity.getLocalUuid()).append("]");
         }
         if (entity.getAffectedEquipment() != null && !entity.getAffectedEquipment().isEmpty()) {
             sb.append(" - ").append(entity.getAffectedEquipment());

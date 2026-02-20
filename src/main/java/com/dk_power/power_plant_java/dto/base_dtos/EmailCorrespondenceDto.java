@@ -30,6 +30,7 @@ public class EmailCorrespondenceDto extends BaseDto {
     private String internetMessageId;
     private String conversationId;
     private String graphMessageId;
+    private String linkedSharepointId;
     private Boolean isRead = false;
     private Boolean needsAttention = false;
 }

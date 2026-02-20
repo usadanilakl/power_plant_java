@@ -18,7 +18,8 @@ import { getWorkingDir } from '../paths';
 import { WindowLayoutManager } from './window-layout.manager';
 
 const PJM_API_BASE = 'https://api.pjm.com/api/v1';
-const DEFAULT_PNODE_ID = 33092371; // ComEd zone aggregate
+const DEFAULT_PNODE_ID = 2156111010; // U1 Jackson
+// const DEFAULT_PNODE_ID = 33092371; // ComEd zone aggregate
 const DEFAULT_POLL_INTERVAL_MIN = 5;
 
 // Voyager auto-login (credentials loaded from pjm-config.json at runtime)
@@ -231,6 +232,8 @@ export class PjmManager {
             error: `API returned ${res.statusCode}`,
           });
           return;
+        }else{
+          console.log(`Options: ${JSON.stringify(options)}, response: ${body.substring(0, 500)}`)
         }
 
         this.parseLmpResponse(body);

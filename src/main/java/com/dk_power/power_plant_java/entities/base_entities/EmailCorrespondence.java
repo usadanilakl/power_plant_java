@@ -74,6 +74,10 @@ public class EmailCorrespondence extends BaseAuditEntity implements Referenceabl
     @Column(length = 500)
     private String graphMessageId;
 
+    // ========== Stable Association (dedup-immune) ==========
+    @Column(name = "linked_sharepoint_id")
+    private String linkedSharepointId;
+
     // ========== Status Fields ==========
     @Column(nullable = false)
     private Boolean isRead = false;

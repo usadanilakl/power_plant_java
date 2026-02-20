@@ -87,13 +87,62 @@ public class NgEmailCorrespondenceService
     }
 
     /**
-     * Get all correspondence for a specific entity (polymorphic query)
+     * Get all correspondence for a specific entity (polymorphic query).
+     * For WorkRequest, also includes correspondence linked via linkedSharepointId
+     * to ensure dedup-resilient retrieval.
      */
     public List<EmailCorrespondenceDto> getCorrespondenceForEntity(String entityType, Long entityId) {
-        return repo.findByEntityTypeAndEntityIdOrderBySentDateTimeDesc(entityType, entityId)
-            .stream()
+        List<EmailCorrespondence> byEntityId =
+            repo.findByEntityTypeAndEntityIdOrderBySentDateTimeDesc(entityType, entityId);
+
+        // For WorkRequest, also query by linkedSharepointId for dedup resilience
+        if ("WorkRequest".equals(entityType)) {
+            String sharepointId = lookupSharepointId(entityId);
+            if (sharepointId != null) {
+                List<EmailCorrespondence> bySpId =
+                    repo.findByLinkedSharepointIdOrderBySentDateTimeDesc(sharepointId);
+                // Union and deduplicate by id
+                java.util.Map<Long, EmailCorrespondence> merged = new java.util.LinkedHashMap<>();
+                for (EmailCorrespondence ec : byEntityId) {
+                    merged.put(ec.getId(), ec);
+                }
+                for (EmailCorrespondence ec : bySpId) {
+                    merged.put(ec.getId(), ec);
+                }
+                return merged.values().stream()
+                    .sorted((a, b) -> {
+                        if (a.getSentDateTime() == null && b.getSentDateTime() == null) return 0;
+                        if (a.getSentDateTime() == null) return 1;
+                        if (b.getSentDateTime() == null) return -1;
+                        return b.getSentDateTime().compareTo(a.getSentDateTime());
+                    })
+                    .map(mapper::convertToDto)
+                    .toList();
+            }
+        }
+
+        return byEntityId.stream()
             .map(mapper::convertToDto)
             .toList();
+    }
+
+    /**
+     * Look up the sharepointId for a WorkRequest by its H2 entity ID.
+     */
+    @SuppressWarnings("unchecked")
+    private String lookupSharepointId(Long workRequestId) {
+        try {
+            List<String> rows = entityManager.createNativeQuery(
+                "SELECT sharepoint_id FROM work_request WHERE id = :id AND deleted = false")
+                .setParameter("id", workRequestId)
+                .getResultList();
+            if (!rows.isEmpty()) {
+                return rows.get(0);
+            }
+        } catch (Exception e) {
+            // Silently fall back to entityId-only query
+        }
+        return null;
     }
 
     /**
@@ -119,17 +168,18 @@ public class NgEmailCorrespondenceService
                                             String subject, String body,
                                             String recipient, String correspondenceTypeName) {
         return saveOutbound(entityType, entityId, subject, body, recipient, correspondenceTypeName,
-                null, null, null);
+                null, null, null, null);
     }
 
     /**
-     * Save outbound correspondence with Graph API metadata for reply matching.
+     * Save outbound correspondence with Graph API metadata and stable SharePoint link.
      */
     public EmailCorrespondence saveOutbound(String entityType, Long entityId,
                                             String subject, String body,
                                             String recipient, String correspondenceTypeName,
                                             String graphMessageId, String internetMessageId,
-                                            String conversationId) {
+                                            String conversationId,
+                                            String linkedSharepointId) {
         EmailCorrespondence correspondence = new EmailCorrespondence();
         correspondence.setEntityType(entityType);
         correspondence.setEntityId(entityId);
@@ -143,6 +193,7 @@ public class NgEmailCorrespondenceService
         correspondence.setGraphMessageId(graphMessageId);
         correspondence.setInternetMessageId(internetMessageId);
         correspondence.setConversationId(conversationId);
+        correspondence.setLinkedSharepointId(linkedSharepointId);
 
         // Set correspondence type
         ValueDto type = valueService.getValueFromCategory("Correspondence Type", correspondenceTypeName);

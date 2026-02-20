@@ -69,6 +69,11 @@ public interface EmailCorrespondenceRepo extends BaseRepository<EmailCorresponde
     List<EmailCorrespondence> findByEntityIdIsNull();
 
     /**
+     * Find correspondence by stable SharePoint ID link (dedup-resilient query).
+     */
+    List<EmailCorrespondence> findByLinkedSharepointIdOrderBySentDateTimeDesc(String linkedSharepointId);
+
+    /**
      * Find graphMessageIds that appear more than once (duplicates from multi-client polling).
      * Returns rows of [graphMessageId, count].
      */

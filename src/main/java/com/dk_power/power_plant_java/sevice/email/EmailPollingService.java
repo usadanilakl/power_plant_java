@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.repository.base_repositories.EmailCorrespondenceRepo;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Scheduled service for polling the monitored email inbox for new responses.
@@ -31,10 +35,15 @@ public class EmailPollingService {
     private final SyncConfig syncConfig;
     @Lazy private final CentralSyncService centralSyncService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Value("${email.graph.from}")
     private String monitoredEmail;
 
     private LocalDateTime lastPollTime = LocalDateTime.now().minusDays(7);
+
+    private static final Pattern SP_PATTERN = Pattern.compile("\\[SP:([^\\]]+)\\]");
 
     /**
      * Scheduled task to poll for new email responses.
@@ -67,8 +76,6 @@ public class EmailPollingService {
     /**
      * Processes a single incoming email message.
      * Checks for duplicates, matches to entity, and saves if matched.
-     *
-     * @param message The incoming email message from Graph API
      */
     private void processIncomingMessage(GraphEmailMessage message) {
         if (message == null || message.getId() == null) {
@@ -98,9 +105,7 @@ public class EmailPollingService {
 
     /**
      * Saves matched inbound correspondence to database.
-     *
-     * @param message The email message
-     * @param match The matched entity details
+     * Sets linkedSharepointId from the match for dedup-resilient association.
      */
     private void saveInboundCorrespondence(GraphEmailMessage message,
                                            EmailResponseMatcherService.CorrespondenceMatch match) {
@@ -117,12 +122,13 @@ public class EmailPollingService {
             correspondence.setInternetMessageId(message.getInternetMessageId());
             correspondence.setConversationId(message.getConversationId());
             correspondence.setGraphMessageId(message.getId());
+            correspondence.setLinkedSharepointId(match.getSharepointId());
             correspondence.setIsRead(false);  // Inbound starts as unread
             correspondence.setNeedsAttention(false);
 
             correspondenceRepo.save(correspondence);
-            log.info("[EmailPoll] Saved INBOUND correspondence for {} #{} - Subject: {}",
-                match.getEntityType(), match.getEntityId(), message.getSubject());
+            log.info("[EmailPoll] Saved INBOUND correspondence for {} #{} (SP:{}) - Subject: {}",
+                match.getEntityType(), match.getEntityId(), match.getSharepointId(), message.getSubject());
 
         } catch (Exception e) {
             log.error("[EmailPoll] Failed to save correspondence for message: {}", message.getId(), e);
@@ -131,8 +137,7 @@ public class EmailPollingService {
 
     /**
      * Saves an unmatched inbound email for later retry.
-     * The outbound record it replies to may not have synced yet — once sync
-     * delivers it, the retry scheduler will match and link the email.
+     * Extracts [SP:xxx] from subject if present for partial linking.
      */
     private void saveUnmatchedCorrespondence(GraphEmailMessage message) {
         try {
@@ -150,6 +155,14 @@ public class EmailPollingService {
             correspondence.setGraphMessageId(message.getId());
             correspondence.setIsRead(false);
             correspondence.setNeedsAttention(true);  // flag for attention since unlinked
+
+            // Try to extract sharepointId from subject even if entity match failed
+            if (message.getSubject() != null) {
+                Matcher spMatcher = SP_PATTERN.matcher(message.getSubject());
+                if (spMatcher.find()) {
+                    correspondence.setLinkedSharepointId(spMatcher.group(1));
+                }
+            }
 
             correspondenceRepo.save(correspondence);
             log.info("[EmailPoll] Saved UNLINKED correspondence for later retry - Subject: {}",
@@ -178,23 +191,81 @@ public class EmailPollingService {
             msg.setInternetMessageId(email.getInternetMessageId());
             msg.setConversationId(email.getConversationId());
             msg.setId(email.getGraphMessageId());
+            msg.setSenderEmail(email.getSender());
 
-            Optional<EmailResponseMatcherService.CorrespondenceMatch> match =
+            Optional<EmailResponseMatcherService.CorrespondenceMatch> matchResult =
                 matcherService.matchEmailToEntity(msg);
 
-            if (match.isPresent()) {
-                email.setEntityType(match.get().getEntityType());
-                email.setEntityId(match.get().getEntityId());
+            if (matchResult.isPresent()) {
+                EmailResponseMatcherService.CorrespondenceMatch match = matchResult.get();
+                email.setEntityType(match.getEntityType());
+                email.setEntityId(match.getEntityId());
+                email.setLinkedSharepointId(match.getSharepointId());
                 email.setNeedsAttention(false);
                 correspondenceRepo.save(email);
                 matched++;
-                log.info("[EmailPoll] Retry matched email to {} #{} - Subject: {}",
-                    match.get().getEntityType(), match.get().getEntityId(), email.getSubject());
+                log.info("[EmailPoll] Retry matched email to {} #{} (SP:{}) - Subject: {}",
+                    match.getEntityType(), match.getEntityId(), match.getSharepointId(), email.getSubject());
             }
         }
 
         if (matched > 0) {
             log.info("[EmailPoll] Retry matched {} of {} unlinked emails", matched, unlinked.size());
+        }
+    }
+
+    /**
+     * Periodically heal orphaned correspondence where entityId points to a
+     * deleted/non-existent WR but linkedSharepointId is still valid.
+     * Looks up the current canonical WR ID and updates entityId.
+     */
+    @Scheduled(fixedDelay = 600_000, initialDelay = 180_000)  // every 10 min, 3 min initial delay
+    @SuppressWarnings("unchecked")
+    public void healOrphanedCorrespondence() {
+        try {
+            // Find correspondence with linkedSharepointId where entityId points to a deleted WR
+            List<Object[]> orphaned = entityManager.createNativeQuery(
+                "SELECT ec.id, ec.linked_sharepoint_id FROM email_correspondence ec " +
+                "WHERE ec.linked_sharepoint_id IS NOT NULL AND ec.deleted = false " +
+                "AND ec.entity_type = 'WorkRequest' " +
+                "AND (ec.entity_id IS NULL OR ec.entity_id NOT IN " +
+                "  (SELECT wr.id FROM work_request wr WHERE wr.deleted = false))")
+                .getResultList();
+
+            if (orphaned.isEmpty()) return;
+
+            log.info("[EmailPoll] Found {} orphaned correspondence to heal", orphaned.size());
+            int healed = 0;
+
+            for (Object[] row : orphaned) {
+                Long ecId = ((Number) row[0]).longValue();
+                String spId = (String) row[1];
+
+                // Look up current canonical WR for this sharepointId
+                List<Number> wrRows = entityManager.createNativeQuery(
+                    "SELECT id FROM work_request WHERE sharepoint_id = :spId AND deleted = false ORDER BY id")
+                    .setParameter("spId", spId)
+                    .getResultList();
+
+                if (!wrRows.isEmpty()) {
+                    Long canonicalWrId = wrRows.get(0).longValue();
+                    entityManager.createNativeQuery(
+                        "UPDATE email_correspondence SET entity_id = :wrId, needs_attention = false " +
+                        "WHERE id = :ecId")
+                        .setParameter("wrId", canonicalWrId)
+                        .setParameter("ecId", ecId)
+                        .executeUpdate();
+                    healed++;
+                    log.info("[EmailPoll] Healed correspondence #{} -> WorkRequest #{} (SP:{})",
+                        ecId, canonicalWrId, spId);
+                }
+            }
+
+            if (healed > 0) {
+                log.info("[EmailPoll] Healed {} of {} orphaned correspondence", healed, orphaned.size());
+            }
+        } catch (Exception e) {
+            log.warn("[EmailPoll] Error during orphaned correspondence healing: {}", e.getMessage());
         }
     }
 
