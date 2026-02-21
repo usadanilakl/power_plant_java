@@ -92,6 +92,7 @@
           >
             <td
               *ngFor="let column of columns()"
+              [attr.data-column-id]="column.id"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
               [ngStyle]="clickService.getCellStyleWithHover(item, column)"
               (mousedown)="clickService.registerCellClick(item, column, $event)"

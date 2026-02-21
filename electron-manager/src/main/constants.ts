@@ -15,6 +15,20 @@ export const rendererAppPort = 4201;
 export const rendererAppName = 'renderer';
 export const electronAppName = 'electron-manager';
 
+// Spring Boot profile — controls which database file and uploads dir are used.
+// Must match the profile passed to Spring Boot via --spring.profiles.active.
+// Profile → database name / uploads dir mapping (mirrors application-{profile}.properties):
+//   prod → proddb / uploads-prod
+//   test → testdb / uploads-test
+//   dev  → devdb  / uploads
+export const SPRING_PROFILE = 'prod';
+
+const PROFILE_DB_MAP: Record<string, string> = { prod: 'proddb', test: 'testdb', dev: 'devdb' };
+const PROFILE_UPLOADS_MAP: Record<string, string> = { prod: 'uploads-prod', test: 'uploads-test', dev: 'uploads' };
+
+export const SPRING_DB_NAME = PROFILE_DB_MAP[SPRING_PROFILE] || 'proddb';
+export const SPRING_UPLOADS_DIR = PROFILE_UPLOADS_MAP[SPRING_PROFILE] || 'uploads';
+
 // Default Spring Boot configuration
 export const DEFAULT_SPRING_BOOT_CONFIG = {
   jar: 'power_plant_java-1.jar',

@@ -12,7 +12,7 @@ import * as path from 'path';
 import * as http from 'http';
 import AdmZip from 'adm-zip';
 import { ColdResyncProgress, IpcResult } from '../../shared/types';
-import { DEFAULT_SPRING_BOOT_CONFIG } from '../constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, SPRING_DB_NAME, SPRING_UPLOADS_DIR } from '../constants';
 import { getWorkingDir } from '../paths';
 
 const SYNC_STATUS_FILE = 'sync-status.json';
@@ -33,9 +33,9 @@ export class ColdResyncManager {
   constructor() {
     this.workingDir = getWorkingDir();
     this.dbDir = path.join(this.workingDir, 'db');
-    this.dbPath = path.join(this.dbDir, 'proddb.mv.db');
-    this.uploadsDir = path.join(this.workingDir, 'uploads');
-    console.log(`ColdResyncManager: workingDir=${this.workingDir} dbPath=${this.dbPath}`);
+    this.dbPath = path.join(this.dbDir, `${SPRING_DB_NAME}.mv.db`);
+    this.uploadsDir = path.join(this.workingDir, SPRING_UPLOADS_DIR);
+    console.log(`ColdResyncManager: workingDir=${this.workingDir} dbPath=${this.dbPath} uploadsDir=${this.uploadsDir}`);
   }
 
   /** True if the database file doesn't exist (first run or deleted) */
@@ -258,7 +258,7 @@ export class ColdResyncManager {
     }
 
     // Extract using extractEntryTo — safer for large files than getData() which buffers everything
-    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, 'proddb.mv.db');
+    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, `${SPRING_DB_NAME}.mv.db`);
 
     // Verify extraction succeeded
     if (!fs.existsSync(this.dbPath)) {
@@ -411,5 +411,19 @@ export class ColdResyncManager {
     } catch (err) {
       console.error('Error writing sync-status.json:', err);
     }
+
+    // Clean auto-resync state so Spring Boot doesn't carry stale escalation state
+    this.cleanAutoResyncState();
+  }
+
+  /** Remove auto-resync-state.json so auto-resync starts fresh after cold resync */
+  private cleanAutoResyncState(): void {
+    const statePath = path.join(this.workingDir, 'auto-resync-state.json');
+    try {
+      if (fs.existsSync(statePath)) {
+        fs.unlinkSync(statePath);
+        console.log('Cleaned auto-resync-state.json after cold resync');
+      }
+    } catch { /* ignore */ }
   }
 }

@@ -45,6 +45,7 @@
             <app-interactive-image
               [imageUrl]="fileLink()"
               [shapesInput]="shapes()"
+              [focusShapeId]="selectedEquipmentId()"
               [preset]="'EQUIPMENT_EDITOR'"
               (shapeClicked)="onShapeSelected($event)"
               (shapeRightClicked)="onShapeRightClicked($event)"

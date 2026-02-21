@@ -94,6 +94,7 @@ public class WorkRequestMergeService {
             transferDailyPermitPackageLink(duplicate.getId(), canonical.getId());
             transferJhaLinks(duplicate.getId(), canonical.getId());
             transferEmailCorrespondenceLinks(duplicate.getId(), canonical.getId(), sharepointId);
+            transferAttachmentLinks(duplicate.getId(), canonical.getId());
 
             // Soft-delete via JPA so FieldChangeEntityListener fires and creates
             // a FieldChange record — this ensures the deletion syncs to other machines.
@@ -164,6 +165,24 @@ public class WorkRequestMergeService {
         if (backfilled > 0) {
             log.info("[WorkRequest Merge] Backfilled linkedSharepointId on {} existing correspondence for WR ID={}",
                 backfilled, canonicalId);
+        }
+    }
+
+    /**
+     * Transfer PermitAttachment polymorphic links from a duplicate WorkRequest to the canonical one.
+     * PermitAttachment uses entityType + entityId (same pattern as EmailCorrespondence).
+     */
+    private void transferAttachmentLinks(Long duplicateId, Long canonicalId) {
+        int updated = entityManager.createNativeQuery(
+            "UPDATE permit_attachment SET entity_id = :canId " +
+            "WHERE entity_type = 'WorkRequest' AND entity_id = :dupId")
+            .setParameter("canId", canonicalId)
+            .setParameter("dupId", duplicateId)
+            .executeUpdate();
+
+        if (updated > 0) {
+            log.info("[WorkRequest Merge] Transferred {} PermitAttachment link(s) from WR ID={} to WR ID={}",
+                updated, duplicateId, canonicalId);
         }
     }
 

@@ -86,12 +86,17 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
       max-width: 740px;
       background: var(--primary-background, #fff);
       color: var(--primary-text, #212529);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
     }
 
     .filter-toolbar {
       display: flex;
       gap: 8px;
       margin-bottom: 14px;
+      flex-shrink: 0;
     }
 
     .search-input {
@@ -134,6 +139,9 @@ import { EmailCorrespondenceDto } from '../../models/base/email-correspondence.m
       flex-direction: column;
       gap: 10px;
       padding-right: 4px;
+      overflow-y: auto;
+      min-height: 0;
+      flex: 1;
     }
 
     .email-item {

@@ -58,6 +58,8 @@ public class FullResyncController {
 
     /**
      * Trigger a full resync from backup.
+     * Runs asynchronously — returns immediately. Monitor progress via /api/resync/status.
+     * After resync completes, the JVM exits and Electron restarts it.
      *
      * @param force If true, skip deletion safety checks (use with caution)
      */
@@ -70,14 +72,11 @@ public class FullResyncController {
                 .body(new ResyncResult(false, "Resync already in progress", null));
         }
 
-        log.info("Full resync requested (force={})", force);
-        ResyncResult result = fullResyncService.performFullResync(force);
+        log.info("Full resync requested (force={}), starting async", force);
+        fullResyncService.performFullResyncAsync(force);
 
-        if (result.isSuccess()) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.badRequest().body(result);
-        }
+        return ResponseEntity.ok(new ResyncResult(true,
+            "Resync started. Monitor progress via /api/resync/status. App will restart on completion.", null));
     }
 
     /**

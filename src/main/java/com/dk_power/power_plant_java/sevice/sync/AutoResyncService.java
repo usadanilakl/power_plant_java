@@ -23,10 +23,10 @@ import java.time.temporal.ChronoUnit;
  *
  * Escalation schedule:
  *   Level 0 — suggestedSyncDate (last known good sync), fallback: 1 day ago
- *   Level 1 — 1 day ago
- *   Level 2 — 3 days ago
- *   Level 3 — 7 days ago
- *   Level 4 — 14 days ago
+ *   Level 1 — 3 days ago
+ *   Level 2 — 7 days ago
+ *   Level 3 — 30 days ago
+ *   Level 4 — 90 days ago
  *   Exhausted — stop, recommend full resync
  */
 @Service
@@ -50,7 +50,7 @@ public class AutoResyncService {
     @Value("${project.root:}")
     private String projectRootPath;
 
-    private static final int[] ESCALATION_DAYS_BACK = {0, 1, 3, 7, 14};
+    private static final int[] ESCALATION_DAYS_BACK = {0, 3, 7, 30, 90};
     private static final int MAX_ESCALATION_LEVEL = 4;
     private static final long COOLDOWN_SECONDS = 270; // ~4.5 min, slightly less than health check interval
     private static final String STATE_FILE = "auto-resync-state.json";

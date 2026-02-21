@@ -73,6 +73,8 @@ export class InteractiveImageComponent {
   selectedShapeIdInput = input<number | null>(null);
   /** IDs of shapes to highlight (e.g., for selected LOTO points' equipment) */
   highlightedShapeIds = input<number[]>([]);
+  /** ID of shape to auto-zoom and center on after image loads */
+  focusShapeId = input<number | null>(null);
 
   // Configuration-based approach (replaces simple 'mode')
   config = input<InteractiveImageConfig>();
@@ -155,6 +157,10 @@ export class InteractiveImageComponent {
   imageScale: number = 1;
   cursor: string = 'default';
 
+  // Track image load state for focusShapeId effect
+  private imageLoaded = signal(false);
+  private lastFocusedShapeId: number | null = null;
+
   // ResizeObserver to monitor image size changes
   private imageResizeObserver: ResizeObserver | null = null;
 
@@ -213,6 +219,13 @@ export class InteractiveImageComponent {
   enabledTools = computed(() => this.activeConfig().enabledTools || []);
 
   constructor() {
+    // Effect to reset imageLoaded when image URL changes
+    effect(() => {
+      const url = this.imageUrl();
+      this.imageLoaded.set(false);
+      this.lastFocusedShapeId = null;
+    });
+
     // Effect to load shapes from input when they change
     effect(() => {
       const inputShapes = this.shapesInput();
@@ -271,6 +284,26 @@ export class InteractiveImageComponent {
         this.currentDrawMode.set('none');
       }
     });
+
+    // Effect to auto-zoom to focused shape when image and shapes are ready
+    effect(() => {
+      const focusId = this.focusShapeId();
+      const shapes = this.shapes();
+      const loaded = this.imageLoaded();
+      if (focusId !== null && shapes.length > 0 && loaded && this.canvas && this.img) {
+        // Only zoom once per focusShapeId (prevent re-triggering on every shapes update)
+        if (this.lastFocusedShapeId !== focusId) {
+          this.lastFocusedShapeId = focusId;
+          // Use requestAnimationFrame to ensure layout is complete before calculating
+          requestAnimationFrame(() => {
+            // Double-rAF ensures paint has completed
+            requestAnimationFrame(() => {
+              this.zoomToShape(focusId);
+            });
+          });
+        }
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -304,8 +337,18 @@ export class InteractiveImageComponent {
 
       // Automatically fit image to screen on load
       setTimeout(() => {
-        this.fitToScreen();
+        // Skip fitToScreen if we're going to zoomToShape (avoid competing transitions)
+        if (this.focusShapeId() === null) {
+          this.fitToScreen();
+        }
+        // Signal that image is loaded (triggers focusShapeId effect)
+        this.imageLoaded.set(true);
       }, 50); // Small delay to ensure container dimensions are calculated
+    };
+
+    // Reset imageLoaded when image URL changes
+    this.img.onerror = () => {
+      this.imageLoaded.set(false);
     };
 
     // Set up ResizeObserver to monitor image size changes
@@ -800,6 +843,91 @@ export class InteractiveImageComponent {
       this.updateCanvasAndRedraw();
       this.updateTempCanvasSize();
     }, 300);
+  }
+
+  /**
+   * Zoom and pan to center a specific shape in the viewport.
+   * Also selects the shape for visual highlighting.
+   * Uses the same math pattern as fitToScreen for consistency.
+   */
+  zoomToShape(shapeId: number): void {
+    if (!this.img || !this.zoomOuter) return;
+
+    const shape = this.shapeManager.getShapeById(shapeId);
+    if (!shape) {
+      console.warn('[zoomToShape] Shape not found:', shapeId);
+      this.fitToScreen();
+      return;
+    }
+
+    const containerRect = this.zoomOuter.getBoundingClientRect();
+    const imgNaturalWidth = this.img.naturalWidth;
+    const imgNaturalHeight = this.img.naturalHeight;
+
+    if (!containerRect.width || !containerRect.height || !imgNaturalWidth || !imgNaturalHeight) {
+      console.warn('[zoomToShape] Missing dimensions, falling back to fitToScreen');
+      this.fitToScreen();
+      return;
+    }
+
+    // Recalculate baseImageScale to ensure accuracy
+    this.baseImageScale = this.canvasRenderService.calculateBaseScale(this.img);
+    if (!this.baseImageScale || this.baseImageScale <= 0) {
+      console.warn('[zoomToShape] Invalid baseImageScale:', this.baseImageScale);
+      this.fitToScreen();
+      return;
+    }
+
+    const bounds = this.getNormalizedShapeBounds(shape);
+    if (!bounds.width || !bounds.height) {
+      console.warn('[zoomToShape] Invalid shape bounds:', bounds);
+      this.fitToScreen();
+      return;
+    }
+
+    // Shape center in natural image coordinates
+    const shapeCenterX = bounds.x + bounds.width / 2;
+    const shapeCenterY = bounds.y + bounds.height / 2;
+
+    // Padded area to show around the shape (in natural image pixels)
+    const padding = 40;
+    const viewWidth = Math.max(bounds.width * 3, bounds.width + 400);
+    const viewHeight = Math.max(bounds.height * 3, bounds.height + 400);
+
+    // Scale: same formula as fitToScreen but for the shape's padded area
+    const scaleX = (containerRect.width - padding) / viewWidth;
+    const scaleY = (containerRect.height - padding) / viewHeight;
+    const effectiveScale = Math.min(scaleX, scaleY, 5);
+
+    // Pan to center the shape in the container
+    const pointX = containerRect.width / 2 - shapeCenterX * effectiveScale;
+    const pointY = containerRect.height / 2 - shapeCenterY * effectiveScale;
+
+    console.log('[zoomToShape]', {
+      shapeId, bounds,
+      container: { w: containerRect.width, h: containerRect.height },
+      baseImageScale: this.baseImageScale,
+      effectiveScale,
+      transformScale: effectiveScale / this.baseImageScale,
+      pointX, pointY
+    });
+
+    this.transformState = {
+      scale: effectiveScale / this.baseImageScale,
+      pointX,
+      pointY,
+    };
+
+    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0.5s');
+    this.updateImageScale();
+
+    // Select the shape for visual highlighting
+    this.shapeManager.selectShape(shapeId, true);
+
+    setTimeout(() => {
+      this.updateCanvasAndRedraw();
+      this.updateTempCanvasSize();
+    }, 500);
   }
 
   // ==================================================Drawing Methods==================================================

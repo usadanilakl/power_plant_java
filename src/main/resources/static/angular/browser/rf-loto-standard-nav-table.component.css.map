@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;2d911afb05f05b808a7e95456f20b369126da62a7e0799da032d649292a64308;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/loto-standard/refactored/rf-loto-standard-left-panel/rf-loto-standard-nav-table.component.ts"],
+  "sourcesContent": ["\n    :host {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n\n    :host app-rf-loto-standard-table {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n  "],
+  "mappings": ";AACI;AACE,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;AAEA,MAAM;AACJ,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;",
+  "names": []
+}

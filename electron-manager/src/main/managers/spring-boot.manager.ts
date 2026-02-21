@@ -11,6 +11,7 @@ import * as http from 'http';
 import { AppState, AppStatus } from '../../shared/types';
 import {
   DEFAULT_SPRING_BOOT_CONFIG,
+  SPRING_PROFILE,
   HEALTH_CHECK_INTERVAL,
   HEALTH_CHECK_TIMEOUT,
   STARTUP_HEALTH_DELAY,
@@ -101,7 +102,12 @@ export class SpringBootManager {
     console.log(`  JAR: ${jarPath}`);
 
     try {
-      const proc = spawn(getJavaPath(), ['-jar', config.jar], {
+      // Use the centralized SPRING_PROFILE from constants.ts.
+      // This ensures the database name matches what cold resync extracts.
+      const javaArgs = ['-jar', config.jar, `--spring.profiles.active=${SPRING_PROFILE}`];
+      console.log(`  Java args: ${javaArgs.join(' ')}`);
+
+      const proc = spawn(getJavaPath(), javaArgs, {
         cwd: workingDir,
         env: spawnEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -137,11 +143,17 @@ export class SpringBootManager {
         this.pid = undefined;
         this.startedAt = undefined;
 
-        if (this.state !== 'stopping') {
+        if (this.state === 'stopping') {
+          this.updateState('stopped');
+        } else if (code === 0) {
+          // Clean exit while not stopping = resync restart request
+          this.addLog('Clean exit detected (resync restart). Auto-restarting in 3s...');
+          console.log('Spring Boot exited cleanly (resync). Auto-restarting...');
+          this.updateState('stopped');
+          setTimeout(() => this.start(), 3000);
+        } else {
           this.error = `Process exited unexpectedly (code: ${code})`;
           this.updateState('error');
-        } else {
-          this.updateState('stopped');
         }
       });
 

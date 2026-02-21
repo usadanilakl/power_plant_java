@@ -56,19 +56,6 @@ export class RfEquipmentEditorComponent {
           .subscribe();
       }
     });
-
-    // Highlight selected equipment once loaded
-    effect(() => {
-      const shapes = this.shapes();
-      const selectedId = this.selectedEquipmentId();
-      const highlightedId = this.stateService.highlightedEquipmentId();
-      
-      if (shapes.length > 0 && selectedId && !highlightedId) {
-        setTimeout(() => {
-          this.uiService.highlightEquipment(selectedId);
-        }, 100);
-      }
-    });
   }
 
   // Loto point table actions

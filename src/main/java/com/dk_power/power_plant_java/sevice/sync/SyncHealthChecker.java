@@ -261,19 +261,21 @@ public class SyncHealthChecker {
         result.setServerReachable(true);
         StringBuilder issues = new StringBuilder();
 
-        // 1. Compare entity counts by type (more accurate than totals)
+        // 1. Compare entity counts by type — only compare types reported by BOTH sides
+        //    (server may not track all local entity types, e.g. Role, Jha, JobLog, etc.)
         long totalDiff = 0;
         List<String> mismatchedTypes = new ArrayList<>();
 
-        for (String entityType : entityTableRegistry.getAllEntityTypes()) {
+        Set<String> comparableTypes = new HashSet<>(entityTableRegistry.getAllEntityTypes());
+        comparableTypes.retainAll(server.getEntityCounts().keySet());
+
+        for (String entityType : comparableTypes) {
             long localCount = local.getEntityCounts().getOrDefault(entityType, 0L);
             long serverCount = server.getEntityCounts().getOrDefault(entityType, 0L);
 
             if (localCount != serverCount) {
                 totalDiff += Math.abs(localCount - serverCount);
-                if (Math.abs(localCount - serverCount) > 0) {
-                    mismatchedTypes.add(String.format("%s: %d vs %d", entityType, localCount, serverCount));
-                }
+                mismatchedTypes.add(String.format("%s: %d vs %d", entityType, localCount, serverCount));
             }
         }
 

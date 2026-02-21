@@ -217,7 +217,7 @@ public class EmailResponseMatcherService {
         try {
             List<Object[]> rows = entityManager.createNativeQuery(
                 "SELECT wr.id, wr.sharepoint_id FROM work_request wr " +
-                "JOIN value v ON wr.permit_status_id = v.id " +
+                "JOIN val_table v ON wr.permit_status_id = v.id " +
                 "WHERE LOWER(wr.submitter_email) = LOWER(:email) AND wr.deleted = false " +
                 "AND LOWER(v.name) = 'pending more info' " +
                 "ORDER BY wr.id DESC")

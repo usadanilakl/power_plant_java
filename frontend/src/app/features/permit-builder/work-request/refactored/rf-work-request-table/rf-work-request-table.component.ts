@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CorrespondenceCellComponent } from '../../../../../shared/correspondence-dialog/correspondence-cell.component';
+import { AttachmentDialogComponent } from '../../../../../shared/attachment-dialog/attachment-dialog.component';
 import { RfWorkRequestApiService } from '../services/rf-work-request-api.service';
 import { RfWorkRequestStateService } from '../services/rf-work-request-state.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -40,7 +41,7 @@ import { WorkRequestContextMenuService } from '../services/work-request-context-
 @Component({
   selector: 'app-rf-work-request-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, CorrespondenceCellComponent],
+  imports: [CommonModule, TableComponent, CorrespondenceCellComponent, AttachmentDialogComponent],
   templateUrl: './rf-work-request-table.component.html',
   styleUrl: './rf-work-request-table.component.css',
   providers: [

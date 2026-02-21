@@ -61,6 +61,7 @@ public class FullResyncService {
     private final SyncHealthChecker syncHealthChecker;
     private final FieldSyncService fieldSyncService;
     private final FileRepo fileRepo;
+    private final AttachmentSyncHandler attachmentSyncHandler;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -316,6 +317,22 @@ public class FullResyncService {
      * @param skipDeletionCheck If true, skip the deletion safety check (use with caution)
      * @return ResyncResult with details of the operation
      */
+    /**
+     * Start full resync asynchronously. Returns immediately so the HTTP response
+     * can be sent before the database is shut down. After resync completes,
+     * the JVM exits cleanly so the Electron wrapper can restart it.
+     * Monitor progress via /api/resync/status.
+     */
+    @Async
+    public void performFullResyncAsync(boolean skipDeletionCheck) {
+        ResyncResult result = performFullResync(skipDeletionCheck);
+        if (result.isSuccess()) {
+            log.info("Full resync completed successfully. Shutting down JVM for restart...");
+            try { Thread.sleep(2000); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            System.exit(0);
+        }
+    }
+
     public ResyncResult performFullResync(boolean skipDeletionCheck) {
         if (!resyncInProgress.compareAndSet(false, true)) {
             return new ResyncResult(false, "Resync already in progress", null);
@@ -446,11 +463,8 @@ public class FullResyncService {
                 comparison.getFilesToDelete().size(),
                 comparison.getUnchangedFiles().size());
 
-            // Schedule restart via external script
-            scheduleExternalRestart();
-
             return new ResyncResult(true,
-                "Resync completed successfully. Application is restarting...", comparison);
+                "Resync completed successfully. Application will restart.", comparison);
 
         } catch (Exception e) {
             log.error("Server resync failed: {}", e.getMessage(), e);
@@ -985,11 +999,8 @@ public class FullResyncService {
                 comparison.getFilesToDelete().size(),
                 comparison.getUnchangedFiles().size());
 
-            // Schedule restart via external script
-            scheduleExternalRestart();
-
             return new ResyncResult(true,
-                "Resync completed successfully. Application is restarting...", comparison);
+                "Resync completed successfully. Application will restart.", comparison);
 
         } catch (Exception e) {
             log.error("Resync failed: {}", e.getMessage(), e);
@@ -1946,6 +1957,15 @@ public class FullResyncService {
             // Phase 5: Delete extra local files
             currentResyncStatus.setPhase("Deleting extra files");
             deleteExtraFiles(comparison);
+
+            // Phase 6: Download pending attachments from server
+            currentResyncStatus.setPhase("Syncing attachments");
+            try {
+                attachmentSyncHandler.uploadPendingAttachments();
+                attachmentSyncHandler.downloadPendingAttachments();
+            } catch (Exception e) {
+                log.warn("Attachment sync during partial resync had errors: {}", e.getMessage());
+            }
 
             currentResyncStatus.setPhase("Complete");
             currentResyncStatus.setEndTime(Instant.now());
