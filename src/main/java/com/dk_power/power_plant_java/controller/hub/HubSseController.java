@@ -35,12 +35,26 @@ public class HubSseController {
 
         log.info("Hub SSE subscription request from {} ({})", machineName, machineId);
 
-        // Register/update client on SSE connect
+        // Register/update client on SSE connect.
+        // Wrapped in try-catch: if a large sync transaction holds the HUB_CLIENT_INFO
+        // table lock, registration can time out. SSE subscription should still proceed —
+        // the client will be registered on the next sync exchange or heartbeat.
         String ipAddress = httpRequest.getRemoteAddr();
-        hubSyncService.registerClient(machineId, machineName, ipAddress);
+        try {
+            hubSyncService.registerClient(machineId, machineName, ipAddress);
+        } catch (Exception e) {
+            log.warn("Client registration failed during SSE subscribe (lock contention?): {} — SSE will proceed",
+                e.getMessage());
+        }
 
         // Get pending change count so client knows if it needs to sync
-        long pendingChanges = hubSyncService.getPendingChangeCount(machineId);
+        long pendingChanges;
+        try {
+            pendingChanges = hubSyncService.getPendingChangeCount(machineId);
+        } catch (Exception e) {
+            log.warn("Could not get pending change count: {} — defaulting to 0", e.getMessage());
+            pendingChanges = 0;
+        }
 
         return hubSseService.createEmitter(machineId, machineName, pendingChanges);
     }

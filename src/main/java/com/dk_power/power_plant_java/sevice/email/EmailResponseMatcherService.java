@@ -53,8 +53,14 @@ public class EmailResponseMatcherService {
         String inReplyTo = extractHeader(incomingEmail, "In-Reply-To");
         if (inReplyTo != null && !inReplyTo.isEmpty()) {
             List<EmailCorrespondence> matches = correspondenceRepo.findByInternetMessageId(inReplyTo);
-            if (!matches.isEmpty()) {
-                EmailCorrespondence original = matches.get(0);
+            // Only use correspondence that is actually linked to an entity.
+            // Unlinked records (entityType/entityId null) would propagate null matches
+            // and cause the retry loop to "match" emails to null forever.
+            Optional<EmailCorrespondence> linked = matches.stream()
+                .filter(ec -> ec.getEntityType() != null && ec.getEntityId() != null)
+                .findFirst();
+            if (linked.isPresent()) {
+                EmailCorrespondence original = linked.get();
                 log.debug("[EmailMatcher] Matched via In-Reply-To header to {} #{}",
                     original.getEntityType(), original.getEntityId());
                 return Optional.of(new CorrespondenceMatch(
@@ -70,8 +76,11 @@ public class EmailResponseMatcherService {
         if (incomingEmail.getConversationId() != null && !incomingEmail.getConversationId().isEmpty()) {
             List<EmailCorrespondence> matches =
                 correspondenceRepo.findByConversationId(incomingEmail.getConversationId());
-            if (!matches.isEmpty()) {
-                EmailCorrespondence original = matches.get(0);
+            Optional<EmailCorrespondence> linked = matches.stream()
+                .filter(ec -> ec.getEntityType() != null && ec.getEntityId() != null)
+                .findFirst();
+            if (linked.isPresent()) {
+                EmailCorrespondence original = linked.get();
                 log.debug("[EmailMatcher] Matched via conversation ID to {} #{}",
                     original.getEntityType(), original.getEntityId());
                 return Optional.of(new CorrespondenceMatch(
