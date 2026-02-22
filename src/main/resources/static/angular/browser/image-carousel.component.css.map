@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/image/image-carusel/image-carousel.component.css"],
-  "sourcesContent": [".carousel-container {\n  position: relative;\n  width: 100%;\n  overflow: hidden;\n}\n\n.carousel {\n  display: flex;\n  overflow-x: auto;\n  scroll-behavior: smooth;\n  -webkit-overflow-scrolling: touch;\n  scrollbar-width: none; /* Firefox */\n  -ms-overflow-style: none;  /* Internet Explorer 10+ */\n}\n\n.carousel::-webkit-scrollbar { \n  display: none;  /* WebKit */\n}\n\n.carousel img {\n  flex: 0 0 auto;\n  width: 300px;\n  height: 200px;\n  object-fit: contain;\n  background-color: #f0f0f0; /* Light grey background */\n  margin-right: 10px;\n  cursor: pointer;\n}\n\n.nav-button {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  background: rgba(0, 0, 0, 0.5);\n  color: white;\n  border: none;\n  padding: 10px;\n  cursor: pointer;\n}\n\n.nav-button.left {\n  left: 10px;\n}\n\n.nav-button.right {\n  right: 10px;\n}"],
-  "mappings": ";AAAA,CAAC;AACC,YAAU;AACV,SAAO;AACP,YAAU;AACZ;AAEA,CAAC;AACC,WAAS;AACT,cAAY;AACZ,mBAAiB;AACjB,8BAA4B;AAC5B,mBAAiB;AACjB,sBAAoB;AACtB;AAEA,CATC,QASQ;AACP,WAAS;AACX;AAEA,CAbC,SAaS;AACR,QAAM,EAAE,EAAE;AACV,SAAO;AACP,UAAQ;AACR,cAAY;AACZ,oBAAkB;AAClB,gBAAc;AACd,UAAQ;AACV;AAEA,CAAC;AACC,YAAU;AACV,OAAK;AACL,aAAW,WAAW;AACtB,cAAY,KAAK,CAAC,EAAE,CAAC,EAAE,CAAC,EAAE;AAC1B,SAAO;AACP,UAAQ;AACR,WAAS;AACT,UAAQ;AACV;AAEA,CAXC,UAWU,CAAC;AACV,QAAM;AACR;AAEA,CAfC,UAeU,CAAC;AACV,SAAO;AACT;",
-  "names": []
-}
