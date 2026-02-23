@@ -393,7 +393,8 @@ export class SubmissionOrchestratorService {
 
   generateEmailContent(workRequest: WorkRequest): { subject: string; body: string; mailto: string; submitLink: string } {
     const userData = this.userSetup.getUserData();
-    const subject = `Work Request: ${workRequest.workScope?.substring(0, 50) || 'New Request'}`;
+    const localUuid = workRequest.localUuid || crypto.randomUUID();
+    const subject = `[PWA:WR:${localUuid}] Work Request: ${workRequest.workScope?.substring(0, 50) || 'New Request'}`;
     const submitLink = this.generateSubmitLink(workRequest);
 
     let body = workRequest.getEmailBody();
@@ -412,9 +413,46 @@ export class SubmissionOrchestratorService {
     return { subject, body, mailto, submitLink };
   }
 
-  generateJhaEmailContent(jha: Jha): { subject: string; body: string; mailto: string } {
+  generateJhaSubmitLink(jha: Jha): string {
     const userData = this.userSetup.getUserData();
-    const subject = `JHA: ${jha.jobName?.substring(0, 50) || 'New JHA'}`;
+    const dto: Omit<PwaJhaDto, 'attachments'> & { attachments: never[] } = {
+      localUuid: jha.localUuid || crypto.randomUUID(),
+      workRequestLocalUuid: jha.workRequestLocalUuid,
+      workRequestSharepointId: jha.workRequestSharepointId,
+      jobName: jha.jobName || '',
+      applicability: jha.applicability || '',
+      analysisBy: jha.analysisBy || '',
+      reviewedBy: jha.reviewedBy || '',
+      approvedBy: jha.approvedBy || '',
+      date: jha.date || '',
+      ppe: jha.ppe || '',
+      loto: jha.loto || '',
+      confinedSpace: jha.confinedSpace || '',
+      hazCom: jha.hazCom || '',
+      handAndPowerTools: jha.handAndPowerTools || '',
+      specialTools: jha.specialTools || '',
+      jobSteps: (jha.jobSteps || []).map((step, i) => ({
+        sequence: step.sequence || i + 1,
+        description: step.description || '',
+        hazard: step.hazard || '',
+        safetyMeasures: step.safetyMeasures || ''
+      })),
+      submitterName: userData?.name || '',
+      submitterEmail: userData?.email || '',
+      submitterPhone: userData?.phone || '',
+      submitterCompany: userData?.company || '',
+      timeSubmitted: ServerApiService.formatCentralTime(new Date()),
+      attachments: []
+    };
+    const encoded = btoa(JSON.stringify(dto));
+    return `${environment.serverUrl}/api/pwa/jha/submit-from-email?data=${encoded}`;
+  }
+
+  generateJhaEmailContent(jha: Jha): { subject: string; body: string; mailto: string; submitLink: string } {
+    const userData = this.userSetup.getUserData();
+    const localUuid = jha.localUuid || crypto.randomUUID();
+    const subject = `[PWA:JHA:${localUuid}] JHA: ${jha.jobName?.substring(0, 50) || 'New JHA'}`;
+    const submitLink = this.generateJhaSubmitLink(jha);
 
     let body = jha.getEmailBody();
     if (userData) {
@@ -424,9 +462,12 @@ export class SubmissionOrchestratorService {
       body += `Phone: ${userData.phone}\n`;
       body += `Company: ${userData.company}\n`;
     }
+    body += `\n--- Auto-Submit Link ---\n`;
+    body += `If the server is running, click to submit automatically:\n`;
+    body += `${submitLink}\n`;
 
     const mailto = this.buildMailtoUrl(subject, body);
-    return { subject, body, mailto };
+    return { subject, body, mailto, submitLink };
   }
 
   private buildMailtoUrl(subject: string, body: string): string {

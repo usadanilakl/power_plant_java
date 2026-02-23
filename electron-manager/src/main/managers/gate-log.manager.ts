@@ -9,7 +9,9 @@
 import { BrowserWindow, session } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import * as https from 'https';
+import * as XLSX from 'xlsx';
 import { DEFAULT_GATE_LOG_CONFIG } from '../constants';
 import { getWorkingDir } from '../paths';
 import type { GateLogEntry, GateLogStatus, GateLogConfig } from '../../shared/types';
@@ -106,7 +108,6 @@ export class GateLogManager {
 
     try {
       console.log('[GateLog] Starting refresh...');
-      console.log(`[GateLog] Config: OnLocation API key=${this.config.onLocationApiKey ? 'set' : 'empty'}, Gate URL=${this.config.gateWebUrl}, Gate user=${this.config.gateUsername || 'empty'}`);
 
       const [onLocationPeople, gatePeople] = await Promise.allSettled([
         this.fetchOnLocationPeople(),
@@ -163,50 +164,188 @@ export class GateLogManager {
 
   // ─── OnLocation API ──────────────────────────────────────────────────
 
+  /**
+   * Fetches all people from OnLocation: visitors + contractors in parallel.
+   */
   private async fetchOnLocationPeople(): Promise<GateLogEntry[]> {
     if (!this.config.onLocationApiKey) {
       console.log('[GateLog] OnLocation: no API key configured, skipping');
       return [];
     }
 
-    console.log(`[GateLog] OnLocation: fetching from ${this.config.onLocationBaseUrl}/visitor/event`);
+    const [visitors, contractors] = await Promise.allSettled([
+      this.fetchOnLocationVisitors(),
+      this.fetchOnLocationContractors()
+    ]);
+
+    const combined: GateLogEntry[] = [];
+
+    if (visitors.status === 'fulfilled') {
+      combined.push(...visitors.value);
+    } else {
+      console.error('[GateLog] OnLocation visitors fetch failed:', visitors.reason?.message);
+    }
+
+    if (contractors.status === 'fulfilled') {
+      combined.push(...contractors.value);
+    } else {
+      console.error('[GateLog] OnLocation contractors fetch failed:', contractors.reason?.message);
+    }
+
+    console.log(`[GateLog] OnLocation total: ${combined.length} people (visitors + contractors)`);
+    return combined;
+  }
+
+  private async fetchOnLocationVisitors(): Promise<GateLogEntry[]> {
     const response = await this.onLocationGet('/visitor/event');
+    const events = this.unwrapResponse(response);
+    return this.parseVisitorEvents(events);
+  }
 
-    // Log the response structure to help debug
-    const responseType = Array.isArray(response) ? `array[${response.length}]` : typeof response;
-    const responseKeys = response && typeof response === 'object' && !Array.isArray(response)
-      ? Object.keys(response).join(', ')
-      : '';
-    console.log(`[GateLog] OnLocation: response type=${responseType}, keys=[${responseKeys}]`);
+  // Cached contractor member + org directories (rarely change, expensive to fetch)
+  private contractorMemberMap: Map<number, any> = new Map();  // id → member record
+  private contractorOrgCache: Map<number, string> = new Map();
+  private contractorDirCacheTime = 0;
+  private static CONTRACTOR_DIR_CACHE_TTL = 60 * 60_000; // 1 hour
 
-    if (!response || !Array.isArray(response)) {
-      // Response might be wrapped: { event: [...] }
-      const wrapped = response as any;
-      if (wrapped?.event && Array.isArray(wrapped.event)) {
-        console.log(`[GateLog] OnLocation: found ${wrapped.event.length} events in wrapped response`);
-        return this.parseVisitorEvents(wrapped.event);
-      }
-      console.log(`[GateLog] OnLocation: response preview = ${JSON.stringify(response).substring(0, 300)}`);
+  /**
+   * Fetch contractors currently on site:
+   * 1. GET /sp/member/movement — all movements (no date filter; overnight-safe)
+   * 2. Filter by signed_out == null (still on site)
+   * 3. Join with cached member directory for names/email/phone
+   */
+  private async fetchOnLocationContractors(): Promise<GateLogEntry[]> {
+    // Fetch movements AND member directories in parallel
+    const [movementResp, _dirResp] = await Promise.allSettled([
+      this.onLocationGet('/sp/member/movement', 5, 60_000),
+      this.ensureContractorDirectories()
+    ]);
+
+    if (movementResp.status !== 'fulfilled') {
+      console.error(`[GateLog] OnLocation contractor movements failed: ${movementResp.reason?.message}`);
       return [];
     }
 
-    console.log(`[GateLog] OnLocation: ${response.length} events in array response`);
-    return this.parseVisitorEvents(response);
+    const movements = this.unwrapResponse(movementResp.value);
+
+    const people: GateLogEntry[] = [];
+    for (const mov of movements) {
+      if (mov.signed_out != null) continue;
+
+      const member = this.contractorMemberMap.get(mov.sp_member_id);
+      const name = member
+        ? (member.name || [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Unknown')
+        : (mov.name || 'Unknown');
+      // Company: embedded in member's sp_orgs array
+      const spOrg = member && Array.isArray(member.sp_orgs) && member.sp_orgs.length > 0 ? member.sp_orgs[0] : null;
+      const company = spOrg?.name
+        || this.contractorOrgCache.get(mov.sp_org_id)
+        || member?.company || 'Contractor';
+
+      const checkIn = this.convertOnLocationDate(mov.signed_in);
+      const duration = checkIn ? this.calculateDuration(checkIn) : undefined;
+
+      people.push({
+        name,
+        company,
+        checkIn,
+        email: member?.email || undefined,
+        phone: member?.mobile || member?.phone || undefined,
+        duration,
+        source: 'onlocation'
+      });
+    }
+
+    console.log(`[GateLog] OnLocation contractors: ${movements.length} total -> ${people.length} on site`);
+    return people;
+  }
+
+  /** Fetch and cache contractor member + org directories. Non-blocking — uses cached/file data on failure. */
+  private async ensureContractorDirectories(): Promise<void> {
+    // Use in-memory cache if fresh
+    if (this.contractorMemberMap.size > 0 && Date.now() - this.contractorDirCacheTime < GateLogManager.CONTRACTOR_DIR_CACHE_TTL) {
+      return;
+    }
+
+    // Try loading from file cache first (survives process restarts + API timeouts)
+    if (this.contractorMemberMap.size === 0) {
+      this.loadMemberCacheFromDisk();
+    }
+
+    const [memberResult, orgResult] = await Promise.allSettled([
+      this.onLocationGet('/sp/member', 5, 120_000),
+      this.onLocationGet('/sp/org', 5, 30_000)
+    ]);
+
+    if (memberResult.status === 'fulfilled') {
+      const members = this.unwrapResponse(memberResult.value);
+      this.contractorMemberMap.clear();
+      for (const m of members) {
+        this.contractorMemberMap.set(m.id, m);
+      }
+      this.saveMemberCacheToDisk(members);
+    } else {
+      console.warn(`[GateLog] Member directory failed: ${memberResult.reason?.message} (using ${this.contractorMemberMap.size} cached)`);
+    }
+
+    if (orgResult.status === 'fulfilled') {
+      const orgs = this.unwrapResponse(orgResult.value);
+      this.contractorOrgCache.clear();
+      for (const o of orgs) {
+        this.contractorOrgCache.set(o.id, o.name || o.company_name || o.org_name || 'Contractor');
+      }
+    } else {
+      console.warn(`[GateLog] Org directory failed: ${orgResult.reason?.message} (using ${this.contractorOrgCache.size} cached)`);
+    }
+
+    if (this.contractorMemberMap.size > 0 || this.contractorOrgCache.size > 0) {
+      this.contractorDirCacheTime = Date.now();
+    }
+  }
+
+  private get memberCachePath(): string {
+    return path.join(getWorkingDir(), 'contractor-members-cache.json');
+  }
+
+  private loadMemberCacheFromDisk(): void {
+    try {
+      if (fs.existsSync(this.memberCachePath)) {
+        const members: any[] = JSON.parse(fs.readFileSync(this.memberCachePath, 'utf-8'));
+        for (const m of members) {
+          this.contractorMemberMap.set(m.id, m);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[GateLog] OnLocation: failed to load member cache from disk: ${err.message}`);
+    }
+  }
+
+  private saveMemberCacheToDisk(members: any[]): void {
+    try {
+      fs.writeFileSync(this.memberCachePath, JSON.stringify(members), 'utf-8');
+    } catch (err: any) {
+      console.warn(`[GateLog] OnLocation: failed to save member cache to disk: ${err.message}`);
+    }
+  }
+
+  /** Unwrap OnLocation API response — tries array, then finds first array-valued key in object */
+  private unwrapResponse(response: any): any[] {
+    if (Array.isArray(response)) return response;
+    if (response && typeof response === 'object') {
+      // Find the first key whose value is an array
+      for (const key of Object.keys(response)) {
+        if (Array.isArray(response[key])) {
+          return response[key];
+        }
+      }
+    }
+    return [];
   }
 
   private parseVisitorEvents(events: any[]): GateLogEntry[] {
     const people: GateLogEntry[] = [];
 
-    // Log first few events for debugging
-    for (let i = 0; i < Math.min(events.length, 3); i++) {
-      const e = events[i];
-      console.log(`[GateLog] OnLocation event[${i}]: name=${e.name}, signed_in=${e.signed_in}, signed_out=${e.signed_out} (type: ${typeof e.signed_out}), email=${e.email}, mobile=${e.mobile}`);
-    }
-
     for (const event of events) {
-      // Only include visitors still on site (signed_in but not signed_out)
-      // Old app: if (e.get("signed_out") == null) — Java null check
-      // In JSON: signed_out is null when still on-site, date string when left
       if (event.signed_out != null) continue;
 
       const checkIn = this.convertOnLocationDate(event.signed_in);
@@ -217,17 +356,17 @@ export class GateLogManager {
         company: event.company || 'Visitor',
         checkIn,
         email: event.email || undefined,
-        phone: event.mobile || undefined,
+        phone: event.mobile || event.phone || undefined,
         duration,
         source: 'onlocation'
       });
     }
 
-    console.log(`[GateLog] OnLocation: ${events.length} events -> ${people.length} people on site (filtered by signed_out == null)`);
+    console.log(`[GateLog] OnLocation visitors: ${events.length} events -> ${people.length} on site`);
     return people;
   }
 
-  private onLocationGet(endpoint: string, maxRedirects = 5): Promise<any> {
+  private onLocationGet(endpoint: string, maxRedirects = 5, timeoutMs = 15_000): Promise<any> {
     const apiKey = this.config.onLocationApiKey;
 
     const doRequest = (targetUrl: URL, redirectsLeft: number): Promise<any> => {
@@ -243,11 +382,10 @@ export class GateLogManager {
               'Authorization': `APIKEY ${apiKey}`,
               'Accept': 'application/json'
             },
-            timeout: 15000,
+            timeout: timeoutMs,
             rejectUnauthorized: true
           },
           (res: any) => {
-            console.log(`[GateLog] OnLocation API response: ${res.statusCode} ${res.statusMessage} (url: ${targetUrl.href})`);
 
             // Follow redirects (302, 301, 307, 308)
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -256,7 +394,6 @@ export class GateLogManager {
                 return;
               }
               const redirectUrl = new URL(res.headers.location, targetUrl);
-              console.log(`[GateLog] OnLocation API: following redirect to ${redirectUrl.href}`);
               // Consume response body before following redirect
               res.resume();
               doRequest(redirectUrl, redirectsLeft - 1).then(resolve, reject);
@@ -301,7 +438,6 @@ export class GateLogManager {
       return [];
     }
 
-    console.log(`[GateLog] Gate: starting scrape of ${this.config.gateWebUrl}`);
 
     const win = new BrowserWindow({
       show: false,
@@ -321,10 +457,7 @@ export class GateLogManager {
         callback(0); // Accept all certs for this session
       });
 
-      // Step 1: Navigate to gate website
-      console.log('[GateLog] Gate: loading URL...');
       await win.loadURL(this.config.gateWebUrl);
-      console.log('[GateLog] Gate: page loaded');
 
       // Step 2: Login using Chromium-level insertText() — JS keyboard events don't
       // trigger this form's validation. insertText goes through Chromium's input pipeline,
@@ -340,7 +473,6 @@ export class GateLogManager {
           };
         })();
       `);
-      console.log(`[GateLog] Gate: fields check = ${JSON.stringify(fieldsCheck)}`);
 
       if (!fieldsCheck.login || !fieldsCheck.password || !fieldsCheck.loginBtn) {
         throw new Error(`Gate login fields not found: ${JSON.stringify(fieldsCheck)}`);
@@ -355,7 +487,6 @@ export class GateLogManager {
       `);
       await new Promise(resolve => setTimeout(resolve, 500));
       await win.webContents.insertText(this.config.gateUsername);
-      console.log(`[GateLog] Gate: username typed`);
 
       // Focus password field, clear it, then type via insertText
       await win.webContents.executeJavaScript(`
@@ -366,11 +497,8 @@ export class GateLogManager {
       `);
       await new Promise(resolve => setTimeout(resolve, 200));
       await win.webContents.insertText(this.config.gatePassword);
-      console.log(`[GateLog] Gate: password typed`);
 
-      // Click login button
       await win.webContents.executeJavaScript(`document.getElementById('login-button').click()`);
-      console.log(`[GateLog] Gate: login button clicked`);
 
       // Step 3: Wait for navigation after login
       await this.waitForNavigation(win, 10000);
@@ -387,8 +515,7 @@ export class GateLogManager {
         })();
       `;
 
-      const navResult = await win.webContents.executeJavaScript(navScript);
-      console.log(`[GateLog] Gate: reports navigation = ${navResult}`);
+      await win.webContents.executeJavaScript(navScript);
       await this.waitForNavigation(win, 10000);
 
       // Step 5: Navigate to custom reports — use exact ID from old app
@@ -403,122 +530,66 @@ export class GateLogManager {
         })();
       `;
 
-      const customResult = await win.webContents.executeJavaScript(customReportsScript);
-      console.log(`[GateLog] Gate: custom reports navigation = ${customResult}`);
+      await win.webContents.executeJavaScript(customReportsScript);
       await this.waitForNavigation(win, 10000);
 
-      // Step 5b: Click the specific report (matches old app's xpath)
-      const reportLinkScript = `
-        (function() {
-          var link = document.querySelector("a[href*='/reports/5962a30f47b74045/grid']");
-          if (link) {
-            link.click();
-            return 'navigated-to-report';
-          }
-          // Fallback: click first report link
-          var reportLinks = document.querySelectorAll('td a[href*="/reports/"]');
-          if (reportLinks.length > 0) {
-            reportLinks[0].click();
-            return 'navigated-to-first-report';
-          }
-          return 'report-link-not-found';
-        })();
-      `;
+      // Step 5b: Click the Excel download button on the Custom Reports listing page.
+      // Old Java app: By.className("excel") — this is on the listing, NOT inside the report grid.
+      // Register will-download handler BEFORE clicking.
+      const tempPath = path.join(os.tmpdir(), `gate-report-${Date.now()}.csv`);
 
-      const reportResult = await win.webContents.executeJavaScript(reportLinkScript);
-      console.log(`[GateLog] Gate: report link = ${reportResult}`);
-      await this.waitForNavigation(win, 10000);
+      const downloadPromise = new Promise<string>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          ses.removeAllListeners('will-download');
+          reject(new Error('Gate CSV download timed out after 30s'));
+        }, 30_000);
 
-      // Step 5c: Set rows per page to 50 (old app: By.name("rp"))
-      const rowsPerPageScript = `
-        (function() {
-          var rpSelect = document.querySelector('select[name="rp"]');
-          if (rpSelect) {
-            rpSelect.value = '50';
-            rpSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            return 'set-50-rows';
-          }
-          return 'rp-select-not-found';
-        })();
-      `;
-
-      await win.webContents.executeJavaScript(rowsPerPageScript);
-
-      // Click reload button (old app: By.cssSelector(".pReload.pButton"))
-      const reloadScript = `
-        (function() {
-          var reloadBtn = document.querySelector('.pReload.pButton');
-          if (reloadBtn) {
-            reloadBtn.click();
-            return 'reloaded';
-          }
-          return 'reload-btn-not-found';
-        })();
-      `;
-
-      await win.webContents.executeJavaScript(reloadScript);
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for report to load
-
-      // Step 6: Scrape the report table
-      // Old app uses: headers from div.hDiv table th/div, rows from #report_grid tr[id], cells from .//div
-      const scrapeScript = `
-        (function() {
-          var results = [];
-
-          // Get headers from the HEADER section specifically (div.hDiv), not global th div
-          // This matches old app: tbl.findElements(By.xpath(".//th/div"))
-          var headers = [];
-          var hDiv = document.querySelector('div.hDiv');
-          if (hDiv) {
-            var headerEls = hDiv.querySelectorAll('th div');
-            for (var h = 0; h < headerEls.length; h++) {
-              headers.push((headerEls[h].textContent || '').trim());
+        ses.on('will-download', (_event, item) => {
+          item.setSavePath(tempPath);
+          item.once('done', (_e, state) => {
+            clearTimeout(timeout);
+            ses.removeAllListeners('will-download');
+            if (state === 'completed') {
+              resolve(tempPath);
+            } else {
+              reject(new Error(`Gate download failed: ${state}`));
             }
-          }
+          });
+        });
+      });
 
-          // Get data rows from #report_grid (matches old app: By.id("report_grid") then By.xpath("//tr[@id]"))
-          var table = document.getElementById('report_grid');
-          var rows = table ? table.querySelectorAll('tr[id]') : document.querySelectorAll('tr[id]');
-
-          for (var i = 0; i < rows.length; i++) {
-            var cells = rows[i].querySelectorAll('div');
-            if (cells.length < 3) continue;
-
-            // Build record map with original-case header keys (matches old app: rowData.put(headerNames.get(j), ...))
-            var record = {};
-            for (var c = 0; c < cells.length && c < headers.length; c++) {
-              record[headers[c]] = (cells[c].getAttribute('innerText') || cells[c].textContent || '').trim();
-            }
-
-            // Extract using exact Title Case keys from old app:
-            // r.get("First Name"), r.get("Last Name"), r.get("Source"), r.get("Panel Date")
-            var firstName = record['First Name'] || '';
-            var lastName = record['Last Name'] || '';
-            var source = record['Source'] || '';
-            var panelDate = record['Panel Date'] || '';
-
-            if (firstName || lastName) {
-              results.push({
-                firstName: firstName,
-                lastName: lastName,
-                source: source,
-                panelDate: panelDate
-              });
-            }
-          }
-
-          return JSON.stringify({ headers: headers, count: results.length, records: results });
+      // Click the .excel element on the custom reports listing page
+      const exportScript = `
+        (function() {
+          var excelBtn = document.querySelector('.excel');
+          if (excelBtn) { excelBtn.click(); return 'ok'; }
+          return 'excel-btn-not-found';
         })();
       `;
 
-      const rawData = await win.webContents.executeJavaScript(scrapeScript);
-      const parsed = JSON.parse(rawData || '{"headers":[],"count":0,"records":[]}');
-      console.log(`[GateLog] Gate: headers found = [${parsed.headers.join(', ')}]`);
-      console.log(`[GateLog] Gate: scraped ${parsed.count} raw records`);
-      const records: any[] = parsed.records;
-      if (records.length > 0) {
-        console.log(`[GateLog] Gate: first record sample = ${JSON.stringify(records[0])}`);
+      const exportResult = await win.webContents.executeJavaScript(exportScript);
+      if (exportResult !== 'ok') {
+        throw new Error('Gate Excel download button not found on custom reports page');
       }
+
+      // Wait for the download to complete
+      const downloadedPath = await downloadPromise;
+
+      // Parse the downloaded file (CSV or Excel)
+      const workbook = XLSX.readFile(downloadedPath);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+
+      // Clean up temp file
+      try { fs.unlinkSync(downloadedPath); } catch { /* ignore */ }
+
+      // Map Excel rows to the format processGateRecords expects
+      const records = rows.map(row => ({
+        firstName: row['First Name'] || '',
+        lastName: row['Last Name'] || '',
+        source: row['Source'] || '',
+        panelDate: this.convertExcelDate(row['Panel Date'])
+      }));
 
       return this.processGateRecords(records);
     } catch (err: any) {
@@ -531,19 +602,15 @@ export class GateLogManager {
 
   /**
    * Process raw gate records into GateLogEntry objects.
-   * Mirrors old app's processRetrievedData(): sorts by Panel Date, tracks Entry/Exit,
-   * removes person on Exit (meaning they left), keeps remaining as on-site.
+   * Sorts by Panel Date, tracks Entry/Exit per person.
+   * Person whose last event is Exit is removed (they left).
+   * Remaining = currently on site.
    */
   private processGateRecords(records: any[]): GateLogEntry[] {
-    // Sort by panelDate ascending (oldest first) — matches old app
-    records.sort((a, b) => {
-      const dateA = a.panelDate || '';
-      const dateB = b.panelDate || '';
-      return dateA.localeCompare(dateB);
-    });
+    // Sort by panelDate ascending (oldest first)
+    records.sort((a, b) => (a.panelDate || '').localeCompare(b.panelDate || ''));
 
-    // Track person trips — matches old app: personTrips map, remove on Exit
-    const personTrips = new Map<string, { name: string; entry: string | null; type: string }>();
+    const personTrips = new Map<string, { name: string; entry: string | null }>();
 
     for (const record of records) {
       const firstName = record.firstName || '';
@@ -555,21 +622,18 @@ export class GateLogManager {
       if (!name) continue;
 
       if (!personTrips.has(name)) {
-        personTrips.set(name, { name, entry: null, type: 'card' });
+        personTrips.set(name, { name, entry: null });
       }
 
       const person = personTrips.get(name)!;
 
-      // Old app: event.contains("Entry") / event.contains("Exit")
       if (source.includes('Entry')) {
         person.entry = panelDate;
       } else if (source.includes('Exit')) {
-        // Person exited — remove them (they're no longer on-site)
         personTrips.delete(name);
       }
     }
 
-    // Remaining people in the map are currently on-site
     const people: GateLogEntry[] = [];
     for (const [, trip] of personTrips) {
       if (trip.name && trip.name.trim()) {
@@ -584,6 +648,7 @@ export class GateLogManager {
       }
     }
 
+    console.log(`[GateLog] Gate: ${records.length} CSV rows -> ${people.length} on site`);
     return people;
   }
 
@@ -663,7 +728,7 @@ export class GateLogManager {
           <td>${this.escapeHtml(p.company)}</td>
           <td>${p.checkIn || '--'}</td>
           <td>${p.duration || '--'}</td>
-          <td>${this.escapeHtml(p.email || p.phone || '--')}</td>
+          <td>${this.escapeHtml([p.email, p.phone].filter(Boolean).join(' / ') || '--')}</td>
           <td>${p.source}</td>
         </tr>`
       )
@@ -786,6 +851,26 @@ export class GateLogManager {
       // Resolve after timeout even if no navigation occurred
       setTimeout(onFinish, timeoutMs);
     });
+  }
+
+  /**
+   * Convert Excel serial date number to MM/dd/yyyy HH:mm:ss format.
+   * Excel serial = days since 1900-01-01. XLSX parses CSV dates as these numbers.
+   */
+  private convertExcelDate(value: any): string {
+    if (typeof value === 'number') {
+      // 25569 = days between Excel epoch (1900-01-01) and Unix epoch (1970-01-01)
+      const d = new Date((value - 25569) * 86400000);
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const year = d.getUTCFullYear();
+      const hours = String(d.getUTCHours()).padStart(2, '0');
+      const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+      return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+    }
+    if (typeof value === 'string') return value;
+    return '';
   }
 
   private setupCertificateHandling(): void {

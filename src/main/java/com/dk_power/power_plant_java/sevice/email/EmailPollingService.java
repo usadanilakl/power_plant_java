@@ -2,9 +2,15 @@ package com.dk_power.power_plant_java.sevice.email;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
+import com.dk_power.power_plant_java.dto.pwa.PwaJhaDto;
+import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
+import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
 import com.dk_power.power_plant_java.repository.base_repositories.EmailCorrespondenceRepo;
+import com.dk_power.power_plant_java.sevice.pwa.PwaJhaService;
+import com.dk_power.power_plant_java.sevice.pwa.PwaWorkRequestService;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -33,7 +40,10 @@ public class EmailPollingService {
     private final EmailResponseMatcherService matcherService;
     private final EmailCorrespondenceRepo correspondenceRepo;
     private final SyncConfig syncConfig;
+    private final ObjectMapper objectMapper;
     @Lazy private final CentralSyncService centralSyncService;
+    @Lazy private final PwaWorkRequestService pwaWorkRequestService;
+    @Lazy private final PwaJhaService pwaJhaService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -44,6 +54,8 @@ public class EmailPollingService {
     private LocalDateTime lastPollTime = LocalDateTime.now().minusDays(7);
 
     private static final Pattern SP_PATTERN = Pattern.compile("\\[SP:([^\\]]+)\\]");
+    private static final Pattern PWA_WR_PATTERN = Pattern.compile("\\[PWA:WR:([^\\]]+)\\]");
+    private static final Pattern PWA_JHA_PATTERN = Pattern.compile("\\[PWA:JHA:([^\\]]+)\\]");
 
     /**
      * Scheduled task to poll for new email responses.
@@ -75,7 +87,8 @@ public class EmailPollingService {
 
     /**
      * Processes a single incoming email message.
-     * Checks for duplicates, matches to entity, and saves if matched.
+     * First checks if it's a PWA fallback submission email (auto-processes it).
+     * Otherwise checks for duplicates, matches to entity, and saves if matched.
      */
     private void processIncomingMessage(GraphEmailMessage message) {
         if (message == null || message.getId() == null) {
@@ -87,6 +100,11 @@ public class EmailPollingService {
         if (correspondenceRepo.findByGraphMessageId(message.getId()).isPresent()) {
             log.debug("[EmailPoll] Message already processed: {}", message.getId());
             return;
+        }
+
+        // Check if this is a PWA fallback submission email and auto-process it
+        if (message.getSubject() != null && tryAutoProcessPwaSubmission(message)) {
+            return; // Successfully auto-processed (or duplicate detected)
         }
 
         // Try to match to an entity
@@ -101,6 +119,115 @@ public class EmailPollingService {
                 message.getSubject(), message.getSenderEmail());
             saveUnmatchedCorrespondence(message);
         }
+    }
+
+    /**
+     * Detects PWA fallback submission emails by [PWA:WR:uuid] or [PWA:JHA:uuid] in subject.
+     * Extracts auto-submit link from body, parses base64 data, and calls submission service.
+     * Returns true if the message was a PWA submission email (whether successfully processed or duplicate).
+     */
+    private boolean tryAutoProcessPwaSubmission(GraphEmailMessage message) {
+        String subject = message.getSubject();
+
+        Matcher wrMatcher = PWA_WR_PATTERN.matcher(subject);
+        if (wrMatcher.find()) {
+            String localUuid = wrMatcher.group(1);
+            log.info("[EmailPoll] Detected PWA WR fallback email: localUuid={}", localUuid);
+            return autoProcessWorkRequest(message, localUuid);
+        }
+
+        Matcher jhaMatcher = PWA_JHA_PATTERN.matcher(subject);
+        if (jhaMatcher.find()) {
+            String localUuid = jhaMatcher.group(1);
+            log.info("[EmailPoll] Detected PWA JHA fallback email: localUuid={}", localUuid);
+            return autoProcessJha(message, localUuid);
+        }
+
+        return false;
+    }
+
+    /**
+     * Auto-processes a Work Request from a fallback email.
+     * Extracts base64-encoded DTO from the auto-submit link in the email body.
+     */
+    private boolean autoProcessWorkRequest(GraphEmailMessage message, String localUuid) {
+        try {
+            String base64Data = extractBase64DataFromBody(message.getBodyContent(),
+                    "/api/pwa/work-request/submit-from-email?data=");
+            if (base64Data == null) {
+                log.warn("[EmailPoll] Could not extract WR data from email body for localUuid={}", localUuid);
+                return false;
+            }
+
+            String json = new String(Base64.getDecoder().decode(base64Data));
+            PwaWorkRequestDto dto = objectMapper.readValue(json, PwaWorkRequestDto.class);
+            PwaSubmissionResult result = pwaWorkRequestService.submitWorkRequest(dto);
+
+            if ("duplicate".equals(result.getMethod())) {
+                log.info("[EmailPoll] WR already processed: localUuid={}, spId={}", localUuid, result.getSharepointId());
+            } else {
+                log.info("[EmailPoll] WR auto-processed from email: localUuid={}, method={}, spId={}",
+                        localUuid, result.getMethod(), result.getSharepointId());
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("[EmailPoll] Failed to auto-process WR from email: localUuid={}, error={}",
+                    localUuid, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Auto-processes a JHA from a fallback email.
+     * Extracts base64-encoded DTO from the auto-submit link in the email body.
+     */
+    private boolean autoProcessJha(GraphEmailMessage message, String localUuid) {
+        try {
+            String base64Data = extractBase64DataFromBody(message.getBodyContent(),
+                    "/api/pwa/jha/submit-from-email?data=");
+            if (base64Data == null) {
+                log.warn("[EmailPoll] Could not extract JHA data from email body for localUuid={}", localUuid);
+                return false;
+            }
+
+            String json = new String(Base64.getDecoder().decode(base64Data));
+            PwaJhaDto dto = objectMapper.readValue(json, PwaJhaDto.class);
+            PwaSubmissionResult result = pwaJhaService.submitJha(dto);
+
+            if ("duplicate".equals(result.getMethod())) {
+                log.info("[EmailPoll] JHA already processed: localUuid={}, spId={}", localUuid, result.getSharepointId());
+            } else {
+                log.info("[EmailPoll] JHA auto-processed from email: localUuid={}, method={}, spId={}",
+                        localUuid, result.getMethod(), result.getSharepointId());
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("[EmailPoll] Failed to auto-process JHA from email: localUuid={}, error={}",
+                    localUuid, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Extracts the base64-encoded data parameter from an auto-submit link in email body.
+     * Looks for the URL pattern containing the given path prefix and extracts the data= value.
+     */
+    private String extractBase64DataFromBody(String body, String pathPrefix) {
+        if (body == null) return null;
+        int pathIdx = body.indexOf(pathPrefix);
+        if (pathIdx < 0) return null;
+
+        int dataStart = pathIdx + pathPrefix.length();
+        // Find the end of the base64 data (whitespace, newline, or end of string)
+        int dataEnd = dataStart;
+        while (dataEnd < body.length()) {
+            char c = body.charAt(dataEnd);
+            if (c == '\n' || c == '\r' || c == ' ' || c == '\t' || c == '<') break;
+            dataEnd++;
+        }
+        if (dataEnd <= dataStart) return null;
+
+        return body.substring(dataStart, dataEnd);
     }
 
     /**

@@ -138,6 +138,32 @@ export class WebViewManager {
       await wc.executeJavaScript(`document.getElementById('login-button').click()`);
       console.log(`[WebView] Gate website auto-login: submitted via insertText`);
 
+      // Wait for post-login page, then navigate to report
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (instance.window.isDestroyed()) return;
+
+      await wc.executeJavaScript(`
+        var el = document.getElementById('main_reports_link');
+        if (el) el.click();
+      `);
+      console.log('[WebView] Gate website: clicked Reports link');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (instance.window.isDestroyed()) return;
+
+      await wc.executeJavaScript(`
+        var el = document.getElementById('sub_custom_report_reports_link');
+        if (el) el.click();
+      `);
+      console.log('[WebView] Gate website: clicked Custom Reports link');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (instance.window.isDestroyed()) return;
+
+      await wc.executeJavaScript(`
+        var link = document.querySelector("a[href*='/reports/5962a30f47b74045/grid']");
+        if (link) link.click();
+      `);
+      console.log('[WebView] Gate website: clicked specific report link');
+
     } else if (target === 'onlocation') {
       const email = config.onLocationEmail || '';
       const password = config.onLocationPassword || '';

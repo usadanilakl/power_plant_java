@@ -354,6 +354,9 @@ interface ElectronAPI {
   pjmDaFetch: () => Promise<IpcResult<PjmDaAward[]>>;
   pjmDaRefresh: () => Promise<IpcResult<PjmDaAward[]>>;
 
+  // Print
+  printHtml: (html: string, options?: { silent?: boolean }) => Promise<IpcResult>;
+
   // WebView
   openWebView: (target: string, url: string) => Promise<IpcResult>;
 
@@ -850,6 +853,13 @@ export class ElectronService implements OnDestroy {
   async pjmDaRefresh(): Promise<IpcResult<PjmDaAward[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.pjmDaRefresh();
+  }
+
+  // Print
+
+  async printHtml(html: string, options?: { silent?: boolean }): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.printHtml(html, options);
   }
 
   // WebView

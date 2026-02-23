@@ -10,6 +10,8 @@ import { WizardDialogComponent } from "./shared/guide/guide-form";
 import { CommentsDialogComponent } from "./shared/comments-dialog/comments-dialog.component";
 import { CorrespondenceDialogComponent } from "./shared/correspondence-dialog/correspondence-dialog.component";
 import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
+import { WrDetailDialogComponent } from "./shared/wr-detail-dialog/wr-detail-dialog.component";
+import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment-dialog.component";
 
 @Component({
   selector: 'app-root',
@@ -26,6 +28,8 @@ import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
     CommentsDialogComponent,
     CorrespondenceDialogComponent,
     QaDialogComponent,
+    WrDetailDialogComponent,
+    AttachmentDialogComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

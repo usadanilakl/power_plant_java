@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
+import { debounceTime, takeUntil } from 'rxjs/operators';
 import { ContextMenuComponent, ContextMenuAction } from '../../../shared/menu/context-menu/context-menu.component';
 import { RfWorkRequestApiService } from '../work-request/refactored/services/rf-work-request-api.service';
 import { CorrespondenceCellComponent } from '../../../shared/correspondence-dialog/correspondence-cell.component';
 import { CorrespondenceDialogService } from '../../../shared/correspondence-dialog/correspondence-dialog.service';
+import { WrDetailDialogService } from '../../../shared/wr-detail-dialog/wr-detail-dialog.service';
+import { SyncUpdateService } from '../../../services/sync/sync-update.service';
 
 interface WorkRequest {
   id: number;
@@ -21,23 +24,6 @@ interface WorkRequest {
   isHotWorkRequired: boolean | null;
   isLotoRequired: boolean | null;
   isConfinedSpaceEntryRequired: boolean | null;
-}
-
-interface LotoDto {
-  id: number;
-  boxNumber: string | null;
-  equipmentSystem: string | null;
-  lotoRequestor: string | null;
-  date: string | null;
-}
-
-interface LotoPointDto {
-  id: number;
-  tagNumber: string | null;
-  description: string | null;
-  specificLocation: string | null;
-  generalLocation: string | null;
-  unit: string | null;
 }
 
 interface HotWorkDto {
@@ -96,11 +82,12 @@ interface ApiResponse<T> {
           <div class="monitor-card">
             <div class="card-header">
               <span class="card-title">Work Requests</span>
-              <span class="card-count">{{ newWorkRequests.length + activeWorkRequests.length }}</span>
+              <span class="card-count">{{ newWorkRequests.length + activeWorkRequests.length + processedWorkRequests.length }}</span>
             </div>
             <div class="card-badges">
               <span class="badge badge-new" *ngIf="newWorkRequests.length">{{ newWorkRequests.length }} New</span>
               <span class="badge badge-active" *ngIf="activeWorkRequests.length">{{ activeWorkRequests.length }} Active</span>
+              <span class="badge badge-processed" *ngIf="processedWorkRequests.length">{{ processedWorkRequests.length }} Processed</span>
             </div>
             <div class="card-table" *ngIf="allWorkRequests.length > 0">
               <table>
@@ -116,6 +103,7 @@ interface ApiResponse<T> {
                 </thead>
                 <tbody>
                   <tr *ngFor="let wr of allWorkRequests"
+                      (click)="onRowLeftClick(wr)"
                       (contextmenu)="onRowRightClick($event, wr)"
                       style="cursor: pointer">
                     <td><span class="status-chip" [class]="'status-' + (wr.status || '').toLowerCase()">{{ wr.status }}</span></td>
@@ -134,35 +122,6 @@ interface ApiResponse<T> {
               </table>
             </div>
             <div class="card-empty" *ngIf="allWorkRequests.length === 0 && !loading">No work requests</div>
-          </div>
-
-          <!-- LOTOs Under Construction -->
-          <div class="monitor-card">
-            <div class="card-header">
-              <span class="card-title">LOTOs Under Construction</span>
-              <span class="card-count">{{ lotos.length }}</span>
-            </div>
-            <div class="card-table" *ngIf="lotos.length > 0">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Box #</th>
-                    <th>Equipment System</th>
-                    <th>Requestor</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let loto of lotos">
-                    <td>{{ loto.boxNumber }}</td>
-                    <td>{{ loto.equipmentSystem }}</td>
-                    <td>{{ loto.lotoRequestor }}</td>
-                    <td>{{ loto.date | date:'shortDate' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="card-empty" *ngIf="lotos.length === 0 && !loading">No LOTOs</div>
           </div>
         </div>
       </section>
@@ -257,37 +216,6 @@ interface ApiResponse<T> {
               </table>
             </div>
             <div class="card-empty" *ngIf="activeHotWorks.length === 0 && !loading">None</div>
-          </div>
-        </div>
-
-        <!-- Active LOTOs -->
-        <div class="cards-row">
-          <div class="monitor-card full-width">
-            <div class="card-header">
-              <span class="card-title">Active LOTO Points</span>
-              <span class="card-count">{{ activeLotoPoints.length }}</span>
-            </div>
-            <div class="card-table" *ngIf="activeLotoPoints.length > 0">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tag #</th>
-                    <th>Description</th>
-                    <th>Location</th>
-                    <th>Unit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let lp of activeLotoPoints">
-                    <td>{{ lp.tagNumber }}</td>
-                    <td class="truncate">{{ lp.description }}</td>
-                    <td>{{ lp.specificLocation || lp.generalLocation }}</td>
-                    <td>{{ lp.unit }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="card-empty" *ngIf="activeLotoPoints.length === 0 && !loading">No active LOTO points</div>
           </div>
         </div>
       </section>
@@ -477,6 +405,11 @@ interface ApiResponse<T> {
       color: #1e40af;
     }
 
+    .badge-processed {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
     .card-table {
       overflow-x: auto;
     }
@@ -535,6 +468,11 @@ interface ApiResponse<T> {
       color: #166534;
     }
 
+    .status-processed {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
     .chip-list {
       display: flex;
       flex-wrap: wrap;
@@ -569,17 +507,18 @@ interface ApiResponse<T> {
     }
   `]
 })
-export class PermitsMonitorComponent implements OnInit {
+export class PermitsMonitorComponent implements OnInit, OnDestroy {
   loading = false;
 
   newWorkRequests: WorkRequest[] = [];
   activeWorkRequests: WorkRequest[] = [];
-  lotos: LotoDto[] = [];
-  activeLotoPoints: LotoPointDto[] = [];
+  processedWorkRequests: WorkRequest[] = [];
   activeHotWorks: HotWorkDto[] = [];
   activeConfinedSpaces: ConfinedSpaceDto[] = [];
 
   private apiUrl = environment.apiUrl;
+  private destroy$ = new Subject<void>();
+  private refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // Context menu state
   contextMenuVisible = false;
@@ -587,6 +526,12 @@ export class PermitsMonitorComponent implements OnInit {
   selectedWorkRequest: WorkRequest | null = null;
 
   contextMenuActions: ContextMenuAction[] = [
+    {
+      id: 'processed',
+      label: 'Mark as Processed',
+      icon: 'check_circle',
+      action: (item) => this.markAsProcessed(item)
+    },
     {
       id: 'request-details',
       label: 'Request More Details',
@@ -613,15 +558,27 @@ export class PermitsMonitorComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private wrApiService: RfWorkRequestApiService,
-    private correspondenceDialogService: CorrespondenceDialogService
+    private correspondenceDialogService: CorrespondenceDialogService,
+    private wrDetailDialogService: WrDetailDialogService,
+    private syncUpdateService: SyncUpdateService
   ) {}
 
   ngOnInit(): void {
     this.loadData();
+    this.setupReactiveUpdates();
+    this.setupPeriodicRefresh();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.refreshIntervalId) {
+      clearInterval(this.refreshIntervalId);
+    }
   }
 
   get allWorkRequests(): WorkRequest[] {
-    return [...this.newWorkRequests, ...this.activeWorkRequests];
+    return [...this.newWorkRequests, ...this.activeWorkRequests, ...this.processedWorkRequests];
   }
 
   get uniqueLocations(): string[] {
@@ -644,19 +601,14 @@ export class PermitsMonitorComponent implements OnInit {
     forkJoin({
       newWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/New`),
       activeWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Active`),
-      lotos: this.http.get<ApiResponse<{ content: LotoDto[] }>>(`${this.apiUrl}/lotos/paginated?page=1&pageSize=100`),
-      activeLotoPoints: this.http.get<ApiResponse<LotoPointDto[]>>(`${this.apiUrl}/lotos/active`),
+      processedWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Processed`),
       hotWorks: this.http.get<ApiResponse<HotWorkDto[]>>(`${this.apiUrl}/hot-works/get-all-hot-work`),
       confinedSpaces: this.http.get<ApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/confined-spaces/get-all-confined-space`)
     }).subscribe({
       next: (results) => {
         this.newWorkRequests = results.newWr.responseData || [];
         this.activeWorkRequests = results.activeWr.responseData || [];
-
-        const lotosPage = results.lotos.responseData;
-        this.lotos = (lotosPage?.content || []);
-
-        this.activeLotoPoints = results.activeLotoPoints.responseData || [];
+        this.processedWorkRequests = results.processedWr.responseData || [];
 
         const allHotWorks = results.hotWorks.responseData || [];
         this.activeHotWorks = allHotWorks.filter(hw =>
@@ -677,13 +629,53 @@ export class PermitsMonitorComponent implements OnInit {
     });
   }
 
-  // ====================== Context Menu Handlers ======================
+  // ====================== Reactive Updates ======================
+
+  private setupReactiveUpdates(): void {
+    this.syncUpdateService.getEntityTypeUpdates$('WorkRequest')
+      .pipe(
+        debounceTime(1000),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        console.log('[PermitsMonitor] SSE update received, refreshing...');
+        this.loadData();
+      });
+  }
+
+  private setupPeriodicRefresh(): void {
+    this.refreshIntervalId = setInterval(() => {
+      if (!this.loading) {
+        console.log('[PermitsMonitor] Periodic refresh');
+        this.loadData();
+      }
+    }, 60000);
+  }
+
+  // ====================== Row Click Handlers ======================
+
+  onRowLeftClick(wr: WorkRequest): void {
+    this.wrDetailDialogService.open(wr.id);
+  }
 
   onRowRightClick(event: MouseEvent, wr: WorkRequest): void {
     event.preventDefault();
     this.selectedWorkRequest = wr;
     this.contextMenuPosition = { x: event.clientX, y: event.clientY };
     this.contextMenuVisible = true;
+  }
+
+  // ====================== Actions ======================
+
+  markAsProcessed(item: WorkRequest): void {
+    if (!item.id) return;
+    this.wrApiService.changeStatus(item.id, 'Processed').subscribe({
+      next: () => {
+        console.log('[PermitsMonitor] Work request marked as Processed');
+        this.loadData();
+      },
+      error: (err) => console.error('[PermitsMonitor] Mark as Processed failed:', err)
+    });
   }
 
   requestMoreDetails(item: WorkRequest): void {

@@ -1198,37 +1198,24 @@ export class IpcHandlers {
       }
     });
 
-    // Print arbitrary HTML content in a hidden window
-    ipcMain.handle(events.IPC_PRINT_HTML, async (_event, html: string, options?: { silent?: boolean }) => {
+    // Print arbitrary HTML content — opens a visible preview window.
+    // The page should include a "Print" button calling window.print() for Chromium's dialog (with preview).
+    ipcMain.handle(events.IPC_PRINT_HTML, async (_event, html: string, _options?: { silent?: boolean }) => {
       try {
         const win = new BrowserWindow({
-          show: false,
-          width: 816,
-          height: 1056,
+          width: 900,
+          height: 700,
+          title: 'Print Preview',
           webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
           },
         });
 
+        win.setMenuBarVisibility(false);
         await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-        return new Promise((resolve) => {
-          win.webContents.print(
-            {
-              silent: options?.silent ?? false,
-              printBackground: true,
-              margins: { marginType: 'none' },
-            },
-            (success, failureReason) => {
-              win.destroy();
-              resolve({
-                success,
-                error: success ? undefined : (failureReason || 'Print failed'),
-              });
-            }
-          );
-        });
+        return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };
       }

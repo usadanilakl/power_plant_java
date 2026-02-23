@@ -47,6 +47,12 @@ import {
               <option [value]="120">2 hrs</option>
             </select>
           </div>
+
+          <div class="time-filter-group">
+            <button class="filter-btn" [class.active]="timeFilter === 'all'" (click)="setTimeFilter('all')">All</button>
+            <button class="filter-btn" [class.active]="timeFilter === '48h'" (click)="setTimeFilter('48h')">48h</button>
+            <button class="filter-btn" [class.active]="timeFilter === '24h'" (click)="setTimeFilter('24h')">24h</button>
+          </div>
         </div>
 
         <div class="toolbar-right">
@@ -56,7 +62,7 @@ import {
           <button class="btn btn-secondary" (click)="openOnLocation()">
             Open OnLocation
           </button>
-          <button class="btn btn-secondary" (click)="print()" [disabled]="people.length === 0">
+          <button class="btn btn-secondary" (click)="print()" [disabled]="filteredPeople.length === 0">
             Print
           </button>
         </div>
@@ -65,7 +71,7 @@ import {
       <!-- Summary cards -->
       <div class="summary-row">
         <div class="summary-card">
-          <span class="summary-number">{{ people.length }}</span>
+          <span class="summary-number">{{ filteredPeople.length }}</span>
           <span class="summary-label">People on Site</span>
         </div>
         <div class="summary-card">
@@ -138,7 +144,7 @@ import {
       </div>
 
       <!-- People table -->
-      <div class="table-container" *ngIf="people.length > 0">
+      <div class="table-container" *ngIf="filteredPeople.length > 0">
         <table class="data-table">
           <thead>
             <tr>
@@ -157,7 +163,7 @@ import {
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let person of people">
+            <tr *ngFor="let person of filteredPeople">
               <td class="name-cell">{{ person.name }}</td>
               <td>
                 <span class="source-badge" [class.source-gate-badge]="person.source === 'gate'"
@@ -168,14 +174,18 @@ import {
               <td>{{ person.checkIn || '--' }}</td>
               <td>{{ person.duration || '--' }}</td>
               <td>{{ person.company }}</td>
-              <td class="contact-cell">{{ person.email || person.phone || '--' }}</td>
+              <td class="contact-cell">
+                <span *ngIf="person.email">{{ person.email }}</span>
+                <span *ngIf="person.phone" class="phone-text">{{ person.phone }}</span>
+                <span *ngIf="!person.email && !person.phone">--</span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <!-- Empty state -->
-      <div class="empty-state" *ngIf="people.length === 0 && status.configured && !status.isRefreshing">
+      <div class="empty-state" *ngIf="filteredPeople.length === 0 && status.configured && !status.isRefreshing">
         <p>No people on site. Click Refresh to load data.</p>
       </div>
     </div>
@@ -432,22 +442,26 @@ import {
     .data-table td {
       padding: 8px 14px;
       font-size: 13px;
-      color: var(--text-secondary);
+      color: var(--text-primary);
       border-bottom: 1px solid var(--border-color);
     }
 
     .data-table tr:last-child td { border-bottom: none; }
-    .data-table tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+    .data-table tr:hover td { background-color: rgba(255, 255, 255, 0.04); }
 
-    .name-cell { font-weight: 500; color: var(--text-primary); }
+    .name-cell { font-weight: 600; color: var(--text-primary); }
 
     .contact-cell {
-      font-size: 12px;
-      color: var(--text-muted);
+      font-size: 13px;
+      color: var(--text-secondary);
       max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    }
+
+    .phone-text {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0.8;
     }
 
     .source-badge {
@@ -489,6 +503,29 @@ import {
 
     .btn-icon:hover { color: var(--text-primary); background: var(--bg-secondary); }
     .btn-small { font-size: 18px; padding: 0 6px; line-height: 1; }
+
+    /* Time filter */
+    .time-filter-group {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .filter-btn {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border: none;
+      border-right: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .filter-btn:last-child { border-right: none; }
+    .filter-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .filter-btn.active { background: var(--accent-primary); color: #fff; }
   `]
 })
 export class GateLogComponent implements OnInit, OnDestroy {
@@ -517,6 +554,7 @@ export class GateLogComponent implements OnInit, OnDestroy {
   configSaved = false;
   sortField: 'name' | 'checkIn' | 'duration' = 'checkIn';
   sortAsc = false;
+  timeFilter: 'all' | '24h' | '48h' = '48h';
 
   private unsubscribePeopleUpdated?: () => void;
 
@@ -537,12 +575,22 @@ export class GateLogComponent implements OnInit, OnDestroy {
     this.unsubscribePeopleUpdated?.();
   }
 
+  get filteredPeople(): GateLogEntry[] {
+    if (this.timeFilter === 'all') return this.people;
+    const hours = this.timeFilter === '24h' ? 24 : 48;
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return this.people.filter(p => {
+      if (!p.checkIn) return true; // keep entries without a timestamp
+      return this.parseCheckIn(p.checkIn) >= cutoff;
+    });
+  }
+
   get gateCount(): number {
-    return this.people.filter(p => p.source === 'gate').length;
+    return this.filteredPeople.filter(p => p.source === 'gate').length;
   }
 
   get onLocationCount(): number {
-    return this.people.filter(p => p.source === 'onlocation').length;
+    return this.filteredPeople.filter(p => p.source === 'onlocation').length;
   }
 
   get lastUpdateDisplay(): string {
@@ -604,7 +652,69 @@ export class GateLogComponent implements OnInit, OnDestroy {
   }
 
   async print(): Promise<void> {
-    await this.electron.gateLogPrint();
+    const html = this.generatePrintHtml();
+    await this.electron.printHtml(html);
+  }
+
+  private generatePrintHtml(): string {
+    const now = new Date().toLocaleString();
+    const people = this.filteredPeople;
+    const filterLabel = this.timeFilter === 'all' ? 'All' : this.timeFilter === '24h' ? 'Last 24 hours' : 'Last 48 hours';
+    const rows = people
+      .map(p => `
+        <tr>
+          <td>${this.escapeHtml(p.name)}</td>
+          <td>${this.escapeHtml(p.company)}</td>
+          <td>${p.checkIn || '--'}</td>
+          <td>${p.duration || '--'}</td>
+          <td>${this.escapeHtml([p.email, p.phone].filter(Boolean).join(' / ') || '--')}</td>
+          <td>${p.source === 'gate' ? 'Gate' : 'OnLocation'}</td>
+        </tr>`)
+      .join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Gate Log - People On Site</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    .meta { font-size: 12px; color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 6px 8px; border-bottom: 2px solid #333; font-weight: 600; }
+    td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
+    .footer { margin-top: 16px; font-size: 11px; color: #999; }
+    .print-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .print-bar button { padding: 6px 16px; font-size: 13px; cursor: pointer; border-radius: 4px; }
+    .print-bar .btn-print { background: #3b82f6; color: #fff; border: none; }
+    .print-bar .btn-close { background: #e2e8f0; color: #333; border: none; }
+    @media print { .print-bar { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <button class="btn-print" onclick="window.print()">Print</button>
+    <button class="btn-close" onclick="window.close()">Close</button>
+  </div>
+  <h1>People On Site</h1>
+  <div class="meta">Printed: ${now} | Filter: ${filterLabel} | Total: ${people.length}</div>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Company</th><th>Check In</th><th>Duration</th><th>Contact</th><th>Source</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">Generated by DK Power Manager</div>
+</body>
+</html>`;
+  }
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   async saveConfig(): Promise<void> {
@@ -616,6 +726,10 @@ export class GateLogComponent implements OnInit, OnDestroy {
     }
   }
 
+  setTimeFilter(filter: 'all' | '24h' | '48h'): void {
+    this.timeFilter = filter;
+  }
+
   sortBy(field: 'name' | 'checkIn' | 'duration'): void {
     if (this.sortField === field) {
       this.sortAsc = !this.sortAsc;
@@ -624,6 +738,20 @@ export class GateLogComponent implements OnInit, OnDestroy {
       this.sortAsc = field === 'name';
     }
     this.applySorting();
+  }
+
+  /** Parse MM/dd/yyyy HH:mm:ss check-in string to Date */
+  private parseCheckIn(checkIn: string): Date {
+    const parts = checkIn.match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)/);
+    if (!parts) return new Date(0);
+    return new Date(
+      parseInt(parts[3]),
+      parseInt(parts[1]) - 1,
+      parseInt(parts[2]),
+      parseInt(parts[4]),
+      parseInt(parts[5]),
+      parseInt(parts[6])
+    );
   }
 
   private applySorting(): void {
