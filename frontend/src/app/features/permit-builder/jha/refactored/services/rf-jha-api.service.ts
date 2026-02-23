@@ -112,6 +112,20 @@ export class RfJhaApiService {
     );
   }
 
+  revokeJha(id: number): Observable<SpringApiResponse<JhaDto>> {
+    return this.http.post<SpringApiResponse<JhaDto>>(
+      `${this.apiUrl}/revoke/${id}`,
+      {}
+    ).pipe(
+      tap(response => {
+        if (response.responseData) {
+          const updated = JhaDto.fromJson(response.responseData);
+          this.jhaUpdatedSubject.next(updated);
+        }
+      })
+    );
+  }
+
   getFilteredUniqueValuesOfColumn(
     column: string,
     searchCriteria: SearchCriteria,

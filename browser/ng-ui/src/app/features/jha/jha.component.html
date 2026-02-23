@@ -12,13 +12,47 @@
 }
 
 <div class="action-bar">
-  <button class="resubmit-button" (click)="openTablePopup()">Use Previous JHA Data</button>
-  <button class="preview-toggle" [class.active]="showPreview" (click)="togglePreview()">
-    {{ showPreview ? 'Hide Preview' : 'Paper Preview' }}
-  </button>
+  <div class="mode-toggle">
+    <button class="mode-btn" [class.active]="submissionMode() === 'form'" (click)="submissionMode.set('form')">Fill Out Form</button>
+    <button class="mode-btn" [class.active]="submissionMode() === 'file'" (click)="submissionMode.set('file')">Attach File</button>
+  </div>
+  @if (submissionMode() === 'form') {
+    <button class="resubmit-button" (click)="openTablePopup()">Use Previous JHA Data</button>
+    <button class="preview-toggle" [class.active]="showPreview" (click)="togglePreview()">
+      {{ showPreview ? 'Hide Preview' : 'Paper Preview' }}
+    </button>
+  }
 </div>
 
-<app-jha-form (jhaChanged)="onJhaChanged($event)"></app-jha-form>
+@if (submissionMode() === 'form') {
+  <app-jha-form (jhaChanged)="onJhaChanged($event)"></app-jha-form>
+} @else {
+  <div class="file-upload-section">
+    <p class="file-upload-info">Upload a pre-filled JHA document or take a photo. Basic info (date, name, company) will be auto-filled from your profile.</p>
+    <div class="file-button-row">
+      <label class="file-input-label">
+        <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" (change)="onFileSelect($event)" />
+        Choose Files
+      </label>
+      @if (hasCamera) {
+        <label class="file-input-label camera-label">
+          <input type="file" accept="image/*" capture="environment" (change)="onFileSelect($event)" />
+          Take Photo
+        </label>
+      }
+    </div>
+    @if (selectedFiles().length > 0) {
+      <div class="selected-files">
+        @for (file of selectedFiles(); track file.fileName) {
+          <span class="file-chip">{{ file.fileName }}</span>
+        }
+      </div>
+    }
+    <button class="submit-file-btn" [disabled]="selectedFiles().length === 0" (click)="submitFileOnly()">
+      Submit JHA (File Only)
+    </button>
+  </div>
+}
 
 @if (showPreview) {
   <div class="jha-preview-panel">

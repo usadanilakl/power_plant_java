@@ -204,6 +204,77 @@ public class PwaWorkRequestService {
         }
     }
 
+    @Transactional
+    public void revokeWorkRequest(String sharepointId) {
+        workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).ifPresent(entity -> {
+            entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+            workRequestRepo.save(entity);
+            log.info("[PWA Revoke] WR revoked locally: id={}, spId={}", entity.getId(), sharepointId);
+        });
+        try {
+            wrAdapter.changeStatus(sharepointId, "Revoked");
+            log.info("[PWA Revoke] WR revoked in SharePoint: spId={}", sharepointId);
+        } catch (Exception e) {
+            log.warn("[PWA Revoke] Failed to revoke WR in SharePoint: {}", e.getMessage());
+        }
+    }
+
+    @Transactional
+    public PwaSubmissionResult updateWorkRequest(PwaWorkRequestDto dto) {
+        String localUuid = dto.getLocalUuid();
+        String sharepointId = dto.getSharepointId();
+
+        // Look up by localUuid first, then fall back to sharepointId
+        Optional<WorkRequest> found = Optional.empty();
+        if (localUuid != null && !localUuid.isEmpty()) {
+            found = workRequestRepo.findFirstByLocalUuidOrderByIdAsc(localUuid);
+        }
+        if (found.isEmpty() && sharepointId != null && !sharepointId.isEmpty()) {
+            found = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId);
+            log.info("[PWA Update] localUuid lookup missed, found by sharepointId={}", sharepointId);
+        }
+
+        WorkRequest entity = found.orElseThrow(() ->
+                new IllegalArgumentException("Work request not found for localUuid=" + localUuid + " or sharepointId=" + sharepointId));
+
+        // Update entity fields
+        updateEntityFields(entity, dto);
+        entity = workRequestRepo.saveAndFlush(entity);
+        log.info("[PWA Update] WR updated locally: id={}, localUuid={}", entity.getId(), localUuid);
+
+        // Push to SharePoint
+        String entitySpId = entity.getSharepointId();
+        if (entitySpId != null && !entitySpId.isEmpty()) {
+            try {
+                WorkRequestDto spDto = convertToSharePointDto(dto);
+                spDto.setStatus(entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "Active");
+                wrAdapter.update(entitySpId, spDto);
+                log.info("[PWA Update] WR updated in SharePoint: spId={}", entitySpId);
+            } catch (Exception e) {
+                log.warn("[PWA Update] Failed to update WR in SharePoint: {}", e.getMessage());
+            }
+        }
+
+        return PwaSubmissionResult.success(
+                entitySpId != null ? "sharepoint" : "local", entitySpId, entity.getLocalUuid());
+    }
+
+    private void updateEntityFields(WorkRequest entity, PwaWorkRequestDto dto) {
+        if (dto.getCompany() != null) entity.setCompany(dto.getCompany());
+        if (dto.getDateOfWork() != null) entity.setDateOfWorkToBePerformed(dto.getDateOfWork());
+        if (dto.getTimeOfWork() != null) entity.setTimeOfWorkToBePerformed(dto.getTimeOfWork());
+        if (dto.getLocationOfWork() != null) entity.setLocation(dto.getLocationOfWork());
+        if (dto.getWorkRequestedBy() != null) entity.setRequestedBy(dto.getWorkRequestedBy());
+        if (dto.getAffectedEquipment() != null) entity.setAffectedEquipment(dto.getAffectedEquipment());
+        if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
+        if (dto.getForemanName() != null) entity.setForeman(dto.getForemanName());
+        if (dto.getFireWatchName() != null) entity.setFireWatch(dto.getFireWatchName());
+        if (dto.getSpaceToBeEntered() != null) entity.setSpace(dto.getSpaceToBeEntered());
+        entity.setIsLotoRequired(dto.getIsLotoRequired());
+        entity.setIsHotWorkRequired(dto.getIsHotWorkRequired());
+        entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
+    }
+
     private PwaStatusResult toStatusResult(WorkRequest entity) {
         PwaStatusResult result = new PwaStatusResult();
         result.setLocalUuid(entity.getLocalUuid());

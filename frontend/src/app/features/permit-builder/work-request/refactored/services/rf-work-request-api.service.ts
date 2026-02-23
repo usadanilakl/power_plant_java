@@ -167,4 +167,18 @@ export class RfWorkRequestApiService {
       })
     );
   }
+
+  revokeWorkRequest(id: number): Observable<SpringApiResponse<WorkRequestDto>> {
+    return this.http.post<SpringApiResponse<WorkRequestDto>>(
+      `${this.apiUrl}/revoke/${id}`,
+      {}
+    ).pipe(
+      tap(response => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.workRequestUpdatedSubject.next(updated);
+        }
+      })
+    );
+  }
 }

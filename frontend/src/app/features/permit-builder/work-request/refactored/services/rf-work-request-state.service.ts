@@ -369,13 +369,33 @@ export class RfWorkRequestStateService {
     this.apiService.cancelWorkRequest(id).pipe(
       tap((response) => {
         if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.updateWorkRequestInList(updated);
           this.messageService.showSuccess('Work request cancelled successfully');
-          // Item will be updated via workRequestUpdated$ subscription
         }
       }),
       catchError((error) => {
         console.error('[WR State] Cancel failed:', error);
         const errorMsg = error?.error?.message || 'Failed to cancel work request';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  revokeWorkRequest(id: number): void {
+    this.apiService.revokeWorkRequest(id).pipe(
+      tap((response) => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.updateWorkRequestInList(updated);
+          this.messageService.showSuccess('Work request revoked successfully');
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Revoke failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to revoke work request';
         this.messageService.showError(errorMsg);
         return of(null);
       }),

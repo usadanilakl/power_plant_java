@@ -18,6 +18,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+
+import com.dk_power.power_plant_java.sevice.hub.HubFileService;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,6 +66,10 @@ public class FileObjectSyncHandler {
     private final SyncContext syncContext;
     private final PendingFileSyncRepository pendingFileSyncRepository;
     private final ValueRepo valueRepo;
+
+    // Only available in hub mode (@ConditionalOnProperty)
+    @Autowired(required = false)
+    private HubFileService hubFileService;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -159,14 +166,20 @@ public class FileObjectSyncHandler {
      * Queues the file for upload to sync server.
      */
     public void onLocalFileObjectChanged(FileObject fileObject, boolean isCreate) {
-        if (!syncConfig.isServerSyncEnabled()) {
-            log.debug("Server sync disabled, skipping file upload");
-            return;
-        }
-
         if (syncContext.isSyncing()) {
             // This change came from an incoming sync, don't re-upload
             log.debug("Skipping upload for FileObject #{} - change came from sync", fileObject.getId());
+            return;
+        }
+
+        if (syncConfig.isHubMode()) {
+            // Hub mode: register files locally in HubSyncedFile so clients can download them
+            registerFilesOnHub(fileObject);
+            return;
+        }
+
+        if (!syncConfig.isServerSyncEnabled()) {
+            log.debug("Server sync disabled, skipping file upload");
             return;
         }
 
@@ -180,6 +193,39 @@ public class FileObjectSyncHandler {
         FileObjectSnapshot oldSnapshot = entitySnapshots.remove(fileObject.getId());
         if (oldSnapshot != null && !isCreate) {
             handlePathChange(fileObject, oldSnapshot);
+        }
+    }
+
+    /**
+     * Register local FileObject files on the hub so clients can download them.
+     * Called when the hub creates/modifies FileObjects via its own web UI.
+     */
+    private void registerFilesOnHub(FileObject fileObject) {
+        if (hubFileService == null) {
+            log.warn("Hub mode but HubFileService not available, cannot register files");
+            return;
+        }
+
+        List<File> files = getAllPhysicalFiles(fileObject);
+        if (files.isEmpty()) {
+            log.debug("No physical files found for FileObject #{}", fileObject.getId());
+            return;
+        }
+
+        int registered = 0;
+        for (File file : files) {
+            try {
+                hubFileService.registerLocalFile(
+                    file, "FileObject", fileObject.getId(),
+                    file.getAbsolutePath(), syncConfig.getMachineId());
+                registered++;
+            } catch (Exception e) {
+                log.warn("Failed to register file {} on hub: {}", file.getName(), e.getMessage());
+            }
+        }
+
+        if (registered > 0) {
+            log.info("Registered {} local files on hub for FileObject #{}", registered, fileObject.getId());
         }
     }
 

@@ -24,6 +24,7 @@ export interface PwaStatusResult {
 
 export interface PwaWorkRequestDto {
   localUuid: string;
+  sharepointId?: string;
   company: string;
   dateOfWork: string;
   timeOfWork: string;
@@ -106,6 +107,40 @@ export class ServerApiService {
     );
   }
 
+  revokeWorkRequest(sharepointId: string, localUuid: string): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/work-request/revoke`, { sharepointId, localUuid }).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  revokeJha(sharepointId: string, localUuid: string): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/jha/revoke`, { sharepointId, localUuid }).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  updateWorkRequest(dto: PwaWorkRequestDto): Observable<PwaSubmissionResult> {
+    return this.http.put<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/work-request/update`, dto).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  sendFallbackEmail(subject: string, body: string, attachments: { fileName: string; contentType: string; base64Content: string }[]): Observable<string> {
+    return this.http.post<{ responseData: string }>(`${this.baseUrl}/api/pwa/email/send-fallback`, {
+      subject, body, attachments
+    }).pipe(
+      timeout(20000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
   isAvailable(): Observable<boolean> {
     return this.http.get(`${this.baseUrl}/api/pwa/work-request/health`, { responseType: 'text' }).pipe(
       timeout(5000),
@@ -126,6 +161,7 @@ export class ServerApiService {
 
     return {
       localUuid: workRequest.localUuid || crypto.randomUUID(),
+      sharepointId: workRequest.sharepointId || '',
       company: workRequest.company || '',
       dateOfWork: dateStr,
       timeOfWork: workRequest.timeOfWork || '',

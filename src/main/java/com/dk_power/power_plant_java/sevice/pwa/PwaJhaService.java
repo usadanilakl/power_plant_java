@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class PwaJhaService {
     private final JhaRepo jhaRepo;
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
+    private final NgValueService valueService;
 
     @Transactional
     public PwaSubmissionResult submitJha(PwaJhaDto dto) {
@@ -194,6 +196,21 @@ public class PwaJhaService {
         spDto.setSubmitterCompany(dto.getSubmitterCompany());
         spDto.setTimeSubmitted(dto.getTimeSubmitted());
         return spDto;
+    }
+
+    @Transactional
+    public void revokeJha(String sharepointId) {
+        jhaRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).ifPresent(entity -> {
+            entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+            jhaRepo.save(entity);
+            log.info("[PWA JHA Revoke] JHA revoked locally: id={}, spId={}", entity.getId(), sharepointId);
+        });
+        try {
+            jhaAdapter.changeStatus(sharepointId, "Revoked");
+            log.info("[PWA JHA Revoke] JHA revoked in SharePoint: spId={}", sharepointId);
+        } catch (Exception e) {
+            log.warn("[PWA JHA Revoke] Failed to revoke JHA in SharePoint: {}", e.getMessage());
+        }
     }
 
     private String guessAttachmentType(String contentType) {

@@ -25,7 +25,7 @@ export class DeviceConfigManager {
 
   /** Check if device is configured */
   public isConfigured(): boolean {
-    return this.config !== null && this.config.deviceNumber > 0;
+    return this.config !== null && this.config.deviceNumber >= 0;
   }
 
   /** Get current device config (or null) */

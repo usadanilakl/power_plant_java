@@ -38,15 +38,19 @@ export class WorkRequestTableComponent {
 
   onRowClick({ item }: { item: WorkRequest, event: MouseEvent}){
     this.workRequestStateService.selectWorkRequest(item);
-    const buttons: ButtonConfig[] = [
+    const buttons: ButtonConfig[] = [];
+    if (item.sharepointId) {
+      buttons.push({ name: 'Edit', action: () => this.editSelected(), color: 'primary' });
+    }
+    if (item.jhaStatus !== 'Completed') {
+      buttons.push({ name: 'Fill Out JHA', action: () => this.fillOutJha(), color: 'primary' });
+    }
+    buttons.push(
       { name: 'Resubmit', action: () => this.resubmitSelected(), color: 'primary' },
       { name: 'Submit via Email', action: () => this.submitViaEmail(), color: 'accent' },
       { name: 'Revoke', action: () => this.Revoke(), color: 'accent' },
       { name: 'Delete', action: () => this.deleteSelected(), color: 'warn' }
-    ];
-    if (item.jhaStatus !== 'Completed') {
-      buttons.unshift({ name: 'Fill Out JHA', action: () => this.fillOutJha(), color: 'primary' });
-    }
+    );
     this.actionButtons = buttons;
     this.isActionMenuOpen = true;
   }
@@ -78,6 +82,11 @@ export class WorkRequestTableComponent {
     if (!wr) return;
     this.jhaStateService.selectWorkRequestForJha(new WorkRequest(wr));
     this.router.navigate(['/jha/form']);
+    this.closeActionMenu();
+  }
+
+  editSelected(): void {
+    this.workRequestStateService.editSelected();
     this.closeActionMenu();
   }
 

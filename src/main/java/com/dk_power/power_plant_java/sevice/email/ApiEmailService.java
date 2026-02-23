@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import lombok.AllArgsConstructor;
@@ -75,12 +76,8 @@ public class ApiEmailService {
 
         log.debug("[Email] Sending email to {} via Graph API", request.getTo());
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                graphApiUrl,
-                HttpMethod.POST,
-                httpRequest,
-                String.class
-        );
+        ResponseEntity<String> response = exchangeWithRetry(
+                graphApiUrl, HttpMethod.POST, httpRequest, String.class);
 
         if (!response.getStatusCode().is2xxSuccessful()) {
             log.error("[Email] Failed to send email. Status: {}, Body: {}",
@@ -112,7 +109,7 @@ public class ApiEmailService {
         String createUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail + "/messages";
 
         log.debug("[Email] Creating draft message for {}", request.getTo());
-        ResponseEntity<String> draftResponse = restTemplate.exchange(
+        ResponseEntity<String> draftResponse = exchangeWithRetry(
                 createUrl, HttpMethod.POST, new HttpEntity<>(draftBody, headers), String.class);
 
         if (!draftResponse.getStatusCode().is2xxSuccessful() || draftResponse.getBody() == null) {
@@ -138,7 +135,7 @@ public class ApiEmailService {
         // Step 2: Send the draft
         String sendUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail
                 + "/messages/" + graphMessageId + "/send";
-        ResponseEntity<String> sendResponse = restTemplate.exchange(
+        ResponseEntity<String> sendResponse = exchangeWithRetry(
                 sendUrl, HttpMethod.POST, new HttpEntity<>(headers), String.class);
 
         if (!sendResponse.getStatusCode().is2xxSuccessful()) {
@@ -188,6 +185,26 @@ public class ApiEmailService {
     }
 
     /**
+     * Executes a REST exchange with automatic 401 retry.
+     * On Unauthorized, invalidates cached token, re-authenticates, and retries once.
+     */
+    private <T> ResponseEntity<T> exchangeWithRetry(String url, HttpMethod method,
+                                                      HttpEntity<?> entity, Class<T> responseType) {
+        try {
+            return restTemplate.exchange(url, method, entity, responseType);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[Email] 401 received, refreshing token and retrying: {} {}", method, url);
+            emailTokenExpirationTime = null;
+            ensureValidToken();
+            HttpHeaders newHeaders = new HttpHeaders();
+            newHeaders.putAll(entity.getHeaders());
+            newHeaders.setBearerAuth(emailAccessToken);
+            HttpEntity<?> retryEntity = new HttpEntity<>(entity.getBody(), newHeaders);
+            return restTemplate.exchange(url, method, retryEntity, responseType);
+        }
+    }
+
+    /**
      * Builds Graph API sendMail request body JSON (wraps message in sendMail envelope).
      */
     private String buildRequestBody(EmailRequest request) {
@@ -215,11 +232,19 @@ public class ApiEmailService {
         json.append("\"emailAddress\": {\"address\": \"").append(escapeJson(request.getTo())).append("\"}");
         json.append("}]");
 
-        // CC recipients
+        // CC recipients (supports semicolon or comma-separated list)
         if (request.getCc() != null && !request.getCc().isEmpty()) {
-            json.append(",\"ccRecipients\": [{");
-            json.append("\"emailAddress\": {\"address\": \"").append(escapeJson(request.getCc())).append("\"}");
-            json.append("}]");
+            String[] ccAddresses = request.getCc().split("[;,]");
+            json.append(",\"ccRecipients\": [");
+            boolean first = true;
+            for (String addr : ccAddresses) {
+                String trimmed = addr.trim();
+                if (trimmed.isEmpty()) continue;
+                if (!first) json.append(",");
+                json.append("{\"emailAddress\": {\"address\": \"").append(escapeJson(trimmed)).append("\"}}");
+                first = false;
+            }
+            json.append("]");
         }
 
         // Attachments
@@ -295,12 +320,8 @@ public class ApiEmailService {
         log.debug("[Email] Fetching messages since {} from {}", since, userEmail);
 
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
-                graphApiUrl,
-                HttpMethod.GET,
-                httpRequest,
-                String.class
-            );
+            ResponseEntity<String> response = exchangeWithRetry(
+                graphApiUrl, HttpMethod.GET, httpRequest, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return parseGraphMessages(response.getBody());

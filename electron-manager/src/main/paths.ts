@@ -93,6 +93,36 @@ export function getGuidesPath(): string {
   return path.resolve(__dirname, '..', '..', '..', '..', 'qa-data');
 }
 
+/** Get the path to the bundled data directory (read-only, contains certificate.pfx). */
+function getDataSourcePath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'data');
+  }
+  // Dev: dist/main/main/ → up 4 → <project>/data
+  return path.resolve(__dirname, '..', '..', '..', '..', 'data');
+}
+
+/** Deploy bundled certificate files (PFX + PEM) to working dir if not already present.
+ *  @azure/identity v4 requires PEM format — the PEM is pre-converted at build time. */
+export function ensureCertificate(): void {
+  const targetDir = path.join(getWorkingDir(), 'data');
+  const sourceDir = getDataSourcePath();
+
+  for (const file of ['certificate.pem', 'certificate.pfx']) {
+    const target = path.join(targetDir, file);
+    if (fs.existsSync(target)) continue;
+
+    const source = path.join(sourceDir, file);
+    if (!fs.existsSync(source)) continue;
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    fs.copyFileSync(source, target);
+    console.log('[Paths] Certificate deployed:', target);
+  }
+}
+
 /** Get the path to bundled config-defaults (read-only, for seeding working dir). */
 function getConfigDefaultsPath(): string {
   if (app.isPackaged) {
@@ -102,7 +132,7 @@ function getConfigDefaultsPath(): string {
   return path.resolve(__dirname, '..', '..', '..', 'config-defaults');
 }
 
-const CONFIG_FILES = ['pjm-config.json', 'gate-log-config.json'];
+const CONFIG_FILES = ['pjm-config.json', 'gate-log-config.json', 'sharepoint-config.json'];
 
 /**
  * Provision default config files into the working directory.

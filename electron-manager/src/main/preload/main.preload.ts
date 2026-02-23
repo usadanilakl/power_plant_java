@@ -207,6 +207,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(events.IPC_PJM_STATUS, sub);
     return () => { ipcRenderer.removeListener(events.IPC_PJM_STATUS, sub); };
   },
+  // PJM Day-Ahead Awards (read-only — data from SharePoint)
+  pjmDaFetch: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_FETCH),
+  pjmDaRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_REFRESH),
 
   // Menu
   popupMenu: (menuId: string, x: number, y: number): Promise<void> =>

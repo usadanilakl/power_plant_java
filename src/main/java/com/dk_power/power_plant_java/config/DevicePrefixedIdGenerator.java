@@ -20,14 +20,15 @@ import java.util.Properties;
  * This ensures each machine generates unique IDs that don't conflict with other machines.
  *
  * ID format: DEVICE_NUMBER * 1_000_000_000 + SEQUENCE_VALUE
- * - Device numbers 1-9 give 1 billion IDs per device
+ * - Device numbers 0-99 give 1 billion IDs per device
  * - Device number must be explicitly configured in machine-id.properties
  *   (written by Electron first-run setup or loaded from device-configs/*.properties)
- * - Fallback: device 9 (reserved for unconfigured/dev machines) with WARNING
+ * - Fallback: device 99 (reserved for unconfigured/dev machines) with WARNING
  *
  * Example:
- * - Device 1: IDs 1,000,000,001 to 1,999,999,999
- * - Device 2: IDs 2,000,000,001 to 2,999,999,999
+ * - Device 0:  IDs            1 to   999,999,999
+ * - Device 1:  IDs 1,000,000,001 to 1,999,999,999
+ * - Device 10: IDs 10,000,000,001 to 10,999,999,999
  */
 public class DevicePrefixedIdGenerator implements IdentifierGenerator {
 
@@ -99,12 +100,12 @@ public class DevicePrefixedIdGenerator implements IdentifierGenerator {
         }
     }
 
-    private static final long FALLBACK_DEVICE_NUMBER = 9L;
+    private static final long FALLBACK_DEVICE_NUMBER = 99L;
 
     /**
      * Load device number from machine-id.properties.
      * This file is written by SyncConfig (from device config) or by Electron (first-run setup).
-     * If not found, uses fallback device 9 with prominent warning.
+     * If not found, uses fallback device 99 with prominent warning.
      */
     private long loadDeviceNumber() {
         File file = new File(MACHINE_ID_FILE);
@@ -118,11 +119,11 @@ public class DevicePrefixedIdGenerator implements IdentifierGenerator {
                 if (deviceNumberStr != null && !deviceNumberStr.isEmpty()) {
                     try {
                         long num = Long.parseLong(deviceNumberStr);
-                        if (num >= 1 && num <= 9) {
+                        if (num >= 0 && num <= 99) {
                             log.info("Loaded device number from {}: {}", MACHINE_ID_FILE, num);
                             return num;
                         }
-                        log.warn("device.number={} is out of range (1-9) in {}", num, MACHINE_ID_FILE);
+                        log.warn("device.number={} is out of range (0-99) in {}", num, MACHINE_ID_FILE);
                     } catch (NumberFormatException e) {
                         log.warn("Invalid device.number='{}' in {}", deviceNumberStr, MACHINE_ID_FILE);
                     }

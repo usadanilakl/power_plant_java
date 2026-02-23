@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, map, of, switchMap } from 'rxjs';
 import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto } from './server-api.service';
 import { PowerAutomateService } from './power-automate.service';
 import { UserSetupService } from './user-setup.service';
@@ -108,13 +108,12 @@ export class SubmissionOrchestratorService {
 
   private tryPowerAutomateWr(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
     if (!this.powerAutomate.isV2Configured('workRequest')) {
-      return of({
-        success: false,
-        method: 'email' as const,
+      return this.tryServerEmail(
+        this.generateEmailContent(workRequest),
+        workRequest.attachments,
         localUuid,
-        message: 'Power Automate flow not configured. Please submit via email.',
-        requiresEmail: true
-      });
+        'Power Automate not configured.'
+      );
     }
 
     const userData = this.userSetup.getUserData()!;
@@ -139,13 +138,12 @@ export class SubmissionOrchestratorService {
       }),
       catchError(paError => {
         console.warn('[Orchestrator] Power Automate failed:', paError.message);
-        return of({
-          success: false,
-          method: 'email' as const,
+        return this.tryServerEmail(
+          this.generateEmailContent(workRequest),
+          workRequest.attachments,
           localUuid,
-          message: 'All submission methods failed. Please submit via email.',
-          requiresEmail: true
-        });
+          'Server and Power Automate failed.'
+        );
       })
     );
   }
@@ -174,26 +172,194 @@ export class SubmissionOrchestratorService {
         }),
         catchError(paError => {
           console.warn('[Orchestrator] PA V2 failed for JHA:', paError.message);
-          return of({
-            success: false,
-            method: 'email' as const,
+          return this.tryServerEmail(
+            this.generateJhaEmailContent(jha),
+            jha.attachments,
             localUuid,
-            message: 'All JHA submission methods failed. Please submit via email.',
-            requiresEmail: true
-          });
+            'Server and Power Automate failed for JHA.'
+          );
         })
       );
     }
 
-    // No V1 fallback for JHA - it didn't exist before
-    return of({
-      success: false,
-      method: 'email' as const,
+    return this.tryServerEmail(
+      this.generateJhaEmailContent(jha),
+      jha.attachments,
       localUuid,
-      message: 'JHA Power Automate flow not configured. Please submit via email.',
-      requiresEmail: true
-    });
+      'JHA Power Automate flow not configured.'
+    );
   }
+
+  // ====================== Revoke Methods ======================
+
+  revokeWorkRequest(sharepointId: string, localUuid: string): Observable<SubmissionResult> {
+    return this.serverApi.revokeWorkRequest(sharepointId, localUuid).pipe(
+      map(response => ({
+        success: true,
+        method: 'server' as const,
+        sharepointId,
+        localUuid,
+        message: 'Work request revoked successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server revoke failed, trying PA V2:', serverError.message);
+        return this.tryPaV2Revoke('workRequest', sharepointId, localUuid);
+      })
+    );
+  }
+
+  revokeJha(sharepointId: string, localUuid: string): Observable<SubmissionResult> {
+    return this.serverApi.revokeJha(sharepointId, localUuid).pipe(
+      map(response => ({
+        success: true,
+        method: 'server' as const,
+        sharepointId,
+        localUuid,
+        message: 'JHA revoked successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server JHA revoke failed, trying PA V2:', serverError.message);
+        return this.tryPaV2Revoke('jha', sharepointId, localUuid);
+      })
+    );
+  }
+
+  private tryPaV2Revoke(entityType: 'workRequest' | 'jha', sharepointId: string, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured(entityType)) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'All revoke methods failed. Power Automate not configured.'
+      });
+    }
+    return this.powerAutomate.submitV2(entityType, {
+      actionType: 'update',
+      id: sharepointId,
+      data: { Status: 'Revoked' }
+    } as any).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'powerAutomate' as const,
+        sharepointId,
+        localUuid,
+        message: 'Revoked via Power Automate.'
+      })),
+      catchError(() => of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'All revoke methods failed.'
+      }))
+    );
+  }
+
+  // ====================== Update Methods ======================
+
+  updateWorkRequest(workRequest: WorkRequest): Observable<SubmissionResult> {
+    const userData = this.userSetup.getUserData();
+    if (!userData) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid: workRequest.localUuid || '',
+        message: 'User data not configured.'
+      });
+    }
+
+    const dto = this.serverApi.convertWorkRequestToDto(workRequest, {
+      name: userData.name,
+      email: userData.email,
+      phone: userData.phone,
+      company: userData.company
+    });
+
+    return this.serverApi.updateWorkRequest(dto).pipe(
+      map(response => ({
+        success: true,
+        method: 'server' as const,
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid,
+        message: 'Work request updated successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server update failed, trying PA V2:', serverError.message);
+        return this.tryPaV2Update(workRequest, dto.localUuid);
+      })
+    );
+  }
+
+  private tryPaV2Update(workRequest: WorkRequest, localUuid: string): Observable<SubmissionResult> {
+    if (!workRequest.sharepointId || !this.powerAutomate.isV2Configured('workRequest')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'All update methods failed.'
+      });
+    }
+
+    const userData = this.userSetup.getUserData()!;
+    const paRequest = this.powerAutomate.buildCreateRequest(
+      workRequest.convertToPaModel() as any,
+      userData,
+      []
+    );
+    paRequest.actionType = 'update';
+    paRequest.id = workRequest.sharepointId;
+
+    return this.powerAutomate.submitV2('workRequest', paRequest).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'powerAutomate' as const,
+        sharepointId: workRequest.sharepointId,
+        localUuid,
+        message: 'Updated via Power Automate.'
+      })),
+      catchError(() => of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'All update methods failed.'
+      }))
+    );
+  }
+
+  // ====================== Server Email Fallback ======================
+
+  private tryServerEmail(
+    emailContent: { subject: string; body: string },
+    attachments: { fileName: string; contentType: string; base64Content: string }[],
+    localUuid: string,
+    context: string
+  ): Observable<SubmissionResult> {
+    const emailAttachments = (attachments || []).map(a => ({
+      fileName: a.fileName,
+      contentType: a.contentType,
+      base64Content: a.base64Content
+    }));
+
+    return this.serverApi.sendFallbackEmail(emailContent.subject, emailContent.body, emailAttachments).pipe(
+      map(() => ({
+        success: true,
+        method: 'email' as const,
+        localUuid,
+        message: 'Submitted via automated email to operations inbox.'
+      })),
+      catchError(emailError => {
+        console.warn('[Orchestrator] Server email also failed:', emailError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: `${context} Please submit via email manually.`,
+          requiresEmail: true
+        });
+      })
+    );
+  }
+
+  // ====================== Email Content Generation ======================
 
   generateSubmitLink(workRequest: WorkRequest): string {
     const userData = this.userSetup.getUserData();
@@ -242,10 +408,7 @@ export class SubmissionOrchestratorService {
     body += `If the server is running, click to submit automatically:\n`;
     body += `${submitLink}\n`;
 
-    const encodedSubject = encodeURIComponent(subject);
-    const encodedBody = encodeURIComponent(body);
-    const mailto = `mailto:${environment.emailRecipient}?subject=${encodedSubject}&body=${encodedBody}`;
-
+    const mailto = this.buildMailtoUrl(subject, body);
     return { subject, body, mailto, submitLink };
   }
 
@@ -262,10 +425,16 @@ export class SubmissionOrchestratorService {
       body += `Company: ${userData.company}\n`;
     }
 
+    const mailto = this.buildMailtoUrl(subject, body);
+    return { subject, body, mailto };
+  }
+
+  private buildMailtoUrl(subject: string, body: string): string {
     const encodedSubject = encodeURIComponent(subject);
     const encodedBody = encodeURIComponent(body);
-    const mailto = `mailto:${environment.emailRecipient}?subject=${encodedSubject}&body=${encodedBody}`;
-
-    return { subject, body, mailto };
+    const ccParam = environment.emailCcRecipients
+      ? `&cc=${encodeURIComponent(environment.emailCcRecipients.replace(/;/g, ','))}`
+      : '';
+    return `mailto:${environment.emailRecipient}?subject=${encodedSubject}${ccParam}&body=${encodedBody}`;
   }
 }

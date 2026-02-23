@@ -98,6 +98,42 @@ public class PwaWorkRequestController {
                 """.formatted(title, bgColor, textColor, title, message);
     }
 
+    @PostMapping("/revoke")
+    public ResponseEntity<NgApiResponse<PwaSubmissionResult>> revoke(
+            @RequestBody java.util.Map<String, String> payload) {
+        try {
+            String sharepointId = payload.get("sharepointId");
+            String localUuid = payload.getOrDefault("localUuid", "");
+            if (sharepointId == null || sharepointId.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "sharepointId is required"));
+            }
+            log.info("[PWA] Received work request revoke: sharepointId={}", sharepointId);
+            pwaService.revokeWorkRequest(sharepointId);
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    PwaSubmissionResult.success("sharepoint", sharepointId, localUuid),
+                    "Work request revoked"));
+        } catch (Exception e) {
+            log.error("[PWA] Revoke failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Failed to revoke: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/update")
+    public ResponseEntity<NgApiResponse<PwaSubmissionResult>> updateWorkRequest(
+            @RequestBody PwaWorkRequestDto dto) {
+        try {
+            log.info("[PWA] Received work request update: localUuid={}", dto.getLocalUuid());
+            PwaSubmissionResult result = pwaService.updateWorkRequest(dto);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Work request updated"));
+        } catch (Exception e) {
+            log.error("[PWA] Update failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Update failed: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("OK");

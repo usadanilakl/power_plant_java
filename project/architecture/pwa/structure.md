@@ -15,8 +15,12 @@
         - if any method worked, save draft into
         - send email (manual prompt with text and links)
     - On Data updates (if user needs to update submitted data)
-        - From table, select item to edit, edit, submit - the same flow is followed (status changes to updated)
-        - To revoke request - the same flow, different status
+        - From WR table, select "Edit" → form pre-populated → submit calls `SubmissionOrchestratorService.updateWorkRequest()` (server-first → PA V2 fallback)
+        - Updates push full field changes to SharePoint
+    - On Revoke:
+        - From WR table or JHA submitted tab → select "Revoke" action
+        - Calls `SubmissionOrchestratorService.revokeWorkRequest()` / `revokeJha()` (server-first → PA V2 fallback)
+        - Sets status to "Revoked" in local IndexedDB + SharePoint
     - On Data updates (data was processed)
         - user gets an email
         - user can manually request status check (the same flow: try server -> try PA -> send email)
@@ -30,12 +34,18 @@
 
 # Functionalities (PWA only)
     - Work Request [](../../features/permits/work-request/)
-        - Submit
-        - Change
-        - Revoke
+        - Submit (new WR via form)
+        - Edit (modify existing WR fields → pushes to SharePoint)
+        - Revoke (sets status "Revoked" in local + SharePoint)
         - Resubmit
-        - Check Status
-    - Confined Space 
+        - Submit via Email (fallback)
+        - Delete (local only)
+    - JHA [](../../features/permits/work-request/jha.md)
+        - Submit via Form (full form + image capture)
+        - Submit via File (upload pre-filled document, basic data auto-filled)
+        - Revoke (sets status "Revoked" in local + SharePoint)
+        - Reuse as Template (populate form from previously submitted JHA)
+    - Confined Space
         - Check Status
     - Instrumentation Log
         - Submit
@@ -44,5 +54,12 @@
         - Resubmit
         - Check Status
 
+# Key Services
+    - `SubmissionOrchestratorService` — central orchestration: server-first → PA V2 fallback → email fallback
+        - `submitWorkRequest()`, `submitJha()` — submission
+        - `revokeWorkRequest()`, `revokeJha()` — revocation
+        - `updateWorkRequest()` — edit/update
+    - `ServerApiService` — HTTP calls to power_plant_java hub (`/api/pwa/*`)
+    - `PowerAutomateService` — direct PA V2 calls from PWA
 
 # Implementation

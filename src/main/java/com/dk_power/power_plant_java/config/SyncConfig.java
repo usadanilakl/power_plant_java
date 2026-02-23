@@ -32,7 +32,7 @@ public class SyncConfig {
     private String machineName;
 
     // Device identity (from device-configs/*.properties or machine-id.properties)
-    @Value("${device.number:0}")
+    @Value("${device.number:-1}")
     private int deviceNumber;
 
     @Value("${device.name:}")
@@ -108,7 +108,7 @@ public class SyncConfig {
         loadDeviceIdentityFromFile();
 
         // If device config imported (via DEVICE_CONFIG env var), use those values
-        if (deviceNumber > 0 && deviceName != null && !deviceName.isEmpty()) {
+        if (deviceNumber >= 0 && deviceName != null && !deviceName.isEmpty()) {
             // Derive machineId from device name if not already set
             if (machineId == null || machineId.isEmpty()) {
                 machineId = deviceName.toUpperCase()
@@ -144,10 +144,10 @@ public class SyncConfig {
 
         log.info("===========================================");
         log.info("DEVICE IDENTITY");
-        log.info("  Device Number: {}", deviceNumber > 0 ? deviceNumber : "NOT CONFIGURED");
+        log.info("  Device Number: {}", deviceNumber >= 0 ? deviceNumber : "NOT CONFIGURED");
         log.info("  Device Name: {}", deviceName != null && !deviceName.isEmpty() ? deviceName : "NOT CONFIGURED");
         log.info("  Machine ID: {}", machineId);
-        log.info("  Source: {}", deviceNumber > 0 ? "device config" : "auto-generated (CONFIGURE DEVICE!)");
+        log.info("  Source: {}", deviceNumber >= 0 ? "device config" : "auto-generated (CONFIGURE DEVICE!)");
         log.info("-------------------------------------------");
         log.info("SYNC CONFIG");
         log.info("  Machine Name: {}", machineName);
@@ -159,8 +159,8 @@ public class SyncConfig {
         log.info("  Sync Server URL: {}", syncServerUrl);
         log.info("===========================================");
 
-        if (deviceNumber <= 0) {
-            log.warn("!!! DEVICE NUMBER NOT CONFIGURED - IDs will use fallback device 9. " +
+        if (deviceNumber < 0) {
+            log.warn("!!! DEVICE NUMBER NOT CONFIGURED - IDs will use fallback device 99. " +
                 "Set DEVICE_CONFIG env var or configure via Electron settings. !!!");
         }
 
@@ -230,38 +230,53 @@ public class SyncConfig {
 
     /**
      * Load device identity (device.number, device.name, machine.id) from machine-id.properties.
-     * This is the primary source — written by Electron during first-run setup.
+     *
+     * Priority logic:
+     * - If DEVICE_CONFIG env var is explicitly set (by Electron), device-configs/*.properties
+     *   wins — machine-id.properties only fills in gaps (machine.id).
+     * - If DEVICE_CONFIG is NOT set (standalone deployment), machine-id.properties is the
+     *   primary source and overrides the default opi.properties values.
      */
     private void loadDeviceIdentityFromFile() {
         File file = new File(MACHINE_ID_FILE);
         if (!file.exists()) return;
 
+        // If DEVICE_CONFIG env var was explicitly set (by Electron), device-configs values
+        // take priority — only load machine.id from file as fallback.
+        // If not set, we're running standalone and machine-id.properties is the source of truth.
+        boolean deviceConfigExplicitlySet = System.getenv("DEVICE_CONFIG") != null;
+
         try (FileInputStream fis = new FileInputStream(file)) {
             Properties props = new Properties();
             props.load(fis);
 
-            String deviceNumberStr = props.getProperty("device.number");
-            if (deviceNumberStr != null && !deviceNumberStr.isEmpty() && deviceNumber <= 0) {
-                try {
-                    int num = Integer.parseInt(deviceNumberStr);
-                    if (num >= 1 && num <= 9) {
-                        this.deviceNumber = num;
-                    }
-                } catch (NumberFormatException ignored) {}
+            if (!deviceConfigExplicitlySet) {
+                // Standalone: machine-id.properties overrides default device-configs
+                String deviceNumberStr = props.getProperty("device.number");
+                if (deviceNumberStr != null && !deviceNumberStr.isEmpty()) {
+                    try {
+                        int num = Integer.parseInt(deviceNumberStr);
+                        if (num >= 0 && num <= 99) {
+                            this.deviceNumber = num;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                String nameFromFile = props.getProperty("device.name");
+                if (nameFromFile != null && !nameFromFile.isEmpty()) {
+                    this.deviceName = nameFromFile;
+                }
             }
 
-            String nameFromFile = props.getProperty("device.name");
-            if (nameFromFile != null && !nameFromFile.isEmpty() && (deviceName == null || deviceName.isEmpty())) {
-                this.deviceName = nameFromFile;
-            }
-
+            // machine.id is always loaded from file if not already set
+            // (both Electron and standalone need this)
             String idFromFile = props.getProperty("machine.id");
             if (idFromFile != null && !idFromFile.isEmpty() && (machineId == null || machineId.isEmpty())) {
                 this.machineId = idFromFile;
             }
 
-            log.info("Loaded device identity from {}: device.number={}, device.name={}, machine.id={}",
-                MACHINE_ID_FILE, deviceNumber, deviceName, machineId);
+            log.info("Loaded device identity from {} (standalone={}): device.number={}, device.name={}, machine.id={}",
+                MACHINE_ID_FILE, !deviceConfigExplicitlySet, deviceNumber, deviceName, machineId);
         } catch (Exception e) {
             log.warn("Could not load device identity from {}: {}", MACHINE_ID_FILE, e.getMessage());
         }

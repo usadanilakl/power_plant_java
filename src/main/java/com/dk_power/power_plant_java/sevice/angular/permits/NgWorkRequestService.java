@@ -284,6 +284,58 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         return workRequestMapper.convertToNgDto(saved);
     }
 
+    /**
+     * Revokes a work request by updating status to "Revoked".
+     * Also updates SharePoint if synchronized.
+     */
+    public NgWorkRequestDto revokeWorkRequest(Long id) {
+        WorkRequest entity = getEntityById(id);
+
+        if (entity.getPermitStatus() != null &&
+                "Revoked".equalsIgnoreCase(entity.getPermitStatus().getName())) {
+            throw new IllegalStateException("Work request already revoked");
+        }
+
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+
+        if (entity.getSharepointId() != null) {
+            try {
+                wrAdapter.revoke(entity.getSharepointId());
+                log.info("[WorkRequest] SharePoint status updated to Revoked for id={}", id);
+            } catch (Exception e) {
+                log.warn("[WorkRequest] Failed to revoke in SharePoint for id={}: {}", id, e.getMessage());
+            }
+        }
+
+        WorkRequest saved = save(entity);
+        return workRequestMapper.convertToNgDto(saved);
+    }
+
+    /**
+     * Updates work request fields and pushes full update to SharePoint.
+     */
+    public NgWorkRequestDto updateAndPushToSharePoint(NgWorkRequestDto dto) {
+        WorkRequest entity = workRequestMapper.convertNgDtoToEntity(dto);
+        if (dto.getStatus() != null && !dto.getStatus().isEmpty()) {
+            entity.setPermitStatus(valueService.createValue("Permit Status", dto.getStatus()));
+        }
+        WorkRequest saved = save(entity);
+
+        if (saved.getSharepointId() != null && !saved.getSharepointId().isEmpty()) {
+            try {
+                WorkRequestDto spDto = workRequestMapper.convertToDto(saved);
+                wrAdapter.update(saved.getSharepointId(), spDto);
+                log.info("[WorkRequest] Full update pushed to SharePoint for id={}, spId={}",
+                        saved.getId(), saved.getSharepointId());
+            } catch (Exception e) {
+                log.warn("[WorkRequest] Failed to push update to SharePoint for id={}: {}",
+                        saved.getId(), e.getMessage());
+            }
+        }
+
+        return workRequestMapper.convertToNgDto(saved);
+    }
+
     // ====================== Legacy methods (used by old controllers) ======================
 
     /**

@@ -16,6 +16,7 @@ import { PjmManager } from '../managers/pjm.manager';
 import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { WindowLayoutManager } from '../managers/window-layout.manager';
+import { DaEmailManager } from '../managers/da-email.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus } from '../../shared/types';
 
@@ -28,6 +29,7 @@ export class IpcHandlers {
   private gateLogManager: GateLogManager;
   private weatherManager: WeatherManager;
   private pjmManager: PjmManager;
+  private daEmailManager: DaEmailManager;
   private resourcePackManager: ResourcePackManager;
   private electronUpdateManager: ElectronUpdateManager;
   private windowLayoutManager: WindowLayoutManager;
@@ -45,6 +47,7 @@ export class IpcHandlers {
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
+    this.daEmailManager = new DaEmailManager();
     this.weatherManager = new WeatherManager(
       (status: WeatherStatus) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -58,7 +61,7 @@ export class IpcHandlers {
       }
     );
     this.weatherManager.start();
-    this.pjmManager = new PjmManager(this.windowLayoutManager, (status: PjmStatus) => {
+    this.pjmManager = new PjmManager(this.windowLayoutManager, this.daEmailManager, (status: PjmStatus) => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_PJM_STATUS, status);
       }
@@ -929,6 +932,25 @@ export class IpcHandlers {
     ipcMain.handle(events.IPC_PJM_SAVE_CONFIG, (_event, config: any) => {
       this.pjmManager.saveConfig(config);
       return { success: true, data: this.pjmManager.getConfig(), polling: this.pjmManager.isPolling() };
+    });
+
+    // Day-Ahead Awards (read-only — data comes from SharePoint via Power Automate)
+    ipcMain.handle(events.IPC_PJM_DA_FETCH, async () => {
+      try {
+        const awards = await this.pjmManager.fetchDaAwards();
+        return { success: true, data: awards };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PJM_DA_REFRESH, async () => {
+      try {
+        const awards = await this.pjmManager.fetchDaAwards(true);
+        return { success: true, data: awards };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
     });
   }
 

@@ -211,11 +211,19 @@ export class WorkRequestStateService {
   }
 
   revokeSelected(){
+    const wr = this.getSelectedWorkRequest();
+    if (!wr?.sharepointId) {
+      this.globalMessageService.showMessage('Cannot revoke: no SharePoint ID.', 'red');
+      return;
+    }
     this.globalMessageService.showMessage('Revoking request...', 'white', 20000);
-    this.workRequestApiService.revokeRequestOnSharepoint(this.getSelectedWorkRequest()).pipe(
-      switchMap(response => {
-        console.log('Revocation successful!', response);
-        const updatedWorkRequest = new WorkRequest({...this.getSelectedWorkRequest(), status: 'revoked' });
+    this.orchestrator.revokeWorkRequest(wr.sharepointId, wr.localUuid || '').pipe(
+      switchMap(result => {
+        if (!result.success) {
+          this.globalMessageService.showMessage(result.message || 'Revoke failed.', 'red');
+          return of(null);
+        }
+        const updatedWorkRequest = new WorkRequest({...wr, status: 'revoked' });
         return this.workRequesDbService.updateWorkRequest(updatedWorkRequest).pipe(
           tap(() => {
             this.selectWorkRequest(updatedWorkRequest);
@@ -223,13 +231,59 @@ export class WorkRequestStateService {
             this.globalMessageService.showMessage('Request revoked successfully.', 'green');
           })
         );
-      }),takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
-        error: (err) => {
-          console.error('Revocation failed!', err);
-          this.globalMessageService.showMessage('Failed to revoke request. Please try again or contact your supervisor.', 'red');
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      error: (err) => {
+        console.error('Revocation failed!', err);
+        this.globalMessageService.showMessage('Failed to revoke request. Please try again or contact your supervisor.', 'red');
+      }
+    });
+  }
+
+  // ====================== Edit / Update ======================
+
+  isEditing = signal(false);
+
+  editSelected() {
+    const wr = this.getSelectedWorkRequest();
+    if (!wr?.sharepointId) {
+      this.globalMessageService.showMessage('Cannot edit: request not yet submitted to SharePoint.', 'red');
+      return;
+    }
+    this.isEditing.set(true);
+    this.selectWorkRequest(new WorkRequest(wr));
+  }
+
+  updateExistingRequest(workRequest: WorkRequest) {
+    this.globalMessageService.showMessage('Updating request...', 'white', 20000);
+
+    this.orchestrator.updateWorkRequest(workRequest).pipe(
+      switchMap(result => {
+        if (!result.success) {
+          this.globalMessageService.showMessage(result.message || 'Update failed.', 'red');
+          return of(null);
         }
-      })
+        const updated = new WorkRequest({
+          ...workRequest,
+          submissionStatus: 'submitted',
+          status: 'received'
+        });
+        return this.workRequesDbService.updateWorkRequest(updated).pipe(
+          tap(() => {
+            this.addWorkRequestsToList([updated]);
+            this.isEditing.set(false);
+            this.globalMessageService.showMessage('Request updated successfully.', 'green');
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      error: (err) => {
+        console.error('[WorkRequestState] Update error:', err);
+        this.globalMessageService.showMessage('Failed to update: ' + err.message, 'red');
+      }
+    });
   }
 
 }

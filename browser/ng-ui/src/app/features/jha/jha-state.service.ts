@@ -278,12 +278,104 @@ export class JhaStateService {
       this.selectJha(new Jha(draftFields));
     }
 
+    submitFileOnlyJha(files: IAttachment[]) {
+      const selectedJha = this.getSelectedJha();
+      const submittedWr = this.selectedWorkRequestSubject.value;
+
+      if (!selectedJha.workRequestSharepointId) {
+        this.globalMessageService.showMessage(
+          'Please select a Work Request from the left panel before submitting a JHA.', 'red'
+        );
+        return;
+      }
+
+      const userData = this.userSetupService.getUserData();
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const attachments: IAttachment[] = [...files];
+      const userSignature = userData?.signature;
+      if (userSignature) {
+        const base64 = userSignature.includes(',')
+          ? userSignature.split(',')[1]
+          : userSignature;
+        attachments.push({
+          fileName: 'signature.png',
+          contentType: 'image/png',
+          base64Content: base64,
+          type: 'signature'
+        });
+      }
+
+      const jha = new Jha({
+        localUuid: crypto.randomUUID(),
+        jobName: submittedWr?.workScope || 'JHA - File Attached',
+        date: dateStr,
+        analysisBy: userData?.name || '',
+        applicability: userData?.company || '',
+        attachments,
+        workRequestSharepointId: selectedJha.workRequestSharepointId,
+        workRequestLocalUuid: selectedJha.workRequestLocalUuid,
+      });
+
+      this.globalMessageService.showMessage('Submitting JHA (file only)...', 'white', 20000);
+      this.submissionOrchestrator.submitJha(jha).pipe(
+        switchMap(result => {
+          if (result.requiresEmail) {
+            const emailData = this.submissionOrchestrator.generateJhaEmailContent(jha);
+            window.location.href = emailData.mailto;
+            throw new Error(result.message);
+          }
+          const updatedJha = new Jha({
+            ...jha,
+            sharepointId: result.sharepointId || '',
+            status: result.success ? 'received' : 'pending'
+          });
+          return this.jhaDbService.addJha(updatedJha).pipe(
+            tap(() => {
+              this.addJhasToList([updatedJha]);
+              this.jhaLocalStorageService.clearDraft();
+              if (submittedWr?.id) {
+                this.workRequestDbService.updateWorkRequest({
+                  id: submittedWr.id, jhaStatus: 'Completed'
+                }).subscribe();
+              }
+              this.selectedWorkRequestSubject.next(null);
+              this.selectJha(new Jha());
+            }),
+            map(() => result)
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (result) => {
+          this.globalMessageService.showMessage(
+            result.message || 'JHA submitted successfully (file only).', 'green'
+          );
+        },
+        error: (err) => {
+          console.error('File-only JHA submission failed!', err);
+          this.globalMessageService.showMessage(
+            err.message || 'Failed to submit JHA. Please try again or submit by email.', 'red'
+          );
+        }
+      });
+    }
+
     revokeSelected(){
+      const jha = this.getSelectedJha();
+      if (!jha?.sharepointId) {
+        this.globalMessageService.showMessage('Cannot revoke: no SharePoint ID.', 'red');
+        return;
+      }
       this.globalMessageService.showMessage('Revoking JHA...', 'white', 20000);
-      this.jhaApiService.revokeRequestOnSharepoint(this.getSelectedJha()).pipe(
-        switchMap(response => {
-          console.log('Revocation successful!', response);
-          const updatedJha = new Jha({...this.getSelectedJha(), status: 'revoked' });
+      this.submissionOrchestrator.revokeJha(jha.sharepointId, jha.localUuid || '').pipe(
+        switchMap(result => {
+          if (!result.success) {
+            this.globalMessageService.showMessage(result.message || 'Revoke failed.', 'red');
+            return from([null]);
+          }
+          const updatedJha = new Jha({...jha, status: 'revoked' });
           return this.jhaDbService.updateJha(updatedJha).pipe(
             tap(() => {
               this.selectJha(updatedJha);
@@ -291,12 +383,13 @@ export class JhaStateService {
               this.globalMessageService.showMessage('JHA revoked successfully.', 'green');
             })
           );
-        }),takeUntilDestroyed(this.destroyRef)
-        ).subscribe({
-          error: (err) => {
-            console.error('Revocation failed!', err);
-            this.globalMessageService.showMessage('Failed to revoke JHA. Please try again or contact your supervisor.', 'red');
-          }
-        })
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        error: (err) => {
+          console.error('Revocation failed!', err);
+          this.globalMessageService.showMessage('Failed to revoke JHA. Please try again or contact your supervisor.', 'red');
+        }
+      });
     }
 }

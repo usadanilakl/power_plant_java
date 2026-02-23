@@ -198,6 +198,57 @@ public class HubFileService {
         }
     }
 
+    /**
+     * Register a local file already on the hub's filesystem into HubSyncedFile.
+     * Used when the hub creates FileObjects locally (via web UI) —
+     * the file already exists on disk, we just need a tracking record
+     * so clients can discover and download it.
+     */
+    @Transactional
+    public HubSyncedFile registerLocalFile(java.io.File file, String entityType, Long entityId,
+                                            String originalPath, String machineId) throws IOException {
+        byte[] content = Files.readAllBytes(file.toPath());
+        String hash = computeSha256(content);
+
+        // Dedup: skip if same hash already tracked for this entity
+        Optional<HubSyncedFile> existing = syncedFileRepository
+            .findByFileHashAndEntityTypeAndEntityIdAndDeletedFalse(hash, entityType, entityId);
+
+        if (existing.isPresent()) {
+            HubSyncedFile existingFile = existing.get();
+            existingFile.addSyncedMachine(machineId);
+            syncedFileRepository.save(existingFile);
+            log.debug("[Hub File] Duplicate skipped: {} for {}/{}", file.getName(), entityType, entityId);
+            return existingFile;
+        }
+
+        String fileName = file.getName();
+        String extension = "";
+        if (fileName.contains(".")) {
+            extension = fileName.substring(fileName.lastIndexOf('.') + 1);
+        }
+
+        HubSyncedFile syncedFile = new HubSyncedFile();
+        syncedFile.setEntityType(entityType);
+        syncedFile.setEntityId(entityId);
+        syncedFile.setOriginalPath(originalPath);
+        syncedFile.setStoragePath(file.getAbsolutePath());
+        syncedFile.setFileName(fileName);
+        syncedFile.setExtension(extension);
+        syncedFile.setFileSize(file.length());
+        syncedFile.setFileHash(hash);
+        syncedFile.setContentType(Files.probeContentType(file.toPath()));
+        syncedFile.setOriginMachineId(machineId);
+        syncedFile.setUploadedAt(Instant.now());
+        syncedFile.addSyncedMachine(machineId);
+
+        syncedFile = syncedFileRepository.save(syncedFile);
+        log.info("[Hub File] Registered local file: {} ({} bytes) for {}/{}",
+            fileName, file.length(), entityType, entityId);
+
+        return syncedFile;
+    }
+
     public record FileStoreResult(HubSyncedFile syncedFile, boolean isNewFile) {}
 
     public record StorageStats(long totalBytesUsed, long totalFiles) {}

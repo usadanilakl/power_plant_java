@@ -13,12 +13,8 @@ public class HomeController {
     private final FileServiceImpl fileService;
 
     @GetMapping("/")
-    String getHome(Model model){
-        model.addAttribute("files", fileService.getAll());
-        model.addAttribute("sortingGroups", SortingGroup.values());
-        return "home";
-//        return "home_loto";
-//        return "layouts/main-template";
+    String getHome(){
+        return "redirect:/app/";
     }
     @GetMapping("/view")
     String getView(){

@@ -125,25 +125,77 @@ export interface WeatherForecast {
 }
 
 // PJM
-export interface PjmStatus {
+
+// Per-unit LMP data
+export interface PjmUnitLmp {
+  pnodeId: number;
+  pnodeName?: string;
   lmpPrice?: number;
   congestionPrice?: number;
   marginalLossPrice?: number;
-  pnodeName?: string;
   dataTimestamp?: string;   // datetime_beginning_ept from PJM API
-  unit: string;
-  lastUpdate?: string;
   status: 'loading' | 'available' | 'unavailable' | 'error';
   error?: string;
 }
 
+// Unit evolution — next state change derived from DA awards
+export interface PjmUnitEvolution {
+  status: 'online' | 'offline' | 'unknown';
+  message: string;              // e.g. "AGC by 1:00 PM CT" or "OFFLINE by 2:00 PM CT"
+  date?: string;                // YYYY-MM-DD of the award this is based on
+}
+
+// Composite status for both units
+export interface PjmStatus {
+  unit1: PjmUnitLmp;
+  unit2: PjmUnitLmp;
+  unit: string;            // '$/MWh'
+  lastUpdate?: string;
+  unit1Evolution?: PjmUnitEvolution;
+  unit2Evolution?: PjmUnitEvolution;
+}
+
+// Per-hour entry within a DA award (matches email table row)
+export interface PjmDaHourEntry {
+  he: number;        // Hour ending (1-24)
+  mw: number;        // Awarded MW
+  lmp: number;       // LMP price $/MWh
+}
+
+// Full day-ahead award for one date (both units combined in one record)
+export interface PjmDaAward {
+  date: string;                   // YYYY-MM-DD (operating date)
+  unit1Hours: PjmDaHourEntry[];   // 24 entries
+  unit2Hours: PjmDaHourEntry[];   // 24 entries
+  unit1TotalAwardedHours: number; // count of hours with MW > 0
+  unit2TotalAwardedHours: number;
+  unit1AvgLMP: number;            // daily average LMP
+  unit2AvgLMP: number;
+  processedAt?: string;           // email receivedDateTime
+}
+
+// SharePoint config (separate from PJM config)
+export interface SharePointElectronConfig {
+  clientId: string;
+  tenantId: string;
+  pfxPath: string;        // relative to working dir (e.g., "data/certificate.pfx")
+  pfxPassword: string;
+  siteUrl: string;        // "https://jpowerusa.sharepoint.com/sites/JG"
+}
+
+// Per-unit config
+export interface PjmUnitConfig {
+  pnodeId: number;
+  pnodeName: string;
+}
+
 export interface PjmConfig {
   apiKey: string;
-  pnodeId: number;         // Default: 33092371 (ComEd zone aggregate)
-  pnodeName: string;       // Display name
+  units: [PjmUnitConfig, PjmUnitConfig];
   pollIntervalMinutes: number;
   voyagerUsername?: string;
   voyagerPassword?: string;
+  daEmailAddress?: string;        // mailbox UPN for PJM DA email polling via Graph API
 }
 
 // IPC Result wrapper
@@ -155,7 +207,7 @@ export interface IpcResult<T = void> {
 
 // Device Identity
 export interface DeviceConfig {
-  deviceNumber: number;    // 1-9
+  deviceNumber: number;    // 0-99
   deviceName: string;      // "Home PC"
   machineId: string;       // "HOME-PC"
   syncServerUrl: string;   // "http://10.10.190.122:8090"

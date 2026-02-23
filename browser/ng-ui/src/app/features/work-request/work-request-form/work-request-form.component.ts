@@ -55,8 +55,14 @@ export class WorkRequestFormComponent {
     this.workRequestStateService.saveDraft(workRequest);
   }
 
+  isEditing = this.workRequestStateService.isEditing;
+
   onSubmit(workRequest: WorkRequest) {
-    this.workRequestStateService.submitNewRequest(workRequest);
+    if (this.isEditing()) {
+      this.workRequestStateService.updateExistingRequest(workRequest);
+    } else {
+      this.workRequestStateService.submitNewRequest(workRequest);
+    }
   }
 
   onEmailSent() {
@@ -72,9 +78,10 @@ export class WorkRequestFormComponent {
     const data = this.emailFallbackData();
     if (!data) return;
     const to = encodeURIComponent(this.emailRecipient);
+    const cc = encodeURIComponent((environment.emailCcRecipients || '').replace(/;/g, ','));
     const subject = encodeURIComponent('Work Request Submission');
     const body = encodeURIComponent(data.body);
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`, '_blank');
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&cc=${cc}&su=${subject}&body=${body}`, '_blank');
     if (this.hasAttachments()) this.downloadAttachments();
     this.workRequestStateService.markSentViaEmail();
   }

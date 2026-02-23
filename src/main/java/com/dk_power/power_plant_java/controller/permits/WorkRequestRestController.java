@@ -67,7 +67,7 @@ public class WorkRequestRestController {
     @PutMapping
     public ResponseEntity<NgApiResponse<NgWorkRequestDto>> update(@RequestBody NgWorkRequestDto dto) {
         try {
-            NgWorkRequestDto saved = workRequestService.saveFromDto(dto);
+            NgWorkRequestDto saved = workRequestService.updateAndPushToSharePoint(dto);
             return ResponseEntity.ok(new NgApiResponse<>(saved, "Work request updated successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed to update: " + e.getMessage()));
@@ -181,6 +181,19 @@ public class WorkRequestRestController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(new NgApiResponse<>(null, "Failed to request details: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/revoke/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> revokeWorkRequest(@PathVariable Long id) {
+        try {
+            NgWorkRequestDto dto = workRequestService.revokeWorkRequest(id);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Work request revoked"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to revoke: " + e.getMessage()));
         }
     }
 

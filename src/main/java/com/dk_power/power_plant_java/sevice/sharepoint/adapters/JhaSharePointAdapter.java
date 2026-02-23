@@ -55,6 +55,18 @@ public class JhaSharePointAdapter {
         );
     }
 
+    public void changeStatus(String sharepointId, String status) {
+        spService.executeWithFallback(
+                () -> { certChangeStatus(sharepointId, status); return null; },
+                () -> { paChangeStatus(sharepointId, status); return null; },
+                "changeJhaStatus"
+        );
+    }
+
+    public void revoke(String sharepointId) {
+        changeStatus(sharepointId, "Revoked");
+    }
+
     public void addAttachment(String sharepointId, PaAttachmentDto attachment) {
         spService.executeWithFallback(
                 () -> { certAccess.addListItemAttachment(LIST_TITLE, sharepointId, attachment.getFileName(),
@@ -112,7 +124,23 @@ public class JhaSharePointAdapter {
         return result;
     }
 
+    private void certChangeStatus(String sharepointId, String status) {
+        Map<String, Object> body = Map.of("Status", status);
+        certAccess.updateListItem(LIST_TITLE, sharepointId, body);
+    }
+
     // ====================== Power Automate path ======================
+
+    private void paChangeStatus(String sharepointId, String status) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("update");
+        req.setId(sharepointId);
+        req.setData(Map.of("Status", status));
+        PaResponseDto resp = v2Client.jha(req);
+        if (!resp.isSuccess()) {
+            log.error("[JHA-Adapter] PA update status to '{}' failed: {}", status, resp.getMessage());
+        }
+    }
 
     private List<JhaDto> paGetAll() {
         PaRequestDto req = new PaRequestDto();

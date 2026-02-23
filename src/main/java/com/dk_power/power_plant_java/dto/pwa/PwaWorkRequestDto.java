@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 public class PwaWorkRequestDto {
     private String localUuid;           // PWA's unique ID for dedup
+    private String sharepointId;        // SharePoint list item ID (for updates)
 
     // Work request fields
     private String company;

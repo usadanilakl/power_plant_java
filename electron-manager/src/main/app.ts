@@ -11,7 +11,7 @@ import { MainWindowManager } from './managers/main-window.manager';
 import { WindowLayoutManager } from './managers/window-layout.manager';
 import { IpcHandlers } from './ipc/handlers';
 import { DEFAULT_SPRING_BOOT_CONFIG, DEFAULT_SYNC_SERVER, SYNC_STALE_THRESHOLD_DAYS, APP_DISPLAY_NAME } from './constants';
-import { getWorkingDir, getGuidesPath, ensureWorkingDir, ensureTessdata, provisionDefaultConfigs } from './paths';
+import { getWorkingDir, getGuidesPath, ensureWorkingDir, ensureTessdata, ensureCertificate, provisionDefaultConfigs } from './paths';
 import * as events from './ipc/events';
 import type { StartupAssessment } from '../shared/types';
 
@@ -42,6 +42,7 @@ export default class App {
     // (managers read configs in their constructors)
     ensureWorkingDir();
     provisionDefaultConfigs();
+    ensureCertificate();
 
     // Create layout manager (reads window-layout.json from working dir)
     const layoutManager = new WindowLayoutManager();

@@ -59,6 +59,9 @@ export const IPC_PJM_REFRESH = 'pjm:refresh';
 export const IPC_PJM_GET_CONFIG = 'pjm:get-config';
 export const IPC_PJM_SAVE_CONFIG = 'pjm:save-config';
 export const IPC_PJM_STATUS = 'pjm:status';
+// PJM Day-Ahead Awards (invoke/handle — read-only, data from SharePoint)
+export const IPC_PJM_DA_FETCH = 'pjm:da-fetch';
+export const IPC_PJM_DA_REFRESH = 'pjm:da-refresh';
 
 // Window control
 export const IPC_WINDOW_CLOSE = 'window:close';

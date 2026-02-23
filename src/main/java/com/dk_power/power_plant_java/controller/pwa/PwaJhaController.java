@@ -31,4 +31,26 @@ public class PwaJhaController {
                     .body(new NgApiResponse<>(null, "JHA submission failed: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/revoke")
+    public ResponseEntity<NgApiResponse<PwaSubmissionResult>> revoke(
+            @RequestBody java.util.Map<String, String> payload) {
+        try {
+            String sharepointId = payload.get("sharepointId");
+            String localUuid = payload.getOrDefault("localUuid", "");
+            if (sharepointId == null || sharepointId.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "sharepointId is required"));
+            }
+            log.info("[PWA JHA] Received JHA revoke: sharepointId={}", sharepointId);
+            pwaJhaService.revokeJha(sharepointId);
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    PwaSubmissionResult.success("sharepoint", sharepointId, localUuid),
+                    "JHA revoked"));
+        } catch (Exception e) {
+            log.error("[PWA JHA] Revoke failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Failed to revoke JHA: " + e.getMessage()));
+        }
+    }
 }

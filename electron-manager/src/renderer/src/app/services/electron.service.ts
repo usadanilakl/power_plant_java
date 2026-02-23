@@ -206,16 +206,47 @@ export interface WeatherForecast {
   error?: string;
 }
 
-export interface PjmStatus {
+export interface PjmUnitLmp {
+  pnodeId: number;
+  pnodeName?: string;
   lmpPrice?: number;
   congestionPrice?: number;
   marginalLossPrice?: number;
-  pnodeName?: string;
   dataTimestamp?: string;
-  unit: string;
-  lastUpdate?: string;
   status: 'loading' | 'available' | 'unavailable' | 'error';
   error?: string;
+}
+
+export interface PjmUnitEvolution {
+  status: 'online' | 'offline' | 'unknown';
+  message: string;
+  date?: string;
+}
+
+export interface PjmStatus {
+  unit1: PjmUnitLmp;
+  unit2: PjmUnitLmp;
+  unit: string;
+  lastUpdate?: string;
+  unit1Evolution?: PjmUnitEvolution;
+  unit2Evolution?: PjmUnitEvolution;
+}
+
+export interface PjmDaHourEntry {
+  he: number;
+  mw: number;
+  lmp: number;
+}
+
+export interface PjmDaAward {
+  date: string;
+  unit1Hours: PjmDaHourEntry[];
+  unit2Hours: PjmDaHourEntry[];
+  unit1TotalAwardedHours: number;
+  unit2TotalAwardedHours: number;
+  unit1AvgLMP: number;
+  unit2AvgLMP: number;
+  processedAt?: string;
 }
 
 interface ElectronAPI {
@@ -319,6 +350,9 @@ interface ElectronAPI {
   pjmGetConfig: () => Promise<IpcResult<any>>;
   pjmSaveConfig: (config: any) => Promise<IpcResult<any> & { polling?: boolean }>;
   onPjmStatusChange: (callback: (status: PjmStatus) => void) => () => void;
+  // PJM Day-Ahead Awards (read-only — data from SharePoint)
+  pjmDaFetch: () => Promise<IpcResult<PjmDaAward[]>>;
+  pjmDaRefresh: () => Promise<IpcResult<PjmDaAward[]>>;
 
   // WebView
   openWebView: (target: string, url: string) => Promise<IpcResult>;
@@ -806,6 +840,16 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.onPjmStatusChange((status) => {
       this.ngZone.run(() => callback(status));
     });
+  }
+
+  async pjmDaFetch(): Promise<IpcResult<PjmDaAward[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmDaFetch();
+  }
+
+  async pjmDaRefresh(): Promise<IpcResult<PjmDaAward[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.pjmDaRefresh();
   }
 
   // WebView

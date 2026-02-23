@@ -153,6 +153,19 @@ public class JhaRestController {
         }
     }
 
+    @PostMapping("/revoke/{id}")
+    public ResponseEntity<NgApiResponse<NgJhaDto>> revokeJha(@PathVariable Long id) {
+        try {
+            NgJhaDto dto = jhaService.revokeJha(id);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "JHA revoked"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to revoke: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/change-status/{id}/{status}")
     public ResponseEntity<NgApiResponse<NgJhaDto>> changeStatus(
             @PathVariable Long id, @PathVariable String status) {

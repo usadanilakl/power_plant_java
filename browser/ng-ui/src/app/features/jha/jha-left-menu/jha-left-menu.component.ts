@@ -4,10 +4,12 @@ import { JhaStateService } from '../jha-state.service';
 import { WorkRequest } from '../../../models/permits/work-request.model';
 import { Jha } from '../../../models/permits/jha.model';
 import { TableComponent } from '../../../shared/table/table.component';
+import { PopupComponent } from '../../../shared/menus/popup/popup.component';
+import { ButtonConfig, ButtonsComponent } from '../../../shared/menus/buttons/buttons.component';
 
 @Component({
   selector: 'app-jha-left-menu',
-  imports: [TableComponent],
+  imports: [TableComponent, PopupComponent, ButtonsComponent],
   templateUrl: './jha-left-menu.component.html',
   styleUrl: './jha-left-menu.component.css'
 })
@@ -28,11 +30,24 @@ export class JhaLeftMenuComponent {
   private selectedWr = this.jhaStateService.selectedWorkRequestSignal;
   highlightId = computed(() => this.selectedWr()?.sharepointId ?? null);
 
+  // JHA action menu
+  isActionMenuOpen = false;
+  actionButtons: ButtonConfig[] = [];
+
   onWrRowClick({ item }: { item: WorkRequest, event: MouseEvent }) {
     this.jhaStateService.selectWorkRequestForJha(item);
   }
 
   onJhaRowClick({ item }: { item: Jha, event: MouseEvent }) {
     this.jhaStateService.selectJha(item);
+    this.actionButtons = [
+      { name: 'Use as Template', action: () => { this.jhaStateService.reuseJhaTemplate(item); this.closeActionMenu(); }, color: 'primary' },
+      { name: 'Revoke', action: () => { this.jhaStateService.revokeSelected(); this.closeActionMenu(); }, color: 'warn' },
+    ];
+    this.isActionMenuOpen = true;
+  }
+
+  closeActionMenu() {
+    this.isActionMenuOpen = false;
   }
 }

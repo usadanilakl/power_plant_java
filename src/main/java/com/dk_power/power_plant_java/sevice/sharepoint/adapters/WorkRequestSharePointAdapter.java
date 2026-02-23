@@ -57,6 +57,18 @@ public class WorkRequestSharePointAdapter {
         );
     }
 
+    public void revoke(String sharepointId) {
+        changeStatus(sharepointId, "Revoked");
+    }
+
+    public void update(String sharepointId, WorkRequestDto dto) {
+        spService.executeWithFallback(
+                () -> { certUpdate(sharepointId, dto); return null; },
+                () -> { paUpdate(sharepointId, dto); return null; },
+                "update WorkRequest"
+        );
+    }
+
     public void addAttachment(String sharepointId, PaAttachmentDto attachment) {
         spService.executeWithFallback(
                 () -> { certAccess.addListItemAttachment(LIST_TITLE, sharepointId, attachment.getFileName(),
@@ -114,7 +126,23 @@ public class WorkRequestSharePointAdapter {
         return result;
     }
 
+    private void certUpdate(String sharepointId, WorkRequestDto dto) {
+        Map<String, Object> body = workRequestToMap(dto, true);
+        certAccess.updateListItem(LIST_TITLE, sharepointId, body);
+    }
+
     // ====================== Power Automate path ======================
+
+    private void paUpdate(String sharepointId, WorkRequestDto dto) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("update");
+        req.setId(sharepointId);
+        req.setData(workRequestToMap(dto, false));
+        PaResponseDto resp = v2Client.workRequest(req);
+        if (!resp.isSuccess()) {
+            log.error("[WR-Adapter] PA full update failed: {}", resp.getMessage());
+        }
+    }
 
     private List<WorkRequestDto> paGetAll() {
         PaRequestDto req = new PaRequestDto();

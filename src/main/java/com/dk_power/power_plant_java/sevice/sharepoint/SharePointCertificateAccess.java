@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -137,11 +138,21 @@ public class SharePointCertificateAccess implements SharePointAccess {
                 listTitle, itemId, fileName);
 
         String fullUrl = siteUrl + endpoint;
-        HttpHeaders headers = createHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        HttpEntity<byte[]> entity = new HttpEntity<>(content, headers);
+        ResponseEntity<String> response;
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            HttpEntity<byte[]> entity = new HttpEntity<>(content, headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on attachment upload, refreshing token and retrying");
+            tokenExpirationTime = null;
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            HttpEntity<byte[]> entity = new HttpEntity<>(content, headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        }
 
-        ResponseEntity<String> response = restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
         if (response.getStatusCode().is2xxSuccessful()) {
             log.info("[SharePoint] Attachment '{}' uploaded to {} in '{}'", fileName, itemId, listTitle);
         } else {
@@ -173,11 +184,21 @@ public class SharePointCertificateAccess implements SharePointAccess {
                 listTitle, itemId, fileName);
 
         String fullUrl = siteUrl + endpoint;
-        HttpHeaders headers = createHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
-        HttpEntity<?> entity = new HttpEntity<>(headers);
+        ResponseEntity<byte[]> response;
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on attachment download, refreshing token and retrying");
+            tokenExpirationTime = null;
+            HttpHeaders headers = createHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
+        }
 
-        ResponseEntity<byte[]> response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
             log.debug("[SharePoint] Downloaded attachment '{}' ({} bytes) from item {} in '{}'",
                     fileName, response.getBody().length, itemId, listTitle);
@@ -219,23 +240,47 @@ public class SharePointCertificateAccess implements SharePointAccess {
 
     private ResponseEntity<String> sendGetRequest(String endpoint) {
         String fullUrl = siteUrl + endpoint;
-        HttpEntity<?> entity = new HttpEntity<>(createHeaders());
-        return restTemplate.exchange(fullUrl, HttpMethod.GET, entity, String.class);
+        try {
+            HttpEntity<?> entity = new HttpEntity<>(createHeaders());
+            return restTemplate.exchange(fullUrl, HttpMethod.GET, entity, String.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on GET {}, refreshing token and retrying", endpoint);
+            tokenExpirationTime = null;
+            HttpEntity<?> entity = new HttpEntity<>(createHeaders());
+            return restTemplate.exchange(fullUrl, HttpMethod.GET, entity, String.class);
+        }
     }
 
     private ResponseEntity<String> sendPostRequest(String endpoint, Object body) {
         String fullUrl = siteUrl + endpoint;
-        HttpEntity<?> entity = new HttpEntity<>(body, createHeaders());
-        return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        try {
+            HttpEntity<?> entity = new HttpEntity<>(body, createHeaders());
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on POST {}, refreshing token and retrying", endpoint);
+            tokenExpirationTime = null;
+            HttpEntity<?> entity = new HttpEntity<>(body, createHeaders());
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        }
     }
 
     private ResponseEntity<String> sendMergeRequest(String endpoint, String jsonBody) {
         String fullUrl = siteUrl + endpoint;
-        HttpHeaders headers = createHeaders();
-        headers.set("IF-MATCH", "*");
-        headers.set("X-HTTP-Method", "MERGE");
-        HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
-        return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.set("IF-MATCH", "*");
+            headers.set("X-HTTP-Method", "MERGE");
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on MERGE {}, refreshing token and retrying", endpoint);
+            tokenExpirationTime = null;
+            HttpHeaders headers = createHeaders();
+            headers.set("IF-MATCH", "*");
+            headers.set("X-HTTP-Method", "MERGE");
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        }
     }
 
     @Override

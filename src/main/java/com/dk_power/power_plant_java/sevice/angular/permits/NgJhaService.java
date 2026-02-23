@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.permits.Jha;
 import com.dk_power.power_plant_java.mappers.permits.JhaMapper;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -29,6 +30,7 @@ public class NgJhaService implements NgPermitService<Jha, JhaDto, JhaRepo, JhaMa
     private final JhaRepo jhaRepo;
     private final JhaMapper jhaMapper;
     private final NgValueService valueService;
+    private final JhaSharePointAdapter jhaAdapter;
 
     @Override
     public JhaRepo getRepo() {
@@ -112,6 +114,40 @@ public class NgJhaService implements NgPermitService<Jha, JhaDto, JhaRepo, JhaMa
     public NgJhaDto setStatus(Long id, String status) {
         Jha entity = getEntityById(id);
         entity.setPermitStatus(valueService.createValue("Permit Status", status));
+        try {
+            if (entity.getSharepointId() != null) {
+                jhaAdapter.changeStatus(entity.getSharepointId(), status);
+            }
+        } catch (Exception e) {
+            log.warn("[JHA] Failed to update SharePoint status for id={}: {}", id, e.getMessage());
+        }
+        Jha saved = save(entity);
+        return jhaMapper.convertToNgDto(saved);
+    }
+
+    /**
+     * Revokes a JHA by updating status to "Revoked".
+     * Also updates SharePoint if synchronized.
+     */
+    public NgJhaDto revokeJha(Long id) {
+        Jha entity = getEntityById(id);
+
+        if (entity.getPermitStatus() != null &&
+                "Revoked".equalsIgnoreCase(entity.getPermitStatus().getName())) {
+            throw new IllegalStateException("JHA already revoked");
+        }
+
+        entity.setPermitStatus(valueService.createValue("Permit Status", "Revoked"));
+
+        if (entity.getSharepointId() != null) {
+            try {
+                jhaAdapter.revoke(entity.getSharepointId());
+                log.info("[JHA] SharePoint status updated to Revoked for id={}", id);
+            } catch (Exception e) {
+                log.warn("[JHA] Failed to revoke in SharePoint for id={}: {}", id, e.getMessage());
+            }
+        }
+
         Jha saved = save(entity);
         return jhaMapper.convertToNgDto(saved);
     }

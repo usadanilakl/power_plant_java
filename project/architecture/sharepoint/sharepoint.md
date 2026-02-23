@@ -21,15 +21,37 @@ Fallback [](./power-automate-access.md)
 - `sevice/sharepoint/PowerAutomateAccess.java` — fallback (wraps existing PowerAutomateClient)
 - `config/SharePointConfig.java` — Spring beans (ClientCertificateCredential + RestTemplate)
 
+## Entity-Specific Adapters
+
+SharePoint operations are now handled by entity-specific adapters that wrap the generic `SharePointCertificateAccess` + `PowerAutomateV2Client`. Each adapter uses `SharepointAccessService.executeWithFallback()` for cert/PA failover.
+
+### WorkRequestSharePointAdapter
+- `getAll()` — fetch all work requests from SharePoint list
+- `create(dto)` — create new list item
+- `update(sharepointId, dto)` — push full field update (cert: MERGE request, PA: update action)
+- `changeStatus(sharepointId, status)` — update Status column only
+- `revoke(sharepointId)` — convenience → `changeStatus(sharepointId, "Revoked")`
+- `addAttachment(sharepointId, attachmentDto)` — attach file to list item
+
+### JhaSharePointAdapter
+- `getAll()` — fetch all JHAs from SharePoint list
+- `create(dto)` — create new list item
+- `update(sharepointId, dto)` — push field update
+- `changeStatus(sharepointId, status)` — update Status column only
+- `revoke(sharepointId)` — convenience → `changeStatus(sharepointId, "Revoked")`
+- `addAttachment(sharepointId, attachmentDto)` — attach file to list item
+
 ## Consumers (migrated to facade)
 
-- `NgWorkRequestService` — work request CRUD + sync
+- `NgWorkRequestService` — work request CRUD + revoke + update-with-SharePoint-push
+- `NgJhaService` — JHA CRUD + revoke + status changes pushed to SharePoint
+- `PwaWorkRequestService` — PWA submission, revoke, update
+- `PwaJhaService` — PWA JHA submission, revoke
+- `WorkRequestSyncService` / `JhaSyncService` — scheduled sync from SharePoint
 - `SpaceService` — confined spaces
 - `PowerAutomateController` — REST endpoints
-- `WorkRequestController` — removed direct PowerAutomateClient dependency
 
 ## Remaining Work
 
 - Verify field name mappings from first successful getAllWorkRequests() call
-- Add more SharePoint list operations as needed (Users, Hot Works, JHA, Safe Works)
 - Make Power Automate flow URLs configurable (currently hardcoded with SAS tokens)

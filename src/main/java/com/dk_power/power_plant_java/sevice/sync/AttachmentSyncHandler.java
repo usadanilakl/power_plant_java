@@ -30,7 +30,7 @@ public class AttachmentSyncHandler {
     /**
      * Upload unsynced local attachments to sync-server.
      */
-    @Scheduled(fixedDelay = 60000, initialDelay = 90000)
+    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
     public void uploadPendingAttachments() {
         if (!syncConfig.isServerSyncEnabled()) return;
 
@@ -76,7 +76,7 @@ public class AttachmentSyncHandler {
     /**
      * Download new attachments from sync-server.
      */
-    @Scheduled(fixedDelay = 60000, initialDelay = 120000)
+    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
     public void downloadPendingAttachments() {
         if (!syncConfig.isServerSyncEnabled()) return;
 

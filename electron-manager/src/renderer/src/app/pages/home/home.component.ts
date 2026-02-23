@@ -103,20 +103,40 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
           <div class="feature-info">
             <h3>PJM</h3>
             <p class="feature-desc">Grid pricing and power data</p>
-            <div class="pjm-snippet" *ngIf="pjmStatus?.status === 'available'">
-              <span class="pjm-price" [class.price-positive]="(pjmStatus?.lmpPrice ?? 0) >= 0"
-                    [class.price-negative]="(pjmStatus?.lmpPrice ?? 0) < 0">
-                \${{ pjmStatus?.lmpPrice?.toFixed(2) }}
-              </span>
+            <div class="pjm-snippet" *ngIf="pjmStatus?.unit1?.status === 'available' || pjmStatus?.unit2?.status === 'available'">
+              <div class="pjm-unit-row" *ngIf="pjmStatus?.unit1?.status === 'available'">
+                <span class="pjm-unit-label">U1</span>
+                <span class="pjm-price" [class.price-positive]="(pjmStatus?.unit1?.lmpPrice ?? 0) >= 0"
+                      [class.price-negative]="(pjmStatus?.unit1?.lmpPrice ?? 0) < 0">
+                  \${{ pjmStatus?.unit1?.lmpPrice?.toFixed(2) }}
+                </span>
+              </div>
+              <div class="pjm-unit-row" *ngIf="pjmStatus?.unit2?.status === 'available'">
+                <span class="pjm-unit-label">U2</span>
+                <span class="pjm-price" [class.price-positive]="(pjmStatus?.unit2?.lmpPrice ?? 0) >= 0"
+                      [class.price-negative]="(pjmStatus?.unit2?.lmpPrice ?? 0) < 0">
+                  \${{ pjmStatus?.unit2?.lmpPrice?.toFixed(2) }}
+                </span>
+              </div>
               <span class="pjm-unit">$/MWh</span>
             </div>
-            <div class="pjm-snippet muted" *ngIf="pjmStatus?.status !== 'available' && !pjmPolling">
+            <div class="pjm-evo-row" *ngIf="pjmStatus?.unit1Evolution">
+              <span class="pjm-evo-dot" [class]="pjmStatus!.unit1Evolution!.status"></span>
+              <span class="pjm-evo-label">U1</span>
+              <span class="pjm-evo-msg">{{ pjmStatus!.unit1Evolution!.message }}</span>
+            </div>
+            <div class="pjm-evo-row" *ngIf="pjmStatus?.unit2Evolution">
+              <span class="pjm-evo-dot" [class]="pjmStatus!.unit2Evolution!.status"></span>
+              <span class="pjm-evo-label">U2</span>
+              <span class="pjm-evo-msg">{{ pjmStatus!.unit2Evolution!.message }}</span>
+            </div>
+            <div class="pjm-snippet muted" *ngIf="pjmStatus?.unit1?.status !== 'available' && pjmStatus?.unit2?.status !== 'available' && !pjmPolling">
               Polling disabled
             </div>
-            <div class="pjm-snippet muted" *ngIf="pjmStatus?.status === 'loading' && pjmPolling">
+            <div class="pjm-snippet muted" *ngIf="(pjmStatus?.unit1?.status === 'loading' || pjmStatus?.unit2?.status === 'loading') && pjmPolling && pjmStatus?.unit1?.status !== 'available' && pjmStatus?.unit2?.status !== 'available'">
               Loading...
             </div>
-            <div class="pjm-snippet error-text" *ngIf="pjmStatus?.status === 'error'">
+            <div class="pjm-snippet error-text" *ngIf="pjmStatus?.unit1?.status === 'error' && pjmStatus?.unit2?.status === 'error'">
               Error
             </div>
           </div>
@@ -179,6 +199,11 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
             <a class="ext-link" (click)="openLink('turnover-sheet')">
               <span class="material-icons ext-link-icon">swap_horiz</span>
               <span>Turn Over Sheet</span>
+              <span class="material-icons ext-arrow">open_in_new</span>
+            </a>
+            <a class="ext-link" (click)="openLink('emergency-contacts')">
+              <span class="material-icons ext-link-icon">contact_phone</span>
+              <span>Emergency Contacts</span>
               <span class="material-icons ext-arrow">open_in_new</span>
             </a>
           </div>
@@ -417,6 +442,19 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
     .pjm-snippet.muted { color: var(--text-muted); }
     .pjm-snippet.error-text { color: var(--accent-error); }
 
+    .pjm-unit-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .pjm-unit-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 20px;
+    }
+
     .pjm-price {
       font-size: 16px;
       font-weight: 700;
@@ -428,6 +466,35 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
     .pjm-unit {
       font-size: 11px;
       color: var(--text-muted);
+    }
+
+    .pjm-evo-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      font-size: 11px;
+    }
+
+    .pjm-evo-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .pjm-evo-dot.online { background-color: var(--accent-success); }
+    .pjm-evo-dot.offline { background-color: var(--accent-error); }
+    .pjm-evo-dot.unknown { background-color: var(--text-muted); }
+
+    .pjm-evo-label {
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 20px;
+    }
+
+    .pjm-evo-msg {
+      color: var(--text-secondary);
     }
 
     .permits-card {
@@ -715,7 +782,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     'work-requests': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/External/60%20-%20Operations/60.18%20Leads/Advanced%20Work%20Request/Advanced%20Work%20Request%20Log.xlsx?d=w3324dfbe805c45a38d2e7af0df93fbdc&csf=1&web=1&e=S12SEW',
     'maximo': '',
     'permits': 'https://jpowerusa.sharepoint.com/sites/JG/SitePages/Confined-Spaces.aspx',
-    'turnover-sheet': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B0645E9F2-2CEB-4351-901C-D70C70FF775A%7D&file=Turnover%20With%20Gads(right%20click-open-open%20in%20app%20f9%20to%20refresh)new2%20-%20Copy.xlsm&action=default&mobileredirect=true'
+    'turnover-sheet': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B0645E9F2-2CEB-4351-901C-D70C70FF775A%7D&file=Turnover%20With%20Gads(right%20click-open-open%20in%20app%20f9%20to%20refresh)new2%20-%20Copy.xlsm&action=default&mobileredirect=true',
+    'emergency-contacts': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true'
   };
 
   openLink(key: string): void {

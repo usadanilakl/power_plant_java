@@ -21,7 +21,9 @@
     "package:zip": "npm run package:dir && node scripts/create-update-zip.js"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "@azure/identity": "^4.13.0",
+    "adm-zip": "^0.5.16",
+    "cheerio": "^1.2.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -68,6 +70,14 @@
         "to": "qa-data",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "../data",
+        "to": "data",
+        "filter": [
+          "certificate.pfx",
+          "certificate.pem"
         ]
       }
     ],

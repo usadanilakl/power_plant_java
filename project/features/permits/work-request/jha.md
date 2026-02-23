@@ -36,18 +36,44 @@ From PWA the user accesses the JHA form via one of two paths:
 - **Work Requests page** → select a work request → action "Fill Out JHA"
 - **JHA page** → select a work request from the left panel
 
-Fill out the form, then submit.
+#### Submission Modes
+
+The user chooses between two modes via a toggle in the action bar:
+
+1. **Fill Out Form** (default) — full JHA form with job steps, PPE, hazards, etc. Form is captured as a PNG image via `html2canvas` and attached before submission.
+2. **Attach File** — upload pre-filled JHA documents (PDF, Word, images). Basic data is auto-populated from the user's profile:
+   - `jobName` → "JHA - File Attached"
+   - `date` → today's date
+   - `analysisBy` → user's name
+   - `applicability` → user's company
+   - User signature is attached automatically
+   - No form image capture (skips `captureJhaAsImage()`)
+
+Both modes use the same orchestrator submission path.
+
+#### Revoke
+
+From the **Submitted JHAs** tab in the left menu, clicking a JHA row opens an action popup with:
+- **Use as Template** — pre-populates the form with data from the selected JHA
+- **Revoke** — revokes the JHA via the submission orchestrator (server-first → PA V2 fallback), updates status to "Revoked" in local IndexedDB and SharePoint
 
 ---
 
 ### Submission Flow
 
-1. **Form image capture** — `html2canvas` renders the JHA as a paper-like PNG (off-screen HTML table). Image is added as an attachment before submission.
+1. **Form image capture** (form mode only) — `html2canvas` renders the JHA as a paper-like PNG (off-screen HTML table). Image is added as an attachment before submission. Skipped in file mode.
 2. **Submission orchestration** (`SubmissionOrchestratorService`):
    - Try **server** (`POST /api/pwa/jha/submit`) → server uses certificate access to SharePoint, falls back to PA V2
    - Fall back to **Power Automate V2** directly from PWA
    - Fall back to **email** (mailto link with JHA body text)
 3. **On success**: JHA saved to IndexedDB with `sharepointId` from response, draft cleared
+
+### Revoke Flow
+
+1. **Revoke orchestration** (`SubmissionOrchestratorService.revokeJha()`):
+   - Try **server** (`POST /api/pwa/jha/revoke`) → server updates local DB status to "Revoked" + pushes to SharePoint (cert → PA fallback)
+   - Fall back to **Power Automate V2** directly from PWA (update action with status "Revoked")
+2. **On success**: JHA status updated to "revoked" in IndexedDB
 
 ---
 
@@ -74,15 +100,24 @@ Fill out the form, then submit.
 
 #### Services
 - `NgJhaService` implements `NgPermitService<Jha, JhaDto, JhaRepo, JhaMapper>` — CRUD + status management for Angular admin
+  - `setStatus(id, status)` — updates local status + pushes to SharePoint via `JhaSharePointAdapter.changeStatus()`
+  - `revokeJha(id)` — validates not already revoked, sets status to "Revoked", pushes to SharePoint via adapter (fail-silent)
 - `PwaJhaService` — handles PWA submission: saves entity, calls `JhaSharePointAdapter.create()`, processes attachments
+  - `revokeJha(sharepointId)` — finds by sharepointId, updates local DB status to "Revoked", pushes to SharePoint
 
 #### Controllers
 - `JhaRestController` (`/jha-api/`) — paginated list, CRUD, status change, search, by-work-request
+  - `POST /jha-api/revoke/{id}` — revoke endpoint for desktop frontend
+- `PwaJhaController` (`/api/pwa/jha/`) — PWA endpoints
+  - `POST /api/pwa/jha/submit` — submission
+  - `POST /api/pwa/jha/revoke` — revoke (accepts `{sharepointId, localUuid}`)
 - `JhaController` (`/ng/jhas/`) — Angular admin endpoints
 
 #### SharePoint Integration
 - `JhaSharePointAdapter` — entity-specific adapter wrapping generic `SharePointCertificateAccess` + `PowerAutomateV2Client`
   - `getAll()`, `create(JhaDto)`, `update(sharepointId, JhaDto)`, `addAttachment(sharepointId, PaAttachmentDto)`
+  - `changeStatus(sharepointId, status)` — updates Status column via cert (MERGE) or PA (update action)
+  - `revoke(sharepointId)` — convenience method, delegates to `changeStatus(sharepointId, "Revoked")`
   - Each method uses `SharepointAccessService.executeWithFallback(certPath, paPath, name)` for cert/PA fallback
   - SharePoint list name: `"JHA"`
   - Column mapping: PwaId, JobName, Applicability, AnalysisBy, ReviewedBy, ApprovedBy, Date, PPE, LOTO, ConfinedSpace, HazCom, HandAndPowerTools, SpecialTools, JobSteps (JSON text), WorkRequestSharepointId, SubmitterName/Email/Phone/Company, TimeSubmitted, Status
@@ -106,15 +141,15 @@ Fill out the form, then submit.
 
 | File | Purpose |
 |------|---------|
-| `jha.component.ts/html/css` | Main container |
+| `jha.component.ts/html/css` | Main container — mode toggle (form/file), file upload, preview |
 | `jha-form/` | Reactive form UI (uses `app-reactive-form`) |
 | `jha-table/` | Previously submitted JHAs table |
-| `jha-left-menu/` | Work requests needing JHA |
-| `jha-state.service.ts` | State management (BehaviorSubjects, submission orchestration) |
-| `jha-api.service.ts` | Legacy PA V1 wrapper (still used for revocation) |
+| `jha-left-menu/` | Tabs: "Needs JHA" (work requests) + "Submitted" (JHAs with action popup: template reuse, revoke) |
+| `jha-state.service.ts` | State management — `submitNewRequest()`, `submitFileOnlyJha()`, `revokeSelected()`, `reuseJhaTemplate()` |
+| `jha-api.service.ts` | Legacy PA V1 wrapper (no longer used for revocation — revoke now goes through orchestrator) |
 | `jha-db.service.ts` | IndexedDB persistence (Dexie) |
 | `jha-local-storage.service.ts` | Draft persistence |
-| `jha-image/jha-image.util.ts` | Form-to-image capture via `html2canvas` |
+| `jha-image/jha-image.util.ts` | Form-to-image capture via `html2canvas` (form mode only) |
 
 #### Models: `browser/ng-ui/src/app/models/permits/`
 - `jha.model.ts` — `Jha` class with `getFormFields()`, `convertToPaModel()`, `getEmailBody()`, `addJobStep()`

@@ -54,8 +54,21 @@ WorkRequest extends BasePermit so it includes all fields from there.
 
 ### Services
 - **NgWorkRequestService** — CRUD operations, status changes, SharePoint notifications on status change/archive. Implements `NgPermitService` interface for generic CRUD + search.
+  - `revokeWorkRequest(id)` — validates not already revoked, sets status to "Revoked", pushes to SharePoint via adapter (fail-silent)
+  - `updateAndPushToSharePoint(dto)` — saves locally + pushes full field update to SharePoint via `WorkRequestSharePointAdapter.update()`
+- **PwaWorkRequestService** — handles PWA submissions
+  - `revokeWorkRequest(sharepointId)` — finds by sharepointId, updates local DB status to "Revoked", pushes to SharePoint
+  - `updateWorkRequest(dto)` — finds by localUuid, updates all fields locally, pushes full update to SharePoint
 - **WorkRequestSyncService** — `@Scheduled` sync from SharePoint every 2 min. Fetches via `SharepointAccessService.getAllWorkRequests()`, merges by `sharepointId`, auto-creates new records.
 - **SharepointAccessService** — facade with certificate-based REST API (primary) + Power Automate (fallback)
+
+### SharePoint Adapter
+- **WorkRequestSharePointAdapter** — entity-specific adapter wrapping `SharePointCertificateAccess` + `PowerAutomateV2Client`
+  - `getAll()`, `create(dto)`, `addAttachment()` — existing operations
+  - `update(sharepointId, dto)` — pushes full field update to SharePoint (cert MERGE or PA update action)
+  - `changeStatus(sharepointId, status)` — updates Status column only
+  - `revoke(sharepointId)` — convenience → `changeStatus(sharepointId, "Revoked")`
+  - Each method uses `SharepointAccessService.executeWithFallback()` for cert/PA failover
 
 ### Mapper
 - **WorkRequestMapper** — `convertToNgDto()`, `convertNgDtoToEntity()`, `fromSharePointDto()`, `convertToDto()` (legacy)
@@ -64,8 +77,14 @@ WorkRequest extends BasePermit so it includes all fields from there.
 - **NgWorkRequestDto** — API-facing DTO for Angular (includes `status` field)
 - **WorkRequestDto** — SharePoint deserialization DTO (internal to sync)
 
-### Controller
-- **WorkRequestRestController** (`/work-requests-api/*`) — new REST API following LotoPoint pattern
+### Controllers
+- **WorkRequestRestController** (`/work-requests-api/*`) — REST API following LotoPoint pattern
+  - `PUT /work-requests-api` — saves locally AND pushes full update to SharePoint
+  - `POST /work-requests-api/revoke/{id}` — revoke endpoint for desktop frontend
+- **PwaWorkRequestController** (`/api/pwa/work-request/*`) — PWA endpoints
+  - `POST /submit` — submission
+  - `POST /revoke` — revoke (accepts `{sharepointId, localUuid}`)
+  - `PUT /update` — full field update from PWA
 - **WorkRequestController** (`/ng/work-requests/*`) — legacy, still functional
 - **PowerAutomateController** (`/power-automate/*`) — legacy SharePoint endpoints
 
@@ -76,7 +95,10 @@ WorkRequest extends BasePermit so it includes all fields from there.
 
 ### Services (per LotoPoint pattern)
 - `RfWorkRequestApiService` — HTTP calls to `/work-requests-api`
+  - `revokeWorkRequest(id)` → `POST /work-requests-api/revoke/{id}`
 - `RfWorkRequestStateService` — reactive state (BehaviorSubject, signals, SSE sync)
+  - `revokeWorkRequest(id)` — calls API, shows success/error message
+- `WorkRequestContextMenuService` — context menu actions including "Revoke" with confirm dialog
 - `RfWorkRequestMapperService` — table column + form field definitions
 
 ### Components

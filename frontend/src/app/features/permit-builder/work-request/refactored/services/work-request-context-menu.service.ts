@@ -32,6 +32,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         action: (item) => this.handleCancel(item),
       },
       {
+        id: 'revoke',
+        label: 'Revoke',
+        icon: '↩️',
+        action: (item) => this.handleRevoke(item),
+      },
+      {
         id: 'divider1',
         label: '',
         divider: true,
@@ -80,6 +86,24 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
     if (confirmed) {
       this.stateService.cancelWorkRequest(item.id);
+      this.closeContextMenu();
+    }
+  }
+
+  private handleRevoke(item: WorkRequestDto): void {
+    if (!item.id) {
+      console.warn('Cannot revoke: No ID provided');
+      return;
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to revoke this work request?\n\n` +
+        `Work Scope: ${item.workScope}\n` +
+        `Location: ${item.location}`
+    );
+
+    if (confirmed) {
+      this.stateService.revokeWorkRequest(item.id);
       this.closeContextMenu();
     }
   }
