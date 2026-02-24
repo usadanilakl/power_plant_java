@@ -106,4 +106,5 @@ public class PowerAutomateV2Client {
     public boolean isConfinedSpaceConfigured() {
         return confinedSpaceFlowUrl != null && !confinedSpaceFlowUrl.isBlank();
     }
+
 }

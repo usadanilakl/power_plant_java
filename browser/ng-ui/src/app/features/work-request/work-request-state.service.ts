@@ -258,7 +258,14 @@ export class WorkRequestStateService {
   updateExistingRequest(workRequest: WorkRequest) {
     this.globalMessageService.showMessage('Updating request...', 'white', 20000);
 
-    this.orchestrator.updateWorkRequest(workRequest).pipe(
+    // Extract files from form data (form field is 'files', model expects 'attachments')
+    const formData = workRequest as any;
+    const attachments: IAttachment[] = [
+      ...(Array.isArray(formData.files) ? formData.files : []),
+    ];
+    const wrInstance = new WorkRequest({ ...formData, attachments });
+
+    this.orchestrator.updateWorkRequest(wrInstance).pipe(
       switchMap(result => {
         if (!result.success) {
           this.globalMessageService.showMessage(result.message || 'Update failed.', 'red');
@@ -273,6 +280,8 @@ export class WorkRequestStateService {
           tap(() => {
             this.addWorkRequestsToList([updated]);
             this.isEditing.set(false);
+            this.workRequestLocalStorageService.clearDraft();
+            this.selectWorkRequest(new WorkRequest());
             this.globalMessageService.showMessage('Request updated successfully.', 'green');
           })
         );

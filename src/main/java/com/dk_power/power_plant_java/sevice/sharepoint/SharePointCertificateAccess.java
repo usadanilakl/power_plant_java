@@ -207,6 +207,31 @@ public class SharePointCertificateAccess implements SharePointAccess {
         throw new RuntimeException("Failed to download attachment '" + fileName + "' from item " + itemId + ": " + response.getStatusCode());
     }
 
+    public byte[] downloadFileByUniqueId(String uniqueId) {
+        String endpoint = "/_api/web/GetFileById('" + uniqueId + "')/$value";
+        String fullUrl = siteUrl + endpoint;
+        ResponseEntity<byte[]> response;
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on file download by GUID, refreshing token and retrying");
+            tokenExpirationTime = null;
+            HttpHeaders headers = createHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            response = restTemplate.exchange(fullUrl, HttpMethod.GET, entity, byte[].class);
+        }
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            log.info("[SharePoint] Downloaded file by GUID '{}' ({} bytes)", uniqueId, response.getBody().length);
+            return response.getBody();
+        }
+        throw new RuntimeException("Failed to download file by GUID '" + uniqueId + "': " + response.getStatusCode());
+    }
+
     // ====================== Auth & HTTP ======================
 
     private void authenticate() {

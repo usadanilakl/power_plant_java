@@ -9,7 +9,7 @@
       }
       @for (field of groupedFields()[groupLabel]; track field.name) {
         @if (shouldShowField(field)) {
-          <div [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())">
+          <div [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())" [id]="'field-' + field.name">
             @switch (field.type) {
               @case ('select') {
                 <app-searchable-select-input

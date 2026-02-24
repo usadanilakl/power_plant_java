@@ -303,10 +303,11 @@ export class SubmissionOrchestratorService {
     const paRequest = this.powerAutomate.buildCreateRequest(
       workRequest.convertToPaModel() as any,
       userData,
-      []
+      workRequest.attachments || []
     );
     paRequest.actionType = 'update';
     paRequest.id = workRequest.sharepointId;
+    paRequest.data = { ...paRequest.data, Status: 'Updated' };
 
     return this.powerAutomate.submitV2('workRequest', paRequest).pipe(
       map(response => ({

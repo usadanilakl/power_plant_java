@@ -4,6 +4,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -56,6 +57,43 @@ public class ExcelReaderService {
         return data;
     }
     
+    public List<Map<String, String>> readExcelFromBytes(byte[] data, String sheetName) {
+        List<Map<String, String>> result = new ArrayList<>();
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(data);
+             Workbook workbook = new XSSFWorkbook(bis)) {
+
+            Sheet sheet;
+            if (sheetName != null && !sheetName.isEmpty()) {
+                sheet = workbook.getSheet(sheetName);
+                if (sheet == null) {
+                    throw new IllegalArgumentException("Sheet '" + sheetName + "' not found in the workbook.");
+                }
+            } else {
+                sheet = workbook.getSheetAt(0);
+            }
+
+            Iterator<Row> rowIterator = sheet.iterator();
+            Row headerRow = rowIterator.next();
+            List<String> headers = new ArrayList<>();
+            for (Cell cell : headerRow) {
+                headers.add(cell.getStringCellValue());
+            }
+
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                Map<String, String> rowData = new HashMap<>();
+                for (int i = 0; i < headers.size(); i++) {
+                    Cell cell = row.getCell(i, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+                    rowData.put(headers.get(i), getCellValueAsString(cell));
+                }
+                result.add(rowData);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read Excel from byte array: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
     private static String getCellValueAsString(Cell cell) {
         switch (cell.getCellType()) {
             case STRING:

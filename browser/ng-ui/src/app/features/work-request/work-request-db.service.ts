@@ -45,7 +45,7 @@ export class WorkRequestDbService {
         return this.indexedDbService.workRequests
           .where('jhaStatus')
           .equals('none')
-          .filter(workRequest => new Date(workRequest.dateOfWork) >= today)
+          .filter(workRequest => new Date(workRequest.dateOfWork) >= today && workRequest.status !== 'revoked')
           .toArray();
       })
     );
@@ -61,7 +61,8 @@ export class WorkRequestDbService {
           .filter(wr => {
             const isFuture = new Date(wr.dateOfWork) >= today;
             const needsJha = !wr.jhaStatus || wr.jhaStatus !== 'Completed';
-            return isFuture && needsJha;
+            const notRevoked = wr.status !== 'revoked';
+            return isFuture && needsJha && notRevoked;
           })
           .toArray();
       })

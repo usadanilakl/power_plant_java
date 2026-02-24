@@ -4,6 +4,7 @@ import { ContextMenuAction } from '../../../../../shared/menu/context-menu/conte
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { RfWorkRequestStateService } from './rf-work-request-state.service';
 import { CorrespondenceDialogService } from '../../../../../shared/correspondence-dialog/correspondence-dialog.service';
+import { WrDetailDialogService } from '../../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +12,7 @@ import { CorrespondenceDialogService } from '../../../../../shared/correspondenc
 export class WorkRequestContextMenuService extends ContextMenuService {
   private stateService = inject(RfWorkRequestStateService);
   private correspondenceDialogService = inject(CorrespondenceDialogService);
+  private wrDetailDialogService = inject(WrDetailDialogService);
 
   constructor() {
     super();
@@ -19,6 +21,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
   private buildContextMenuActions(): ContextMenuAction[] {
     return [
+      {
+        id: 'processed',
+        label: 'Mark as Processed',
+        icon: '✅',
+        action: (item) => this.handleMarkAsProcessed(item),
+      },
       {
         id: 'request-details',
         label: 'Request More Details',
@@ -30,12 +38,6 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         label: 'Cancel',
         icon: '🚫',
         action: (item) => this.handleCancel(item),
-      },
-      {
-        id: 'revoke',
-        label: 'Revoke',
-        icon: '↩️',
-        action: (item) => this.handleRevoke(item),
       },
       {
         id: 'divider1',
@@ -58,6 +60,15 @@ export class WorkRequestContextMenuService extends ContextMenuService {
     ];
   }
 
+  private handleMarkAsProcessed(item: WorkRequestDto): void {
+    if (!item.id) {
+      console.warn('Cannot mark as processed: No ID provided');
+      return;
+    }
+    this.stateService.markAsProcessed(item.id);
+    this.closeContextMenu();
+  }
+
   private handleRequestMoreDetails(item: WorkRequestDto): void {
     if (!item.id) {
       console.warn('Cannot request details: No ID provided');
@@ -66,7 +77,6 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
     const message = prompt('Optional: Add details about what information is needed');
     if (message !== null) {
-      // User didn't cancel prompt
       this.stateService.requestMoreDetails(item.id, message || undefined);
       this.closeContextMenu();
     }
@@ -90,24 +100,6 @@ export class WorkRequestContextMenuService extends ContextMenuService {
     }
   }
 
-  private handleRevoke(item: WorkRequestDto): void {
-    if (!item.id) {
-      console.warn('Cannot revoke: No ID provided');
-      return;
-    }
-
-    const confirmed = confirm(
-      `Are you sure you want to revoke this work request?\n\n` +
-        `Work Scope: ${item.workScope}\n` +
-        `Location: ${item.location}`
-    );
-
-    if (confirmed) {
-      this.stateService.revokeWorkRequest(item.id);
-      this.closeContextMenu();
-    }
-  }
-
   private handleViewCorrespondence(item: WorkRequestDto): void {
     if (item?.id) {
       this.correspondenceDialogService.open('WorkRequest', item.id);
@@ -117,9 +109,7 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
   override handleViewDetails(item: WorkRequestDto): void {
     if (item?.id) {
-      // Trigger view/edit - this can be overridden based on your view strategy
-      console.log('[WorkRequest] View details for:', item);
-      // You can emit an event or navigate to a detail page here
+      this.wrDetailDialogService.open(item.id);
       this.closeContextMenu();
     }
   }

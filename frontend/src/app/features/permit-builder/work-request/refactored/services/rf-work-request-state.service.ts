@@ -402,4 +402,23 @@ export class RfWorkRequestStateService {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
   }
+
+  markAsProcessed(id: number): void {
+    this.apiService.changeStatus(id, 'Processed').pipe(
+      tap((response) => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.updateWorkRequestInList(updated);
+          this.messageService.showSuccess('Work request marked as Processed');
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Mark as Processed failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to mark as processed';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
 }

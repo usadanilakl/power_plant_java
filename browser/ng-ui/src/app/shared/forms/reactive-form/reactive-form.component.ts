@@ -361,15 +361,11 @@ export class ReactiveFormComponent {
       const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
-      console.log('Merged data:', mergedData.dateOfWork);
-      console.log('Original data:', originalData.dateOfWork);
-      console.log('Form value:', formValue.dateOfWork);
-
       this.formSubmit.emit(mergedData);
     } else {
-      console.error('Form is invalid');
       this.form.markAllAsTouched();
       this.updateFormErrors();
+      this.scrollToFirstError();
     }
   }
 
@@ -390,6 +386,17 @@ export class ReactiveFormComponent {
     return null;
   }
 
+  private scrollToFirstError(): void {
+    const errors = this.formErrors();
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+      const el = document.getElementById('field-' + firstErrorField);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }
+
   private updateFormErrors() {
     const errors: { [key: string]: string } = {};
     this.fields().forEach(field => {
@@ -407,7 +414,7 @@ export class ReactiveFormComponent {
   private getErrorMessage(fieldName: string, errorKey: string, errorValue: any): string {
     switch (errorKey) {
       case 'required':
-        return `${fieldName} is required.`;
+        return `${fieldName} is required. Put NA if not applicable.`;
       case 'minlength':
         return `${fieldName} must be at least ${errorValue.requiredLength} characters long.`;
       case 'maxlength':

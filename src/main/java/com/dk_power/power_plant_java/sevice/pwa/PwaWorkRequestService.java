@@ -239,8 +239,31 @@ public class PwaWorkRequestService {
 
         // Update entity fields
         updateEntityFields(entity, dto);
+
+        // Mark as Updated so operator knows the WR has been modified
+        String currentStatus = entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "";
+        if ("Active".equalsIgnoreCase(currentStatus) || "Processed".equalsIgnoreCase(currentStatus)) {
+            entity.setPermitStatus(valueService.createValue("Permit Status", "Updated"));
+            log.info("[PWA Update] WR was {}, marking as Updated: id={}", currentStatus, entity.getId());
+        }
+
         entity = workRequestRepo.saveAndFlush(entity);
         log.info("[PWA Update] WR updated locally: id={}, localUuid={}", entity.getId(), localUuid);
+
+        // Save new attachments to DB
+        if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
+            for (PaAttachmentDto att : dto.getAttachments()) {
+                PermitAttachment attachment = new PermitAttachment();
+                attachment.setEntityType("WorkRequest");
+                attachment.setEntityId(entity.getId());
+                attachment.setFileName(att.getFileName());
+                attachment.setContentType(att.getContentType());
+                attachment.setBase64Content(att.getBase64Content());
+                attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachmentRepo.save(attachment);
+            }
+            log.info("[PWA Update] Saved {} new attachments for localUuid={}", dto.getAttachments().size(), localUuid);
+        }
 
         // Push to SharePoint
         String entitySpId = entity.getSharepointId();
@@ -250,6 +273,18 @@ public class PwaWorkRequestService {
                 spDto.setStatus(entity.getPermitStatus() != null ? entity.getPermitStatus().getName() : "Active");
                 wrAdapter.update(entitySpId, spDto);
                 log.info("[PWA Update] WR updated in SharePoint: spId={}", entitySpId);
+
+                // Upload new attachments to SharePoint
+                if (dto.getAttachments() != null) {
+                    for (PaAttachmentDto att : dto.getAttachments()) {
+                        try {
+                            wrAdapter.addAttachment(entitySpId, att);
+                        } catch (Exception attEx) {
+                            log.warn("[PWA Update] Failed to upload attachment {} to SharePoint: {}",
+                                    att.getFileName(), attEx.getMessage());
+                        }
+                    }
+                }
             } catch (Exception e) {
                 log.warn("[PWA Update] Failed to update WR in SharePoint: {}", e.getMessage());
             }

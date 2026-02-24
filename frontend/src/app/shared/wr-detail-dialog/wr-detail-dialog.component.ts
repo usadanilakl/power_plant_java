@@ -176,6 +176,8 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
     .status-processed { background-color: #dbeafe; color: #1e40af; }
     .status-cancelled { background-color: var(--status-not-processed, #e0e0e0); color: #546e7a; }
     .status-revoked { background-color: #fce4ec; color: #b71c1c; }
+    .status-updated { background-color: #fef3c7; color: #92400e; }
+    .status-expired { background-color: #fecaca; color: #991b1b; }
 
     .jha-badge {
       font-size: 11px;
@@ -326,6 +328,7 @@ export class WrDetailDialogComponent {
     this.wrApiService.changeStatus(wr.id, 'Processed').subscribe({
       next: () => {
         this.actionInProgress.set(false);
+        this.dialogService.notifyAction();
         this.close();
       },
       error: () => this.actionInProgress.set(false)
@@ -344,6 +347,7 @@ export class WrDetailDialogComponent {
     this.wrApiService.cancelWorkRequest(wr.id).subscribe({
       next: () => {
         this.actionInProgress.set(false);
+        this.dialogService.notifyAction();
         this.close();
       },
       error: () => this.actionInProgress.set(false)
@@ -359,6 +363,7 @@ export class WrDetailDialogComponent {
     this.wrApiService.requestMoreDetails(wr.id, message || undefined).subscribe({
       next: () => {
         this.actionInProgress.set(false);
+        this.dialogService.notifyAction();
         this.loadWorkRequest();
       },
       error: () => this.actionInProgress.set(false)

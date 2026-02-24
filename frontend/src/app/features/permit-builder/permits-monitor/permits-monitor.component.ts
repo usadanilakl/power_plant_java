@@ -1,15 +1,14 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { forkJoin, Subject } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
-import { ContextMenuComponent, ContextMenuAction } from '../../../shared/menu/context-menu/context-menu.component';
-import { RfWorkRequestApiService } from '../work-request/refactored/services/rf-work-request-api.service';
+import { ContextMenuComponent } from '../../../shared/menu/context-menu/context-menu.component';
 import { CorrespondenceCellComponent } from '../../../shared/correspondence-dialog/correspondence-cell.component';
-import { CorrespondenceDialogService } from '../../../shared/correspondence-dialog/correspondence-dialog.service';
 import { WrDetailDialogService } from '../../../shared/wr-detail-dialog/wr-detail-dialog.service';
+import { WorkRequestContextMenuService } from '../work-request/refactored/services/work-request-context-menu.service';
 import { SyncUpdateService } from '../../../services/sync/sync-update.service';
 
 interface WorkRequest {
@@ -82,12 +81,26 @@ interface ApiResponse<T> {
           <div class="monitor-card">
             <div class="card-header">
               <span class="card-title">Work Requests</span>
-              <span class="card-count">{{ newWorkRequests.length + activeWorkRequests.length + processedWorkRequests.length }}</span>
+              <span class="card-count">{{ activeWorkRequests.length + updatedWorkRequests.length }}</span>
             </div>
             <div class="card-badges">
-              <span class="badge badge-new" *ngIf="newWorkRequests.length">{{ newWorkRequests.length }} New</span>
-              <span class="badge badge-active" *ngIf="activeWorkRequests.length">{{ activeWorkRequests.length }} Active</span>
-              <span class="badge badge-processed" *ngIf="processedWorkRequests.length">{{ processedWorkRequests.length }} Processed</span>
+              <span class="badge badge-active">{{ activeWorkRequests.length }} Active</span>
+              <span class="badge badge-updated"
+                    *ngIf="updatedWorkRequests.length">
+                {{ updatedWorkRequests.length }} Updated
+              </span>
+              <span class="badge badge-processed clickable"
+                    [class.badge-toggled]="showProcessed"
+                    *ngIf="processedWorkRequests.length"
+                    (click)="showProcessed = !showProcessed">
+                {{ processedWorkRequests.length }} Processed
+              </span>
+              <span class="badge badge-expired clickable"
+                    [class.badge-toggled]="showExpired"
+                    *ngIf="expiredWorkRequests.length"
+                    (click)="showExpired = !showExpired">
+                {{ expiredWorkRequests.length }} Expired
+              </span>
             </div>
             <div class="card-table" *ngIf="allWorkRequests.length > 0">
               <table>
@@ -227,11 +240,11 @@ interface ApiResponse<T> {
     </div>
 
     <app-context-menu
-      [selectedItem]="selectedWorkRequest"
-      [isVisible]="contextMenuVisible"
-      [position]="contextMenuPosition"
-      [actions]="contextMenuActions"
-      (closeMenu)="contextMenuVisible = false"
+      [selectedItem]="contextMenuService.contextMenuSelectedItem()"
+      [isVisible]="contextMenuService.contextMenuVisible()"
+      [position]="contextMenuService.contextMenuPosition()"
+      [actions]="contextMenuService.contextMenuActions"
+      (closeMenu)="contextMenuService.closeContextMenu()"
     />
   `,
   styles: [`
@@ -395,9 +408,19 @@ interface ApiResponse<T> {
       border-radius: 10px;
     }
 
-    .badge-new {
-      background-color: #fef3c7;
-      color: #92400e;
+    .badge.clickable {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 150ms ease;
+    }
+
+    .badge.clickable:hover {
+      opacity: 0.85;
+    }
+
+    .badge.badge-toggled {
+      opacity: 1;
+      box-shadow: 0 0 0 2px var(--accent-color, #3b82f6);
     }
 
     .badge-active {
@@ -408,6 +431,16 @@ interface ApiResponse<T> {
     .badge-processed {
       background-color: #d1fae5;
       color: #065f46;
+    }
+
+    .badge-updated {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-expired {
+      background-color: #fecaca;
+      color: #991b1b;
     }
 
     .card-table {
@@ -458,19 +491,24 @@ interface ApiResponse<T> {
       border-radius: 4px;
     }
 
-    .status-new {
-      background-color: #fef3c7;
-      color: #92400e;
-    }
-
     .status-active {
-      background-color: var(--status-complete);
-      color: #166534;
+      background-color: #dbeafe;
+      color: #1e40af;
     }
 
     .status-processed {
       background-color: #d1fae5;
       color: #065f46;
+    }
+
+    .status-updated {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-expired {
+      background-color: #fecaca;
+      color: #991b1b;
     }
 
     .chip-list {
@@ -510,63 +548,34 @@ interface ApiResponse<T> {
 export class PermitsMonitorComponent implements OnInit, OnDestroy {
   loading = false;
 
-  newWorkRequests: WorkRequest[] = [];
   activeWorkRequests: WorkRequest[] = [];
+  updatedWorkRequests: WorkRequest[] = [];
   processedWorkRequests: WorkRequest[] = [];
+  expiredWorkRequests: WorkRequest[] = [];
   activeHotWorks: HotWorkDto[] = [];
   activeConfinedSpaces: ConfinedSpaceDto[] = [];
+
+  showProcessed = false;
+  showExpired = false;
 
   private apiUrl = environment.apiUrl;
   private destroy$ = new Subject<void>();
   private refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  // Context menu state
-  contextMenuVisible = false;
-  contextMenuPosition = { x: 0, y: 0 };
-  selectedWorkRequest: WorkRequest | null = null;
-
-  contextMenuActions: ContextMenuAction[] = [
-    {
-      id: 'processed',
-      label: 'Mark as Processed',
-      icon: 'check_circle',
-      action: (item) => this.markAsProcessed(item)
-    },
-    {
-      id: 'request-details',
-      label: 'Request More Details',
-      icon: 'email',
-      action: (item) => this.requestMoreDetails(item)
-    },
-    {
-      id: 'cancel',
-      label: 'Cancel',
-      icon: 'cancel',
-      action: (item) => this.cancelWorkRequest(item)
-    },
-    {
-      id: 'correspondence',
-      label: 'View Correspondence',
-      icon: 'mail_outline',
-      action: (item) => {
-        this.correspondenceDialogService.open('WorkRequest', item.id);
-        this.contextMenuVisible = false;
-      }
-    }
-  ];
-
-  constructor(
-    private http: HttpClient,
-    private wrApiService: RfWorkRequestApiService,
-    private correspondenceDialogService: CorrespondenceDialogService,
-    private wrDetailDialogService: WrDetailDialogService,
-    private syncUpdateService: SyncUpdateService
-  ) {}
+  private http = inject(HttpClient);
+  private wrDetailDialogService = inject(WrDetailDialogService);
+  private syncUpdateService = inject(SyncUpdateService);
+  contextMenuService = inject(WorkRequestContextMenuService);
 
   ngOnInit(): void {
     this.loadData();
     this.setupReactiveUpdates();
     this.setupPeriodicRefresh();
+
+    // Reload when WR detail dialog performs a status-changing action
+    this.wrDetailDialogService.onAction$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadData());
   }
 
   ngOnDestroy(): void {
@@ -578,7 +587,12 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
   }
 
   get allWorkRequests(): WorkRequest[] {
-    return [...this.newWorkRequests, ...this.activeWorkRequests, ...this.processedWorkRequests];
+    return [
+      ...this.activeWorkRequests,
+      ...this.updatedWorkRequests,
+      ...(this.showProcessed ? this.processedWorkRequests : []),
+      ...(this.showExpired ? this.expiredWorkRequests : [])
+    ];
   }
 
   get uniqueLocations(): string[] {
@@ -599,16 +613,18 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
     this.loading = true;
 
     forkJoin({
-      newWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/New`),
       activeWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Active`),
+      updatedWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Updated`),
       processedWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Processed`),
+      expiredWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Expired`),
       hotWorks: this.http.get<ApiResponse<HotWorkDto[]>>(`${this.apiUrl}/hot-works/get-all-hot-work`),
       confinedSpaces: this.http.get<ApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/confined-spaces/get-all-confined-space`)
     }).subscribe({
       next: (results) => {
-        this.newWorkRequests = results.newWr.responseData || [];
         this.activeWorkRequests = results.activeWr.responseData || [];
+        this.updatedWorkRequests = results.updatedWr.responseData || [];
         this.processedWorkRequests = results.processedWr.responseData || [];
+        this.expiredWorkRequests = results.expiredWr.responseData || [];
 
         const allHotWorks = results.hotWorks.responseData || [];
         this.activeHotWorks = allHotWorks.filter(hw =>
@@ -659,57 +675,6 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
   }
 
   onRowRightClick(event: MouseEvent, wr: WorkRequest): void {
-    event.preventDefault();
-    this.selectedWorkRequest = wr;
-    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
-    this.contextMenuVisible = true;
-  }
-
-  // ====================== Actions ======================
-
-  markAsProcessed(item: WorkRequest): void {
-    if (!item.id) return;
-    this.wrApiService.changeStatus(item.id, 'Processed').subscribe({
-      next: () => {
-        console.log('[PermitsMonitor] Work request marked as Processed');
-        this.loadData();
-      },
-      error: (err) => console.error('[PermitsMonitor] Mark as Processed failed:', err)
-    });
-  }
-
-  requestMoreDetails(item: WorkRequest): void {
-    if (!item.id) return;
-
-    const message = prompt('Optional: Add details about what information is needed');
-    if (message !== null) {  // User didn't cancel prompt
-      this.wrApiService.requestMoreDetails(item.id, message || undefined).subscribe({
-        next: () => {
-          console.log('[PermitsMonitor] More details requested');
-          this.loadData(); // Refresh
-        },
-        error: (err) => console.error('[PermitsMonitor] Request details failed:', err)
-      });
-    }
-  }
-
-  cancelWorkRequest(item: WorkRequest): void {
-    if (!item.id) return;
-
-    const confirmed = confirm(
-      `Are you sure you want to cancel this work request?\n\n` +
-      `Work Scope: ${item.workScope}\n` +
-      `Location: ${item.location}`
-    );
-
-    if (confirmed) {
-      this.wrApiService.cancelWorkRequest(item.id).subscribe({
-        next: () => {
-          console.log('[PermitsMonitor] Work request cancelled');
-          this.loadData(); // Refresh
-        },
-        error: (err) => console.error('[PermitsMonitor] Cancel failed:', err)
-      });
-    }
+    this.contextMenuService.showContextMenu(wr, event);
   }
 }

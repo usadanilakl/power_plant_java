@@ -1,3 +1,4 @@
+import { Validators } from "@angular/forms";
 import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "./base.model";
@@ -77,18 +78,16 @@ export class Jha extends BaseModel<IJha> implements IJha {
 
   getFormFields(): FormField[] {
     return [
-      { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName, placeholder: 'e.g. Boiler Feed Pump Maintenance' },
-      { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability, placeholder: 'e.g. OPs, Maintenance' },
-      { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy, placeholder: 'Name or initials' },
-      { name: 'reviewedBy', label: 'Reviewed By', type: 'text', initialValue: this.reviewedBy, placeholder: 'Name or initials' },
-      { name: 'approvedBy', label: 'Approved By', type: 'text', initialValue: this.approvedBy, placeholder: 'Name or initials' },
-      { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
-      { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe, placeholder: 'e.g. Hard hat, safety glasses, gloves' },
-      { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto, placeholder: 'LOTO requirements, if applicable' },
-      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace, placeholder: 'Confined space requirements, if applicable' },
-      { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom, placeholder: 'Hazardous materials involved, if any' },
-      { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools, placeholder: 'List tools required' },
-      { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools, placeholder: 'List special tools or equipment' },
+      { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName, placeholder: 'e.g. Boiler Feed Pump Maintenance', validators: [Validators.required] },
+      { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability, placeholder: 'e.g. OPs, Maintenance', validators: [Validators.required] },
+      { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy, placeholder: 'Name or initials', validators: [Validators.required] },
+      { name: 'date', label: 'Date', type: 'date', initialValue: this.date, validators: [Validators.required] },
+      { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe, placeholder: 'e.g. Hard hat, safety glasses, gloves', validators: [Validators.required] },
+      { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto, placeholder: 'LOTO requirements, if applicable. Put NA if not applicable', validators: [Validators.required] },
+      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace, placeholder: 'Confined space requirements, if applicable. Put NA if not applicable', validators: [Validators.required] },
+      { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom, placeholder: 'Hazardous materials involved, if any. Put NA if not applicable', validators: [Validators.required] },
+      { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools, placeholder: 'List tools required. Put NA if not applicable', validators: [Validators.required] },
+      { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools, placeholder: 'List special tools or equipment. Put NA if not applicable', validators: [Validators.required] },
       { name: 'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId, readonly: true },
       {
         name: 'jobSteps',
@@ -96,9 +95,9 @@ export class Jha extends BaseModel<IJha> implements IJha {
         type: 'form-array',
         initialValue: this.jobSteps,
         fields: [
-          { name: 'description', label: 'Description', type: 'textarea', placeholder: 'What will be done in this step' },
-          { name: 'hazard', label: 'Hazard', type: 'textarea', placeholder: 'Potential hazards for this step' },
-          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea', placeholder: 'How to mitigate the hazard' }
+          { name: 'description', label: 'Description', type: 'textarea', placeholder: 'What will be done in this step', validators: [Validators.required] },
+          { name: 'hazard', label: 'Hazard', type: 'textarea', placeholder: 'Potential hazards for this step', validators: [Validators.required] },
+          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea', placeholder: 'How to mitigate the hazard', validators: [Validators.required] }
         ]
       },
       { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true, initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
