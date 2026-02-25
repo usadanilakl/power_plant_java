@@ -172,6 +172,15 @@ public class SharePointSyncOrchestrator {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Clear all stored snapshots, forcing next sync to re-evaluate all fields.
+     * Use this to recover from stale snapshot state (e.g. after fixing sync bugs).
+     */
+    public void clearAllSnapshots() {
+        fieldMergeService.clearAllSnapshots();
+        log.info("[SP Orchestrator] Cleared all SharePoint snapshots — next sync will re-evaluate all fields");
+    }
+
     // --- Internal helpers ---
 
     private SharePointSyncStatus buildStatus(SharePointSyncable<?> syncable, boolean hubOnline) {

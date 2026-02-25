@@ -117,14 +117,20 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
             return EntitySyncOutcome.SKIPPED;
         }
 
+        log.info("[JHA Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+            spId, spChangedColumns.size(), spChangedColumns, spModified);
+
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+            // Don't update snapshot here — if we do, the SP change is permanently
+            // lost from diff detection. Leave snapshot stale so next sync re-evaluates.
+            log.info("[JHA Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
+        log.info("[JHA Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         // Handle status change via NgValue
@@ -140,7 +146,7 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
 
         jhaRepo.save(existing);
         result.incrementUpdated();
-        log.debug("[JHA Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.info("[JHA Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

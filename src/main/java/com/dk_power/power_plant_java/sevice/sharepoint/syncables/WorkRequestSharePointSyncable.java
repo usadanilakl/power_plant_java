@@ -108,19 +108,23 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         // Existing — field-level merge
         Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
         if (spChangedColumns.isEmpty()) {
-            // SP hasn't changed since last sync — skip
             return EntitySyncOutcome.SKIPPED;
         }
+
+        log.info("[WR Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+            spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            // Local wins everything — still update snapshot
-            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+            // Don't update snapshot here — if we do, the SP change is permanently
+            // lost from diff detection. Leave snapshot stale so next sync re-evaluates.
+            log.info("[WR Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
+        log.info("[WR Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         // Handle status change via NgValue
@@ -131,7 +135,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         workRequestRepo.save(existing);
         result.incrementUpdated();
-        log.debug("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.info("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         // Always update snapshot with current SP values
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);

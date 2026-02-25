@@ -85,8 +85,15 @@ public class SharePointFieldMergeService {
             String entityField = columnToField.get(spColumn);
             if (entityField == null) continue; // unmapped column, skip
 
-            if (entityId == null) {
-                spWins.add(entityField); // New entity, accept all
+            if (entityId == null || spModifiedTime == null) {
+                // New entity or unknown SP modified time — accept all SP changes.
+                // When spModifiedTime is null (e.g. PA fallback), we already know
+                // SP changed from snapshot diff, so applying is safe.
+                spWins.add(entityField);
+                if (spModifiedTime == null && entityId != null) {
+                    log.info("[SP Field Merge] SP wins {}.{} (spModifiedTime is null, accepting SP change)",
+                        entityType, entityField);
+                }
                 continue;
             }
 
@@ -97,8 +104,8 @@ public class SharePointFieldMergeService {
             if (latestLocal.isEmpty() || latestLocal.get().getTimestamp().isBefore(spModifiedTime)) {
                 spWins.add(entityField); // No local change or SP is newer
             } else {
-                log.debug("[SP Field Merge] Local wins for {}.{} (local={}, sp={})",
-                    entityType, entityField,
+                log.info("[SP Field Merge] Local wins for {}.{} id={} (localChange={}, spModified={})",
+                    entityType, entityField, entityId,
                     latestLocal.get().getTimestamp(), spModifiedTime);
             }
         }
@@ -119,6 +126,13 @@ public class SharePointFieldMergeService {
         snapshot.setFieldsJson(toJson(currentSpValues));
         snapshot.setLastSyncTime(Instant.now());
         snapshotRepo.save(snapshot);
+    }
+
+    /**
+     * Clear all snapshots, forcing next sync to treat all SP values as new.
+     */
+    public void clearAllSnapshots() {
+        snapshotRepo.deleteAll();
     }
 
     // --- JSON helpers ---

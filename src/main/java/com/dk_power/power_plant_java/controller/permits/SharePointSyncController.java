@@ -158,6 +158,16 @@ public class SharePointSyncController {
         return ResponseEntity.ok(new NgApiResponse<>(types, "Registered entity types"));
     }
 
+    /**
+     * Clear all SP snapshots, forcing next sync to re-evaluate all fields.
+     * Use after fixing sync bugs to recover from stale snapshot state.
+     */
+    @PostMapping("/clear-snapshots")
+    public ResponseEntity<NgApiResponse<String>> clearSnapshots() {
+        orchestrator.clearAllSnapshots();
+        return ResponseEntity.ok(new NgApiResponse<>("Snapshots cleared", "All SharePoint snapshots cleared — next sync will re-evaluate all fields"));
+    }
+
     // ── Helpers ──
 
     private Map<String, Object> buildConfigMap() {
