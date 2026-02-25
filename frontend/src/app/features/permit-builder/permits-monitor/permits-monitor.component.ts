@@ -7,6 +7,7 @@ import { forkJoin, Subject } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
 import { ContextMenuComponent } from '../../../shared/menu/context-menu/context-menu.component';
 import { CorrespondenceCellComponent } from '../../../shared/correspondence-dialog/correspondence-cell.component';
+import { SpSyncToolbarComponent } from '../../../shared/sp-sync-toolbar/sp-sync-toolbar.component';
 import { WrDetailDialogService } from '../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 import { WorkRequestContextMenuService } from '../work-request/refactored/services/work-request-context-menu.service';
 import { SyncUpdateService } from '../../../services/sync/sync-update.service';
@@ -51,7 +52,7 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-permits-monitor',
   standalone: true,
-  imports: [CommonModule, RouterModule, ContextMenuComponent, CorrespondenceCellComponent],
+  imports: [CommonModule, RouterModule, ContextMenuComponent, CorrespondenceCellComponent, SpSyncToolbarComponent],
   template: `
     <div class="monitor-container">
       <div class="monitor-header">
@@ -68,6 +69,11 @@ interface ApiResponse<T> {
           <span class="material-icons" [class.spinning]="loading">refresh</span>
         </button>
       </div>
+
+      <app-sp-sync-toolbar
+        entityType="WorkRequest"
+        (syncComplete)="loadData()"
+      ></app-sp-sync-toolbar>
 
       <!-- Planning Section -->
       <section class="monitor-section">

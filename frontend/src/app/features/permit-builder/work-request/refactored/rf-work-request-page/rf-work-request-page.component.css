@@ -44,21 +44,6 @@
   background-color: var(--accent-hover, #357abd);
 }
 
-.sync-btn {
-  background-color: var(--surface-secondary, #333);
-  color: var(--text-primary, #e0e0e0);
-  border: 1px solid var(--border-color, #444);
-}
-
-.sync-btn:hover:not(:disabled) {
-  background-color: var(--surface-hover, #444);
-}
-
-.sync-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 app-rf-work-request-table {
   flex: 1;
   overflow: hidden;

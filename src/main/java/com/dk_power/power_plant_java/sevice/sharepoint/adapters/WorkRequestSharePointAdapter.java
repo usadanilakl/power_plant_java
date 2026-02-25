@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -221,6 +222,7 @@ public class WorkRequestSharePointAdapter {
         dto.setSubmitterPhone(item.path("SubmitterPhone").asText(null));
         dto.setSubmitterCompany(item.path("SubmitterCompany").asText(null));
         dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
+        dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
         return dto;
     }
 
@@ -276,6 +278,16 @@ public class WorkRequestSharePointAdapter {
         map.put("SubmitterCompany", orEmpty(dto.getSubmitterCompany()));
         map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
         return map;
+    }
+
+    private static Instant parseInstant(String raw) {
+        if (raw == null || raw.isEmpty()) return null;
+        try {
+            return Instant.parse(raw);
+        } catch (Exception e) {
+            log.warn("[WR-Adapter] Failed to parse Modified datetime '{}': {}", raw, e.getMessage());
+            return null;
+        }
     }
 
     private static String guessContentType(String fileName) {

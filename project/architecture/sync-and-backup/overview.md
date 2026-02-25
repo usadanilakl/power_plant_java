@@ -14,8 +14,11 @@ Multi-machine synchronization system that keeps entity data and physical files c
 | 6 | Bootstrap / repopulate sync server | Converts all local entities to FieldChange records, pushes to server | [full-sync-to-server.md](full-sync-to-server.md) |
 | 7 | Physical file sync | Upload/download queue via sync server file storage | [file-sync.md](file-sync.md) |
 | 8 | Automatic resync on health check failure | Escalating partial resyncs triggered by background health checker | [auto-resync.md](auto-resync.md) |
+| 9 | SharePoint list sync (hub online) | Hub polls SP via orchestrator, field-level merge, syncs to clients | [sharepoint-sync/](sharepoint-sync/sharepoint-sync-orchestrator.md) |
+| 10 | SharePoint list sync (hub offline) | Client manual sync per entity type with field-level LWW merge | [sharepoint-sync/](sharepoint-sync/hub-sharepoint-client-sync.md) |
 
 Scenarios 1–4 and 8 all converge on the same code path: `FieldSyncService.applyIncomingChanges()`.
+Scenarios 9–10 use the `SharePointSyncOrchestrator` and `SharePointFieldMergeService` pipeline.
 
 # Architecture
 
@@ -149,8 +152,8 @@ After each sync batch is applied, merge services run in `FieldSyncService.afterC
 | Service | Dedup Key | Detail |
 |---------|-----------|--------|
 | `CategoryValueMergeService` | name (case-insensitive) | [category-value-deduplication.md](category-value-deduplication.md) |
-| `WorkRequestMergeService` | `sharepointId` | Two clients poll SharePoint simultaneously |
-| `JhaMergeService` | `sharepointId` | Two clients pull same JHA from SharePoint |
+| `WorkRequestMergeService` | `sharepointId` | Extends `SharePointMergeTemplate`, transfers 4 FK types |
+| `JhaMergeService` | `sharepointId` | Extends `SharePointMergeTemplate`, leaf entity (no FK transfers) |
 | `EmailCorrespondenceMergeService` | `graphMessageId` | [email-correspondence-deduplication.md](email-correspondence-deduplication.md) |
 | `UserMergeService` | `windowsUsername` | Handles non-synced FK tables (`password_reset_token`, `access_grant`) with `INFORMATION_SCHEMA` safety checks |
 
@@ -256,6 +259,10 @@ resource-packs.base-path=${user.dir}/resource-packs
 | [duplicate-tolerance.md](duplicate-tolerance.md) | Duplicate-tolerant queries, merge service architecture, conditional external polling |
 | [trash-system.md](trash-system.md) | Staged file deletion with restore capability, retention period, automatic cleanup |
 | [device-identity.md](device-identity.md) | Device number, machine ID, config files, Electron ↔ Spring Boot config flow, ID generation partitioning |
+| [sharepoint-sync/hub-sharepoint-client-sync.md](sharepoint-sync/hub-sharepoint-client-sync.md) | Hub/client SharePoint sync requirements, hub-offline UX behavior |
+| [sharepoint-sync/sharepoint-sync-orchestrator.md](sharepoint-sync/sharepoint-sync-orchestrator.md) | Centralized orchestrator, SharePointSyncable interface, REST API, merge template |
+| [sharepoint-sync/field-level-merge.md](sharepoint-sync/field-level-merge.md) | Field-level LWW for SP sync, snapshot diffing, conflict resolution |
+| [sharepoint-sync/adding-new-sp-entity.md](sharepoint-sync/adding-new-sp-entity.md) | Step-by-step checklist for adding a new SP-backed entity type |
 
 # E2E Test Coverage
 

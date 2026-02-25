@@ -1,8 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import {
+  SharePointSyncStatusService,
+  SharePointSyncStatus,
+} from '../../services/sharepoint-sync-status.service';
 
 interface SyncConfig {
   enabled: boolean;
@@ -97,17 +101,46 @@ interface SyncConfig {
         </div>
       </div>
 
+      <!-- Entity Sync Status -->
+      <div *ngIf="!loading && entityStatuses.length > 0" class="card">
+        <h3>Entity Sync Status</h3>
+        <p class="card-desc">Per-entity sync status and last sync details.</p>
+        <div class="status-table">
+          <div class="status-row header-row">
+            <span class="col-type">Entity</span>
+            <span class="col-hub">Hub</span>
+            <span class="col-time">Last Sync</span>
+            <span class="col-result">Last Result</span>
+          </div>
+          <div *ngFor="let s of entityStatuses" class="status-row">
+            <span class="col-type">{{ s.entityType }}</span>
+            <span class="col-hub">
+              <span class="hub-chip" [ngClass]="s.hubOnline ? 'chip-online' : 'chip-offline'">
+                {{ s.hubOnline ? 'Online' : 'Offline' }}
+              </span>
+              <span *ngIf="s.dataStale" class="stale-chip">Stale</span>
+            </span>
+            <span class="col-time">{{ s.lastSyncTimeFormatted }}</span>
+            <span class="col-result" *ngIf="s.lastResult">
+              {{ s.lastResult.created }}C / {{ s.lastResult.updated }}U / {{ s.lastResult.skipped }}S
+            </span>
+            <span class="col-result" *ngIf="!s.lastResult">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Sync -->
       <div *ngIf="!loading" class="card">
         <h3>Manual Sync</h3>
-        <p class="card-desc">Trigger a one-time sync from SharePoint regardless of auto-sync settings.</p>
+        <p class="card-desc">Trigger a one-time sync from SharePoint regardless of auto-sync settings. When hub is online, requests are routed through the hub.</p>
         <div class="btn-row">
-          <button class="btn btn-primary" (click)="syncWorkRequests()" [disabled]="syncing">
-            <span *ngIf="syncingWr" class="spinner"></span>
-            {{ syncingWr ? 'Syncing...' : 'Sync Work Requests' }}
+          <button class="btn btn-primary" (click)="syncEntity('WorkRequest')" [disabled]="syncing">
+            <span *ngIf="syncingType === 'WorkRequest'" class="spinner"></span>
+            {{ syncingType === 'WorkRequest' ? 'Syncing...' : 'Sync Work Requests' }}
           </button>
-          <button class="btn btn-primary" (click)="syncJhas()" [disabled]="syncing">
-            <span *ngIf="syncingJha" class="spinner"></span>
-            {{ syncingJha ? 'Syncing...' : 'Sync JHAs' }}
+          <button class="btn btn-primary" (click)="syncEntity('Jha')" [disabled]="syncing">
+            <span *ngIf="syncingType === 'Jha'" class="spinner"></span>
+            {{ syncingType === 'Jha' ? 'Syncing...' : 'Sync JHAs' }}
           </button>
         </div>
         <div *ngIf="lastSyncResult" class="sync-result">
@@ -281,6 +314,65 @@ interface SyncConfig {
       cursor: not-allowed;
     }
 
+    /* Status table */
+    .status-table {
+      border: 1px solid var(--border-color, #dee2e6);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color, #dee2e6);
+      font-size: 13px;
+    }
+
+    .status-row:last-child { border-bottom: none; }
+
+    .header-row {
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--secondary-text, #495057);
+      background: var(--secondary-background, #f8f9fa);
+    }
+
+    .col-type { flex: 1; }
+    .col-hub { flex: 1; display: flex; gap: 6px; align-items: center; }
+    .col-time { flex: 1; }
+    .col-result { flex: 1.5; }
+
+    .hub-chip {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .chip-online {
+      background: rgba(76, 175, 80, 0.15);
+      color: #388e3c;
+    }
+
+    .chip-offline {
+      background: rgba(244, 67, 54, 0.15);
+      color: #d32f2f;
+    }
+
+    .stale-chip {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: rgba(255, 152, 0, 0.15);
+      color: #f57c00;
+    }
+
     /* Buttons */
     .btn-row {
       display: flex;
@@ -397,20 +489,23 @@ interface SyncConfig {
   `]
 })
 export class SharepointSyncComponent implements OnInit {
+  private syncStatusService = inject(SharePointSyncStatusService);
+
   config: SyncConfig | null = null;
   loading = true;
   message = '';
   messageType: 'success' | 'error' | 'info' = 'info';
-  syncingWr = false;
-  syncingJha = false;
+  syncingType: string | null = null;
   lastSyncResult = '';
+  entityStatuses: SharePointSyncStatus[] = [];
 
-  get syncing() { return this.syncingWr || this.syncingJha; }
+  get syncing() { return this.syncingType !== null; }
 
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadConfig();
+    this.loadStatuses();
   }
 
   loadConfig(): void {
@@ -423,6 +518,15 @@ export class SharepointSyncComponent implements OnInit {
         this.showMessage('Failed to load config: ' + (err.error?.message || err.message), 'error');
         this.loading = false;
       }
+    });
+  }
+
+  loadStatuses(): void {
+    this.syncStatusService.getAllStatuses().subscribe({
+      next: (resp) => {
+        this.entityStatuses = resp.responseData || [];
+      },
+      error: () => {}
     });
   }
 
@@ -439,32 +543,19 @@ export class SharepointSyncComponent implements OnInit {
     });
   }
 
-  syncWorkRequests(): void {
-    this.syncingWr = true;
+  syncEntity(entityType: string): void {
+    this.syncingType = entityType;
     this.lastSyncResult = '';
-    this.http.post<{ message: string }>(`${environment.baseApiUrl}/work-requests-api/sync`, {}).subscribe({
+    this.syncStatusService.triggerSync(entityType).subscribe({
       next: (resp) => {
-        this.lastSyncResult = 'WR: ' + resp.message;
-        this.syncingWr = false;
+        const r = resp.responseData;
+        this.lastSyncResult = `${entityType}: ${r?.created ?? 0} created, ${r?.updated ?? 0} updated, ${r?.skipped ?? 0} skipped`;
+        this.syncingType = null;
+        this.loadStatuses();
       },
       error: (err) => {
-        this.showMessage('WR sync failed: ' + (err.error?.message || err.message), 'error');
-        this.syncingWr = false;
-      }
-    });
-  }
-
-  syncJhas(): void {
-    this.syncingJha = true;
-    this.lastSyncResult = '';
-    this.http.post<{ message: string }>(`${environment.baseApiUrl}/jha-api/sync`, {}).subscribe({
-      next: (resp) => {
-        this.lastSyncResult = 'JHA: ' + resp.message;
-        this.syncingJha = false;
-      },
-      error: (err) => {
-        this.showMessage('JHA sync failed: ' + (err.error?.message || err.message), 'error');
-        this.syncingJha = false;
+        this.showMessage(`${entityType} sync failed: ` + (err.error?.message || err.message), 'error');
+        this.syncingType = null;
       }
     });
   }

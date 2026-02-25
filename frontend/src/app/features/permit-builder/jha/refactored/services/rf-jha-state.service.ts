@@ -77,6 +77,40 @@ export class RfJhaStateService {
     this.currentPage = 1;
   }
 
+  reloadData(): void {
+    this.clearJhas();
+    const criteria = this.getCurrentSearchCriteria();
+    if (criteria && (criteria.query || (criteria.filters && Object.keys(criteria.filters).length > 0))) {
+      this.apiService.searchJhas({ ...criteria, page: 1, pageSize: this.pageSize }, this.pageSize).pipe(
+        tap(response => {
+          if (response.responseData?.content?.length) {
+            this.addJhas(response.responseData.content);
+            this.incrementPage();
+          }
+        }),
+        catchError(error => {
+          console.error('Error reloading JHAs:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe();
+    } else {
+      this.apiService.getJhas(1, this.pageSize).pipe(
+        tap(response => {
+          if (response.responseData?.content?.length) {
+            this.addJhas(response.responseData.content);
+            this.incrementPage();
+          }
+        }),
+        catchError(error => {
+          console.error('Error reloading JHAs:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe();
+    }
+  }
+
   updateJhaInList(updatedItem: JhaDto): void {
     if (!updatedItem.id) return;
     this.ngZone.run(() => {

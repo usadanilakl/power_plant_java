@@ -9,7 +9,7 @@ import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
-import com.dk_power.power_plant_java.sevice.sync.WorkRequestSyncService;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,7 +25,7 @@ import java.util.List;
 public class WorkRequestRestController {
 
     private final NgWorkRequestService workRequestService;
-    private final WorkRequestSyncService syncService;
+    private final SharePointSyncOrchestrator syncOrchestrator;
     private final WorkRequestMapper workRequestMapper;
     private final PermitAttachmentRepo permitAttachmentRepo;
 
@@ -135,7 +135,7 @@ public class WorkRequestRestController {
     @PostMapping("/sync")
     public ResponseEntity<NgApiResponse<SyncResult>> triggerSync() {
         try {
-            SyncResult result = syncService.syncFromSharePoint();
+            SyncResult result = syncOrchestrator.syncEntityType("WorkRequest");
             String message = String.format("Sync completed: created=%d, updated=%d, autoClosed=%d, failed=%d",
                     result.getCreated(), result.getUpdated(), result.getAutoClosed(), result.getFailed());
             return ResponseEntity.ok(new NgApiResponse<>(result, message));

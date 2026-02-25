@@ -1,21 +1,16 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
-import com.dk_power.power_plant_java.config.SharePointSyncSettings;
-import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.permits.JhaDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.Jha;
-import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.JhaMapper;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,31 +25,13 @@ public class JhaSyncService {
     private final WorkRequestRepo workRequestRepo;
     private final JhaMapper jhaMapper;
     private final NgValueService valueService;
-    private final JhaMergeService jhaMergeService;
-    private final SharePointSyncSettings syncSettings;
     private final PermitAttachmentSyncService permitAttachmentSyncService;
-    private final SyncConfig syncConfig;
-    @Lazy private final CentralSyncService centralSyncService;
 
     /**
-     * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
-     * Staggered 15s after WR sync.
-     * When hub is online, only hub polls SharePoint — clients receive data via sync.
-     * When hub is offline, clients poll for themselves (offline capability preserved).
+     * Legacy sync method — kept for backward compatibility.
+     * New code should use SharePointSyncOrchestrator.syncEntityType("Jha").
+     * Scheduling is now handled by SharePointSyncOrchestrator.
      */
-    @Scheduled(fixedDelay = 30000, initialDelay = 45000)
-    public void scheduledSync() {
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
-        if (!syncSettings.isJhaSyncDue()) return;
-        syncSettings.markJhaSynced();
-        syncFromSharePoint();
-        try {
-            jhaMergeService.mergeIfDuplicatesExist();
-        } catch (Exception e) {
-            log.error("[JHA Sync] Dedup failed: {}", e.getMessage(), e);
-        }
-    }
-
     @Transactional
     public SyncResult syncFromSharePoint() {
         SyncResult result = new SyncResult();

@@ -1,10 +1,12 @@
 <div class="jha-page">
   <div class="page-toolbar">
     <button class="action-btn new-btn" (click)="onNewJha()">+ New</button>
-    <button class="action-btn sync-btn" (click)="onTriggerSync()" [disabled]="isSyncing()">
-      {{ isSyncing() ? 'Syncing...' : 'Sync SharePoint' }}
-    </button>
   </div>
+
+  <app-sp-sync-toolbar
+    entityType="Jha"
+    (syncComplete)="onSyncComplete()"
+  ></app-sp-sync-toolbar>
 
   <app-rf-jha-table
     (selectedItemsEvent)="onSelectedItems($event)"

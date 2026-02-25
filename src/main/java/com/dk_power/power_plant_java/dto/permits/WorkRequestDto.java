@@ -56,6 +56,9 @@ public class WorkRequestDto {
     private String submitterCompany;
     private String timeSubmitted;
 
+    /** SP item's Modified datetime — used for field-level LWW merge. */
+    private java.time.Instant spModifiedTime;
+
     public void setIsHotWorkRequired(String isHotWorkRequired) {
         this.isHotWorkRequired = convertYesNoToBooleanString(isHotWorkRequired);
     }

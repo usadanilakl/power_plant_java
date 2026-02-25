@@ -1,123 +1,50 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
+/**
+ * Dedup merge service for WorkRequest entities.
+ * Extends the generic SharePointMergeTemplate and overrides
+ * transferRelationships() to handle WR-specific FK transfers:
+ * DailyPermitPackage, JHA, EmailCorrespondence, and PermitAttachment.
+ */
 @Service
 @Slf4j
-@RequiredArgsConstructor
-public class WorkRequestMergeService {
+public class WorkRequestMergeService extends SharePointMergeTemplate<WorkRequest> {
 
-    private final SyncContext syncContext;
+    public WorkRequestMergeService(SyncContext syncContext) {
+        super(syncContext);
+    }
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Override protected String tableName() { return "work_request"; }
+    @Override protected String entityName() { return "WorkRequest"; }
+    @Override protected Class<WorkRequest> entityClass() { return WorkRequest.class; }
+    @Override protected String naturalKeyColumn() { return "sharepoint_id"; }
+    @Override protected String jpaFieldName() { return "sharepointId"; }
+    @Override protected String logPrefix() { return "[WorkRequest Merge]"; }
+
+    @Override
+    protected void markDeleted(WorkRequest entity) {
+        entity.setDeleted(true);
+    }
 
     /**
-     * Detect and merge duplicate WorkRequests that share the same sharepointId.
-     * Called after a sync batch is applied (in afterCommit callback).
-     *
-     * Multiple clients pulling from SharePoint independently create WorkRequests
-     * with different local IDs but the same sharepointId. After sync, duplicates
-     * accumulate. This method keeps the lowest-ID entity (deterministic across
-     * all clients) and soft-deletes the rest.
-     *
-     * IMPORTANT: Temporarily clears SyncContext so dedup changes are tracked
-     * by FieldChangeEntityListener and synced to other machines.
+     * Transfer all FK relationships from the duplicate WR to the canonical one
+     * before soft-deleting the duplicate.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void mergeIfDuplicatesExist() {
-        boolean wasSyncing = syncContext.isSyncing();
-        if (wasSyncing) {
-            syncContext.endSync();
-        }
-        try {
-            int merged = mergeWorkRequests();
-            if (merged > 0) {
-                log.info("[WorkRequest Merge] {} duplicates deduplicated", merged);
-            }
-        } finally {
-            if (wasSyncing) {
-                syncContext.startSync();
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private int mergeWorkRequests() {
-        List<Object[]> duplicates = entityManager.createNativeQuery(
-            "SELECT sharepoint_id, COUNT(*) FROM work_request " +
-            "WHERE deleted = false AND sharepoint_id IS NOT NULL " +
-            "GROUP BY sharepoint_id HAVING COUNT(*) > 1")
-            .getResultList();
-
-        if (duplicates.isEmpty()) {
-            log.debug("[WorkRequest Merge] No duplicates found");
-        } else {
-            log.info("[WorkRequest Merge] Found {} sharepointId groups with duplicates", duplicates.size());
-        }
-
-        int merged = 0;
-        for (Object[] row : duplicates) {
-            String sharepointId = (String) row[0];
-            int count = ((Number) row[1]).intValue();
-            log.info("[WorkRequest Merge] sharepointId='{}' has {} copies", sharepointId, count);
-            merged += mergeBySharepointId(sharepointId);
-        }
-        return merged;
-    }
-
-    private int mergeBySharepointId(String sharepointId) {
-        List<WorkRequest> workRequests = entityManager.createQuery(
-            "SELECT w FROM WorkRequest w WHERE w.sharepointId = :spId " +
-            "AND w.deleted = false ORDER BY w.id",
-            WorkRequest.class)
-            .setParameter("spId", sharepointId)
-            .getResultList();
-
-        if (workRequests.size() <= 1) return 0;
-
-        WorkRequest canonical = workRequests.get(0);
-        int merged = 0;
-
-        for (int i = 1; i < workRequests.size(); i++) {
-            WorkRequest duplicate = workRequests.get(i);
-
-            transferDailyPermitPackageLink(duplicate.getId(), canonical.getId());
-            transferJhaLinks(duplicate.getId(), canonical.getId());
-            transferEmailCorrespondenceLinks(duplicate.getId(), canonical.getId(), sharepointId);
-            transferAttachmentLinks(duplicate.getId(), canonical.getId());
-
-            // Soft-delete via JPA so FieldChangeEntityListener fires and creates
-            // a FieldChange record — this ensures the deletion syncs to other machines.
-            duplicate.setDeleted(true);
-            entityManager.merge(duplicate);
-            entityManager.flush();
-            merged++;
-
-            log.info("[WorkRequest Merge] sharepointId='{}' ID={} merged into ID={}",
-                sharepointId, duplicate.getId(), canonical.getId());
-        }
-
-        return merged;
+    @Override
+    protected void transferRelationships(Long duplicateId, Long canonicalId, String naturalKeyValue) {
+        transferDailyPermitPackageLink(duplicateId, canonicalId);
+        transferJhaLinks(duplicateId, canonicalId);
+        transferEmailCorrespondenceLinks(duplicateId, canonicalId, naturalKeyValue);
+        transferAttachmentLinks(duplicateId, canonicalId);
     }
 
     /**
      * Transfer the daily_permit_package_id FK from a duplicate WorkRequest to
      * the canonical one (if the canonical doesn't already have one).
-     *
-     * DailyPermitPackage uses @OneToMany @JoinColumn — the FK lives on the
-     * work_request table but isn't a mapped Java field on WorkRequest, so
-     * native SQL is the correct approach. Both machines run this dedup
-     * independently and deterministically, arriving at the same state.
      */
     private void transferDailyPermitPackageLink(Long duplicateId, Long canonicalId) {
         int updated = entityManager.createNativeQuery(
@@ -170,7 +97,6 @@ public class WorkRequestMergeService {
 
     /**
      * Transfer PermitAttachment polymorphic links from a duplicate WorkRequest to the canonical one.
-     * PermitAttachment uses entityType + entityId (same pattern as EmailCorrespondence).
      */
     private void transferAttachmentLinks(Long duplicateId, Long canonicalId) {
         int updated = entityManager.createNativeQuery(
@@ -188,8 +114,6 @@ public class WorkRequestMergeService {
 
     /**
      * Transfer JHA foreign keys from a duplicate WorkRequest to the canonical one.
-     * JHA has a @ManyToOne WorkRequest via work_request_id column.
-     * When the duplicate WR is soft-deleted, its JHAs would become orphaned.
      */
     private void transferJhaLinks(Long duplicateId, Long canonicalId) {
         int updated = entityManager.createNativeQuery(

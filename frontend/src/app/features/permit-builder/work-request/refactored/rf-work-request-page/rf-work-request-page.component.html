@@ -1,10 +1,12 @@
 <div class="work-request-page">
   <div class="page-toolbar">
     <button class="action-btn new-btn" (click)="onNewWorkRequest()">+ New</button>
-    <button class="action-btn sync-btn" (click)="onTriggerSync()" [disabled]="isSyncing()">
-      {{ isSyncing() ? 'Syncing...' : 'Sync SharePoint' }}
-    </button>
   </div>
+
+  <app-sp-sync-toolbar
+    entityType="WorkRequest"
+    (syncComplete)="onSyncComplete()"
+  ></app-sp-sync-toolbar>
 
   <app-rf-work-request-table
     (selectedItemsEvent)="onSelectedItems($event)"

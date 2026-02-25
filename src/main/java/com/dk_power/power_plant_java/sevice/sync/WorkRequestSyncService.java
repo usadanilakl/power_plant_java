@@ -1,7 +1,5 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
-import com.dk_power.power_plant_java.config.SharePointSyncSettings;
-import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
@@ -9,11 +7,9 @@ import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,34 +25,12 @@ public class WorkRequestSyncService {
     private final WorkRequestRepo workRequestRepo;
     private final WorkRequestMapper workRequestMapper;
     private final NgValueService valueService;
-    private final WorkRequestMergeService workRequestMergeService;
-    private final SharePointSyncSettings syncSettings;
     private final PermitAttachmentSyncService permitAttachmentSyncService;
-    private final SyncConfig syncConfig;
-    @Lazy private final CentralSyncService centralSyncService;
 
     /**
-     * Polls every 30s; only runs actual sync when enabled and interval has elapsed.
-     * When hub is online, only hub polls SharePoint — clients receive data via sync.
-     * When hub is offline, clients poll for themselves (offline capability preserved).
-     */
-    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
-    public void scheduledSync() {
-        // If hub is online and we're not the hub, skip — hub handles SharePoint polling.
-        // If hub is offline, poll ourselves to maintain offline capability.
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
-        if (!syncSettings.isWrSyncDue()) return;
-        syncSettings.markWrSynced();
-        syncFromSharePoint();
-        try {
-            workRequestMergeService.mergeIfDuplicatesExist();
-        } catch (Exception e) {
-            log.error("[SharePoint Sync] WorkRequest dedup failed: {}", e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Sync work requests from SharePoint. Can be called manually or by scheduler.
+     * Legacy sync method — kept for backward compatibility.
+     * New code should use SharePointSyncOrchestrator.syncEntityType("WorkRequest").
+     * Scheduling is now handled by SharePointSyncOrchestrator.
      */
     @Transactional
     public SyncResult syncFromSharePoint() {

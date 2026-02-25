@@ -9,7 +9,7 @@ import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.mappers.permits.JhaMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJhaService;
-import com.dk_power.power_plant_java.sevice.sync.JhaSyncService;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,7 +27,7 @@ public class JhaRestController {
 
     private final NgJhaService jhaService;
     private final JhaMapper jhaMapper;
-    private final JhaSyncService syncService;
+    private final SharePointSyncOrchestrator syncOrchestrator;
     private final JdbcTemplate jdbcTemplate;
     private final PermitAttachmentRepo permitAttachmentRepo;
 
@@ -206,7 +206,7 @@ public class JhaRestController {
     @PostMapping("/sync")
     public ResponseEntity<NgApiResponse<SyncResult>> triggerSync() {
         try {
-            SyncResult result = syncService.syncFromSharePoint();
+            SyncResult result = syncOrchestrator.syncEntityType("Jha");
             String message = String.format("Sync completed: created=%d, updated=%d, failed=%d",
                     result.getCreated(), result.getUpdated(), result.getFailed());
             return ResponseEntity.ok(new NgApiResponse<>(result, message));

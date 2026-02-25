@@ -28,9 +28,6 @@ public class SharePointSyncSettings {
     @Value("${sharepoint.sync.interval:120000}")
     private volatile long intervalMs;
 
-    private volatile long lastWrSyncTime = 0;
-    private volatile long lastJhaSyncTime = 0;
-
     // ── Peer-to-peer sync ──
     @Value("${sync.interval.seconds:30}")
     private volatile int peerSyncIntervalSeconds;
@@ -92,24 +89,6 @@ public class SharePointSyncSettings {
         } catch (IOException e) {
             log.error("Failed to persist SharePoint sync settings to {}: {}", SETTINGS_FILE, e.getMessage());
         }
-    }
-
-    // ── SharePoint helpers ──
-
-    public boolean isWrSyncDue() {
-        return enabled && (System.currentTimeMillis() - lastWrSyncTime >= intervalMs);
-    }
-
-    public boolean isJhaSyncDue() {
-        return enabled && (System.currentTimeMillis() - lastJhaSyncTime >= intervalMs);
-    }
-
-    public void markWrSynced() {
-        this.lastWrSyncTime = System.currentTimeMillis();
-    }
-
-    public void markJhaSynced() {
-        this.lastJhaSyncTime = System.currentTimeMillis();
     }
 
     // ── Peer sync helpers ──

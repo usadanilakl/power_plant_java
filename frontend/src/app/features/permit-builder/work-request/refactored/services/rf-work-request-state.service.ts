@@ -97,6 +97,40 @@ export class RfWorkRequestStateService {
     this.currentPage = 1;
   }
 
+  reloadData(): void {
+    this.clearWorkRequests();
+    const criteria = this.getCurrentSearchCriteria();
+    if (criteria && (criteria.query || (criteria.filters && Object.keys(criteria.filters).length > 0))) {
+      this.apiService.searchWorkRequests({ ...criteria, page: 1, pageSize: this.pageSize }, this.pageSize).pipe(
+        tap(response => {
+          if (response.responseData?.content?.length) {
+            this.addWorkRequests(response.responseData.content);
+            this.incrementPage();
+          }
+        }),
+        catchError(error => {
+          console.error('Error reloading work requests:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe();
+    } else {
+      this.apiService.getWorkRequests(1, this.pageSize).pipe(
+        tap(response => {
+          if (response.responseData?.content?.length) {
+            this.addWorkRequests(response.responseData.content);
+            this.incrementPage();
+          }
+        }),
+        catchError(error => {
+          console.error('Error reloading work requests:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe();
+    }
+  }
+
   updateWorkRequestInList(updatedItem: WorkRequestDto): void {
     if (!updatedItem.id) return;
 

@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -217,6 +218,7 @@ public class JhaSharePointAdapter {
         dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
         dto.setStatus(item.path("Status").asText(null));
         parseJobStepsFromJson(dto, item.path("JobSteps").asText(null));
+        dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
         return dto;
     }
 
@@ -280,6 +282,16 @@ public class JhaSharePointAdapter {
             }
         }
         return map;
+    }
+
+    private static Instant parseInstant(String raw) {
+        if (raw == null || raw.isEmpty()) return null;
+        try {
+            return Instant.parse(raw);
+        } catch (Exception e) {
+            log.warn("[JHA-Adapter] Failed to parse Modified datetime '{}': {}", raw, e.getMessage());
+            return null;
+        }
     }
 
     private static String guessContentType(String fileName) {
