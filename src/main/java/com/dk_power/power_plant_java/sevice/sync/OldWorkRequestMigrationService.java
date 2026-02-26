@@ -57,7 +57,7 @@ public class OldWorkRequestMigrationService {
     public void migrateFromOldFlow() {
         if (oldWrExcelFileId == null || oldWrExcelFileId.isBlank()) return;
         if (!certAccess.isAvailable()) return;
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
+        if (!syncConfig.isHubMode()) return;
 
         log.info("[Old WR Migration] Starting migration pull from SharePoint Excel file");
 

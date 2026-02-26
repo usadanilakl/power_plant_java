@@ -2,8 +2,10 @@ package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.ConfinedSpaceDto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.permits.ConfinedSpaceRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Component;
 public class ConfinedSpaceMapper implements BaseMapper {
     private final ModelMapper modelMapper;
     private final ConfinedSpaceRepo confinedSpaceRepo;
+    private final WorkAreaRepo workAreaRepo;
+    private final WorkAreaMapper workAreaMapper;
 
     public ConfinedSpaceDto convertToDto(ConfinedSpace entity) {
         if (entity == null) return null;
@@ -38,6 +42,12 @@ public class ConfinedSpaceMapper implements BaseMapper {
         } catch (Exception e) {
             // handle or log
         }
+
+        if (entity.getWorkArea() != null) {
+            dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
+            dto.setSpace(entity.getWorkArea().getName());
+        }
+
         return dto;
     }
 
@@ -68,6 +78,15 @@ public class ConfinedSpaceMapper implements BaseMapper {
         } catch (Exception e) {
             // handle or log
         }
+
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+            WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
+            entity.setWorkArea(workArea);
+            if (workArea != null) {
+                entity.setSpace(workArea.getName());
+            }
+        }
+
         return entity;
     }
 

@@ -74,6 +74,11 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
         return toDto(save(entity));
     }
 
+    @Override
+    public List<HotWorkDto> getAllDtos() {
+        return getAll().stream().map(hotWorkMapper::convertToDto).toList();
+    }
+
     public List<HotWorkDto> saveAll(List<HotWorkDto> permits) {
         return permits.stream().map(hotWorkMapper::convertToEntity).map(hotWorkRepo::save).map(hotWorkMapper::convertToDto).toList();
     }

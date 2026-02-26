@@ -125,10 +125,18 @@ export class RfWorkRequestMapperService {
     entity: WorkRequestDto,
     fields: WorkRequestFieldName[] = [
       'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
-      'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
+      'company', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired', 'space', 'status'
     ]
   ): RfFormField[] {
+    // Work Area field is always prepended (not part of the field name list)
+    const workAreaField: RfFormField = {
+      name: 'workArea',
+      label: 'Work Area',
+      type: 'work-area-select',
+      initialValue: (entity as any).workArea?.id ?? null,
+    };
+
     const allFields: { [key in WorkRequestFieldName]?: RfFormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: entity.id },
       dateOfWorkToBePerformed: {
@@ -249,8 +257,10 @@ export class RfWorkRequestMapperService {
       },
     };
 
-    return fields
+    const result = fields
       .map((fieldName) => allFields[fieldName])
       .filter((field): field is RfFormField => field !== undefined);
+
+    return [workAreaField, ...result];
   }
 }

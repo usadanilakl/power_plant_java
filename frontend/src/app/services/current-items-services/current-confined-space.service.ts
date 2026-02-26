@@ -2,7 +2,7 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ConfinedSpaceService } from "../permits/confined-space.service";
 import { PrintableFormService } from "../forms/printable-form.service";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
@@ -25,6 +25,7 @@ export class CurrentConfinedSpaceService {
     paperForm$ = this.paperFormSubject.asObservable();
   
     isPaperViewActive = signal<boolean>(false);
+    selectedItem = toSignal(this.selectedConfinedSpaceSubject.asObservable(), { initialValue: new ConfinedSpaceDto() });
 
     constructor() {
         this.loadConfinedSpaces();

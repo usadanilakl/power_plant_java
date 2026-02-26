@@ -65,6 +65,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/permit-builder/hot-works', label: 'Hot Works' },
             { route: '/permit-builder/confined-spaces', label: 'Confined Spaces' },
             { route: '/permit-builder/jhas', label: 'JHAs' },
+            { route: '/permit-builder/work-areas', label: 'Work Areas' },
+            { route: '/work-area-map', label: 'Work Map' },
             { route: '/scheduler', label: 'Scheduler' }
         ]
     },
@@ -151,6 +153,9 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Hot Works', route: './hot-works' },
     { label: 'Confined Spaces', route: './confined-spaces' },
     { label: 'JHAs', route: './jhas' },
+    { label: 'Work Areas', route: './work-areas' },
+    { label: 'Work Map', route: './work-area-map' },
+
 ]
 
 export const FORM_DESIGNER_NAV_MENU_ITEMS = [

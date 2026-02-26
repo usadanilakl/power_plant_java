@@ -1,10 +1,11 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
-import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.permits.HotWorkRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Component;
 public class HotWorkMapper implements BaseMapper {
     private final ModelMapper modelMapper;
     private final HotWorkRepo hotWorkRepo;
+    private final WorkAreaRepo workAreaRepo;
+    private final WorkAreaMapper workAreaMapper;
 
     public HotWorkDto convertToDto(HotWork entity) {
         if (entity == null) return null;
@@ -35,6 +38,12 @@ public class HotWorkMapper implements BaseMapper {
         } catch (Exception e) {
             // handle or log
         }
+
+        if (entity.getWorkArea() != null) {
+            dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
+            dto.setLocation(entity.getWorkArea().getName());
+        }
+
         return dto;
     }
 
@@ -61,6 +70,15 @@ public class HotWorkMapper implements BaseMapper {
         } catch (Exception e) {
             // handle or log
         }
+
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+            WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
+            entity.setWorkArea(workArea);
+            if (workArea != null) {
+                entity.setLocation(workArea.getName());
+            }
+        }
+
         return entity;
     }
 

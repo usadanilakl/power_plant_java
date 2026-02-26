@@ -1,0 +1,134 @@
+package com.dk_power.power_plant_java.mappers.permits;
+
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.permits.WorkAreaDto;
+import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
+import com.dk_power.power_plant_java.entities.loto.LotoStandard;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
+import com.dk_power.power_plant_java.entities.permits.WorkAreaMapShape;
+import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class WorkAreaMapper implements BaseMapper {
+    private final WorkAreaRepo workAreaRepo;
+    private final WorkAreaMapShapeRepo shapeRepo;
+
+    @Override
+    public ModelMapper getMapper() {
+        return new ModelMapper();
+    }
+
+    public WorkAreaDto convertToDto(WorkArea entity) {
+        if (entity == null) return null;
+
+        WorkAreaDto dto = new WorkAreaDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        dto.setDateCreated(entity.getDateCreated());
+        dto.setDateModified(entity.getDateModified());
+
+        if (entity.getAreaType() != null) {
+            ValueDto areaTypeDto = new ValueDto();
+            areaTypeDto.setId(entity.getAreaType().getId());
+            areaTypeDto.setName(entity.getAreaType().getName());
+            dto.setAreaType(areaTypeDto);
+        }
+
+        try {
+            dto.setConstantHazards(entity.getConstantHazards());
+        } catch (Exception e) {
+            // handle deserialization issue
+        }
+
+        if (entity.getConstantLotos() != null) {
+            dto.setConstantLotoIds(
+                    entity.getConstantLotos().stream()
+                            .map(LotoStandard::getId)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        if (entity.getShape() != null) {
+            dto.setShapeId(entity.getShape().getId());
+        }
+
+        return dto;
+    }
+
+    public WorkArea convertToEntity(WorkAreaDto dto) {
+        if (dto == null) return null;
+
+        WorkArea entity;
+        if (dto.getId() != null && dto.getId() != 0) {
+            entity = workAreaRepo.findById(dto.getId()).orElse(new WorkArea());
+        } else {
+            entity = new WorkArea();
+        }
+
+        if (dto.getName() != null) entity.setName(dto.getName());
+        if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
+
+        try {
+            if (dto.getConstantHazards() != null) {
+                entity.setConstantHazards(dto.getConstantHazards());
+            }
+        } catch (Exception e) {
+            // handle serialization issue
+        }
+
+        if (dto.getShapeId() != null) {
+            shapeRepo.findById(dto.getShapeId()).ifPresent(entity::setShape);
+        }
+
+        return entity;
+    }
+
+    public WorkAreaMapShapeDto convertShapeToDto(WorkAreaMapShape entity) {
+        if (entity == null) return null;
+
+        WorkAreaMapShapeDto dto = new WorkAreaMapShapeDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setCoordinates(entity.getCoordinates());
+        dto.setOriginalPictureSize(entity.getOriginalPictureSize());
+        dto.setLabel(entity.getLabel());
+        dto.setDateCreated(entity.getDateCreated());
+        dto.setDateModified(entity.getDateModified());
+
+        List<WorkArea> areasForShape = workAreaRepo.findByShape_Id(entity.getId());
+        dto.setWorkAreaIds(
+                areasForShape.stream()
+                        .map(WorkArea::getId)
+                        .collect(Collectors.toList())
+        );
+
+        return dto;
+    }
+
+    public WorkAreaMapShape convertShapeToEntity(WorkAreaMapShapeDto dto) {
+        if (dto == null) return null;
+
+        WorkAreaMapShape entity;
+        if (dto.getId() != null && dto.getId() != 0) {
+            entity = shapeRepo.findById(dto.getId()).orElse(new WorkAreaMapShape());
+        } else {
+            entity = new WorkAreaMapShape();
+        }
+
+        if (dto.getCoordinates() != null) entity.setCoordinates(dto.getCoordinates());
+        if (dto.getOriginalPictureSize() != null) entity.setOriginalPictureSize(dto.getOriginalPictureSize());
+        if (dto.getLabel() != null) entity.setLabel(dto.getLabel());
+
+        return entity;
+    }
+}

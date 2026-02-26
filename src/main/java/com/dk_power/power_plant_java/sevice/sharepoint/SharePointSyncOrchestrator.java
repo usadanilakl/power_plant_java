@@ -56,11 +56,12 @@ public class SharePointSyncOrchestrator {
     /**
      * Single scheduled entry point. Polls every 30s, checks per-entity-type
      * intervals, syncs what is due.
+     * Only the hub does scheduled SP polling. Clients sync manually per page
+     * via POST /api/sharepoint-sync/sync/{entityType}.
      */
     @Scheduled(fixedDelay = 30000, initialDelay = 30000)
     public void scheduledSync() {
-        // Hub-online check: only hub polls SharePoint. Clients get data via field sync.
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
+        if (!syncConfig.isHubMode()) return;
         if (!syncSettings.isEnabled()) return;
 
         for (SharePointSyncable<?> syncable : syncables) {
@@ -186,8 +187,8 @@ public class SharePointSyncOrchestrator {
     private SharePointSyncStatus buildStatus(SharePointSyncable<?> syncable, boolean hubOnline) {
         String type = syncable.getEntityTypeName();
         long lastSync = lastSyncTimes.getOrDefault(type, 0L);
-        boolean stale = !hubOnline && lastSync > 0
-            && (System.currentTimeMillis() - lastSync > syncSettings.getIntervalMs() * 3);
+        boolean stale = !hubOnline
+            && (lastSync == 0 || System.currentTimeMillis() - lastSync > syncSettings.getIntervalMs() * 3);
         return new SharePointSyncStatus(
             type, lastSync, formatTimeAgo(lastSync),
             syncSettings.isEnabled(), hubOnline, stale,

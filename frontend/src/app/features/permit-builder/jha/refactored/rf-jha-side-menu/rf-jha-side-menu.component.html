@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="stateService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-rf-jha-left-menu menu></app-rf-jha-left-menu>
+  <app-rf-jha-table table></app-rf-jha-table>
+</app-permit-left-panel>

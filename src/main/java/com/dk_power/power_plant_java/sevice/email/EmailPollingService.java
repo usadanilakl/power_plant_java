@@ -60,12 +60,11 @@ public class EmailPollingService {
     /**
      * Scheduled task to poll for new email responses.
      * Runs every 10 minutes by default (configurable via email.poll.interval).
-     * When hub is online, only hub polls — clients receive data via sync.
-     * When hub is offline, clients poll for themselves (offline capability preserved).
+     * Only the hub polls — clients receive data via sync.
      */
     @Scheduled(fixedDelayString = "${email.poll.interval:600000}") // 10 minutes default
     public void pollForNewResponses() {
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
+        if (!syncConfig.isHubMode()) return;
         try {
             log.info("[EmailPoll] Checking for emails since {}", lastPollTime);
 

@@ -34,4 +34,5 @@ public class NgWorkRequestDto extends BaseDto {
     private String status;
     private Boolean hasJha;
     private Integer attachmentCount;
+    private WorkAreaDto workArea;
 }

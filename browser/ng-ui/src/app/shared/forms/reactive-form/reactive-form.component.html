@@ -69,6 +69,12 @@
                   [formControl]="getFormControl(field.name)"
                 ></app-multi-text-input>
               }
+              @case('work-area-map'){
+                <label class="field-label">{{ field.label }}</label>
+                <app-work-area-map-select
+                  [formControl]="getFormControl(field.name)">
+                </app-work-area-map-select>
+              }
               @case('form-array'){
               <app-form-array-input
                 [label]="field.label"

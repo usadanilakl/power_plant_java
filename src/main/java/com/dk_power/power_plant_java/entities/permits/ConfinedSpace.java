@@ -56,9 +56,13 @@ public class ConfinedSpace extends BasePermitEntity {
             return new ConfinedSpaceHazards();
         }
         try {
-            return mapper.readValue(hazardsJson, ConfinedSpaceHazards.class);
+            String json = hazardsJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, ConfinedSpaceHazards.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize hazardsJson", e);
+            return new ConfinedSpaceHazards();
         }
     }
 
@@ -75,9 +79,13 @@ public class ConfinedSpace extends BasePermitEntity {
             return new ConfinedSpacePrecautions();
         }
         try {
-            return mapper.readValue(precautionsJson, ConfinedSpacePrecautions.class);
+            String json = precautionsJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, ConfinedSpacePrecautions.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize precautionsJson", e);
+            return new ConfinedSpacePrecautions();
         }
     }
 
@@ -94,9 +102,13 @@ public class ConfinedSpace extends BasePermitEntity {
             return new ConfinedSpacePpe();
         }
         try {
-            return mapper.readValue(ppeJson, ConfinedSpacePpe.class);
+            String json = ppeJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, ConfinedSpacePpe.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize ppeJson", e);
+            return new ConfinedSpacePpe();
         }
     }
 

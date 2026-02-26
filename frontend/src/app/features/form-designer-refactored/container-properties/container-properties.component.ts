@@ -41,7 +41,7 @@ export class ContainerPropertiesComponent implements OnInit, OnChanges {
   formFieldTypes: FormField['type'][] = [
     'text', 'textarea', 'select', 'multi-select', 'date', 'time',
     'checkbox-group', 'checkbox', 'radio', 'file', 'multi-input',
-    'number', 'radio-group', 'form-array',
+    'number', 'radio-group', 'form-array', 'work-area-select',
   ];
 
   totalPages = this.formState.totalPages;

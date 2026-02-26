@@ -137,6 +137,13 @@
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-multi-value-select>
+        } @case('work-area-select'){
+        <app-work-area-select
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+          (workAreaSelected)="onWorkAreaSelected($event)"
+        >
+        </app-work-area-select>
         } @case('comment'){
         <app-comment-input
           [label]="field.label"

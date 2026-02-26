@@ -3,6 +3,7 @@
 ## Full Flow
 
 Work Request is submitted (saved in DB) -> JHA filled out and attached to Work Request (Saved in DB)
+    - Work Area selected (constant hazards auto-apply to permit forms)
                                     ||
                                     \/
 (Manually) Job is generated(or updated) based on the Work Request:
@@ -12,7 +13,7 @@ Work Request is submitted (saved in DB) -> JHA filled out and attached to Work R
                                     ||
                                     \/
 Create Daily Package:
-    - Create Safe Work
+    - Create Safe Work (Work Area selection auto-populates constant hazards)
     - Create other permits as applicable (CS, HW, Purging, Excavation, Energized Work)
     - Assign LOTO if applicable
     - Attach Package to Job
@@ -47,5 +48,11 @@ Close Daily Package:
 Post-Processing:
     - if work wasn't complete re-evaluate work scope (comments, new Work Request)
     - reissue Daily Package from last day, make necessary adjustments
-    - notify requestor of the status. 
+    - notify requestor of the status.
 
+## Related Features
+
+- [Work Areas](work-areas/overview.md) - physical plant locations with constant hazards, interactive map, and workload monitoring
+- [Base Permit](base-permit.md) - common permit behavior (status, history, snapshots)
+- [Work Request](work-request/work-request-architecture.md) - work request submission and processing
+- [LOTO Permit](loto-permit/loto-permit-architecture.md) - lock out / tag out permits

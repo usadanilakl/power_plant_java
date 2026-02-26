@@ -40,9 +40,9 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
   flattenedFields: FieldOption[] = [];
   arrayFields: FieldOption[] = [];
   formFieldTypes: FormField['type'][] = [
-    'text', 'textarea', 'select', 'multi-select', 'date', 'time', 
-    'checkbox-group', 'checkbox', 'radio', 'file', 'multi-input', 
-    'number', 'radio-group', "form-array"
+    'text', 'textarea', 'select', 'multi-select', 'date', 'time',
+    'checkbox-group', 'checkbox', 'radio', 'file', 'multi-input',
+    'number', 'radio-group', 'form-array', 'work-area-select',
   ];
 
   totalPages = this.currentPrintableFormService.totalPages;

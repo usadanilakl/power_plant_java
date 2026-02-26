@@ -84,7 +84,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         validators: [Validators.required, futureOrPresentDateValidator()]
       },
       { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required] },
-      { name: 'locationOfWork', label: 'Location of Work', type: 'text', initialValue: this.locationOfWork, placeholder: 'e.g. Turbine Hall, Unit 2', validators: [Validators.required] },
+      { name: 'locationOfWork', label: 'Location of Work', type: 'work-area-map', initialValue: this.locationOfWork, validators: [Validators.required] },
       { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, placeholder: 'Full name', validators: [Validators.required] },
       { name: 'affectedEquipment', label: 'Affected Equipment', type: 'text', initialValue: this.affectedEquipment, placeholder: 'e.g. Boiler Feed Pump 1A', validators: [Validators.required] },
       { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: this.workScope, placeholder: 'Describe the work to be performed', validators: [Validators.required] },

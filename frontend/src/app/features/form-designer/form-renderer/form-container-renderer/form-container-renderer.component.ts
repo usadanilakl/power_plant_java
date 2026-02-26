@@ -7,6 +7,7 @@ import { InvisibleSearchableSelectComponent } from '../../inputs/invisible-searc
 import { ChekcboxXComponent } from '../../inputs/chekcbox-x/chekcbox-x.component';
 import { InvisibleSearchableMultiSelectComponent } from '../../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component';
 import { NestedFormInputComponent } from '../../inputs/nested-form-input/nested-form-input.component';
+import { WorkAreaSelectComponent } from '../../../permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { FormContainerDto } from '../../../../models/forms/form-container.model';
 import { FormField } from '../../../../models/ui/form-field.model';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
@@ -22,7 +23,8 @@ import { PrintableFormDto } from '../../../../models/forms/printable-form.model'
     InvisibleSearchableSelectComponent,
     ChekcboxXComponent,
     InvisibleSearchableMultiSelectComponent,
-    forwardRef(() => NestedFormInputComponent)
+    forwardRef(() => NestedFormInputComponent),
+    WorkAreaSelectComponent,
   ],
   templateUrl: './form-container-renderer.component.html',
   styleUrl: './form-container-renderer.component.css'

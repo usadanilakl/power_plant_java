@@ -213,10 +213,10 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
 
   static toFormFields(
     dto: ConfinedSpaceDto,
-    spaceOptions: Option[],
-    fields: ConfinedSpaceFieldName[] = [
-      'date', 'time', 'space', 'workScope', 'issuedTo', 'duration', 'meterModel',
-      'meterNum', 'calibrated', 
+    spaceOptions: Option[] = [],
+    fields: (ConfinedSpaceFieldName | 'workArea')[] = [
+      'workArea', 'date', 'time', 'workScope', 'issuedTo', 'duration', 'meterModel',
+      'meterNum', 'calibrated',
       ...Object.keys(ConfinedSpaceDto.getHazardFields(null)) as ConfinedSpaceFieldName[],
       ...Object.keys(ConfinedSpaceDto.getPpeFields(null)) as ConfinedSpaceFieldName[],
       ...Object.keys(ConfinedSpaceDto.getPrecautionFields(null)) as ConfinedSpaceFieldName[]
@@ -227,8 +227,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     const ppeFields = ConfinedSpaceDto.getPpeFields(dto.ppe);
     const precautionFields = ConfinedSpaceDto.getPrecautionFields(dto.precautions);
     const allFields: { [key: string]: FormField } = {
-      
+
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      workArea: {
+        name: 'workArea',
+        label: 'Work Area',
+        type: 'work-area-select',
+        initialValue: (dto as any).workArea?.id ?? null,
+      },
       date: { 
         name: 'date', 
         label: 'Date', 

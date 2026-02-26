@@ -1,24 +1,5 @@
-<div class="jha-page">
-  <div class="page-toolbar">
-    <button class="action-btn new-btn" (click)="onNewJha()">+ New</button>
-  </div>
-
-  <app-sp-sync-toolbar
-    entityType="Jha"
-    (syncComplete)="onSyncComplete()"
-  ></app-sp-sync-toolbar>
-
-  <app-rf-jha-table
-    (selectedItemsEvent)="onSelectedItems($event)"
-    (rowDoubleClickedEvent)="onRowDoubleClicked($event)"
-  ></app-rf-jha-table>
-</div>
-
-<!-- JHA Form Popup -->
-<app-rf-popup-projection
-  [isOpen]="stateService.isFormOpen()"
-  [fullHeight]="true"
-  (close)="stateService.closeForm()"
->
-  <app-rf-jha-form [fieldsInput]="stateService.formFields()"></app-rf-jha-form>
-</app-rf-popup-projection>
+@if (stateService.isPaperViewActive()) {
+  <app-rf-jha-paper-form></app-rf-jha-paper-form>
+} @else {
+  <app-rf-jha-form></app-rf-jha-form>
+}

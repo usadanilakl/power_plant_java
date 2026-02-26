@@ -2,7 +2,7 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { HotWorkService } from "../permits/hot-work.service";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { PrintableFormService } from "../forms/printable-form.service";
@@ -25,6 +25,7 @@ export class CurrentHotWorkService {
     paperForm$ = this.paperFormSubject.asObservable();
   
     isPaperViewActive = signal<boolean>(false);
+    selectedItem = toSignal(this.selectedHotWorkSubject.asObservable(), { initialValue: new HotWorkDto() });
 
     constructor() {
         this.loadHotWorks();

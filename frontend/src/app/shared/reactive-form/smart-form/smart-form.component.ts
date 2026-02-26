@@ -13,6 +13,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, FormFieldGroup } from '../../../models/ui/form-field.model';
 import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-only-label.component";
+import { WorkAreaSelectComponent } from '../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
+import { WorkAreaDto } from '../../../models/permits/work-area.model';
 
 @Component({
   selector: 'app-smart-form',
@@ -28,7 +30,8 @@ import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-o
     FormInputComponent,
     ReactiveFormsModule,
     ValueFormComponent,
-    CheckboxOnlyLabelComponent
+    CheckboxOnlyLabelComponent,
+    WorkAreaSelectComponent,
 ],
   templateUrl: './smart-form.component.html',
   styleUrl: './smart-form.component.css'
@@ -301,6 +304,33 @@ export class SmartFormComponent {
   onContextMenu(event: MouseEvent) {
     event.preventDefault();
     return false;
+  }
+
+  /**
+   * Handle work area selection - auto-apply constant hazards to hazard fields.
+   * Maps constantHazards properties to hazards.X form controls.
+   */
+  onWorkAreaSelected(workArea: WorkAreaDto | null): void {
+    if (!workArea?.constantHazards) return;
+
+    const hazards = workArea.constantHazards;
+    const patch: { [key: string]: boolean } = {};
+
+    // For each hazard property that is true, set the corresponding hazards.X control
+    Object.entries(hazards).forEach(([key, value]) => {
+      if (typeof value === 'boolean' && value) {
+        const control = this.form.get(`hazards.${key}`);
+        if (control) {
+          patch[key] = true;
+        }
+      }
+    });
+
+    // Patch the hazards FormGroup if it exists
+    const hazardsGroup = this.form.get('hazards');
+    if (hazardsGroup && Object.keys(patch).length > 0) {
+      hazardsGroup.patchValue(patch);
+    }
   }
 
   getCurrentFormValues() {

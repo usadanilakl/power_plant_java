@@ -7,6 +7,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../../services/sync/sync-update.service';
+import { PrintableFormDto } from '../../../../../models/forms/printable-form.model';
+import { PrintableFormService } from '../../../../../services/forms/printable-form.service';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +20,7 @@ export class RfJhaStateService {
   private messageService = inject(GlobalMessageService);
   private syncUpdateService = inject(SyncUpdateService);
   private ngZone = inject(NgZone);
+  private printableFormService = inject(PrintableFormService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -36,6 +40,10 @@ export class RfJhaStateService {
   currentColumnUniqueItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
+  isPaperViewActive = signal<boolean>(false);
+  private paperFormSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
+  paperForm$ = this.paperFormSubject.asObservable();
+
   constructor() {
     this.apiService.jhaDeleted$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -48,6 +56,22 @@ export class RfJhaStateService {
     this.syncUpdateService.getEntityTypeUpdates$('Jha')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => this.handleSyncUpdate(event));
+
+    this.loadPaperForm();
+  }
+
+  private loadPaperForm(): void {
+    this.printableFormService.getPrimaryFormByType('Jha').pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(err => {
+        console.error('Error loading JHA paper form:', err);
+        return of(null);
+      })
+    ).subscribe(response => {
+      if (response && response.responseData) {
+        this.paperFormSubject.next(response.responseData);
+      }
+    });
   }
 
   private handleSyncUpdate(event: EntityUpdateEvent): void {
@@ -266,5 +290,9 @@ export class RfJhaStateService {
   closeForm(): void {
     this.isFormOpen.set(false);
     this.selectedItem.set(null);
+  }
+
+  switchFormView(): void {
+    this.isPaperViewActive.set(!this.isPaperViewActive());
   }
 }

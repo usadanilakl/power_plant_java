@@ -181,11 +181,11 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
   static toFormFields(
     dto: SafeWorkDto,
-    locationOptions: Option[],
-    fields: SafeWorkFieldName[] = [
-      'date', 'time', 'companyPerson', 'location', 'workScope',
+    locationOptions: Option[] = [],
+    fields: (SafeWorkFieldName | 'workArea')[] = [
+      'workArea', 'date', 'time', 'companyPerson', 'workScope',
       'specialInstructions', 'requestedBy',
-      ...Object.keys(SafeWorkDto.getHazardFields(null)) as SafeWorkFieldName[], 
+      ...Object.keys(SafeWorkDto.getHazardFields(null)) as SafeWorkFieldName[],
       ...Object.keys(SafeWorkDto.getPermitFields(null)) as SafeWorkFieldName[],
       ...Object.keys(SafeWorkDto.getPpeFields(null)) as SafeWorkFieldName[]
     ]
@@ -195,11 +195,17 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     const hazardFields = SafeWorkDto.getHazardFields(dto.hazards);
     const allFields: { [key: string]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
-      date: { 
-        name: 'date', 
-        label: 'Date', 
-        type: 'date', 
-        validators: [Validators.required], 
+      workArea: {
+        name: 'workArea',
+        label: 'Work Area',
+        type: 'work-area-select',
+        initialValue: (dto as any).workArea?.id ?? null,
+      },
+      date: {
+        name: 'date',
+        label: 'Date',
+        type: 'date',
+        validators: [Validators.required],
         initialValue: dto.date ?? new Date().toISOString().split('T')[0]
       },
       time: { 

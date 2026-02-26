@@ -67,6 +67,12 @@
           (itemRemoved)="onRemoveArrayItem($event)">
         </app-nested-form-input>
       }
+      @case ('work-area-select') {
+        <app-work-area-select
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [style]="asFormField(container().content).style">
+        </app-work-area-select>
+      }
     }
   } @else if(container().contentType === 'text') {
     <div class="content-display" [ngStyle]="getContentStyles(container())">

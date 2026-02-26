@@ -1,7 +1,5 @@
 @if(currentSafeWorkService.isPaperViewActive()){
     <app-safe-work-paper-form></app-safe-work-paper-form>
 }@else{
-    <app-safe-work-form
-        [values]="currentSafeWorkSignal"
-    ></app-safe-work-form>
+    <app-rf-safe-work-form></app-rf-safe-work-form>
 }

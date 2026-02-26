@@ -67,6 +67,13 @@
                   [formControl]="getFormControl(field.name)"
                 ></app-multi-input>
               }
+              @case('work-area-select'){
+                <app-work-area-select
+                  [label]="field.label"
+                  [formControl]="getFormControl(field.name)"
+                  (workAreaSelected)="onWorkAreaSelected($event)"
+                ></app-work-area-select>
+              }
               @default {
                 <app-form-input
                   [label]="field.label"

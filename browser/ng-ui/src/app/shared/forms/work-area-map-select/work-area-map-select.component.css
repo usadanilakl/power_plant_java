@@ -1,0 +1,174 @@
+.work-area-map-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selected-panel {
+  padding: 10px 14px;
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.selected-panel-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #2e7d32;
+}
+
+.selected-panel-label {
+  font-size: 13px;
+  color: #555;
+  margin-top: 4px;
+}
+
+.selected-panel-multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.selected-panel-prompt {
+  font-size: 13px;
+  color: #555;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.area-option-btn {
+  padding: 6px 14px;
+  font-size: 14px;
+  border: 2px solid #4caf50;
+  border-radius: 6px;
+  background: #fff;
+  color: #2e7d32;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.area-option-btn:hover {
+  background: #c8e6c9;
+}
+
+.area-option-btn.active {
+  background: #4caf50;
+  color: #fff;
+}
+
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f5f5f5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.map-container:active {
+  cursor: grabbing;
+}
+
+.zoom-element {
+  position: relative;
+  display: inline-block;
+  transform-origin: 0 0;
+  transition: none;
+}
+
+.map-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.shape-overlay {
+  position: absolute;
+  background: rgba(33, 150, 243, 0.15);
+  border: 2px solid rgba(33, 150, 243, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.shape-overlay:hover {
+  background: rgba(33, 150, 243, 0.3);
+  border-color: rgba(33, 150, 243, 0.8);
+}
+
+.shape-overlay.selected {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: #4caf50;
+  border-width: 3px;
+}
+
+/* Label anchor: same position/size as shape, but overflow visible */
+.shape-label-anchor {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.shape-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #1565c0;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.shape-label.selected {
+  color: #2e7d32;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.loading-state,
+.error-state {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.error-state {
+  color: #d32f2f;
+}
+
+.reset-btn {
+  align-self: flex-end;
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.reset-btn:hover {
+  background: #f5f5f5;
+}
+
+@media (max-width: 600px) {
+  .map-container {
+    height: 250px;
+  }
+
+  .shape-label {
+    font-size: 8px;
+  }
+}

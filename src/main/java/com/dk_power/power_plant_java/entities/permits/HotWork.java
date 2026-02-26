@@ -40,9 +40,13 @@ public class HotWork extends BasePermitEntity {
             return new HotWorkMeasures();
         }
         try {
-            return mapper.readValue(measuresJson, HotWorkMeasures.class);
+            String json = measuresJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, HotWorkMeasures.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize measuresJson", e);
+            return new HotWorkMeasures();
         }
     }
 

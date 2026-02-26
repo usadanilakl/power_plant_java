@@ -35,7 +35,7 @@ public class WorkRequestExpiryService {
     @Scheduled(fixedDelay = 3600000, initialDelay = 60000) // every hour, 1 min initial delay
     @Transactional
     public void expireOverdueWorkRequests() {
-        if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) return;
+        if (!syncConfig.isHubMode()) return;
 
         List<WorkRequest> activeWrs = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
         LocalDate today = LocalDate.now(ZoneId.of("America/Chicago"));

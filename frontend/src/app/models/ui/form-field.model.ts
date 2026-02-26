@@ -27,6 +27,7 @@ export interface FormField {
     | 'equipment-list-manager'
     | 'value-select'
     | 'multi-value-select'
+    | 'work-area-select'
     | 'zero-energy-phrase-builder';
   validators?: ValidatorFn[];
   options?: Option[];
@@ -127,6 +128,7 @@ export interface RfFormField {
     | 'equipment-shape-drawer'
     | 'equipment-list-manager'
     | 'zero-energy-phrase-builder'
+    | 'work-area-select'
     | 'comment'
     | 'hidden';
   validators?: ValidatorFn[];

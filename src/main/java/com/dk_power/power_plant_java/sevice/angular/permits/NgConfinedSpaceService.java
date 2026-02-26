@@ -77,6 +77,11 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
         return confinedSpaceMapper.convertToDto(save(confinedSpace1));
     }
 
+    @Override
+    public List<ConfinedSpaceDto> getAllDtos() {
+        return getAll().stream().map(confinedSpaceMapper::convertToDto).toList();
+    }
+
     public List<ConfinedSpaceDto> saveAll(List<ConfinedSpaceDto> permits) {
         return permits.stream().map(confinedSpaceMapper::convertToEntity).map(confinedSpaceRepo::save).map(confinedSpaceMapper::convertToDto).toList();
     }

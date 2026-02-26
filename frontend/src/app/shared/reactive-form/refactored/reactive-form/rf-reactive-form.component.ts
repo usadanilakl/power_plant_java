@@ -19,6 +19,8 @@ import { RfValueSelectComponent } from '../../../../features/values/refactored/c
 import { RfMultiValueSelectComponent } from '../../../../features/values/refactored/components/rf-multi-value-select/rf-multi-value-select.component';
 import { FileInputComponent } from '../input-fields/file-input/file-input.component';
 import { CommentInputComponent } from '../input-fields/comment-input/comment-input.component';
+import { WorkAreaSelectComponent } from '../../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
+import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
@@ -45,6 +47,7 @@ import { GuideDirective } from '../../../guide/guide.directive';
     RfMultiValueSelectComponent,
     FileInputComponent,
     CommentInputComponent,
+    WorkAreaSelectComponent,
     GuideDirective,
   ],
   templateUrl: './rf-reactive-form.component.html',
@@ -232,7 +235,7 @@ export class RfReactiveFormComponent {
       fieldList.forEach((field) => {
         const fieldPath = parentPath ? `${parentPath}.${field.name}` : field.name;
 
-        if (field.type === 'select' || field.type === 'value-select' || field.type === 'zero-energy-phrase-builder') {
+        if (field.type === 'select' || field.type === 'value-select' || field.type === 'work-area-select' || field.type === 'zero-energy-phrase-builder') {
           const value = this.formBuilderService.getNestedValue(entity, fieldPath);
           if (value && typeof value === 'object' && value !== null && value.id) {
             // Extract ID from nested object for select fields
@@ -364,5 +367,39 @@ export class RfReactiveFormComponent {
   // Handle file selection from file input component
   onFileSelected(event: { file: File; nameWithoutExtension: string }): void {
     this.fileSelected.emit(event);
+  }
+
+  /**
+   * Handle work area selection - auto-apply constant hazards/measures to form controls.
+   * Applies SafeWork hazards, HotWork measures, and ConfinedSpace hazards.
+   */
+  onWorkAreaSelected(workArea: WorkAreaDto | null): void {
+    if (!workArea) return;
+
+    if (workArea.constantHazards) {
+      this.applyConstantValues(workArea.constantHazards, 'hazards');
+    }
+    if (workArea.constantHotWorkMeasures) {
+      this.applyConstantValues(workArea.constantHotWorkMeasures, 'measures');
+    }
+    if (workArea.constantConfinedSpaceHazards) {
+      this.applyConstantValues(workArea.constantConfinedSpaceHazards, 'hazards');
+    }
+  }
+
+  private applyConstantValues(source: any, formGroupName: string): void {
+    const patch: { [key: string]: any } = {};
+    Object.entries(source).forEach(([key, value]) => {
+      if (typeof value === 'boolean' && value) {
+        const control = this.form.get(`${formGroupName}.${key}`);
+        if (control) {
+          patch[key] = true;
+        }
+      }
+    });
+    const group = this.form.get(formGroupName);
+    if (group && Object.keys(patch).length > 0) {
+      group.patchValue(patch);
+    }
   }
 }

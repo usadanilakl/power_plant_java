@@ -285,6 +285,87 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
   },
 
   /**
+   * Work Area Editor (Dev Mode)
+   * Full editing: draw, move, resize, delete work area shapes on plant map
+   */
+  WORK_AREA_EDITOR: {
+    canPan: true,
+    canZoom: true,
+    canSelectShapes: true,
+    canMultiSelect: false,
+    canDrawShapes: true,
+    canEditShapes: true,
+    canDeleteShapes: true,
+    canDragShapes: true,
+    canResizeShapes: true,
+    canRotateShapes: false,
+    drawingMode: 'multiple',
+    allowedShapeTypes: ['rectangle'],
+    showToolbar: true,
+    toolbarPosition: 'top',
+    enabledTools: ['select', 'draw-rectangle', 'delete', 'zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: false,
+    showContextMenu: true,
+    contextMenuActions: ['duplicate', 'delete'],
+    autoDeselectOnEmptyClick: true,
+    showResizeHandles: true,
+    showRotationHandle: false,
+    enforceAspectRatio: false,
+  },
+
+  /**
+   * Work Area Selector (Operator Mode)
+   * Select only: click shapes to select work areas for permits
+   */
+  WORK_AREA_SELECTOR: {
+    canPan: true,
+    canZoom: true,
+    canSelectShapes: true,
+    canMultiSelect: false,
+    canDrawShapes: false,
+    canEditShapes: false,
+    canDeleteShapes: false,
+    canDragShapes: false,
+    canResizeShapes: false,
+    canRotateShapes: false,
+    showToolbar: true,
+    toolbarPosition: 'top',
+    enabledTools: ['zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: false,
+    showContextMenu: false,
+    autoDeselectOnEmptyClick: true,
+    showResizeHandles: false,
+    showRotationHandle: false,
+    enforceAspectRatio: false,
+  },
+
+  /**
+   * Work Area Overview
+   * View with hover: see active permit counts per area shape
+   */
+  WORK_AREA_OVERVIEW: {
+    canPan: true,
+    canZoom: true,
+    canSelectShapes: true,
+    canMultiSelect: false,
+    canDrawShapes: false,
+    canEditShapes: false,
+    canDeleteShapes: false,
+    canDragShapes: false,
+    canResizeShapes: false,
+    canRotateShapes: false,
+    showToolbar: true,
+    toolbarPosition: 'top',
+    enabledTools: ['zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: false,
+    showContextMenu: false,
+    autoDeselectOnEmptyClick: true,
+    showResizeHandles: false,
+    showRotationHandle: false,
+    enforceAspectRatio: false,
+  },
+
+  /**
    * View Only Context
    * Pure viewing: pan and zoom only, no interaction with shapes
    */

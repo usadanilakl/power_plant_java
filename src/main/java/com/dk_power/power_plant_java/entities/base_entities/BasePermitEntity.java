@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.base_entities;
 
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.enums.Status;
@@ -51,6 +52,10 @@ public class BasePermitEntity extends BaseAuditEntity {
     private Value permitStatus;
     private Boolean temp;
     private String redTagNum;
+
+    @ManyToOne
+    @JoinColumn(name = "work_area_id")
+    private WorkArea workArea;
 
 }
 

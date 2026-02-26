@@ -13,6 +13,7 @@ import { FormInputComponent } from "../../input-fields/form-input/form-input.com
 import { FormArrayInputComponent } from "../../input-fields/form-array-input/form-array-input.component";
 import { FileInputComponent } from "../../input-fields/file-input/file-input.component";
 import { SignatureInputComponent } from "../../input-fields/signature-input/signature-input.component";
+import { WorkAreaMapSelectComponent } from "../work-area-map-select/work-area-map-select.component";
 
 @Component({
   selector: 'app-reactive-form',
@@ -28,7 +29,8 @@ import { SignatureInputComponent } from "../../input-fields/signature-input/sign
     FormInputComponent,
     FormArrayInputComponent,
     FileInputComponent,
-    SignatureInputComponent
+    SignatureInputComponent,
+    WorkAreaMapSelectComponent,
 ],
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.css'

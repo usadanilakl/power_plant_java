@@ -4,8 +4,10 @@ import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -18,6 +20,8 @@ public class WorkRequestMapper implements BaseMapper {
     private final WorkRequestRepo workRequestRepo;
     private final JhaRepo jhaRepo;
     private final PermitAttachmentRepo permitAttachmentRepo;
+    private final WorkAreaMapper workAreaMapper;
+    private final WorkAreaRepo workAreaRepo;
 
     public WorkRequestDto convertToDto(WorkRequest entity) {
         if (entity == null) return null;
@@ -140,6 +144,10 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setHasJha(!jhaRepo.findByWorkRequestId(entity.getId()).isEmpty());
         dto.setAttachmentCount(permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", entity.getId()).size());
 
+        if (entity.getWorkArea() != null) {
+            dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
+        }
+
         return dto;
     }
 
@@ -166,6 +174,16 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
         entity.setSharepointId(dto.getSharepointId());
+
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+            WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);
+            entity.setWorkArea(workArea);
+            if (workArea != null) {
+                entity.setLocation(workArea.getName());
+            }
+        } else {
+            entity.setWorkArea(null);
+        }
 
         return entity;
     }

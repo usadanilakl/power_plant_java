@@ -42,9 +42,13 @@ public class SafeWork extends BasePermitEntity {
             return new SwHazards();
         }
         try {
-            return mapper.readValue(hazardsJson, SwHazards.class);
+            String json = hazardsJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, SwHazards.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize hazardsJson", e);
+            return new SwHazards();
         }
     }
 
@@ -61,9 +65,13 @@ public class SafeWork extends BasePermitEntity {
             return new SwPermits();
         }
         try {
-            return mapper.readValue(permitsJson, SwPermits.class);
+            String json = permitsJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, SwPermits.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize permitsJson", e);
+            return new SwPermits();
         }
     }
 
@@ -80,9 +88,13 @@ public class SafeWork extends BasePermitEntity {
             return new SwPpe();
         }
         try {
-            return mapper.readValue(ppeJson, SwPpe.class);
+            String json = ppeJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, SwPpe.class);
         } catch (Exception e) {
-            throw new RuntimeException("Cannot deserialize ppeJson", e);
+            return new SwPpe();
         }
     }
 

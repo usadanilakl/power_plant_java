@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.base_dtos;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.permits.WorkAreaDto;
 import com.dk_power.power_plant_java.dto.users.UserDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -39,4 +40,5 @@ public class BasePermitDto extends BaseDto {
     private ValueDto permitStatus;
     private Boolean temp;
     private String redTagNum;
+    private WorkAreaDto workArea;
 }

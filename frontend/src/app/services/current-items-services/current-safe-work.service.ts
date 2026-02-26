@@ -3,7 +3,7 @@ import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { SafeWorkService } from "../permits/safe-work.service";
 import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { SafeWorkDto } from "../../models/permits/safe-work.model";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { PrintableFormService } from "../forms/printable-form.service";
 
@@ -25,6 +25,7 @@ export class CurrentSafeWorkService {
     paperForm$ = this.paperFormSubject.asObservable();
   
     isPaperViewActive = signal<boolean>(false);
+    selectedItem = toSignal(this.selectedSafeWorkSubject.asObservable(), { initialValue: new SafeWorkDto() });
 
     constructor() {
         this.loadSafeWorks();

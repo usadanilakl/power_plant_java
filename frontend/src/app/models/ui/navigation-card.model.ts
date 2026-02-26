@@ -83,6 +83,8 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Safe Works', description: 'Safe work permits', icon: 'health_and_safety', route: '/permit-builder/safe-works', color: '#27ae60' },
       { title: 'Hot Works', description: 'Hot work permits', icon: 'local_fire_department', route: '/permit-builder/hot-works', color: '#e74c3c' },
       { title: 'Confined Spaces', description: 'Confined space entry permits', icon: 'sensor_door', route: '/permit-builder/confined-spaces', color: '#8e44ad' },
+      { title: 'Work Areas', description: 'Manage plant work areas and constant hazards', icon: 'map', route: '/permit-builder/work-areas', color: '#16a085' },
+      { title: 'Work Map', description: 'Interactive plant map with work area overview', icon: 'place', route: '/work-area-map', color: '#2980b9' },
       { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }
     ]
   },

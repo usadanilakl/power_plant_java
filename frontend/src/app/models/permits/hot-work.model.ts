@@ -122,9 +122,9 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
 
   static toFormFields(
     dto: HotWorkDto,
-    locationOptions: Option[],
-    fields: HotWorkFieldName[] = [
-      'date', 'location', 'workScope', 'foreman', 'fireWatch',
+    locationOptions: Option[] = [],
+    fields: (HotWorkFieldName | 'workArea')[] = [
+      'workArea', 'date', 'workScope', 'foreman', 'fireWatch',
       'meterModel', 'meterNum', 'specialInstructions',
       ...Object.keys(HotWorkDto.getMeasureFields(null)) as HotWorkFieldName[],
     ]
@@ -132,6 +132,12 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     const measureFields = HotWorkDto.getMeasureFields(dto.measures);
     const allFields: { [key: string]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      workArea: {
+        name: 'workArea',
+        label: 'Work Area',
+        type: 'work-area-select',
+        initialValue: (dto as any).workArea?.id ?? null,
+      },
       date: { 
         name: 'date', 
         label: 'Date', 

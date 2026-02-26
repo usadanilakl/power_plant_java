@@ -13,6 +13,9 @@ import { SafeWorkSideMenuComponent } from '../features/permit-builder/safe-work/
 import { HotWorkSideMenuComponent } from '../features/permit-builder/hot-work/hot-work-side-menu/hot-work-side-menu.component';
 import { ConfinedSpaceSideMenuComponent } from '../features/permit-builder/confined-space/confined-space-side-menu/confined-space-side-menu.component';
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
+import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
+import { WorkAreaPageComponent } from '../features/permit-builder/work-area/work-area-page.component';
+import { WorkAreaMapPageComponent } from '../pages/work-area-map-page/work-area-map-page.component';
 
 export const PERMIT_BUILDER_ROUTES: Routes = [
   {
@@ -26,7 +29,11 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         data: { leftMenu: JobLogLeftMenuComponent }
       },
       { path: 'work-requests', component: RfWorkRequestPageComponent },
-      { path: 'jhas', component: RfJhaPageComponent },
+      {
+        path: 'jhas',
+        component: RfJhaPageComponent,
+        data: { leftMenu: RfJhaSideMenuComponent }
+      },
       {
         path: 'daily-packages',
         component: DailyPermitPackageComponent,
@@ -56,7 +63,12 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         path: 'confined-spaces',
         component: ConfinedSpaceComponent,
         data: { leftMenu: ConfinedSpaceSideMenuComponent }
-      }
+      },
+      { path: 'work-areas', component: WorkAreaPageComponent },
     ]
+  },
+  {
+    path: 'work-area-map',
+    component: WorkAreaMapPageComponent
   }
 ];
