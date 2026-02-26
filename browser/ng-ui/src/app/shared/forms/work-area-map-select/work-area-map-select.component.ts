@@ -183,6 +183,20 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     };
   }
 
+  getLabelStyle(shape: ParsedShape): Record<string, string> {
+    const leftPct = (shape.x / shape.originalWidth) * 100;
+    const topPct = (shape.y / shape.originalHeight) * 100;
+    const widthPct = (shape.width / shape.originalWidth) * 100;
+    const heightPct = (shape.height / shape.originalHeight) * 100;
+    // Center the label anchor on the shape, allow up to 2.5x shape width
+    const maxWidthPct = widthPct * 2.5;
+    return {
+      left: `${leftPct + widthPct / 2}%`,
+      top: `${topPct + heightPct / 2}%`,
+      'max-width': `${maxWidthPct}%`,
+    };
+  }
+
   getDisplayName(shape: ParsedShape): string {
     return shape.areaNames.length === 1 ? shape.areaNames[0] : shape.areaNames.join(' / ');
   }

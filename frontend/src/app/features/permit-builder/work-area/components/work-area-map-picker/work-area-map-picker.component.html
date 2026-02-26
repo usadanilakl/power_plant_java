@@ -6,23 +6,23 @@
   } @else {
     @if (selectedShape()) {
       <div class="selected-panel">
-        @if (selectedShape()!.areaNames.length > 1) {
+        @if (selectedShape()!.workAreas.length > 1) {
           <div class="selected-panel-multi">
             <span class="selected-panel-prompt">Select work area:</span>
-            @for (name of selectedShape()!.areaNames; track name) {
+            @for (wa of selectedShape()!.workAreas; track wa.id) {
               <button type="button"
                 class="area-option-btn"
-                [class.active]="selectedAreaName() === name"
-                (click)="setArea(name)">
-                {{ name }}
+                [class.active]="isAreaSelected(wa)"
+                (click)="setWorkArea(wa)">
+                {{ wa.name }}
               </button>
             }
           </div>
-        } @else {
-          <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
+        } @else if (selectedShape()!.workAreas.length === 1) {
+          <div class="selected-panel-name">{{ selectedShape()!.workAreas[0].name }}</div>
         }
-        @if (selectedShape()!.entry.label) {
-          <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
+        @if (selectedShape()!.dto.label) {
+          <div class="selected-panel-label">{{ selectedShape()!.dto.label }}</div>
         }
       </div>
     }
@@ -34,20 +34,16 @@
       (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)"
       (mouseup)="onMouseUp()"
-      (mouseleave)="onMouseUp()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)">
+      (mouseleave)="onMouseUp()">
 
       <div #zoomElement class="zoom-element">
         <img
-          #mapImage
           [src]="imageUrl()"
           alt="Plant Map"
           class="map-image"
           draggable="false" />
 
-        @for (shape of shapes(); track shape.entry.id) {
+        @for (shape of shapes(); track shape.dto.id) {
           <div
             class="shape-overlay"
             [class.selected]="isSelected(shape)"

@@ -200,6 +200,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         label: 'Work Area',
         type: 'work-area-select',
         initialValue: (dto as any).workArea?.id ?? null,
+        context: { viewMode: 'map' },
       },
       date: {
         name: 'date',

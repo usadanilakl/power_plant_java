@@ -55,10 +55,12 @@ export class ConfinedSpacePaperFormComponent {
         const fieldWithOptions = fieldsMap.get((container.content as FormField).name);
         if (fieldWithOptions) {
           const newContainer = new FormContainerDto(container);
+          const fieldName = (container.content as FormField).name;
           newContainer.content = {
             ...(container.content as FormField),
             ...fieldWithOptions,
             type: (container.content as FormField).type,
+            ...(fieldName === 'workArea' ? { context: { viewMode: 'both' } } : {}),
           };
           return newContainer;
         }

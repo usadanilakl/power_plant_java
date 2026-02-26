@@ -71,8 +71,8 @@ export interface FormField {
     value: any;
   };
 
-  // Context for equipment-list-manager
-  context?: EquipmentListManagerContext;
+  // Context for equipment-list-manager and other field types
+  context?: EquipmentListManagerContext & { [key: string]: any };
 
   // Guide system support
   guideId?: string;         // Guide identifier in format "guideId:stepId"

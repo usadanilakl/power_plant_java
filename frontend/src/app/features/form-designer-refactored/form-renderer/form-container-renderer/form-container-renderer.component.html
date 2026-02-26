@@ -70,6 +70,7 @@
       @case ('work-area-select') {
         <app-work-area-select
           [formControl]="getFormControl(asFormField(container().content).name!)"
+          [viewMode]="'both'"
           [style]="asFormField(container().content).style">
         </app-work-area-select>
       }

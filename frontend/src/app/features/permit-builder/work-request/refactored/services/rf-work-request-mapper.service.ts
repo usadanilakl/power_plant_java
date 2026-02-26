@@ -135,6 +135,7 @@ export class RfWorkRequestMapperService {
       label: 'Work Area',
       type: 'work-area-select',
       initialValue: (entity as any).workArea?.id ?? null,
+      context: { viewMode: 'map' },
     };
 
     const allFields: { [key in WorkRequestFieldName]?: RfFormField } = {

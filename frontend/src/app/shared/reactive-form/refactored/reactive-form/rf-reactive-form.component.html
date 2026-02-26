@@ -140,6 +140,7 @@
         } @case('work-area-select'){
         <app-work-area-select
           [label]="field.label"
+          [viewMode]="field.context?.viewMode ?? 'dropdown'"
           [formControl]="getFormControl(field.name)"
           (workAreaSelected)="onWorkAreaSelected($event)"
         >
