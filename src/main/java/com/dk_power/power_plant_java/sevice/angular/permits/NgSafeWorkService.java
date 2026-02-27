@@ -19,6 +19,7 @@ import java.util.List;
 public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, SafeWorkRepo, SafeWorkMapper> {
     private final SafeWorkRepo safeWorkRepo;
     private final SafeWorkMapper safeWorkMapper;
+    private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     @Override
@@ -64,7 +65,12 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
 
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {
         SafeWork safeWork = safeWorkMapper.convertToEntity(safeWorkDto);
-        return safeWorkMapper.convertToDto(safeWorkRepo.save(safeWork));
+        SafeWork saved = safeWorkRepo.save(safeWork);
+        if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+            saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+            saved = safeWorkRepo.save(saved);
+        }
+        return safeWorkMapper.convertToDto(saved);
     }
 
     @Override

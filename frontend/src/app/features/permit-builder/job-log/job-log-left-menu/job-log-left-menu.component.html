@@ -1,1 +1,22 @@
-<p>job-log-left-menu works!</p>
+<div class="job-menu-container">
+  <div class="menu-header">
+    <h2>Job Logs</h2>
+    <div class="header-actions">
+      <button class="icon-button" (click)="createJob()" title="New Job">+</button>
+      <button class="icon-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">&#8635;</button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading jobs...</span>
+    </div>
+  } @else {
+    <app-shared-table
+      [items]="jobLogs()"
+      [columns]="columns"
+      [clickCallback]="onItemClick.bind(this)"
+    ></app-shared-table>
+  }
+</div>

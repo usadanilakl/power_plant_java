@@ -73,6 +73,9 @@ public class EntityTableRegistry {
 
         // Permits - additional
         Map.entry("JobLog", "job_log"),
+        Map.entry("EnergizedWorkPermit", "energized_work_permit"),
+        Map.entry("ExcavationPermit", "excavation_permit"),
+        Map.entry("VentingPermit", "venting_permit"),
 
         // Forms
         Map.entry("PrintableForm", "printable_form"),
@@ -116,6 +119,9 @@ public class EntityTableRegistry {
         "ConfinedSpace",
         "WorkRequest",
         "Jha",
+        "EnergizedWorkPermit",
+        "ExcavationPermit",
+        "VentingPermit",
         "DailyPermitPackage",
         "JobLog",
         "FireImpairment",

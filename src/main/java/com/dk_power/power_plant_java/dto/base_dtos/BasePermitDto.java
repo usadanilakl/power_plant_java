@@ -40,5 +40,6 @@ public class BasePermitDto extends BaseDto {
     private ValueDto permitStatus;
     private Boolean temp;
     private String redTagNum;
+    private String permitNumber;
     private WorkAreaDto workArea;
 }

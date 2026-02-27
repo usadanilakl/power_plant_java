@@ -151,3 +151,78 @@ input[type="text"] {
   height: auto !important;
   overflow: visible !important;
 }
+
+.permit-number-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+}
+
+.permit-number-display label {
+  font-weight: bold;
+  color: #555;
+}
+
+.permit-number-display span {
+  font-family: monospace;
+  font-weight: bold;
+  color: #0056b3;
+}
+
+.modifications-section {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background-color: #fdfdfe;
+}
+
+.modifications-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: #495057;
+  user-select: none;
+}
+
+.modifications-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modification-entry {
+  display: flex;
+  gap: 12px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border-left: 3px solid #007bff;
+  background-color: #f8f9fa;
+  border-radius: 0 4px 4px 0;
+  align-items: baseline;
+}
+
+.mod-timestamp {
+  color: #6c757d;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.mod-action {
+  font-weight: 600;
+  color: #343a40;
+  white-space: nowrap;
+}
+
+.mod-description {
+  color: #495057;
+  flex: 1;
+}
+
+.mod-user {
+  color: #6c757d;
+  font-style: italic;
+  white-space: nowrap;
+}

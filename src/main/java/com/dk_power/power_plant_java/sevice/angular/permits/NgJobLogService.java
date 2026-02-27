@@ -1,15 +1,23 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
+import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.JobLogDto;
+import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.JobLog;
+import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.JobLogMapper;
 import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -19,6 +27,9 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final EntityManager entityManager;
     private final JobLogRepo jobLogRepo;
     private final JobLogMapper jobLogMapper;
+    private final WorkRequestRepo workRequestRepo;
+    private final DailyPermitPackageMapper dailyPermitPackageMapper;
+    private final PermitNumberGenerator permitNumberGenerator;
 
     @Override
     public JobLogRepo getRepo() {
@@ -53,5 +64,61 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     @Override
     public Class<JobLog> getEntityClass() {
         return JobLog.class;
+    }
+
+    public JobLogDto createJob(JobLogDto dto) {
+        JobLog entity = jobLogMapper.convertToEntity(dto);
+        JobLog saved = jobLogRepo.save(entity);
+        if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+            saved.setPermitNumber(permitNumberGenerator.generate(saved.getStartDate()));
+            saved = jobLogRepo.save(saved);
+        }
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto createJobFromWorkRequest(String workRequestId) {
+        WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId)).orElse(null);
+        if (wr == null) throw new RuntimeException("WorkRequest not found: " + workRequestId);
+
+        JobLog job = new JobLog();
+        job.setName(wr.getWorkScope());
+        job.setWorkScope(wr.getWorkScope());
+        job.setCompany(wr.getCompany());
+        job.setForeman(wr.getRequestedBy());
+        job.setLocation(wr.getLocation());
+        job.setStartDate(wr.getDateOfWorkToBePerformed());
+        job.setOriginatingWorkRequest(wr);
+        if (wr.getWorkArea() != null) job.setWorkArea(wr.getWorkArea());
+
+        JobLog saved = jobLogRepo.save(job);
+        saved.setPermitNumber(permitNumberGenerator.generate(saved.getStartDate()));
+        saved = jobLogRepo.save(saved);
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto addDailyPackage(String jobId, DailyPermitPackageDto packageDto) {
+        JobLog job = getEntityById(jobId);
+        DailyPermitPackage pkg = dailyPermitPackageMapper.convertToEntity(packageDto);
+        job.getPackages().add(pkg);
+        JobLog saved = jobLogRepo.save(job);
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto updateJob(String id, JobLogDto dto) {
+        JobLog entity = jobLogMapper.convertToEntity(dto);
+        entity.setId(Long.parseLong(id));
+        JobLog saved = jobLogRepo.save(entity);
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public List<JobLogDto> getAllDtos() {
+        return jobLogRepo.findAll().stream()
+                .map(jobLogMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    public JobLogDto getDtoById(String id) {
+        JobLog entity = getEntityById(id);
+        return jobLogMapper.convertToDto(entity);
     }
 }

@@ -22,6 +22,7 @@ import static org.apache.poi.xwpf.usermodel.XWPFRun.FontCharRange.cs;
 public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, ConfinedSpaceDto, ConfinedSpaceRepo, ConfinedSpaceMapper> {
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final ConfinedSpaceMapper confinedSpaceMapper;
+    private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
 
@@ -68,7 +69,12 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
 
     public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {
         ConfinedSpace confinedSpace = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
-        return confinedSpaceMapper.convertToDto(confinedSpaceRepo.save(confinedSpace));
+        ConfinedSpace saved = confinedSpaceRepo.save(confinedSpace);
+        if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+            saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+            saved = confinedSpaceRepo.save(saved);
+        }
+        return confinedSpaceMapper.convertToDto(saved);
     }
 
     public ConfinedSpaceDto updateConfinedSpaceRequest(String id, ConfinedSpaceDto confinedSpaceDto) {

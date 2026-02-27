@@ -1,1 +1,72 @@
-<p>job-log works!</p>
+<div class="job-log-container">
+  @if(currentJob().id !== 0) {
+    <div class="job-header">
+      @if(currentJob().permitNumber) {
+        <span class="job-number">{{ currentJob().permitNumber }}</span>
+      }
+      <span class="job-status">{{ currentJob().jobStatus?.name ?? 'No Status' }}</span>
+    </div>
+
+    <div class="job-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" [ngModel]="currentJob().name" (ngModelChange)="onFieldChange('name', $event)">
+        </div>
+        <div class="form-field">
+          <label>Company</label>
+          <input type="text" [ngModel]="currentJob().company" (ngModelChange)="onFieldChange('company', $event)">
+        </div>
+        <div class="form-field">
+          <label>Foreman</label>
+          <input type="text" [ngModel]="currentJob().foreman" (ngModelChange)="onFieldChange('foreman', $event)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Location</label>
+          <input type="text" [ngModel]="currentJob().location" (ngModelChange)="onFieldChange('location', $event)">
+        </div>
+        <div class="form-field">
+          <label>Start Date</label>
+          <input type="date" [ngModel]="currentJob().startDate" (ngModelChange)="onFieldChange('startDate', $event)">
+        </div>
+        <div class="form-field">
+          <label>End Date</label>
+          <input type="date" [ngModel]="currentJob().endDate" (ngModelChange)="onFieldChange('endDate', $event)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field full-width">
+          <label>Work Scope</label>
+          <textarea [ngModel]="currentJob().workScope" (ngModelChange)="onFieldChange('workScope', $event)" rows="3"></textarea>
+        </div>
+      </div>
+    </div>
+
+    @if(currentJob().originatingWorkRequest) {
+      <div class="originating-wr">
+        <label>Originating Work Request:</label>
+        <span>{{ currentJob().originatingWorkRequest?.name }}</span>
+      </div>
+    }
+
+    <div class="packages-section">
+      <h3>Daily Permit Packages ({{ currentJob().packages.length }})</h3>
+      @if(currentJob().packages.length > 0) {
+        <app-shared-table
+          [items]="currentJob().packages"
+          [columns]="packageColumns"
+          [clickCallback]="onPackageClick.bind(this)"
+        ></app-shared-table>
+      } @else {
+        <p class="empty-message">No packages assigned to this job yet.</p>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <p>Select a job from the menu or create a new one.</p>
+      <button class="create-button" (click)="createJob()">Create New Job</button>
+    </div>
+  }
+</div>

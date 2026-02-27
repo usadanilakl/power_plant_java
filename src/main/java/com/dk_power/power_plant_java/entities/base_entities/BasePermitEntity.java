@@ -52,6 +52,7 @@ public class BasePermitEntity extends BaseAuditEntity {
     private Value permitStatus;
     private Boolean temp;
     private String redTagNum;
+    private String permitNumber;
 
     @ManyToOne
     @JoinColumn(name = "work_area_id")

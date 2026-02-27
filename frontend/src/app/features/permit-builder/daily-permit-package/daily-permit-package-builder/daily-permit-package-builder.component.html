@@ -34,6 +34,12 @@
                 placeholder="Enter person's name">
         </div>
       </div>
+      @if(currentPackage().permitNumber){
+        <div class="permit-number-display">
+          <label>Permit #:</label>
+          <span>{{ currentPackage().permitNumber }}</span>
+        </div>
+      }
       <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name">Submit Permit Package</button>
       <button class="submit-button" (click)="reusePermitsPopupOpen()">Get Permits From Another Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
@@ -153,6 +159,29 @@
       </app-item-carousel>
     }
   </div>
+
+  @if(currentPackage().modifications && currentPackage().modifications.length > 0){
+    <div class="modifications-section">
+      <h3 (click)="isModificationsVisible = !isModificationsVisible" style="cursor: pointer;">
+        Modification Log ({{ currentPackage().modifications.length }})
+        {{ isModificationsVisible ? '▼' : '▶' }}
+      </h3>
+      @if(isModificationsVisible){
+        <div class="modifications-list">
+          @for(mod of currentPackage().modifications; track $index){
+            <div class="modification-entry">
+              <span class="mod-timestamp">{{ mod.timestamp }}</span>
+              <span class="mod-action">{{ mod.action }}</span>
+              <span class="mod-description">{{ mod.description }}</span>
+              @if(mod.performedBy){
+                <span class="mod-user">by {{ mod.performedBy }}</span>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
 
 </div>
 

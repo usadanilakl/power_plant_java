@@ -5,18 +5,15 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
-import com.dk_power.power_plant_java.repository.permits.ConfinedSpaceRepo;
-import com.dk_power.power_plant_java.repository.permits.HotWorkRepo;
-import com.dk_power.power_plant_java.repository.permits.SafeWorkRepo;
-import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
+import com.dk_power.power_plant_java.repository.permits.*;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Component
@@ -27,6 +24,10 @@ public class DailyPermitPackageMapper implements BaseMapper {
     private final ConfinedSpaceMapper confinedSpaceMapper;
     private final LotoMapper lotoMapper;
     private final WorkRequestMapper workRequestMapper;
+    private final EnergizedWorkPermitMapper energizedWorkPermitMapper;
+    private final ExcavationPermitMapper excavationPermitMapper;
+    private final VentingPermitMapper ventingPermitMapper;
+    private final ValueMapper valueMapper;
     private final ModelMapper modelMapper;
 
     private final SafeWorkRepo safeWorkRepo;
@@ -34,6 +35,9 @@ public class DailyPermitPackageMapper implements BaseMapper {
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final LotoRepo lotoRepo;
     private final WorkRequestRepo workRequestRepo;
+    private final EnergizedWorkPermitRepo energizedWorkPermitRepo;
+    private final ExcavationPermitRepo excavationPermitRepo;
+    private final VentingPermitRepo ventingPermitRepo;
 
     public DailyPermitPackageDto convertToDto(DailyPermitPackage entity) {
         if (entity == null) return null;
@@ -87,6 +91,39 @@ public class DailyPermitPackageMapper implements BaseMapper {
                     .toList()
             );
         }
+
+        if (entity.getEnergizedWorkPermits() != null && !entity.getEnergizedWorkPermits().isEmpty()) {
+            dto.setEnergizedWorkPermits(
+                entity.getEnergizedWorkPermits()
+                    .stream()
+                    .map(energizedWorkPermitMapper::convertToDto)
+                    .toList()
+            );
+        }
+
+        if (entity.getExcavationPermits() != null && !entity.getExcavationPermits().isEmpty()) {
+            dto.setExcavationPermits(
+                entity.getExcavationPermits()
+                    .stream()
+                    .map(excavationPermitMapper::convertToDto)
+                    .toList()
+            );
+        }
+
+        if (entity.getVentingPermits() != null && !entity.getVentingPermits().isEmpty()) {
+            dto.setVentingPermits(
+                entity.getVentingPermits()
+                    .stream()
+                    .map(ventingPermitMapper::convertToDto)
+                    .toList()
+            );
+        }
+
+        dto.setPermitNumber(entity.getPermitNumber());
+        if (entity.getPackageStatus() != null) {
+            dto.setPackageStatus(valueMapper.convertToDto(entity.getPackageStatus()));
+        }
+        dto.setModifications(entity.getModifications());
 
         dto.setDate(entity.getDate());
         dto.setTime(entity.getTime());
@@ -179,6 +216,42 @@ public class DailyPermitPackageMapper implements BaseMapper {
             );
         }
 
+        if(dto.getEnergizedWorkPermitIds()!= null && !dto.getEnergizedWorkPermitIds().isEmpty()){
+            List<EnergizedWorkPermit> permits = energizedWorkPermitRepo.findAllById(dto.getEnergizedWorkPermitIds());
+            entity.setEnergizedWorkPermits(new HashSet<>(permits));
+        } else if (dto.getEnergizedWorkPermits() != null && !dto.getEnergizedWorkPermits().isEmpty()) {
+            entity.setEnergizedWorkPermits(
+                    dto.getEnergizedWorkPermits()
+                            .stream()
+                            .map(energizedWorkPermitMapper::convertToEntity)
+                            .collect(Collectors.toSet())
+            );
+        }
+
+        if(dto.getExcavationPermitIds()!= null && !dto.getExcavationPermitIds().isEmpty()){
+            List<ExcavationPermit> permits = excavationPermitRepo.findAllById(dto.getExcavationPermitIds());
+            entity.setExcavationPermits(new HashSet<>(permits));
+        } else if (dto.getExcavationPermits() != null && !dto.getExcavationPermits().isEmpty()) {
+            entity.setExcavationPermits(
+                    dto.getExcavationPermits()
+                            .stream()
+                            .map(excavationPermitMapper::convertToEntity)
+                            .collect(Collectors.toSet())
+            );
+        }
+
+        if(dto.getVentingPermitIds()!= null && !dto.getVentingPermitIds().isEmpty()){
+            List<VentingPermit> permits = ventingPermitRepo.findAllById(dto.getVentingPermitIds());
+            entity.setVentingPermits(new HashSet<>(permits));
+        } else if (dto.getVentingPermits() != null && !dto.getVentingPermits().isEmpty()) {
+            entity.setVentingPermits(
+                    dto.getVentingPermits()
+                            .stream()
+                            .map(ventingPermitMapper::convertToEntity)
+                            .collect(Collectors.toSet())
+            );
+        }
+
         if(entity.getName() == null || entity.getName().isEmpty()) {
             String name = "No Work Scope Specified";
             if(entity.getWorkRequests() != null &&!entity.getWorkRequests().isEmpty()){
@@ -192,6 +265,9 @@ public class DailyPermitPackageMapper implements BaseMapper {
         if(dto.getTime()!=null) entity.setTime(dto.getTime());
         if(dto.getCompanyName()!=null) entity.setCompanyName(dto.getCompanyName());
         if(dto.getPersonName()!=null) entity.setPersonName(dto.getPersonName());
+        if(dto.getPermitNumber()!=null) entity.setPermitNumber(dto.getPermitNumber());
+        if(dto.getPackageStatus()!=null) entity.setPackageStatus(valueMapper.convertToEntity(dto.getPackageStatus()));
+        if(dto.getModifications()!=null && !dto.getModifications().isEmpty()) entity.setModifications(dto.getModifications());
 
         if (entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
             WorkRequest firstWorkRequest = entity.getWorkRequests().iterator().next();

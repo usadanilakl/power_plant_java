@@ -5,9 +5,8 @@ import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
 import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
-import com.dk_power.power_plant_java.entities.permits.SafeWork;
-import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.entities.permits.*;
+import com.dk_power.power_plant_java.entities.permits.pojo.PackageModification;
 import com.dk_power.power_plant_java.mappers.permits.ConfinedSpaceMapper;
 import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
@@ -16,19 +15,21 @@ import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
+import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.sikuli.script.FindFailed;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +42,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final DailyPermitPackageMapper dailyPermitPackageMapper;
     private final RedTagAutomationService redTagAutomationService;
 
+    private final PermitNumberGenerator permitNumberGenerator;
     private final SafeWorkMapper safeWorkMapper;
     private final HotWorkMapper hotWorkMapper;
     private final ConfinedSpaceMapper confinedSpaceMapper;
@@ -91,14 +93,29 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     public DailyPermitPackageDto createDailyPermitPackage(DailyPermitPackageDto permitPackageDto) {
         DailyPermitPackage dailyPermitPackage = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
         DailyPermitPackage saved = dailyPermitPackageRepo.save(dailyPermitPackage);
+        if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+            saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+            saved = dailyPermitPackageRepo.save(saved);
+        }
         return dailyPermitPackageMapper.convertToDto(saved);
     }
 
     public DailyPermitPackageDto updateDailyPermitPackage(String id, DailyPermitPackageDto permitPackageDto) {
-        DailyPermitPackage dailyPermitPackage = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
-        dailyPermitPackage.setId(Long.parseLong(id));
-        dailyPermitPackageRepo.save(dailyPermitPackage);
-        return dailyPermitPackageMapper.convertToDto(dailyPermitPackage);
+        Long packageId = Long.parseLong(id);
+        DailyPermitPackage existing = dailyPermitPackageRepo.findById(packageId).orElse(null);
+
+        DailyPermitPackage updated = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
+        updated.setId(packageId);
+
+        if (existing != null) {
+            List<PackageModification> mods = detectChanges(existing, updated);
+            List<PackageModification> allMods = existing.getModifications();
+            allMods.addAll(mods);
+            updated.setModifications(allMods);
+        }
+
+        dailyPermitPackageRepo.save(updated);
+        return dailyPermitPackageMapper.convertToDto(updated);
     }
 
     public String buildPermits(DailyPermitPackageDto dailyPermitPackageDto) throws FindFailed, IOException, InterruptedException {
@@ -224,5 +241,154 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private DailyPermitPackage getByWorkRequestId(String workRequestId) {
         return dailyPermitPackageRepo.findByWorkRequestId(Long.parseLong(workRequestId))
                 .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found for work request: " + workRequestId));
+    }
+
+    // --- Modification Tracking ---
+
+    public void logModification(Long packageId, PackageModification mod) {
+        DailyPermitPackage pkg = dailyPermitPackageRepo.findById(packageId).orElse(null);
+        if (pkg == null) return;
+        pkg.addModification(mod);
+        dailyPermitPackageRepo.save(pkg);
+    }
+
+    public void logPermitFieldChange(Long packageId, String permitType, Long permitId,
+                                     String fieldName, String oldValue, String newValue) {
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("FIELD_CHANGED");
+        mod.setPermitType(permitType);
+        mod.setPermitId(permitId);
+        mod.setFieldName(fieldName);
+        mod.setOldValue(truncate(oldValue));
+        mod.setNewValue(truncate(newValue));
+        mod.setPerformedBy(getCurrentUsername());
+        mod.setDescription(permitType + " #" + permitId + ": " + fieldName + " changed");
+        logModification(packageId, mod);
+    }
+
+    private List<PackageModification> detectChanges(DailyPermitPackage old, DailyPermitPackage updated) {
+        List<PackageModification> mods = new ArrayList<>();
+        String user = getCurrentUsername();
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        // Field changes
+        diffField(mods, now, user, "date", old.getDate(), updated.getDate());
+        diffField(mods, now, user, "time", old.getTime(), updated.getTime());
+        diffField(mods, now, user, "companyName", old.getCompanyName(), updated.getCompanyName());
+        diffField(mods, now, user, "personName", old.getPersonName(), updated.getPersonName());
+        diffField(mods, now, user, "name", old.getName(), updated.getName());
+
+        // Status change
+        String oldStatus = old.getPackageStatus() != null ? old.getPackageStatus().getName() : null;
+        String newStatus = updated.getPackageStatus() != null ? updated.getPackageStatus().getName() : null;
+        if (!Objects.equals(oldStatus, newStatus)) {
+            PackageModification mod = new PackageModification();
+            mod.setTimestamp(now);
+            mod.setAction("STATUS_CHANGED");
+            mod.setFieldName("packageStatus");
+            mod.setOldValue(oldStatus);
+            mod.setNewValue(newStatus);
+            mod.setPerformedBy(user);
+            mod.setDescription("Package status changed from " + oldStatus + " to " + newStatus);
+            mods.add(mod);
+        }
+
+        // Permit collection changes
+        detectPermitCollectionChanges(mods, now, user, "WorkRequest",
+                getIds(old.getWorkRequests()), getIds(updated.getWorkRequests()));
+        detectPermitCollectionChanges(mods, now, user, "SafeWork",
+                getIds(old.getSafeWorks()), getIds(updated.getSafeWorks()));
+        detectPermitCollectionChanges(mods, now, user, "HotWork",
+                getIds(old.getHotWorks()), getIds(updated.getHotWorks()));
+        detectPermitCollectionChanges(mods, now, user, "ConfinedSpace",
+                getIds(old.getConfinedSpaces()), getIds(updated.getConfinedSpaces()));
+        detectPermitCollectionChanges(mods, now, user, "Loto",
+                getIds(old.getLotos()), getIds(updated.getLotos()));
+        detectPermitCollectionChanges(mods, now, user, "EnergizedWorkPermit",
+                getIds(old.getEnergizedWorkPermits()), getIds(updated.getEnergizedWorkPermits()));
+        detectPermitCollectionChanges(mods, now, user, "ExcavationPermit",
+                getIds(old.getExcavationPermits()), getIds(updated.getExcavationPermits()));
+        detectPermitCollectionChanges(mods, now, user, "VentingPermit",
+                getIds(old.getVentingPermits()), getIds(updated.getVentingPermits()));
+
+        return mods;
+    }
+
+    private void diffField(List<PackageModification> mods, String now, String user,
+                           String fieldName, String oldVal, String newVal) {
+        if (!Objects.equals(oldVal, newVal)) {
+            PackageModification mod = new PackageModification();
+            mod.setTimestamp(now);
+            mod.setAction("FIELD_CHANGED");
+            mod.setFieldName(fieldName);
+            mod.setOldValue(truncate(oldVal));
+            mod.setNewValue(truncate(newVal));
+            mod.setPerformedBy(user);
+            mod.setDescription("Package " + fieldName + " changed");
+            mods.add(mod);
+        }
+    }
+
+    private void detectPermitCollectionChanges(List<PackageModification> mods, String now, String user,
+                                                String permitType, Set<Long> oldIds, Set<Long> newIds) {
+        Set<Long> added = new HashSet<>(newIds);
+        added.removeAll(oldIds);
+        Set<Long> removed = new HashSet<>(oldIds);
+        removed.removeAll(newIds);
+
+        for (Long id : added) {
+            PackageModification mod = new PackageModification();
+            mod.setTimestamp(now);
+            mod.setAction("PERMIT_ADDED");
+            mod.setPermitType(permitType);
+            mod.setPermitId(id);
+            mod.setPerformedBy(user);
+            mod.setDescription(permitType + " #" + id + " added");
+            mods.add(mod);
+        }
+        for (Long id : removed) {
+            PackageModification mod = new PackageModification();
+            mod.setTimestamp(now);
+            mod.setAction("PERMIT_REMOVED");
+            mod.setPermitType(permitType);
+            mod.setPermitId(id);
+            mod.setPerformedBy(user);
+            mod.setDescription(permitType + " #" + id + " removed");
+            mods.add(mod);
+        }
+    }
+
+    private <T> Set<Long> getIds(Set<T> collection) {
+        if (collection == null || collection.isEmpty()) return new HashSet<>();
+        return collection.stream()
+                .map(item -> {
+                    if (item instanceof WorkRequest) return ((WorkRequest) item).getId();
+                    if (item instanceof SafeWork) return ((SafeWork) item).getId();
+                    if (item instanceof HotWork) return ((HotWork) item).getId();
+                    if (item instanceof ConfinedSpace) return ((ConfinedSpace) item).getId();
+                    if (item instanceof Loto) return ((Loto) item).getId();
+                    if (item instanceof EnergizedWorkPermit) return ((EnergizedWorkPermit) item).getId();
+                    if (item instanceof ExcavationPermit) return ((ExcavationPermit) item).getId();
+                    if (item instanceof VentingPermit) return ((VentingPermit) item).getId();
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private String getCurrentUsername() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof CustomUserDetails) {
+                return ((CustomUserDetails) auth.getPrincipal()).getName();
+            }
+        } catch (Exception ignored) {}
+        return "system";
+    }
+
+    private String truncate(String value) {
+        if (value == null) return null;
+        return value.length() > 200 ? value.substring(0, 200) + "..." : value;
     }
 }

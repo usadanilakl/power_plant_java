@@ -74,6 +74,7 @@ export class DailyPermitPackageBuilderComponent {
   isHotWorkVisible = true;
   isWorkRequestVisible = true;
   isLotoVisible = true;
+  isModificationsVisible = false;
 
   packageName: string = '';
   companyName: string = '';

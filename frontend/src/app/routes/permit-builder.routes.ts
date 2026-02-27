@@ -7,6 +7,9 @@ import { DailyPermitPackageComponent } from '../features/permit-builder/daily-pe
 import { SafeWorkComponent } from '../features/permit-builder/safe-work/safe-work.component';
 import { HotWorkComponent } from '../features/permit-builder/hot-work/hot-work.component';
 import { ConfinedSpaceComponent } from '../features/permit-builder/confined-space/confined-space.component';
+import { EnergizedWorkPermitComponent } from '../features/permit-builder/energized-work-permit/energized-work-permit.component';
+import { ExcavationPermitComponent } from '../features/permit-builder/excavation-permit/excavation-permit.component';
+import { VentingPermitComponent } from '../features/permit-builder/venting-permit/venting-permit.component';
 import { JobLogLeftMenuComponent } from '../features/permit-builder/job-log/job-log-left-menu/job-log-left-menu.component';
 import { DailyPermitPackageSideMenuComponent } from '../features/permit-builder/daily-permit-package/daily-permit-package-side-menu/daily-permit-package-side-menu.component';
 import { SafeWorkSideMenuComponent } from '../features/permit-builder/safe-work/safe-work-side-menu/safe-work-side-menu.component';
@@ -64,6 +67,9 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         component: ConfinedSpaceComponent,
         data: { leftMenu: ConfinedSpaceSideMenuComponent }
       },
+      { path: 'energized-work-permits', component: EnergizedWorkPermitComponent },
+      { path: 'excavation-permits', component: ExcavationPermitComponent },
+      { path: 'venting-permits', component: VentingPermitComponent },
       { path: 'work-areas', component: WorkAreaPageComponent },
     ]
   },
