@@ -1,10 +1,22 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  flex: 1;
+}
+
 .table-wrapper {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  flex: 1;
   border: 1px solid var(--border-color, #e0e0e0);
   border-radius: 4px;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
 }
 
@@ -240,14 +252,6 @@ td {
   overflow: hidden;
   position: relative;
   display: flex;
-}
-
-.table-wrapper {
-  position: relative;
-}
-
-.table-wrapper.resizing {
-  user-select: none;
 }
 
 .viewport {

@@ -35,6 +35,19 @@ public class EnergizedWorkPermitMapper implements BaseMapper {
         if (entity.getRedTagNum() != null) dto.setRedTagNum(entity.getRedTagNum());
         if (entity.getPermitNumber() != null) dto.setPermitNumber(entity.getPermitNumber());
 
+        if (entity.getWorkOrder() != null) dto.setWorkOrder(entity.getWorkOrder());
+        if (entity.getCircuitDescription() != null) dto.setCircuitDescription(entity.getCircuitDescription());
+        if (entity.getWorkDescription() != null) dto.setWorkDescription(entity.getWorkDescription());
+        if (entity.getJustification() != null) dto.setJustification(entity.getJustification());
+        if (entity.getRequester() != null) dto.setRequester(entity.getRequester());
+        if (entity.getRequesterDate() != null) dto.setRequesterDate(entity.getRequesterDate());
+        if (entity.getQualifiedPersonSignature() != null) dto.setQualifiedPersonSignature(entity.getQualifiedPersonSignature());
+        if (entity.getQualifiedPersonDate() != null) dto.setQualifiedPersonDate(entity.getQualifiedPersonDate());
+        if (entity.getPlantManagerSignature() != null) dto.setPlantManagerSignature(entity.getPlantManagerSignature());
+        if (entity.getPlantManagerDate() != null) dto.setPlantManagerDate(entity.getPlantManagerDate());
+        if (entity.getWorkCanBePerformedSafely() != null) dto.setWorkCanBePerformedSafely(entity.getWorkCanBePerformedSafely());
+        try { dto.setChecklist(entity.getChecklist()); } catch (Exception e) { /* ignore */ }
+
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
             dto.setLocation(entity.getWorkArea().getName());
@@ -63,6 +76,19 @@ public class EnergizedWorkPermitMapper implements BaseMapper {
         if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
         if (dto.getRedTagNum() != null) entity.setRedTagNum(dto.getRedTagNum());
         if (dto.getPermitNumber() != null) entity.setPermitNumber(dto.getPermitNumber());
+
+        if (dto.getWorkOrder() != null) entity.setWorkOrder(dto.getWorkOrder());
+        if (dto.getCircuitDescription() != null) entity.setCircuitDescription(dto.getCircuitDescription());
+        if (dto.getWorkDescription() != null) entity.setWorkDescription(dto.getWorkDescription());
+        if (dto.getJustification() != null) entity.setJustification(dto.getJustification());
+        if (dto.getRequester() != null) entity.setRequester(dto.getRequester());
+        if (dto.getRequesterDate() != null) entity.setRequesterDate(dto.getRequesterDate());
+        if (dto.getQualifiedPersonSignature() != null) entity.setQualifiedPersonSignature(dto.getQualifiedPersonSignature());
+        if (dto.getQualifiedPersonDate() != null) entity.setQualifiedPersonDate(dto.getQualifiedPersonDate());
+        if (dto.getPlantManagerSignature() != null) entity.setPlantManagerSignature(dto.getPlantManagerSignature());
+        if (dto.getPlantManagerDate() != null) entity.setPlantManagerDate(dto.getPlantManagerDate());
+        if (dto.getWorkCanBePerformedSafely() != null) entity.setWorkCanBePerformedSafely(dto.getWorkCanBePerformedSafely());
+        try { entity.setChecklist(dto.getChecklist()); } catch (Exception e) { /* ignore */ }
 
         if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);

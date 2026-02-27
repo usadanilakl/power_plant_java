@@ -10,11 +10,14 @@ import { ConfinedSpaceComponent } from '../features/permit-builder/confined-spac
 import { EnergizedWorkPermitComponent } from '../features/permit-builder/energized-work-permit/energized-work-permit.component';
 import { ExcavationPermitComponent } from '../features/permit-builder/excavation-permit/excavation-permit.component';
 import { VentingPermitComponent } from '../features/permit-builder/venting-permit/venting-permit.component';
-import { JobLogLeftMenuComponent } from '../features/permit-builder/job-log/job-log-left-menu/job-log-left-menu.component';
+import { JobLogSideMenuComponent } from '../features/permit-builder/job-log/job-log-side-menu/job-log-side-menu.component';
 import { DailyPermitPackageSideMenuComponent } from '../features/permit-builder/daily-permit-package/daily-permit-package-side-menu/daily-permit-package-side-menu.component';
 import { SafeWorkSideMenuComponent } from '../features/permit-builder/safe-work/safe-work-side-menu/safe-work-side-menu.component';
 import { HotWorkSideMenuComponent } from '../features/permit-builder/hot-work/hot-work-side-menu/hot-work-side-menu.component';
 import { ConfinedSpaceSideMenuComponent } from '../features/permit-builder/confined-space/confined-space-side-menu/confined-space-side-menu.component';
+import { EnergizedWorkPermitSideMenuComponent } from '../features/permit-builder/energized-work-permit/energized-work-permit-side-menu/energized-work-permit-side-menu.component';
+import { ExcavationPermitSideMenuComponent } from '../features/permit-builder/excavation-permit/excavation-permit-side-menu/excavation-permit-side-menu.component';
+import { VentingPermitSideMenuComponent } from '../features/permit-builder/venting-permit/venting-permit-side-menu/venting-permit-side-menu.component';
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
 import { WorkAreaPageComponent } from '../features/permit-builder/work-area/work-area-page.component';
@@ -29,7 +32,7 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
       {
         path: 'jobs',
         component: JobLogComponent,
-        data: { leftMenu: JobLogLeftMenuComponent }
+        data: { leftMenu: JobLogSideMenuComponent }
       },
       { path: 'work-requests', component: RfWorkRequestPageComponent },
       {
@@ -67,9 +70,21 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         component: ConfinedSpaceComponent,
         data: { leftMenu: ConfinedSpaceSideMenuComponent }
       },
-      { path: 'energized-work-permits', component: EnergizedWorkPermitComponent },
-      { path: 'excavation-permits', component: ExcavationPermitComponent },
-      { path: 'venting-permits', component: VentingPermitComponent },
+      {
+        path: 'energized-work-permits',
+        component: EnergizedWorkPermitComponent,
+        data: { leftMenu: EnergizedWorkPermitSideMenuComponent }
+      },
+      {
+        path: 'excavation-permits',
+        component: ExcavationPermitComponent,
+        data: { leftMenu: ExcavationPermitSideMenuComponent }
+      },
+      {
+        path: 'venting-permits',
+        component: VentingPermitComponent,
+        data: { leftMenu: VentingPermitSideMenuComponent }
+      },
       { path: 'work-areas', component: WorkAreaPageComponent },
     ]
   },

@@ -1,0 +1,11 @@
+<div class="grouping-controls">
+  <button [class.active]="groupBy() === 'status'" (click)="setGrouping('status')">Status</button>
+  <button [class.active]="groupBy() === 'location'" (click)="setGrouping('location')">Location</button>
+  <button [class.active]="groupBy() === 'requestor'" (click)="setGrouping('requestor')">Requester</button>
+  <button class="refresh-btn" (click)="refresh()">&#8635;</button>
+</div>
+<app-rf-toggle-menu
+  [menuItems]="menuItems()"
+  [enableSearch]="true"
+  (itemClick)="onItemClick($event)"
+></app-rf-toggle-menu>

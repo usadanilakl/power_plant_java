@@ -1,1 +1,5 @@
-<p>Energized Work Permit - stub component. Form fields will be added when forms are provided.</p>
+@if(currentService.isPaperViewActive()){
+    <app-energized-work-permit-paper-form></app-energized-work-permit-paper-form>
+}@else {
+    <app-rf-energized-work-permit-form></app-rf-energized-work-permit-form>
+}

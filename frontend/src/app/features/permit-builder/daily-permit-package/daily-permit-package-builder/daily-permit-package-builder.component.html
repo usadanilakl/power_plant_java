@@ -336,8 +336,10 @@
   [isOpen]="isReusePermitsPopupVisible"
   (close)="reusePermitsPopupClose()">
 
-  <app-daily-permit-package-table
-    (rowLeftClickEvent)="reissuePermits($event)"
-  ></app-daily-permit-package-table>
+  <app-shared-table
+    [items]="currentDailyPermitPackageService.allPackages()"
+    [columns]="reissueColumns"
+    [clickCallback]="reissuePermits.bind(this)"
+  ></app-shared-table>
 
 </app-popup-projection>

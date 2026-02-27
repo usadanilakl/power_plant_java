@@ -27,12 +27,13 @@ public class PermitNumberGenerator {
 
     @Transactional
     public String generate(String dateStr) {
-        LocalDate date;
+        LocalDate parsedDate;
         try {
-            date = LocalDate.parse(dateStr);
+            parsedDate = LocalDate.parse(dateStr);
         } catch (Exception e) {
-            date = LocalDate.now();
+            parsedDate = LocalDate.now();
         }
+        final LocalDate date = parsedDate;
 
         int deviceNumber = getDeviceNumber();
 

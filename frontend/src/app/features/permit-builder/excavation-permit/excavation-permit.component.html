@@ -1,1 +1,5 @@
-<p>Excavation Permit - stub component. Form fields will be added when forms are provided.</p>
+@if(currentService.isPaperViewActive()){
+    <app-excavation-permit-paper-form></app-excavation-permit-paper-form>
+}@else {
+    <app-rf-excavation-permit-form></app-rf-excavation-permit-form>
+}

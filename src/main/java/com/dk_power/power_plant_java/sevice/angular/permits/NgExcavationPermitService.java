@@ -50,6 +50,12 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
         return getAll().stream().map(mapper::convertToDto).toList();
     }
 
+    public ExcavationPermitDto updatePermit(String id, ExcavationPermitDto dto) {
+        dto.setId(Long.parseLong(id));
+        ExcavationPermit saved = repo.save(mapper.convertToEntity(dto));
+        return mapper.convertToDto(saved);
+    }
+
     public List<ExcavationPermitDto> saveAll(List<ExcavationPermitDto> permits) {
         return permits.stream().map(mapper::convertToEntity).map(repo::save).map(mapper::convertToDto).toList();
     }

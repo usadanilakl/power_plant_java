@@ -26,13 +26,13 @@ import { LotoDetailFormComponent } from "../../../loto/loto-detail-form/loto-det
 import { LotoDto } from '../../../../models/loto/loto.model';
 import { LotoTableComponent } from "../../../loto/loto-table/loto-table.component";
 import { LotoPaperFormComponent } from "../../../loto/loto-paper-form/loto-paper-form.component";
-import { DailyPermitPackageTableComponent } from "../daily-permit-package-table/daily-permit-package-table.component";
 import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
+import { TableComponent as SharedTableComponent } from '../../../../shared/table/table.component';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, DailyPermitPackageTableComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, SharedTableComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -67,6 +67,7 @@ export class DailyPermitPackageBuilderComponent {
   isAttachingExisting = false;
 
   isReusePermitsPopupVisible = false;
+  reissueColumns = DailyPermitPackageDto.toTableColumns(['id', 'name', 'permitNumber']);
 
 
   isSafeWorkVisible = true;

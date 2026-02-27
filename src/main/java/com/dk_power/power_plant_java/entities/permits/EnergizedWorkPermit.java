@@ -1,6 +1,10 @@
 package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
+import com.dk_power.power_plant_java.entities.permits.pojo.EnergizedWorkChecklist;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -17,4 +21,47 @@ public class EnergizedWorkPermit extends BasePermitEntity {
     private String time;
     private String location;
     private String issuedTo;
+
+    private String workOrder;
+    @Column(columnDefinition = "TEXT")
+    private String circuitDescription;
+    @Column(columnDefinition = "TEXT")
+    private String workDescription;
+    @Column(columnDefinition = "TEXT")
+    private String justification;
+    private String requester;
+    private String requesterDate;
+    private String qualifiedPersonSignature;
+    private String qualifiedPersonDate;
+    private String plantManagerSignature;
+    private String plantManagerDate;
+    private Boolean workCanBePerformedSafely;
+
+    @Column(columnDefinition = "TEXT")
+    private String checklistJson;
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    public EnergizedWorkChecklist getChecklist() {
+        if (checklistJson == null || checklistJson.isEmpty()) {
+            return new EnergizedWorkChecklist();
+        }
+        try {
+            String json = checklistJson;
+            if (json.contains("\\\"")) {
+                json = json.replace("\\\"", "\"");
+            }
+            return mapper.readValue(json, EnergizedWorkChecklist.class);
+        } catch (Exception e) {
+            return new EnergizedWorkChecklist();
+        }
+    }
+
+    public void setChecklist(EnergizedWorkChecklist checklist) {
+        try {
+            this.checklistJson = mapper.writeValueAsString(checklist);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Cannot serialize checklist object", e);
+        }
+    }
 }

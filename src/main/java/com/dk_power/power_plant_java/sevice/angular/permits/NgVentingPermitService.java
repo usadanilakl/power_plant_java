@@ -50,6 +50,12 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
         return getAll().stream().map(mapper::convertToDto).toList();
     }
 
+    public VentingPermitDto updatePermit(String id, VentingPermitDto dto) {
+        dto.setId(Long.parseLong(id));
+        VentingPermit saved = repo.save(mapper.convertToEntity(dto));
+        return mapper.convertToDto(saved);
+    }
+
     public List<VentingPermitDto> saveAll(List<VentingPermitDto> permits) {
         return permits.stream().map(mapper::convertToEntity).map(repo::save).map(mapper::convertToDto).toList();
     }

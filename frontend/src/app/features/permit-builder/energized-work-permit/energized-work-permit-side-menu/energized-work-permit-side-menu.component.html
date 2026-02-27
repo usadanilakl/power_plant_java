@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="currentService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-energized-work-permit-left-menu menu></app-energized-work-permit-left-menu>
+  <app-energized-work-permit-table table></app-energized-work-permit-table>
+</app-permit-left-panel>

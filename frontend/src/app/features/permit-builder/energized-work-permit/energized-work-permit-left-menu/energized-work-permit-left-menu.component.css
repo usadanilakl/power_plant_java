@@ -1,0 +1,41 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.grouping-controls {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background-color: var(--secondary-background, #f9f9f9);
+}
+.grouping-controls button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 3px;
+  background-color: var(--primary-background, white);
+  color: var(--primary-text, #666);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.grouping-controls button:hover {
+  background-color: var(--hover-color, #e8e8e8);
+}
+.grouping-controls button.active {
+  background-color: var(--accent-color, #3498db);
+  color: white;
+  border-color: var(--accent-color, #2980b9);
+}
+.refresh-btn {
+  margin-left: auto;
+}
+app-rf-toggle-menu {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

@@ -55,6 +55,30 @@ public class NgExcavationPermitController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<ExcavationPermitDto>> update(@PathVariable String id, @RequestBody ExcavationPermitDto dto) {
+        try {
+            ExcavationPermitDto updated = service.updatePermit(id, dto);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Excavation permit updated successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
+        try {
+            service.hardDelete(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(null, "Excavation permit deleted successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/save-all")
     public ResponseEntity<NgApiResponse<List<ExcavationPermitDto>>> saveAll(@RequestBody List<ExcavationPermitDto> permits) {
         try {

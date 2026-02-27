@@ -1,8 +1,29 @@
 
+import { Validators } from '@angular/forms';
 import { BaseDto, BaseModel } from '../base/base.model';
 import { Column } from '../column.model';
 import { FormField } from '../ui/form-field.model';
 import { WorkAreaDto } from './work-area.model';
+
+export class EnergizedWorkChecklist {
+  jobDescription: string = '';
+  safeWorkPractices: string = '';
+  shockHazardAnalysis: string = '';
+  flashProtectionBoundary: string = '';
+  meansToRestrictAccess: string = '';
+  jobDescriptionComplete: boolean = false;
+  safeWorkPracticesComplete: boolean = false;
+  shockHazardAnalysisComplete: boolean = false;
+  limitedApproachBoundary: boolean = false;
+  restrictedApproachBoundary: boolean = false;
+  prohibitedApproachBoundary: boolean = false;
+  incidentEnergyComplete: boolean = false;
+  arcFlashPpeComplete: boolean = false;
+  arcFlashBoundaryComplete: boolean = false;
+  meansToRestrictAccessComplete: boolean = false;
+  preJobBriefComplete: boolean = false;
+  constructor(data: Partial<EnergizedWorkChecklist> = {}) { Object.assign(this, data); }
+}
 
 export type EnergizedWorkPermitFieldName = keyof EnergizedWorkPermitModel;
 
@@ -15,6 +36,18 @@ export interface EnergizedWorkPermitModel extends BaseModel {
   redTagNum: string | null;
   permitNumber: string | null;
   workArea: WorkAreaDto | null;
+  workOrder: string | null;
+  circuitDescription: string | null;
+  workDescription: string | null;
+  justification: string | null;
+  requester: string | null;
+  requesterDate: string | null;
+  qualifiedPersonSignature: string | null;
+  qualifiedPersonDate: string | null;
+  plantManagerSignature: string | null;
+  plantManagerDate: string | null;
+  workCanBePerformedSafely: boolean;
+  checklist: EnergizedWorkChecklist | null;
 }
 
 export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPermitModel {
@@ -26,6 +59,18 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
   redTagNum: string | null;
   permitNumber: string | null;
   workArea: WorkAreaDto | null;
+  workOrder: string | null;
+  circuitDescription: string | null;
+  workDescription: string | null;
+  justification: string | null;
+  requester: string | null;
+  requesterDate: string | null;
+  qualifiedPersonSignature: string | null;
+  qualifiedPersonDate: string | null;
+  plantManagerSignature: string | null;
+  plantManagerDate: string | null;
+  workCanBePerformedSafely: boolean;
+  checklist: EnergizedWorkChecklist | null;
 
   constructor(data: Partial<EnergizedWorkPermitModel> = {}) {
     super(data);
@@ -37,6 +82,18 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
     this.redTagNum = data.redTagNum ?? null;
     this.permitNumber = data.permitNumber ?? null;
     this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
+    this.workOrder = data.workOrder ?? null;
+    this.circuitDescription = data.circuitDescription ?? null;
+    this.workDescription = data.workDescription ?? null;
+    this.justification = data.justification ?? null;
+    this.requester = data.requester ?? null;
+    this.requesterDate = data.requesterDate ?? null;
+    this.qualifiedPersonSignature = data.qualifiedPersonSignature ?? null;
+    this.qualifiedPersonDate = data.qualifiedPersonDate ?? null;
+    this.plantManagerSignature = data.plantManagerSignature ?? null;
+    this.plantManagerDate = data.plantManagerDate ?? null;
+    this.workCanBePerformedSafely = data.workCanBePerformedSafely ?? false;
+    this.checklist = data.checklist ? new EnergizedWorkChecklist(data.checklist) : null;
   }
 
   override toJson(): any {
@@ -50,6 +107,18 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
       redTagNum: this.redTagNum,
       permitNumber: this.permitNumber,
       workArea: this.workArea,
+      workOrder: this.workOrder,
+      circuitDescription: this.circuitDescription,
+      workDescription: this.workDescription,
+      justification: this.justification,
+      requester: this.requester,
+      requesterDate: this.requesterDate,
+      qualifiedPersonSignature: this.qualifiedPersonSignature,
+      qualifiedPersonDate: this.qualifiedPersonDate,
+      plantManagerSignature: this.plantManagerSignature,
+      plantManagerDate: this.plantManagerDate,
+      workCanBePerformedSafely: this.workCanBePerformedSafely,
+      checklist: this.checklist,
     };
   }
 
@@ -65,26 +134,99 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
       redTagNum: json.redTagNum,
       permitNumber: json.permitNumber,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
+      workOrder: json.workOrder,
+      circuitDescription: json.circuitDescription,
+      workDescription: json.workDescription,
+      justification: json.justification,
+      requester: json.requester,
+      requesterDate: json.requesterDate,
+      qualifiedPersonSignature: json.qualifiedPersonSignature,
+      qualifiedPersonDate: json.qualifiedPersonDate,
+      plantManagerSignature: json.plantManagerSignature,
+      plantManagerDate: json.plantManagerDate,
+      workCanBePerformedSafely: json.workCanBePerformedSafely ?? false,
+      checklist: json.checklist ? new EnergizedWorkChecklist(json.checklist) : null,
     });
   }
 
+  static getChecklistFields(checklistDto: EnergizedWorkChecklist | null): { [key: string]: FormField } {
+    const checklist = checklistDto || new EnergizedWorkChecklist();
+    const group = { label: 'Energized Work Checklist', orientation: 'vertical' } as const;
+    return {
+      'checklist.jobDescriptionComplete': { name: 'checklist.jobDescriptionComplete', label: 'Job Description Complete', type: 'checkbox', initialValue: checklist.jobDescriptionComplete, group },
+      'checklist.safeWorkPracticesComplete': { name: 'checklist.safeWorkPracticesComplete', label: 'Safe Work Practices Complete', type: 'checkbox', initialValue: checklist.safeWorkPracticesComplete, group },
+      'checklist.shockHazardAnalysisComplete': { name: 'checklist.shockHazardAnalysisComplete', label: 'Shock Hazard Analysis Complete', type: 'checkbox', initialValue: checklist.shockHazardAnalysisComplete, group },
+      'checklist.limitedApproachBoundary': { name: 'checklist.limitedApproachBoundary', label: 'Limited Approach Boundary', type: 'checkbox', initialValue: checklist.limitedApproachBoundary, group },
+      'checklist.restrictedApproachBoundary': { name: 'checklist.restrictedApproachBoundary', label: 'Restricted Approach Boundary', type: 'checkbox', initialValue: checklist.restrictedApproachBoundary, group },
+      'checklist.prohibitedApproachBoundary': { name: 'checklist.prohibitedApproachBoundary', label: 'Prohibited Approach Boundary', type: 'checkbox', initialValue: checklist.prohibitedApproachBoundary, group },
+      'checklist.incidentEnergyComplete': { name: 'checklist.incidentEnergyComplete', label: 'Incident Energy Complete', type: 'checkbox', initialValue: checklist.incidentEnergyComplete, group },
+      'checklist.arcFlashPpeComplete': { name: 'checklist.arcFlashPpeComplete', label: 'Arc Flash PPE Complete', type: 'checkbox', initialValue: checklist.arcFlashPpeComplete, group },
+      'checklist.arcFlashBoundaryComplete': { name: 'checklist.arcFlashBoundaryComplete', label: 'Arc Flash Boundary Complete', type: 'checkbox', initialValue: checklist.arcFlashBoundaryComplete, group },
+      'checklist.meansToRestrictAccessComplete': { name: 'checklist.meansToRestrictAccessComplete', label: 'Means to Restrict Access Complete', type: 'checkbox', initialValue: checklist.meansToRestrictAccessComplete, group },
+      'checklist.preJobBriefComplete': { name: 'checklist.preJobBriefComplete', label: 'Pre-Job Brief Complete', type: 'checkbox', initialValue: checklist.preJobBriefComplete, group },
+    };
+  }
+
   static toFormFields(
-    fields: EnergizedWorkPermitFieldName[] = ['date', 'time', 'location', 'issuedTo', 'workScope']
+    dto: EnergizedWorkPermitDto,
+    fields: (EnergizedWorkPermitFieldName | 'workArea')[] = [
+      'workArea', 'date', 'workOrder', 'circuitDescription', 'workDescription',
+      'justification', 'requester', 'requesterDate', 'workCanBePerformedSafely',
+      ...Object.keys(EnergizedWorkPermitDto.getChecklistFields(null)) as EnergizedWorkPermitFieldName[],
+    ]
   ): FormField[] {
-    const allFields: { [key in EnergizedWorkPermitFieldName]?: FormField } = {
-      date: { name: 'date', label: 'Date', type: 'date' },
-      time: { name: 'time', label: 'Time', type: 'time' },
-      location: { name: 'location', label: 'Location', type: 'text' },
-      issuedTo: { name: 'issuedTo', label: 'Issued To', type: 'text' },
-      workScope: { name: 'workScope', label: 'Work Scope', type: 'textarea' },
-      redTagNum: { name: 'redTagNum', label: 'Red Tag #', type: 'text' },
-      permitNumber: { name: 'permitNumber', label: 'Permit Number', type: 'text', readonly: true },
+    const checklistFields = EnergizedWorkPermitDto.getChecklistFields(dto.checklist);
+    const allFields: { [key: string]: FormField } = {
+      id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      workArea: {
+        name: 'workArea',
+        label: 'Work Area',
+        type: 'work-area-select',
+        initialValue: (dto as any).workArea?.id ?? null,
+        context: { viewMode: 'map', fallbackText: dto.location },
+      },
+      date: {
+        name: 'date',
+        label: 'Date',
+        type: 'date',
+        validators: [Validators.required],
+        initialValue: dto.date ?? new Date().toISOString().split('T')[0],
+      },
+      time: { name: 'time', label: 'Time', type: 'time', initialValue: dto.time },
+      location: { name: 'location', label: 'Location', type: 'text', initialValue: dto.location },
+      issuedTo: { name: 'issuedTo', label: 'Issued To', type: 'text', initialValue: dto.issuedTo },
+      workScope: { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: dto.workScope },
+      redTagNum: { name: 'redTagNum', label: 'Red Tag #', type: 'text', initialValue: dto.redTagNum },
+      permitNumber: { name: 'permitNumber', label: 'Permit Number', type: 'text', readonly: true, initialValue: dto.permitNumber },
+      workOrder: { name: 'workOrder', label: 'Work Order', type: 'text', initialValue: dto.workOrder },
+      circuitDescription: { name: 'circuitDescription', label: 'Circuit Description', type: 'textarea', initialValue: dto.circuitDescription },
+      workDescription: { name: 'workDescription', label: 'Work Description', type: 'textarea', initialValue: dto.workDescription },
+      justification: { name: 'justification', label: 'Justification', type: 'textarea', initialValue: dto.justification },
+      requester: { name: 'requester', label: 'Requester', type: 'text', initialValue: dto.requester },
+      requesterDate: { name: 'requesterDate', label: 'Requester Date', type: 'date', initialValue: dto.requesterDate },
+      qualifiedPersonSignature: { name: 'qualifiedPersonSignature', label: 'Qualified Person Signature', type: 'text', initialValue: dto.qualifiedPersonSignature },
+      qualifiedPersonDate: { name: 'qualifiedPersonDate', label: 'Qualified Person Date', type: 'date', initialValue: dto.qualifiedPersonDate },
+      plantManagerSignature: { name: 'plantManagerSignature', label: 'Plant Manager Signature', type: 'text', initialValue: dto.plantManagerSignature },
+      plantManagerDate: { name: 'plantManagerDate', label: 'Plant Manager Date', type: 'date', initialValue: dto.plantManagerDate },
+      workCanBePerformedSafely: {
+        name: 'workCanBePerformedSafely',
+        label: 'Work Can Be Performed Safely',
+        type: 'select',
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: dto.workCanBePerformedSafely?.toString(),
+      },
+      name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      ...checklistFields,
     };
     return fields.map(f => allFields[f]).filter((f): f is FormField => f !== undefined);
   }
 
   static toTableColumns(
-    fields: EnergizedWorkPermitFieldName[] = ['id', 'permitNumber', 'date', 'location', 'issuedTo', 'workScope']
+    fields: EnergizedWorkPermitFieldName[] = ['permitNumber', 'date', 'location', 'workOrder', 'requester', 'workCanBePerformedSafely']
   ): Column[] {
     const allColumns: { [key in EnergizedWorkPermitFieldName]?: Column } = {
       id: { id: 'id', header: 'ID', accessorKey: 'id' },
@@ -95,12 +237,35 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
       issuedTo: { id: 'issuedTo', header: 'Issued To', accessorKey: 'issuedTo' },
       workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
       permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
+      workOrder: { id: 'workOrder', header: 'Work Order', accessorKey: 'workOrder' },
+      circuitDescription: { id: 'circuitDescription', header: 'Circuit Description', accessorKey: 'circuitDescription' },
+      workDescription: { id: 'workDescription', header: 'Work Description', accessorKey: 'workDescription' },
+      justification: { id: 'justification', header: 'Justification', accessorKey: 'justification' },
+      requester: { id: 'requester', header: 'Requester', accessorKey: 'requester' },
+      requesterDate: { id: 'requesterDate', header: 'Requester Date', accessorKey: 'requesterDate' },
+      qualifiedPersonSignature: { id: 'qualifiedPersonSignature', header: 'Qualified Person', accessorKey: 'qualifiedPersonSignature' },
+      qualifiedPersonDate: { id: 'qualifiedPersonDate', header: 'Qualified Person Date', accessorKey: 'qualifiedPersonDate' },
+      plantManagerSignature: { id: 'plantManagerSignature', header: 'Plant Manager', accessorKey: 'plantManagerSignature' },
+      plantManagerDate: { id: 'plantManagerDate', header: 'Plant Manager Date', accessorKey: 'plantManagerDate' },
+      workCanBePerformedSafely: {
+        id: 'workCanBePerformedSafely',
+        header: 'Safe to Perform',
+        accessorFn: (item: EnergizedWorkPermitDto) => item.workCanBePerformedSafely ? 'Yes' : 'No',
+      },
+      checklist: {
+        id: 'checklist',
+        header: 'Checklist',
+        accessorFn: (item: EnergizedWorkPermitDto) => item.checklist ? 'Complete' : 'N/A',
+      },
     };
     return fields.map(f => allColumns[f]).filter((c): c is Column => c !== undefined);
   }
 
   static isValidKey(key: string): key is keyof EnergizedWorkPermitModel {
     return ['id', 'name', 'objectType', 'isVerified', 'date', 'time', 'location',
-      'issuedTo', 'workScope', 'redTagNum', 'permitNumber', 'workArea'].includes(key);
+      'issuedTo', 'workScope', 'redTagNum', 'permitNumber', 'workArea',
+      'workOrder', 'circuitDescription', 'workDescription', 'justification',
+      'requester', 'requesterDate', 'qualifiedPersonSignature', 'qualifiedPersonDate',
+      'plantManagerSignature', 'plantManagerDate', 'workCanBePerformedSafely', 'checklist'].includes(key);
   }
 }

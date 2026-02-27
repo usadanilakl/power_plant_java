@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="currentJobLogService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-job-log-left-menu menu></app-job-log-left-menu>
+  <app-job-log-table table></app-job-log-table>
+</app-permit-left-panel>

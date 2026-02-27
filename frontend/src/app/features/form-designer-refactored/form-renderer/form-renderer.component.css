@@ -12,7 +12,7 @@
   background-color: white;
   color: black;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  margin: 0 auto 20px auto;
+  margin: 0 auto 4px auto;
   position: relative;
   /* Allow form-array containers to extend beyond the page for add/remove buttons */
   overflow: visible;

@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="currentVentingPermitService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-venting-permit-left-menu menu></app-venting-permit-left-menu>
+  <app-venting-permit-table table></app-venting-permit-table>
+</app-permit-left-panel>

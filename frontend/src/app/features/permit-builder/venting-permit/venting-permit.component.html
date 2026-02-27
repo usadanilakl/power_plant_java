@@ -1,1 +1,5 @@
-<p>Venting Permit - stub component. Form fields will be added when forms are provided.</p>
+@if(currentService.isPaperViewActive()){
+    <app-venting-permit-paper-form></app-venting-permit-paper-form>
+}@else {
+    <app-rf-venting-permit-form></app-rf-venting-permit-form>
+}

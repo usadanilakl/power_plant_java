@@ -4,6 +4,9 @@ import { HotWorkDto, HotWorkMeasures } from '../../../models/permits/hot-work.mo
 import { ConfinedSpaceDto, ConfinedSpaceHazards, ConfinedSpacePpe, ConfinedSpacePrecautions } from '../../../models/permits/confined-space.model';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { Jha, JobStep } from '../../../models/permits/jha.model';
+import { EnergizedWorkPermitDto } from '../../../models/permits/energized-work-permit.model';
+import { ExcavationPermitDto } from '../../../models/permits/excavation-permit.model';
+import { VentingPermitDto } from '../../../models/permits/venting-permit.model';
 import { FormField } from '../../../models/ui/form-field.model';
 
 @Injectable({ providedIn: 'root' })
@@ -17,6 +20,9 @@ export class EntityLoaderService {
       case 'Loto': return new LotoDto();
       case 'Jha': return new Jha();
       case 'JobStep': return new JobStep();
+      case 'EnergizedWorkPermit': return new EnergizedWorkPermitDto();
+      case 'ExcavationPermit': return new ExcavationPermitDto();
+      case 'VentingPermit': return new VentingPermitDto();
       case 'WorkRequest':
       default: return null;
     }
@@ -33,6 +39,9 @@ export class EntityLoaderService {
       case 'Loto': return LotoDto.toFormFields(entity as LotoDto);
       case 'Jha': return (entity as Jha).getFormFields();
       case 'JobStep': return (entity as JobStep).getFormFields();
+      case 'EnergizedWorkPermit': return EnergizedWorkPermitDto.toFormFields(entity as EnergizedWorkPermitDto);
+      case 'ExcavationPermit': return ExcavationPermitDto.toFormFields(entity as ExcavationPermitDto);
+      case 'VentingPermit': return VentingPermitDto.toFormFields(entity as VentingPermitDto);
       default: return [];
     }
   }
@@ -45,7 +54,7 @@ export class EntityLoaderService {
   }
 
   getSupportedFormTypes(): string[] {
-    return ['SafeWork', 'HotWork', 'ConfinedSpace', 'Loto', 'Jha', 'JobStep', 'WorkRequest'];
+    return ['SafeWork', 'HotWork', 'ConfinedSpace', 'EnergizedWorkPermit', 'ExcavationPermit', 'VentingPermit', 'Loto', 'Jha', 'JobStep', 'WorkRequest'];
   }
 
   isFormTypeSupported(formType: string): boolean {
@@ -60,6 +69,9 @@ export class EntityLoaderService {
       case 'Loto': return this.getLotoSample();
       case 'Jha': return this.getJhaSample();
       case 'JobStep': return this.getJobStepSample();
+      case 'EnergizedWorkPermit': return this.getEnergizedWorkSample();
+      case 'ExcavationPermit': return this.getExcavationSample();
+      case 'VentingPermit': return this.getVentingSample();
       case 'WorkRequest': return this.getWorkRequestSample();
       default: return {};
     }
@@ -276,6 +288,87 @@ export class EntityLoaderService {
       description: 'Inspect work area for hazards and set up barriers',
       hazard: 'Slips, trips, falls; overhead hazards',
       safetyMeasures: 'Clear debris, install barricade tape, wear hard hat',
+    };
+  }
+
+  private getEnergizedWorkSample(): any {
+    return {
+      workOrder: 'WO-2026-0312',
+      circuitDescription: '480V MCC-3A, Breaker 12 - Boiler Feed Pump #2',
+      workDescription: 'Replace contactor and overload relay on BFP-2 starter',
+      justification: 'Pump must remain available for unit startup scheduled tomorrow',
+      requester: 'Mike Johnson',
+      requesterDate: '2026-02-27',
+      workCanBePerformedSafely: true,
+      qualifiedPersonSignature: 'David Chen',
+      qualifiedPersonDate: '2026-02-27',
+      plantManagerSignature: 'Lisa Park',
+      plantManagerDate: '2026-02-27',
+      checklist: {
+        jobDescriptionComplete: true,
+        jobDescription: 'Replace contactor per manufacturer specs',
+        safeWorkPracticesComplete: true,
+        safeWorkPractices: 'Arc flash PPE Cat 2, insulated tools',
+        shockHazardAnalysisComplete: true,
+        shockHazardAnalysis: '480V, 35kA available fault current',
+        limitedApproachBoundary: true,
+        restrictedApproachBoundary: true,
+        prohibitedApproachBoundary: false,
+        incidentEnergyComplete: true,
+        arcFlashPpeComplete: true,
+        arcFlashBoundaryComplete: true,
+        flashProtectionBoundary: '4 feet',
+        meansToRestrictAccessComplete: true,
+        meansToRestrictAccess: 'Barricade tape and signage installed',
+        preJobBriefComplete: true,
+      },
+    };
+  }
+
+  private getExcavationSample(): any {
+    return {
+      date: '2026-02-27',
+      time: '07:00',
+      workOrder: 'WO-2026-0298',
+      supervisor: 'Robert Davis',
+      jobLocation: 'East side of cooling tower basin',
+      supervisorPhone: '555-0142',
+      excavationDescription: 'Trench for new 6-inch cooling water supply line, 4ft deep x 3ft wide x 50ft long',
+      typeOfWork: { excavation: true, boring: false, drilling: false, cutting: false, blindPenetration: false },
+      locationPipingMarked: true,
+      facilityName: 'Unit 1 Cooling Tower Area',
+      competentPerson: 'Tom Anderson',
+      soilType: 'Type B - Clay loam',
+      excavationDepth: '4 ft',
+      excavationWidth: '3 ft',
+      protectiveSystemType: 'Sloping 1:1',
+    };
+  }
+
+  private getVentingSample(): any {
+    return {
+      date: '2026-02-27',
+      plantName: 'Voyager Power Station',
+      systemName: 'Natural Gas Header B',
+      requestingIndividual: 'James Martinez',
+      purpose: 'Purge and vent gas header for valve replacement',
+      timeCommence: '2026-02-27 06:00',
+      timeConclude: '2026-02-27 14:00',
+      individualIssuing: 'Mike Johnson (MJ)',
+      gasType: 'Natural Gas (Methane)',
+      lel: '5%',
+      uel: '15%',
+      calculatedVolume: '1,200 SCF',
+      pressure: '45 PSIG',
+      gasIndicatorModel: 'RKI GX-3R PRO',
+      gasIndicatorSerial: 'GI-7823',
+      calibrationDate: '2026-02-01',
+      sdsProvided: true,
+      sdsInitials: 'JM',
+      radioChannel: 'Channel 3',
+      controlRoom: 'Main Control Room',
+      osmSupervisor: 'Robert Davis',
+      osmDate: '2026-02-27',
     };
   }
 

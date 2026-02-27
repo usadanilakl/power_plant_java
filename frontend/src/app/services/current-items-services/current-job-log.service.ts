@@ -1,5 +1,5 @@
 
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { BehaviorSubject, tap } from "rxjs";
 import { JobLogDto } from "../../models/permits/job-log.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
@@ -19,6 +19,7 @@ export class CurrentJobLogService {
   private selectedJobLogSubject = new BehaviorSubject<JobLogDto>(new JobLogDto());
   selectedJobLog$ = this.selectedJobLogSubject.asObservable();
 
+  isPaperViewActive = signal<boolean>(false);
   selectedItem = toSignal(this.selectedJobLogSubject.asObservable(), { initialValue: new JobLogDto() });
 
   constructor() {
@@ -100,6 +101,24 @@ export class CurrentJobLogService {
         }
       })
     );
+  }
+
+  saveJobLog(form: any) {
+    const dto = new JobLogDto(form);
+    if (dto.id) {
+      this.updateJobLog(dto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        error: err => console.error('Error updating job log:', err)
+      });
+    } else {
+      this.createJobLog(dto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        error: err => console.error('Error creating job log:', err)
+      });
+    }
+  }
+
+  removeJobLogFromList(id: number) {
+    const current = this.allJobLogsSubject.value;
+    this.allJobLogsSubject.next(current.filter(j => j.id !== id));
   }
 
   refresh() {

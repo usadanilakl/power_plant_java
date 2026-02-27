@@ -83,6 +83,10 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Safe Works', description: 'Safe work permits', icon: 'health_and_safety', route: '/permit-builder/safe-works', color: '#27ae60' },
       { title: 'Hot Works', description: 'Hot work permits', icon: 'local_fire_department', route: '/permit-builder/hot-works', color: '#e74c3c' },
       { title: 'Confined Spaces', description: 'Confined space entry permits', icon: 'sensor_door', route: '/permit-builder/confined-spaces', color: '#8e44ad' },
+      { title: 'JHAs', description: 'Job Hazard Analysis', icon: 'checklist', route: '/permit-builder/jhas', color: '#2c3e50' },
+      { title: 'Energized Work', description: 'Energized electrical work permits', icon: 'bolt', route: '/permit-builder/energized-work-permits', color: '#f1c40f' },
+      { title: 'Excavation', description: 'Excavation work permits', icon: 'construction', route: '/permit-builder/excavation-permits', color: '#795548' },
+      { title: 'Venting/Purging', description: 'Venting and purging permits', icon: 'air', route: '/permit-builder/venting-permits', color: '#00bcd4' },
       { title: 'Work Areas', description: 'Manage plant work areas and constant hazards', icon: 'map', route: '/permit-builder/work-areas', color: '#16a085' },
       { title: 'Work Map', description: 'Interactive plant map with work area overview', icon: 'place', route: '/work-area-map', color: '#2980b9' },
       { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }

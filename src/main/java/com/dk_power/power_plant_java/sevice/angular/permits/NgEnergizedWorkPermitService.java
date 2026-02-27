@@ -50,6 +50,12 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
         return getAll().stream().map(mapper::convertToDto).toList();
     }
 
+    public EnergizedWorkPermitDto updatePermit(String id, EnergizedWorkPermitDto dto) {
+        dto.setId(Long.parseLong(id));
+        EnergizedWorkPermit saved = repo.save(mapper.convertToEntity(dto));
+        return mapper.convertToDto(saved);
+    }
+
     public List<EnergizedWorkPermitDto> saveAll(List<EnergizedWorkPermitDto> permits) {
         return permits.stream().map(mapper::convertToEntity).map(repo::save).map(mapper::convertToDto).toList();
     }

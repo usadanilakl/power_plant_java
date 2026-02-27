@@ -1,60 +1,6 @@
-<!-- <ul class="package-menu">
-    @for (pkg of allPackages(); track pkg.id) {
-        <li class="menu-item" (click)="packageSelected(pkg)">
-            {{ pkg.name + '. ' }}
-        </li>
-    }
-    <li class="menu-item add-new-item" (click)="createNewPackage()">+ Add New Package</li>
-</ul> -->
-
-
-
-<div class="view-selector">
-    <button 
-        class="view-button" 
-        [class.active]="groupBy() === 'company'"
-        (click)="setGroupBy('company')">
-        By Company
-    </button>
-    <button 
-        class="view-button" 
-        [class.active]="groupBy() === 'person'"
-        (click)="setGroupBy('person')">
-        By Person
-    </button>
-    <button 
-        class="view-button" 
-        [class.active]="groupBy() === 'date'"
-        (click)="setGroupBy('date')">
-        By Date
-    </button>
-</div>
-
-<ul class="package-menu">
-    @for (group of packagesGrouped(); track group.groupName) {
-        <li class="company-group">
-            <div class="company-header" (click)="toggleGroup(group.groupName)">
-                <span class="expand-icon">{{ isGroupExpanded(group.groupName) ? '▼' : '▶' }}</span>
-                <span class="company-name">{{ group.groupName }}</span>
-                <span class="package-count">({{ group.packages.length }})</span>
-            </div>
-            @if (isGroupExpanded(group.groupName)) {
-                <ul class="package-list">
-                    @for (pkg of group.packages; track pkg.id) {
-                        <li class="menu-item package-item" (click)="packageSelected(pkg); $event.stopPropagation()">
-                            <span class="package-name">{{ pkg.name }}</span>
-                            @if (pkg.date || pkg.time) {
-                                <span class="package-datetime">
-                                    {{ pkg.date ? (pkg.date | date:'shortDate') : '' }}
-                                    {{ pkg.time || '' }}
-                                </span>
-                            }
-                        </li>
-                    }
-                </ul>
-            }
-        </li>
-    }
-    <li class="menu-item add-new-item" (click)="createNewPackage()">+ Add New Package</li>
-</ul>
-
+<app-permit-left-panel
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-daily-permit-package-left-menu menu></app-daily-permit-package-left-menu>
+  <app-daily-permit-package-table table></app-daily-permit-package-table>
+</app-permit-left-panel>

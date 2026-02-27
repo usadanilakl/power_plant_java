@@ -55,6 +55,30 @@ public class NgVentingPermitController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<VentingPermitDto>> update(@PathVariable String id, @RequestBody VentingPermitDto dto) {
+        try {
+            VentingPermitDto updated = service.updatePermit(id, dto);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Venting permit updated successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
+        try {
+            service.hardDelete(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(null, "Venting permit deleted successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/save-all")
     public ResponseEntity<NgApiResponse<List<VentingPermitDto>>> saveAll(@RequestBody List<VentingPermitDto> permits) {
         try {

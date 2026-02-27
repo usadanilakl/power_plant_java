@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="currentService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-excavation-permit-left-menu menu></app-excavation-permit-left-menu>
+  <app-excavation-permit-table table></app-excavation-permit-table>
+</app-permit-left-panel>

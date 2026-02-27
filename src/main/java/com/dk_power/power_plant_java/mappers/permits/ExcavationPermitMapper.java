@@ -35,6 +35,30 @@ public class ExcavationPermitMapper implements BaseMapper {
         if (entity.getRedTagNum() != null) dto.setRedTagNum(entity.getRedTagNum());
         if (entity.getPermitNumber() != null) dto.setPermitNumber(entity.getPermitNumber());
 
+        if (entity.getSupervisor() != null) dto.setSupervisor(entity.getSupervisor());
+        if (entity.getJobLocation() != null) dto.setJobLocation(entity.getJobLocation());
+        if (entity.getSupervisorPhone() != null) dto.setSupervisorPhone(entity.getSupervisorPhone());
+        if (entity.getExcavationDescription() != null) dto.setExcavationDescription(entity.getExcavationDescription());
+        if (entity.getWorkOrder() != null) dto.setWorkOrder(entity.getWorkOrder());
+        if (entity.getLocationPipingMarked() != null) dto.setLocationPipingMarked(entity.getLocationPipingMarked());
+        if (entity.getSupervisorApprovalDate() != null) dto.setSupervisorApprovalDate(entity.getSupervisorApprovalDate());
+        if (entity.getSupervisorApprovalTime() != null) dto.setSupervisorApprovalTime(entity.getSupervisorApprovalTime());
+        if (entity.getPermitClosedDate() != null) dto.setPermitClosedDate(entity.getPermitClosedDate());
+        if (entity.getPermitClosedTime() != null) dto.setPermitClosedTime(entity.getPermitClosedTime());
+        if (entity.getJobStatusComplete() != null) dto.setJobStatusComplete(entity.getJobStatusComplete());
+        if (entity.getSupervisorFieldInspectionName() != null) dto.setSupervisorFieldInspectionName(entity.getSupervisorFieldInspectionName());
+        if (entity.getSupervisorFieldInspectionDate() != null) dto.setSupervisorFieldInspectionDate(entity.getSupervisorFieldInspectionDate());
+        if (entity.getSupervisorFieldInspectionTime() != null) dto.setSupervisorFieldInspectionTime(entity.getSupervisorFieldInspectionTime());
+        if (entity.getFacilityName() != null) dto.setFacilityName(entity.getFacilityName());
+        if (entity.getCompetentPerson() != null) dto.setCompetentPerson(entity.getCompetentPerson());
+        if (entity.getSoilType() != null) dto.setSoilType(entity.getSoilType());
+        if (entity.getExcavationDepth() != null) dto.setExcavationDepth(entity.getExcavationDepth());
+        if (entity.getExcavationWidth() != null) dto.setExcavationWidth(entity.getExcavationWidth());
+        if (entity.getProtectiveSystemType() != null) dto.setProtectiveSystemType(entity.getProtectiveSystemType());
+        if (entity.getInspectionsJson() != null) dto.setInspectionsJson(entity.getInspectionsJson());
+        try { dto.setTypeOfWork(entity.getTypeOfWork()); } catch (Exception e) { /* ignore */ }
+        try { dto.setChecklist(entity.getChecklist()); } catch (Exception e) { /* ignore */ }
+
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
             dto.setLocation(entity.getWorkArea().getName());
@@ -63,6 +87,30 @@ public class ExcavationPermitMapper implements BaseMapper {
         if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
         if (dto.getRedTagNum() != null) entity.setRedTagNum(dto.getRedTagNum());
         if (dto.getPermitNumber() != null) entity.setPermitNumber(dto.getPermitNumber());
+
+        if (dto.getSupervisor() != null) entity.setSupervisor(dto.getSupervisor());
+        if (dto.getJobLocation() != null) entity.setJobLocation(dto.getJobLocation());
+        if (dto.getSupervisorPhone() != null) entity.setSupervisorPhone(dto.getSupervisorPhone());
+        if (dto.getExcavationDescription() != null) entity.setExcavationDescription(dto.getExcavationDescription());
+        if (dto.getWorkOrder() != null) entity.setWorkOrder(dto.getWorkOrder());
+        if (dto.getLocationPipingMarked() != null) entity.setLocationPipingMarked(dto.getLocationPipingMarked());
+        if (dto.getSupervisorApprovalDate() != null) entity.setSupervisorApprovalDate(dto.getSupervisorApprovalDate());
+        if (dto.getSupervisorApprovalTime() != null) entity.setSupervisorApprovalTime(dto.getSupervisorApprovalTime());
+        if (dto.getPermitClosedDate() != null) entity.setPermitClosedDate(dto.getPermitClosedDate());
+        if (dto.getPermitClosedTime() != null) entity.setPermitClosedTime(dto.getPermitClosedTime());
+        if (dto.getJobStatusComplete() != null) entity.setJobStatusComplete(dto.getJobStatusComplete());
+        if (dto.getSupervisorFieldInspectionName() != null) entity.setSupervisorFieldInspectionName(dto.getSupervisorFieldInspectionName());
+        if (dto.getSupervisorFieldInspectionDate() != null) entity.setSupervisorFieldInspectionDate(dto.getSupervisorFieldInspectionDate());
+        if (dto.getSupervisorFieldInspectionTime() != null) entity.setSupervisorFieldInspectionTime(dto.getSupervisorFieldInspectionTime());
+        if (dto.getFacilityName() != null) entity.setFacilityName(dto.getFacilityName());
+        if (dto.getCompetentPerson() != null) entity.setCompetentPerson(dto.getCompetentPerson());
+        if (dto.getSoilType() != null) entity.setSoilType(dto.getSoilType());
+        if (dto.getExcavationDepth() != null) entity.setExcavationDepth(dto.getExcavationDepth());
+        if (dto.getExcavationWidth() != null) entity.setExcavationWidth(dto.getExcavationWidth());
+        if (dto.getProtectiveSystemType() != null) entity.setProtectiveSystemType(dto.getProtectiveSystemType());
+        if (dto.getInspectionsJson() != null) entity.setInspectionsJson(dto.getInspectionsJson());
+        try { entity.setTypeOfWork(dto.getTypeOfWork()); } catch (Exception e) { /* ignore */ }
+        try { entity.setChecklist(dto.getChecklist()); } catch (Exception e) { /* ignore */ }
 
         if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);

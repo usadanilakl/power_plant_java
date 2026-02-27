@@ -87,16 +87,17 @@ export class JobLogDto extends BaseDto implements JobLogModel {
   }
 
   static toFormFields(
-    fields: JobLogFieldName[] = ['company', 'foreman', 'location', 'startDate', 'endDate', 'workScope']
+    dto: JobLogDto,
+    fields: JobLogFieldName[] = ['permitNumber', 'company', 'foreman', 'location', 'startDate', 'endDate', 'workScope']
   ): FormField[] {
     const allFields: { [key in JobLogFieldName]?: FormField } = {
-      company: { name: 'company', label: 'Company', type: 'text' },
-      foreman: { name: 'foreman', label: 'Foreman', type: 'text' },
-      location: { name: 'location', label: 'Location', type: 'text' },
-      startDate: { name: 'startDate', label: 'Start Date', type: 'date' },
-      endDate: { name: 'endDate', label: 'End Date', type: 'date' },
-      workScope: { name: 'workScope', label: 'Work Scope', type: 'textarea' },
-      permitNumber: { name: 'permitNumber', label: 'Job #', type: 'text', readonly: true },
+      company: { name: 'company', label: 'Company', type: 'text', initialValue: dto.company },
+      foreman: { name: 'foreman', label: 'Foreman', type: 'text', initialValue: dto.foreman },
+      location: { name: 'location', label: 'Location', type: 'text', initialValue: dto.location },
+      startDate: { name: 'startDate', label: 'Start Date', type: 'date', initialValue: dto.startDate ?? new Date().toISOString().split('T')[0] },
+      endDate: { name: 'endDate', label: 'End Date', type: 'date', initialValue: dto.endDate },
+      workScope: { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: dto.workScope },
+      permitNumber: { name: 'permitNumber', label: 'Job #', type: 'text', initialValue: dto.permitNumber },
     };
     return fields.map(f => allFields[f]).filter((f): f is FormField => f !== undefined);
   }
