@@ -146,6 +146,9 @@ public class WorkRequestMapper implements BaseMapper {
 
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
+        } else if (entity.getLocation() != null && !entity.getLocation().isEmpty()) {
+            workAreaRepo.findFirstByNameIgnoreCase(entity.getLocation())
+                .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
         }
 
         return dto;

@@ -59,6 +59,9 @@ public class SafeWorkMapper implements BaseMapper {
         if (safeWork.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(safeWork.getWorkArea()));
             dto.setLocation(safeWork.getWorkArea().getName());
+        } else if (safeWork.getLocation() != null && !safeWork.getLocation().isEmpty()) {
+            workAreaRepo.findFirstByNameIgnoreCase(safeWork.getLocation())
+                .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
         }
 
         return dto;

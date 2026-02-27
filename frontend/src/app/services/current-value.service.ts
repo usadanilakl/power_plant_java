@@ -45,10 +45,12 @@ export class CurrentValueService {
       map(values => {
         const categoryData: CategoryData = {};
         values.forEach(value => {
-          if (!categoryData[value.category.alias]) {
-            categoryData[value.category.alias] = [];
+          const alias = value.category?.alias;
+          if (!alias) return;
+          if (!categoryData[alias]) {
+            categoryData[alias] = [];
           }
-          categoryData[value.category.alias].push(value);
+          categoryData[alias].push(value);
         });
         return categoryData;
       }),

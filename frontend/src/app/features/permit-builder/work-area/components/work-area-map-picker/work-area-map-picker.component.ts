@@ -165,11 +165,12 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
     const topPct = (shape.y / shape.originalHeight) * 100;
     const widthPct = (shape.width / shape.originalWidth) * 100;
     const heightPct = (shape.height / shape.originalHeight) * 100;
-    const maxWidthPct = widthPct * 2.5;
+    const maxWidthPct = widthPct * 2;
     return {
       left: `${leftPct + widthPct / 2}%`,
       top: `${topPct + heightPct / 2}%`,
       'max-width': `${maxWidthPct}%`,
+      'max-height': `${heightPct}%`,
     };
   }
 

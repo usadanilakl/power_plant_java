@@ -57,16 +57,21 @@ import { RfPopupProjectionComponent } from '../../../../../shared/popup-projecti
             <app-rf-popup-projection
               [isOpen]="isMapOpen()"
               title="Select Work Area"
-              size="large"
+              size="xlarge"
+              [zIndex]="99999"
               (close)="isMapOpen.set(false)"
             >
               <app-work-area-map-picker
                 #popupMapPicker
+                style="--map-height: 70vh"
                 (workAreaSelected)="onPopupMapWorkAreaSelected($event)"
               ></app-work-area-map-picker>
             </app-rf-popup-projection>
           </div>
         }
+      }
+      @if (fallbackText() && !value()) {
+        <div class="fallback-location">Old location: {{ fallbackText() }}</div>
       }
     </div>
   `,
@@ -79,7 +84,7 @@ import { RfPopupProjectionComponent } from '../../../../../shared/popup-projecti
       color: #555;
       margin-bottom: 4px;
     }
-    .both-wrapper { width: 100%; }
+    .both-wrapper { width: 100%; position: relative; z-index: 9999; }
     .dropdown-with-map-btn {
       display: flex;
       align-items: flex-end;
@@ -100,6 +105,15 @@ import { RfPopupProjectionComponent } from '../../../../../shared/popup-projecti
       flex-shrink: 0;
     }
     .map-btn:hover { background: #e3f2fd; }
+    .fallback-location {
+      margin-top: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      color: #666;
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 4px;
+    }
   `]
 })
 export class WorkAreaSelectComponent implements ControlValueAccessor, AfterViewInit {
@@ -114,6 +128,7 @@ export class WorkAreaSelectComponent implements ControlValueAccessor, AfterViewI
   // Inputs
   label = input<string>('Work Area');
   viewMode = input<'dropdown' | 'map' | 'both'>('dropdown');
+  fallbackText = input<string | null>(null);
 
   // Outputs - emits full WorkAreaDto so parent can read constantHazards
   workAreaSelected = output<WorkAreaDto | null>();

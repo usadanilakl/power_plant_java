@@ -1,5 +1,21 @@
 ## Description
 
+Job is open any time a work is performed on a piece of equipment - it can hold multiple daily permit packages. Daily permit package includes all the permits needed per task. Multiple tasks can be bundled under the same job. So job keeps track of daily packages for all tasks involved in the job. 
+
+Job entity provides a way to see history of all packages or current packages.
+Daily package keeps track of current permits - their statuses and modification history. 
+
+Job can be opened manually or generated from Work Request. 
+
+Daily Permit Package can be created manually inside the existing job or generated from work request.
+
+Work Request becomes part of daily package - if job is generated from work request - it automatically generates DailyPackage based on the same work request. and this work request becomes part of it. For next day, if job wasn't completed, a new Work Request is submitted - it can be added to new Daily Package if it is created or it can be used to generate new daily package inside existing job. 
+
+# Permit Relationships
+Safework references: all related LOTO, CS, HW, Energized Work, Excavation, Venting
+
+CS references LOTOs and HW
+
 ## Full Flow
 
 Work Request is submitted (saved in DB) -> JHA filled out and attached to Work Request (Saved in DB)

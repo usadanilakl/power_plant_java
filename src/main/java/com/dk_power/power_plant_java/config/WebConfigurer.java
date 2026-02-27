@@ -45,7 +45,7 @@ public class WebConfigurer implements WebMvcConfigurer {
 //                .addResourceLocations("classpath:/static/angular/");
         registry.addResourceHandler("/angular/**")
                 .addResourceLocations("classpath:/static/angular/")
-                .setCachePeriod(3600)
+                .setCachePeriod(0)
                 .resourceChain(true)
                 .addResolver(new PathResourceResolver() {
                     @Override

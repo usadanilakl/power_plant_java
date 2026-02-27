@@ -1,5 +1,5 @@
 import { NgClass, DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, EventEmitter, Input, Output, OnDestroy, OnChanges, SimpleChanges, ElementRef, AfterViewInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnDestroy, OnChanges, SimpleChanges, ElementRef, AfterViewInit, AfterViewChecked, Inject, PLATFORM_ID } from '@angular/core';
 
 @Component({
   selector: 'app-rf-popup-projection',
@@ -8,17 +8,18 @@ import { Component, EventEmitter, Input, Output, OnDestroy, OnChanges, SimpleCha
   templateUrl: './rf-popup-projection.component.html',
   styleUrl: './rf-popup-projection.component.css'
 })
-export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterViewInit {
+export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterViewInit, AfterViewChecked {
 
   @Input() isOpen: boolean = false;
   @Input() title: string = '';
-  @Input() size: 'small' | 'medium' | 'large' | 'auto' = 'auto';
+  @Input() size: 'small' | 'medium' | 'large' | 'xlarge' | 'auto' = 'auto';
   @Input() fullHeight: boolean = false;
-  @Input() zIndex: number = 10000;  // Default z-index, can be overridden for nested popups
+  @Input() zIndex: number = 10000;
   @Output() close = new EventEmitter<void>();
 
   private overlayElement: HTMLElement | null = null;
   private isViewInitialized = false;
+  private needsMove = false;
   private isBrowser: boolean;
 
   constructor(
@@ -39,11 +40,17 @@ export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterVi
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isViewInitialized) {
       if (this.isOpen) {
-        // Use setTimeout to ensure the DOM is ready
-        setTimeout(() => this.moveToBody(), 0);
+        this.needsMove = true;
       } else {
         this.removeFromBody();
       }
+    }
+  }
+
+  ngAfterViewChecked(): void {
+    if (this.needsMove) {
+      this.moveToBody();
+      this.needsMove = false;
     }
   }
 
@@ -54,12 +61,11 @@ export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterVi
   private moveToBody(): void {
     if (!this.isBrowser) return;
 
-    // Find the popup-overlay element within this component
     const overlay = this.elementRef.nativeElement.querySelector('.popup-overlay');
     if (overlay && !this.overlayElement) {
       this.overlayElement = overlay;
-      // Move the overlay to the document body
       this.document.body.appendChild(overlay);
+      overlay.style.visibility = 'visible';
     }
   }
 
@@ -67,7 +73,6 @@ export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterVi
     if (!this.isBrowser) return;
 
     if (this.overlayElement) {
-      // Check if element is still in body before trying to remove
       if (this.overlayElement.parentNode === this.document.body) {
         this.document.body.removeChild(this.overlayElement);
       }

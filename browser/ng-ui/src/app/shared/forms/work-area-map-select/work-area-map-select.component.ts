@@ -194,6 +194,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       left: `${leftPct + widthPct / 2}%`,
       top: `${topPct + heightPct / 2}%`,
       'max-width': `${maxWidthPct}%`,
+      'max-height': `${heightPct}%`,
     };
   }
 

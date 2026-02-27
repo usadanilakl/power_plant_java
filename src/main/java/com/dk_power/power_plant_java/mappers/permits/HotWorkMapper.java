@@ -42,6 +42,9 @@ public class HotWorkMapper implements BaseMapper {
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
             dto.setLocation(entity.getWorkArea().getName());
+        } else if (entity.getLocation() != null && !entity.getLocation().isEmpty()) {
+            workAreaRepo.findFirstByNameIgnoreCase(entity.getLocation())
+                .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
         }
 
         return dto;

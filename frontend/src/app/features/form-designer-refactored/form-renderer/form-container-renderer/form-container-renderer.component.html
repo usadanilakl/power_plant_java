@@ -71,6 +71,7 @@
         <app-work-area-select
           [formControl]="getFormControl(asFormField(container().content).name!)"
           [viewMode]="'both'"
+          [fallbackText]="asFormField(container().content).context?.['fallbackText'] ?? null"
           [style]="asFormField(container().content).style">
         </app-work-area-select>
       }

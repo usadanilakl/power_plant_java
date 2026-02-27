@@ -1,3 +1,7 @@
+:host .popup-overlay {
+  visibility: hidden;
+}
+
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -31,6 +35,11 @@
 
 .popup-large {
   width: 900px;
+}
+
+.popup-xlarge {
+  width: 95vw;
+  max-width: 1400px;
 }
 
 .popup-auto {

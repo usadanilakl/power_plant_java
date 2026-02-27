@@ -70,6 +70,8 @@
               @case('work-area-select'){
                 <app-work-area-select
                   [label]="field.label"
+                  [viewMode]="field.context?.['viewMode'] ?? 'dropdown'"
+                  [fallbackText]="field.context?.['fallbackText'] ?? null"
                   [formControl]="getFormControl(field.name)"
                   (workAreaSelected)="onWorkAreaSelected($event)"
                 ></app-work-area-select>

@@ -124,7 +124,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     dto: HotWorkDto,
     locationOptions: Option[] = [],
     fields: (HotWorkFieldName | 'workArea')[] = [
-      'workArea', 'date', 'workScope', 'foreman', 'fireWatch',
+      'workArea', 'location', 'date', 'workScope', 'foreman', 'fireWatch',
       'meterModel', 'meterNum', 'specialInstructions',
       ...Object.keys(HotWorkDto.getMeasureFields(null)) as HotWorkFieldName[],
     ]
@@ -137,7 +137,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         label: 'Work Area',
         type: 'work-area-select',
         initialValue: (dto as any).workArea?.id ?? null,
-        context: { viewMode: 'map' },
+        context: { viewMode: 'map', fallbackText: dto.location },
       },
       date: { 
         name: 'date', 

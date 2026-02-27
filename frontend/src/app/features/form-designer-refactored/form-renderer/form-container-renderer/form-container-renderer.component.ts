@@ -62,6 +62,10 @@ export class FormContainerRendererComponent {
       styles['height'] = 'auto';
       styles['overflow'] = 'visible';
     }
+    if (this.isFormField(container.content) && (container.content as FormField).type === 'work-area-select') {
+      styles['overflow'] = 'visible';
+      styles['z-index'] = '100';
+    }
     return styles;
   }
 
