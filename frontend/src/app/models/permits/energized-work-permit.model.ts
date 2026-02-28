@@ -6,17 +6,27 @@ import { FormField } from '../ui/form-field.model';
 import { WorkAreaDto } from './work-area.model';
 
 export class EnergizedWorkChecklist {
+  // Section 2 text fields
   jobDescription: string = '';
   safeWorkPractices: string = '';
   shockHazardAnalysis: string = '';
   flashProtectionBoundary: string = '';
   meansToRestrictAccess: string = '';
+  // Item 3 sub-items (shock hazard boundaries) - text values
+  limitedApproachBoundary: string = '';
+  restrictedApproachBoundary: string = '';
+  prohibitedApproachBoundary: string = '';
+  // Item 4 sub-items (flash protection) - text values
+  incidentEnergy: string = '';
+  arcFlashPpe: string = '';
+  arcFlashBoundary: string = '';
+  // Checkboxes
   jobDescriptionComplete: boolean = false;
   safeWorkPracticesComplete: boolean = false;
   shockHazardAnalysisComplete: boolean = false;
-  limitedApproachBoundary: boolean = false;
-  restrictedApproachBoundary: boolean = false;
-  prohibitedApproachBoundary: boolean = false;
+  limitedApproachBoundaryComplete: boolean = false;
+  restrictedApproachBoundaryComplete: boolean = false;
+  prohibitedApproachBoundaryComplete: boolean = false;
   incidentEnergyComplete: boolean = false;
   arcFlashPpeComplete: boolean = false;
   arcFlashBoundaryComplete: boolean = false;
@@ -153,16 +163,33 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
     const checklist = checklistDto || new EnergizedWorkChecklist();
     const group = { label: 'Energized Work Checklist', orientation: 'vertical' } as const;
     return {
+      // 1. Job description
+      'checklist.jobDescription': { name: 'checklist.jobDescription', label: 'Job Description', type: 'text', initialValue: checklist.jobDescription, group },
       'checklist.jobDescriptionComplete': { name: 'checklist.jobDescriptionComplete', label: 'Job Description Complete', type: 'checkbox', initialValue: checklist.jobDescriptionComplete, group },
+      // 2. Safe work practices
+      'checklist.safeWorkPractices': { name: 'checklist.safeWorkPractices', label: 'Safe Work Practices', type: 'text', initialValue: checklist.safeWorkPractices, group },
       'checklist.safeWorkPracticesComplete': { name: 'checklist.safeWorkPracticesComplete', label: 'Safe Work Practices Complete', type: 'checkbox', initialValue: checklist.safeWorkPracticesComplete, group },
+      // 3. Shock hazard analysis
+      'checklist.shockHazardAnalysis': { name: 'checklist.shockHazardAnalysis', label: 'Shock Hazard Analysis', type: 'text', initialValue: checklist.shockHazardAnalysis, group },
       'checklist.shockHazardAnalysisComplete': { name: 'checklist.shockHazardAnalysisComplete', label: 'Shock Hazard Analysis Complete', type: 'checkbox', initialValue: checklist.shockHazardAnalysisComplete, group },
-      'checklist.limitedApproachBoundary': { name: 'checklist.limitedApproachBoundary', label: 'Limited Approach Boundary', type: 'checkbox', initialValue: checklist.limitedApproachBoundary, group },
-      'checklist.restrictedApproachBoundary': { name: 'checklist.restrictedApproachBoundary', label: 'Restricted Approach Boundary', type: 'checkbox', initialValue: checklist.restrictedApproachBoundary, group },
-      'checklist.prohibitedApproachBoundary': { name: 'checklist.prohibitedApproachBoundary', label: 'Prohibited Approach Boundary', type: 'checkbox', initialValue: checklist.prohibitedApproachBoundary, group },
+      'checklist.limitedApproachBoundary': { name: 'checklist.limitedApproachBoundary', label: 'Limited Approach Boundary', type: 'text', initialValue: checklist.limitedApproachBoundary, group },
+      'checklist.limitedApproachBoundaryComplete': { name: 'checklist.limitedApproachBoundaryComplete', label: 'Limited Approach Boundary Complete', type: 'checkbox', initialValue: checklist.limitedApproachBoundaryComplete, group },
+      'checklist.restrictedApproachBoundary': { name: 'checklist.restrictedApproachBoundary', label: 'Restricted Approach Boundary', type: 'text', initialValue: checklist.restrictedApproachBoundary, group },
+      'checklist.restrictedApproachBoundaryComplete': { name: 'checklist.restrictedApproachBoundaryComplete', label: 'Restricted Approach Boundary Complete', type: 'checkbox', initialValue: checklist.restrictedApproachBoundaryComplete, group },
+      'checklist.prohibitedApproachBoundary': { name: 'checklist.prohibitedApproachBoundary', label: 'Prohibited Approach Boundary', type: 'text', initialValue: checklist.prohibitedApproachBoundary, group },
+      'checklist.prohibitedApproachBoundaryComplete': { name: 'checklist.prohibitedApproachBoundaryComplete', label: 'Prohibited Approach Boundary Complete', type: 'checkbox', initialValue: checklist.prohibitedApproachBoundaryComplete, group },
+      // 4. Flash protection boundary
+      'checklist.flashProtectionBoundary': { name: 'checklist.flashProtectionBoundary', label: 'Flash Protection Boundary', type: 'text', initialValue: checklist.flashProtectionBoundary, group },
+      'checklist.incidentEnergy': { name: 'checklist.incidentEnergy', label: 'Incident Energy / Arc Flash PPE Category', type: 'text', initialValue: checklist.incidentEnergy, group },
       'checklist.incidentEnergyComplete': { name: 'checklist.incidentEnergyComplete', label: 'Incident Energy Complete', type: 'checkbox', initialValue: checklist.incidentEnergyComplete, group },
+      'checklist.arcFlashPpe': { name: 'checklist.arcFlashPpe', label: 'Arc Flash PPE', type: 'text', initialValue: checklist.arcFlashPpe, group },
       'checklist.arcFlashPpeComplete': { name: 'checklist.arcFlashPpeComplete', label: 'Arc Flash PPE Complete', type: 'checkbox', initialValue: checklist.arcFlashPpeComplete, group },
+      'checklist.arcFlashBoundary': { name: 'checklist.arcFlashBoundary', label: 'Arc Flash Boundary', type: 'text', initialValue: checklist.arcFlashBoundary, group },
       'checklist.arcFlashBoundaryComplete': { name: 'checklist.arcFlashBoundaryComplete', label: 'Arc Flash Boundary Complete', type: 'checkbox', initialValue: checklist.arcFlashBoundaryComplete, group },
+      // 5. Means to restrict access
+      'checklist.meansToRestrictAccess': { name: 'checklist.meansToRestrictAccess', label: 'Means to Restrict Access', type: 'text', initialValue: checklist.meansToRestrictAccess, group },
       'checklist.meansToRestrictAccessComplete': { name: 'checklist.meansToRestrictAccessComplete', label: 'Means to Restrict Access Complete', type: 'checkbox', initialValue: checklist.meansToRestrictAccessComplete, group },
+      // 6. Pre-Job Brief
       'checklist.preJobBriefComplete': { name: 'checklist.preJobBriefComplete', label: 'Pre-Job Brief Complete', type: 'checkbox', initialValue: checklist.preJobBriefComplete, group },
     };
   }
@@ -171,8 +198,11 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
     dto: EnergizedWorkPermitDto,
     fields: (EnergizedWorkPermitFieldName | 'workArea')[] = [
       'workArea', 'date', 'workOrder', 'circuitDescription', 'workDescription',
-      'justification', 'requester', 'requesterDate', 'workCanBePerformedSafely',
+      'justification', 'requester', 'requesterDate',
       ...Object.keys(EnergizedWorkPermitDto.getChecklistFields(null)) as EnergizedWorkPermitFieldName[],
+      'workCanBePerformedSafely',
+      'qualifiedPersonSignature', 'qualifiedPersonDate',
+      'plantManagerSignature', 'plantManagerDate',
     ]
   ): FormField[] {
     const checklistFields = EnergizedWorkPermitDto.getChecklistFields(dto.checklist);

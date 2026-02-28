@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -50,139 +51,145 @@ public class PermitFormSeeder {
         int y = M;
 
         // Header
-        form.addFormContainer(text(M, y, FW, 40, "Energized Electrical Work Permit", p, bold(18)));
-        y += 40;
-        form.addFormContainer(text(M, y, FW, 20, "Appendix A", p, centered()));
+        form.addFormContainer(text(M, y, FW, 30, "Energized Electrical Work Permit", p, bold(18)));
         y += 30;
+        form.addFormContainer(text(M, y, FW, 18, "Appendix A", p, centered()));
+        y += 24;
 
         // Work Area
         form.addFormContainer(text(M, y, 100, 20, "Work Area:", p, bold(11)));
-        form.addFormContainer(field(120, y, FW - 100, 30, "workArea", "work-area-select", p));
-        y += 40;
+        form.addFormContainer(field(120, y, FW - 100, 26, "workArea", "work-area-select", p));
+        y += 34;
 
         // Section 1 header
         form.addFormContainer(text(M, y, 440, 20, "Section 1: To be completed by the Requester", p, bold(11)));
         form.addFormContainer(text(540, y, 100, 20, "WorkOrder:", p, bold(11)));
-        form.addFormContainer(field(640, y, 156, 24, "workOrder", "text", p));
-        y += 30;
+        form.addFormContainer(field(640, y, 156, 22, "workOrder", "text", p));
+        y += 28;
 
         // 1. Circuit description
-        form.addFormContainer(text(M, y, 20, 20, "1.", p, Map.of()));
-        form.addFormContainer(text(40, y, 400, 20, "Description of circuit/equipment/job location:", p, Map.of()));
-        form.addFormContainer(field(M + 20, y + 20, FW - 20, 50, "circuitDescription", "textarea", p));
-        y += 78;
+        form.addFormContainer(text(M, y, 20, 18, "1.", p, Map.of()));
+        form.addFormContainer(text(40, y, 400, 18, "Description of circuit/equipment/job location:", p, Map.of()));
+        form.addFormContainer(field(M + 20, y + 18, FW - 20, 40, "circuitDescription", "textarea", p));
+        y += 64;
 
         // 2. Work description
-        form.addFormContainer(text(M, y, 20, 20, "2.", p, Map.of()));
-        form.addFormContainer(text(40, y, 300, 20, "Description of work to be done:", p, Map.of()));
-        form.addFormContainer(field(M + 20, y + 20, FW - 20, 50, "workDescription", "textarea", p));
-        y += 78;
+        form.addFormContainer(text(M, y, 20, 18, "2.", p, Map.of()));
+        form.addFormContainer(text(40, y, 300, 18, "Description of work to be done:", p, Map.of()));
+        form.addFormContainer(field(M + 20, y + 18, FW - 20, 40, "workDescription", "textarea", p));
+        y += 64;
 
         // 3. Justification
-        form.addFormContainer(text(M, y, 20, 20, "3.", p, Map.of()));
-        form.addFormContainer(text(40, y, 700, 20, "Justification of why the equipment cannot be de-energized or the work deferred:", p, Map.of()));
-        form.addFormContainer(field(M + 20, y + 20, FW - 20, 50, "justification", "textarea", p));
-        y += 78;
+        form.addFormContainer(text(M, y, 20, 18, "3.", p, Map.of()));
+        form.addFormContainer(text(40, y, 700, 18, "Justification of why the equipment cannot be de-energized or the work deferred:", p, Map.of()));
+        form.addFormContainer(field(M + 20, y + 18, FW - 20, 40, "justification", "textarea", p));
+        y += 64;
 
         // Note banner
-        form.addFormContainer(text(M, y, FW, 24, "NOTE: Every effort shall be made to de-energize the circuit/equipment", p,
+        form.addFormContainer(text(M, y, FW, 22, "NOTE: Every effort shall be made to de-energize the circuit/equipment", p,
                 Map.of("backgroundColor", "#666", "color", "white", "textAlign", "center", "fontWeight", "bold", "fontSize", "10px")));
-        y += 32;
+        y += 28;
 
-        // Requester + Date
-        form.addFormContainer(text(M, y + 24, 80, 20, "Requester", p, Map.of()));
-        form.addFormContainer(field(100, y, 360, 24, "requester", "text", p));
-        form.addFormContainer(text(520, y + 24, 40, 20, "Date", p, Map.of()));
-        form.addFormContainer(field(560, y, 216, 24, "requesterDate", "date", p));
-        y += 50;
+        // Requester + Date (labels inline with inputs)
+        form.addFormContainer(text(M, y, 70, 22, "Requester:", p, bold(10)));
+        form.addFormContainer(field(90, y, 370, 22, "requester", "text", p));
+        form.addFormContainer(text(480, y, 40, 22, "Date:", p, bold(10)));
+        form.addFormContainer(field(520, y, 256, 22, "requesterDate", "date", p));
+        y += 30;
 
         // Section 2 header
-        form.addFormContainer(text(M, y, 600, 20, "Section 2: To be completed by the electrically qualified persons doing the work:", p, bold(10)));
-        form.addFormContainer(text(640, y, 136, 20, "Check When Complete", p, bold(9)));
-        y += 26;
+        form.addFormContainer(text(M, y, 600, 18, "Section 2: To be completed by the electrically qualified persons doing the work:", p, bold(10)));
+        form.addFormContainer(text(640, y, 136, 18, "Check When Complete", p, bold(9)));
+        y += 24;
 
         // Checklist items
         // 1. Job description
-        form.addFormContainer(text(M, y, 20, 20, "1.", p, Map.of()));
-        form.addFormContainer(text(40, y, 560, 20, "Detailed job description procedure to be used in performing the above detailed work:", p, Map.of()));
+        form.addFormContainer(text(M, y, 20, 18, "1.", p, Map.of()));
+        form.addFormContainer(text(40, y, 560, 18, "Detailed job description procedure to be used in performing the above detailed work:", p, Map.of()));
         form.addFormContainer(field(700, y, 24, 24, "checklist.jobDescriptionComplete", "checkbox", p));
-        form.addFormContainer(field(40, y + 20, 640, 28, "checklist.jobDescription", "text", p));
-        y += 54;
+        form.addFormContainer(field(40, y + 18, 640, 22, "checklist.jobDescription", "text", p));
+        y += 46;
 
         // 2. Safe work practices
-        form.addFormContainer(text(M, y, 20, 20, "2.", p, Map.of()));
-        form.addFormContainer(text(40, y, 500, 20, "Description of safe work practices to be employed:", p, Map.of()));
+        form.addFormContainer(text(M, y, 20, 18, "2.", p, Map.of()));
+        form.addFormContainer(text(40, y, 500, 18, "Description of safe work practices to be employed:", p, Map.of()));
         form.addFormContainer(field(700, y, 24, 24, "checklist.safeWorkPracticesComplete", "checkbox", p));
-        form.addFormContainer(field(40, y + 20, 640, 28, "checklist.safeWorkPractices", "text", p));
-        y += 54;
+        form.addFormContainer(field(40, y + 18, 640, 22, "checklist.safeWorkPractices", "text", p));
+        y += 46;
 
         // 3. Shock hazard analysis
-        form.addFormContainer(text(M, y, 20, 20, "3.", p, Map.of()));
-        form.addFormContainer(text(40, y, 500, 20, "Results of the shock hazard analysis:", p, Map.of()));
-        form.addFormContainer(field(40, y + 20, 640, 24, "checklist.shockHazardAnalysis", "text", p));
-        y += 48;
+        form.addFormContainer(text(M, y, 20, 18, "3.", p, Map.of()));
+        form.addFormContainer(text(40, y, 500, 18, "Results of the shock hazard analysis:", p, Map.of()));
+        form.addFormContainer(field(40, y + 18, 640, 20, "checklist.shockHazardAnalysis", "text", p));
+        y += 42;
         form.addFormContainer(text(60, y, 200, 20, "a. Limited approach boundary", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.limitedApproachBoundary", "checkbox", p));
-        y += 22;
+        form.addFormContainer(field(260, y, 416, 20, "checklist.limitedApproachBoundary", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.limitedApproachBoundaryComplete", "checkbox", p));
+        y += 24;
         form.addFormContainer(text(60, y, 210, 20, "b. Restricted approach boundary", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.restrictedApproachBoundary", "checkbox", p));
-        y += 22;
+        form.addFormContainer(field(270, y, 406, 20, "checklist.restrictedApproachBoundary", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.restrictedApproachBoundaryComplete", "checkbox", p));
+        y += 24;
         form.addFormContainer(text(60, y, 210, 20, "c. Prohibited approach boundary", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.prohibitedApproachBoundary", "checkbox", p));
-        y += 28;
+        form.addFormContainer(field(270, y, 406, 20, "checklist.prohibitedApproachBoundary", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.prohibitedApproachBoundaryComplete", "checkbox", p));
+        y += 26;
 
         // 4. Flash protection boundary
-        form.addFormContainer(text(M, y, 20, 20, "4.", p, Map.of()));
-        form.addFormContainer(text(40, y, 400, 20, "Determine the flash protection boundary:", p, Map.of()));
-        form.addFormContainer(field(40, y + 20, 640, 24, "checklist.flashProtectionBoundary", "text", p));
-        y += 48;
-        form.addFormContainer(text(60, y, 600, 20, "a. Available incident energy at the working distance or arc flash PPE category", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.incidentEnergyComplete", "checkbox", p));
-        y += 22;
-        form.addFormContainer(text(60, y, 600, 20, "b. Necessary arc flash personal and other protective equipment", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.arcFlashPpeComplete", "checkbox", p));
-        y += 22;
+        form.addFormContainer(text(M, y, 20, 18, "4.", p, Map.of()));
+        form.addFormContainer(text(40, y, 400, 18, "Determine the flash protection boundary:", p, Map.of()));
+        form.addFormContainer(field(40, y + 18, 640, 20, "checklist.flashProtectionBoundary", "text", p));
+        y += 42;
+        form.addFormContainer(text(60, y, 440, 20, "a. Available incident energy or arc flash PPE category", p, Map.of()));
+        form.addFormContainer(field(500, y, 176, 20, "checklist.incidentEnergy", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.incidentEnergyComplete", "checkbox", p));
+        y += 24;
+        form.addFormContainer(text(60, y, 440, 20, "b. Necessary arc flash PPE and protective equipment", p, Map.of()));
+        form.addFormContainer(field(500, y, 176, 20, "checklist.arcFlashPpe", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.arcFlashPpeComplete", "checkbox", p));
+        y += 24;
         form.addFormContainer(text(60, y, 200, 20, "c. Arc flash boundary", p, Map.of()));
-        form.addFormContainer(field(700, y, 24, 24, "checklist.arcFlashBoundaryComplete", "checkbox", p));
-        y += 28;
+        form.addFormContainer(field(260, y, 416, 20, "checklist.arcFlashBoundary", "text", p));
+        form.addFormContainer(field(700, y, 24, 20, "checklist.arcFlashBoundaryComplete", "checkbox", p));
+        y += 26;
 
         // 5. Means to restrict access
-        form.addFormContainer(text(M, y, 20, 20, "5.", p, Map.of()));
-        form.addFormContainer(text(40, y, 600, 20, "Means employed to restrict access of unqualified persons from the work area:", p, Map.of()));
+        form.addFormContainer(text(M, y, 20, 18, "5.", p, Map.of()));
+        form.addFormContainer(text(40, y, 600, 18, "Means employed to restrict access of unqualified persons from the work area:", p, Map.of()));
         form.addFormContainer(field(700, y, 24, 24, "checklist.meansToRestrictAccessComplete", "checkbox", p));
-        form.addFormContainer(field(40, y + 20, 640, 24, "checklist.meansToRestrictAccess", "text", p));
-        y += 50;
+        form.addFormContainer(field(40, y + 18, 640, 20, "checklist.meansToRestrictAccess", "text", p));
+        y += 44;
 
         // 6. Pre-Job Brief
-        form.addFormContainer(text(M, y, 20, 20, "6.", p, Map.of()));
-        form.addFormContainer(text(40, y, 600, 20, "Evidence of completion of Pre-Job Brief, including discussion of any job-related hazards:", p, Map.of()));
+        form.addFormContainer(text(M, y, 20, 18, "6.", p, Map.of()));
+        form.addFormContainer(text(40, y, 600, 18, "Evidence of completion of Pre-Job Brief, including discussion of any job-related hazards:", p, Map.of()));
         form.addFormContainer(field(700, y, 24, 24, "checklist.preJobBriefComplete", "checkbox", p));
-        y += 30;
+        y += 24;
 
         // 7. Work can be performed safely
-        form.addFormContainer(text(M, y, 20, 20, "7.", p, Map.of()));
-        form.addFormContainer(text(40, y, 600, 20, "Do you agree the above-described work can be performed safely?", p, Map.of()));
+        form.addFormContainer(text(M, y, 20, 18, "7.", p, Map.of()));
+        form.addFormContainer(text(40, y, 600, 18, "Do you agree the above-described work can be performed safely?", p, Map.of()));
         form.addFormContainer(field(700, y, 80, 24, "workCanBePerformedSafely", "radio", p));
-        y += 36;
+        y += 28;
 
         // Section 3: Approval
-        form.addFormContainer(text(M, y, FW, 20, "Section 3: Approval to perform the work while electrically energized:", p, bold(11)));
-        y += 30;
+        form.addFormContainer(text(M, y, FW, 18, "Section 3: Approval to perform the work while electrically energized:", p, bold(11)));
+        y += 26;
 
-        form.addFormContainer(text(M, y + 24, 300, 20, "Electrically Qualified Person Signature", p, Map.of()));
-        form.addFormContainer(field(M, y, 420, 24, "qualifiedPersonSignature", "text", p));
-        form.addFormContainer(text(520, y + 24, 40, 20, "Date", p, Map.of()));
-        form.addFormContainer(field(560, y, 216, 24, "qualifiedPersonDate", "date", p));
-        y += 50;
+        form.addFormContainer(field(M, y, 420, 22, "qualifiedPersonSignature", "text", p));
+        form.addFormContainer(text(M, y + 22, 300, 14, "Electrically Qualified Person Signature", p, Map.of("fontSize", "9px")));
+        form.addFormContainer(field(520, y, 256, 22, "qualifiedPersonDate", "date", p));
+        form.addFormContainer(text(520, y + 22, 40, 14, "Date", p, Map.of("fontSize", "9px")));
+        y += 40;
 
-        form.addFormContainer(text(M, y + 24, 200, 20, "Plant Manager", p, Map.of()));
-        form.addFormContainer(field(M, y, 420, 24, "plantManagerSignature", "text", p));
-        form.addFormContainer(text(520, y + 24, 40, 20, "Date", p, Map.of()));
-        form.addFormContainer(field(560, y, 216, 24, "plantManagerDate", "date", p));
-        y += 50;
+        form.addFormContainer(field(M, y, 420, 22, "plantManagerSignature", "text", p));
+        form.addFormContainer(text(M, y + 22, 200, 14, "Plant Manager", p, Map.of("fontSize", "9px")));
+        form.addFormContainer(field(520, y, 256, 22, "plantManagerDate", "date", p));
+        form.addFormContainer(text(520, y + 22, 40, 14, "Date", p, Map.of("fontSize", "9px")));
+        y += 40;
 
         // Footer
-        form.addFormContainer(text(M, y, FW, 45, "No work on energized equipment shall be performed alone.\nIf the work scope changes, notify the Plant Manager.\nNo modified work scope shall be performed without PRIOR authorization from the Plant Manager", p,
+        form.addFormContainer(text(M, y, FW, 38, "No work on energized equipment shall be performed alone.\nIf the work scope changes, notify the Plant Manager.\nNo modified work scope shall be performed without PRIOR authorization from the Plant Manager", p,
                 Map.of("backgroundColor", "#cc0000", "color", "white", "textAlign", "center", "fontSize", "9px")));
 
         printableFormRepo.save(form);
@@ -769,9 +776,9 @@ public class PermitFormSeeder {
         c.setSizeJson(Map.of("width", w, "height", h));
         c.setPageNumber(page);
         c.setLocked(true);
-        if (style != null && !style.isEmpty()) {
-            c.setStyleJson(style);
-        }
+        Map<String, Object> merged = paperStyle();
+        if (style != null) merged.putAll(style);
+        c.setStyleJson(merged);
         return c;
     }
 
@@ -786,7 +793,28 @@ public class PermitFormSeeder {
         c.setSizeJson(Map.of("width", w, "height", h));
         c.setPageNumber(page);
         c.setLocked(true);
+        if (Set.of("text", "textarea", "date", "number", "work-area-select").contains(type)) {
+            c.setStyleJson(underlineStyle());
+        } else {
+            c.setStyleJson(paperStyle());
+        }
         return c;
+    }
+
+    private Map<String, Object> paperStyle() {
+        Map<String, Object> s = new HashMap<>();
+        s.put("borderStyle", "none");
+        s.put("borderWidth", "0");
+        s.put("backgroundColor", "transparent");
+        return s;
+    }
+
+    private Map<String, Object> underlineStyle() {
+        Map<String, Object> s = paperStyle();
+        s.put("borderBottomWidth", "1px");
+        s.put("borderBottomStyle", "solid");
+        s.put("borderBottomColor", "black");
+        return s;
     }
 
     private Map<String, Object> bold(int fontSize) {
