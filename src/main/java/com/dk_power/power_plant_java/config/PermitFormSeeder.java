@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -550,7 +551,26 @@ public class PermitFormSeeder {
         y += 24;
 
         // Inspections table (form-array)
-        form.addFormContainer(field(M, y, FW, 160, "inspectionsJson", "form-array", p));
+        {
+            FormContainer c = new FormContainer();
+            c.setContentType("formField");
+            Map<String, Object> faContent = new HashMap<>();
+            faContent.put("name", "inspectionsJson");
+            faContent.put("type", "form-array");
+            faContent.put("fields", List.of(
+                Map.of("name", "date", "label", "Date", "type", "date"),
+                Map.of("name", "time", "label", "Time", "type", "text"),
+                Map.of("name", "inspector", "label", "Inspector", "type", "text"),
+                Map.of("name", "comments", "label", "Comments", "type", "text")
+            ));
+            c.setContentJson(faContent);
+            c.setPositionJson(Map.of("x", M, "y", y));
+            c.setSizeJson(Map.of("width", FW, "height", 160));
+            c.setPageNumber(p);
+            c.setLocked(true);
+            c.setStyleJson(paperStyle());
+            form.addFormContainer(c);
+        }
         y += 168;
 
         // Job Completed

@@ -22,6 +22,7 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
     private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final PermitModificationTracker modificationTracker;
 
     @Override public ExcavationPermitRepo getRepo() { return repo; }
     @Override public ExcavationPermitMapper getMapper() { return mapper; }
@@ -33,7 +34,12 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
 
     @Override
     public ExcavationPermit save(ExcavationPermitDto dto) {
-        return repo.save(mapper.convertToEntity(dto));
+        ExcavationPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
+        ExcavationPermit saved = repo.save(mapper.convertToEntity(dto));
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("ExcavationPermit", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public ExcavationPermitDto createPermit(ExcavationPermitDto dto) {

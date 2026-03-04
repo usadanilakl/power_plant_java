@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Column } from '../column.model';
 import { FormField } from '../ui/form-field.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkRequestDto } from './work-request.model';
 
 export class EnergizedWorkChecklist {
   // Section 2 text fields
@@ -289,6 +290,17 @@ export class EnergizedWorkPermitDto extends BaseDto implements EnergizedWorkPerm
       },
     };
     return fields.map(f => allColumns[f]).filter((c): c is Column => c !== undefined);
+  }
+
+  static generatePermitFromRequest(request: WorkRequestDto): EnergizedWorkPermitDto {
+    return new EnergizedWorkPermitDto({
+      date: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
+      location: request.location,
+      workScope: request.workScope,
+      workDescription: request.workScope,
+      requester: request.requestedBy,
+      requesterDate: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
+    });
   }
 
   static isValidKey(key: string): key is keyof EnergizedWorkPermitModel {

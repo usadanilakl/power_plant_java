@@ -46,4 +46,5 @@ public class DailyPermitPackageDto extends BaseDto {
 
     private ValueDto packageStatus;
     private List<PackageModification> modifications = new ArrayList<>();
+    private String activationSnapshotJson;
 }

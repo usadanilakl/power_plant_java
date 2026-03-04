@@ -40,8 +40,7 @@ public class Jha extends BasePermitEntity {
 
     @Column(columnDefinition = "TEXT")
     private String jobSteps;
-
-    private String sharepointId;
+    // sharepointId, localUuid inherited from BasePermitEntity
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_request_id")
@@ -49,7 +48,6 @@ public class Jha extends BasePermitEntity {
 
     private String workRequestSharepointId;
 
-    private String localUuid;
     @Column(name = "time_submitted")
     private String timeSubmitted;
 

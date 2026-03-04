@@ -5,32 +5,35 @@
       <div class="form-group">
         <div class="package-name-container">
             <label for="packageName">Package Name:</label>
-            <input 
-                type="text" 
-                id="packageName" 
-                class="package-name-input" 
+            <input
+                type="text"
+                id="packageName"
+                class="package-name-input"
                 [ngModel]="currentPackage().name"
                 (ngModelChange)="onFieldChange('name', $event)"
+                [disabled]="isReadOnly()"
                 placeholder="Enter package name">
         </div>
         <div class="company-name-container">
             <label for="companyName">Company Name:</label>
-            <input 
-                type="text" 
-                id="companyName" 
-                class="company-name-input" 
+            <input
+                type="text"
+                id="companyName"
+                class="company-name-input"
                 [ngModel]="currentPackage().companyName"
                 (ngModelChange)="onFieldChange('companyName', $event)"
+                [disabled]="isReadOnly()"
                 placeholder="Enter company name">
         </div>
         <div class="person-name-container">
             <label for="personName">Person Name:</label>
-            <input 
-                type="text" 
-                id="personName" 
-                class="person-name-input" 
+            <input
+                type="text"
+                id="personName"
+                class="person-name-input"
                 [ngModel]="currentPackage().personName"
                 (ngModelChange)="onFieldChange('personName', $event)"
+                [disabled]="isReadOnly()"
                 placeholder="Enter person's name">
         </div>
       </div>
@@ -40,8 +43,29 @@
           <span>{{ currentPackage().permitNumber }}</span>
         </div>
       }
-      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name">Submit Permit Package</button>
-      <button class="submit-button" (click)="reusePermitsPopupOpen()">Get Permits From Another Package</button>
+      @if(currentPackage().id){
+        <div class="status-section">
+          <span class="status-badge" [attr.data-status]="packageStatus()">{{ packageStatus() }}</span>
+          @switch(packageStatus()) {
+            @case('Building') {
+              <button class="status-btn activate" (click)="openActivationDialog()">Activate</button>
+            }
+            @case('Active') {
+              <button class="status-btn test" (click)="currentDailyPermitPackageService.putPackageUnderTest()">Put Under Test</button>
+              <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
+            }
+            @case('Test') {
+              <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Reactivate</button>
+              <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
+            }
+          }
+          @if(currentPackage().activationSnapshotJson){
+            <button class="status-btn" style="background:#607d8b;" (click)="isSnapshotPopupOpen = true">View Snapshot</button>
+          }
+        </div>
+      }
+      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Submit Permit Package</button>
+      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Get Permits From Another Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
       <button class="delete-button" (click)="currentDailyPermitPackageService.build()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
@@ -65,6 +89,15 @@
       </button>
       <button (click)="toggleLotoVisibility()">
         {{ isLotoVisible ? 'Hide' : 'Show' }} LOTO
+      </button>
+      <button (click)="toggleEnergizedWorkVisibility()">
+        {{ isEnergizedWorkVisible ? 'Hide' : 'Show' }} Energized Work
+      </button>
+      <button (click)="toggleExcavationVisibility()">
+        {{ isExcavationVisible ? 'Hide' : 'Show' }} Excavation
+      </button>
+      <button (click)="toggleVentingVisibility()">
+        {{ isVentingVisible ? 'Hide' : 'Show' }} Venting
       </button>
       <button (click)="openPaperFormPopup()">Open Paper Forms</button>
     </div>
@@ -158,21 +191,112 @@
         <button [disabled]="emptyLotsExists()" (click)="addLoto()">Add Empty</button> -->
       </app-item-carousel>
     }
+    @if(isEnergizedWorkVisible){
+      <app-item-carousel
+        [items]="energizedWorkPermits()"
+        title="Energized Work Permits"
+        (itemChangedEvent)="currentDailyPermitPackageService.currentEnergizedWorkPermit.set($event)"
+        (addItemEvent)="attachNew('Energized Work Permit')">
+        <ng-template let-ep>
+          <app-rf-reactive-form
+            [fields]="energizedWorkPermitFields"
+            [entity]="ep"
+            [title]="'Energized Work Permit'"
+            [submitButtonText]="'Build In Red Tag'"
+            [deleteButtonText]="ep.id ? 'Remove' : ''"
+            (formValueChange)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
+            (formSubmit)="buildInRedTag($event, 'energizedWorkPermit')"
+            (formDelete)="removeCurrentEnergizedWorkPermit()"
+          ></app-rf-reactive-form>
+        </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate</button>
+        <button (click)="addEnergizedWorkPermit()">Add Empty</button>
+      </app-item-carousel>
+    }
+    @if(isExcavationVisible){
+      <app-item-carousel
+        [items]="excavationPermits()"
+        title="Excavation Permits"
+        (itemChangedEvent)="currentDailyPermitPackageService.currentExcavationPermit.set($event)"
+        (addItemEvent)="attachNew('Excavation Permit')">
+        <ng-template let-xp>
+          <app-rf-reactive-form
+            [fields]="excavationPermitFields"
+            [entity]="xp"
+            [title]="'Excavation Permit'"
+            [submitButtonText]="'Build In Red Tag'"
+            [deleteButtonText]="xp.id ? 'Remove' : ''"
+            (formValueChange)="currentDailyPermitPackageService.submitExcavationPermit($event)"
+            (formSubmit)="buildInRedTag($event, 'excavationPermit')"
+            (formDelete)="removeCurrentExcavationPermit()"
+          ></app-rf-reactive-form>
+        </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate</button>
+        <button (click)="addExcavationPermit()">Add Empty</button>
+      </app-item-carousel>
+    }
+    @if(isVentingVisible){
+      <app-item-carousel
+        [items]="ventingPermits()"
+        title="Venting Permits"
+        (itemChangedEvent)="currentDailyPermitPackageService.currentVentingPermit.set($event)"
+        (addItemEvent)="attachNew('Venting Permit')">
+        <ng-template let-vp>
+          <app-rf-reactive-form
+            [fields]="ventingPermitFields"
+            [entity]="vp"
+            [title]="'Venting Permit'"
+            [submitButtonText]="'Build In Red Tag'"
+            [deleteButtonText]="vp.id ? 'Remove' : ''"
+            (formValueChange)="currentDailyPermitPackageService.submitVentingPermit($event)"
+            (formSubmit)="buildInRedTag($event, 'ventingPermit')"
+            (formDelete)="removeCurrentVentingPermit()"
+          ></app-rf-reactive-form>
+        </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate</button>
+        <button (click)="addVentingPermit()">Add Empty</button>
+      </app-item-carousel>
+    }
   </div>
 
   @if(currentPackage().modifications && currentPackage().modifications.length > 0){
     <div class="modifications-section">
       <h3 (click)="isModificationsVisible = !isModificationsVisible" style="cursor: pointer;">
-        Modification Log ({{ currentPackage().modifications.length }})
+        Modification Log ({{ filteredModifications().length }}/{{ currentPackage().modifications.length }})
         {{ isModificationsVisible ? '▼' : '▶' }}
       </h3>
       @if(isModificationsVisible){
+        <div class="mod-filters">
+          <select [ngModel]="modFilterAction()" (ngModelChange)="modFilterAction.set($event)">
+            <option value="">All Actions</option>
+            <option value="FIELD_CHANGED">Field Changed</option>
+            <option value="PERMIT_ADDED">Permit Added</option>
+            <option value="PERMIT_REMOVED">Permit Removed</option>
+            <option value="STATUS_CHANGED">Status Changed</option>
+          </select>
+          <select [ngModel]="modFilterPermitType()" (ngModelChange)="modFilterPermitType.set($event)">
+            <option value="">All Types</option>
+            <option value="SafeWork">SafeWork</option>
+            <option value="HotWork">HotWork</option>
+            <option value="ConfinedSpace">ConfinedSpace</option>
+            <option value="Loto">Loto</option>
+            <option value="EnergizedWorkPermit">Energized</option>
+            <option value="ExcavationPermit">Excavation</option>
+            <option value="VentingPermit">Venting</option>
+          </select>
+        </div>
         <div class="modifications-list">
-          @for(mod of currentPackage().modifications; track $index){
-            <div class="modification-entry">
+          @for(mod of filteredModifications(); track $index){
+            <div class="modification-entry" [attr.data-action]="mod.action">
               <span class="mod-timestamp">{{ mod.timestamp }}</span>
-              <span class="mod-action">{{ mod.action }}</span>
+              <span class="mod-action-badge" [attr.data-action]="mod.action">{{ mod.action }}</span>
+              @if(mod.permitType){
+                <span class="mod-permit-type">{{ mod.permitType }}</span>
+              }
               <span class="mod-description">{{ mod.description }}</span>
+              @if(mod.oldValue || mod.newValue){
+                <span class="mod-values">{{ mod.oldValue ?? '(empty)' }} → {{ mod.newValue ?? '(empty)' }}</span>
+              }
               @if(mod.performedBy){
                 <span class="mod-user">by {{ mod.performedBy }}</span>
               }
@@ -273,6 +397,54 @@
         }
       }
     }
+    @case ('Energized Work Permit') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-energized-work-permit-table
+            (rowLeftClickEvent)="attachExisting($event, 'energizedWorkPermits')"
+          ></app-energized-work-permit-table>
+        }@else {
+          <app-energized-work-permit-paper-form
+            (submitEvent)="addEnergizedWorkPermit($event)"
+          ></app-energized-work-permit-paper-form>
+        }
+      }
+    }
+    @case ('Excavation Permit') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-excavation-permit-table
+            (rowLeftClickEvent)="attachExisting($event, 'excavationPermits')"
+          ></app-excavation-permit-table>
+        }@else {
+          <app-excavation-permit-paper-form
+            (submitEvent)="addExcavationPermit($event)"
+          ></app-excavation-permit-paper-form>
+        }
+      }
+    }
+    @case ('Venting Permit') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-venting-permit-table
+            (rowLeftClickEvent)="attachExisting($event, 'ventingPermits')"
+          ></app-venting-permit-table>
+        }@else {
+          <app-venting-permit-paper-form
+            (submitEvent)="addVentingPermit($event)"
+          ></app-venting-permit-paper-form>
+        }
+      }
+    }
     @default {
       <!-- Handle other popup types as needed -->
     }
@@ -296,6 +468,15 @@
 
       <button (click)="toggleHotWorkVisibility()" [disabled]="hotWorkCount()===0">
         {{ isHotWorkVisible ? 'Hide' : 'Show' }} Hot Work
+      </button>
+      <button (click)="toggleEnergizedWorkVisibility()" [disabled]="energizedWorkPermitCount()===0">
+        {{ isEnergizedWorkVisible ? 'Hide' : 'Show' }} Energized Work
+      </button>
+      <button (click)="toggleExcavationVisibility()" [disabled]="excavationPermitCount()===0">
+        {{ isExcavationVisible ? 'Hide' : 'Show' }} Excavation
+      </button>
+      <button (click)="toggleVentingVisibility()" [disabled]="ventingPermitCount()===0">
+        {{ isVentingVisible ? 'Hide' : 'Show' }} Venting
       </button>
     </div>
   <div class="paper-forms-container">
@@ -327,6 +508,27 @@
           [dataInput]="loto"
         ></app-loto-paper-form>}
     }
+    @if(isEnergizedWorkVisible){
+      @for(ep of energizedWorkPermits(); track ep.id){
+        <app-energized-work-permit-paper-form
+          [dataInput]="ep"
+          (changeEvent)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
+        ></app-energized-work-permit-paper-form>}
+    }
+    @if(isExcavationVisible){
+      @for(xp of excavationPermits(); track xp.id){
+        <app-excavation-permit-paper-form
+          [dataInput]="xp"
+          (changeEvent)="currentDailyPermitPackageService.submitExcavationPermit($event)"
+        ></app-excavation-permit-paper-form>}
+    }
+    @if(isVentingVisible){
+      @for(vp of ventingPermits(); track vp.id){
+        <app-venting-permit-paper-form
+          [dataInput]="vp"
+          (changeEvent)="currentDailyPermitPackageService.submitVentingPermit($event)"
+        ></app-venting-permit-paper-form>}
+    }
   </div>
 </app-popup-projection>
 
@@ -342,4 +544,113 @@
     [clickCallback]="reissuePermits.bind(this)"
   ></app-shared-table>
 
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Activation Snapshot'"
+  [isOpen]="isSnapshotPopupOpen"
+  (close)="isSnapshotPopupOpen = false">
+  @if(currentPackage().activationSnapshotJson){
+    <div class="snapshot-viewer">
+      <p><strong>Snapshot taken at activation.</strong> This is a read-only view of the package state at the time of activation.</p>
+      <pre class="snapshot-json">{{ currentPackage().activationSnapshotJson | json }}</pre>
+    </div>
+  }
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Activate Package'"
+  [isOpen]="isActivationPopupOpen"
+  (close)="isActivationPopupOpen = false">
+  <div class="workflow-dialog">
+    @if(activationValidationErrors().length > 0){
+      <div class="validation-errors">
+        <h4>Validation Issues:</h4>
+        <ul>
+          @for(err of activationValidationErrors(); track $index){
+            <li class="validation-error">{{ err }}</li>
+          }
+        </ul>
+      </div>
+    }
+    <div class="activation-summary">
+      <h4>Package Summary</h4>
+      <table class="summary-table">
+        <tr><td>Package Name</td><td>{{ currentPackage().name }}</td></tr>
+        <tr><td>Permit #</td><td>{{ currentPackage().permitNumber }}</td></tr>
+        <tr><td>Company</td><td>{{ currentPackage().companyName }}</td></tr>
+        <tr><td>Person</td><td>{{ currentPackage().personName }}</td></tr>
+        <tr><td>Work Requests</td><td>{{ requestCount() }}</td></tr>
+        <tr><td>Safe Works</td><td>{{ safeWorkCount() }}</td></tr>
+        <tr><td>Hot Works</td><td>{{ hotWorkCount() }}</td></tr>
+        <tr><td>Confined Spaces</td><td>{{ confinedSpaceCount() }}</td></tr>
+        <tr><td>LOTOs</td><td>{{ lotoCount() }}</td></tr>
+        <tr><td>Energized Work</td><td>{{ energizedWorkPermitCount() }}</td></tr>
+        <tr><td>Excavation</td><td>{{ excavationPermitCount() }}</td></tr>
+        <tr><td>Venting</td><td>{{ ventingPermitCount() }}</td></tr>
+      </table>
+    </div>
+    <p><strong>Activating this package will freeze a snapshot and restrict editing.</strong></p>
+    <div class="workflow-actions">
+      <button class="status-btn activate" (click)="confirmActivation()" [disabled]="activationValidationErrors().length > 0">Confirm Activation</button>
+      <button class="status-btn" style="background:#6c757d;" (click)="isActivationPopupOpen = false">Cancel</button>
+    </div>
+  </div>
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Close Package'"
+  [isOpen]="isClosurePopupOpen"
+  (close)="isClosurePopupOpen = false">
+  <div class="workflow-dialog">
+    <div class="closure-form">
+      <div class="closure-field">
+        <label>Is work completed?</label>
+        <select [(ngModel)]="closureWorkCompleted">
+          <option [ngValue]="true">Yes</option>
+          <option [ngValue]="false">No</option>
+        </select>
+      </div>
+      @if(!closureWorkCompleted){
+        <div class="closure-field">
+          <label>When will work continue?</label>
+          <input type="date" [(ngModel)]="closureContinueDate">
+        </div>
+      }
+      <div class="closure-field">
+        <label>Any changes to work scope?</label>
+        <select [(ngModel)]="closureScopeChanged">
+          <option [ngValue]="false">No</option>
+          <option [ngValue]="true">Yes</option>
+        </select>
+      </div>
+      @if(closureScopeChanged){
+        <div class="closure-field">
+          <label>Describe scope changes:</label>
+          <textarea [(ngModel)]="closureScopeDetails" rows="3"></textarea>
+        </div>
+      }
+      <div class="closure-field">
+        <label>Comments:</label>
+        <textarea [(ngModel)]="closureComments" rows="3" placeholder="Any additional comments..."></textarea>
+      </div>
+    </div>
+    <div class="workflow-actions">
+      <button class="status-btn close" (click)="confirmClosure()">Confirm Closure</button>
+      <button class="status-btn" style="background:#6c757d;" (click)="isClosurePopupOpen = false">Cancel</button>
+    </div>
+  </div>
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Reissue Permits?'"
+  [isOpen]="isReissueAfterClosePromptOpen"
+  (close)="dismissReissuePrompt()">
+  <div class="workflow-dialog">
+    <p>Work is not yet completed. Would you like to reissue permits for the next day?</p>
+    <div class="workflow-actions">
+      <button class="status-btn activate" (click)="confirmReissueAfterClose()">Yes, Reissue</button>
+      <button class="status-btn" style="background:#6c757d;" (click)="dismissReissuePrompt()">No, Close Only</button>
+    </div>
+  </div>
 </app-popup-projection>

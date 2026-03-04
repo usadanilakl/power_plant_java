@@ -131,7 +131,39 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    @PostMapping("/{id}/activate")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> activatePackage(@PathVariable String id) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.activatePackage(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Package activated", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 
+    @PostMapping("/{id}/test")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> putPackageUnderTest(@PathVariable String id) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.putPackageUnderTest(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Package under test", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 
-
+    @PostMapping("/{id}/close")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> closePackage(@PathVariable String id) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.closePackage(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Package closed", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 }

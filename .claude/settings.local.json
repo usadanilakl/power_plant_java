@@ -55,7 +55,8 @@
       "WebFetch(domain:localxpose.io)",
       "Bash(mvn package:*)",
       "Bash(mvn clean package:*)",
-      "Read(//c/Users/usada/OneDrive/Desktop/permit-blank-forms/**)"
+      "Read(//c/Users/usada/OneDrive/Desktop/permit-blank-forms/**)",
+      "WebFetch(domain:docs.cloud.google.com)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"

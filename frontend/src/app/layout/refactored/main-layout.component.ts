@@ -8,10 +8,12 @@ import { SyncIndicatorComponent } from "../../shared/sync-indicator/sync-indicat
 import { GuideTriggerComponent } from "../../shared/guide/guide-trigger/guide-trigger.component";
 import { QaToggleComponent } from "../../shared/qa/qa-toggle/qa-toggle.component";
 import { UserProfileComponent } from "../../shared/user-profile/user-profile.component";
+import { AgentToggleComponent } from "../../shared/agent/agent-toggle/agent-toggle.component";
+import { AgentChatPanelComponent } from "../../shared/agent/agent-chat-panel/agent-chat-panel.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent, UserProfileComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, SyncIndicatorComponent, GuideTriggerComponent, QaToggleComponent, UserProfileComponent, AgentToggleComponent, AgentChatPanelComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

@@ -91,4 +91,40 @@ public class NgJobLogController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
     }
+
+    @DeleteMapping("/{jobId}/packages/{packageId}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> removePackage(@PathVariable String jobId, @PathVariable String packageId) {
+        try {
+            JobLogDto updated = service.removePackageFromJob(jobId, packageId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Package removed from job", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{jobId}/create-package")
+    public ResponseEntity<NgApiResponse<JobLogDto>> createPackage(@PathVariable String jobId) {
+        try {
+            JobLogDto updated = service.createEmptyPackageForJob(jobId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Package created for job", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{jobId}/close")
+    public ResponseEntity<NgApiResponse<JobLogDto>> closeJob(@PathVariable String jobId) {
+        try {
+            JobLogDto updated = service.closeJob(jobId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Job closed successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 }

@@ -14,6 +14,12 @@ import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
 import { FormBinding } from "../../features/form-designer/printable-form/form-binder/form-binder.component";
 import { LotoDto } from "../../models/loto/loto.model";
 import { LotoService } from "../loto/loto.service";
+import { EnergizedWorkPermitDto } from "../../models/permits/energized-work-permit.model";
+import { ExcavationPermitDto } from "../../models/permits/excavation-permit.model";
+import { VentingPermitDto } from "../../models/permits/venting-permit.model";
+import { EnergizedWorkPermitService } from "../permits/energized-work-permit.service";
+import { ExcavationPermitService } from "../permits/excavation-permit.service";
+import { VentingPermitService } from "../permits/venting-permit.service";
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +31,9 @@ export class CurrentDailyPermitPackageService {
     private hotWorkService = inject(HotWorkService);
     private confinedSpaceService = inject(ConfinedSpaceService);
     private lotoService = inject(LotoService);
+    private energizedWorkPermitService = inject(EnergizedWorkPermitService);
+    private excavationPermitService = inject(ExcavationPermitService);
+    private ventingPermitService = inject(VentingPermitService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveDailyPermitPackagesSubject = new BehaviorSubject<DailyPermitPackageDto[]>([]);
@@ -59,6 +68,22 @@ export class CurrentDailyPermitPackageService {
     lotoCount = computed(() => this.lotos().length);
     currentLoto = signal<LotoDto>(this.lotos()[0]);
 
+    energizedWorkPermits = computed<EnergizedWorkPermitDto[]>(() => this.currentDailyPacksge().energizedWorkPermits);
+    energizedWorkPermitCount = computed(() => this.energizedWorkPermits().length);
+    currentEnergizedWorkPermit = signal<EnergizedWorkPermitDto | null>(null);
+
+    excavationPermits = computed<ExcavationPermitDto[]>(() => this.currentDailyPacksge().excavationPermits);
+    excavationPermitCount = computed(() => this.excavationPermits().length);
+    currentExcavationPermit = signal<ExcavationPermitDto | null>(null);
+
+    ventingPermits = computed<VentingPermitDto[]>(() => this.currentDailyPacksge().ventingPermits);
+    ventingPermitCount = computed(() => this.ventingPermits().length);
+    currentVentingPermit = signal<VentingPermitDto | null>(null);
+
+    // Status lifecycle
+    packageStatus = computed(() => this.currentDailyPacksge().packageStatus?.name ?? 'Building');
+    isEditable = computed(() => ['Building', 'Test'].includes(this.packageStatus()));
+    isReadOnly = computed(() => !this.isEditable());
 
     constructor() {
         this.loadDailyPermitPackages();
@@ -174,6 +199,75 @@ export class CurrentDailyPermitPackageService {
     setSelectedPackage(packageItem: DailyPermitPackageDto) {
       this.selectedDailyPermitPackageSubject.next(packageItem);
     }
+    setCurrentDailyPackage(id: number) {
+      this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(response => {
+        if (response?.responseData) {
+          const pkg = DailyPermitPackageDto.fromJson(response.responseData);
+          this.setSelectedPackage(pkg);
+        }
+      });
+    }
+    // --- Status Lifecycle ---
+
+    activatePackage() {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.activatePackage(pkg.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error activating package:', err)
+      });
+    }
+
+    putPackageUnderTest() {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.putPackageUnderTest(pkg.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error putting package under test:', err)
+      });
+    }
+
+    closePackage() {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.closePackage(pkg.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error closing package:', err)
+      });
+    }
+
+    private updatePackageInList(pkg: DailyPermitPackageDto) {
+      const current = this.allActiveDailyPermitPackagesSubject.value;
+      const updated = current.map(p => p.id === pkg.id ? pkg : p);
+      this.allActiveDailyPermitPackagesSubject.next(updated);
+    }
+
     addNewAttachments(ids: number[], permitType: string) {
         const currentPackage = this.selectedDailyPermitPackageSubject.value;
         if (!currentPackage) {
@@ -196,6 +290,15 @@ export class CurrentDailyPermitPackageService {
                 break;
             case 'lotos':
                 currentPackage.lotoIds = [...currentPackage.lotos.map(l=>l.id), ...ids];
+                break;
+            case 'energizedWorkPermits':
+                currentPackage.energizedWorkPermitIds = [...currentPackage.energizedWorkPermits.map(p=>p.id), ...ids];
+                break;
+            case 'excavationPermits':
+                currentPackage.excavationPermitIds = [...currentPackage.excavationPermits.map(p=>p.id), ...ids];
+                break;
+            case 'ventingPermits':
+                currentPackage.ventingPermitIds = [...currentPackage.ventingPermits.map(p=>p.id), ...ids];
                 break;
             default:
                 console.error('Invalid permit type:', permitType);
@@ -243,7 +346,18 @@ export class CurrentDailyPermitPackageService {
             case 'lotos':
                 currentPackage.lotos = currentPackage.lotos.filter(l => l.id !== id);
                 currentPackage.lotoIds = currentPackage.lotoIds.filter(i => i !== id);
-                console.log('Loto removed from package:', id);
+                break;
+            case 'energizedWorkPermits':
+                currentPackage.energizedWorkPermits = currentPackage.energizedWorkPermits.filter(p => p.id !== id);
+                currentPackage.energizedWorkPermitIds = currentPackage.energizedWorkPermitIds.filter(i => i !== id);
+                break;
+            case 'excavationPermits':
+                currentPackage.excavationPermits = currentPackage.excavationPermits.filter(p => p.id !== id);
+                currentPackage.excavationPermitIds = currentPackage.excavationPermitIds.filter(i => i !== id);
+                break;
+            case 'ventingPermits':
+                currentPackage.ventingPermits = currentPackage.ventingPermits.filter(p => p.id !== id);
+                currentPackage.ventingPermitIds = currentPackage.ventingPermitIds.filter(i => i !== id);
                 break;
             default:
                 console.error('Invalid permit type:', permitType);
@@ -467,6 +581,27 @@ export class CurrentDailyPermitPackageService {
       this.createAndAttachConfinedSpacesToPackage([newPermit]);
     }
 
+    generateEnergizedWorkPermitFromCurrentRequest() {
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest || !currentRequest.id) return;
+      const newPermit = EnergizedWorkPermitDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachEnergizedWorkPermitsToPackage([newPermit]);
+    }
+
+    generateExcavationPermitFromCurrentRequest() {
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest || !currentRequest.id) return;
+      const newPermit = ExcavationPermitDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachExcavationPermitsToPackage([newPermit]);
+    }
+
+    generateVentingPermitFromCurrentRequest() {
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest || !currentRequest.id) return;
+      const newPermit = VentingPermitDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachVentingPermitsToPackage([newPermit]);
+    }
+
     generateAllPermitsFromCurrentRequest(){
       this.generateSafeWorkFromCurrentRequest();
       this.generateHotWorkFromCurrentRequest();
@@ -641,6 +776,139 @@ export class CurrentDailyPermitPackageService {
 
 
 
+
+
+    createAndAttachEnergizedWorkPermitsToPackage(permits: EnergizedWorkPermitDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id || !permits?.length) return;
+      return this.energizedWorkPermitService.save(permits).pipe(
+        switchMap(response => {
+          const newIds = response.responseData.map(p => p.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.energizedWorkPermitIds = [...updatedPackage.energizedWorkPermits.map(p => p.id), ...newIds];
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response?.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to attach energized work permits:', err) });
+    }
+
+    createAndAttachExcavationPermitsToPackage(permits: ExcavationPermitDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id || !permits?.length) return;
+      return this.excavationPermitService.save(permits).pipe(
+        switchMap(response => {
+          const newIds = response.responseData.map(p => p.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.excavationPermitIds = [...updatedPackage.excavationPermits.map(p => p.id), ...newIds];
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response?.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to attach excavation permits:', err) });
+    }
+
+    createAndAttachVentingPermitsToPackage(permits: VentingPermitDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id || !permits?.length) return;
+      return this.ventingPermitService.save(permits).pipe(
+        switchMap(response => {
+          const newIds = response.responseData.map(p => p.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.ventingPermitIds = [...updatedPackage.ventingPermits.map(p => p.id), ...newIds];
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response?.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to attach venting permits:', err) });
+    }
+
+    submitEnergizedWorkPermit(permit: EnergizedWorkPermitDto) {
+      this.energizedWorkPermitService.save([permit]).pipe(
+        tap(response => {
+          if (!response?.responseData?.[0]) return;
+          const saved = new EnergizedWorkPermitDto(response.responseData[0]);
+          const currentPackage = this.selectedDailyPermitPackageSubject.value;
+          if (!currentPackage) return;
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const idx = updatedPackage.energizedWorkPermits.findIndex(p => p.id === saved.id);
+          if (idx > -1) {
+            updatedPackage.energizedWorkPermits[idx] = saved;
+            updatedPackage.energizedWorkPermits = [...updatedPackage.energizedWorkPermits];
+          } else {
+            updatedPackage.energizedWorkPermits = [...updatedPackage.energizedWorkPermits, saved];
+          }
+          updatedPackage.energizedWorkPermitIds = updatedPackage.energizedWorkPermits.map(p => p.id);
+          this.selectedDailyPermitPackageSubject.next(updatedPackage);
+          this.updateDailyPermitPackageInList(updatedPackage);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to save energized work permit:', err) });
+    }
+
+    submitExcavationPermit(permit: ExcavationPermitDto) {
+      this.excavationPermitService.save([permit]).pipe(
+        tap(response => {
+          if (!response?.responseData?.[0]) return;
+          const saved = new ExcavationPermitDto(response.responseData[0]);
+          const currentPackage = this.selectedDailyPermitPackageSubject.value;
+          if (!currentPackage) return;
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const idx = updatedPackage.excavationPermits.findIndex(p => p.id === saved.id);
+          if (idx > -1) {
+            updatedPackage.excavationPermits[idx] = saved;
+            updatedPackage.excavationPermits = [...updatedPackage.excavationPermits];
+          } else {
+            updatedPackage.excavationPermits = [...updatedPackage.excavationPermits, saved];
+          }
+          updatedPackage.excavationPermitIds = updatedPackage.excavationPermits.map(p => p.id);
+          this.selectedDailyPermitPackageSubject.next(updatedPackage);
+          this.updateDailyPermitPackageInList(updatedPackage);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to save excavation permit:', err) });
+    }
+
+    submitVentingPermit(permit: VentingPermitDto) {
+      this.ventingPermitService.save([permit]).pipe(
+        tap(response => {
+          if (!response?.responseData?.[0]) return;
+          const saved = new VentingPermitDto(response.responseData[0]);
+          const currentPackage = this.selectedDailyPermitPackageSubject.value;
+          if (!currentPackage) return;
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const idx = updatedPackage.ventingPermits.findIndex(p => p.id === saved.id);
+          if (idx > -1) {
+            updatedPackage.ventingPermits[idx] = saved;
+            updatedPackage.ventingPermits = [...updatedPackage.ventingPermits];
+          } else {
+            updatedPackage.ventingPermits = [...updatedPackage.ventingPermits, saved];
+          }
+          updatedPackage.ventingPermitIds = updatedPackage.ventingPermits.map(p => p.id);
+          this.selectedDailyPermitPackageSubject.next(updatedPackage);
+          this.updateDailyPermitPackageInList(updatedPackage);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({ error: err => console.error('Failed to save venting permit:', err) });
+    }
 
 
   /***************************************************************************************************************************************

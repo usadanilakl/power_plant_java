@@ -34,14 +34,10 @@ public class WorkRequest extends BasePermitEntity {
     private Boolean isLotoRequired;
     private Boolean isConfinedSpaceEntryRequired;
     private String space;
-    private String sharepointId;
+    // sharepointId, localUuid inherited from BasePermitEntity
 
     @OneToMany(mappedBy = "workRequest", fetch = FetchType.LAZY)
     private List<Jha> jhas = new ArrayList<>();
-
-    // PWA tracking
-    @Column(name = "local_uuid")
-    private String localUuid;
 
     @Column(name = "time_submitted")
     private String timeSubmitted;

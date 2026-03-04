@@ -42,14 +42,21 @@ public class DedupKeyResolver {
      * Natural key definitions per entity type.
      * Only entity types that can be independently created on multiple machines need entries.
      */
-    private static final Map<String, List<NaturalKeyField>> NATURAL_KEYS = Map.of(
-        "User",                List.of(new NaturalKeyField("windowsUsername", "windows_username", false, false)),
-        "Category",            List.of(new NaturalKeyField("name", "name", false, false)),
-        "Value",               List.of(new NaturalKeyField("name", "name", false, false),
-                                       new NaturalKeyField("category", "category_id", true, true)),
-        "WorkRequest",         List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true)),
-        "Jha",                 List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true)),
-        "EmailCorrespondence", List.of(new NaturalKeyField("graphMessageId", "graph_message_id", false, true))
+    private static final Map<String, List<NaturalKeyField>> NATURAL_KEYS = Map.ofEntries(
+        Map.entry("User",                List.of(new NaturalKeyField("windowsUsername", "windows_username", false, false))),
+        Map.entry("Category",            List.of(new NaturalKeyField("name", "name", false, false))),
+        Map.entry("Value",               List.of(new NaturalKeyField("name", "name", false, false),
+                                                  new NaturalKeyField("category", "category_id", true, true))),
+        Map.entry("WorkRequest",         List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("Jha",                 List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("EmailCorrespondence", List.of(new NaturalKeyField("graphMessageId", "graph_message_id", false, true))),
+        Map.entry("SafeWork",            List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("HotWork",             List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("ConfinedSpace",       List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("Loto",                List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("EnergizedWorkPermit", List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("ExcavationPermit",    List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true))),
+        Map.entry("VentingPermit",       List.of(new NaturalKeyField("sharepointId", "sharepoint_id", false, true)))
     );
 
     /**

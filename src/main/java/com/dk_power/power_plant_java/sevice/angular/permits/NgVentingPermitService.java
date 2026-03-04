@@ -22,6 +22,7 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
     private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final PermitModificationTracker modificationTracker;
 
     @Override public VentingPermitRepo getRepo() { return repo; }
     @Override public VentingPermitMapper getMapper() { return mapper; }
@@ -33,7 +34,12 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
 
     @Override
     public VentingPermit save(VentingPermitDto dto) {
-        return repo.save(mapper.convertToEntity(dto));
+        VentingPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
+        VentingPermit saved = repo.save(mapper.convertToEntity(dto));
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("VentingPermit", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public VentingPermitDto createPermit(VentingPermitDto dto) {

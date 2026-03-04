@@ -22,6 +22,7 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final PermitModificationTracker modificationTracker;
     @Override
     public SafeWorkRepo getRepo() {
         return safeWorkRepo;
@@ -59,8 +60,13 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
 
     @Override
     public SafeWork save(SafeWorkDto dto) {
+        SafeWork oldEntity = dto.getId() != null ? safeWorkRepo.findById(dto.getId()).orElse(null) : null;
         SafeWork sw = safeWorkMapper.convertToEntity(dto);
-        return safeWorkRepo.save(sw);
+        SafeWork saved = safeWorkRepo.save(sw);
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("SafeWork", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {

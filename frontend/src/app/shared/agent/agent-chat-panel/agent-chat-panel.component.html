@@ -1,0 +1,109 @@
+<div class="agent-panel" [class.open]="chatService.isOpen()">
+  <div class="agent-header">
+    <div class="agent-title">
+      <mat-icon>smart_toy</mat-icon>
+      <h3>Jackson</h3>
+    </div>
+    <div class="agent-header-actions">
+      <button mat-icon-button matTooltip="Clear chat" (click)="chatService.clearChat()">
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Close" (click)="chatService.closePanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="agent-messages" #messagesContainer>
+    @if (!chatService.isAvailable()) {
+      <div class="welcome-message">
+        <mat-icon class="welcome-icon">smart_toy</mat-icon>
+        <h4>Jackson is Offline</h4>
+        <p>The AI agent is not configured. Add <strong>gemini.api.key</strong> to application-secrets.properties and restart the server.</p>
+      </div>
+    } @else if (chatService.messages().length === 0) {
+      <div class="welcome-message">
+        <mat-icon class="welcome-icon">smart_toy</mat-icon>
+        <h4>Hi, I'm Jackson</h4>
+        <p>I can help you search for files, equipment, LOTO points, and permits. I can also create new records and guide you through the app.</p>
+        <p class="hint">Try: "Find LOTO points for HRH" or "How do I create a permit package?"</p>
+      </div>
+    }
+
+    @for (msg of chatService.messages(); track msg.timestamp) {
+      <div class="message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+        <div class="message-content">{{ msg.content }}</div>
+
+        @if (msg.type === 'confirmation_required' && msg.pendingAction) {
+          <div class="confirmation-card">
+            <div class="confirmation-details">
+              <strong>{{ msg.pendingAction.description }}</strong>
+              <div class="confirmation-params">
+                @for (entry of msg.pendingAction.parameters | keyvalue; track entry.key) {
+                  <div class="param-row">
+                    <span class="param-key">{{ entry.key }}:</span>
+                    <span class="param-value">{{ entry.value }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="confirmation-actions">
+              <button class="confirm-btn" (click)="confirm(msg.confirmationId!)"
+                [disabled]="chatService.isLoading()">Confirm</button>
+              <button class="cancel-btn" (click)="cancel(msg.confirmationId!)"
+                [disabled]="chatService.isLoading()">Cancel</button>
+            </div>
+          </div>
+        }
+
+        @if (msg.type === 'search_results' && msg.data && msg.data['results']) {
+          <div class="search-results-card">
+            <div class="result-count">{{ msg.data['totalCount'] }} result(s) found</div>
+            @for (item of msg.data['results']; track item['id']) {
+              <div class="result-item">
+                <span class="result-id">#{{ item['id'] }}</span>
+                <span class="result-name">{{ item['tagNumber'] || item['name'] || item['companyName'] || '' }}</span>
+                @if (item['description']) {
+                  <span class="result-desc">{{ item['description'] }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (msg.type === 'action_completed') {
+          <div class="action-completed-badge">
+            <mat-icon>check_circle</mat-icon>
+            <span>Action completed</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (chatService.isLoading()) {
+      <div class="message assistant loading">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (chatService.isAvailable()) {
+    <div class="agent-input">
+      <button mat-icon-button matTooltip="Voice input (coming soon)" disabled class="mic-btn">
+        <mat-icon>mic</mat-icon>
+      </button>
+      <textarea #messageInput
+        [(ngModel)]="inputText"
+        (keydown)="onKeyDown($event)"
+        placeholder="Ask Jackson anything..."
+        rows="1"></textarea>
+      <button mat-icon-button (click)="send()"
+        [disabled]="!inputText.trim() || chatService.isLoading()"
+        matTooltip="Send message">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+  }
+</div>

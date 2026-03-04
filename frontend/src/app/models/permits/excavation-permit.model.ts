@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Column } from '../column.model';
 import { FormField } from '../ui/form-field.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkRequestDto } from './work-request.model';
 
 export class ExcavationTypeOfWork {
   excavation: boolean = false;
@@ -86,7 +87,7 @@ export interface ExcavationPermitModel extends BaseModel {
   permitClosedDate: string | null;
   permitClosedTime: string | null;
   jobStatusComplete: boolean;
-  inspectionsJson: string | null;
+  inspectionsJson: any[] | null;
   supervisorFieldInspectionName: string | null;
   supervisorFieldInspectionDate: string | null;
   supervisorFieldInspectionTime: string | null;
@@ -120,7 +121,7 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
   permitClosedDate: string | null;
   permitClosedTime: string | null;
   jobStatusComplete: boolean;
-  inspectionsJson: string | null;
+  inspectionsJson: any[] | null;
   supervisorFieldInspectionName: string | null;
   supervisorFieldInspectionDate: string | null;
   supervisorFieldInspectionTime: string | null;
@@ -154,7 +155,7 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
     this.permitClosedDate = data.permitClosedDate ?? null;
     this.permitClosedTime = data.permitClosedTime ?? null;
     this.jobStatusComplete = data.jobStatusComplete ?? false;
-    this.inspectionsJson = data.inspectionsJson ?? null;
+    this.inspectionsJson = data.inspectionsJson ?? [];
     this.supervisorFieldInspectionName = data.supervisorFieldInspectionName ?? null;
     this.supervisorFieldInspectionDate = data.supervisorFieldInspectionDate ?? null;
     this.supervisorFieldInspectionTime = data.supervisorFieldInspectionTime ?? null;
@@ -190,7 +191,7 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
       permitClosedDate: this.permitClosedDate,
       permitClosedTime: this.permitClosedTime,
       jobStatusComplete: this.jobStatusComplete,
-      inspectionsJson: this.inspectionsJson,
+      inspectionsJson: this.inspectionsJson ? JSON.stringify(this.inspectionsJson) : null,
       supervisorFieldInspectionName: this.supervisorFieldInspectionName,
       supervisorFieldInspectionDate: this.supervisorFieldInspectionDate,
       supervisorFieldInspectionTime: this.supervisorFieldInspectionTime,
@@ -228,7 +229,7 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
       permitClosedDate: json.permitClosedDate,
       permitClosedTime: json.permitClosedTime,
       jobStatusComplete: json.jobStatusComplete ?? false,
-      inspectionsJson: json.inspectionsJson,
+      inspectionsJson: json.inspectionsJson ? (typeof json.inspectionsJson === 'string' ? JSON.parse(json.inspectionsJson) : json.inspectionsJson) : [],
       supervisorFieldInspectionName: json.supervisorFieldInspectionName,
       supervisorFieldInspectionDate: json.supervisorFieldInspectionDate,
       supervisorFieldInspectionTime: json.supervisorFieldInspectionTime,
@@ -325,6 +326,9 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
       'workArea', 'date', 'time', 'workOrder', 'supervisor', 'jobLocation',
       'supervisorPhone', 'excavationDescription', 'locationPipingMarked',
       ...Object.keys(ExcavationPermitDto.getTypeOfWorkFields(null)) as ExcavationPermitFieldName[],
+      'inspectionsJson' as ExcavationPermitFieldName,
+      'facilityName', 'competentPerson', 'soilType', 'excavationDepth',
+      'excavationWidth', 'protectiveSystemType',
       ...Object.keys(ExcavationPermitDto.getChecklistFields(null)) as ExcavationPermitFieldName[],
     ]
   ): FormField[] {
@@ -390,6 +394,18 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
       excavationDepth: { name: 'excavationDepth', label: 'Excavation Depth', type: 'text', initialValue: dto.excavationDepth },
       excavationWidth: { name: 'excavationWidth', label: 'Excavation Width', type: 'text', initialValue: dto.excavationWidth },
       protectiveSystemType: { name: 'protectiveSystemType', label: 'Protective System Type', type: 'text', initialValue: dto.protectiveSystemType },
+      inspectionsJson: {
+        name: 'inspectionsJson',
+        label: 'Site Inspections',
+        type: 'form-array',
+        initialValue: dto.inspectionsJson || [],
+        fields: [
+          { name: 'date', label: 'Date', type: 'date' },
+          { name: 'time', label: 'Time', type: 'text' },
+          { name: 'inspector', label: 'Inspector', type: 'text' },
+          { name: 'comments', label: 'Comments', type: 'text' },
+        ],
+      },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
       ...typeOfWorkFields,
@@ -452,6 +468,15 @@ export class ExcavationPermitDto extends BaseDto implements ExcavationPermitMode
       },
     };
     return fields.map(f => allColumns[f]).filter((c): c is Column => c !== undefined);
+  }
+
+  static generatePermitFromRequest(request: WorkRequestDto): ExcavationPermitDto {
+    return new ExcavationPermitDto({
+      date: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
+      jobLocation: request.location,
+      excavationDescription: request.workScope,
+      supervisor: request.foreman || null,
+    });
   }
 
   static isValidKey(key: string): key is keyof ExcavationPermitModel {

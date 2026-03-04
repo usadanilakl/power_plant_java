@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, FormControl } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormArray, FormControl } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { PrintableFormDto } from '../models/printable-form.model';
 
@@ -27,18 +27,18 @@ export class FormRenderingService {
 
       if (field.type === 'form-array') {
         if (existing instanceof FormArray) {
-          form.addControl(name, existing);
+          this.addControlByPath(form, name, existing);
         } else {
           const arrayData = this.getNestedValue(formData, name) || [];
-          form.addControl(name, this.createFormArray(field, arrayData));
+          this.addControlByPath(form, name, this.createFormArray(field, arrayData));
         }
       } else {
         if (existing) {
-          form.addControl(name, existing);
+          this.addControlByPath(form, name, existing);
         } else {
           let value = this.getNestedValue(formData, name);
           value = this.normalizeFieldValue(field, value);
-          form.addControl(name, new FormControl(value, field.validators || []));
+          this.addControlByPath(form, name, new FormControl(value, field.validators || []));
         }
       }
     }
@@ -172,6 +172,29 @@ export class FormRenderingService {
       styles.fontSize = `${styles.fontSize}px`;
     }
     return styles;
+  }
+
+  private addControlByPath(form: FormGroup, path: string, control: AbstractControl): void {
+    const parts = path.split('.');
+    if (parts.length === 1) {
+      if (!form.contains(path)) {
+        form.addControl(path, control);
+      }
+      return;
+    }
+    let current = form;
+    for (let i = 0; i < parts.length - 1; i++) {
+      let child = current.get(parts[i]);
+      if (!child || !(child instanceof FormGroup)) {
+        child = new FormGroup({});
+        current.addControl(parts[i], child as AbstractControl);
+      }
+      current = child as FormGroup;
+    }
+    const leafName = parts[parts.length - 1];
+    if (!current.contains(leafName)) {
+      current.addControl(leafName, control);
+    }
   }
 
   private normalizeFieldValue(field: FormField, value: any): any {

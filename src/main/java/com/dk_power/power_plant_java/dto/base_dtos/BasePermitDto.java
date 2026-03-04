@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -41,5 +42,8 @@ public class BasePermitDto extends BaseDto {
     private Boolean temp;
     private String redTagNum;
     private String permitNumber;
+    private String sharepointId;
+    private Instant spModifiedTime;
+    private String localUuid;
     private WorkAreaDto workArea;
 }

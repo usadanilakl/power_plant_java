@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.JobLogDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
@@ -9,6 +10,7 @@ import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.JobLogMapper;
 import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -30,6 +32,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final WorkRequestRepo workRequestRepo;
     private final DailyPermitPackageMapper dailyPermitPackageMapper;
     private final PermitNumberGenerator permitNumberGenerator;
+    private final NgValueService ngValueService;
 
     @Override
     public JobLogRepo getRepo() {
@@ -104,6 +107,24 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         return jobLogMapper.convertToDto(saved);
     }
 
+    public JobLogDto removePackageFromJob(String jobId, String packageId) {
+        JobLog job = getEntityById(jobId);
+        job.getPackages().removeIf(pkg -> pkg.getId().equals(Long.parseLong(packageId)));
+        JobLog saved = jobLogRepo.save(job);
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto createEmptyPackageForJob(String jobId) {
+        JobLog job = getEntityById(jobId);
+        DailyPermitPackage pkg = new DailyPermitPackage();
+        pkg.setName(job.getName() + " - Package " + (job.getPackages().size() + 1));
+        pkg.setCompanyName(job.getCompany());
+        pkg.setPermitNumber(permitNumberGenerator.generate(job.getStartDate()));
+        job.getPackages().add(pkg);
+        JobLog saved = jobLogRepo.save(job);
+        return jobLogMapper.convertToDto(saved);
+    }
+
     public JobLogDto updateJob(String id, JobLogDto dto) {
         JobLog entity = jobLogMapper.convertToEntity(dto);
         entity.setId(Long.parseLong(id));
@@ -120,5 +141,22 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     public JobLogDto getDtoById(String id) {
         JobLog entity = getEntityById(id);
         return jobLogMapper.convertToDto(entity);
+    }
+
+    public JobLogDto closeJob(String id) {
+        JobLog job = getEntityById(id);
+        long openPackages = job.getPackages().stream()
+                .filter(pkg -> {
+                    String status = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+                    return !status.equals("Closed");
+                })
+                .count();
+        if (openPackages > 0) {
+            throw new RuntimeException(openPackages + " package(s) are still open. Close all packages before closing the job.");
+        }
+        Value closedStatus = ngValueService.createValue("Job Status", "Closed");
+        job.setJobStatus(closedStatus);
+        JobLog saved = jobLogRepo.save(job);
+        return jobLogMapper.convertToDto(saved);
     }
 }

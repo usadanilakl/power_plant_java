@@ -26,7 +26,10 @@ export class DailyPermitPackageComponent {
   constructor() {
     const workRequestId = this.route.snapshot.paramMap.get('workRequestId');
     const mode = this.route.snapshot.data['mode'];
-    if (workRequestId) {
+    const packageId = this.route.snapshot.queryParamMap.get('packageId');
+    if (packageId) {
+      this.currendDailyPermitPackageService.setCurrentDailyPackage(+packageId);
+    } else if (workRequestId) {
       if(mode === 're-issue'){
         this.currendDailyPermitPackageService.reIssuePermitsByWorkRequestId(+workRequestId);
       }else {

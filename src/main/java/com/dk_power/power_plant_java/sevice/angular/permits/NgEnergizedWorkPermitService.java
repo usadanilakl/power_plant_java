@@ -22,6 +22,7 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
     private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final PermitModificationTracker modificationTracker;
 
     @Override public EnergizedWorkPermitRepo getRepo() { return repo; }
     @Override public EnergizedWorkPermitMapper getMapper() { return mapper; }
@@ -33,7 +34,12 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
 
     @Override
     public EnergizedWorkPermit save(EnergizedWorkPermitDto dto) {
-        return repo.save(mapper.convertToEntity(dto));
+        EnergizedWorkPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
+        EnergizedWorkPermit saved = repo.save(mapper.convertToEntity(dto));
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("EnergizedWorkPermit", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public EnergizedWorkPermitDto createPermit(EnergizedWorkPermitDto dto) {

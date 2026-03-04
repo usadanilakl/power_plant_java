@@ -38,4 +38,16 @@ export class JobLogService {
   addPackage(jobId: string, pkg: DailyPermitPackageDto): Observable<SpringApiResponse<JobLogDto>> {
     return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/add-package`, pkg);
   }
+
+  removePackage(jobId: string, packageId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.delete<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/packages/${packageId}`);
+  }
+
+  createPackageForJob(jobId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/create-package`, {});
+  }
+
+  closeJob(jobId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/close`, {});
+  }
 }

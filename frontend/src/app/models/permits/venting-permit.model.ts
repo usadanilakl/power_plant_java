@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Column } from '../column.model';
 import { FormField } from '../ui/form-field.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkRequestDto } from './work-request.model';
 
 export class VentingChecklist {
   personnelReadProcedure: boolean = false;
@@ -450,6 +451,15 @@ export class VentingPermitDto extends BaseDto implements VentingPermitModel {
       },
     };
     return fields.map(f => allColumns[f]).filter((c): c is Column => c !== undefined);
+  }
+
+  static generatePermitFromRequest(request: WorkRequestDto): VentingPermitDto {
+    return new VentingPermitDto({
+      date: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
+      location: request.location,
+      workScope: request.workScope,
+      requestingIndividual: request.requestedBy,
+    });
   }
 
   static isValidKey(key: string): key is keyof VentingPermitModel {

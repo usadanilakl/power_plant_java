@@ -33,8 +33,7 @@ public class JhaDto extends BasePermitDto {
     private String handAndPowerTools;
     private String specialTools;
     private List<JobStep> jobSteps;
-    private String sharepointId;
-    private String localUuid;
+    // sharepointId, localUuid, spModifiedTime inherited from BasePermitDto
     private String workRequestSharepointId;
     private String status;
     private String timeSubmitted;
@@ -42,9 +41,6 @@ public class JhaDto extends BasePermitDto {
     private String submitterEmail;
     private String submitterPhone;
     private String submitterCompany;
-
-    /** SP item's Modified datetime — used for field-level LWW merge. */
-    private java.time.Instant spModifiedTime;
 
     public static JhaDto createTestInstance() {
         JhaDto dto = new JhaDto();

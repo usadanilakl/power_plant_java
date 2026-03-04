@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.envers.Audited;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -53,6 +54,9 @@ public class BasePermitEntity extends BaseAuditEntity {
     private Boolean temp;
     private String redTagNum;
     private String permitNumber;
+    private String sharepointId;
+    private Instant spModifiedTime;
+    private String localUuid;
 
     @ManyToOne
     @JoinColumn(name = "work_area_id")

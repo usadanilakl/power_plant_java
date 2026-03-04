@@ -25,6 +25,7 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     private final PermitNumberGenerator permitNumberGenerator;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final PermitModificationTracker modificationTracker;
 
     @Override
     public ConfinedSpaceRepo getRepo() {
@@ -63,8 +64,13 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
 
     @Override
     public ConfinedSpace save(ConfinedSpaceDto dto) {
+        ConfinedSpace oldEntity = dto.getId() != null ? confinedSpaceRepo.findById(dto.getId()).orElse(null) : null;
         ConfinedSpace cs = confinedSpaceMapper.convertToEntity(dto);
-        return confinedSpaceRepo.save(cs);
+        ConfinedSpace saved = confinedSpaceRepo.save(cs);
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("ConfinedSpace", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {

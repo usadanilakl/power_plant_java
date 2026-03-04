@@ -31,6 +31,24 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.confined-space-url:}")
     private String confinedSpaceFlowUrl;
 
+    @Value("${pa.flow.safe-work-url:}")
+    private String safeWorkFlowUrl;
+
+    @Value("${pa.flow.hot-work-url:}")
+    private String hotWorkFlowUrl;
+
+    @Value("${pa.flow.loto-url:}")
+    private String lotoFlowUrl;
+
+    @Value("${pa.flow.energized-work-url:}")
+    private String energizedWorkFlowUrl;
+
+    @Value("${pa.flow.excavation-url:}")
+    private String excavationFlowUrl;
+
+    @Value("${pa.flow.venting-url:}")
+    private String ventingFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -105,6 +123,54 @@ public class PowerAutomateV2Client {
 
     public boolean isConfinedSpaceConfigured() {
         return confinedSpaceFlowUrl != null && !confinedSpaceFlowUrl.isBlank();
+    }
+
+    public PaResponseDto safeWork(PaRequestDto request) {
+        return sendRequest(safeWorkFlowUrl, request);
+    }
+
+    public PaResponseDto hotWork(PaRequestDto request) {
+        return sendRequest(hotWorkFlowUrl, request);
+    }
+
+    public PaResponseDto loto(PaRequestDto request) {
+        return sendRequest(lotoFlowUrl, request);
+    }
+
+    public PaResponseDto energizedWork(PaRequestDto request) {
+        return sendRequest(energizedWorkFlowUrl, request);
+    }
+
+    public PaResponseDto excavation(PaRequestDto request) {
+        return sendRequest(excavationFlowUrl, request);
+    }
+
+    public PaResponseDto venting(PaRequestDto request) {
+        return sendRequest(ventingFlowUrl, request);
+    }
+
+    public boolean isSafeWorkConfigured() {
+        return safeWorkFlowUrl != null && !safeWorkFlowUrl.isBlank();
+    }
+
+    public boolean isHotWorkConfigured() {
+        return hotWorkFlowUrl != null && !hotWorkFlowUrl.isBlank();
+    }
+
+    public boolean isLotoConfigured() {
+        return lotoFlowUrl != null && !lotoFlowUrl.isBlank();
+    }
+
+    public boolean isEnergizedWorkConfigured() {
+        return energizedWorkFlowUrl != null && !energizedWorkFlowUrl.isBlank();
+    }
+
+    public boolean isExcavationConfigured() {
+        return excavationFlowUrl != null && !excavationFlowUrl.isBlank();
+    }
+
+    public boolean isVentingConfigured() {
+        return ventingFlowUrl != null && !ventingFlowUrl.isBlank();
     }
 
 }

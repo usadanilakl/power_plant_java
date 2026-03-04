@@ -72,6 +72,9 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     private String modificationsJson;
 
+    @Column(columnDefinition = "TEXT")
+    private String activationSnapshotJson;
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<PackageModification> getModifications() {

@@ -48,6 +48,7 @@ export interface DailyPermitPackageModel extends BaseModel {
   permitNumber: string | null;
   packageStatus: ValueDto | null;
   modifications: PackageModification[];
+  activationSnapshotJson: string | null;
 }
 
 export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackageModel {
@@ -75,6 +76,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   permitNumber: string | null;
   packageStatus: ValueDto | null;
   modifications: PackageModification[];
+  activationSnapshotJson: string | null;
 
   constructor(data: Partial<DailyPermitPackageModel> = {}) {
     super(data);
@@ -101,6 +103,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.permitNumber = data.permitNumber ?? null;
     this.packageStatus = data.packageStatus ? new ValueDto(data.packageStatus) : null;
     this.modifications = data.modifications ?? [];
+    this.activationSnapshotJson = data.activationSnapshotJson ?? null;
   }
 
   override toJson(): any {
@@ -129,6 +132,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       permitNumber: this.permitNumber,
       packageStatus: this.packageStatus?.toJson() ?? null,
       modifications: this.modifications,
+      activationSnapshotJson: this.activationSnapshotJson,
     };
   }
 
@@ -158,6 +162,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       permitNumber: json.permitNumber,
       packageStatus: json.packageStatus ? ValueDto.fromJson(json.packageStatus) : null,
       modifications: json.modifications ?? [],
+      activationSnapshotJson: json.activationSnapshotJson ?? null,
     });
   }
   static toIdModel(permitPackage: DailyPermitPackageDto) {
@@ -198,7 +203,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       'id', 'workRequests', 'safeWorks', 'hotWorks', 'confinedSpaces', 'lotos',
       'energizedWorkPermits', 'excavationPermits', 'ventingPermits',
       'isVerified', 'name', 'objectType', 'companyName', 'personName', 'date', 'time',
-      'permitNumber', 'packageStatus', 'modifications'
+      'permitNumber', 'packageStatus', 'modifications', 'activationSnapshotJson'
     ].includes(key);
   }
 
@@ -269,6 +274,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
       packageStatus: { id: 'packageStatus', header: 'Status', accessorFn: (item: DailyPermitPackageDto) => item.packageStatus?.name ?? '' },
       modifications: { id: 'modifications', header: 'Changes', accessorFn: (item: DailyPermitPackageDto) => item.modifications.length + '' },
+      activationSnapshotJson: { id: 'activationSnapshotJson', header: 'Snapshot', accessorFn: (item: DailyPermitPackageDto) => item.activationSnapshotJson ? 'Yes' : 'No' },
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

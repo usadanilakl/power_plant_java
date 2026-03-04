@@ -22,6 +22,7 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
     private final HotWorkRepo hotWorkRepo;
     private final HotWorkMapper hotWorkMapper;
     private final PermitNumberGenerator permitNumberGenerator;
+    private final PermitModificationTracker modificationTracker;
 
     @Override
     public HotWorkRepo getRepo() {
@@ -60,8 +61,13 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
 
     @Override
     public HotWork save(HotWorkDto dto) {
+        HotWork oldEntity = dto.getId() != null ? hotWorkRepo.findById(dto.getId()).orElse(null) : null;
         HotWork hotWork = hotWorkMapper.convertToEntity(dto);
-        return hotWorkRepo.save(hotWork);
+        HotWork saved = hotWorkRepo.save(hotWork);
+        if (oldEntity != null) {
+            modificationTracker.trackPermitUpdate("HotWork", saved.getId(), oldEntity, saved);
+        }
+        return saved;
     }
 
     public HotWorkDto createHotWorkRequest(HotWorkDto hotWorkDto) {

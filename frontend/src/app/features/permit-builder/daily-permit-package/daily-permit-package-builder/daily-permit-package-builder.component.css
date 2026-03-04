@@ -226,3 +226,175 @@ input[type="text"] {
   font-style: italic;
   white-space: nowrap;
 }
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge[data-status="Building"] {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.status-badge[data-status="Active"] {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge[data-status="Test"] {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.status-badge[data-status="Closed"] {
+  background-color: #fce4ec;
+  color: #c62828;
+}
+
+.status-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-btn.activate { background-color: #4CAF50; }
+.status-btn.activate:hover { background-color: #45a049; }
+.status-btn.test { background-color: #ff9800; }
+.status-btn.test:hover { background-color: #e68a00; }
+.status-btn.close { background-color: #f44336; }
+.status-btn.close:hover { background-color: #d32f2f; }
+
+.snapshot-viewer { padding: 8px; }
+.snapshot-json {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  max-height: 500px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mod-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mod-filters select {
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: white;
+}
+
+.mod-action-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mod-action-badge[data-action="FIELD_CHANGED"] {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.mod-action-badge[data-action="PERMIT_ADDED"] {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.mod-action-badge[data-action="PERMIT_REMOVED"] {
+  background-color: #fce4ec;
+  color: #c62828;
+}
+
+.mod-action-badge[data-action="STATUS_CHANGED"] {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.modification-entry[data-action="PERMIT_ADDED"] {
+  border-left-color: #4caf50;
+}
+
+.modification-entry[data-action="PERMIT_REMOVED"] {
+  border-left-color: #f44336;
+}
+
+.modification-entry[data-action="STATUS_CHANGED"] {
+  border-left-color: #ff9800;
+}
+
+.mod-permit-type {
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.mod-values {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #795548;
+  background: #f5f5f5;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.workflow-dialog { padding: 8px; }
+
+.validation-errors {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+.validation-errors h4 { margin: 0 0 4px 0; color: #856404; font-size: 0.9rem; }
+.validation-error { color: #856404; font-size: 0.85rem; }
+
+.activation-summary { margin-bottom: 12px; }
+.activation-summary h4 { margin: 0 0 8px 0; font-size: 0.9rem; color: #495057; }
+.summary-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.summary-table td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+.summary-table td:first-child { font-weight: 600; color: #6c757d; width: 40%; }
+
+.workflow-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.closure-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.closure-field { display: flex; flex-direction: column; gap: 4px; }
+.closure-field label { font-weight: 600; font-size: 0.85rem; color: #495057; }
+.closure-field select,
+.closure-field input,
+.closure-field textarea {
+  padding: 6px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}

@@ -183,8 +183,18 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
-
-
+        <!-- Google Gemini AI SDK -->
+        <dependency>
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <!-- Override old Guava android variant; google-genai requires 33.4+ JRE -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.4.0-jre</version>
+        </dependency>
 
 
 

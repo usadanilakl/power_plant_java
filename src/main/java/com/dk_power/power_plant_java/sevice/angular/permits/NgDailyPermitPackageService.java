@@ -13,6 +13,9 @@ import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
 import com.dk_power.power_plant_java.mappers.permits.SafeWorkMapper;
 import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
@@ -47,6 +50,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final HotWorkMapper hotWorkMapper;
     private final ConfinedSpaceMapper confinedSpaceMapper;
     private final WorkRequestRepo workRequestRepo;
+    private final NgValueService ngValueService;
 
     @Override
     public DailyPermitPackageRepo getRepo() {
@@ -241,6 +245,62 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private DailyPermitPackage getByWorkRequestId(String workRequestId) {
         return dailyPermitPackageRepo.findByWorkRequestId(Long.parseLong(workRequestId))
                 .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found for work request: " + workRequestId));
+    }
+
+    // --- Status Lifecycle ---
+
+    public DailyPermitPackageDto activatePackage(String id) {
+        DailyPermitPackageDto result = changeStatus(id, "Active", Set.of("Building", "Test"));
+        takeSnapshot(Long.parseLong(id));
+        return getDtoById(id);
+    }
+
+    public DailyPermitPackageDto putPackageUnderTest(String id) {
+        return changeStatus(id, "Test", Set.of("Active"));
+    }
+
+    public DailyPermitPackageDto closePackage(String id) {
+        return changeStatus(id, "Closed", Set.of("Active", "Test"));
+    }
+
+    private DailyPermitPackageDto changeStatus(String id, String targetStatus, Set<String> allowedFromStatuses) {
+        DailyPermitPackage pkg = getEntityById(id);
+        String currentStatus = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+
+        if (!allowedFromStatuses.contains(currentStatus)) {
+            throw new RuntimeException("Cannot change status from '" + currentStatus + "' to '" + targetStatus + "'");
+        }
+
+        Value statusValue = ngValueService.createValue("Package Status", targetStatus);
+
+        pkg.setPackageStatus(statusValue);
+
+        // Log the status change
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("STATUS_CHANGED");
+        mod.setFieldName("packageStatus");
+        mod.setOldValue(currentStatus);
+        mod.setNewValue(targetStatus);
+        mod.setPerformedBy(getCurrentUsername());
+        mod.setDescription("Package status changed from " + currentStatus + " to " + targetStatus);
+        pkg.addModification(mod);
+
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(pkg);
+        return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    private void takeSnapshot(Long packageId) {
+        try {
+            DailyPermitPackage pkg = dailyPermitPackageRepo.findById(packageId).orElse(null);
+            if (pkg == null) return;
+            DailyPermitPackageDto dto = dailyPermitPackageMapper.convertToDto(pkg);
+            ObjectMapper om = new ObjectMapper();
+            pkg.setActivationSnapshotJson(om.writeValueAsString(dto));
+            dailyPermitPackageRepo.save(pkg);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to take activation snapshot", e);
+        }
     }
 
     // --- Modification Tracking ---

@@ -12,6 +12,7 @@ public class DefaultValueGeneratorService {
          generateSystems();
          generateEquipmentTypes();
          generatePermitStatuses();
+         generatePackageStatuses();
          generateUnitValues();
          generateZeroEnergyTemplates();
          generateGroupValues();
@@ -84,6 +85,13 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Permit Status", "Active", "ACT");
         ngValueService.createValue("Permit Status", "Inactive", "INA");
         ngValueService.createValue("Permit Status", "Closed", "CLS");
+    }
+
+    private void generatePackageStatuses(){
+        ngValueService.createValue("Package Status", "Building", "BLD");
+        ngValueService.createValue("Package Status", "Active", "ACT");
+        ngValueService.createValue("Package Status", "Test", "TST");
+        ngValueService.createValue("Package Status", "Closed", "CLS");
     }
 
     private void generateUnitValues(){
