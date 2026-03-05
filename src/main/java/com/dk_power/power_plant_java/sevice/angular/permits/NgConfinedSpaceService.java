@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.ConfinedSpaceDto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.mappers.permits.ConfinedSpaceMapper;
 import com.dk_power.power_plant_java.repository.permits.ConfinedSpaceRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -26,6 +27,7 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
 
     @Override
     public ConfinedSpaceRepo getRepo() {
@@ -66,6 +68,9 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     public ConfinedSpace save(ConfinedSpaceDto dto) {
         ConfinedSpace oldEntity = dto.getId() != null ? confinedSpaceRepo.findById(dto.getId()).orElse(null) : null;
         ConfinedSpace cs = confinedSpaceMapper.convertToEntity(dto);
+        if (oldEntity == null && cs.getPermitStatus() == null) {
+            cs.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         ConfinedSpace saved = confinedSpaceRepo.save(cs);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("ConfinedSpace", saved.getId(), oldEntity, saved);
@@ -75,6 +80,9 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
 
     public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {
         ConfinedSpace confinedSpace = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
+        if (confinedSpace.getPermitStatus() == null) {
+            confinedSpace.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         ConfinedSpace saved = confinedSpaceRepo.save(confinedSpace);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));

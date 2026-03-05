@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.VentingPermitDto;
 import com.dk_power.power_plant_java.entities.permits.VentingPermit;
 import com.dk_power.power_plant_java.mappers.permits.VentingPermitMapper;
 import com.dk_power.power_plant_java.repository.permits.VentingPermitRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -23,6 +24,7 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
 
     @Override public VentingPermitRepo getRepo() { return repo; }
     @Override public VentingPermitMapper getMapper() { return mapper; }
@@ -35,7 +37,11 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
     @Override
     public VentingPermit save(VentingPermitDto dto) {
         VentingPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
-        VentingPermit saved = repo.save(mapper.convertToEntity(dto));
+        VentingPermit entity = mapper.convertToEntity(dto);
+        if (oldEntity == null && entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        VentingPermit saved = repo.save(entity);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("VentingPermit", saved.getId(), oldEntity, saved);
         }
@@ -43,7 +49,11 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
     }
 
     public VentingPermitDto createPermit(VentingPermitDto dto) {
-        VentingPermit saved = repo.save(mapper.convertToEntity(dto));
+        VentingPermit entity = mapper.convertToEntity(dto);
+        if (entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        VentingPermit saved = repo.save(entity);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
             saved = repo.save(saved);

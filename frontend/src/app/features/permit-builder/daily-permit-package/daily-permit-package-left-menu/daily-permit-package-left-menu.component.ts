@@ -6,7 +6,7 @@ import { CurrentDailyPermitPackageService } from '../../../../services/current-i
 import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 
-export type DppGroupBy = 'company' | 'person' | 'date';
+export type DppGroupBy = 'company' | 'person' | 'date' | 'status';
 
 @Component({
   selector: 'app-daily-permit-package-left-menu',
@@ -54,6 +54,9 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
         case 'date':
           groupName = item.date || 'No Date';
           break;
+        case 'status':
+          groupName = item.packageStatus?.name ?? 'Building';
+          break;
       }
       if (!acc[groupName]) acc[groupName] = [];
       acc[groupName].push(item);
@@ -70,7 +73,8 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
       parent.values = groupItems.map(item => new NestedItemImpl({
         id: item.id.toString(),
         name: this.getDisplayName(item),
-        subtitle: item.companyName || '',
+        subtitle: (item.companyName || '') + ' \u00b7 ' + (item.packageStatus?.name ?? 'Building'),
+        color: this.getStatusColor(item),
         isExpanded: false,
         objectType: item.objectType || '',
       }));
@@ -86,6 +90,16 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
     if (item.date) parts.push(item.date);
     if (item.personName) parts.push(item.personName);
     return parts.join(' - ') || item.name || 'Unnamed Package';
+  }
+
+  private getStatusColor(item: DailyPermitPackageDto): string {
+    const status = item.packageStatus?.name ?? 'Building';
+    switch (status) {
+      case 'Active': return 'rgba(76, 175, 80, 0.08)';
+      case 'Test': return 'rgba(255, 193, 7, 0.08)';
+      case 'Closed': return 'rgba(244, 67, 54, 0.08)';
+      default: return 'rgba(33, 150, 243, 0.08)';
+    }
   }
 
   private normalizeCompanyName(name: string): string {

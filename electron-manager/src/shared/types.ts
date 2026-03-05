@@ -334,6 +334,18 @@ export interface WindowLayoutConfig {
   [windowId: string]: WindowBounds;
 }
 
+// Vosk STT
+export interface VoskResult {
+  transcript: string;
+  isFinal: boolean;
+}
+
+export interface VoskStatus {
+  available: boolean;
+  listening: boolean;
+  modelPath: string;
+}
+
 // Settings
 export interface AppSettings {
   springBoot: {

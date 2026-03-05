@@ -5,6 +5,8 @@ import { WorkRequestDto } from '../../../../../models/permits/work-request.model
 import { RfWorkRequestStateService } from './rf-work-request-state.service';
 import { CorrespondenceDialogService } from '../../../../../shared/correspondence-dialog/correspondence-dialog.service';
 import { WrDetailDialogService } from '../../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
+import { CurrentJobLogService } from '../../../../../services/current-items-services/current-job-log.service';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +15,8 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   private stateService = inject(RfWorkRequestStateService);
   private correspondenceDialogService = inject(CorrespondenceDialogService);
   private wrDetailDialogService = inject(WrDetailDialogService);
+  private currentJobLogService = inject(CurrentJobLogService);
+  private router = inject(Router);
 
   constructor() {
     super();
@@ -38,6 +42,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         label: 'Cancel',
         icon: '🚫',
         action: (item) => this.handleCancel(item),
+      },
+      {
+        id: 'create-job',
+        label: 'Create Job',
+        icon: 'work',
+        action: (item) => this.handleCreateJob(item),
       },
       {
         id: 'divider1',
@@ -105,6 +115,15 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       this.correspondenceDialogService.open('WorkRequest', item.id);
       this.closeContextMenu();
     }
+  }
+
+  private handleCreateJob(item: WorkRequestDto): void {
+    if (!item.id) return;
+    this.currentJobLogService.createJobFromWorkRequest(item.id.toString()).subscribe({
+      next: () => this.router.navigate(['/permit-builder/jobs']),
+      error: (err: any) => console.error('Error creating job from work request:', err)
+    });
+    this.closeContextMenu();
   }
 
   override handleViewDetails(item: WorkRequestDto): void {

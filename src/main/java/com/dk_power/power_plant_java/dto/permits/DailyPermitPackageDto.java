@@ -45,6 +45,11 @@ public class DailyPermitPackageDto extends BaseDto {
     String permitNumber;
 
     private ValueDto packageStatus;
+    private Boolean workCompleted;
+    private String closureComments;
+    private Boolean scopeChanged;
+    private String closureScopeDetails;
+    private String continueDate;
     private List<PackageModification> modifications = new ArrayList<>();
     private String activationSnapshotJson;
 }

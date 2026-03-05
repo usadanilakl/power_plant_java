@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ng/daily-permit-packages")
@@ -156,9 +157,11 @@ public class NgDailyPermitPackageController {
     }
 
     @PostMapping("/{id}/close")
-    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> closePackage(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> closePackage(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, Object> closureData) {
         try {
-            DailyPermitPackageDto result = ngDailyPermitPackageService.closePackage(id);
+            DailyPermitPackageDto result = ngDailyPermitPackageService.closePackage(id, closureData);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(result, "Package closed", LocalDateTime.now()));
         } catch (Exception e) {

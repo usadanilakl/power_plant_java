@@ -245,10 +245,10 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
-    closePackage() {
+    closePackage(closureData?: Record<string, any>) {
       const pkg = this.selectedDailyPermitPackageSubject.value;
       if (!pkg?.id) return;
-      this.dailyPermitPackageService.closePackage(pkg.id).pipe(
+      this.dailyPermitPackageService.closePackage(pkg.id, closureData).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: response => {

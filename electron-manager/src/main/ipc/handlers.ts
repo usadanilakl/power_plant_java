@@ -17,8 +17,9 @@ import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DaEmailManager } from '../managers/da-email.manager';
+import { VoskManager } from '../managers/vosk.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus, VoskResult } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -33,6 +34,7 @@ export class IpcHandlers {
   private resourcePackManager: ResourcePackManager;
   private electronUpdateManager: ElectronUpdateManager;
   private windowLayoutManager: WindowLayoutManager;
+  private voskManager: VoskManager;
   private mainWindow: BrowserWindow;
   private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
@@ -48,6 +50,18 @@ export class IpcHandlers {
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
     this.daEmailManager = new DaEmailManager();
+    this.voskManager = new VoskManager(
+      (result: VoskResult) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_VOSK_RESULT, result);
+        }
+      },
+      (error: string) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_VOSK_ERROR, error);
+        }
+      }
+    );
     this.weatherManager = new WeatherManager(
       (status: WeatherStatus) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -142,6 +156,7 @@ export class IpcHandlers {
     this.registerMenuHandlers();
     this.registerPrintHandlers();
     this.registerLayoutHandlers();
+    this.registerVoskHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -1333,10 +1348,30 @@ export class IpcHandlers {
     setTimeout(() => clearInterval(pollInterval), 300000);
   }
 
+  private registerVoskHandlers(): void {
+    ipcMain.handle(events.IPC_VOSK_START, () => {
+      return this.voskManager.start();
+    });
+
+    ipcMain.handle(events.IPC_VOSK_STOP, () => {
+      return this.voskManager.stop();
+    });
+
+    ipcMain.handle(events.IPC_VOSK_GET_STATUS, () => {
+      return { success: true, data: this.voskManager.getStatus() };
+    });
+
+    // One-way channel: renderer sends audio chunks rapidly, no response needed
+    ipcMain.on(events.IPC_VOSK_AUDIO_CHUNK, (_event, buffer: Buffer) => {
+      this.voskManager.feedAudio(Buffer.from(buffer));
+    });
+  }
+
   public async cleanup(): Promise<void> {
     this.gateLogManager.cleanup();
     this.weatherManager.cleanup();
     this.pjmManager.cleanup();
+    this.voskManager.cleanup();
     this.webview.closeAll();
     await this.springBoot.stop();
   }

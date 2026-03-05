@@ -5,6 +5,9 @@
       <h3>Jackson</h3>
     </div>
     <div class="agent-header-actions">
+      <button mat-icon-button matTooltip="Voice settings" (click)="toggleSettings()">
+        <mat-icon>settings</mat-icon>
+      </button>
       <button mat-icon-button matTooltip="Clear chat" (click)="chatService.clearChat()">
         <mat-icon>delete_sweep</mat-icon>
       </button>
@@ -13,6 +16,38 @@
       </button>
     </div>
   </div>
+
+  @if (settingsOpen()) {
+    <div class="tts-settings-section">
+      <div class="setting-row">
+        <label class="setting-toggle-label">Auto-speak responses</label>
+        <input type="checkbox" class="setting-checkbox"
+          [ngModel]="chatService.autoSpeak()"
+          (ngModelChange)="chatService.autoSpeak.set($event)">
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">Voice</label>
+        <select class="setting-select"
+          [ngModel]="chatService.selectedVoiceURI()"
+          (ngModelChange)="onVoiceChange($event)">
+          @for (voice of chatService.availableVoices(); track voice.voiceURI) {
+            <option [value]="voice.voiceURI">{{ voice.name }} ({{ voice.lang }})</option>
+          }
+        </select>
+      </div>
+      <div class="setting-group">
+        <label class="setting-label">Speed: {{ chatService.speechRate() | number:'1.2-2' }}x</label>
+        <input type="range" class="setting-slider"
+          min="0.5" max="2.0" step="0.05"
+          [ngModel]="chatService.speechRate()"
+          (ngModelChange)="onRateChange($event)">
+        <div class="slider-labels">
+          <span>0.5x</span>
+          <span>2.0x</span>
+        </div>
+      </div>
+    </div>
+  }
 
   <div class="agent-messages" #messagesContainer>
     @if (!chatService.isAvailable()) {
@@ -33,6 +68,15 @@
     @for (msg of chatService.messages(); track msg.timestamp) {
       <div class="message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
         <div class="message-content">{{ msg.content }}</div>
+
+        @if (msg.role === 'assistant' && msg.type !== 'error') {
+          <button class="speak-btn"
+            [class.speaking]="isSpeakingMessage(msg)"
+            (click)="toggleSpeak(msg)"
+            [matTooltip]="isSpeakingMessage(msg) ? 'Stop speaking' : 'Read aloud'">
+            <mat-icon>{{ isSpeakingMessage(msg) ? 'stop' : 'volume_up' }}</mat-icon>
+          </button>
+        }
 
         @if (msg.type === 'confirmation_required' && msg.pendingAction) {
           <div class="confirmation-card">
@@ -58,16 +102,44 @@
 
         @if (msg.type === 'search_results' && msg.data && msg.data['results']) {
           <div class="search-results-card">
-            <div class="result-count">{{ msg.data['totalCount'] }} result(s) found</div>
-            @for (item of msg.data['results']; track item['id']) {
-              <div class="result-item">
-                <span class="result-id">#{{ item['id'] }}</span>
-                <span class="result-name">{{ item['tagNumber'] || item['name'] || item['companyName'] || '' }}</span>
-                @if (item['description']) {
-                  <span class="result-desc">{{ item['description'] }}</span>
+            <div class="result-count">
+              {{ getFilteredResults(msg).length }} of {{ msg.data['totalCount'] }} result(s)
+            </div>
+
+            @if (getUniqueValues(msg.data['results'], 'system').length > 1
+              || getUniqueValues(msg.data['results'], 'eqType').length > 1
+              || getUniqueValues(msg.data['results'], 'location').length > 1) {
+              <div class="result-filters">
+                @for (sys of getUniqueValues(msg.data['results'], 'system'); track sys) {
+                  <button class="filter-chip" [class.active]="isFilterActive(msg.timestamp, 'system', sys)"
+                    (click)="toggleFilter(msg.timestamp, 'system', sys)">{{ sys }}</button>
+                }
+                @for (eq of getUniqueValues(msg.data['results'], 'eqType'); track eq) {
+                  <button class="filter-chip eq-chip" [class.active]="isFilterActive(msg.timestamp, 'eqType', eq)"
+                    (click)="toggleFilter(msg.timestamp, 'eqType', eq)">{{ eq }}</button>
+                }
+                @for (loc of getUniqueValues(msg.data['results'], 'location'); track loc) {
+                  <button class="filter-chip loc-chip" [class.active]="isFilterActive(msg.timestamp, 'location', loc)"
+                    (click)="toggleFilter(msg.timestamp, 'location', loc)">{{ loc }}</button>
                 }
               </div>
             }
+
+            <div class="search-results-list">
+              @for (item of getFilteredResults(msg); track item['id']) {
+                <div class="result-item" (click)="openItem(item)" matTooltip="Open details">
+                  <span class="result-id">#{{ item['id'] }}</span>
+                  <span class="result-name">{{ item['tagNumber'] || item['name'] || item['companyName'] || '' }}</span>
+                  @if (item['description']) {
+                    <span class="result-desc">{{ item['description'] }}</span>
+                  }
+                </div>
+              }
+            </div>
+            <button class="open-table-btn" (click)="openResultsInDialog(msg)">
+              <mat-icon>table_view</mat-icon>
+              Open in Table
+            </button>
           </div>
         }
 
@@ -76,6 +148,125 @@
             <mat-icon>check_circle</mat-icon>
             <span>Action completed</span>
           </div>
+        }
+
+        @if (msg.type === 'creation_flow' && msg.data) {
+          <!-- Summary card -->
+          @if (msg.data['step'] === 'summary') {
+            <div class="creation-summary-card">
+              @if (msg.data['collectedData']) {
+                @if (msg.data['collectedData']['description']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Description:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['description'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['tagNumber']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Tag:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['tagNumber'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['unit']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Unit:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['unit'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['specificLocation']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Location:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['specificLocation'] }}</span>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          <!-- Chip select card (eqType, normPos, isoPos, location) -->
+          @if (msg.data['step'] === 'eqType' || msg.data['step'] === 'normPos'
+            || msg.data['step'] === 'isoPos' || msg.data['step'] === 'location') {
+            <div class="chip-select-card">
+              <div class="creation-chips">
+                @for (opt of msg.data['options']; track opt.id) {
+                  <button class="creation-chip"
+                    [class.pre-selected]="isChipPreSelected(msg, opt)"
+                    (click)="onChipSelect(msg.data['field'], opt)">
+                    {{ opt.name }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Text input card (tagNumber, description, specificLocation) -->
+          @if (msg.data['step'] === 'tagNumber' || msg.data['step'] === 'description'
+            || msg.data['step'] === 'specificLocation') {
+            <div class="text-input-card">
+              <div class="text-input-row">
+                <input type="text" class="creation-text-input"
+                  [placeholder]="'Enter ' + msg.data['step']"
+                  [value]="msg.data['preSelected'] || ''"
+                  #creationInput
+                  (keydown.enter)="onTextSubmit(msg.data['field'], creationInput.value)">
+                <button class="confirm-btn" (click)="onTextSubmit(msg.data['field'], creationInput.value)">OK</button>
+                @if (msg.data['step'] === 'specificLocation') {
+                  <button class="cancel-btn" (click)="onSkipStep()">Skip</button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Yes/No card (zeroEnergy, pidConnection) -->
+          @if (msg.data['step'] === 'zeroEnergy' || msg.data['step'] === 'pidConnection') {
+            <div class="yes-no-card">
+              <button class="confirm-btn" (click)="onYesNo(msg.data['field'], true)">Yes</button>
+              <button class="cancel-btn" (click)="onYesNo(msg.data['field'], false)">No</button>
+            </div>
+          }
+
+          <!-- Review card -->
+          @if (msg.data['step'] === 'review' && msg.data['collectedData']) {
+            <div class="review-card">
+              <div class="review-fields">
+                @if (msg.data['collectedData']['tagNumber']) {
+                  <div class="summary-row"><span class="summary-key">Tag:</span><span class="summary-value">{{ msg.data['collectedData']['tagNumber'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['description']) {
+                  <div class="summary-row"><span class="summary-key">Description:</span><span class="summary-value">{{ msg.data['collectedData']['description'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['unit']) {
+                  <div class="summary-row"><span class="summary-key">Unit:</span><span class="summary-value">{{ msg.data['collectedData']['unit'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['eqType']) {
+                  <div class="summary-row"><span class="summary-key">Eq Type:</span><span class="summary-value">{{ msg.data['collectedData']['eqType'].name }}</span></div>
+                }
+                @if (msg.data['collectedData']['normPos']) {
+                  <div class="summary-row"><span class="summary-key">Normal Pos:</span><span class="summary-value">{{ msg.data['collectedData']['normPos'].name }}</span></div>
+                }
+                @if (msg.data['collectedData']['isoPos']) {
+                  <div class="summary-row"><span class="summary-key">Isolated Pos:</span><span class="summary-value">{{ msg.data['collectedData']['isoPos'].name }}</span></div>
+                }
+                @if (msg.data['collectedData']['location']) {
+                  <div class="summary-row"><span class="summary-key">Location:</span><span class="summary-value">{{ msg.data['collectedData']['location'].name }}</span></div>
+                }
+                @if (msg.data['collectedData']['specificLocation']) {
+                  <div class="summary-row"><span class="summary-key">Specific Loc:</span><span class="summary-value">{{ msg.data['collectedData']['specificLocation'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['zeroEnergy'] !== null) {
+                  <div class="summary-row"><span class="summary-key">Zero Energy:</span><span class="summary-value">{{ msg.data['collectedData']['zeroEnergy'] ? 'Yes' : 'No' }}</span></div>
+                }
+                @if (msg.data['collectedData']['pidConnection'] !== null) {
+                  <div class="summary-row"><span class="summary-key">P&ID:</span><span class="summary-value">{{ msg.data['collectedData']['pidConnection'] ? 'Yes' : 'No' }}</span></div>
+                }
+              </div>
+              <div class="review-actions">
+                <button class="confirm-btn" (click)="onCreate()" [disabled]="creationFlow.isCreating()">Create LOTO Point</button>
+                <button class="cancel-btn" (click)="onOpenInWizard()">Edit in Wizard</button>
+                <button class="cancel-btn" (click)="onCancelFlow()">Cancel</button>
+              </div>
+            </div>
+          }
         }
       </div>
     }
@@ -91,15 +282,23 @@
 
   @if (chatService.isAvailable()) {
     <div class="agent-input">
-      <button mat-icon-button matTooltip="Voice input (coming soon)" disabled class="mic-btn">
-        <mat-icon>mic</mat-icon>
+      <button mat-icon-button
+        [matTooltip]="chatService.sttSupported() ? (chatService.isRecording() ? 'Stop recording' : 'Voice input') : 'Voice input not available'"
+        [disabled]="!chatService.sttSupported()"
+        [class.recording]="chatService.isRecording()"
+        class="mic-btn"
+        (click)="toggleMic()">
+        <mat-icon>{{ chatService.isRecording() ? 'mic_off' : 'mic' }}</mat-icon>
       </button>
       <textarea #messageInput
         [(ngModel)]="inputText"
         (keydown)="onKeyDown($event)"
-        placeholder="Ask Jackson anything..."
+        (input)="autoResize($event)"
+        [class.recording-active]="chatService.isRecording()"
+        [placeholder]="chatService.isRecording() ? 'Listening... speak or type' : 'Ask Jackson anything...'"
         rows="1"></textarea>
       <button mat-icon-button (click)="send()"
+        class="send-btn"
         [disabled]="!inputText.trim() || chatService.isLoading()"
         matTooltip="Send message">
         <mat-icon>send</mat-icon>

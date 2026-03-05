@@ -122,6 +122,14 @@ export const IPC_MENU_NAVIGATE = 'menu:navigate';   // send/on (main -> renderer
 export const IPC_PRINT_CURRENT_PAGE = 'print:current-page';
 export const IPC_PRINT_HTML = 'print:html';
 
+// Vosk STT (invoke/handle + send/on)
+export const IPC_VOSK_START = 'vosk:start';
+export const IPC_VOSK_STOP = 'vosk:stop';
+export const IPC_VOSK_GET_STATUS = 'vosk:get-status';
+export const IPC_VOSK_AUDIO_CHUNK = 'vosk:audio-chunk';    // send/on (one-way, renderer -> main)
+export const IPC_VOSK_RESULT = 'vosk:result';              // send/on (main -> renderer)
+export const IPC_VOSK_ERROR = 'vosk:error';                // send/on (main -> renderer)
+
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';
 export const IPC_QUIT = 'quit';

@@ -23,23 +23,47 @@ public class GeminiService {
     private final String modelName;
     private final AgentSessionManager sessionManager;
     private final AgentActionExecutor actionExecutor;
+    private final AgentSearchVocabulary searchVocabulary;
 
-    private static final String SYSTEM_PROMPT = """
+    private static final String BASE_systemPrompt = """
             You are Jackson, an AI assistant for the Jackson Generation power plant management application.
             You help plant operators and engineers with:
             1. Searching for files (P&IDs, drawings, documents) by name, number, system, or type
-            2. Searching for equipment by tag number, description, system, or location
-            3. Searching for LOTO (Lock Out Tag Out) isolation points by tag number, description, or location
-            4. Searching for work permits and daily permit packages
-            5. Creating new LOTO points, LOTO standards, and daily permit packages
-            6. Teaching users how to use the application
-            7. Answering questions about the power plant and its systems
+            2. Searching for LOTO (Lock Out Tag Out) isolation points AND equipment using searchLotoPoints
+            3. Searching for work permits and daily permit packages
+            4. Creating new LOTO points, LOTO standards, and daily permit packages (use assistLotoPointCreation for detailed creates)
+            5. Teaching users how to use the application
+            6. Answering questions about the power plant and its systems
 
-            Guidelines:
+            IMPORTANT SEARCH GUIDELINES:
+            - Equipment and LOTO points are searched with the same function: searchLotoPoints.
+              When a user asks about equipment, valves, pumps, breakers, or any physical plant component,
+              use searchLotoPoints — it covers all isolation points and their associated equipment.
+            - ALWAYS provide multiple query variations in the 'queries' array parameter.
+              Power plant databases use heavy abbreviations. You MUST include abbreviated forms.
+            - Generate at least 3-5 query variations: the original phrase, abbreviated forms matching the
+              database naming patterns below, and key individual terms.
+            - Example: user asks "find the boiler feed pump discharge valve" ->
+              queries: ["boiler feed pump discharge valve", "BFP DISCH VLV", "BFP DISCH", "BFP", "boiler feed pump"]
+
+            LOTO POINT CREATION GUIDELINES:
+            - When a user wants to create a LOTO point and describes equipment in detail (mentions type,
+              position, location, or gives a rich description), use assistLotoPointCreation. Extract as
+              many fields as you can from their message. This starts an interactive creation flow.
+            - Only use createLotoPoint for very simple, quick creates where the user provides just a
+              tag number and description and nothing else.
+            - Example: "Create a LOTO point for the condensate pump discharge valve, Unit 01"
+              -> use assistLotoPointCreation with description="CND PMP DISCH VLV", unit="01", equipmentType="HV"
+
+            General guidelines:
             - Be concise and helpful. Use technical power plant terminology appropriately.
             - When a user asks to search for something, use the appropriate search function.
             - When a user asks to create something, use the appropriate create function and confirm the parameters.
-            - For searches, present results clearly with relevant details (tag numbers, descriptions, locations).
+            - IMPORTANT: When search results are returned, provide ONLY a brief summary in your text response
+              (e.g., "Found 15 LOTO points across Condensate, Feedwater, and Steam systems.").
+              Do NOT list individual items — the app displays results in a separate interactive card.
+              Your text should summarize the count, note which systems/areas were matched, and suggest
+              refinements if results seem incomplete.
             - When no results are found, suggest alternative search terms.
             - You can help users navigate the app: Permit Builder (/permit-builder), LOTO Standards (/loto-standards),
               Equipment (/equipment), Files (/files), and more.
@@ -52,14 +76,23 @@ public class GeminiService {
             - The permit hierarchy is: Job Log -> Daily Permit Package -> individual permits (SafeWork, HotWork, ConfinedSpace, etc.)
             """;
 
+    private final String systemPrompt;
+
     public GeminiService(Client geminiClient,
                          @Qualifier("geminiModelName") String modelName,
                          AgentSessionManager sessionManager,
-                         AgentActionExecutor actionExecutor) {
+                         AgentActionExecutor actionExecutor,
+                         AgentSearchVocabulary searchVocabulary) {
         this.geminiClient = geminiClient;
         this.modelName = modelName;
         this.sessionManager = sessionManager;
         this.actionExecutor = actionExecutor;
+        this.searchVocabulary = searchVocabulary;
+
+        // Build full system prompt: base + data-driven vocabulary
+        String vocab = searchVocabulary.getVocabularyPrompt();
+        this.systemPrompt = vocab.isEmpty() ? BASE_systemPrompt : BASE_systemPrompt + vocab;
+
         log.info("[Gemini] Service initialized with model={}", modelName);
     }
 
@@ -82,7 +115,7 @@ public class GeminiService {
             GenerateContentConfig config = GenerateContentConfig.builder()
                     .tools(AgentFunctionDeclarations.getAllTools())
                     .systemInstruction(Content.builder()
-                            .parts(List.of(Part.builder().text(SYSTEM_PROMPT).build()))
+                            .parts(List.of(Part.builder().text(systemPrompt).build()))
                             .build())
                     .build();
 
@@ -98,7 +131,9 @@ public class GeminiService {
 
                 log.info("[Agent] Function call: {}({})", funcName, args);
 
-                if (actionExecutor.isCreateAction(funcName)) {
+                if (actionExecutor.isWizardAssist(funcName)) {
+                    return handleWizardAssist(sessionId, userContent, response, funcName, args);
+                } else if (actionExecutor.isCreateAction(funcName)) {
                     return handleCreateAction(sessionId, userContent, response, funcName, args);
                 } else {
                     return handleSearchAction(sessionId, userContent, response, funcName, args, contents, config);
@@ -155,6 +190,22 @@ public class GeminiService {
 
     public void clearSession(String sessionId) {
         sessionManager.clearSession(sessionId);
+    }
+
+    private AgentChatResponse handleWizardAssist(String sessionId, Content userContent,
+                                                  GenerateContentResponse response,
+                                                  String funcName, Map<String, Object> args) {
+        sessionManager.addToHistory(sessionId, userContent);
+        sessionManager.addToHistory(sessionId, getModelContent(response));
+
+        Map<String, Object> result = actionExecutor.executeWizardAssist(funcName, args);
+
+        AgentChatResponse chatResponse = new AgentChatResponse();
+        chatResponse.setSessionId(sessionId);
+        chatResponse.setType("creation_flow");
+        chatResponse.setMessage("I'll help you create a LOTO point. Here's what I gathered from your request:");
+        chatResponse.setData(result);
+        return chatResponse;
     }
 
     private AgentChatResponse handleCreateAction(String sessionId, Content userContent,

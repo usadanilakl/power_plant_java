@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.mappers.permits.SafeWorkMapper;
 import com.dk_power.power_plant_java.repository.permits.SafeWorkRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -23,6 +24,8 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
+
     @Override
     public SafeWorkRepo getRepo() {
         return safeWorkRepo;
@@ -62,6 +65,9 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     public SafeWork save(SafeWorkDto dto) {
         SafeWork oldEntity = dto.getId() != null ? safeWorkRepo.findById(dto.getId()).orElse(null) : null;
         SafeWork sw = safeWorkMapper.convertToEntity(dto);
+        if (oldEntity == null && sw.getPermitStatus() == null) {
+            sw.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         SafeWork saved = safeWorkRepo.save(sw);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("SafeWork", saved.getId(), oldEntity, saved);
@@ -71,6 +77,9 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
 
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {
         SafeWork safeWork = safeWorkMapper.convertToEntity(safeWorkDto);
+        if (safeWork.getPermitStatus() == null) {
+            safeWork.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         SafeWork saved = safeWorkRepo.save(safeWork);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));

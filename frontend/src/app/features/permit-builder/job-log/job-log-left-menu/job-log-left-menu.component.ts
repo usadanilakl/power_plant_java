@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
 import { CurrentJobLogService } from '../../../../services/current-items-services/current-job-log.service';
+import { JobLogDto } from '../../../../models/permits/job-log.model';
 import { PermitMenuService, PermitGroupBy } from '../../shared/permit-menu.service';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 
@@ -48,6 +49,10 @@ export class JobLogLeftMenuComponent implements OnInit {
   onItemClick(item: NestedItem): void {
     if (item.values && item.values.length > 0) return;
     this.currentJobLogService.setCurrentJobLog(Number(item.id));
+  }
+
+  createNewJob(): void {
+    this.currentJobLogService.setCurrentJobLogWithDto(new JobLogDto());
   }
 
   refresh(): void {

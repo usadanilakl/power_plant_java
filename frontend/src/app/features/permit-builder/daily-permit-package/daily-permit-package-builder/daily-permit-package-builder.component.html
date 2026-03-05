@@ -1,5 +1,12 @@
 <div class="permit-package-container">
 
+  @if(parentJob()) {
+    <div class="parent-job-link" (click)="goToParentJob()">
+      Job: {{ parentJob()!.permitNumber || parentJob()!.name || 'Job #' + parentJob()!.id }}
+      &mdash; {{ parentJob()!.jobStatus?.name || 'Open' }}
+    </div>
+  }
+
   <div class="package-submission-section">
     <div class="form-controls">
       <div class="form-group">

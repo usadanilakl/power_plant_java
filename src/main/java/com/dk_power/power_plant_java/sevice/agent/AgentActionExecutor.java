@@ -3,8 +3,9 @@ package com.dk_power.power_plant_java.sevice.agent;
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
@@ -14,8 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -25,16 +28,16 @@ import java.util.Map;
 public class AgentActionExecutor {
 
     private final NgFileService fileService;
-    private final NgEquipmentService equipmentService;
     private final NgLotoPointService lotoPointService;
     private final NgLotoStandardService lotoStandardService;
     private final NgDailyPermitPackageService dailyPermitPackageService;
+    private final NgValueService valueService;
 
     public Map<String, Object> executeSearch(String functionName, Map<String, Object> args) {
         try {
             return switch (functionName) {
                 case "searchFiles" -> searchFiles(args);
-                case "searchEquipment" -> searchEquipment(args);
+                case "searchEquipment" -> searchLotoPoints(args); // legacy: equipment searches now use LOTO points
                 case "searchLotoPoints" -> searchLotoPoints(args);
                 case "searchPermits" -> searchPermits(args);
                 case "getAppHelp" -> getAppHelp(args);
@@ -60,8 +63,24 @@ public class AgentActionExecutor {
         }
     }
 
+    public boolean isWizardAssist(String functionName) {
+        return "assistLotoPointCreation".equals(functionName);
+    }
+
     public boolean isCreateAction(String functionName) {
         return functionName.startsWith("create");
+    }
+
+    public Map<String, Object> executeWizardAssist(String functionName, Map<String, Object> args) {
+        try {
+            return switch (functionName) {
+                case "assistLotoPointCreation" -> assistLotoPointCreation(args);
+                default -> Map.of("error", "Unknown wizard assist function: " + functionName);
+            };
+        } catch (Exception e) {
+            log.error("[Agent] Error executing wizard assist: {}({})", functionName, args, e);
+            return Map.of("error", e.getMessage(), "success", false);
+        }
     }
 
     // ========== SEARCH METHODS ==========
@@ -84,38 +103,60 @@ public class AgentActionExecutor {
         );
     }
 
-    private Map<String, Object> searchEquipment(Map<String, Object> args) {
-        String query = (String) args.get("query");
-        var results = equipmentService.complexSearch(query, 0, 10);
-        return Map.of(
-                "results", results.getContent().stream()
-                        .map(e -> {
-                            Map<String, Object> m = new LinkedHashMap<>();
-                            m.put("id", e.getId());
-                            m.put("tagNumber", e.getTagNumber() != null ? e.getTagNumber() : "");
-                            m.put("description", e.getDescription() != null ? e.getDescription() : "");
-                            return m;
-                        })
-                        .toList(),
-                "totalCount", results.getTotalElements()
-        );
-    }
-
     private Map<String, Object> searchLotoPoints(Map<String, Object> args) {
-        String query = (String) args.get("query");
-        var results = lotoPointService.complexSearch(query, 0, 10);
+        // Support both new "queries" array and legacy single "query" parameter
+        List<String> queries = new ArrayList<>();
+        Object queriesObj = args.get("queries");
+        if (queriesObj instanceof List<?> list) {
+            for (Object item : list) {
+                String s = String.valueOf(item);
+                if (s != null && !s.isBlank()) {
+                    queries.add(s.trim());
+                }
+            }
+        }
+        // Fallback: legacy single "query" param
+        if (queries.isEmpty()) {
+            String singleQuery = (String) args.getOrDefault("query", "");
+            if (singleQuery != null && !singleQuery.isBlank()) {
+                queries.add(singleQuery.trim());
+            }
+        }
+
+        if (queries.isEmpty()) {
+            return Map.of("results", List.of(), "totalCount", 0);
+        }
+
+        log.info("[Agent] LOTO point search with {} variations: {}", queries.size(), queries);
+
+        // Run each query variation, deduplicate results by ID
+        LinkedHashMap<Long, Map<String, Object>> deduped = new LinkedHashMap<>();
+        int maxResults = 20;
+
+        for (String query : queries) {
+            if (deduped.size() >= maxResults) break;
+
+            var page = lotoPointService.complexSearch(query, 0, 10);
+            for (var lp : page.getContent()) {
+                if (deduped.size() >= maxResults) break;
+                deduped.computeIfAbsent(lp.getId(), id -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", lp.getId());
+                    m.put("tagNumber", lp.getTagNumber() != null ? lp.getTagNumber() : "");
+                    m.put("description", lp.getDescription() != null ? lp.getDescription() : "");
+                    m.put("specificLocation", lp.getSpecificLocation() != null ? lp.getSpecificLocation() : "");
+                    m.put("unit", lp.getUnit() != null ? lp.getUnit() : "");
+                    m.put("system", lp.getSystem() != null ? lp.getSystem() : "");
+                    m.put("eqType", lp.getEqType() != null && lp.getEqType().getName() != null ? lp.getEqType().getName() : "");
+                    m.put("location", lp.getLocation() != null && lp.getLocation().getName() != null ? lp.getLocation().getName() : "");
+                    return m;
+                });
+            }
+        }
+
         return Map.of(
-                "results", results.getContent().stream()
-                        .map(lp -> {
-                            Map<String, Object> m = new LinkedHashMap<>();
-                            m.put("id", lp.getId());
-                            m.put("tagNumber", lp.getTagNumber() != null ? lp.getTagNumber() : "");
-                            m.put("description", lp.getDescription() != null ? lp.getDescription() : "");
-                            m.put("specificLocation", lp.getSpecificLocation() != null ? lp.getSpecificLocation() : "");
-                            return m;
-                        })
-                        .toList(),
-                "totalCount", results.getTotalElements()
+                "results", new ArrayList<>(deduped.values()),
+                "totalCount", deduped.size()
         );
     }
 
@@ -195,6 +236,89 @@ public class AgentActionExecutor {
         result.put("permitNumber", created.getPermitNumber() != null ? created.getPermitNumber() : "");
         result.put("success", true);
         return result;
+    }
+
+    // ========== WIZARD ASSIST ==========
+
+    private Map<String, Object> assistLotoPointCreation(Map<String, Object> args) {
+        Map<String, Object> resolvedData = new LinkedHashMap<>();
+        resolvedData.put("description", args.getOrDefault("description", null));
+        resolvedData.put("tagNumber", args.getOrDefault("tagNumber", null));
+        resolvedData.put("unit", args.getOrDefault("unit", null));
+        resolvedData.put("specificLocation", args.getOrDefault("specificLocation", null));
+
+        // Resolve dropdown values
+        resolvedData.put("eqType", resolveValue((String) args.get("equipmentType"), "eqType"));
+        resolvedData.put("normPos", resolveValue((String) args.get("normalPosition"), "normPos"));
+        resolvedData.put("isoPos", resolveValue((String) args.get("isolatedPosition"), "isoPos"));
+        resolvedData.put("location", resolveValue((String) args.get("location"), "location"));
+
+        // Load all available options for each dropdown category
+        Map<String, Object> availableOptions = new LinkedHashMap<>();
+        availableOptions.put("eqType", loadValueOptions("eqType"));
+        availableOptions.put("normPos", loadValueOptions("normPos"));
+        availableOptions.put("isoPos", loadValueOptions("isoPos"));
+        availableOptions.put("location", loadValueOptions("location"));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("resolvedData", resolvedData);
+        result.put("availableOptions", availableOptions);
+        result.put("success", true);
+
+        log.info("[Agent] LOTO point creation assist — resolved: {}", resolvedData);
+        return result;
+    }
+
+    private Map<String, Object> resolveValue(String searchTerm, String categoryAlias) {
+        if (searchTerm == null || searchTerm.isBlank()) return null;
+
+        try {
+            List<Value> values = valueService.getValuesByCategoryAlias(categoryAlias);
+            String search = searchTerm.trim().toLowerCase();
+
+            // 1. Exact match (case-insensitive) on name
+            for (Value v : values) {
+                if (v.getName() != null && v.getName().toLowerCase().equals(search)) {
+                    return valueToMap(v);
+                }
+            }
+
+            // 2. Alias match — alias contains search term
+            for (Value v : values) {
+                if (v.getAlias() != null && v.getAlias().toLowerCase().contains(search)) {
+                    return valueToMap(v);
+                }
+            }
+
+            // 3. Contains match — name contains search term
+            for (Value v : values) {
+                if (v.getName() != null && v.getName().toLowerCase().contains(search)) {
+                    return valueToMap(v);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Agent] Could not resolve value '{}' in category '{}': {}", searchTerm, categoryAlias, e.getMessage());
+        }
+
+        return null;
+    }
+
+    private List<Map<String, Object>> loadValueOptions(String categoryAlias) {
+        try {
+            return valueService.getValuesByCategoryAlias(categoryAlias).stream()
+                    .map(this::valueToMap)
+                    .toList();
+        } catch (Exception e) {
+            log.warn("[Agent] Could not load options for category '{}': {}", categoryAlias, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private Map<String, Object> valueToMap(Value v) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", v.getId());
+        m.put("name", v.getName() != null ? v.getName() : "");
+        return m;
     }
 
     // ========== TEACHING ==========

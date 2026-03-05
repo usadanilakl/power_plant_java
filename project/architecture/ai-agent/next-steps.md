@@ -10,27 +10,27 @@ Allow users to speak to Jackson instead of typing.
 - Continuous or single-shot recognition
 - Language detection available
 
-### Electron (Desktop version)
+### Electron (Desktop version) — DONE
 - Web Speech API is **NOT available** in Electron (no Google speech server)
-- **Vosk** — free, offline, open-source speech recognition
-  - Models: ~50MB (lightweight) to ~1.8GB (accurate English model)
+- **Vosk** — free (Apache 2.0), offline, open-source speech recognition
+  - Model: `vosk-model-small-en-us-0.15` (~50MB), must be placed at `<workingDir>/vosk-model/`
   - Runs locally, no internet required, no API costs
-  - Node.js binding: `vosk` npm package
-  - Works via IPC: Electron main process runs Vosk, renderer sends audio via `electronAPI`
-- Alternative: **Whisper.cpp** (OpenAI Whisper ported to C++) — very accurate, larger models, more complex setup
+  - Node.js binding: `vosk` npm package (native N-API addon)
+  - Audio pipeline: `getUserMedia` → AudioWorklet (PCM16) → IPC → VoskManager → results back via IPC
 
-### Implementation Plan
-1. Add mic button to chat input area (already exists as disabled placeholder)
-2. Detect runtime: `window.electronAPI` exists -> Electron path, else -> browser path
-3. Browser: `navigator.mediaDevices.getUserMedia()` -> `SpeechRecognition` -> text to chat input
-4. Electron: `navigator.mediaDevices.getUserMedia()` -> audio chunks via IPC -> Vosk in main process -> transcription back via IPC -> text to chat input
-5. Visual feedback: mic button pulses red while recording, waveform optional
+### Implementation (Completed)
 
-### Files to Create/Modify
-- `frontend/src/app/services/agent/agent-chat.service.ts` — implement `startVoiceInput()`/`stopVoiceInput()`
-- `electron-manager/src/main/stt/vosk-service.ts` — Vosk integration in Electron main process
-- `electron-manager/src/shared/types.ts` — add STT IPC channel types
-- `electron-manager/src/preload/preload.ts` — expose STT methods via contextBridge
+#### Files Created
+- `electron-manager/src/main/managers/vosk.manager.ts` — VoskManager (load model, start/stop recognizer, feed audio, emit results)
+- `frontend/src/assets/audio/pcm-processor.js` — AudioWorklet processor (Float32 → Int16 PCM conversion on audio thread)
+
+#### Files Modified
+- `electron-manager/src/main/ipc/events.ts` — added 6 Vosk IPC channel constants
+- `electron-manager/src/shared/types.ts` — added `VoskResult`, `VoskStatus` interfaces
+- `electron-manager/src/main/ipc/handlers.ts` — added VoskManager field, initialization, `registerVoskHandlers()`, cleanup
+- `electron-manager/src/main/preload/main.preload.ts` — exposed 6 Vosk API methods via contextBridge
+- `electron-manager/package.json` — added `vosk: ^0.3.45` dependency
+- `frontend/src/app/services/agent/agent-chat.service.ts` — replaced Electron STT stubs with real AudioWorklet + Vosk IPC implementation
 
 ---
 
@@ -150,15 +150,15 @@ This keeps the prompt current as data changes.
 
 ## Priority Order
 
-| Priority | Item | Effort | Impact |
-|----------|------|--------|--------|
-| 1 | Local lingo / system prompt enhancement | Low | High — directly improves search accuracy |
-| 2 | TTS (speechSynthesis) | Low | Medium — hands-free response reading |
-| 3 | STT browser (Web Speech API) | Low | Medium — voice input for web users |
-| 4 | Search result navigation | Low | Medium — clickable results |
-| 5 | Session expiry | Low | Low — prevents memory leaks |
-| 6 | STT Electron (Vosk) | Medium | Medium — voice input for desktop users |
-| 7 | Conversation context window | Medium | Medium — prevents long conversation failures |
-| 8 | Expand create actions | Medium | Medium — more things Jackson can do |
-| 9 | Dynamic context from DB | Medium | Medium — keeps prompt current |
-| 10 | Voice wake word | High | Low — novelty feature |
+| Priority | Item | Status | Effort | Impact |
+|----------|------|--------|--------|--------|
+| ~~1~~ | ~~TTS (speechSynthesis)~~ | Done | Low | Medium |
+| ~~2~~ | ~~STT browser (Web Speech API)~~ | Done | Low | Medium |
+| 3 | Local lingo / system prompt enhancement | Pending | Low | High — directly improves search accuracy |
+| 4 | Search result navigation | Pending | Low | Medium — clickable results |
+| 5 | Session expiry | Pending | Low | Low — prevents memory leaks |
+| ~~6~~ | ~~STT Electron (Vosk)~~ | Done | Medium | Medium — voice input for desktop users |
+| 7 | Conversation context window | Pending | Medium | Medium — prevents long conversation failures |
+| 8 | Expand create actions | Pending | Medium | Medium — more things Jackson can do |
+| 9 | Dynamic context from DB | Pending | Medium | Medium — keeps prompt current |
+| 10 | Voice wake word | Pending | High | Low — novelty feature |

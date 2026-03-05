@@ -233,6 +233,27 @@ export class RfLotoPointStateService {
       .subscribe();
   }
 
+  /**
+   * Load full entity from server by ID and open the form popup.
+   * Used by the agent chat panel to open a specific item for viewing/editing.
+   */
+  loadAndOpenItem(id: number): void {
+    this.apiService
+      .getLotoPointById(id + '')
+      .pipe(
+        tap((response) => {
+          this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
+          this.openForm();
+        }),
+        catchError((error) => {
+          console.error('Error loading LOTO Point:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   submitForm(item: LotoPointDto) {
 
     const lotoPointId = item.id;

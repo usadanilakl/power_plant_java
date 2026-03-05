@@ -50,4 +50,8 @@ export class JobLogService {
   closeJob(jobId: string): Observable<SpringApiResponse<JobLogDto>> {
     return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/close`, {});
   }
+
+  getByPackageId(packageId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.get<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/by-package/${packageId}`);
+  }
 }

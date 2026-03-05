@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
 import com.dk_power.power_plant_java.mappers.permits.SafeWorkMapper;
 import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
+import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +52,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final ConfinedSpaceMapper confinedSpaceMapper;
     private final WorkRequestRepo workRequestRepo;
     private final NgValueService ngValueService;
+    private final JobLogRepo jobLogRepo;
 
     @Override
     public DailyPermitPackageRepo getRepo() {
@@ -259,7 +261,16 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return changeStatus(id, "Test", Set.of("Active"));
     }
 
-    public DailyPermitPackageDto closePackage(String id) {
+    public DailyPermitPackageDto closePackage(String id, Map<String, Object> closureData) {
+        DailyPermitPackage pkg = getEntityById(id);
+        if (closureData != null) {
+            if (closureData.containsKey("workCompleted")) pkg.setWorkCompleted((Boolean) closureData.get("workCompleted"));
+            if (closureData.containsKey("closureComments")) pkg.setClosureComments((String) closureData.get("closureComments"));
+            if (closureData.containsKey("scopeChanged")) pkg.setScopeChanged((Boolean) closureData.get("scopeChanged"));
+            if (closureData.containsKey("closureScopeDetails")) pkg.setClosureScopeDetails((String) closureData.get("closureScopeDetails"));
+            if (closureData.containsKey("continueDate")) pkg.setContinueDate((String) closureData.get("continueDate"));
+            dailyPermitPackageRepo.save(pkg);
+        }
         return changeStatus(id, "Closed", Set.of("Active", "Test"));
     }
 
@@ -274,6 +285,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         Value statusValue = ngValueService.createValue("Package Status", targetStatus);
 
         pkg.setPackageStatus(statusValue);
+        cascadeStatusToPermits(pkg, targetStatus);
 
         // Log the status change
         PackageModification mod = new PackageModification();
@@ -287,7 +299,46 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         pkg.addModification(mod);
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(pkg);
+        updateParentJobStatus(saved);
         return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    private void cascadeStatusToPermits(DailyPermitPackage pkg, String status) {
+        Value permitStatus = ngValueService.createValue("Permit Status", status);
+        if (pkg.getSafeWorks() != null) pkg.getSafeWorks().forEach(p -> p.setPermitStatus(permitStatus));
+        if (pkg.getHotWorks() != null) pkg.getHotWorks().forEach(p -> p.setPermitStatus(permitStatus));
+        if (pkg.getConfinedSpaces() != null) pkg.getConfinedSpaces().forEach(p -> p.setPermitStatus(permitStatus));
+        if (pkg.getEnergizedWorkPermits() != null) pkg.getEnergizedWorkPermits().forEach(p -> p.setPermitStatus(permitStatus));
+        if (pkg.getExcavationPermits() != null) pkg.getExcavationPermits().forEach(p -> p.setPermitStatus(permitStatus));
+        if (pkg.getVentingPermits() != null) pkg.getVentingPermits().forEach(p -> p.setPermitStatus(permitStatus));
+    }
+
+    private void updateParentJobStatus(DailyPermitPackage pkg) {
+        try {
+            JobLog job = jobLogRepo.findByPackageId(pkg.getId()).orElse(null);
+            if (job == null) return;
+
+            boolean anyActiveOrTest = job.getPackages().stream().anyMatch(p -> {
+                String s = p.getPackageStatus() != null ? p.getPackageStatus().getName() : "Building";
+                return s.equals("Active") || s.equals("Test");
+            });
+            boolean allClosed = job.getPackages().stream().allMatch(p -> {
+                String s = p.getPackageStatus() != null ? p.getPackageStatus().getName() : "Building";
+                return s.equals("Closed");
+            });
+            boolean allWorkCompleted = allClosed && job.getPackages().stream()
+                    .allMatch(p -> Boolean.TRUE.equals(p.getWorkCompleted()));
+
+            if (allWorkCompleted) {
+                job.setJobStatus(ngValueService.createValue("Job Status", "Closed"));
+            } else if (anyActiveOrTest) {
+                job.setJobStatus(ngValueService.createValue("Job Status", "Active"));
+            }
+            jobLogRepo.save(job);
+        } catch (Exception e) {
+            // Don't fail the package status change if job update fails
+            System.err.println("Warning: Could not update parent job status: " + e.getMessage());
+        }
     }
 
     private void takeSnapshot(Long packageId) {

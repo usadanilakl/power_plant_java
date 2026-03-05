@@ -20,7 +20,7 @@
 | File | Path | Purpose |
 |------|------|---------|
 | AgentService | `services/agent/agent.service.ts` | HTTP wrapper: `chat()`, `checkStatus()`, `clearSession()`. Defines TS interfaces matching backend DTOs. |
-| AgentChatService | `services/agent/agent-chat.service.ts` | Signal-based state management: `messages`, `isOpen`, `isLoading`, `isAvailable`, `sessionId`. Handles send/confirm/cancel flows. Placeholder hooks for STT/TTS. |
+| AgentChatService | `services/agent/agent-chat.service.ts` | Signal-based state management: `messages`, `isOpen`, `isLoading`, `isAvailable`, `sessionId`. Handles send/confirm/cancel flows. TTS via speechSynthesis. STT via Web Speech API (browser) and Vosk IPC (Electron). |
 | AgentToggleComponent | `shared/agent/agent-toggle/agent-toggle.component.ts` | Header icon button (`smart_toy`). Hidden when agent unavailable. Toggles chat panel. |
 | AgentChatPanelComponent | `shared/agent/agent-chat-panel/agent-chat-panel.component.ts` | Chat panel logic: send, confirm, cancel, auto-scroll. |
 | Template | `shared/agent/agent-chat-panel/agent-chat-panel.component.html` | Chat UI: welcome message, message bubbles, confirmation cards, search result cards, typing indicator, input area. |
@@ -205,3 +205,42 @@ Search results from existing services are simplified to `Map<String, Object>` be
 | Equipment | id, tagNumber, description |
 | LOTO Points | id, tagNumber, description, specificLocation |
 | Permits | id, companyName, personName, date, permitNumber |
+
+---
+
+## TTS (Text-to-Speech)
+
+Uses the `speechSynthesis` Web API — works in both browser and Electron Chromium with zero dependencies.
+
+- **Speaker button** on each assistant message (`volume_up` icon, toggles to `stop` when playing)
+- **Text cleaning** before speech: strips markdown formatting, code blocks, link syntax
+- **Voice selection**: prefers English Natural voice, falls back to any en-US or en voice
+- **Signals**: `isSpeaking`, `currentSpeakingMessageTimestamp` — tracks which message is being read
+- **Overlap handling**: starting a new utterance cancels the current one
+- **Cleanup**: `OnDestroy` in component stops speech when navigating away
+
+---
+
+## STT (Speech-to-Text)
+
+### Browser (Web Speech API)
+- Uses `SpeechRecognition` / `webkitSpeechRecognition` — free, zero dependencies
+- **Supported**: Chrome, Edge, Safari. **Not supported**: Firefox, Electron.
+- **Continuous mode** with interim results — user sees live transcript while speaking
+- **Transcript preview strip** above input area shows live text with hearing icon
+- **Flow**: Click mic -> speak -> live transcript appears -> click mic again to stop -> transcript fills input textarea -> user reviews and presses Enter to send
+- **Signals**: `isRecording`, `sttSupported`, `transcriptBuffer`
+- **Visual**: Mic button pulses red while recording, icon changes to `mic_off`
+
+### Electron (Vosk — implemented)
+- `SpeechRecognition` Web API does NOT work in Electron (no Google speech server)
+- Uses **Vosk** (free, Apache 2.0, offline, ~50MB model for `vosk-model-small-en-us-0.15`)
+- **Architecture**: Renderer captures audio via `getUserMedia` → AudioWorklet (PCM16 conversion) → IPC chunks → VoskManager in main process → partial/final results broadcast back via IPC
+- **AudioWorklet** (`assets/audio/pcm-processor.js`): Modern replacement for deprecated ScriptProcessorNode. Runs on dedicated audio thread, converts Float32 [-1,1] samples to Int16 PCM.
+- **VoskManager** (`electron-manager/src/main/managers/vosk.manager.ts`): Follows established manager pattern. Constructor takes `onResult`/`onError` callbacks. Lifecycle: `start()` → `feedAudio()` → `stop()` → `cleanup()`.
+- **IPC channels**: `vosk:start`, `vosk:stop`, `vosk:get-status` (invoke/handle), `vosk:audio-chunk` (one-way send), `vosk:result`, `vosk:error` (broadcast)
+- **Shared types**: `VoskResult { transcript, isFinal }`, `VoskStatus { available, listening, modelPath }`
+- **Model path**: `<workingDir>/vosk-model/` — must be manually downloaded and extracted
+- **Preload API**: `voskStart()`, `voskStop()`, `voskGetStatus()`, `voskSendAudio(buffer)`, `onVoskResult(cb)`, `onVoskError(cb)`
+- **Dependency**: `vosk: ^0.3.45` in `electron-manager/package.json` (native N-API addon)
+- `sttSupported` is set based on `voskGetStatus().available` (true when model directory exists)

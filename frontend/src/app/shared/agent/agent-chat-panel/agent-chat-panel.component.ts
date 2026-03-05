@@ -1,26 +1,65 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
-import { CommonModule, KeyValuePipe } from '@angular/common';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, OnDestroy, effect, signal } from '@angular/core';
+import { CommonModule, KeyValuePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { AgentChatService, ChatMessage } from '../../../services/agent/agent-chat.service';
+import { AgentCreationFlowService, ValueOption } from '../../../services/agent/agent-creation-flow.service';
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { AgentResultsDialogComponent } from '../agent-results-dialog/agent-results-dialog.component';
 
 @Component({
   selector: 'app-agent-chat-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, KeyValuePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, KeyValuePipe, DecimalPipe],
   templateUrl: './agent-chat-panel.component.html',
   styleUrl: './agent-chat-panel.component.css'
 })
-export class AgentChatPanelComponent implements AfterViewChecked {
+export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   chatService = inject(AgentChatService);
+  creationFlow = inject(AgentCreationFlowService);
+  private router = inject(Router);
+  private dialog = inject(MatDialog);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
 
   inputText = '';
+  settingsOpen = signal(false);
+  activeFilters = signal<Record<string, string | null>>({});
   private shouldScroll = false;
+
+  // Mic UX: speech text types directly into textarea in real-time
+  // userPrefix = text typed before recording started; speech appends after it
+  private userPrefix = '';
+  private wasRecording = false;
+
+  private transcriptEffect = effect(() => {
+    const recording = this.chatService.isRecording();
+    const transcript = this.chatService.transcriptBuffer();
+
+    if (recording && !this.wasRecording) {
+      // Recording just started — snapshot current text as user prefix
+      this.userPrefix = this.inputText;
+    }
+
+    if (recording && transcript) {
+      // Live update: user prefix + speech transcript
+      const separator = this.userPrefix && !this.userPrefix.endsWith(' ') ? ' ' : '';
+      this.inputText = this.userPrefix + separator + transcript;
+    }
+
+    if (!recording && this.wasRecording) {
+      // Recording stopped — keep inputText as-is, clear buffer
+      this.chatService.transcriptBuffer.set('');
+      this.userPrefix = '';
+    }
+
+    this.wasRecording = recording;
+  });
 
   ngAfterViewChecked(): void {
     if (this.shouldScroll) {
@@ -29,11 +68,28 @@ export class AgentChatPanelComponent implements AfterViewChecked {
     }
   }
 
+  ngOnDestroy(): void {
+    if (this.chatService.isRecording()) {
+      this.chatService.stopVoiceInput();
+    }
+    if (this.chatService.isSpeaking()) {
+      this.chatService.stopSpeaking();
+    }
+  }
+
   send(): void {
     if (!this.inputText.trim() || this.chatService.isLoading()) return;
+    // Stop recording if active before sending
+    if (this.chatService.isRecording()) {
+      this.chatService.stopVoiceInput();
+    }
     this.chatService.sendMessage(this.inputText.trim());
     this.inputText = '';
     this.shouldScroll = true;
+    // Reset textarea height after clearing
+    if (this.messageInput) {
+      this.messageInput.nativeElement.style.height = 'auto';
+    }
   }
 
   onKeyDown(event: KeyboardEvent): void {
@@ -41,6 +97,12 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       event.preventDefault();
       this.send();
     }
+  }
+
+  autoResize(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
   }
 
   confirm(confirmationId: string): void {
@@ -51,6 +113,134 @@ export class AgentChatPanelComponent implements AfterViewChecked {
   cancel(confirmationId: string): void {
     this.chatService.cancelAction(confirmationId);
     this.shouldScroll = true;
+  }
+
+  toggleSpeak(msg: ChatMessage): void {
+    if (this.chatService.currentSpeakingMessageTimestamp()?.getTime() === msg.timestamp.getTime()) {
+      this.chatService.stopSpeaking();
+    } else {
+      this.chatService.speakMessage(msg.content, msg.timestamp);
+    }
+  }
+
+  isSpeakingMessage(msg: ChatMessage): boolean {
+    return this.chatService.currentSpeakingMessageTimestamp()?.getTime() === msg.timestamp.getTime();
+  }
+
+  toggleMic(): void {
+    if (this.chatService.isRecording()) {
+      this.chatService.stopVoiceInput();
+    } else {
+      this.chatService.startVoiceInput();
+    }
+  }
+
+  toggleSettings(): void {
+    this.settingsOpen.update(v => !v);
+  }
+
+  onVoiceChange(voiceURI: string): void {
+    this.chatService.setVoice(voiceURI);
+  }
+
+  onRateChange(rate: number): void {
+    this.chatService.speechRate.set(rate);
+  }
+
+  openItem(item: Record<string, any>): void {
+    const search = item['tagNumber'] || item['id'];
+    if (search) {
+      this.chatService.closePanel();
+      this.router.navigate(['/loto-points/table'], {
+        queryParams: { search }
+      });
+    }
+  }
+
+  openResultsInDialog(msg: ChatMessage): void {
+    const results = msg.data?.['results'] as Record<string, any>[];
+    if (!results?.length) return;
+    const items = results.map(r => LotoPointDto.fromJson(r));
+    this.dialog.open(AgentResultsDialogComponent, {
+      data: { items },
+      panelClass: 'agent-results-dialog-panel',
+      autoFocus: false,
+    });
+  }
+
+  getUniqueValues(results: Record<string, any>[], field: string): string[] {
+    return [...new Set(results.map(r => r[field]).filter(Boolean))].sort();
+  }
+
+  toggleFilter(msgTimestamp: Date, field: string, value: string): void {
+    const key = msgTimestamp.getTime() + ':' + field;
+    this.activeFilters.update(f => ({
+      ...f, [key]: f[key] === value ? null : value
+    }));
+  }
+
+  isFilterActive(msgTimestamp: Date, field: string, value: string): boolean {
+    const key = msgTimestamp.getTime() + ':' + field;
+    return this.activeFilters()[key] === value;
+  }
+
+  getFilteredResults(msg: ChatMessage): Record<string, any>[] {
+    const results = msg.data?.['results'] as Record<string, any>[] || [];
+    const ts = msg.timestamp.getTime();
+    const sysF = this.activeFilters()[ts + ':system'];
+    const eqF = this.activeFilters()[ts + ':eqType'];
+    const locF = this.activeFilters()[ts + ':location'];
+    return results.filter(r =>
+      (!sysF || r['system'] === sysF) &&
+      (!eqF || r['eqType'] === eqF) &&
+      (!locF || r['location'] === locF)
+    );
+  }
+
+  // ========== Creation Flow ==========
+
+  onChipSelect(field: string, option: ValueOption): void {
+    this.creationFlow.selectOption(field, option);
+    this.shouldScroll = true;
+  }
+
+  onTextSubmit(field: string, value: string): void {
+    this.creationFlow.submitText(field, value);
+    this.shouldScroll = true;
+  }
+
+  onYesNo(field: string, value: boolean): void {
+    this.creationFlow.selectYesNo(field, value);
+    this.shouldScroll = true;
+  }
+
+  onSkipStep(): void {
+    this.creationFlow.skipStep();
+    this.shouldScroll = true;
+  }
+
+  onCreate(): void {
+    this.creationFlow.createLotoPoint();
+    this.shouldScroll = true;
+  }
+
+  onOpenInWizard(): void {
+    const data = this.creationFlow.getWizardData();
+    this.creationFlow.cancelFlow();
+    this.chatService.closePanel();
+    this.router.navigate(['/loto-points/table'], {
+      queryParams: { wizard: 'add-loto-point', prefill: JSON.stringify(data) }
+    });
+  }
+
+  onCancelFlow(): void {
+    this.creationFlow.cancelFlow();
+    this.shouldScroll = true;
+  }
+
+  isChipPreSelected(msg: ChatMessage, option: ValueOption): boolean {
+    const preSelected = msg.data?.['preSelected'];
+    return preSelected && preSelected['id'] === option.id;
   }
 
   private scrollToBottom(): void {

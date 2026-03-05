@@ -116,6 +116,20 @@ public class NgJobLogController {
         }
     }
 
+    @GetMapping("/by-package/{packageId}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> getByPackageId(@PathVariable String packageId) {
+        try {
+            JobLogDto dto = service.getByPackageId(packageId);
+            if (dto == null) return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(null, "No parent job found", LocalDateTime.now()));
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(dto, "Parent job found", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/{jobId}/close")
     public ResponseEntity<NgApiResponse<JobLogDto>> closeJob(@PathVariable String jobId) {
         try {

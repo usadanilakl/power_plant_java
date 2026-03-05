@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.ExcavationPermitDto;
 import com.dk_power.power_plant_java.entities.permits.ExcavationPermit;
 import com.dk_power.power_plant_java.mappers.permits.ExcavationPermitMapper;
 import com.dk_power.power_plant_java.repository.permits.ExcavationPermitRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -23,6 +24,7 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
 
     @Override public ExcavationPermitRepo getRepo() { return repo; }
     @Override public ExcavationPermitMapper getMapper() { return mapper; }
@@ -35,7 +37,11 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
     @Override
     public ExcavationPermit save(ExcavationPermitDto dto) {
         ExcavationPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
-        ExcavationPermit saved = repo.save(mapper.convertToEntity(dto));
+        ExcavationPermit entity = mapper.convertToEntity(dto);
+        if (oldEntity == null && entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        ExcavationPermit saved = repo.save(entity);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("ExcavationPermit", saved.getId(), oldEntity, saved);
         }
@@ -43,7 +49,11 @@ public class NgExcavationPermitService implements NgCrudService<ExcavationPermit
     }
 
     public ExcavationPermitDto createPermit(ExcavationPermitDto dto) {
-        ExcavationPermit saved = repo.save(mapper.convertToEntity(dto));
+        ExcavationPermit entity = mapper.convertToEntity(dto);
+        if (entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        ExcavationPermit saved = repo.save(entity);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
             saved = repo.save(saved);

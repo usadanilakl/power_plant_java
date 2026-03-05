@@ -26,6 +26,11 @@
         [class.active]="groupBy() === 'date'"
         (click)="setGrouping('date')"
       >Date</button>
+      <button
+        class="group-button"
+        [class.active]="groupBy() === 'status'"
+        (click)="setGrouping('status')"
+      >Status</button>
     </div>
   </div>
 

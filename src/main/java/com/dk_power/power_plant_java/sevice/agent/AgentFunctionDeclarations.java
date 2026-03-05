@@ -27,33 +27,26 @@ public class AgentFunctionDeclarations {
                     .build())
             .build();
 
-    public static final FunctionDeclaration SEARCH_EQUIPMENT = FunctionDeclaration.builder()
-            .name("searchEquipment")
-            .description("Search for plant equipment by tag number, description, system, or location")
-            .parameters(Schema.builder()
-                    .type(Type.Known.OBJECT)
-                    .properties(Map.of(
-                            "query", Schema.builder()
-                                    .type(Type.Known.STRING)
-                                    .description("Search text to match against equipment tag number or description")
-                                    .build()
-                    ))
-                    .required(List.of("query"))
-                    .build())
-            .build();
-
     public static final FunctionDeclaration SEARCH_LOTO_POINTS = FunctionDeclaration.builder()
             .name("searchLotoPoints")
-            .description("Search for LOTO (Lock Out Tag Out) isolation points by tag number, description, or location")
+            .description("Search for LOTO isolation points or equipment (valves, pumps, breakers, etc.) " +
+                    "by tag number, description, system, or location. " +
+                    "IMPORTANT: Always provide multiple search query variations to handle abbreviations.")
             .parameters(Schema.builder()
                     .type(Type.Known.OBJECT)
                     .properties(Map.of(
-                            "query", Schema.builder()
-                                    .type(Type.Known.STRING)
-                                    .description("Search text to match against LOTO point tag number, description, or location")
+                            "queries", Schema.builder()
+                                    .type(Type.Known.ARRAY)
+                                    .items(Schema.builder().type(Type.Known.STRING).build())
+                                    .description("Array of search query variations. Always include: " +
+                                            "(1) the original user phrase, " +
+                                            "(2) abbreviated forms using database naming conventions, " +
+                                            "(3) key individual terms. " +
+                                            "Example: user says 'boiler feed pump discharge valve' -> " +
+                                            "[\"boiler feed pump discharge valve\", \"BFP DISCH VLV\", \"BFP DISCH\", \"BFP\", \"boiler feed pump\"]")
                                     .build()
                     ))
-                    .required(List.of("query"))
+                    .required(List.of("queries"))
                     .build())
             .build();
 
@@ -146,6 +139,54 @@ public class AgentFunctionDeclarations {
                     .build())
             .build();
 
+    // ========== WIZARD ASSIST FUNCTIONS ==========
+
+    public static final FunctionDeclaration ASSIST_LOTO_POINT_CREATION = FunctionDeclaration.builder()
+            .name("assistLotoPointCreation")
+            .description("Help the user create a new LOTO point through a conversational flow. " +
+                    "Extract as many fields as possible from the user's natural language request. " +
+                    "All parameters are optional — provide whatever can be inferred from context. " +
+                    "Prefer this function when the user describes equipment in detail (type, position, location). " +
+                    "Use createLotoPoint only for quick creates with just a tag number and description.")
+            .parameters(Schema.builder()
+                    .type(Type.Known.OBJECT)
+                    .properties(Map.of(
+                            "tagNumber", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Tag number if mentioned (e.g. '01-HRH-HV-0001')")
+                                    .build(),
+                            "description", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Equipment description (e.g. 'CND PMP DISCH VLV')")
+                                    .build(),
+                            "unit", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Plant unit: '01' or '02'")
+                                    .build(),
+                            "specificLocation", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Specific physical location text")
+                                    .build(),
+                            "equipmentType", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Equipment type name to resolve (e.g. 'HV', 'MV', 'CB', 'AOV', 'MOV')")
+                                    .build(),
+                            "normalPosition", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Normal operating position (e.g. 'OPEN', 'CLOSED', 'ON', 'OFF')")
+                                    .build(),
+                            "isolatedPosition", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Isolated position (e.g. 'CLOSED', 'OPEN', 'OFF', 'RACKED OUT')")
+                                    .build(),
+                            "location", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("General location name to resolve (e.g. 'Turbine Hall', 'Boiler Area')")
+                                    .build()
+                    ))
+                    .build())
+            .build();
+
     // ========== TEACHING FUNCTION ==========
 
     public static final FunctionDeclaration GET_APP_HELP = FunctionDeclaration.builder()
@@ -166,9 +207,9 @@ public class AgentFunctionDeclarations {
     public static List<Tool> getAllTools() {
         return List.of(Tool.builder()
                 .functionDeclarations(List.of(
-                        SEARCH_FILES, SEARCH_EQUIPMENT, SEARCH_LOTO_POINTS, SEARCH_PERMITS,
+                        SEARCH_FILES, SEARCH_LOTO_POINTS, SEARCH_PERMITS,
                         CREATE_LOTO_POINT, CREATE_LOTO_STANDARD, CREATE_DAILY_PERMIT_PACKAGE,
-                        GET_APP_HELP
+                        ASSIST_LOTO_POINT_CREATION, GET_APP_HELP
                 ))
                 .build());
     }

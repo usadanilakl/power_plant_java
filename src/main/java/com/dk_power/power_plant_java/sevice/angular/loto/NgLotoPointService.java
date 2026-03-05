@@ -83,7 +83,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public List<String> getGlobalSearchColumns() {
         return Arrays.asList(
                 "tagNumber", "description", "specificLocation", "unit", "system",
-                "location.name", "isoPos.name", "normPos.name"
+                "location.name", "isoPos.name", "normPos.name", "eqType.name"
         );
     }
 
@@ -106,13 +106,12 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     public Page<LotoPointDto> complexSearch(String searchString, int page, int size) {
-        Map<String, String> searchCriteria = new HashMap<>();
-        searchCriteria.put("tagNumber", searchString);
-        searchCriteria.put("description", searchString);
-        searchCriteria.put("specificLocation", searchString);
+        // Use GLOBAL search with OR logic for cross-field token matching.
+        // Each token can match in any column (e.g., "condensate" in system + "pump" in description).
         SearchCriteria sc = new SearchCriteria();
-        sc.setFilters(searchCriteria);
-//        return complexSearch(sc).stream().map(this::toDto).toList();
+        sc.setType(SearchCriteria.SearchType.GLOBAL);
+        sc.setQuery(searchString);
+        sc.setGlobalFilterLogic("OR");
         return complexSearch(sc, page, size, "tagNumber", "asc", false);
     }
 

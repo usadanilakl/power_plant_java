@@ -2,6 +2,9 @@
   <div class="menu-header">
     <h2>Job Logs</h2>
     <div class="header-actions">
+      <button class="icon-button new-job-button" (click)="createNewJob()" title="New Job">
+        <span class="icon">+</span>
+      </button>
       <button class="icon-button refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
         <span class="icon">&#8635;</span>
       </button>

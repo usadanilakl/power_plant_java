@@ -226,6 +226,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printHtml: (html: string, options?: { silent?: boolean }): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_PRINT_HTML, html, options),
 
+  // Vosk STT
+  voskStart: (): Promise<any> => ipcRenderer.invoke(events.IPC_VOSK_START),
+  voskStop: (): Promise<any> => ipcRenderer.invoke(events.IPC_VOSK_STOP),
+  voskGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_VOSK_GET_STATUS),
+  voskSendAudio: (buffer: ArrayBuffer): void => ipcRenderer.send(events.IPC_VOSK_AUDIO_CHUNK, Buffer.from(buffer)),
+  onVoskResult: (callback: (result: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, result: any) => callback(result);
+    ipcRenderer.on(events.IPC_VOSK_RESULT, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_VOSK_RESULT, sub); };
+  },
+  onVoskError: (callback: (error: string) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, error: string) => callback(error);
+    ipcRenderer.on(events.IPC_VOSK_ERROR, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_VOSK_ERROR, sub); };
+  },
+
   // General
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(events.IPC_GET_APP_VERSION),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke(events.IPC_OPEN_EXTERNAL, url),

@@ -107,6 +107,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     }
   });
 
+  private _initialized = false;
+
   constructor() {
     // Initialize columns whenever fieldsToDisplay changes
     effect(() => {
@@ -121,6 +123,16 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         }
       }
       this.columns.set(cols);
+    });
+
+    // React to initialSearchCriteria changes after the first load (e.g. from query param updates)
+    effect(() => {
+      const criteria = this.initialSearchCriteria();
+      if (!this._initialized) return;
+      if (criteria && (criteria.query || (criteria.filters && Object.keys(criteria.filters).length > 0))) {
+        this.stateService.clearLotoPoints();
+        this.loadInitialDataWithCriteria(criteria);
+      }
     });
   }
 
@@ -146,6 +158,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     } else {
       this.loadInitialData();
     }
+    this._initialized = true;
   }
 
   /**

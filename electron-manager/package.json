@@ -24,6 +24,7 @@
     "@azure/identity": "^4.13.0",
     "adm-zip": "^0.5.16",
     "cheerio": "^1.2.0",
+    "vosk": "^0.3.45",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -79,6 +80,13 @@
         "filter": [
           "certificate.pfx",
           "certificate.pem"
+        ]
+      },
+      {
+        "from": "vosk-model",
+        "to": "vosk-model",
+        "filter": [
+          "**/*"
         ]
       }
     ],

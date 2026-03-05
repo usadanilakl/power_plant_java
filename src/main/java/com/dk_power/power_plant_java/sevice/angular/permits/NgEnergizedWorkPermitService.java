@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.EnergizedWorkPermitDto;
 import com.dk_power.power_plant_java.entities.permits.EnergizedWorkPermit;
 import com.dk_power.power_plant_java.mappers.permits.EnergizedWorkPermitMapper;
 import com.dk_power.power_plant_java.repository.permits.EnergizedWorkPermitRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -23,6 +24,7 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
 
     @Override public EnergizedWorkPermitRepo getRepo() { return repo; }
     @Override public EnergizedWorkPermitMapper getMapper() { return mapper; }
@@ -35,7 +37,11 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
     @Override
     public EnergizedWorkPermit save(EnergizedWorkPermitDto dto) {
         EnergizedWorkPermit oldEntity = dto.getId() != null ? repo.findById(dto.getId()).orElse(null) : null;
-        EnergizedWorkPermit saved = repo.save(mapper.convertToEntity(dto));
+        EnergizedWorkPermit entity = mapper.convertToEntity(dto);
+        if (oldEntity == null && entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        EnergizedWorkPermit saved = repo.save(entity);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("EnergizedWorkPermit", saved.getId(), oldEntity, saved);
         }
@@ -43,7 +49,11 @@ public class NgEnergizedWorkPermitService implements NgCrudService<EnergizedWork
     }
 
     public EnergizedWorkPermitDto createPermit(EnergizedWorkPermitDto dto) {
-        EnergizedWorkPermit saved = repo.save(mapper.convertToEntity(dto));
+        EnergizedWorkPermit entity = mapper.convertToEntity(dto);
+        if (entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
+        EnergizedWorkPermit saved = repo.save(entity);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
             saved = repo.save(saved);

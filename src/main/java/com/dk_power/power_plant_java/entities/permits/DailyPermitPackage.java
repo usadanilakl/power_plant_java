@@ -69,6 +69,14 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @JoinColumn(name = "package_status_id")
     private Value packageStatus;
 
+    private Boolean workCompleted;
+    @Column(columnDefinition = "TEXT")
+    private String closureComments;
+    private Boolean scopeChanged;
+    @Column(columnDefinition = "TEXT")
+    private String closureScopeDetails;
+    private String continueDate;
+
     @Column(columnDefinition = "TEXT")
     private String modificationsJson;
 

@@ -71,6 +71,9 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
 
     public JobLogDto createJob(JobLogDto dto) {
         JobLog entity = jobLogMapper.convertToEntity(dto);
+        if (entity.getJobStatus() == null) {
+            entity.setJobStatus(ngValueService.createValue("Job Status", "Open"));
+        }
         JobLog saved = jobLogRepo.save(entity);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getStartDate()));
@@ -92,6 +95,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         job.setStartDate(wr.getDateOfWorkToBePerformed());
         job.setOriginatingWorkRequest(wr);
         if (wr.getWorkArea() != null) job.setWorkArea(wr.getWorkArea());
+        job.setJobStatus(ngValueService.createValue("Job Status", "Open"));
 
         JobLog saved = jobLogRepo.save(job);
         saved.setPermitNumber(permitNumberGenerator.generate(saved.getStartDate()));
@@ -130,6 +134,12 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         entity.setId(Long.parseLong(id));
         JobLog saved = jobLogRepo.save(entity);
         return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto getByPackageId(String packageId) {
+        return jobLogRepo.findByPackageId(Long.parseLong(packageId))
+                .map(jobLogMapper::convertToDto)
+                .orElse(null);
     }
 
     public List<JobLogDto> getAllDtos() {

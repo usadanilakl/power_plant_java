@@ -39,6 +39,9 @@ import { EnergizedWorkPermitPaperFormComponent } from "../../energized-work-perm
 import { ExcavationPermitPaperFormComponent } from "../../excavation-permit/excavation-permit-paper-form/excavation-permit-paper-form.component";
 import { VentingPermitPaperFormComponent } from "../../venting-permit/venting-permit-paper-form/venting-permit-paper-form.component";
 import { RfFormField } from '../../../../models/ui/form-field.model';
+import { JobLogService } from '../../../../services/permits/job-log.service';
+import { Router } from '@angular/router';
+import { JobLogDto } from '../../../../models/permits/job-log.model';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
@@ -49,9 +52,12 @@ import { RfFormField } from '../../../../models/ui/form-field.model';
 })
 export class DailyPermitPackageBuilderComponent {
   currentDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
+  private jobLogService = inject(JobLogService);
+  private router = inject(Router);
   destroyRef = inject(DestroyRef);
 
   currentPackage = this.currentDailyPermitPackageService.currentDailyPacksge;
+  parentJob = signal<JobLogDto | null>(null);
 
   requests = this.currentDailyPermitPackageService.requests;
   requestCount = this.currentDailyPermitPackageService.requestCount;
@@ -141,6 +147,19 @@ export class DailyPermitPackageBuilderComponent {
       distinctUntilChanged((prev, curr) => prev.value === curr.value && prev.field === curr.field)
     ).subscribe(({ field, value }) => {
       this.updatePackageProperty(field, value);
+    });
+
+    effect(() => {
+      const pkg = this.currentPackage();
+      if (pkg?.id) {
+        this.jobLogService.getByPackageId(pkg.id.toString()).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe(response => {
+          this.parentJob.set(response?.responseData ? JobLogDto.fromJson(response.responseData) : null);
+        });
+      } else {
+        this.parentJob.set(null);
+      }
     });
   }
 
@@ -395,7 +414,13 @@ export class DailyPermitPackageBuilderComponent {
   }
 
   confirmClosure(): void {
-    this.currentDailyPermitPackageService.closePackage();
+    this.currentDailyPermitPackageService.closePackage({
+      workCompleted: this.closureWorkCompleted,
+      closureComments: this.closureComments,
+      scopeChanged: this.closureScopeChanged,
+      closureScopeDetails: this.closureScopeDetails,
+      continueDate: this.closureContinueDate,
+    });
     this.isClosurePopupOpen = false;
     if (!this.closureWorkCompleted) {
       this.isReissueAfterClosePromptOpen = true;
@@ -411,5 +436,12 @@ export class DailyPermitPackageBuilderComponent {
 
   dismissReissuePrompt(): void {
     this.isReissueAfterClosePromptOpen = false;
+  }
+
+  goToParentJob(): void {
+    const job = this.parentJob();
+    if (job?.id) {
+      this.router.navigate(['/permit-builder/jobs'], { queryParams: { jobId: job.id } });
+    }
   }
 }

@@ -1,4 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { LotoPointDbTableClickService } from './loto-point-db-table-click.service';
@@ -36,4 +39,19 @@ import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.servi
   templateUrl: './loto-point-db-table.component.html',
   styleUrl: './loto-point-db-table.component.css',
 })
-export class LotoPointDbTableComponent {}
+export class LotoPointDbTableComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
+  searchCriteria = signal<SearchCriteria | null>(null);
+
+  ngOnInit(): void {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const search = params.get('search');
+        if (search) {
+          this.searchCriteria.set({ type: 'global', query: search });
+        }
+      });
+  }
+}

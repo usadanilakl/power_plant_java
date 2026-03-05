@@ -54,7 +54,7 @@ export class DailyPermitPackageService {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/test`, {});
   }
 
-  closePackage(id: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
-    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/close`, {});
+  closePackage(id: number, closureData?: Record<string, any>): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/close`, closureData ?? {});
   }
 }

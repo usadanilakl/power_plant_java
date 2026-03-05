@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
 import com.dk_power.power_plant_java.repository.permits.HotWorkRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -23,6 +24,7 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
     private final HotWorkMapper hotWorkMapper;
     private final PermitNumberGenerator permitNumberGenerator;
     private final PermitModificationTracker modificationTracker;
+    private final NgValueService ngValueService;
 
     @Override
     public HotWorkRepo getRepo() {
@@ -63,6 +65,9 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
     public HotWork save(HotWorkDto dto) {
         HotWork oldEntity = dto.getId() != null ? hotWorkRepo.findById(dto.getId()).orElse(null) : null;
         HotWork hotWork = hotWorkMapper.convertToEntity(dto);
+        if (oldEntity == null && hotWork.getPermitStatus() == null) {
+            hotWork.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         HotWork saved = hotWorkRepo.save(hotWork);
         if (oldEntity != null) {
             modificationTracker.trackPermitUpdate("HotWork", saved.getId(), oldEntity, saved);
@@ -72,6 +77,9 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
 
     public HotWorkDto createHotWorkRequest(HotWorkDto hotWorkDto) {
         HotWork entity = toEntity(hotWorkDto);
+        if (entity.getPermitStatus() == null) {
+            entity.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+        }
         HotWork saved = save(entity);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
             saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));

@@ -20,7 +20,7 @@ export class ClipboardComponent {
   isExpanded = this.clipboardService.isClipboardExpanded;
 
   // Dragging state
-  iconPosition = signal<{ x: number; y: number }>({ x: 20, y: 20 });
+  iconPosition = signal<{ x: number; y: number }>({ x: 20, y: 80 });
   windowPosition = signal<{ x: number; y: number }>({ x: 20, y: 20 });
   private isDragging = false;
   private dragStartX = 0;

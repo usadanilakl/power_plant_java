@@ -47,6 +47,11 @@ export interface DailyPermitPackageModel extends BaseModel {
   time: string | null;
   permitNumber: string | null;
   packageStatus: ValueDto | null;
+  workCompleted: boolean | null;
+  closureComments: string | null;
+  scopeChanged: boolean | null;
+  closureScopeDetails: string | null;
+  continueDate: string | null;
   modifications: PackageModification[];
   activationSnapshotJson: string | null;
 }
@@ -75,6 +80,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   time: string | null;
   permitNumber: string | null;
   packageStatus: ValueDto | null;
+  workCompleted: boolean | null;
+  closureComments: string | null;
+  scopeChanged: boolean | null;
+  closureScopeDetails: string | null;
+  continueDate: string | null;
   modifications: PackageModification[];
   activationSnapshotJson: string | null;
 
@@ -102,6 +112,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.time = data.time ?? null;
     this.permitNumber = data.permitNumber ?? null;
     this.packageStatus = data.packageStatus ? new ValueDto(data.packageStatus) : null;
+    this.workCompleted = data.workCompleted ?? null;
+    this.closureComments = data.closureComments ?? null;
+    this.scopeChanged = data.scopeChanged ?? null;
+    this.closureScopeDetails = data.closureScopeDetails ?? null;
+    this.continueDate = data.continueDate ?? null;
     this.modifications = data.modifications ?? [];
     this.activationSnapshotJson = data.activationSnapshotJson ?? null;
   }
@@ -131,6 +146,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       time: this.time,
       permitNumber: this.permitNumber,
       packageStatus: this.packageStatus?.toJson() ?? null,
+      workCompleted: this.workCompleted,
+      closureComments: this.closureComments,
+      scopeChanged: this.scopeChanged,
+      closureScopeDetails: this.closureScopeDetails,
+      continueDate: this.continueDate,
       modifications: this.modifications,
       activationSnapshotJson: this.activationSnapshotJson,
     };
@@ -161,6 +181,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       time: json.time,
       permitNumber: json.permitNumber,
       packageStatus: json.packageStatus ? ValueDto.fromJson(json.packageStatus) : null,
+      workCompleted: json.workCompleted ?? null,
+      closureComments: json.closureComments ?? null,
+      scopeChanged: json.scopeChanged ?? null,
+      closureScopeDetails: json.closureScopeDetails ?? null,
+      continueDate: json.continueDate ?? null,
       modifications: json.modifications ?? [],
       activationSnapshotJson: json.activationSnapshotJson ?? null,
     });
@@ -203,7 +228,9 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       'id', 'workRequests', 'safeWorks', 'hotWorks', 'confinedSpaces', 'lotos',
       'energizedWorkPermits', 'excavationPermits', 'ventingPermits',
       'isVerified', 'name', 'objectType', 'companyName', 'personName', 'date', 'time',
-      'permitNumber', 'packageStatus', 'modifications', 'activationSnapshotJson'
+      'permitNumber', 'packageStatus', 'workCompleted', 'closureComments',
+      'scopeChanged', 'closureScopeDetails', 'continueDate',
+      'modifications', 'activationSnapshotJson'
     ].includes(key);
   }
 
@@ -273,6 +300,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       time: { id: 'time', header: 'Time', accessorKey: 'time' },
       permitNumber: { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
       packageStatus: { id: 'packageStatus', header: 'Status', accessorFn: (item: DailyPermitPackageDto) => item.packageStatus?.name ?? '' },
+      workCompleted: { id: 'workCompleted', header: 'Work Completed', accessorFn: (item: DailyPermitPackageDto) => item.workCompleted ? 'Yes' : 'No' },
+      closureComments: { id: 'closureComments', header: 'Closure Comments', accessorKey: 'closureComments' },
+      scopeChanged: { id: 'scopeChanged', header: 'Scope Changed', accessorFn: (item: DailyPermitPackageDto) => item.scopeChanged ? 'Yes' : 'No' },
+      closureScopeDetails: { id: 'closureScopeDetails', header: 'Scope Details', accessorKey: 'closureScopeDetails' },
+      continueDate: { id: 'continueDate', header: 'Continue Date', accessorKey: 'continueDate' },
       modifications: { id: 'modifications', header: 'Changes', accessorFn: (item: DailyPermitPackageDto) => item.modifications.length + '' },
       activationSnapshotJson: { id: 'activationSnapshotJson', header: 'Snapshot', accessorFn: (item: DailyPermitPackageDto) => item.activationSnapshotJson ? 'Yes' : 'No' },
     };
