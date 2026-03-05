@@ -20,7 +20,7 @@ export interface PendingAction {
 export interface AgentChatResponse {
   sessionId: string;
   message: string;
-  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'error';
+  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'creation_flow' | 'error';
   data: Record<string, any> | null;
   confirmationId: string | null;
   pendingAction: PendingAction | null;

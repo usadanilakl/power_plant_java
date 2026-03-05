@@ -10,7 +10,7 @@ import java.util.Map;
 public class AgentChatResponse {
     private String sessionId;
     private String message;
-    private String type; // "text", "search_results", "confirmation_required", "action_completed", "error"
+    private String type; // "text", "search_results", "confirmation_required", "action_completed", "creation_flow", "error"
     private Map<String, Object> data;
     private String confirmationId;
     private PendingAction pendingAction;
