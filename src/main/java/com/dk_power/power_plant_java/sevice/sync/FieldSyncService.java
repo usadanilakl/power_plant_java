@@ -1133,11 +1133,17 @@ public class FieldSyncService {
                 return false;
             }
 
-            // Skip OneToMany collections with mappedBy - these are non-owning side relationships
-            // that should be managed by the child entity's ManyToOne field, not synced directly.
-            // This prevents deserialization errors and maintains referential integrity.
+            // Handle OneToMany relationships
             if ("OneToMany".equals(change.getRelationshipType())) {
-                log.debug("Skipping OneToMany field {}.{} - managed by child entity",
+                // Check if this is a unidirectional @OneToMany with @JoinColumn (no mappedBy).
+                // These need direct FK updates because the child entity has no @ManyToOne back-reference.
+                jakarta.persistence.JoinColumn joinCol = field.getAnnotation(jakarta.persistence.JoinColumn.class);
+                jakarta.persistence.OneToMany otm = field.getAnnotation(jakarta.persistence.OneToMany.class);
+                if (joinCol != null && otm != null && (otm.mappedBy() == null || otm.mappedBy().isEmpty())) {
+                    return applyUnidirectionalOneToManyChange(entity, field, change, joinCol, idRemapTable);
+                }
+                // Bidirectional (has mappedBy) — managed by child entity's ManyToOne field
+                log.debug("Skipping bidirectional OneToMany field {}.{} - managed by child entity",
                     entity.getClass().getSimpleName(), change.getFieldName());
                 return false;
             }
@@ -1328,6 +1334,77 @@ public class FieldSyncService {
 
         } catch (Exception e) {
             log.error("Error applying ManyToMany change {}.{}: {}",
+                entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Handle unidirectional @OneToMany with @JoinColumn — sets the FK column on child rows via SQL.
+     * This is needed because the child entity has no @ManyToOne back-reference, so field-level
+     * sync can't set the FK from the child side.
+     */
+    private boolean applyUnidirectionalOneToManyChange(BaseIdEntity entity, Field field, FieldChange change,
+                                                        jakarta.persistence.JoinColumn joinCol,
+                                                        Map<String, Map<Long, Long>> idRemapTable) {
+        try {
+            String fkColumn = joinCol.name();
+            Long parentId = entity.getId();
+
+            // Resolve child entity type and table name
+            Class<?> childType = resolveCollectionElementType(field);
+            if (childType == null) {
+                log.warn("Cannot resolve element type for OneToMany field {}.{}",
+                    entity.getClass().getSimpleName(), change.getFieldName());
+                return false;
+            }
+            String childTable = entityTableRegistry.getTableName(childType.getSimpleName());
+
+            // Parse the new value — JSON array of child IDs like [101, 102]
+            String json = change.getNewValue();
+            List<Long> childIds = new ArrayList<>();
+
+            if (json != null && !json.isEmpty() && !"null".equals(json) && !"[]".equals(json)) {
+                json = json.trim();
+                if (json.startsWith("[") && json.endsWith("]")) {
+                    json = json.substring(1, json.length() - 1);
+                    if (!json.isEmpty()) {
+                        for (String idStr : json.split(",")) {
+                            idStr = idStr.trim().replace("\"", "");
+                            if (!idStr.isEmpty()) {
+                                Long parsedId = Long.parseLong(idStr);
+                                parsedId = DedupKeyResolver.resolveRemappedId(childType.getSimpleName(), parsedId, idRemapTable);
+                                childIds.add(parsedId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Clear old FK references (detach children that are no longer in the collection)
+            entityManager.createNativeQuery(
+                "UPDATE " + childTable + " SET " + fkColumn + " = NULL WHERE " + fkColumn + " = :parentId")
+                .setParameter("parentId", parentId)
+                .executeUpdate();
+
+            // Set FK on current children
+            if (!childIds.isEmpty()) {
+                for (Long childId : childIds) {
+                    entityManager.createNativeQuery(
+                        "UPDATE " + childTable + " SET " + fkColumn + " = :parentId WHERE id = :childId")
+                        .setParameter("parentId", parentId)
+                        .setParameter("childId", childId)
+                        .executeUpdate();
+                }
+            }
+
+            log.debug("Applied unidirectional OneToMany {}.{}: set {}={} on {} child rows in {}",
+                entity.getClass().getSimpleName(), change.getFieldName(),
+                fkColumn, parentId, childIds.size(), childTable);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error applying unidirectional OneToMany {}.{}: {}",
                 entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
             return false;
         }
