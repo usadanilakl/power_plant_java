@@ -5,6 +5,7 @@ import { WrDetailDialogService } from './wr-detail-dialog.service';
 import { RfWorkRequestApiService } from '../../features/permit-builder/work-request/refactored/services/rf-work-request-api.service';
 import { CorrespondenceDialogService } from '../correspondence-dialog/correspondence-dialog.service';
 import { AttachmentDialogService } from '../attachment-dialog/attachment-dialog.service';
+import { ProcessWrDialogService } from '../process-wr-dialog/process-wr-dialog.service';
 import { WorkRequestDto } from '../../models/permits/work-request.model';
 
 @Component({
@@ -110,6 +111,11 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
 
             <!-- Action buttons -->
             <div class="action-bar">
+              <button class="action-btn btn-process"
+                      (click)="processWorkRequest()"
+                      [disabled]="actionInProgress()">
+                <span class="material-icons">play_arrow</span> Process
+              </button>
               <button class="action-btn btn-processed"
                       (click)="markAsProcessed()"
                       [disabled]="actionInProgress()">
@@ -258,6 +264,8 @@ import { WorkRequestDto } from '../../models/permits/work-request.model';
     .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .action-btn .material-icons { font-size: 16px; }
 
+    .btn-process { border-color: #2196f3; color: #1565c0; }
+    .btn-process:hover { background: #e3f2fd; }
     .btn-processed { border-color: #4caf50; color: #2e7d32; }
     .btn-processed:hover { background: #e8f5e9; }
     .btn-cancel { border-color: #ef5350; color: #c62828; }
@@ -289,6 +297,7 @@ export class WrDetailDialogComponent {
   private wrApiService = inject(RfWorkRequestApiService);
   private correspondenceDialogService = inject(CorrespondenceDialogService);
   private attachmentDialogService = inject(AttachmentDialogService);
+  private processWrDialogService = inject(ProcessWrDialogService);
 
   workRequest = signal<WorkRequestDto | null>(null);
   isLoading = signal(false);
@@ -368,6 +377,13 @@ export class WrDetailDialogComponent {
       },
       error: () => this.actionInProgress.set(false)
     });
+  }
+
+  processWorkRequest(): void {
+    const wr = this.workRequest();
+    if (!wr?.id) return;
+    this.close();
+    this.processWrDialogService.open(wr.id);
   }
 
   viewCorrespondence(): void {

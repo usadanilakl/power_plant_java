@@ -47,13 +47,28 @@ public class GeminiService {
               queries: ["boiler feed pump discharge valve", "BFP DISCH VLV", "BFP DISCH", "BFP", "boiler feed pump"]
 
             LOTO POINT CREATION GUIDELINES:
-            - When a user wants to create a LOTO point and describes equipment in detail (mentions type,
-              position, location, or gives a rich description), use assistLotoPointCreation. Extract as
-              many fields as you can from their message. This starts an interactive creation flow.
-            - Only use createLotoPoint for very simple, quick creates where the user provides just a
-              tag number and description and nothing else.
-            - Example: "Create a LOTO point for the condensate pump discharge valve, Unit 01"
-              -> use assistLotoPointCreation with description="CND PMP DISCH VLV", unit="01", equipmentType="HV"
+            - When a user wants to create a LOTO point, ALWAYS use assistLotoPointCreation. Extract as
+              many fields as possible from the user's message. This starts an interactive creation flow.
+            - Only use createLotoPoint for very simple quick creates with JUST a tag number and nothing else.
+
+            FIELD EXTRACTION FROM USER MESSAGES:
+            - Tag number: look for patterns like 01-VCND377, 02-MOVCND001, etc.
+            - From tag number 01-VCND377: extract unit="01", equipmentType="V" (the prefix before system code)
+            - Unit: "unit 1" or "unit 01" -> "01", "unit 2" or "unit 02" -> "02"
+            - Equipment type: parse from tag prefix. V=Manual Valve, MOV=Motor Operated Valve,
+              AOV=Air Operated Valve, PCV=Pressure Control Valve, PMP=Pump, etc.
+            - Location: infer from context. "ACC" hints -> ACC-related location, "turbine hall" -> Turbine Hall
+            - Specific location: physical location text like "under ACC", "near BFP discharge", "east wall"
+            - Normal/Isolated position: drain valves are normally CLOSED/isolated CLOSED.
+              Motor valves are often normally OPEN/isolated CLOSED.
+
+            EXAMPLES:
+            - "create LOTO point for unit 1 ACC loop seal drain under ACC tag 01-VCND377"
+              -> assistLotoPointCreation(tagNumber="01-VCND377", description="ACC LOOP SEAL DRAIN",
+                 unit="01", equipmentType="V", location="ACC", specificLocation="Under ACC")
+            - "add a motor operated valve on the feedwater system, normally open, tag 01-MOVBFW025"
+              -> assistLotoPointCreation(tagNumber="01-MOVBFW025", equipmentType="MOV",
+                 unit="01", normalPosition="OPEN", isolatedPosition="CLOSED")
 
             General guidelines:
             - Be concise and helpful. Use technical power plant terminology appropriately.

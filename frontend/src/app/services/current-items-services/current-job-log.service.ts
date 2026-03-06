@@ -80,6 +80,19 @@ export class CurrentJobLogService {
     );
   }
 
+  processWorkRequest(jobId: string, workRequestId: string) {
+    return this.jobLogService.processWorkRequest(jobId, workRequestId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(response => {
+        if (response?.responseData) {
+          const updated = JobLogDto.fromJson(response.responseData);
+          this.updateJobLogInList(updated);
+          this.setCurrentJobLogWithDto(updated);
+        }
+      })
+    );
+  }
+
   updateJobLog(dto: JobLogDto) {
     return this.jobLogService.update(dto.id.toString(), dto).pipe(
       takeUntilDestroyed(this.destroyRef),

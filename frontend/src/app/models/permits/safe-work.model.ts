@@ -183,7 +183,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     dto: SafeWorkDto,
     locationOptions: Option[] = [],
     fields: (SafeWorkFieldName | 'workArea')[] = [
-      'workArea', 'location', 'date', 'time', 'companyPerson', 'workScope',
+      'location', 'date', 'time', 'companyPerson', 'workScope',
       'specialInstructions', 'requestedBy',
       ...Object.keys(SafeWorkDto.getHazardFields(null)) as SafeWorkFieldName[],
       ...Object.keys(SafeWorkDto.getPermitFields(null)) as SafeWorkFieldName[],

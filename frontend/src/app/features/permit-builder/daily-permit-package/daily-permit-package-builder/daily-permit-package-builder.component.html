@@ -74,7 +74,7 @@
       <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Submit Permit Package</button>
       <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Get Permits From Another Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
-      <button class="delete-button" (click)="currentDailyPermitPackageService.build()" [disabled]="currentPackage().id===0">Build Package</button>
+      <button class="delete-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
   </div>
     
@@ -660,4 +660,11 @@
       <button class="status-btn" style="background:#6c757d;" (click)="dismissReissuePrompt()">No, Close Only</button>
     </div>
   </div>
+</app-popup-projection>
+
+<app-popup-projection
+  [title]="'Red Tag Build Progress'"
+  [isOpen]="isRedTagProgressOpen"
+  (close)="closeRedTagProgress()">
+  <app-red-tag-progress-panel></app-red-tag-progress-panel>
 </app-popup-projection>

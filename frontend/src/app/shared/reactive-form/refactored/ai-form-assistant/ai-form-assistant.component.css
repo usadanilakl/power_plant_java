@@ -1,0 +1,93 @@
+.ai-form-bar {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--surface-variant, #1e1e2e);
+  border: 1px solid var(--outline-variant, #333);
+  border-radius: 8px;
+}
+
+.ai-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary, #7c8aff);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ai-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--outline-variant, #444);
+  border-radius: 6px;
+  background: var(--surface, #121212);
+  color: var(--on-surface, #e0e0e0);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ai-input:focus {
+  border-color: var(--primary, #7c8aff);
+}
+
+.ai-input:disabled {
+  opacity: 0.6;
+}
+
+.ai-input::placeholder {
+  color: var(--on-surface-variant, #888);
+}
+
+.ai-submit-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary, #7c8aff);
+  color: var(--on-primary, #fff);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.ai-submit-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.ai-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ai-spin 0.6s linear infinite;
+}
+
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-message {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--on-surface-variant, #aaa);
+  padding-left: 30px;
+}

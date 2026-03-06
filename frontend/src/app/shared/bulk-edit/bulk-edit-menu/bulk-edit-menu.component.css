@@ -12,6 +12,8 @@
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .field-selector-panel.collapsed {

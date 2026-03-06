@@ -124,24 +124,94 @@ public class AgentSearchVocabulary {
                     .append("include queries like 'CND PUMP DISCH ISO' and 'CND PUMP DISCHARGE ISO'.\n");
 
             // Equipment type vocabulary from Value entity
-            List<Object[]> eqTypes = queryEquipmentTypes();
+            List<Object[]> eqTypes = queryValuesByCategory("eqType");
             if (!eqTypes.isEmpty()) {
-                sb.append("\nEquipment types in database (with alternative names/aliases):\n");
+                sb.append("\nEquipment types in database (name → tag prefix):\n");
                 for (Object[] row : eqTypes) {
                     String name = (String) row[0];
                     String alias = (String) row[1];
                     sb.append("  - ").append(name);
                     if (alias != null && !alias.isBlank()) {
-                        sb.append(" (aliases: ").append(alias).append(")");
+                        sb.append(" (prefix: ").append(alias).append(")");
                     }
                     sb.append("\n");
                 }
-                sb.append("When users search by equipment type, include the type name AND its aliases as query variations.\n");
+                sb.append("When users search by equipment type, include the type name AND its prefix as query variations.\n");
             }
 
+            // Systems with prefixes
+            List<Object[]> systems = queryValuesByCategory("system");
+            if (!systems.isEmpty()) {
+                sb.append("\nSystems in database (name → tag prefix):\n");
+                for (Object[] row : systems) {
+                    String name = (String) row[0];
+                    String alias = (String) row[1];
+                    sb.append("  - ").append(name);
+                    if (alias != null && !alias.isBlank()) {
+                        sb.append(" (prefix: ").append(alias).append(")");
+                    }
+                    sb.append("\n");
+                }
+            }
+
+            // Locations
+            List<Object[]> locations = queryValuesByCategory("location");
+            if (!locations.isEmpty()) {
+                sb.append("\nKnown locations: ");
+                sb.append(locations.stream()
+                        .map(r -> (String) r[0])
+                        .filter(n -> n != null && !n.isBlank())
+                        .collect(Collectors.joining(", ")));
+                sb.append("\n");
+            }
+
+            // Specific locations from LOTO points
+            List<String> specificLocations = querySpecificLocations();
+            if (!specificLocations.isEmpty()) {
+                sb.append("\nExample specific locations from LOTO points: ");
+                sb.append(String.join(", ", specificLocations));
+                sb.append("\n");
+            }
+
+            // Normal positions
+            List<Object[]> normPositions = queryValuesByCategory("normPos");
+            if (!normPositions.isEmpty()) {
+                sb.append("\nNormal positions: ");
+                sb.append(normPositions.stream()
+                        .map(r -> {
+                            String name = (String) r[0];
+                            String alias = (String) r[1];
+                            return (alias != null && !alias.isBlank()) ? name + " (" + alias + ")" : name;
+                        })
+                        .collect(Collectors.joining(", ")));
+                sb.append("\n");
+            }
+
+            // Isolated positions
+            List<Object[]> isoPositions = queryValuesByCategory("isoPos");
+            if (!isoPositions.isEmpty()) {
+                sb.append("\nIsolated positions: ");
+                sb.append(isoPositions.stream()
+                        .map(r -> {
+                            String name = (String) r[0];
+                            String alias = (String) r[1];
+                            return (alias != null && !alias.isBlank()) ? name + " (" + alias + ")" : name;
+                        })
+                        .collect(Collectors.joining(", ")));
+                sb.append("\n");
+            }
+
+            // Tag number parsing guide
+            sb.append("\nTAG NUMBER FORMAT: {UNIT}-{EQTYPE_PREFIX}{SYSTEM_PREFIX}{SEQUENCE}\n");
+            sb.append("Examples: 01-VCND377 → Unit 01, V=Manual Valve, CND=Condensate System, 377=sequence\n");
+            sb.append("  01-MOVCND001 → Unit 01, MOV=Motor Operated Valve, CND=Condensate System, 001=sequence\n");
+            sb.append("  02-AOVBFW050 → Unit 02, AOV=Air Operated Valve, BFW=Feed Water System, 050=sequence\n");
+            sb.append("When extracting from a tag number, parse the equipment type prefix first (longest match), ");
+            sb.append("then the system prefix from the remainder.\n");
+
             vocabularyPrompt = sb.toString();
-            log.info("[Agent] Built search vocabulary: {} systems, {} common terms",
-                    bySystem.size(), commonTerms.size());
+            log.info("[Agent] Built search vocabulary: {} systems, {} common terms, {} eq types, {} locations",
+                    bySystem.size(), commonTerms.size(), eqTypes.size(), locations.size());
 
         } catch (Exception e) {
             log.warn("[Agent] Failed to build search vocabulary: {}", e.getMessage());
@@ -219,14 +289,28 @@ public class AgentSearchVocabulary {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object[]> queryEquipmentTypes() {
+    private List<Object[]> queryValuesByCategory(String categoryAlias) {
         String sql = """
                 SELECT v.name, v.alias FROM val_table v
                 JOIN category c ON v.category_id = c.id
-                WHERE c.name = 'Equipment Type'
+                WHERE c.alias = ?1
                   AND (v.deleted IS NOT TRUE OR v.deleted IS NULL)
                   AND v.name IS NOT NULL AND v.name != ''
                 ORDER BY v.name
+                """;
+        return entityManager.createNativeQuery(sql)
+                .setParameter(1, categoryAlias)
+                .getResultList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> querySpecificLocations() {
+        String sql = """
+                SELECT DISTINCT specific_location FROM loto_point
+                WHERE (deleted IS NOT TRUE OR deleted IS NULL)
+                  AND specific_location IS NOT NULL AND specific_location != ''
+                ORDER BY specific_location
+                LIMIT 30
                 """;
         return entityManager.createNativeQuery(sql).getResultList();
     }

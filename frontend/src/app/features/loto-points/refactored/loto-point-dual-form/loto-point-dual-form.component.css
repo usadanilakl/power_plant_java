@@ -1,8 +1,16 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .dual-form-container {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background: var(--secondary-background, #f5f5f5);
 }
 
@@ -41,6 +49,7 @@
 .dual-form-layout {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   flex: 1;
   overflow: hidden;

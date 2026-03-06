@@ -1,0 +1,404 @@
+package com.dk_power.power_plant_java.sevice.agent;
+
+import com.dk_power.power_plant_java.dto.agent.AgentFormFillRequest;
+import com.dk_power.power_plant_java.dto.agent.AgentFormFillResponse;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.genai.Client;
+import com.google.genai.types.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Slf4j
+@Service
+@ConditionalOnProperty(name = "gemini.api.key")
+public class AgentFormFillService {
+
+    private final Client geminiClient;
+    private final String modelName;
+    private final NgValueService valueService;
+    private final AgentSearchVocabulary searchVocabulary;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public AgentFormFillService(Client geminiClient,
+                                @Qualifier("geminiModelName") String modelName,
+                                NgValueService valueService,
+                                AgentSearchVocabulary searchVocabulary) {
+        this.geminiClient = geminiClient;
+        this.modelName = modelName;
+        this.valueService = valueService;
+        this.searchVocabulary = searchVocabulary;
+    }
+
+    public AgentFormFillResponse fillForm(AgentFormFillRequest request) {
+        try {
+            // 1. Load available options for value-select fields
+            Map<String, List<Value>> optionsMap = loadOptionsForFields(request.getFields());
+
+            // 2. Build the prompt
+            String systemPrompt = buildSystemPrompt(request, optionsMap);
+            String userPrompt = buildUserPrompt(request);
+
+            log.info("[FormFill] formType={}, message='{}', fields={}",
+                    request.getFormType(), request.getUserMessage(),
+                    request.getFields().size());
+
+            // 3. Call Gemini with JSON response
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .responseMimeType("application/json")
+                    .systemInstruction(Content.builder()
+                            .parts(List.of(Part.builder().text(systemPrompt).build()))
+                            .build())
+                    .build();
+
+            List<Content> contents = List.of(
+                    Content.builder()
+                            .role("user")
+                            .parts(List.of(Part.builder().text(userPrompt).build()))
+                            .build()
+            );
+
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    modelName, contents, config);
+
+            String jsonText = response.text();
+            log.info("[FormFill] Raw AI response: {}", jsonText);
+
+            // 4. Parse and post-process
+            Map<String, Object> rawValues = objectMapper.readValue(jsonText,
+                    new TypeReference<Map<String, Object>>() {});
+
+            Map<String, Object> resolvedValues = postProcess(rawValues, request, optionsMap);
+
+            // 5. Build summary message
+            String message = buildSummaryMessage(resolvedValues, request.getFields());
+
+            return new AgentFormFillResponse(resolvedValues, message, true);
+
+        } catch (Exception e) {
+            log.error("[FormFill] Error filling form", e);
+            return new AgentFormFillResponse(Map.of(),
+                    "Failed to fill form: " + e.getMessage(), false);
+        }
+    }
+
+    private Map<String, List<Value>> loadOptionsForFields(List<AgentFormFillRequest.FieldSpec> fields) {
+        Map<String, List<Value>> optionsMap = new LinkedHashMap<>();
+        for (AgentFormFillRequest.FieldSpec field : fields) {
+            if ("value-select".equals(field.getType()) && field.getCategoryAlias() != null) {
+                try {
+                    List<Value> values = valueService.getValuesByCategoryAlias(field.getCategoryAlias());
+                    optionsMap.put(field.getName(), values);
+                } catch (Exception e) {
+                    log.warn("[FormFill] Could not load options for {}: {}", field.getCategoryAlias(), e.getMessage());
+                }
+            }
+        }
+        return optionsMap;
+    }
+
+    private String buildSystemPrompt(AgentFormFillRequest request, Map<String, List<Value>> optionsMap) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("""
+                You are a form-filling assistant for a power plant management application.
+                Given the user's natural language input, extract values for the specified form fields.
+                Return a JSON object with field names as keys and extracted values.
+
+                RULES:
+                - Only include fields where you can extract or infer a value from the user's input.
+                - Do NOT include fields you cannot determine — omit them entirely.
+                - For dropdown fields (marked with "Options:"), return the EXACT option name from the list.
+                - For text fields, return the extracted text value.
+                - For checkbox/boolean fields, return true or false.
+                - If the user's input updates specific fields, only return those fields (incremental update).
+
+                """);
+
+        // Add field definitions
+        sb.append("FORM FIELDS:\n");
+        for (AgentFormFillRequest.FieldSpec field : request.getFields()) {
+            sb.append(String.format("- %s (%s): %s", field.getName(), field.getType(), field.getLabel()));
+
+            // Add available options for value-select fields
+            List<Value> options = optionsMap.get(field.getName());
+            if (options != null && !options.isEmpty()) {
+                List<String> names = options.stream()
+                        .map(Value::getName)
+                        .filter(n -> n != null && !n.isBlank())
+                        .toList();
+                sb.append("\n  Options: ").append(String.join(", ", names));
+            }
+            sb.append("\n");
+        }
+
+        // Add form-type specific instructions
+        String typeInstructions = getFormTypeInstructions(request.getFormType());
+        if (!typeInstructions.isEmpty()) {
+            sb.append("\nFORM-SPECIFIC RULES:\n").append(typeInstructions).append("\n");
+        }
+
+        // Add plant vocabulary for context
+        String vocab = searchVocabulary.getVocabularyPrompt();
+        if (!vocab.isEmpty()) {
+            sb.append("\nPLANT VOCABULARY:\n").append(vocab);
+        }
+
+        return sb.toString();
+    }
+
+    private String buildUserPrompt(AgentFormFillRequest request) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Fill the form based on this input: ").append(request.getUserMessage());
+
+        // Include current form values for context (incremental updates)
+        if (request.getCurrentValues() != null && !request.getCurrentValues().isEmpty()) {
+            sb.append("\n\nCurrent form state (for context, only change fields the user mentions):\n");
+            for (Map.Entry<String, Object> entry : request.getCurrentValues().entrySet()) {
+                if (entry.getValue() != null) {
+                    sb.append("  ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                }
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private String getFormTypeInstructions(String formType) {
+        return switch (formType) {
+            case "lotoPoint" -> """
+                    TAG NUMBER FORMAT: {UNIT}-{EQTYPE_PREFIX}{SYSTEM_PREFIX}{SEQUENCE}
+                    Example: 01-VCND377 means unit=01, equipment type prefix=V (Manual Valve), system=CND (Condensate), sequence=377
+                    Example: 02-MOVBFW025 means unit=02, equipment type prefix=MOV (Motor Operated Valve), system=BFW (Boiler Feed Water)
+
+                    Common equipment type prefixes: V=Manual Valve, MOV=Motor Operated Valve, AOV=Air Operated Valve,
+                    PCV=Pressure Control Valve, PMP=Pump, BKR=Breaker, DISC=Disconnect
+
+                    Common system prefixes: CND=Condensate, BFW=Boiler Feed Water, HRH=Hot Reheat,
+                    ACC=Air Cool Condenser, STM=Steam, CLG=Cooling, FW=Feed Water
+
+                    Position conventions:
+                    - Drain valves: normally CLOSED, isolated CLOSED
+                    - Motor operated valves: often normally OPEN, isolated CLOSED
+                    - Vent valves: normally CLOSED, isolated CLOSED
+                    - Supply/feed valves: normally OPEN, isolated CLOSED
+
+                    When you see "unit 1" or "unit 01", set unit to "01". "unit 2" → "02".
+                    Extract location hints from descriptions (e.g., "ACC" in description → ACC-related location).
+                    Extract specific location from physical location text (e.g., "under ACC", "east wall").
+                    The description should be in ALL CAPS and concise (e.g., "ACC LOOP SEAL DRAIN").
+                    """;
+            case "safeWork" -> """
+                    Extract work description, location, date, hazards, and PPE requirements from the prompt.
+                    Hazard fields are booleans (true/false).
+                    """;
+            default -> "";
+        };
+    }
+
+    /**
+     * Post-process AI response: resolve text values to IDs for value-select fields,
+     * run tag number enrichment for LOTO points.
+     */
+    private Map<String, Object> postProcess(Map<String, Object> rawValues,
+                                             AgentFormFillRequest request,
+                                             Map<String, List<Value>> optionsMap) {
+        Map<String, Object> resolved = new LinkedHashMap<>();
+
+        // Build field type lookup
+        Map<String, AgentFormFillRequest.FieldSpec> fieldMap = new LinkedHashMap<>();
+        for (AgentFormFillRequest.FieldSpec field : request.getFields()) {
+            fieldMap.put(field.getName(), field);
+        }
+
+        for (Map.Entry<String, Object> entry : rawValues.entrySet()) {
+            String fieldName = entry.getKey();
+            Object value = entry.getValue();
+
+            AgentFormFillRequest.FieldSpec fieldSpec = fieldMap.get(fieldName);
+            if (fieldSpec == null) continue; // Skip unknown fields
+
+            if ("value-select".equals(fieldSpec.getType()) && value instanceof String textValue) {
+                // Resolve text to Value ID
+                List<Value> options = optionsMap.get(fieldName);
+                Long resolvedId = resolveTextToValueId(textValue, options);
+                if (resolvedId != null) {
+                    resolved.put(fieldName, resolvedId);
+                }
+            } else {
+                // Pass through text, boolean, number values directly
+                resolved.put(fieldName, value);
+            }
+        }
+
+        // For LOTO points: enrich from tag number if present
+        if ("lotoPoint".equals(request.getFormType())) {
+            enrichLotoPointFromTag(resolved, optionsMap);
+        }
+
+        return resolved;
+    }
+
+    /**
+     * Match AI's text response against available Value options.
+     * Tries exact match, then contains match, then alias match.
+     */
+    private Long resolveTextToValueId(String text, List<Value> options) {
+        if (text == null || text.isBlank() || options == null) return null;
+
+        String search = text.trim().toLowerCase();
+
+        // 1. Exact name match
+        for (Value v : options) {
+            if (v.getName() != null && v.getName().toLowerCase().equals(search)) {
+                return v.getId();
+            }
+        }
+
+        // 2. Alias match
+        for (Value v : options) {
+            if (v.getAlias() != null && v.getAlias().toLowerCase().equals(search)) {
+                return v.getId();
+            }
+        }
+
+        // 3. Contains match on name
+        for (Value v : options) {
+            if (v.getName() != null && v.getName().toLowerCase().contains(search)) {
+                return v.getId();
+            }
+        }
+
+        // 4. Contains match on alias
+        for (Value v : options) {
+            if (v.getAlias() != null && v.getAlias().toLowerCase().contains(search)) {
+                return v.getId();
+            }
+        }
+
+        log.warn("[FormFill] Could not resolve '{}' to any option", text);
+        return null;
+    }
+
+    /**
+     * For LOTO points: parse tag number to enrich fields that AI might have missed.
+     * Only sets fields not already in the resolved map.
+     */
+    private void enrichLotoPointFromTag(Map<String, Object> resolved, Map<String, List<Value>> optionsMap) {
+        Object tagObj = resolved.get("tagNumber");
+        if (!(tagObj instanceof String tagNumber) || tagNumber.isBlank()) return;
+
+        try {
+            String tag = tagNumber.trim().toUpperCase();
+            int dashIdx = tag.indexOf('-');
+            if (dashIdx < 1 || dashIdx >= tag.length() - 1) return;
+
+            // Parse unit
+            String unitPart = tag.substring(0, dashIdx);
+            if (!resolved.containsKey("unit") &&
+                    (unitPart.equals("01") || unitPart.equals("02") || unitPart.equals("00"))) {
+                resolved.put("unit", unitPart);
+            }
+
+            String remainder = tag.substring(dashIdx + 1);
+            // Strip trailing suffix (e.g., -JG)
+            int lastDash = remainder.lastIndexOf('-');
+            if (lastDash > 0 && remainder.length() - lastDash <= 3) {
+                remainder = remainder.substring(0, lastDash);
+            }
+
+            // Match eqType prefix
+            List<Value> eqTypes = optionsMap.getOrDefault("eqType",
+                    valueService.getValuesByCategoryAlias("eqType"));
+
+            Map<String, Value> eqPrefixMap = new LinkedHashMap<>();
+            for (Value v : eqTypes) {
+                if (v.getAlias() != null && !v.getAlias().isBlank()) {
+                    eqPrefixMap.put(v.getAlias().trim().toUpperCase(), v);
+                }
+            }
+
+            List<String> eqPrefixes = new ArrayList<>(eqPrefixMap.keySet());
+            eqPrefixes.sort((a, b) -> b.length() - a.length());
+
+            String afterEqType = remainder;
+            for (String prefix : eqPrefixes) {
+                if (remainder.startsWith(prefix)) {
+                    if (!resolved.containsKey("eqType")) {
+                        resolved.put("eqType", eqPrefixMap.get(prefix).getId());
+                        log.info("[FormFill] Tag enrichment: eqType={}", eqPrefixMap.get(prefix).getName());
+                    }
+                    afterEqType = remainder.substring(prefix.length());
+                    break;
+                }
+            }
+
+            // Match system prefix → infer location
+            if (!afterEqType.isEmpty() && !resolved.containsKey("location")) {
+                List<Value> systems = valueService.getValuesByCategoryAlias("system");
+                Map<String, Value> sysPrefixMap = new LinkedHashMap<>();
+                for (Value v : systems) {
+                    if (v.getAlias() != null && !v.getAlias().isBlank()) {
+                        sysPrefixMap.put(v.getAlias().trim().toUpperCase(), v);
+                    }
+                }
+
+                List<String> sysPrefixes = new ArrayList<>(sysPrefixMap.keySet());
+                sysPrefixes.sort((a, b) -> b.length() - a.length());
+
+                for (String prefix : sysPrefixes) {
+                    if (afterEqType.startsWith(prefix)) {
+                        Value matchedSystem = sysPrefixMap.get(prefix);
+                        // Try to infer location from system name
+                        List<Value> locations = optionsMap.getOrDefault("location",
+                                valueService.getValuesByCategoryAlias("location"));
+                        Long locationId = inferLocationFromSystemName(matchedSystem.getName(), locations);
+                        if (locationId != null) {
+                            resolved.put("location", locationId);
+                            log.info("[FormFill] Tag enrichment: location inferred from system '{}'", matchedSystem.getName());
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[FormFill] Tag enrichment failed for '{}': {}", tagObj, e.getMessage());
+        }
+    }
+
+    private Long inferLocationFromSystemName(String systemName, List<Value> locations) {
+        if (systemName == null || systemName.isBlank()) return null;
+        String search = systemName.trim().toLowerCase();
+
+        for (Value loc : locations) {
+            if (loc.getName() == null) continue;
+            String locName = loc.getName().toLowerCase();
+            if (search.contains(locName) || locName.contains(search)) {
+                return loc.getId();
+            }
+        }
+        for (Value loc : locations) {
+            if (loc.getAlias() == null) continue;
+            String locAlias = loc.getAlias().toLowerCase();
+            if (search.contains(locAlias) || locAlias.contains(search)) {
+                return loc.getId();
+            }
+        }
+        return null;
+    }
+
+    private String buildSummaryMessage(Map<String, Object> fieldValues,
+                                        List<AgentFormFillRequest.FieldSpec> fields) {
+        if (fieldValues.isEmpty()) {
+            return "Could not extract any values from your input.";
+        }
+
+        int count = fieldValues.size();
+        return "Filled " + count + " field" + (count == 1 ? "" : "s") + " from your description.";
+    }
+}

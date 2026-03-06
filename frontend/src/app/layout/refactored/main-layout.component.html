@@ -33,7 +33,7 @@
       </div>
     }
     <div class="main-and-footer">
-      <main class="main-content" #mainContent>
+      <main class="main-content" [class.no-padding]="!mainContentPadding()" #mainContent>
         <ng-content select="[main-content]"></ng-content>
       </main>
       @if(isBottomMenuEnabled()){

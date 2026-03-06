@@ -3,9 +3,11 @@ package com.dk_power.power_plant_java.controller.sync;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
+import org.springframework.core.env.Environment;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
 import com.dk_power.power_plant_java.sevice.sync.FullSyncToServerService;
@@ -36,6 +38,7 @@ public class FieldSyncController {
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final FullSyncToServerService fullSyncToServerService;
     private final ServerSseClient serverSseClient;
+    private final Environment environment;
 
     /**
      * Exchange changes with a peer
@@ -483,6 +486,50 @@ public class FieldSyncController {
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Diagnostic endpoint — shows full sync configuration and state.
+     * Hit this on the Electron client to verify sync is configured correctly.
+     * GET /api/field-sync/diagnostic
+     */
+    @GetMapping("/diagnostic")
+    public ResponseEntity<Map<String, Object>> getSyncDiagnostic() {
+        Map<String, Object> diag = new LinkedHashMap<>();
+
+        // Active profiles
+        diag.put("activeProfiles", List.of(environment.getActiveProfiles()));
+
+        // Sync role
+        diag.put("syncRole", syncConfig.getSyncRole());
+        diag.put("isHubMode", syncConfig.isHubMode());
+
+        // Server sync config
+        diag.put("syncServerEnabled", syncConfig.isServerSyncEnabled());
+        diag.put("syncServerConfigured", syncConfig.isServerSyncConfigured());
+        diag.put("syncServerUrl", syncConfig.getSyncServerUrl());
+        diag.put("syncRuntimeEnabled", syncConfig.isSyncRuntimeEnabled());
+
+        // Device identity
+        diag.put("machineId", syncConfig.getMachineId());
+        diag.put("machineName", syncConfig.getMachineName());
+        diag.put("deviceNumber", syncConfig.getDeviceNumber());
+        diag.put("deviceName", syncConfig.getDeviceName());
+
+        // Entity listener initialization
+        diag.put("entityListenerInitialized", FieldChangeEntityListener.isInitialized());
+
+        // Change stats
+        long totalChanges = fieldChangeRepository.count();
+        long pendingForServer = 0;
+        try { pendingForServer = fieldChangeRepository.countPendingChangesFor("SERVER"); } catch (Exception ignored) {}
+        diag.put("totalFieldChanges", totalChanges);
+        diag.put("pendingForServer", pendingForServer);
+
+        // SSE client state
+        diag.put("sseConnected", serverSseClient.isConnected());
+
+        return ResponseEntity.ok(diag);
     }
 
     /**

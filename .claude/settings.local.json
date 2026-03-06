@@ -56,7 +56,8 @@
       "Bash(mvn package:*)",
       "Bash(mvn clean package:*)",
       "Read(//c/Users/usada/OneDrive/Desktop/permit-blank-forms/**)",
-      "WebFetch(domain:docs.cloud.google.com)"
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Read(//c/Users/usada/my_projects/sync-server/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java"

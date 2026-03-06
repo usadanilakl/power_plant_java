@@ -80,6 +80,60 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    // ====================== List provisioning methods ======================
+
+    public boolean listExists(String listTitle) {
+        try {
+            sendGetRequest("/_api/web/lists/getbytitle('" + listTitle + "')");
+            return true;
+        } catch (HttpClientErrorException.NotFound e) {
+            return false;
+        } catch (HttpClientErrorException.Unauthorized e) {
+            tokenExpirationTime = null;
+            try {
+                sendGetRequest("/_api/web/lists/getbytitle('" + listTitle + "')");
+                return true;
+            } catch (HttpClientErrorException.NotFound e2) {
+                return false;
+            }
+        }
+    }
+
+    public void createList(String listTitle) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("Title", listTitle);
+        body.put("BaseTemplate", 100);
+        body.put("Description", "Auto-provisioned by Power Plant App");
+        try {
+            String jsonBody = objectMapper.writeValueAsString(body);
+            ResponseEntity<String> response = sendPostRequest("/_api/web/lists", jsonBody);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("SharePoint create list failed: " + response.getStatusCode());
+            }
+            log.info("[SharePoint] Created list '{}'", listTitle);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create list '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
+    public void addFieldToList(String listTitle, String fieldName, int fieldTypeKind) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/fields";
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("Title", fieldName);
+        body.put("FieldTypeKind", fieldTypeKind);
+        body.put("Required", false);
+        try {
+            String jsonBody = objectMapper.writeValueAsString(body);
+            ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Failed to add field: " + response.getStatusCode());
+            }
+            log.debug("[SharePoint] Added field '{}' to list '{}'", fieldName, listTitle);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add field '" + fieldName + "' to list '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
     // ====================== Generic list methods (used by adapters) ======================
 
     public List<JsonNode> getListItems(String listTitle) {

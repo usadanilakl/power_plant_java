@@ -1,6 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CurrentJobLogService } from '../../../../services/current-items-services/current-job-log.service';
 import { CurrentWorkRequestService } from '../../../../services/current-items-services/current-work-requests.service';
@@ -296,7 +295,6 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
   `],
 })
 export class RfJobLogFormComponent {
-  private router = inject(Router);
   private currentService = inject(CurrentJobLogService);
   private dailyPermitPackageService = inject(DailyPermitPackageService);
   private currentWorkRequestService = inject(CurrentWorkRequestService);
@@ -361,8 +359,12 @@ export class RfJobLogFormComponent {
   }
 
   generateFromSelectedWorkRequest(wr: WorkRequestDto): void {
+    const job = this.entity();
+    if (job.id == null) return;
     this.isAddPackageDialogOpen.set(false);
-    this.router.navigate(['/permit-builder/daily-packages', wr.id]);
+    this.currentService.processWorkRequest(job.id.toString(), wr.id.toString()).subscribe({
+      error: (err) => this.errorMessage.set(err.error?.message || 'Failed to process work request')
+    });
   }
 
   openPackage(pkg: DailyPermitPackageDto): void {

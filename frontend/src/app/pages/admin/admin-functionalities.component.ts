@@ -11,7 +11,9 @@ import {
   SplitEquipmentResult,
   AssignAttributesResult,
   CounterpartAssociationResult,
-  SyncQueueStatus
+  SyncQueueStatus,
+  SpListStatus,
+  SpProvisionSingleResult
 } from '../../services/admin/admin-functionalities.service';
 
 @Component({
@@ -30,7 +32,8 @@ export class AdminFunctionalitiesComponent {
     assignAttributes: false,
     counterparts: false,
     syncQueue: false,
-    syncAction: false
+    syncAction: false,
+    spProvision: false
   };
 
   // Results
@@ -41,6 +44,8 @@ export class AdminFunctionalitiesComponent {
   counterpartResult: CounterpartAssociationResult | null = null;
   syncQueueStatus: SyncQueueStatus | null = null;
   syncActionMessage: string = '';
+  spListStatuses: SpListStatus[] = [];
+  spProvisioningList: string = ''; // currently provisioning this list title
 
   // Sync queue controls
   clearOldDays: number = 30;
@@ -53,7 +58,8 @@ export class AdminFunctionalitiesComponent {
     splitEquipment: '',
     assignAttributes: '',
     counterparts: '',
-    syncQueue: ''
+    syncQueue: '',
+    spProvision: ''
   };
 
   // Expanded sections for details
@@ -282,5 +288,66 @@ export class AdminFunctionalitiesComponent {
         this.loading.syncAction = false;
       }
     });
+  }
+
+  // ==================== SharePoint Provisioning ====================
+
+  checkSpListStatuses() {
+    this.loading.spProvision = true;
+    this.errors.spProvision = '';
+
+    this.adminService.getSharePointListStatuses().subscribe({
+      next: (statuses) => {
+        this.spListStatuses = statuses;
+        this.loading.spProvision = false;
+      },
+      error: (error) => {
+        this.errors.spProvision = error.error?.message || error.message || 'Failed to check list statuses';
+        this.loading.spProvision = false;
+      }
+    });
+  }
+
+  provisionSingleList(title: string) {
+    this.spProvisioningList = title;
+    this.errors.spProvision = '';
+
+    this.adminService.provisionSharePointList(title).subscribe({
+      next: (result) => {
+        this.spProvisioningList = '';
+        if (result.success) {
+          const entry = this.spListStatuses.find(s => s.title === title);
+          if (entry) entry.exists = true;
+        } else {
+          this.errors.spProvision = `${title}: ${result.error}`;
+        }
+      },
+      error: (error) => {
+        this.spProvisioningList = '';
+        this.errors.spProvision = `${title}: ${error.error?.message || error.message || 'Failed'}`;
+      }
+    });
+  }
+
+  provisionAllLists() {
+    if (!confirm('Create all missing SharePoint lists? Existing lists will be skipped.')) return;
+
+    this.loading.spProvision = true;
+    this.errors.spProvision = '';
+
+    this.adminService.provisionAllSharePointLists().subscribe({
+      next: () => {
+        this.loading.spProvision = false;
+        this.checkSpListStatuses();
+      },
+      error: (error) => {
+        this.errors.spProvision = error.error?.message || error.message || 'Failed to provision lists';
+        this.loading.spProvision = false;
+      }
+    });
+  }
+
+  getMissingListCount(): number {
+    return this.spListStatuses.filter(s => !s.exists).length;
   }
 }

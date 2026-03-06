@@ -114,6 +114,31 @@ export interface SyncQueueActionResult {
   affected: number;
 }
 
+export interface SharePointProvisionResult {
+  created: string[];
+  skipped: string[];
+  errors: { [listTitle: string]: string };
+  totalCreated: number;
+  totalSkipped: number;
+  totalErrors: number;
+}
+
+export interface SpListStatus {
+  title: string;
+  fieldCount: number;
+  exists: boolean;
+  error: string | null;
+}
+
+export interface SpProvisionSingleResult {
+  title: string;
+  success: boolean;
+  alreadyExisted?: boolean;
+  fieldsAdded?: string[];
+  message?: string;
+  error?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -217,6 +242,30 @@ export class AdminFunctionalitiesService {
   clearAllChanges(): Observable<SpringApiResponse<SyncQueueActionResult>> {
     return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
       `${this.apiUrl}/sync-queue/clear-all`,
+      {}
+    );
+  }
+
+  // ==================== SharePoint Provisioning ====================
+
+  getSharePointListStatuses(): Observable<SpListStatus[]> {
+    return this.http.get<SpListStatus[]>(
+      `${environment.apiUrl}/ng/sharepoint/list-status`
+    );
+  }
+
+  provisionSharePointList(title: string): Observable<SpProvisionSingleResult> {
+    const params = new HttpParams().set('title', title);
+    return this.http.post<SpProvisionSingleResult>(
+      `${environment.apiUrl}/ng/sharepoint/provision-list`,
+      {},
+      { params }
+    );
+  }
+
+  provisionAllSharePointLists(): Observable<SharePointProvisionResult> {
+    return this.http.post<SharePointProvisionResult>(
+      `${environment.apiUrl}/ng/sharepoint/provision-lists`,
       {}
     );
   }

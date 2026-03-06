@@ -4,21 +4,27 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.forms.FormContainer;
 import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
+import com.dk_power.power_plant_java.entities.scheduler.Flow;
+import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
 import com.dk_power.power_plant_java.sevice.angular.loto.*;
 import com.dk_power.power_plant_java.sevice.angular.permits.*;
+import com.dk_power.power_plant_java.sevice.angular.scheduler.FlowService;
+import com.dk_power.power_plant_java.sevice.angular.scheduler.TaskService;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -66,7 +72,16 @@ public class ServiceFacade {
             @Lazy NgConfinedSpaceService ngConfinedSpaceService,
             @Lazy NgWorkRequestService ngWorkRequestService,
             @Lazy NgJhaService ngJhaService,
-            @Lazy NgDailyPermitPackageService ngDailyPermitPackageService
+            @Lazy NgDailyPermitPackageService ngDailyPermitPackageService,
+            @Lazy NgJobLogService ngJobLogService,
+            @Lazy NgEnergizedWorkPermitService ngEnergizedWorkPermitService,
+            @Lazy NgExcavationPermitService ngExcavationPermitService,
+            @Lazy NgVentingPermitService ngVentingPermitService,
+            // Forms
+            @Lazy FormContainerService formContainerService,
+            // Scheduler
+            @Lazy FlowService flowService,
+            @Lazy TaskService taskService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -101,6 +116,15 @@ public class ServiceFacade {
         serviceMap.put(WorkRequest.class.getSimpleName(), ngWorkRequestService);
         serviceMap.put(Jha.class.getSimpleName(), ngJhaService);
         serviceMap.put(DailyPermitPackage.class.getSimpleName(), ngDailyPermitPackageService);
+        serviceMap.put(JobLog.class.getSimpleName(), ngJobLogService);
+        serviceMap.put(EnergizedWorkPermit.class.getSimpleName(), ngEnergizedWorkPermitService);
+        serviceMap.put(ExcavationPermit.class.getSimpleName(), ngExcavationPermitService);
+        serviceMap.put(VentingPermit.class.getSimpleName(), ngVentingPermitService);
+        // Forms
+        serviceMap.put(FormContainer.class.getSimpleName(), formContainerService);
+        // Scheduler
+        serviceMap.put(Flow.class.getSimpleName(), flowService);
+        serviceMap.put(Task.class.getSimpleName(), taskService);
     }
 
     public SyncableService getService(String entityClass) {

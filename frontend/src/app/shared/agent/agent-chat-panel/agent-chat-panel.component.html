@@ -183,9 +183,10 @@
             </div>
           }
 
-          <!-- Chip select card (eqType, normPos, isoPos, location) -->
+          <!-- Chip select card (eqType, normPos, isoPos, location, zeroEnergyTemplate) -->
           @if (msg.data['step'] === 'eqType' || msg.data['step'] === 'normPos'
-            || msg.data['step'] === 'isoPos' || msg.data['step'] === 'location') {
+            || msg.data['step'] === 'isoPos' || msg.data['step'] === 'location'
+            || msg.data['step'] === 'zeroEnergyTemplate') {
             <div class="chip-select-card">
               <div class="creation-chips">
                 @for (opt of msg.data['options']; track opt.id) {
@@ -195,7 +196,21 @@
                     {{ opt.name }}
                   </button>
                 }
+                <button class="creation-chip new-value-chip"
+                  (click)="onStartCreateValue(msg.data['field'])">
+                  + New
+                </button>
               </div>
+              @if (creationFlow.creatingNewValueFor() === msg.data['field']) {
+                <div class="text-input-row" style="margin-top: 6px;">
+                  <input type="text" class="creation-text-input"
+                    [placeholder]="'New ' + msg.data['step'] + ' name'"
+                    #newValueInput
+                    (keydown.enter)="onCreateNewValue(msg.data['field'], newValueInput.value)">
+                  <button class="confirm-btn" (click)="onCreateNewValue(msg.data['field'], newValueInput.value)">Add</button>
+                  <button class="cancel-btn" (click)="creationFlow.cancelCreatingNewValue()">Cancel</button>
+                </div>
+              }
             </div>
           }
 
@@ -217,10 +232,18 @@
             </div>
           }
 
-          <!-- Yes/No card (zeroEnergy, pidConnection) -->
-          @if (msg.data['step'] === 'zeroEnergy' || msg.data['step'] === 'pidConnection') {
+          <!-- Yes/No card (zeroEnergy) -->
+          @if (msg.data['step'] === 'zeroEnergy') {
             <div class="yes-no-card">
               <button class="confirm-btn" (click)="onYesNo(msg.data['field'], true)">Yes</button>
+              <button class="cancel-btn" (click)="onYesNo(msg.data['field'], false)">No</button>
+            </div>
+          }
+
+          <!-- P&ID connection card -->
+          @if (msg.data['step'] === 'pidConnection') {
+            <div class="yes-no-card">
+              <button class="confirm-btn" (click)="onPidConnectionYes()">Yes — Open P&ID</button>
               <button class="cancel-btn" (click)="onYesNo(msg.data['field'], false)">No</button>
             </div>
           }
@@ -255,6 +278,9 @@
                 }
                 @if (msg.data['collectedData']['zeroEnergy'] !== null) {
                   <div class="summary-row"><span class="summary-key">Zero Energy:</span><span class="summary-value">{{ msg.data['collectedData']['zeroEnergy'] ? 'Yes' : 'No' }}</span></div>
+                }
+                @if (msg.data['collectedData']['zeroEnergyTemplate']) {
+                  <div class="summary-row"><span class="summary-key">ZE Template:</span><span class="summary-value">{{ msg.data['collectedData']['zeroEnergyTemplate'].name }}</span></div>
                 }
                 @if (msg.data['collectedData']['pidConnection'] !== null) {
                   <div class="summary-row"><span class="summary-key">P&ID:</span><span class="summary-value">{{ msg.data['collectedData']['pidConnection'] ? 'Yes' : 'No' }}</span></div>

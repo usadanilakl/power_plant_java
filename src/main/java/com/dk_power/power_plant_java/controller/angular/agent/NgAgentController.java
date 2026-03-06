@@ -3,6 +3,9 @@ package com.dk_power.power_plant_java.controller.angular.agent;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.agent.AgentChatRequest;
 import com.dk_power.power_plant_java.dto.agent.AgentChatResponse;
+import com.dk_power.power_plant_java.dto.agent.AgentFormFillRequest;
+import com.dk_power.power_plant_java.dto.agent.AgentFormFillResponse;
+import com.dk_power.power_plant_java.sevice.agent.AgentFormFillService;
 import com.dk_power.power_plant_java.sevice.agent.GeminiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class NgAgentController {
 
     private final GeminiService geminiService;
+    private final AgentFormFillService formFillService;
 
     @PostMapping("/chat")
     public ResponseEntity<NgApiResponse<AgentChatResponse>> chat(@RequestBody AgentChatRequest request) {
@@ -36,6 +40,17 @@ public class NgAgentController {
     @GetMapping("/status")
     public ResponseEntity<NgApiResponse<Boolean>> getStatus() {
         return ResponseEntity.ok(new NgApiResponse<>(true, "Agent is available"));
+    }
+
+    @PostMapping("/form-fill")
+    public ResponseEntity<NgApiResponse<AgentFormFillResponse>> formFill(@RequestBody AgentFormFillRequest request) {
+        try {
+            AgentFormFillResponse response = formFillService.fillForm(request);
+            return ResponseEntity.ok(new NgApiResponse<>(response, "OK"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
     }
 
     @DeleteMapping("/session/{sessionId}")

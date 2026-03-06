@@ -22,6 +22,7 @@ import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-gene
 import { NamingConventionComponent } from '../../../tag-number/naming-convention/naming-convention.component';
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { LotoPointFileViewerComponent } from '../loto-point-file-viewer/loto-point-file-viewer.component';
+import { AiFormAssistantComponent } from '../../../../shared/reactive-form/refactored/ai-form-assistant/ai-form-assistant.component';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
@@ -34,7 +35,8 @@ type LotoPointFieldName = keyof LotoPointDto;
     TagNumberGeneratorComponent,
     NamingConventionComponent,
     RfPopupProjectionComponent,
-    LotoPointFileViewerComponent
+    LotoPointFileViewerComponent,
+    AiFormAssistantComponent,
   ],
   templateUrl: './rf-loto-point-form.component.html',
   styleUrl: './rf-loto-point-form.component.css',
@@ -517,6 +519,14 @@ export class RfLotoPointFormComponent {
         alert('Failed to delete LOTO point: ' + (error.error?.message || error.message || 'Unknown error'));
       }
     });
+  }
+
+  //===========================AI FORM FILL===========================
+  onAiFill(values: Record<string, any>): void {
+    if (this.reactiveForm?.form) {
+      this.reactiveForm.form.patchValue(values);
+      this.reactiveForm.form.markAsDirty();
+    }
   }
 
   //===========================EXTERNAL UPDATE===========================

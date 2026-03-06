@@ -10,6 +10,8 @@ import { AgentChatService, ChatMessage } from '../../../services/agent/agent-cha
 import { AgentCreationFlowService, ValueOption } from '../../../services/agent/agent-creation-flow.service';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { AgentResultsDialogComponent } from '../agent-results-dialog/agent-results-dialog.component';
+import { EquipmentConnectionDialogComponent } from '../../guide/guide-form/dialogs/equipment-connection-dialog/equipment-connection-dialog.component';
+import { EquipmentConnectionDialogData, EquipmentConnectionDialogResult } from '../../guide/guide-form/dialogs/equipment-connection-dialog/equipment-connection-dialog.types';
 
 @Component({
   selector: 'app-agent-chat-panel',
@@ -214,6 +216,52 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
     this.shouldScroll = true;
   }
 
+  onPidConnectionYes(): void {
+    // Set value and add user message WITHOUT auto-advancing (dialog is async)
+    this.creationFlow.collectedData.update(d => ({ ...d, pidConnection: true }));
+    this.chatService.messages.update(msgs => [...msgs, {
+      role: 'user' as const, content: 'Yes', type: 'text' as const, timestamp: new Date()
+    }]);
+
+    const dialogData: EquipmentConnectionDialogData = {
+      mode: 'single',
+      allowBrowse: true,
+      allowDraw: true,
+      allowUpload: false,
+    };
+
+    const dialogRef = this.dialog.open(EquipmentConnectionDialogComponent, {
+      data: dialogData,
+      width: '95vw',
+      maxWidth: '1400px',
+      height: '85vh',
+      panelClass: 'equipment-connection-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe((result: EquipmentConnectionDialogResult | undefined) => {
+      if (result && !result.cancelled && result.selectedEquipment.length > 0) {
+        const equipmentIds = result.selectedEquipment.map(eq => eq.id).filter(Boolean) as number[];
+        const fileId = result.selectedFile?.id ?? null;
+        this.creationFlow.setEquipmentConnection(equipmentIds, fileId);
+
+        // Add confirmation message
+        const msg: ChatMessage = {
+          role: 'assistant',
+          content: `Connected to ${equipmentIds.length} equipment shape(s)` +
+            (result.selectedFile ? ` on file "${result.selectedFile.name}"` : '') + '.',
+          type: 'text',
+          timestamp: new Date()
+        };
+        this.chatService.messages.update(msgs => [...msgs, msg]);
+      } else {
+        // User cancelled — set pidConnection to false and continue
+        this.creationFlow.collectedData.update(d => ({ ...d, pidConnection: false }));
+      }
+      this.creationFlow.advanceAfterPidConnection();
+      this.shouldScroll = true;
+    });
+  }
+
   onSkipStep(): void {
     this.creationFlow.skipStep();
     this.shouldScroll = true;
@@ -235,6 +283,15 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
 
   onCancelFlow(): void {
     this.creationFlow.cancelFlow();
+    this.shouldScroll = true;
+  }
+
+  onStartCreateValue(categoryAlias: string): void {
+    this.creationFlow.startCreatingNewValue(categoryAlias);
+  }
+
+  onCreateNewValue(categoryAlias: string, name: string): void {
+    this.creationFlow.createNewValue(categoryAlias, name);
     this.shouldScroll = true;
   }
 

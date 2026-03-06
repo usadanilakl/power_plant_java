@@ -39,6 +39,14 @@
       <!-- Slide 1: Form -->
       <div class="carousel-slide">
         <div class="slide-content">
+          <!-- AI Form Assistant -->
+          <app-ai-form-assistant
+            [formType]="'lotoPoint'"
+            [fields]="fields()"
+            [currentValues]="reactiveForm?.getCurrentFormValues() ?? {}"
+            (fieldValues)="onAiFill($event)"
+          />
+
           <app-rf-reactive-form
             [entity]="entity()"
             [fields]="fields()"

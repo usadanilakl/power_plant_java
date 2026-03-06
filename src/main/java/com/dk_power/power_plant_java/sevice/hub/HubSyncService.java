@@ -53,12 +53,13 @@ public class HubSyncService {
      */
     @Transactional
     public SyncResponse syncExchange(String machineId, String machineName,
-                                      String ipAddress, List<FieldChange> incomingChanges) {
+                                      String ipAddress, Integer deviceNumber,
+                                      List<FieldChange> incomingChanges) {
         log.info("Hub sync exchange from {} ({}): {} incoming changes",
             machineName, machineId, incomingChanges != null ? incomingChanges.size() : 0);
 
-        // Register/update client
-        HubClientInfo client = registerClient(machineId, machineName, ipAddress);
+        // Register/update client (captures device number from X-Device-Number header)
+        HubClientInfo client = registerClient(machineId, machineName, ipAddress, deviceNumber);
         client.setStatus(HubClientInfo.ClientStatus.SYNCING);
         hubClientInfoRepository.save(client);
 
@@ -146,12 +147,21 @@ public class HubSyncService {
 
     @Transactional
     public HubClientInfo registerClient(String machineId, String machineName, String ipAddress) {
+        return registerClient(machineId, machineName, ipAddress, null);
+    }
+
+    @Transactional
+    public HubClientInfo registerClient(String machineId, String machineName,
+                                         String ipAddress, Integer deviceNumber) {
         HubClientInfo client = hubClientInfoRepository.findById(machineId)
             .orElse(new HubClientInfo(machineId, machineName, ipAddress));
 
         client.setMachineName(machineName);
         client.setIpAddress(ipAddress);
         client.recordActivity();
+        if (deviceNumber != null && deviceNumber > 0) {
+            client.setDeviceNumber(deviceNumber);
+        }
 
         return hubClientInfoRepository.save(client);
     }

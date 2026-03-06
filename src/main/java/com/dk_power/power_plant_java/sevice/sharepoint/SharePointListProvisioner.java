@@ -1,0 +1,198 @@
+package com.dk_power.power_plant_java.sevice.sharepoint;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class SharePointListProvisioner {
+
+    private final SharePointCertificateAccess spAccess;
+
+    private static final int TEXT = 2;
+    private static final int NOTE = 3;
+    private static final int BOOLEAN = 8;
+
+    // ====================== Status check ======================
+
+    public List<Map<String, Object>> checkAllStatuses() {
+        List<Map<String, Object>> statuses = new ArrayList<>();
+        for (ListDefinition def : getAllListDefinitions()) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("title", def.title);
+            entry.put("fieldCount", def.fields.size());
+            try {
+                entry.put("exists", spAccess.listExists(def.title));
+                entry.put("error", null);
+            } catch (Exception e) {
+                entry.put("exists", false);
+                entry.put("error", e.getMessage());
+            }
+            statuses.add(entry);
+        }
+        return statuses;
+    }
+
+    // ====================== Provision single ======================
+
+    public Map<String, Object> provisionSingle(String listTitle) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("title", listTitle);
+
+        ListDefinition def = getAllListDefinitions().stream()
+                .filter(d -> d.title.equals(listTitle))
+                .findFirst()
+                .orElse(null);
+
+        if (def == null) {
+            result.put("success", false);
+            result.put("error", "Unknown list title: " + listTitle);
+            return result;
+        }
+
+        try {
+            if (spAccess.listExists(def.title)) {
+                result.put("success", true);
+                result.put("alreadyExisted", true);
+                result.put("message", "List already exists");
+                return result;
+            }
+
+            spAccess.createList(def.title);
+            List<String> addedFields = new ArrayList<>();
+            for (FieldDef field : def.fields) {
+                spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                addedFields.add(field.name);
+            }
+
+            log.info("[SP-Provision] Created list '{}' with {} fields", def.title, addedFields.size());
+            result.put("success", true);
+            result.put("alreadyExisted", false);
+            result.put("fieldsAdded", addedFields);
+            result.put("message", "Created with " + addedFields.size() + " fields");
+        } catch (Exception e) {
+            log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        return result;
+    }
+
+    // ====================== Provision all ======================
+
+    public Map<String, Object> provisionAll() {
+        List<String> created = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        for (ListDefinition def : getAllListDefinitions()) {
+            try {
+                if (spAccess.listExists(def.title)) {
+                    log.info("[SP-Provision] List '{}' already exists, skipping", def.title);
+                    skipped.add(def.title);
+                } else {
+                    spAccess.createList(def.title);
+                    for (FieldDef field : def.fields) {
+                        spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                    }
+                    log.info("[SP-Provision] Created list '{}' with {} fields", def.title, def.fields.size());
+                    created.add(def.title);
+                }
+            } catch (Exception e) {
+                log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
+                errors.put(def.title, e.getMessage());
+            }
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("created", created);
+        summary.put("skipped", skipped);
+        summary.put("errors", errors);
+        summary.put("totalCreated", created.size());
+        summary.put("totalSkipped", skipped.size());
+        summary.put("totalErrors", errors.size());
+        return summary;
+    }
+
+    // ====================== List definitions ======================
+
+    private List<ListDefinition> getAllListDefinitions() {
+        return List.of(
+                list("Safe Work Permits",
+                        text("PwaId"), text("Date"), text("Time"), text("CompanyPerson"),
+                        text("LocationOfWork"), text("SpecialInstructions"), text("RequestedBy"), text("Status")),
+
+                list("Hot Work Permits",
+                        text("PwaId"), text("Date"), text("Foreman"), text("FireWatch"),
+                        text("MeterModel"), text("MeterNum"), text("SpecialInstructions"),
+                        text("LocationOfWork"), text("Status")),
+
+                list("Confined Space Permits",
+                        text("PwaId"), text("Date"), text("Time"), text("SpaceToBeEntered"),
+                        text("IssuedTo"), text("Duration"), text("MeterModel"), text("MeterNum"),
+                        bool("Calibrated"), text("Status")),
+
+                list("LOTO Permits",
+                        text("PwaId"), text("EquipmentSystem"), text("LotoRequestor"),
+                        text("Date"), text("BoxNumber"), text("Status")),
+
+                list("Work Requests",
+                        text("PwaId"), text("DateOfWork"), text("WorkRequestedBy"), text("Company"),
+                        text("LocationOfWork"), text("AffectedEquipment"),
+                        bool("IsLOTORequired"), bool("IsHotWorkRequired"), bool("IsConfinedSpaceEntryRequired"),
+                        text("ForemanName"), text("FireWatchName"), text("SpaceToBeEntered"),
+                        text("Status"), text("SubmitterName"), text("SubmitterEmail"),
+                        text("SubmitterPhone"), text("SubmitterCompany"), text("TimeSubmitted")),
+
+                list("JHA",
+                        text("PwaId"), text("JobName"), text("Applicability"), text("AnalysisBy"),
+                        text("ReviewedBy"), text("ApprovedBy"), text("Date"), text("PPE"),
+                        text("LOTO"), text("ConfinedSpace"), text("HazCom"),
+                        text("HandAndPowerTools"), text("SpecialTools"), text("WorkRequestSharepointId"),
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"),
+                        text("SubmitterCompany"), text("TimeSubmitted"), text("Status"),
+                        note("JobSteps")),
+
+                list("Energized Work Permits",
+                        text("PwaId"), text("Date"), text("Time"), text("LocationOfWork"),
+                        text("IssuedTo"), text("WorkOrder"), note("CircuitDescription"),
+                        note("WorkDescription"), note("Justification"), text("Requester"),
+                        text("RequesterDate"), text("QualifiedPersonSignature"),
+                        text("QualifiedPersonDate"), text("PlantManagerSignature"),
+                        text("PlantManagerDate"), bool("WorkCanBePerformedSafely"), text("Status")),
+
+                list("Excavation Permits",
+                        text("PwaId"), text("Date"), text("Time"), text("LocationOfWork"),
+                        text("IssuedTo"), text("Supervisor"), text("JobLocation"),
+                        text("SupervisorPhone"), note("ExcavationDescription"), text("WorkOrder"),
+                        bool("LocationPipingMarked"), text("FacilityName"), text("CompetentPerson"),
+                        text("SoilType"), text("ExcavationDepth"), text("ExcavationWidth"),
+                        text("ProtectiveSystemType"), text("Status")),
+
+                list("Venting Permits",
+                        text("PwaId"), text("Date"), text("Time"), text("LocationOfWork"),
+                        text("IssuedTo"), text("PlantName"), text("SystemName"),
+                        text("RequestingIndividual"), note("Purpose"), text("TimeCommence"),
+                        text("TimeConclude"), text("GasType"), text("LEL"), text("UEL"),
+                        text("CalculatedVolume"), text("Pressure"), text("GasIndicatorModel"),
+                        text("GasIndicatorSerial"), text("CalibrationDate"), text("Status"))
+        );
+    }
+
+    // ====================== Helpers ======================
+
+    private record FieldDef(String name, int typeKind) {}
+    private record ListDefinition(String title, List<FieldDef> fields) {}
+
+    private static FieldDef text(String name) { return new FieldDef(name, TEXT); }
+    private static FieldDef note(String name) { return new FieldDef(name, NOTE); }
+    private static FieldDef bool(String name) { return new FieldDef(name, BOOLEAN); }
+
+    private static ListDefinition list(String title, FieldDef... fields) {
+        return new ListDefinition(title, List.of(fields));
+    }
+}

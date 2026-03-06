@@ -37,6 +37,10 @@ public class FieldChangeEntityListener {
         syncContext = context;
     }
 
+    public static boolean isInitialized() {
+        return fieldChangeTracker != null && entityStateCapture != null && syncContext != null;
+    }
+
     /**
      * Capture entity state before update for comparison.
      * Uses Hibernate to get the ORIGINAL database values before the in-memory changes.

@@ -247,11 +247,17 @@ public class AgentActionExecutor {
         resolvedData.put("unit", args.getOrDefault("unit", null));
         resolvedData.put("specificLocation", args.getOrDefault("specificLocation", null));
 
-        // Resolve dropdown values
+        // Resolve dropdown values from AI-extracted text
         resolvedData.put("eqType", resolveValue((String) args.get("equipmentType"), "eqType"));
         resolvedData.put("normPos", resolveValue((String) args.get("normalPosition"), "normPos"));
         resolvedData.put("isoPos", resolveValue((String) args.get("isolatedPosition"), "isoPos"));
         resolvedData.put("location", resolveValue((String) args.get("location"), "location"));
+
+        // Deterministic enrichment from tag number — fills in fields the AI missed
+        String tagNumber = (String) resolvedData.get("tagNumber");
+        if (tagNumber != null && !tagNumber.isBlank()) {
+            enrichFromTagNumber(tagNumber, resolvedData);
+        }
 
         // Load all available options for each dropdown category
         Map<String, Object> availableOptions = new LinkedHashMap<>();
@@ -259,6 +265,7 @@ public class AgentActionExecutor {
         availableOptions.put("normPos", loadValueOptions("normPos"));
         availableOptions.put("isoPos", loadValueOptions("isoPos"));
         availableOptions.put("location", loadValueOptions("location"));
+        availableOptions.put("zeroEnergyTemplate", loadValueOptions("zeroEnergyTemplate"));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("resolvedData", resolvedData);
@@ -267,6 +274,128 @@ public class AgentActionExecutor {
 
         log.info("[Agent] LOTO point creation assist — resolved: {}", resolvedData);
         return result;
+    }
+
+    /**
+     * Deterministic tag number parsing to enrich resolved data.
+     * Tag format: {UNIT}-{EQTYPE_PREFIX}{SYSTEM_PREFIX}{SEQUENCE}
+     * Examples: 01-VCND377, 01-MOVCND001, 02-AOVBFW050
+     * Only sets fields that are still null in resolvedData.
+     */
+    private void enrichFromTagNumber(String tagNumber, Map<String, Object> resolvedData) {
+        try {
+            String tag = tagNumber.trim().toUpperCase();
+            int dashIdx = tag.indexOf('-');
+            if (dashIdx < 1 || dashIdx >= tag.length() - 1) return;
+
+            // Parse unit from first segment
+            String unitPart = tag.substring(0, dashIdx);
+            if (resolvedData.get("unit") == null && (unitPart.equals("01") || unitPart.equals("02") || unitPart.equals("00"))) {
+                resolvedData.put("unit", unitPart);
+            }
+
+            String remainder = tag.substring(dashIdx + 1);
+            // Strip trailing -JG or similar suffixes
+            int lastDash = remainder.lastIndexOf('-');
+            if (lastDash > 0 && remainder.length() - lastDash <= 3) {
+                remainder = remainder.substring(0, lastDash);
+            }
+
+            // Build prefix maps from database values
+            List<Value> eqTypes = valueService.getValuesByCategoryAlias("eqType");
+            List<Value> systems = valueService.getValuesByCategoryAlias("system");
+
+            // Build eqType alias→Value map (alias is the prefix, e.g. "V", "MOV")
+            Map<String, Value> eqPrefixMap = new LinkedHashMap<>();
+            for (Value v : eqTypes) {
+                if (v.getAlias() != null && !v.getAlias().isBlank()) {
+                    eqPrefixMap.put(v.getAlias().trim().toUpperCase(), v);
+                }
+            }
+
+            // Build system alias→Value map (alias is the prefix, e.g. "CND", "BFW")
+            Map<String, Value> sysPrefixMap = new LinkedHashMap<>();
+            for (Value v : systems) {
+                if (v.getAlias() != null && !v.getAlias().isBlank()) {
+                    sysPrefixMap.put(v.getAlias().trim().toUpperCase(), v);
+                }
+            }
+
+            // Try to match eqType prefix (longest match first)
+            Value matchedEqType = null;
+            String afterEqType = remainder;
+            List<String> eqPrefixes = new ArrayList<>(eqPrefixMap.keySet());
+            eqPrefixes.sort((a, b) -> b.length() - a.length()); // longest first
+            for (String prefix : eqPrefixes) {
+                if (remainder.startsWith(prefix)) {
+                    matchedEqType = eqPrefixMap.get(prefix);
+                    afterEqType = remainder.substring(prefix.length());
+                    break;
+                }
+            }
+
+            // Set eqType if not already resolved
+            if (resolvedData.get("eqType") == null && matchedEqType != null) {
+                resolvedData.put("eqType", valueToMap(matchedEqType));
+                log.info("[Agent] Tag parsing: eqType '{}' → {} ({})", matchedEqType.getAlias(), matchedEqType.getName(), matchedEqType.getId());
+            }
+
+            // Try to match system prefix from remainder after eqType
+            if (!afterEqType.isEmpty()) {
+                Value matchedSystem = null;
+                List<String> sysPrefixes = new ArrayList<>(sysPrefixMap.keySet());
+                sysPrefixes.sort((a, b) -> b.length() - a.length()); // longest first
+                for (String prefix : sysPrefixes) {
+                    if (afterEqType.startsWith(prefix)) {
+                        matchedSystem = sysPrefixMap.get(prefix);
+                        break;
+                    }
+                }
+
+                // Infer location from system name if location is null
+                if (resolvedData.get("location") == null && matchedSystem != null) {
+                    String systemName = matchedSystem.getName();
+                    Map<String, Object> inferredLocation = inferLocationFromText(systemName);
+                    if (inferredLocation != null) {
+                        resolvedData.put("location", inferredLocation);
+                        log.info("[Agent] Tag parsing: inferred location from system '{}'", systemName);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Agent] Tag number parsing failed for '{}': {}", tagNumber, e.getMessage());
+        }
+    }
+
+    /**
+     * Try to infer location from text (system name, description, etc.)
+     * by matching against known location Values.
+     */
+    private Map<String, Object> inferLocationFromText(String text) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            List<Value> locations = valueService.getValuesByCategoryAlias("location");
+            String search = text.trim().toLowerCase();
+            // Check if any location name is contained in the text or vice versa
+            for (Value loc : locations) {
+                if (loc.getName() == null) continue;
+                String locName = loc.getName().toLowerCase();
+                if (search.contains(locName) || locName.contains(search)) {
+                    return valueToMap(loc);
+                }
+            }
+            // Check aliases
+            for (Value loc : locations) {
+                if (loc.getAlias() == null) continue;
+                String locAlias = loc.getAlias().toLowerCase();
+                if (search.contains(locAlias) || locAlias.contains(search)) {
+                    return valueToMap(loc);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Agent] Location inference failed: {}", e.getMessage());
+        }
+        return null;
     }
 
     private Map<String, Object> resolveValue(String searchTerm, String categoryAlias) {

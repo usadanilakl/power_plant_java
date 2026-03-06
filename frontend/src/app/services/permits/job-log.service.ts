@@ -47,6 +47,12 @@ export class JobLogService {
     return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/create-package`, {});
   }
 
+  processWorkRequest(jobId: string, workRequestId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.post<SpringApiResponse<JobLogDto>>(
+      `${this.apiUrl}/${jobId}/process-work-request/${workRequestId}`, {}
+    );
+  }
+
   closeJob(jobId: string): Observable<SpringApiResponse<JobLogDto>> {
     return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/close`, {});
   }

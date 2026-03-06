@@ -12,6 +12,7 @@ import { CorrespondenceDialogComponent } from "./shared/correspondence-dialog/co
 import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
 import { WrDetailDialogComponent } from "./shared/wr-detail-dialog/wr-detail-dialog.component";
 import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment-dialog.component";
+import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-dialog.component";
 
 @Component({
   selector: 'app-root',
@@ -30,6 +31,7 @@ import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment
     QaDialogComponent,
     WrDetailDialogComponent,
     AttachmentDialogComponent,
+    ProcessWrDialogComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

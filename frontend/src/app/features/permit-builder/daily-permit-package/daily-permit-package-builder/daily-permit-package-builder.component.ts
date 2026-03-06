@@ -42,11 +42,12 @@ import { RfFormField } from '../../../../models/ui/form-field.model';
 import { JobLogService } from '../../../../services/permits/job-log.service';
 import { Router } from '@angular/router';
 import { JobLogDto } from '../../../../models/permits/job-log.model';
+import { RedTagProgressPanelComponent } from '../../../../shared/automation/red-tag-progress-panel/red-tag-progress-panel.component';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, SharedTableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, SharedTableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent, RedTagProgressPanelComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -350,6 +351,15 @@ export class DailyPermitPackageBuilderComponent {
 
   isSnapshotPopupOpen = false;
   isPaperFormPopupOpen = false;
+  isRedTagProgressOpen = false;
+
+  openRedTagProgress(): void {
+    this.isRedTagProgressOpen = true;
+  }
+
+  closeRedTagProgress(): void {
+    this.isRedTagProgressOpen = false;
+  }
 
   // Modification log filters
   modFilterAction = signal('');

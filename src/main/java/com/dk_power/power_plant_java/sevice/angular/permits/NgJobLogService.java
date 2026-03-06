@@ -14,13 +14,16 @@ import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -33,6 +36,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final DailyPermitPackageMapper dailyPermitPackageMapper;
     private final PermitNumberGenerator permitNumberGenerator;
     private final NgValueService ngValueService;
+    private final WorkRequestSharePointAdapter wrAdapter;
 
     @Override
     public JobLogRepo getRepo() {
@@ -167,6 +171,49 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         Value closedStatus = ngValueService.createValue("Job Status", "Closed");
         job.setJobStatus(closedStatus);
         JobLog saved = jobLogRepo.save(job);
+        return jobLogMapper.convertToDto(saved);
+    }
+
+    public JobLogDto processWorkRequest(String jobId, String workRequestId) {
+        JobLog job = getEntityById(jobId);
+        WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))
+                .orElseThrow(() -> new RuntimeException("WorkRequest not found: " + workRequestId));
+
+        // 1. Set WR status to "Processed" in H2
+        wr.setPermitStatus(ngValueService.createValue("Permit Status", "Processed"));
+
+        // 2. Create DailyPermitPackage from WR data
+        DailyPermitPackage pkg = new DailyPermitPackage();
+        String scope = wr.getWorkScope();
+        pkg.setName(scope != null && scope.length() > 250 ? scope.substring(0, 250) + "..." : scope);
+        pkg.setCompanyName(wr.getCompany());
+        pkg.setPersonName(wr.getRequestedBy());
+        pkg.setDate(wr.getDateOfWorkToBePerformed());
+        pkg.setTime(wr.getTimeOfWorkToBePerformed());
+        String dateForPermit = wr.getDateOfWorkToBePerformed() != null
+                ? wr.getDateOfWorkToBePerformed()
+                : job.getStartDate();
+        pkg.setPermitNumber(permitNumberGenerator.generate(dateForPermit));
+
+        // 3. Attach WR to package
+        pkg.getWorkRequests().add(wr);
+
+        // 4. Attach package to job
+        job.getPackages().add(pkg);
+
+        // 5. Persist
+        JobLog saved = jobLogRepo.save(job);
+
+        // 6. Push status to SharePoint (best-effort)
+        try {
+            if (wr.getSharepointId() != null && !wr.getSharepointId().isEmpty()) {
+                wrAdapter.changeStatus(wr.getSharepointId(), "Processed");
+            }
+        } catch (Exception e) {
+            log.warn("[ProcessWR] Failed to update SharePoint status for WR id={}, spId={}: {}",
+                    workRequestId, wr.getSharepointId(), e.getMessage());
+        }
+
         return jobLogMapper.convertToDto(saved);
     }
 }

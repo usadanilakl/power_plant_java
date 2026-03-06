@@ -1,7 +1,9 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { AgentChatService, ChatMessage } from './agent-chat.service';
 import { RfLotoPointApiService } from '../../features/loto-points/refactored/services/rf-loto-point-api.service';
 import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
+import { environment } from '../../../environments/environment';
 
 export type CreationStep =
   | 'summary'
@@ -13,6 +15,7 @@ export type CreationStep =
   | 'location'
   | 'specificLocation'
   | 'zeroEnergy'
+  | 'zeroEnergyTemplate'
   | 'pidConnection'
   | 'review';
 
@@ -31,12 +34,16 @@ export interface CreationFlowData {
   isoPos: ValueOption | null;
   location: ValueOption | null;
   zeroEnergy: boolean | null;
+  zeroEnergyTemplate: ValueOption | null;
   pidConnection: boolean | null;
+  equipmentIds: number[] | null;
+  mainFileId: number | null;
 }
 
 const STEP_ORDER: CreationStep[] = [
   'summary', 'tagNumber', 'description', 'eqType', 'normPos',
-  'isoPos', 'location', 'specificLocation', 'zeroEnergy', 'pidConnection', 'review'
+  'isoPos', 'location', 'specificLocation', 'zeroEnergy', 'zeroEnergyTemplate',
+  'pidConnection', 'review'
 ];
 
 const STEP_QUESTIONS: Record<string, string> = {
@@ -48,6 +55,7 @@ const STEP_QUESTIONS: Record<string, string> = {
   location: 'What is the general location?',
   specificLocation: 'What is the specific location? (optional — type or skip)',
   zeroEnergy: 'Does this point require zero energy verification?',
+  zeroEnergyTemplate: 'Select a zero energy phrase template:',
   pidConnection: 'Connect this point to a P&ID drawing?',
   review: 'Ready to create this LOTO point:'
 };
@@ -56,13 +64,17 @@ const STEP_QUESTIONS: Record<string, string> = {
 export class AgentCreationFlowService {
   private chatService = inject(AgentChatService);
   private lotoPointApi = inject(RfLotoPointApiService);
+  private http = inject(HttpClient);
 
   isActive = signal(false);
+  /** Tracks which category is showing the "new value" text input */
+  creatingNewValueFor = signal<string | null>(null);
   currentStep = signal<CreationStep | null>(null);
   collectedData = signal<CreationFlowData>({
     tagNumber: null, description: null, unit: null, specificLocation: null,
     eqType: null, normPos: null, isoPos: null, location: null,
-    zeroEnergy: null, pidConnection: null
+    zeroEnergy: null, zeroEnergyTemplate: null,
+    pidConnection: null, equipmentIds: null, mainFileId: null
   });
   availableOptions = signal<Record<string, ValueOption[]>>({});
   isCreating = signal(false);
@@ -81,7 +93,10 @@ export class AgentCreationFlowService {
       isoPos: resolved['isoPos'] || null,
       location: resolved['location'] || null,
       zeroEnergy: null,
-      pidConnection: null
+      zeroEnergyTemplate: null,
+      pidConnection: null,
+      equipmentIds: null,
+      mainFileId: null
     });
 
     this.availableOptions.set(options);
@@ -121,6 +136,66 @@ export class AgentCreationFlowService {
     this.advanceToNextUnfilled();
   }
 
+  /** Show the "new value" text input for a category */
+  startCreatingNewValue(categoryAlias: string): void {
+    this.creatingNewValueFor.set(categoryAlias);
+  }
+
+  /** Cancel the "new value" text input */
+  cancelCreatingNewValue(): void {
+    this.creatingNewValueFor.set(null);
+  }
+
+  /** Create a new Value in the given category and auto-select it */
+  createNewValue(categoryAlias: string, valueName: string): void {
+    if (!valueName.trim()) return;
+    this.creatingNewValueFor.set(null);
+
+    this.http.post<any>(`${environment.apiUrl}/values/add-to-category-by-name`, {
+      category: categoryAlias,
+      value: valueName.trim(),
+      valueAlias: ''
+    }).subscribe({
+      next: (res) => {
+        const created = res.responseData || res;
+        const option: ValueOption = { id: created.id, name: created.name || valueName.trim() };
+
+        // Add to available options
+        this.availableOptions.update(opts => {
+          const current = opts[categoryAlias] || [];
+          return { ...opts, [categoryAlias]: [...current, option] };
+        });
+
+        // Auto-select the new value
+        this.selectOption(categoryAlias, option);
+      },
+      error: (err) => {
+        const msg: ChatMessage = {
+          role: 'assistant',
+          content: 'Failed to create value: ' + (err?.error?.message || err?.message || 'Unknown error'),
+          type: 'error',
+          timestamp: new Date()
+        };
+        this.chatService.messages.update(msgs => [...msgs, msg]);
+      }
+    });
+  }
+
+  /** Called from the dialog result after P&ID connection */
+  setEquipmentConnection(equipmentIds: number[], fileId: number | null): void {
+    this.collectedData.update(d => ({
+      ...d,
+      pidConnection: true,
+      equipmentIds,
+      mainFileId: fileId
+    }));
+  }
+
+  /** Advance past pidConnection step after dialog closes */
+  advanceAfterPidConnection(): void {
+    this.advanceToNextUnfilled();
+  }
+
   createLotoPoint(): void {
     const data = this.collectedData();
     this.isCreating.set(true);
@@ -134,6 +209,12 @@ export class AgentCreationFlowService {
       normPos: data.normPos?.id ?? null,
       isoPos: data.isoPos?.id ?? null,
       location: data.location?.id ?? null,
+      equipmentIdList: data.equipmentIds ?? null,
+      zeroEnergy: data.zeroEnergyTemplate ? {
+        id: null,
+        zeroEnergyTemplateId: data.zeroEnergyTemplate.id,
+        templateEquipmentIds: [],
+      } : null,
     });
 
     this.lotoPointApi.createLotoPoint(dto as any).subscribe({
@@ -183,7 +264,8 @@ export class AgentCreationFlowService {
     this.collectedData.set({
       tagNumber: null, description: null, unit: null, specificLocation: null,
       eqType: null, normPos: null, isoPos: null, location: null,
-      zeroEnergy: null, pidConnection: null
+      zeroEnergy: null, zeroEnergyTemplate: null,
+      pidConnection: null, equipmentIds: null, mainFileId: null
     });
     this.availableOptions.set({});
   }
@@ -201,6 +283,9 @@ export class AgentCreationFlowService {
       if (step === 'tagNumber' && data.tagNumber) continue;
       if (step === 'description' && data.description) continue;
       if (step === 'specificLocation' && data.specificLocation) continue;
+
+      // Skip zeroEnergyTemplate if user said "No" to zero energy
+      if (step === 'zeroEnergyTemplate' && data.zeroEnergy === false) continue;
 
       // Dropdown steps: skip if AI resolved, but still show if not resolved
       // (even if resolved, we show them — user can change via chips)

@@ -116,6 +116,19 @@ public class NgJobLogController {
         }
     }
 
+    @PostMapping("/{jobId}/process-work-request/{workRequestId}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> processWorkRequest(
+            @PathVariable String jobId, @PathVariable String workRequestId) {
+        try {
+            JobLogDto updated = service.processWorkRequest(jobId, workRequestId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Work request processed and package created", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/by-package/{packageId}")
     public ResponseEntity<NgApiResponse<JobLogDto>> getByPackageId(@PathVariable String packageId) {
         try {

@@ -1,0 +1,96 @@
+<div class="progress-panel">
+  <!-- Header -->
+  <div class="progress-header">
+    <div class="header-top">
+      <span class="session-status-badge" [attr.data-status]="progressService.session()?.status ?? 'IDLE'">
+        {{ progressService.session()?.status ?? 'IDLE' }}
+      </span>
+      <span class="package-name">{{ progressService.session()?.packageName ?? 'No build started' }}</span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" [style.width.%]="progressService.progressPercent()"></div>
+    </div>
+    <span class="progress-text">{{ progressService.progressPercent() }}% complete</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="control-buttons">
+    <button class="ctrl-btn start" (click)="start()"
+            [disabled]="progressService.isRunning() || progressService.isCompleted()">
+      Start
+    </button>
+    <button class="ctrl-btn pause" (click)="pause()"
+            [disabled]="!progressService.isRunning()">
+      Pause
+    </button>
+    <button class="ctrl-btn resume" (click)="resume()"
+            [disabled]="!progressService.isPaused()">
+      {{ progressService.awaitingConfirmation() ? 'Continue' : 'Resume' }}
+    </button>
+    <button class="ctrl-btn stop" (click)="stop()"
+            [disabled]="!progressService.isRunning() && !progressService.isPaused()">
+      Stop (Esc)
+    </button>
+    <button class="ctrl-btn retry" (click)="retryStep()"
+            [disabled]="!progressService.isFailed()">
+      Retry Step
+    </button>
+    <button class="ctrl-btn skip" (click)="skipStep()"
+            [disabled]="!progressService.isFailed()">
+      Skip Step
+    </button>
+  </div>
+
+  <!-- Options -->
+  <div class="control-options">
+    <label class="checkbox-option">
+      <input type="checkbox" [checked]="manualConfirmation" (change)="toggleManualConfirmation()">
+      <span>Manual confirmation between steps</span>
+    </label>
+  </div>
+
+  @if (progressService.awaitingConfirmation()) {
+    <div class="confirmation-banner">
+      Step completed. Click <strong>Continue</strong> to proceed to next step.
+    </div>
+  }
+
+  <!-- Step List -->
+  <div class="step-list" #stepList>
+    @if (progressService.session(); as session) {
+      @for (step of session.steps; track step.index) {
+        <div class="step-item" [attr.data-status]="step.status"
+             [class.current]="step.index === session.currentStepIndex">
+          <div class="step-index">{{ step.index + 1 }}</div>
+          <div class="step-status-icon">
+            @switch (step.status) {
+              @case ('PENDING')  { <span class="icon pending">--</span> }
+              @case ('RUNNING')  { <span class="icon running"><span class="spinner"></span></span> }
+              @case ('SUCCESS')  { <span class="icon success">OK</span> }
+              @case ('FAILED')   { <span class="icon failed">X</span> }
+              @case ('SKIPPED')  { <span class="icon skipped">~</span> }
+            }
+          </div>
+          <div class="step-details">
+            <div class="step-name-row">
+              <span class="step-name">{{ step.name }}</span>
+              <span class="step-category" [attr.data-category]="step.category">
+                {{ getCategoryLabel(step.category) }}
+              </span>
+              @if (step.endTimeMs > 0) {
+                <span class="step-duration">{{ formatDuration(step) }}</span>
+              }
+            </div>
+            @if (step.status === 'FAILED' && step.errorMessage) {
+              <div class="step-error">{{ step.errorMessage }}</div>
+            }
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="no-session">
+        Click <strong>Start</strong> to begin building permits in Red Tag.
+      </div>
+    }
+  </div>
+</div>

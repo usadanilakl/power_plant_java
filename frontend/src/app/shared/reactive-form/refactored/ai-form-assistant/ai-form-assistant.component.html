@@ -1,0 +1,27 @@
+<div class="ai-form-bar">
+  <div class="ai-input-row">
+    <div class="ai-label">AI</div>
+    <input
+      type="text"
+      [(ngModel)]="promptText"
+      (keydown)="onKeyDown($event)"
+      placeholder="Describe this item to auto-fill the form..."
+      [disabled]="isProcessing()"
+      class="ai-input"
+    />
+    <button
+      class="ai-submit-btn"
+      (click)="onSubmit()"
+      [disabled]="isProcessing() || !promptText.trim()"
+    >
+      @if (isProcessing()) {
+        <span class="ai-spinner"></span>
+      } @else {
+        Fill
+      }
+    </button>
+  </div>
+  @if (lastMessage()) {
+    <div class="ai-message">{{ lastMessage() }}</div>
+  }
+</div>

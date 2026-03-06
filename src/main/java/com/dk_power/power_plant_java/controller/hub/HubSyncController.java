@@ -46,6 +46,7 @@ public class HubSyncController {
     public ResponseEntity<HubSyncService.SyncResponse> syncExchange(
             @RequestHeader("X-Machine-Id") String machineId,
             @RequestHeader("X-Machine-Name") String machineName,
+            @RequestHeader(value = "X-Device-Number", required = false) Integer deviceNumber,
             @RequestBody SyncRequest request,
             HttpServletRequest httpRequest) {
 
@@ -61,7 +62,7 @@ public class HubSyncController {
 
         try {
             HubSyncService.SyncResponse response = hubSyncService.syncExchange(
-                machineId, machineName, ipAddress, request.changes);
+                machineId, machineName, ipAddress, deviceNumber, request.changes);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Hub sync exchange failed for {}: {}", machineId, e.getMessage(), e);
@@ -229,9 +230,7 @@ public class HubSyncController {
         if (machineId.isEmpty()) machineId = "DEVICE-" + deviceNumber;
 
         String ipAddress = getClientIp(httpRequest);
-        HubClientInfo client = hubSyncService.registerClient(machineId, deviceName, ipAddress);
-        client.setDeviceNumber(deviceNumber);
-        // Save is handled by the service within its transaction
+        hubSyncService.registerClient(machineId, deviceName, ipAddress, deviceNumber);
 
         log.info("Device registered: #{} '{}' machineId={}", deviceNumber, deviceName, machineId);
 

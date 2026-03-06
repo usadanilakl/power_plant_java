@@ -28,7 +28,7 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
 import { ZeroEnergyPhraseBuilderComponent } from '../../../reactive-form/refactored/input-fields/zero-energy-phrase-builder/zero-energy-phrase-builder.component';
 import { EquipmentBrowserDialogComponent } from '../../../reactive-form/refactored/input-fields/equipment-browser-dialog/equipment-browser-dialog.component';
 import { EquipmentShapeDrawerDialogComponent } from '../../../reactive-form/refactored/input-fields/equipment-shape-drawer-dialog/equipment-shape-drawer-dialog.component';
-import { RfLotoPointDualFormComponent } from '../../../../features/loto-points/refactored/rf-loto-point-dual-form/rf-loto-point-dual-form.component';
+import { LotoPointDualFormComponent } from '../../../../features/loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component';
 import { GuideZeroEnergyDialogComponent, GuideZeroEnergyResult } from '../dialogs/guide-zero-energy-dialog.component';
 import { GuideFileConnectionDialogComponent, GuideFileConnectionResult } from '../dialogs/guide-file-connection-dialog.component';
 
@@ -57,7 +57,7 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
     ZeroEnergyPhraseBuilderComponent,
     EquipmentBrowserDialogComponent,
     EquipmentShapeDrawerDialogComponent,
-    RfLotoPointDualFormComponent,
+    LotoPointDualFormComponent,
     GuideZeroEnergyDialogComponent,
     GuideFileConnectionDialogComponent,
   ],
@@ -507,7 +507,7 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
               Use the dual form below to create a counterpart LOTO point.
               The counterpart will be linked to the primary point you're creating.
             </p>
-            <app-rf-loto-point-dual-form
+            <app-loto-point-dual-form
               [primaryLotoPoint]="primaryLotoPointForDualForm()!"
               [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location']"
               (counterpartSaved)="onCounterpartSaved($event)"

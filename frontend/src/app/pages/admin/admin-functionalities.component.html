@@ -444,6 +444,69 @@
         </div>
       </div>
 
+      <!-- 6. SharePoint List Provisioning -->
+      <div class="admin-section">
+        <h3>6. SharePoint List Provisioning</h3>
+        <p class="description">
+          Manage SharePoint lists for all permit types. Check which lists exist and create missing ones individually or all at once.
+        </p>
+
+        <div class="button-group">
+          <button (click)="checkSpListStatuses()" [disabled]="loading.spProvision">
+            {{ loading.spProvision ? 'Checking...' : 'Check Status' }}
+          </button>
+          <button class="action-btn" (click)="provisionAllLists()"
+                  [disabled]="loading.spProvision || spListStatuses.length === 0 || getMissingListCount() === 0">
+            Create All Missing ({{ getMissingListCount() }})
+          </button>
+        </div>
+
+        <div class="error" *ngIf="errors.spProvision">{{ errors.spProvision }}</div>
+
+        <div class="result" *ngIf="spListStatuses.length > 0">
+          <div class="result-summary">
+            <span class="badge success">
+              Exists: {{ spListStatuses.length - getMissingListCount() }}
+            </span>
+            <span class="badge" [class.warning]="getMissingListCount() > 0"
+                                [class.success]="getMissingListCount() === 0">
+              Missing: {{ getMissingListCount() }}
+            </span>
+          </div>
+
+          <table style="margin-top: 8px;">
+            <thead>
+              <tr>
+                <th>List Name</th>
+                <th>Fields</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let list of spListStatuses">
+                <td>{{ list.title }}</td>
+                <td>{{ list.fieldCount }}</td>
+                <td>
+                  <span class="badge success" *ngIf="list.exists">Exists</span>
+                  <span class="badge warning" *ngIf="!list.exists && !list.error">Missing</span>
+                  <span class="badge warning" *ngIf="list.error" title="{{ list.error }}">Error</span>
+                </td>
+                <td>
+                  <button *ngIf="!list.exists"
+                          (click)="provisionSingleList(list.title)"
+                          [disabled]="spProvisioningList === list.title"
+                          style="padding: 2px 10px; font-size: 0.85em;">
+                    {{ spProvisioningList === list.title ? 'Creating...' : 'Create' }}
+                  </button>
+                  <span *ngIf="list.exists" style="color: var(--secondary-text); font-size: 0.85em;">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </ng-container>
 </app-main-layout>

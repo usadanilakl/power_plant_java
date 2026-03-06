@@ -5,7 +5,6 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { forkJoin, Subject } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
-import { ContextMenuComponent } from '../../../shared/menu/context-menu/context-menu.component';
 import { CorrespondenceCellComponent } from '../../../shared/correspondence-dialog/correspondence-cell.component';
 import { SpSyncToolbarComponent } from '../../../shared/sp-sync-toolbar/sp-sync-toolbar.component';
 import { WrDetailDialogService } from '../../../shared/wr-detail-dialog/wr-detail-dialog.service';
@@ -52,7 +51,7 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-permits-monitor',
   standalone: true,
-  imports: [CommonModule, RouterModule, ContextMenuComponent, CorrespondenceCellComponent, SpSyncToolbarComponent],
+  imports: [CommonModule, RouterModule, CorrespondenceCellComponent, SpSyncToolbarComponent],
   template: `
     <div class="monitor-container">
       <div class="monitor-header">
@@ -245,13 +244,6 @@ interface ApiResponse<T> {
       </div>
     </div>
 
-    <app-context-menu
-      [selectedItem]="contextMenuService.contextMenuSelectedItem()"
-      [isVisible]="contextMenuService.contextMenuVisible()"
-      [position]="contextMenuService.contextMenuPosition()"
-      [actions]="contextMenuService.contextMenuActions"
-      (closeMenu)="contextMenuService.closeContextMenu()"
-    />
   `,
   styles: [`
     :host {

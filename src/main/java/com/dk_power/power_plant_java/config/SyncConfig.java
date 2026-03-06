@@ -250,8 +250,11 @@ public class SyncConfig {
             Properties props = new Properties();
             props.load(fis);
 
-            if (!deviceConfigExplicitlySet) {
-                // Standalone: machine-id.properties overrides default device-configs
+            // Load device.number and device.name from machine-id.properties when:
+            // - DEVICE_CONFIG is NOT set (standalone mode), OR
+            // - DEVICE_CONFIG IS set but classpath properties didn't provide a device number
+            //   (e.g., Electron sets DEVICE_CONFIG=installed but device-configs/installed.properties doesn't exist)
+            if (!deviceConfigExplicitlySet || this.deviceNumber < 0) {
                 String deviceNumberStr = props.getProperty("device.number");
                 if (deviceNumberStr != null && !deviceNumberStr.isEmpty()) {
                     try {
@@ -261,7 +264,9 @@ public class SyncConfig {
                         }
                     } catch (NumberFormatException ignored) {}
                 }
+            }
 
+            if (!deviceConfigExplicitlySet || this.deviceName == null || this.deviceName.isEmpty()) {
                 String nameFromFile = props.getProperty("device.name");
                 if (nameFromFile != null && !nameFromFile.isEmpty()) {
                     this.deviceName = nameFromFile;

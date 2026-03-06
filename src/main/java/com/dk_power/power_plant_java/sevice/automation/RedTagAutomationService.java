@@ -6,6 +6,9 @@ import com.dk_power.power_plant_java.dto.automation.PermitBuildingProgress;
 import com.dk_power.power_plant_java.dto.automation.SwBuilderProgress;
 import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.entities.permits.pojo.SwHazards;
+import com.dk_power.power_plant_java.entities.permits.pojo.SwPermits;
+import com.dk_power.power_plant_java.entities.permits.pojo.SwPpe;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgConfinedSpaceService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgHotWorkService;
@@ -804,120 +807,168 @@ public class RedTagAutomationService {
     }
 
     public String fillOutSafeWorkForm(SafeWorkDto sw) {
+        String currentField = "initialization";
         try{
+            // Null-safety for nested objects
+            SwHazards hazards = sw.getHazards() != null ? sw.getHazards() : new SwHazards();
+            SwPermits permits = sw.getPermits() != null ? sw.getPermits() : new SwPermits();
+            SwPpe ppe = sw.getPpe() != null ? sw.getPpe() : new SwPpe();
+
+            // --- Header fields ---
+            currentField = "Date Issued";
             Region dateIssued = screen.wait(SW_DATE_ISSUED, 5);
             dateIssued.offset(0, 15).click();
             pasteText(sw.getDate());
             screen.type(Key.TAB);
+
+            currentField = "Time";
             pasteText(sw.getTime());
             screen.type(Key.TAB);
+
+            currentField = "Company/Person";
             pasteText(sw.getCompanyPerson());
 
+            currentField = "Location";
             Region location = screen.find(SW_LOCATION);
             location.offset(250, 0).click();
             pasteText(sw.getLocation());
 
+            currentField = "Work Scope";
             location.offset(250, 20).click();
             pasteText(sw.getWorkScope());
 
-
-            if (sw.getHazards().isHighPressure()) {
+            // --- Hazards section ---
+            currentField = "Hazards: High Pressure";
+            if (hazards.isHighPressure()) {
                 Region hiPressure = screen.find(SW_HIGH_PRESSURE);
                 hiPressure.offset(-hiPressure.w / 2 - 15, 0).click();
             }
 
-            if(sw.getHazards().isHighTemp()) clickLeftSideOfElement(SW_HIGH_TEMP, 2);
+            currentField = "Hazards: High Temp";
+            if(hazards.isHighTemp()) clickLeftSideOfElement(SW_HIGH_TEMP, 2);
 
-            if (sw.getHazards().isEnergized()) clickLeftSideOfElement(SW_ENERGIZED, 2);
-            if (sw.getHazards().isStoredEnergy()) clickLeftSideOfElement(SW_STORED_ENERGY, 2);
-            if (sw.getHazards().isEyeHazard()) clickLeftSideOfElement(SW_EYE_HAZARD, 2);
-            if (sw.getHazards().isEgressAccess()) clickLeftSideOfElement(SW_EGRESS_ACCESS, 2);
-            if (sw.getHazards().isErgonomicHazard()) clickLeftSideOfElement(SW_ERGONOMIC_HAZARD, 2);
-            if (sw.getHazards().isFallingObject()) clickLeftSideOfElement(SW_FALLING_OBJECT, 2);
-            if (sw.getHazards().isHighNoise()) clickLeftSideOfElement(SW_HIGH_NOISE, 2);
-            if (sw.getHazards().isDustParticulate()) clickLeftSideOfElement(SW_DUST_PARTICULATE, 2);
-            if (sw.getHazards().isCombustibleDust()) clickLeftSideOfElement(SW_COMBUSTABLE_DUST, 2);
-            if (sw.getHazards().isFireHazard()) clickLeftSideOfElement(SW_FIRE_HAZARD, 2);
-            if (sw.getHazards().isHotSurface()) clickLeftSideOfElement(SW_HOT_SURFACE, 2);
-            if (sw.getHazards().isSlippery()) clickLeftSideOfElement(SW_SLIPPERY, 2);
-            if (sw.getHazards().isVentilationRequired()) clickLeftSideOfElement(SW_VENTILATION_REQUIRED, 2);
-            if (sw.getHazards().isLightingRestrictions()) clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS, 2);
-            if (sw.getHazards().isChemicalExposure()) clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE, 2);
-            if (sw.getHazards().isLiftingHazard()) clickLeftSideOfElement(SW_LIFTING_HAZARD, 2);
-            if (sw.getHazards().isHandTraps()) clickLeftSideOfElement(SW_HAND_TRAPS, 2);
-            if (sw.getHazards().isHeatColdStress()) clickLeftSideOfElement(SW_HEAT_COLD_STRESS, 2);
-            if (sw.getHazards().isElevatedSurface()) clickLeftSideOfElement(SW_ELEVATED_SURFACE, 2);
-            if (sw.getHazards().isEnvironmental()) clickLeftSideOfElement(SW_ENVIRONMENTAL, 2);
+            currentField = "Hazards: Energized";
+            if (hazards.isEnergized()) clickLeftSideOfElement(SW_ENERGIZED, 2);
+            currentField = "Hazards: Stored Energy";
+            if (hazards.isStoredEnergy()) clickLeftSideOfElement(SW_STORED_ENERGY, 2);
+            currentField = "Hazards: Eye Hazard";
+            if (hazards.isEyeHazard()) clickLeftSideOfElement(SW_EYE_HAZARD, 2);
+            currentField = "Hazards: Egress Access";
+            if (hazards.isEgressAccess()) clickLeftSideOfElement(SW_EGRESS_ACCESS, 2);
+            currentField = "Hazards: Ergonomic Hazard";
+            if (hazards.isErgonomicHazard()) clickLeftSideOfElement(SW_ERGONOMIC_HAZARD, 2);
+            currentField = "Hazards: Falling Object";
+            if (hazards.isFallingObject()) clickLeftSideOfElement(SW_FALLING_OBJECT, 2);
+            currentField = "Hazards: High Noise";
+            if (hazards.isHighNoise()) clickLeftSideOfElement(SW_HIGH_NOISE, 2);
+            currentField = "Hazards: Dust/Particulate";
+            if (hazards.isDustParticulate()) clickLeftSideOfElement(SW_DUST_PARTICULATE, 2);
+            currentField = "Hazards: Combustible Dust";
+            if (hazards.isCombustibleDust()) clickLeftSideOfElement(SW_COMBUSTABLE_DUST, 2);
+            currentField = "Hazards: Fire Hazard";
+            if (hazards.isFireHazard()) clickLeftSideOfElement(SW_FIRE_HAZARD, 2);
+            currentField = "Hazards: Hot Surface";
+            if (hazards.isHotSurface()) clickLeftSideOfElement(SW_HOT_SURFACE, 2);
+            currentField = "Hazards: Slippery";
+            if (hazards.isSlippery()) clickLeftSideOfElement(SW_SLIPPERY, 2);
+            currentField = "Hazards: Ventilation Required";
+            if (hazards.isVentilationRequired()) clickLeftSideOfElement(SW_VENTILATION_REQUIRED, 2);
+            currentField = "Hazards: Lighting Restrictions";
+            if (hazards.isLightingRestrictions()) clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS, 2);
+            currentField = "Hazards: Chemical Exposure";
+            if (hazards.isChemicalExposure()) clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE, 2);
+            currentField = "Hazards: Lifting Hazard";
+            if (hazards.isLiftingHazard()) clickLeftSideOfElement(SW_LIFTING_HAZARD, 2);
+            currentField = "Hazards: Hand Traps";
+            if (hazards.isHandTraps()) clickLeftSideOfElement(SW_HAND_TRAPS, 2);
+            currentField = "Hazards: Heat/Cold Stress";
+            if (hazards.isHeatColdStress()) clickLeftSideOfElement(SW_HEAT_COLD_STRESS, 2);
+            currentField = "Hazards: Elevated Surface";
+            if (hazards.isElevatedSurface()) clickLeftSideOfElement(SW_ELEVATED_SURFACE, 2);
+            currentField = "Hazards: Environmental";
+            if (hazards.isEnvironmental()) clickLeftSideOfElement(SW_ENVIRONMENTAL, 2);
 
-//        clickYesNo(SW_LOTO_REQUIRED,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_CONFINED_SPACE,sw.getPermits().isConfinedSpace());
-//        clickYesNo(SW_HOT_WORK,sw.getPermits().isHotWork());
-//        clickYesNo(SW_VENTING_PURGING,sw.getPermits().isVentingPurging());
-//        clickYesNo(SW_JHA,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_GAS_TESTING,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_EXCAVATION_PERMIT,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_ENERGIZED_PERMIT,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_HARDHAT,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_SAFETY_GLASSES,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_HEARING_PROTECTION,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_BOOTS,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_FALL_PROTECTION,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_GFI,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_RESPIRATOR,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_DUST_MASK,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_GLOVES,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_ICE_CLEATS,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_ACID_SUIT,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_BARRICADE,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_FACE_SHIELD,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_GAS_MONITOR,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_ARC_FLASH_PPE,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_WELDING_JACKET,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_WELDING_SHIELD,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_WELDING_GLOVES,sw.getPermits().isLotoRequired());
-//        clickYesNo(SW_PURGIN_VENTILATION,sw.getPermits().isLotoRequired());
+            // --- Permits section ---
+            currentField = "Permits: LOTO Required";
+            clickYesNo(SW_LOTO_REQUIRED, permits.isLotoRequired());
+            currentField = "Permits: Confined Space";
+            clickYesNo(SW_CONFINED_SPACE, permits.isConfinedSpace());
+            currentField = "Permits: Hot Work";
+            clickYesNo(SW_HOT_WORK, permits.isHotWork());
+            pause(300);
+            currentField = "Permits: Venting/Purging";
+            clickYesNo(SW_VENTING_PURGING, permits.isVentingPurging());
+            currentField = "Permits: JHA";
+            clickYesNo(SW_JHA, permits.isJha());
+            currentField = "Permits: Gas Testing";
+            clickYesNo(SW_GAS_TESTING, permits.isGasTesting());
+            currentField = "Permits: Excavation Permit";
+            clickYesNo(SW_EXCAVATION_PERMIT, permits.isExcavationPermit());
+            currentField = "Permits: Energized Permit";
+            clickYesNo(SW_ENERGIZED_PERMIT, permits.isEnergizedPermit());
 
-            clickYesNo(SW_LOTO_REQUIRED, sw.getPermits().isLotoRequired());
-            clickYesNo(SW_CONFINED_SPACE, sw.getPermits().isConfinedSpace());
-            clickYesNo(SW_HOT_WORK, sw.getPermits().isHotWork());
-            clickYesNo(SW_VENTING_PURGING, sw.getPermits().isVentingPurging());
-            clickYesNo(SW_JHA, sw.getPermits().isJha());
-            clickYesNo(SW_GAS_TESTING, sw.getPermits().isGasTesting());
-            clickYesNo(SW_EXCAVATION_PERMIT, sw.getPermits().isExcavationPermit());
-            clickYesNo(SW_ENERGIZED_PERMIT, sw.getPermits().isEnergizedPermit());
-
+            // Scroll down to PPE section
+            currentField = "Scrolling to PPE section";
             screen.find(SW_ENERGIZED_PERMIT).offset(-70,20).click();
 
-            clickYesNo(SW_HARDHAT, sw.getPpe().isHardhat());
-            clickYesNo(SW_SAFETY_GLASSES, sw.getPpe().isSafetyGlasses());
-            clickYesNo(SW_HEARING_PROTECTION, sw.getPpe().isHearingProtection());
-            clickYesNo(SW_BOOTS, sw.getPpe().isBoots());
-            clickYesNo(SW_FALL_PROTECTION, sw.getPpe().isFallProtection());
-            clickYesNo(SW_GFI, sw.getPpe().isGfi());
-            clickYesNo(SW_RESPIRATOR, sw.getPpe().isRespirator());
-            clickYesNo(SW_DUST_MASK, sw.getPpe().isDustMask());
-            clickYesNo(SW_GLOVES, sw.getPpe().isGloves());
-            clickYesNo(SW_ICE_CLEATS, sw.getPpe().isIceCleats());
-            clickYesNo(SW_ACID_SUIT, sw.getPpe().isAcidSuit());
-            clickYesNo(SW_BARRICADE, sw.getPpe().isBarricade());
-            clickYesNo(SW_FACE_SHIELD, sw.getPpe().isFaceShield());
-            clickYesNo(SW_GAS_MONITOR, sw.getPpe().isGasMonitor());
-            clickYesNo(SW_ARC_FLASH_PPE, sw.getPpe().isArcFlashPpe());
-            clickYesNo(SW_WELDING_JACKET, sw.getPpe().isWeldingJacket());
-            clickYesNo(SW_WELDING_SHIELD, sw.getPpe().isWeldingShield());
-            clickYesNo(SW_WELDING_GLOVES, sw.getPpe().isWeldingGloves());
-            clickYesNo(SW_PURGIN_VENTILATION, sw.getPpe().isPurgingVentilation());
+            // --- PPE section ---
+            currentField = "PPE: Hardhat";
+            clickYesNo(SW_HARDHAT, ppe.isHardhat());
+            currentField = "PPE: Safety Glasses";
+            clickYesNo(SW_SAFETY_GLASSES, ppe.isSafetyGlasses());
+            currentField = "PPE: Hearing Protection";
+            clickYesNo(SW_HEARING_PROTECTION, ppe.isHearingProtection());
+            currentField = "PPE: Boots";
+            clickYesNo(SW_BOOTS, ppe.isBoots());
+            currentField = "PPE: Fall Protection";
+            clickYesNo(SW_FALL_PROTECTION, ppe.isFallProtection());
+            currentField = "PPE: GFI";
+            clickYesNo(SW_GFI, ppe.isGfi());
+            currentField = "PPE: Respirator";
+            clickYesNo(SW_RESPIRATOR, ppe.isRespirator());
+            currentField = "PPE: Dust Mask";
+            clickYesNo(SW_DUST_MASK, ppe.isDustMask());
+            currentField = "PPE: Gloves";
+            clickYesNo(SW_GLOVES, ppe.isGloves());
+            currentField = "PPE: Ice Cleats";
+            clickYesNo(SW_ICE_CLEATS, ppe.isIceCleats());
+            currentField = "PPE: Acid Suit";
+            clickYesNo(SW_ACID_SUIT, ppe.isAcidSuit());
+            currentField = "PPE: Barricade";
+            clickYesNo(SW_BARRICADE, ppe.isBarricade());
+            currentField = "PPE: Face Shield";
+            clickYesNo(SW_FACE_SHIELD, ppe.isFaceShield());
+            currentField = "PPE: Gas Monitor";
+            clickYesNo(SW_GAS_MONITOR, ppe.isGasMonitor());
+            currentField = "PPE: Arc Flash PPE";
+            clickYesNo(SW_ARC_FLASH_PPE, ppe.isArcFlashPpe());
+            currentField = "PPE: Welding Jacket";
+            clickYesNo(SW_WELDING_JACKET, ppe.isWeldingJacket());
+            currentField = "PPE: Welding Shield";
+            clickYesNo(SW_WELDING_SHIELD, ppe.isWeldingShield());
+            currentField = "PPE: Welding Gloves";
+            clickYesNo(SW_WELDING_GLOVES, ppe.isWeldingGloves());
+            currentField = "PPE: Purging/Ventilation";
+            clickYesNo(SW_PURGIN_VENTILATION, ppe.isPurgingVentilation());
 
+            // Scroll down to instructions
+            currentField = "Scrolling to Special Instructions";
             screen.find(SW_PURGIN_VENTILATION).offset(-50,20).click();
 
+            currentField = "Special Instructions";
             screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0, 15).click();
             pasteText(sw.getSpecialInstructions());
+
+            currentField = "Requested By";
             screen.find(SW_REQUESTOR).offset(0, 15).click();
             pasteText(sw.getRequestedBy());
 
             return "success";
         }catch (Exception e){
-            return "Failed to fill out safe work from";
+            String errorType = e instanceof FindFailed ? "Element not found" : e.getClass().getSimpleName();
+            String detail = e.getMessage() != null ? e.getMessage() : "no details";
+            logger.error("Safe work form failed at field '{}': {} - {}", currentField, errorType, detail);
+            return "Failed to fill out safe work form at field '" + currentField + "': " + errorType + " - " + detail;
         }
     }
 

@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.controller.angular.permits;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.automation.AutomationSessionState;
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgDailyPermitPackageService;
+import com.dk_power.power_plant_java.sevice.automation.RedTagStepExecutionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class NgDailyPermitPackageController {
 
     private final NgDailyPermitPackageService ngDailyPermitPackageService;
+    private final RedTagStepExecutionService redTagStepExecutionService;
 
     @GetMapping
     public ResponseEntity<NgApiResponse<List<DailyPermitPackageDto>>> getAllDailyPermitPackages() {
@@ -168,5 +171,85 @@ public class NgDailyPermitPackageController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
+    }
+
+    // --- Red Tag Automation Control Endpoints ---
+
+    @PostMapping("/automation/start/{id}")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationStart(@PathVariable String id) {
+        try {
+            DailyPermitPackageDto dto = ngDailyPermitPackageService.getDtoById(id);
+            AutomationSessionState state = redTagStepExecutionService.startBuild(dto);
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Build started", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/pause")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationPause() {
+        try {
+            AutomationSessionState state = redTagStepExecutionService.pauseBuild();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Build paused", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/resume")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationResume() {
+        try {
+            AutomationSessionState state = redTagStepExecutionService.resumeBuild();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Build resumed", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/stop")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationStop() {
+        try {
+            AutomationSessionState state = redTagStepExecutionService.stopBuild();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Build stopped", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/retry-step")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationRetryStep() {
+        try {
+            AutomationSessionState state = redTagStepExecutionService.retryStep();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Retrying step", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/skip-step")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationSkipStep() {
+        try {
+            AutomationSessionState state = redTagStepExecutionService.skipStep();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Step skipped", LocalDateTime.now()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/automation/manual-confirmation")
+    public ResponseEntity<NgApiResponse<Boolean>> automationManualConfirmation(@RequestParam boolean enabled) {
+        redTagStepExecutionService.setManualConfirmation(enabled);
+        return ResponseEntity.ok(new NgApiResponse<>(enabled, "Manual confirmation " + (enabled ? "enabled" : "disabled"), LocalDateTime.now()));
+    }
+
+    @GetMapping("/automation/manual-confirmation")
+    public ResponseEntity<NgApiResponse<Boolean>> getManualConfirmation() {
+        return ResponseEntity.ok(new NgApiResponse<>(redTagStepExecutionService.isManualConfirmation(), "Manual confirmation status", LocalDateTime.now()));
+    }
+
+    @GetMapping("/automation/status")
+    public ResponseEntity<NgApiResponse<AutomationSessionState>> automationStatus() {
+        AutomationSessionState state = redTagStepExecutionService.getSessionState();
+        return ResponseEntity.ok(new NgApiResponse<>(state, "Current status", LocalDateTime.now()));
     }
 }

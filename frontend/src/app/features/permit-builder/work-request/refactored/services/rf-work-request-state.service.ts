@@ -7,6 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
 import { SyncUpdateService, EntityUpdateEvent } from '../../../../../services/sync/sync-update.service';
+import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/process-wr-dialog.service';
 
 @Injectable({
   providedIn: 'root',
@@ -16,6 +17,7 @@ export class RfWorkRequestStateService {
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
   private syncUpdateService = inject(SyncUpdateService);
+  private processWrDialogService = inject(ProcessWrDialogService);
   private ngZone = inject(NgZone);
 
   private pageSize = 50;
@@ -59,6 +61,12 @@ export class RfWorkRequestStateService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
         this.handleSyncUpdate(event);
+      });
+
+    this.processWrDialogService.onComplete$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.reloadData();
       });
   }
 

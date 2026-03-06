@@ -33,6 +33,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   isBottomMenuEnabled = input<boolean>(false);
   bottomMenuHeader = input<string | null>(null);
   isLeftMenuEnabled = input<boolean>(false);
+  mainContentPadding = input<boolean>(true);
 
   initialFooterHeight = 0;
   initialMouseY = 0;

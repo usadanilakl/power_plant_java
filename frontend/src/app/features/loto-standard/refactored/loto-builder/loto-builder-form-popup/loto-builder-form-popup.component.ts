@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfLotoPointFormComponent } from '../../../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component';
 import { RfLotoPointTableComponent } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
-import { RfLotoPointDualFormComponent } from '../../../../loto-points/refactored/rf-loto-point-dual-form/rf-loto-point-dual-form.component';
+import { LotoPointDualFormComponent } from '../../../../loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component';
 import { RfLotoPointApiService } from '../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
 import { LotoPointCounterpartService } from '../../../../loto-points/refactored/services/loto-point-counterpart.service';
@@ -45,7 +45,7 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
     CommonModule,
     RfLotoPointFormComponent,
     RfLotoPointTableComponent,
-    RfLotoPointDualFormComponent,
+    LotoPointDualFormComponent,
   ],
   providers: [
     // Provide a separate instance of RfLotoPointStateService for this popup

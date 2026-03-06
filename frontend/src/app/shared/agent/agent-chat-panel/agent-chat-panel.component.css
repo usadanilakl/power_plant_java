@@ -636,6 +636,18 @@
   font-weight: 500;
 }
 
+.creation-chip.new-value-chip {
+  border-style: dashed;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  opacity: 0.8;
+}
+
+.creation-chip.new-value-chip:hover {
+  opacity: 1;
+  background-color: rgba(var(--accent-color-rgb, 63, 81, 181), 0.08);
+}
+
 /* Text input card */
 .text-input-card {
   margin-top: 8px;

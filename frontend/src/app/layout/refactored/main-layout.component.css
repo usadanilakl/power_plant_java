@@ -186,6 +186,10 @@
   background-color: var(--primary-background);
 }
 
+.main-content.no-padding {
+  padding: 0;
+}
+
 .footer-resizer {
   height: 5px;
   background-color: var(--border-color);

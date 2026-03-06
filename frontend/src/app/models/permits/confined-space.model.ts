@@ -215,7 +215,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     dto: ConfinedSpaceDto,
     spaceOptions: Option[] = [],
     fields: (ConfinedSpaceFieldName | 'workArea')[] = [
-      'workArea', 'space', 'date', 'time', 'workScope', 'issuedTo', 'duration', 'meterModel',
+      'space', 'date', 'time', 'workScope', 'issuedTo', 'duration', 'meterModel',
       'meterNum', 'calibrated',
       ...Object.keys(ConfinedSpaceDto.getHazardFields(null)) as ConfinedSpaceFieldName[],
       ...Object.keys(ConfinedSpaceDto.getPpeFields(null)) as ConfinedSpaceFieldName[],
