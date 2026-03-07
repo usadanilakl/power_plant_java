@@ -896,8 +896,8 @@ public class RedTagAutomationService {
             currentField = "Permits: Hot Work";
             clickYesNo(SW_HOT_WORK, permits.isHotWork());
             pause(300);
-            currentField = "Permits: Venting/Purging";
-            clickYesNo(SW_VENTING_PURGING, permits.isVentingPurging());
+//            currentField = "Permits: Venting/Purging";
+//            clickYesNo(SW_VENTING_PURGING, permits.isVentingPurging());
             currentField = "Permits: JHA";
             clickYesNo(SW_JHA, permits.isJha());
             currentField = "Permits: Gas Testing";

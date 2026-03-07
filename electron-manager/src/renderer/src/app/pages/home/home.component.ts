@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-home',
@@ -82,10 +82,15 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
           <div class="feature-info">
             <h3>Weather</h3>
             <p class="feature-desc">Lightning and weather monitoring</p>
-            <div class="weather-snippets" *ngIf="weatherStatus?.status === 'available' || weatherForecast?.status === 'available'">
+            <div class="weather-snippets" *ngIf="weatherStatus?.status === 'available' || perryStatus?.status === 'available' || weatherForecast?.status === 'available'">
               <div class="lightning-snippet" *ngIf="weatherStatus?.status === 'available' && weatherStatus?.lightningDistance">
                 <span class="lightning-badge" [class]="lightningLevel">{{ weatherStatus?.lightningDistance }} {{ weatherStatus?.unit || 'mi' }}</span>
-                {{ lightningLabel }}
+                WB: {{ lightningLabel }}
+              </div>
+              <div class="lightning-snippet" *ngIf="perryStatus?.status === 'available' && perryStatus?.lightningDistance">
+                <span class="lightning-badge" [class]="perryLightningLevel">{{ perryStatus?.lightningDistance }}</span>
+                Perry: {{ perryStatus?.lightningStatus }}
+                <span class="perry-timer-badge" *ngIf="perryStatus?.lightningTimer">{{ perryStatus!.lightningTimer }}</span>
               </div>
               <div class="temp-snippet" *ngIf="weatherForecast?.status === 'available'">
                 {{ weatherForecast!.current.temperature | number:'1.0-0' }}&deg;F &middot; {{ forecastDesc }}
@@ -430,6 +435,13 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PjmStatus, 
     .lightning-badge.caution { background-color: var(--accent-warning); }
     .lightning-badge.danger { background-color: var(--accent-error); }
 
+    .perry-timer-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-error);
+      margin-left: 2px;
+    }
+
     .pjm-snippet {
       font-size: 12px;
       color: var(--text-secondary);
@@ -619,11 +631,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   activeWorkRequestCount: number | null = null;
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
+  perryStatus: PerryWeatherStatus | null = null;
   pjmStatus: PjmStatus | null = null;
   pjmPolling = false;
   private sub?: Subscription;
   private unsubWeather?: () => void;
   private unsubForecast?: () => void;
+  private unsubPerry?: () => void;
   private unsubPjm?: () => void;
 
   constructor(private electronService: ElectronService, private router: Router) {}
@@ -646,6 +660,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadWeatherForecast();
     this.unsubForecast = this.electronService.onWeatherForecastChange((f) => {
       this.weatherForecast = f;
+    });
+
+    this.loadPerryStatus();
+    this.unsubPerry = this.electronService.onPerryStatusChange((s) => {
+      this.perryStatus = s;
     });
 
     this.loadPjmStatus();
@@ -733,10 +752,29 @@ export class HomeComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
+  private async loadPerryStatus(): Promise<void> {
+    try {
+      const result = await this.electronService.getPerryStatus();
+      if (result.success && result.data) {
+        this.perryStatus = result.data;
+      }
+    } catch {}
+  }
+
+  get perryLightningLevel(): string {
+    if (!this.perryStatus || this.perryStatus.status !== 'available') return '';
+    const status = this.perryStatus.lightningStatus;
+    if (status === 'Lightning Alarm') return 'danger';
+    if (status === 'Lightning Watch') return 'caution';
+    if (status === 'All Clear') return 'safe';
+    return '';
+  }
+
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     this.unsubWeather?.();
     this.unsubForecast?.();
+    this.unsubPerry?.();
     this.unsubPjm?.();
   }
 

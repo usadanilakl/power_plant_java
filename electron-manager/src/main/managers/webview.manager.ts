@@ -58,7 +58,7 @@ export class WebViewManager {
 
     // Register auto-login listener BEFORE loadURL (loadURL resolves on did-finish-load,
     // so attaching the listener after await would miss the event — race condition)
-    if (target === 'gate-website' || target === 'onlocation') {
+    if (target === 'gate-website' || target === 'onlocation' || target === 'perry-weather') {
       win.webContents.once('did-finish-load', () => {
         console.log(`[WebView] ${target} page loaded, attempting auto-login...`);
         this.autoLogin(target).catch((err) => {
@@ -226,6 +226,51 @@ export class WebViewManager {
 
       const navResult = await instance.window.webContents.executeJavaScript(navScript);
       console.log(`[WebView] OnLocation post-login navigation: ${navResult}`);
+
+    } else if (target === 'perry-weather') {
+      const perryPath = require('path');
+      const perryFs = require('fs');
+      const perryConfigPath = perryPath.join(getWorkingDir(), 'perry-config.json');
+      let perryConfig: any = {};
+      try {
+        if (perryFs.existsSync(perryConfigPath)) {
+          perryConfig = JSON.parse(perryFs.readFileSync(perryConfigPath, 'utf-8'));
+        }
+      } catch { /* use empty config */ }
+
+      const perryUsername = perryConfig.perryUsername || '';
+      const perryPassword = perryConfig.perryPassword || '';
+      const wc = instance.window.webContents;
+
+      const hasForm = await wc.executeJavaScript(`!!document.getElementById('usernameInput')`);
+      if (!hasForm) {
+        console.log('[WebView] Perry login form not found, may already be logged in');
+        return;
+      }
+
+      // Fill username via insertText
+      await wc.executeJavaScript(`
+        var el = document.getElementById('usernameInput');
+        if (el) { el.focus(); el.click(); el.value = ''; }
+      `);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await wc.insertText(perryUsername);
+
+      // Fill password via insertText
+      await wc.executeJavaScript(`
+        var el = document.getElementById('passwordInput');
+        if (el) { el.focus(); el.click(); el.value = ''; }
+      `);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await wc.insertText(perryPassword);
+
+      // Click login button
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await wc.executeJavaScript(`
+        var btn = document.getElementById('loginButton');
+        if (btn) btn.click();
+      `);
+      console.log('[WebView] Perry Weather auto-login: submitted');
     }
   }
 
@@ -496,7 +541,8 @@ export class WebViewManager {
       'gate-website': 'Gate Access System',
       'onlocation': 'WhosOnLocation',
       'weather': 'Weather',
-      'pjm': 'PJM'
+      'pjm': 'PJM',
+      'perry-weather': 'Perry Weather'
     };
     return titles[target] || target;
   }

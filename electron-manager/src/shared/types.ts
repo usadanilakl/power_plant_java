@@ -17,7 +17,7 @@ export interface AppStatus {
 }
 
 // WebView targets
-export type WebViewTarget = 'fm-global' | 'gate-website' | 'onlocation' | 'weather' | 'pjm';
+export type WebViewTarget = 'fm-global' | 'gate-website' | 'onlocation' | 'weather' | 'pjm' | 'perry-weather';
 
 export interface WebViewRequest {
   target: WebViewTarget;
@@ -122,6 +122,18 @@ export interface WeatherForecast {
   lastUpdate: string;
   status: 'loading' | 'available' | 'error';
   error?: string;
+}
+
+// Perry Weather
+export interface PerryWeatherStatus {
+  lightningStatus?: string;    // "All Clear", "Lightning Watch", "Lightning Alarm"
+  lightningDistance?: string;   // "0-10 mi", "10-20 mi", etc.
+  lightningTimer?: string;     // "28:21" countdown when lightning is active
+  temperature?: string;        // "67.6"
+  feelsLike?: string;          // "59"
+  wind?: string;               // "10 S"
+  lastUpdate?: string;         // HH:mm:ss
+  status: 'loading' | 'available' | 'unavailable' | 'login-pending';
 }
 
 // PJM

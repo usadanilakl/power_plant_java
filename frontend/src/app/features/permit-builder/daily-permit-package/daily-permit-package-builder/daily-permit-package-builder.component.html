@@ -78,193 +78,194 @@
     </div>
   </div>
     
-    <div class="toggle-buttons">
-      <button (click)="toggleSafeWorkVisibility()" [disabled]="safeWorkCount()===0">
-        {{ isSafeWorkVisible ? 'Hide' : 'Show' }} Safe Work
-      </button>
-
-      <button (click)="toggleConfinedSpaceVisibility()" [disabled]="confinedSpaceCount()===0">
-        {{ isConfinedSpaceVisible ? 'Hide' : 'Show' }} Confined Space
-      </button>
-
-      <button (click)="toggleHotWorkVisibility()" [disabled]="hotWorkCount()===0">
-        {{ isHotWorkVisible ? 'Hide' : 'Show' }} Hot Work
-      </button>
-
-      <button (click)="toggleWorkRequestVisibility()">
-        {{ isWorkRequestVisible ? 'Hide' : 'Show' }} Work Request
-      </button>
-      <button (click)="toggleLotoVisibility()">
-        {{ isLotoVisible ? 'Hide' : 'Show' }} LOTO
-      </button>
-      <button (click)="toggleEnergizedWorkVisibility()">
-        {{ isEnergizedWorkVisible ? 'Hide' : 'Show' }} Energized Work
-      </button>
-      <button (click)="toggleExcavationVisibility()">
-        {{ isExcavationVisible ? 'Hide' : 'Show' }} Excavation
-      </button>
-      <button (click)="toggleVentingVisibility()">
-        {{ isVentingVisible ? 'Hide' : 'Show' }} Venting
-      </button>
-      <button (click)="openPaperFormPopup()">Open Paper Forms</button>
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      @for(tab of permitTabs(); track tab.key) {
+        <button class="tab"
+          [class.active]="activeTab() === tab.key && !pinnedTabs().includes(tab.key)"
+          [class.pinned]="pinnedTabs().includes(tab.key)"
+          (click)="selectTab(tab.key)"
+          (contextmenu)="$event.preventDefault(); togglePin(tab.key)">
+          {{ tab.label }}
+          @if(tab.count > 0) {
+            <span class="tab-badge">{{ tab.count }}</span>
+          }
+          @if(pinnedTabs().includes(tab.key)) {
+            <span class="tab-pin">&#128204;</span>
+          }
+        </button>
+      }
+      <button class="tab paper-tab" (click)="openPaperFormPopup()">Paper Forms</button>
     </div>
 
-  @if(isWorkRequestVisible){
-    <app-item-carousel 
-      [items]="requests()" 
-      title="Work Requests" 
-      (itemChangedEvent)="currentDailyPermitPackageService.currentWorkRequest.set($event)"
-      (addItemEvent)="attachNew('Work Request')">
-      <ng-template let-wr>
-        <app-work-request-display [workRequest]="wr"></app-work-request-display>
-      </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate</button>
-    </app-item-carousel>
-  }
+    <!-- Tab content: pinned panels + active panel -->
+    <div class="tab-content" [attr.data-panels]="panelCount()">
+      @for(pin of pinnedTabs(); track pin) {
+        <div class="tab-panel">
+          <ng-container [ngTemplateOutlet]="permitPanel" [ngTemplateOutletContext]="{ $implicit: pin }"></ng-container>
+        </div>
+      }
+      <div class="tab-panel">
+        <ng-container [ngTemplateOutlet]="permitPanel" [ngTemplateOutletContext]="{ $implicit: activeTab() }"></ng-container>
+      </div>
+    </div>
 
-  <div class="permits-section">
-    @if(isSafeWorkVisible){
-      <app-item-carousel 
-        [items]="safeWorks()" 
-        title="Safe Works" 
-        (itemChangedEvent)="currentDailyPermitPackageService.currentSafeWork.set($event)"
-        (addItemEvent)="attachNew('Safe Work')">
-        <ng-template let-sw>
-          <app-safe-work-form 
-            [values]="sw" 
-            [submitButtonText]="'Build In Red Tag'"
-            (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
-            (formSubmit)="buildInRedTag($event, 'safeWork')"
-            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'safeWorks')">
-          </app-safe-work-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
-        <button [disabled]="emptySafeWorksExists()" (click)="addSafeWork()">Add Empty</button>
-      </app-item-carousel>
-    }
-    @if(isHotWorkVisible){
-      <app-item-carousel 
-        [items]="hotWorks()" 
-        title="Hot Works" 
-        (itemChangedEvent)="currentDailyPermitPackageService.currentHotWork.set($event)"
-        (addItemEvent)="attachNew('Hot Work')">
-        <ng-template let-hw>
-          <app-hot-work-form 
-            [values]="hw"
-            [submitButtonText]="'Build In Red Tag'"
-            (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
-            (formSubmit)="buildInRedTag($event, 'hotWork')"
-            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'hotWorks')"
-          ></app-hot-work-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
-        <button [disabled]="emptyHotWorksExists()" (click)="addHotWork()">Add Empty</button>
-      </app-item-carousel>
-    }
-    @if(isConfinedSpaceVisible){
-      <app-item-carousel 
-        [items]="confinedSpaces()" 
-        title="Confined Spaces" 
-        (itemChangedEvent)="currentDailyPermitPackageService.currentConfinedSpace.set($event)"
-        (addItemEvent)="attachNew('Confined Space')">
-        <ng-template let-cs>
-          <app-confined-space-form 
-            [values]="cs"
-            [submitButtonText]="'Build In Red Tag'"
-            (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
-            (formSubmit)="buildInRedTag($event, 'confinedSpace')"
-            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'confinedSpaces')"
-          ></app-confined-space-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
-        <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
-      </app-item-carousel>
-    }
-    @if(isLotoVisible){
-      <app-item-carousel 
-        [items]="lotos()" 
-        title="LOTO" 
-        (itemChangedEvent)="currentDailyPermitPackageService.currentLoto.set($event)"
-        (addItemEvent)="attachNew('LOTO')">
-        <ng-template let-loto>
-          <app-loto-detail-form
-            [values]="loto"
-            [withLotoPointDataBase]="false"
-            (formSubmitEvent)="buildInRedTag($event, 'loto')"
-            (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment($event, 'lotos')"
-          ></app-loto-detail-form>
-        </ng-template>
-        <!-- <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateLotoFromCurrentRequest()">Generate</button>
-        <button [disabled]="emptyLotsExists()" (click)="addLoto()">Add Empty</button> -->
-      </app-item-carousel>
-    }
-    @if(isEnergizedWorkVisible){
-      <app-item-carousel
-        [items]="energizedWorkPermits()"
-        title="Energized Work Permits"
-        (itemChangedEvent)="currentDailyPermitPackageService.currentEnergizedWorkPermit.set($event)"
-        (addItemEvent)="attachNew('Energized Work Permit')">
-        <ng-template let-ep>
-          <app-rf-reactive-form
-            [fields]="energizedWorkPermitFields"
-            [entity]="ep"
-            [title]="'Energized Work Permit'"
-            [submitButtonText]="'Build In Red Tag'"
-            [deleteButtonText]="ep.id ? 'Remove' : ''"
-            (formValueChange)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
-            (formSubmit)="buildInRedTag($event, 'energizedWorkPermit')"
-            (formDelete)="removeCurrentEnergizedWorkPermit()"
-          ></app-rf-reactive-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate</button>
-        <button (click)="addEnergizedWorkPermit()">Add Empty</button>
-      </app-item-carousel>
-    }
-    @if(isExcavationVisible){
-      <app-item-carousel
-        [items]="excavationPermits()"
-        title="Excavation Permits"
-        (itemChangedEvent)="currentDailyPermitPackageService.currentExcavationPermit.set($event)"
-        (addItemEvent)="attachNew('Excavation Permit')">
-        <ng-template let-xp>
-          <app-rf-reactive-form
-            [fields]="excavationPermitFields"
-            [entity]="xp"
-            [title]="'Excavation Permit'"
-            [submitButtonText]="'Build In Red Tag'"
-            [deleteButtonText]="xp.id ? 'Remove' : ''"
-            (formValueChange)="currentDailyPermitPackageService.submitExcavationPermit($event)"
-            (formSubmit)="buildInRedTag($event, 'excavationPermit')"
-            (formDelete)="removeCurrentExcavationPermit()"
-          ></app-rf-reactive-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate</button>
-        <button (click)="addExcavationPermit()">Add Empty</button>
-      </app-item-carousel>
-    }
-    @if(isVentingVisible){
-      <app-item-carousel
-        [items]="ventingPermits()"
-        title="Venting Permits"
-        (itemChangedEvent)="currentDailyPermitPackageService.currentVentingPermit.set($event)"
-        (addItemEvent)="attachNew('Venting Permit')">
-        <ng-template let-vp>
-          <app-rf-reactive-form
-            [fields]="ventingPermitFields"
-            [entity]="vp"
-            [title]="'Venting Permit'"
-            [submitButtonText]="'Build In Red Tag'"
-            [deleteButtonText]="vp.id ? 'Remove' : ''"
-            (formValueChange)="currentDailyPermitPackageService.submitVentingPermit($event)"
-            (formSubmit)="buildInRedTag($event, 'ventingPermit')"
-            (formDelete)="removeCurrentVentingPermit()"
-          ></app-rf-reactive-form>
-        </ng-template>
-        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate</button>
-        <button (click)="addVentingPermit()">Add Empty</button>
-      </app-item-carousel>
-    }
-  </div>
+    <!-- Shared template for rendering a permit panel by key -->
+    <ng-template #permitPanel let-tabKey>
+      @switch(tabKey) {
+        @case('workRequests') {
+          <app-item-carousel
+            [items]="requests()"
+            title="Work Requests"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentWorkRequest.set($event)"
+            (addItemEvent)="attachNew('Work Request')">
+            <ng-template let-wr>
+              <app-work-request-display [workRequest]="wr"></app-work-request-display>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate</button>
+          </app-item-carousel>
+        }
+        @case('safeWorks') {
+          <app-item-carousel
+            [items]="safeWorks()"
+            title="Safe Works"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentSafeWork.set($event)"
+            (addItemEvent)="attachNew('Safe Work')">
+            <ng-template let-sw>
+              <app-safe-work-form
+                [values]="sw"
+                [submitButtonText]="'Build In Red Tag'"
+                (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
+                (formSubmit)="buildInRedTag($event, 'safeWork')"
+                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'safeWorks')">
+              </app-safe-work-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
+            <button [disabled]="emptySafeWorksExists()" (click)="addSafeWork()">Add Empty</button>
+          </app-item-carousel>
+        }
+        @case('hotWorks') {
+          <app-item-carousel
+            [items]="hotWorks()"
+            title="Hot Works"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentHotWork.set($event)"
+            (addItemEvent)="attachNew('Hot Work')">
+            <ng-template let-hw>
+              <app-hot-work-form
+                [values]="hw"
+                [submitButtonText]="'Build In Red Tag'"
+                (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
+                (formSubmit)="buildInRedTag($event, 'hotWork')"
+                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'hotWorks')"
+              ></app-hot-work-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
+            <button [disabled]="emptyHotWorksExists()" (click)="addHotWork()">Add Empty</button>
+          </app-item-carousel>
+        }
+        @case('confinedSpaces') {
+          <app-item-carousel
+            [items]="confinedSpaces()"
+            title="Confined Spaces"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentConfinedSpace.set($event)"
+            (addItemEvent)="attachNew('Confined Space')">
+            <ng-template let-cs>
+              <app-confined-space-form
+                [values]="cs"
+                [submitButtonText]="'Build In Red Tag'"
+                (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
+                (formSubmit)="buildInRedTag($event, 'confinedSpace')"
+                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'confinedSpaces')"
+              ></app-confined-space-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
+            <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
+          </app-item-carousel>
+        }
+        @case('lotos') {
+          <app-item-carousel
+            [items]="lotos()"
+            title="LOTO"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentLoto.set($event)"
+            (addItemEvent)="attachNew('LOTO')">
+            <ng-template let-loto>
+              <app-loto-detail-form
+                [values]="loto"
+                [withLotoPointDataBase]="false"
+                (formSubmitEvent)="buildInRedTag($event, 'loto')"
+                (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment($event, 'lotos')"
+              ></app-loto-detail-form>
+            </ng-template>
+          </app-item-carousel>
+        }
+        @case('energizedWork') {
+          <app-item-carousel
+            [items]="energizedWorkPermits()"
+            title="Energized Work Permits"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentEnergizedWorkPermit.set($event)"
+            (addItemEvent)="attachNew('Energized Work Permit')">
+            <ng-template let-ep>
+              <app-rf-reactive-form
+                [fields]="energizedWorkPermitFields"
+                [entity]="ep"
+                [title]="'Energized Work Permit'"
+                [submitButtonText]="'Build In Red Tag'"
+                [deleteButtonText]="ep.id ? 'Remove' : ''"
+                (formValueChange)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
+                (formSubmit)="buildInRedTag($event, 'energizedWorkPermit')"
+                (formDelete)="removeCurrentEnergizedWorkPermit()"
+              ></app-rf-reactive-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate</button>
+            <button (click)="addEnergizedWorkPermit()">Add Empty</button>
+          </app-item-carousel>
+        }
+        @case('excavation') {
+          <app-item-carousel
+            [items]="excavationPermits()"
+            title="Excavation Permits"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentExcavationPermit.set($event)"
+            (addItemEvent)="attachNew('Excavation Permit')">
+            <ng-template let-xp>
+              <app-rf-reactive-form
+                [fields]="excavationPermitFields"
+                [entity]="xp"
+                [title]="'Excavation Permit'"
+                [submitButtonText]="'Build In Red Tag'"
+                [deleteButtonText]="xp.id ? 'Remove' : ''"
+                (formValueChange)="currentDailyPermitPackageService.submitExcavationPermit($event)"
+                (formSubmit)="buildInRedTag($event, 'excavationPermit')"
+                (formDelete)="removeCurrentExcavationPermit()"
+              ></app-rf-reactive-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate</button>
+            <button (click)="addExcavationPermit()">Add Empty</button>
+          </app-item-carousel>
+        }
+        @case('venting') {
+          <app-item-carousel
+            [items]="ventingPermits()"
+            title="Venting Permits"
+            (itemChangedEvent)="currentDailyPermitPackageService.currentVentingPermit.set($event)"
+            (addItemEvent)="attachNew('Venting Permit')">
+            <ng-template let-vp>
+              <app-rf-reactive-form
+                [fields]="ventingPermitFields"
+                [entity]="vp"
+                [title]="'Venting Permit'"
+                [submitButtonText]="'Build In Red Tag'"
+                [deleteButtonText]="vp.id ? 'Remove' : ''"
+                (formValueChange)="currentDailyPermitPackageService.submitVentingPermit($event)"
+                (formSubmit)="buildInRedTag($event, 'ventingPermit')"
+                (formDelete)="removeCurrentVentingPermit()"
+              ></app-rf-reactive-form>
+            </ng-template>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate</button>
+            <button (click)="addVentingPermit()">Add Empty</button>
+          </app-item-carousel>
+        }
+      }
+    </ng-template>
 
   @if(currentPackage().modifications && currentPackage().modifications.length > 0){
     <div class="modifications-section">

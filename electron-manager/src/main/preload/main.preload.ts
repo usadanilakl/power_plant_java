@@ -195,6 +195,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_WEATHER_FORECAST, sub); };
   },
 
+  // Perry Weather
+  getPerryStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PERRY_GET_STATUS),
+  perryRefresh: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PERRY_REFRESH),
+  perrySetInterval: (seconds: number): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PERRY_SET_INTERVAL, seconds),
+  onPerryStatusChange: (callback: (status: any) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, status: any) => callback(status);
+    ipcRenderer.on(events.IPC_PERRY_STATUS, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_PERRY_STATUS, sub); };
+  },
+
   // PJM
   getPjmStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_GET_STATUS),
   pjmShowWindow: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PJM_SHOW_WINDOW),

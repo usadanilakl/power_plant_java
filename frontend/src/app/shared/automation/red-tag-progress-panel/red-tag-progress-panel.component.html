@@ -16,7 +16,7 @@
   <!-- Controls -->
   <div class="control-buttons">
     <button class="ctrl-btn start" (click)="start()"
-            [disabled]="progressService.isRunning() || progressService.isCompleted()">
+            [disabled]="progressService.isRunning()">
       Start
     </button>
     <button class="ctrl-btn pause" (click)="pause()"

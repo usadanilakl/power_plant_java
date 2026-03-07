@@ -13,6 +13,7 @@ public class AgentFormFillRequest {
     private String userMessage;
     private List<FieldSpec> fields;
     private Map<String, Object> currentValues;
+    private Map<String, String> formContext;
 
     @Getter
     @Setter

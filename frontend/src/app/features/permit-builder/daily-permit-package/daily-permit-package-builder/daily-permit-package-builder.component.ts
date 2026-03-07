@@ -107,6 +107,43 @@ export class DailyPermitPackageBuilderComponent {
   reissueColumns = DailyPermitPackageDto.toTableColumns(['id', 'name', 'permitNumber']);
 
 
+  // Tab-based layout
+  activeTab = signal<string>('workRequests');
+  pinnedTabs = signal<string[]>([]);
+  panelCount = computed(() => this.pinnedTabs().length + 1);
+
+  permitTabs = computed(() => [
+    { key: 'workRequests', label: 'WR', count: this.requestCount() },
+    { key: 'safeWorks', label: 'Safe Work', count: this.safeWorkCount() },
+    { key: 'hotWorks', label: 'Hot Work', count: this.hotWorkCount() },
+    { key: 'confinedSpaces', label: 'Confined Space', count: this.confinedSpaceCount() },
+    { key: 'lotos', label: 'LOTO', count: this.lotoCount() },
+    { key: 'energizedWork', label: 'Energized', count: this.energizedWorkPermitCount() },
+    { key: 'excavation', label: 'Excavation', count: this.excavationPermitCount() },
+    { key: 'venting', label: 'Venting', count: this.ventingPermitCount() },
+  ]);
+
+  selectTab(tab: string) {
+    if (this.pinnedTabs().includes(tab)) {
+      this.pinnedTabs.update(pins => pins.filter(p => p !== tab));
+      return;
+    }
+    this.activeTab.set(tab);
+  }
+
+  togglePin(tab: string) {
+    if (this.pinnedTabs().includes(tab)) {
+      this.pinnedTabs.update(pins => pins.filter(p => p !== tab));
+    } else if (this.pinnedTabs().length < 2) {
+      this.pinnedTabs.update(pins => [...pins, tab]);
+      if (tab === this.activeTab()) {
+        const nextTab = this.permitTabs().find(t => t.key !== tab && !this.pinnedTabs().includes(t.key));
+        if (nextTab) this.activeTab.set(nextTab.key);
+      }
+    }
+  }
+
+  // Paper form popup visibility (separate from main tab view)
   isSafeWorkVisible = true;
   isConfinedSpaceVisible = true;
   isHotWorkVisible = true;

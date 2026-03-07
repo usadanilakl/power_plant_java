@@ -16,12 +16,14 @@ export interface FormFillRequest {
   userMessage: string;
   fields: FieldSpec[];
   currentValues?: Record<string, any>;
+  formContext?: Record<string, string>;
 }
 
 export interface FormFillResponse {
   fieldValues: Record<string, any>;
   message: string;
   success: boolean;
+  guidance?: string[];
 }
 
 @Injectable({ providedIn: 'root' })

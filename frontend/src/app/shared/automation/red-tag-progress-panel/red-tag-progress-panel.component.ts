@@ -37,6 +37,14 @@ export class RedTagProgressPanelComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.progressService.connect();
+
+    // Clear stale session if it belongs to a different package
+    const currentPkg = this.currentPackageService.currentDailyPacksge();
+    const session = this.progressService.session();
+    if (session && currentPkg && session.packageId !== currentPkg.id) {
+      this.progressService.session.set(null);
+    }
+
     this.controlService.getManualConfirmation().subscribe({
       next: (res) => { if (res.responseData !== null) this.manualConfirmation = res.responseData; }
     });

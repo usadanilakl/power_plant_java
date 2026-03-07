@@ -256,3 +256,61 @@ code {
   font-size: 14px;
   color: #555;
 }
+
+/* SharePoint list cards */
+.sp-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sp-list-card {
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-list-card.sp-exists {
+  border-left: 4px solid #28a745;
+}
+
+.sp-list-card.sp-missing {
+  border-left: 4px solid #ffc107;
+}
+
+.sp-list-card.sp-error {
+  border-left: 4px solid #dc3545;
+}
+
+.sp-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sp-list-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.sp-list-detail {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.sp-list-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sp-list-action button {
+  padding: 6px 14px;
+  font-size: 13px;
+}

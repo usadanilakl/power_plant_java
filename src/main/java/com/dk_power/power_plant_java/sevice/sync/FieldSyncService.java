@@ -408,9 +408,12 @@ public class FieldSyncService {
         entityManager.clear();
 
         // ==================== SINGLE-PASS CATEGORIZATION ====================
-        // Categorize all changes in one pass instead of multiple stream iterations
+        // Categorize all changes in one pass instead of multiple stream iterations.
+        // Relationship collection changes (OneToMany, ManyToMany) are deferred to later passes
+        // to ensure all referenced entities exist before FK columns are set.
         List<FieldChange> manyToManyChanges = new ArrayList<>();
-        List<FieldChange> nonManyToManyChanges = new ArrayList<>();
+        List<FieldChange> oneToManyChanges = new ArrayList<>();
+        List<FieldChange> nonRelationshipCollectionChanges = new ArrayList<>();
         List<FieldChange> fileObjectChanges = new ArrayList<>();
         List<FieldChange> valueNameChanges = new ArrayList<>();
 
@@ -418,8 +421,10 @@ public class FieldSyncService {
             // Categorize by relationship type
             if ("ManyToMany".equals(change.getRelationshipType())) {
                 manyToManyChanges.add(change);
+            } else if ("OneToMany".equals(change.getRelationshipType())) {
+                oneToManyChanges.add(change);
             } else {
-                nonManyToManyChanges.add(change);
+                nonRelationshipCollectionChanges.add(change);
             }
 
             // Collect FileObject changes for file sync
@@ -437,8 +442,8 @@ public class FieldSyncService {
         }
         // ==================== END SINGLE-PASS CATEGORIZATION ====================
 
-        // Group non-ManyToMany changes by entity type first
-        Map<String, Map<Long, List<FieldChange>>> changesByEntity = nonManyToManyChanges.stream()
+        // Group scalar/ManyToOne changes by entity type (excludes deferred OneToMany and ManyToMany)
+        Map<String, Map<Long, List<FieldChange>>> changesByEntity = nonRelationshipCollectionChanges.stream()
             .collect(Collectors.groupingBy(
                 FieldChange::getEntityType,
                 Collectors.groupingBy(FieldChange::getEntityId)
@@ -519,19 +524,70 @@ public class FieldSyncService {
             }
         }
 
-        // Flush to ensure all entities are persisted before ManyToMany pass
-        if (!manyToManyChanges.isEmpty()) {
+        // Flush to ensure all entities are persisted before relationship passes
+        if (!oneToManyChanges.isEmpty() || !manyToManyChanges.isEmpty()) {
             try {
                 entityManager.flush();
             } catch (Exception e) {
-                log.warn("Flush failed before ManyToMany pass: {}", e.getMessage());
+                log.warn("Flush failed before relationship passes: {}", e.getMessage());
                 entityManager.clear();
             }
         }
 
-        // SECOND PASS: Process ManyToMany changes (after all entities exist)
+        // SECOND PASS: Process OneToMany changes (after all entities exist).
+        // Unidirectional @OneToMany @JoinColumn stores FK on child table, but child entity
+        // has no @ManyToOne back-reference. We must defer these FK UPDATEs until all child
+        // entities have been created in the first pass.
+        if (!oneToManyChanges.isEmpty()) {
+            log.debug("Second pass: applying {} OneToMany changes", oneToManyChanges.size());
+
+            Map<String, Map<Long, List<FieldChange>>> oneToManyByEntity = oneToManyChanges.stream()
+                .collect(Collectors.groupingBy(
+                    FieldChange::getEntityType,
+                    Collectors.groupingBy(FieldChange::getEntityId)
+                ));
+
+            for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : oneToManyByEntity.entrySet()) {
+                String entityType = entityEntry.getKey();
+                Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
+
+                List<Long> entityIds = new ArrayList<>(changesById.keySet());
+                Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
+
+                for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
+                    Long entityId = idEntry.getKey();
+                    List<FieldChange> changes = idEntry.getValue();
+
+                    // Resolve remapped parent ID (dedup may have redirected)
+                    Long resolvedId = DedupKeyResolver.resolveRemappedId(entityType, entityId, idRemapTable);
+
+                    // Parent entity must exist to set FK on children
+                    SyncableService service = serviceFacade.getService(entityType);
+                    if (service == null) continue;
+                    BaseIdEntity parentEntity = (BaseIdEntity) service.getEntityById(resolvedId);
+                    if (parentEntity == null) {
+                        log.debug("OneToMany parent {}#{} not found, deferring to next sync", entityType, resolvedId);
+                        continue;
+                    }
+
+                    for (FieldChange change : changes) {
+                        if (shouldApplyChange(change, latestChangesMap)) {
+                            boolean applied = applyFieldChange(parentEntity, change, null, idRemapTable);
+                            if (applied) {
+                                saveIncomingChange(change);
+                                totalApplied++;
+                            }
+                            // If not applied (children missing), change is NOT saved —
+                            // next sync will retry since the change isn't marked as received
+                        }
+                    }
+                }
+            }
+        }
+
+        // THIRD PASS: Process ManyToMany changes (after all entities exist)
         if (!manyToManyChanges.isEmpty()) {
-            log.debug("Second pass: applying {} ManyToMany changes", manyToManyChanges.size());
+            log.debug("Third pass: applying {} ManyToMany changes", manyToManyChanges.size());
 
             // Group ManyToMany changes by entity
             Map<String, Map<Long, List<FieldChange>>> manyToManyByEntity = manyToManyChanges.stream()
@@ -565,7 +621,7 @@ public class FieldSyncService {
             }
         }
 
-        // THIRD PASS: Retry failed ManyToOne references now that all entities should exist.
+        // FOURTH PASS: Retry failed ManyToOne references now that all entities should exist.
         // IMPORTANT: Entities stored in failedManyToOneRefs may have been DETACHED by
         // entityManager.clear() calls during createEntityFromSync(). We must re-load them
         // from the database to get a managed instance before modifying and saving.
@@ -1343,6 +1399,9 @@ public class FieldSyncService {
      * Handle unidirectional @OneToMany with @JoinColumn — sets the FK column on child rows via SQL.
      * This is needed because the child entity has no @ManyToOne back-reference, so field-level
      * sync can't set the FK from the child side.
+     *
+     * Returns false if any referenced child doesn't exist yet — the change will NOT be saved
+     * as received, allowing the next sync to retry once the children are created.
      */
     private boolean applyUnidirectionalOneToManyChange(BaseIdEntity entity, Field field, FieldChange change,
                                                         jakarta.persistence.JoinColumn joinCol,
@@ -1381,30 +1440,46 @@ public class FieldSyncService {
                 }
             }
 
+            // Check that ALL referenced children exist before applying
+            List<Long> existingIds = filterExistingIds(field, childIds);
+            if (existingIds.size() < childIds.size()) {
+                log.info("OneToMany {}.{}: {}/{} child entities not found yet — deferring to next sync",
+                    entity.getClass().getSimpleName(), change.getFieldName(),
+                    childIds.size() - existingIds.size(), childIds.size());
+                return false; // Don't save change — retry on next sync
+            }
+
             // Clear old FK references (detach children that are no longer in the collection)
             entityManager.createNativeQuery(
                 "UPDATE " + childTable + " SET " + fkColumn + " = NULL WHERE " + fkColumn + " = :parentId")
                 .setParameter("parentId", parentId)
                 .executeUpdate();
 
-            // Set FK on current children
-            if (!childIds.isEmpty()) {
-                for (Long childId : childIds) {
-                    entityManager.createNativeQuery(
-                        "UPDATE " + childTable + " SET " + fkColumn + " = :parentId WHERE id = :childId")
-                        .setParameter("parentId", parentId)
-                        .setParameter("childId", childId)
-                        .executeUpdate();
-                }
+            // Set FK on current children and verify each UPDATE affected a row
+            int totalAffected = 0;
+            for (Long childId : childIds) {
+                int affected = entityManager.createNativeQuery(
+                    "UPDATE " + childTable + " SET " + fkColumn + " = :parentId WHERE id = :childId")
+                    .setParameter("parentId", parentId)
+                    .setParameter("childId", childId)
+                    .executeUpdate();
+                totalAffected += affected;
             }
 
-            log.debug("Applied unidirectional OneToMany {}.{}: set {}={} on {} child rows in {}",
+            if (totalAffected < childIds.size()) {
+                log.warn("OneToMany {}.{}: UPDATE affected {}/{} rows — some FK links may be missing",
+                    entity.getClass().getSimpleName(), change.getFieldName(),
+                    totalAffected, childIds.size());
+                return false; // Incomplete — don't save, retry next sync
+            }
+
+            log.debug("Applied OneToMany {}.{}: set {}={} on {} child rows in {}",
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 fkColumn, parentId, childIds.size(), childTable);
             return true;
 
         } catch (Exception e) {
-            log.error("Error applying unidirectional OneToMany {}.{}: {}",
+            log.error("Error applying OneToMany {}.{}: {}",
                 entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
             return false;
         }

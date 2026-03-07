@@ -54,6 +54,7 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
           <div class="packages-header">
             <h3>Daily Packages ({{ packages().length }})</h3>
             <div class="header-actions">
+              <button class="merge-btn" (click)="openMergeDialog()">Merge Into...</button>
               <button class="create-package-btn" (click)="isAddPackageDialogOpen.set(true)">+ Add Package</button>
             </div>
           </div>
@@ -83,6 +84,7 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
                         <button class="status-btn close" (click)="openPackageClosureDialog(pkg)">Close</button>
                       }
                     }
+                    <button class="action-btn move" (click)="openMoveDialog(pkg)" title="Move to another job">&#8594;</button>
                     <button class="action-btn detach" (click)="detachPackage(pkg)" title="Detach from job">x</button>
                   </div>
                 </div>
@@ -194,6 +196,59 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
           </div>
         </div>
       }
+
+      @if(isMoveDialogOpen()) {
+        <div class="dialog-overlay" (click)="isMoveDialogOpen.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <h3>Move Package to Job</h3>
+            @if(otherJobs().length > 0) {
+              <div class="tab-list">
+                @for(job of otherJobs(); track job.id) {
+                  <div class="list-item" (click)="moveToJob(job)">
+                    <div class="item-main">
+                      <span class="item-name">{{ job.permitNumber || job.name || 'Job #' + job.id }}</span>
+                      <span class="status-badge" [attr.data-status]="job.jobStatus?.name || 'Open'">
+                        {{ job.jobStatus?.name || 'Open' }}
+                      </span>
+                    </div>
+                    <div class="item-sub">{{ job.company || '' }} {{ job.foreman ? '- ' + job.foreman : '' }}</div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="tab-empty">No other jobs available.</p>
+            }
+            <button class="cancel-btn" (click)="isMoveDialogOpen.set(false)">Cancel</button>
+          </div>
+        </div>
+      }
+
+      @if(isMergeDialogOpen()) {
+        <div class="dialog-overlay" (click)="isMergeDialogOpen.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <h3>Merge Into Another Job</h3>
+            <p class="merge-hint">All packages from this job will be moved to the selected job. This job will be deleted.</p>
+            @if(otherJobs().length > 0) {
+              <div class="tab-list">
+                @for(job of otherJobs(); track job.id) {
+                  <div class="list-item" (click)="mergeIntoJob(job)">
+                    <div class="item-main">
+                      <span class="item-name">{{ job.permitNumber || job.name || 'Job #' + job.id }}</span>
+                      <span class="status-badge" [attr.data-status]="job.jobStatus?.name || 'Open'">
+                        {{ job.jobStatus?.name || 'Open' }}
+                      </span>
+                    </div>
+                    <div class="item-sub">{{ job.company || '' }} {{ job.foreman ? '- ' + job.foreman : '' }}</div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="tab-empty">No other jobs available.</p>
+            }
+            <button class="cancel-btn" (click)="isMergeDialogOpen.set(false)">Cancel</button>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -232,6 +287,9 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
     .header-actions { display: flex; gap: 8px; }
     .create-package-btn { padding: 4px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .create-package-btn:hover { background: #45a049; }
+    .merge-btn { padding: 4px 12px; background: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .merge-btn:hover { background: #F57C00; }
+    .merge-hint { color: #888; font-size: 12px; margin: 0 0 8px; }
     .reissue-btn { padding: 4px 12px; background: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .reissue-btn:hover { background: #F57C00; }
     .no-packages { color: #888; font-style: italic; font-size: 13px; }
@@ -244,7 +302,8 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
     .pkg-name { font-size: 13px; font-weight: 500; color: #ddd; }
     .pkg-date { font-size: 12px; color: #888; }
     .package-actions-inline { display: flex; align-items: center; gap: 6px; }
-    .action-btn.detach { width: 22px; height: 22px; padding: 0; background: transparent; border: 1px solid #555; border-radius: 4px; color: #999; cursor: pointer; font-size: 12px; line-height: 20px; text-align: center; }
+    .action-btn { width: 22px; height: 22px; padding: 0; background: transparent; border: 1px solid #555; border-radius: 4px; color: #999; cursor: pointer; font-size: 12px; line-height: 20px; text-align: center; }
+    .action-btn.move:hover { border-color: #64b5f6; color: #64b5f6; }
     .action-btn.detach:hover { border-color: #f44336; color: #f44336; }
 
     /* Dialog overlay */
@@ -332,6 +391,17 @@ export class RfJobLogFormComponent {
   closureScopeDetails = '';
   closureContinueDate = '';
 
+  // Move package dialog
+  isMoveDialogOpen = signal(false);
+  movingPackageId = signal<number>(0);
+
+  // Merge dialog
+  isMergeDialogOpen = signal(false);
+
+  // All jobs for move/merge target selection
+  allJobLogs = toSignal(this.currentService.allJobLogs$, { initialValue: [] as JobLogDto[] });
+  otherJobs = computed(() => this.allJobLogs().filter(j => j.id !== this.entity().id));
+
   // Error feedback
   errorMessage = signal('');
 
@@ -340,7 +410,8 @@ export class RfJobLogFormComponent {
   }
 
   onDelete(): void {
-    this.currentService.removeJobLogFromList(this.entity().id);
+    if (!confirm('Delete this job? This cannot be undone.')) return;
+    this.currentService.deleteJob(this.entity().id);
   }
 
   createEmptyPackage(): void {
@@ -438,6 +509,30 @@ export class RfJobLogFormComponent {
         });
       }
     }, 1000);
+  }
+
+  // --- Move package ---
+
+  openMoveDialog(pkg: DailyPermitPackageDto): void {
+    this.movingPackageId.set(pkg.id);
+    this.isMoveDialogOpen.set(true);
+  }
+
+  moveToJob(targetJob: JobLogDto): void {
+    this.isMoveDialogOpen.set(false);
+    this.currentService.movePackageToJob(this.movingPackageId(), targetJob.id);
+  }
+
+  // --- Merge jobs ---
+
+  openMergeDialog(): void {
+    this.isMergeDialogOpen.set(true);
+  }
+
+  mergeIntoJob(targetJob: JobLogDto): void {
+    if (!confirm(`Merge all packages into "${targetJob.permitNumber || targetJob.name || 'Job #' + targetJob.id}"? This job will be deleted.`)) return;
+    this.isMergeDialogOpen.set(false);
+    this.currentService.mergeCurrentJobInto(targetJob.id);
   }
 
   private refreshCurrentJob(): void {

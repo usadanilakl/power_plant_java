@@ -206,6 +206,17 @@ export interface WeatherForecast {
   error?: string;
 }
 
+export interface PerryWeatherStatus {
+  lightningStatus?: string;
+  lightningDistance?: string;
+  lightningTimer?: string;     // "28:21" countdown when lightning is active
+  temperature?: string;
+  feelsLike?: string;
+  wind?: string;
+  lastUpdate?: string;
+  status: 'loading' | 'available' | 'unavailable' | 'login-pending';
+}
+
 export interface PjmUnitLmp {
   pnodeId: number;
   pnodeName?: string;
@@ -341,6 +352,12 @@ interface ElectronAPI {
   getWeatherForecast: () => Promise<IpcResult<WeatherForecast>>;
   weatherRefreshForecast: () => Promise<IpcResult>;
   onWeatherForecastChange: (callback: (forecast: WeatherForecast) => void) => () => void;
+
+  // Perry Weather
+  getPerryStatus: () => Promise<IpcResult<PerryWeatherStatus> & { intervalSeconds?: number }>;
+  perryRefresh: () => Promise<IpcResult>;
+  perrySetInterval: (seconds: number) => Promise<IpcResult & { intervalSeconds?: number }>;
+  onPerryStatusChange: (callback: (status: PerryWeatherStatus) => void) => () => void;
 
   // PJM
   getPjmStatus: () => Promise<IpcResult<PjmStatus> & { polling?: boolean }>;
@@ -803,6 +820,30 @@ export class ElectronService implements OnDestroy {
     if (!this.isElectron) return () => {};
     return window.electronAPI!.onWeatherForecastChange((forecast) => {
       this.ngZone.run(() => callback(forecast));
+    });
+  }
+
+  // Perry Weather
+
+  async getPerryStatus(): Promise<IpcResult<PerryWeatherStatus> & { intervalSeconds?: number }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.getPerryStatus();
+  }
+
+  async perryRefresh(): Promise<IpcResult> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.perryRefresh();
+  }
+
+  async perrySetInterval(seconds: number): Promise<IpcResult & { intervalSeconds?: number }> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.perrySetInterval(seconds);
+  }
+
+  onPerryStatusChange(callback: (status: PerryWeatherStatus) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onPerryStatusChange((status) => {
+      this.ngZone.run(() => callback(status));
     });
   }
 

@@ -31,6 +31,7 @@ import { ClipboardService } from '../../../../shared/clipboard/clipboard.service
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
 import { NamingConventionComponent } from '../../../tag-number/naming-convention/naming-convention.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
+import { AiFormAssistantComponent } from '../../../../shared/reactive-form/refactored/ai-form-assistant/ai-form-assistant.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
@@ -79,6 +80,7 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
     TagNumberGeneratorComponent,
     NamingConventionComponent,
     PopupProjectionComponent,
+    AiFormAssistantComponent,
   ],
   providers: [
     // Provide isolated instances for this component's table
@@ -187,6 +189,24 @@ export class LotoPointDualFormComponent {
       ? this.mapperService.toFormFields(entity, fields)
       : this.mapperService.toFormFields(entity);
   });
+
+  // AI form context for primary panel
+  primaryFormContext = computed<Record<string, string>>(() => ({
+    panelSide: 'primary',
+    sourceUnit: this.sourceUnit(),
+    targetUnit: this.targetUnit(),
+    counterpartExists: this.counterpartLotoPoint() ? 'true' : 'false',
+    counterpartStatus: this.counterpartStatus(),
+  }));
+
+  // AI form context for counterpart panel
+  counterpartFormContext = computed<Record<string, string>>(() => ({
+    panelSide: 'counterpart',
+    sourceUnit: this.targetUnit(),
+    targetUnit: this.sourceUnit(),
+    counterpartExists: 'true',
+    counterpartStatus: this.counterpartStatus(),
+  }));
 
   constructor() {
     // Load counterpart when primary changes
@@ -1290,6 +1310,24 @@ export class LotoPointDualFormComponent {
           }
         });
     });
+  }
+
+  // ========== AI Form Fill ==========
+
+  onPrimaryAiFill(values: Record<string, any>): void {
+    const current = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const updated = new LotoPointDto({ ...current, ...values });
+    this.currentPrimaryValues.set(updated);
+    this.updateDifferentFields();
+  }
+
+  onCounterpartAiFill(values: Record<string, any>): void {
+    const current = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!current) return;
+    const updated = new LotoPointDto({ ...current, ...values });
+    this.currentCounterpartValues.set(updated);
+    this.counterpartLotoPoint.set(updated);
+    this.updateDifferentFields();
   }
 
   /**

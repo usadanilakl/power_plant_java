@@ -148,6 +148,14 @@ public class CategoryValueMergeService {
             Value duplicate = values.get(i);
             refactorAllReferences(duplicate, canonical);
 
+            // Verify no references remain before soft-deleting
+            long remaining = countRemainingReferences(duplicate);
+            if (remaining > 0) {
+                log.warn("Value merge: '{}' (cat={}) ID={} still has {} references — skipping delete",
+                    name, categoryId, duplicate.getId(), remaining);
+                continue;
+            }
+
             // Soft-delete via JPA so FieldChangeEntityListener fires and creates
             // a FieldChange record — this ensures the deletion syncs to other machines.
             duplicate.setDeleted(true);
@@ -235,5 +243,50 @@ public class CategoryValueMergeService {
                 log.warn("Error re-pointing {} references: {}", entityType, e.getMessage());
             }
         }
+    }
+
+    /**
+     * Count how many non-deleted entities still reference this Value.
+     * Uses the same reflection approach as refactorAllReferences.
+     */
+    private long countRemainingReferences(Value value) {
+        long count = 0;
+        for (String entityType : entityTableRegistry.getSyncOrder()) {
+            if ("Category".equals(entityType) || "Value".equals(entityType)) continue;
+            try {
+                SyncableService<?> service = serviceFacade.getService(entityType);
+                if (service == null) continue;
+
+                Class<?> entityClass = service.getEntity().getClass();
+                List<Field> valueFields = new ArrayList<>();
+                Class<?> cls = entityClass;
+                while (cls != null && !cls.equals(Object.class)) {
+                    for (Field field : cls.getDeclaredFields()) {
+                        if (field.getType().equals(Value.class)) {
+                            valueFields.add(field);
+                        }
+                    }
+                    cls = cls.getSuperclass();
+                }
+                if (valueFields.isEmpty()) continue;
+
+                StringBuilder jpql = new StringBuilder("SELECT COUNT(e) FROM ")
+                        .append(entityType).append(" e WHERE ");
+                for (int i = 0; i < valueFields.size(); i++) {
+                    if (i > 0) jpql.append(" OR ");
+                    jpql.append("e.").append(valueFields.get(i).getName()).append(".id = :valId");
+                }
+
+                Long c = entityManager.createQuery(jpql.toString(), Long.class)
+                        .setParameter("valId", value.getId())
+                        .getSingleResult();
+                count += c;
+            } catch (Exception e) {
+                log.warn("Error counting {} references to Value #{}: {}",
+                        entityType, value.getId(), e.getMessage());
+                return 1; // Assume references exist if we can't check — safe default
+            }
+        }
+        return count;
     }
 }

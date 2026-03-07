@@ -53,6 +53,22 @@ export class JobLogService {
     );
   }
 
+  deleteJob(id: string): Observable<SpringApiResponse<void>> {
+    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
+  }
+
+  movePackage(sourceJobId: string, packageId: string, targetJobId: string): Observable<SpringApiResponse<JobLogDto[]>> {
+    return this.http.post<SpringApiResponse<JobLogDto[]>>(
+      `${this.apiUrl}/${sourceJobId}/move-package/${packageId}/to/${targetJobId}`, {}
+    );
+  }
+
+  mergeJobs(sourceJobId: string, targetJobId: string): Observable<SpringApiResponse<JobLogDto>> {
+    return this.http.post<SpringApiResponse<JobLogDto>>(
+      `${this.apiUrl}/${sourceJobId}/merge-into/${targetJobId}`, {}
+    );
+  }
+
   closeJob(jobId: string): Observable<SpringApiResponse<JobLogDto>> {
     return this.http.post<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/${jobId}/close`, {});
   }

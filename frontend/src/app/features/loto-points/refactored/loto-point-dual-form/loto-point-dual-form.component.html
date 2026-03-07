@@ -23,6 +23,13 @@
         </div>
 
         <div class="form-content">
+          <app-ai-form-assistant
+            [formType]="'lotoPointDual'"
+            [fields]="primaryFields()"
+            [currentValues]="currentPrimaryValues() || primaryLotoPoint()"
+            [formContext]="primaryFormContext()"
+            (fieldValues)="onPrimaryAiFill($event)"
+          />
           <app-rf-reactive-form
             #primaryForm
             [entity]="currentPrimaryValues() || primaryLotoPoint()"
@@ -227,6 +234,13 @@
           </div>
 
           <div class="form-content">
+            <app-ai-form-assistant
+              [formType]="'lotoPointDual'"
+              [fields]="counterpartFields()"
+              [currentValues]="currentCounterpartValues() || counterpartLotoPoint()!"
+              [formContext]="counterpartFormContext()"
+              (fieldValues)="onCounterpartAiFill($event)"
+            />
             <app-rf-reactive-form
               #counterpartForm
               [entity]="currentCounterpartValues() || counterpartLotoPoint()!"

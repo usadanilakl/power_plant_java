@@ -51,12 +51,19 @@ public class BaseIdEntity {
     protected void onCreate() {
         if (dateCreated == null) dateCreated = LocalDateTime.now();
         if (dateModified == null) dateModified = LocalDateTime.now();
+        truncateName();
     }
 
     @PreUpdate
     protected void onUpdate() {
-//        System.out.println("updating...");
         this.setDateModified(LocalDateTime.now());
+        truncateName();
+    }
+
+    private void truncateName() {
+        if (name != null && name.length() > 255) {
+            name = name.substring(0, 252) + "...";
+        }
     }
 
     public void addRefactorNote(String s) {

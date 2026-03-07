@@ -481,6 +481,12 @@
   background: #bbb;
 }
 
+/* AI form assistant spacing */
+.form-content app-ai-form-assistant {
+  display: block;
+  margin-bottom: 8px;
+}
+
 /* Hide form title since we have panel headers */
 .form-content ::ng-deep .form-title {
   display: none;

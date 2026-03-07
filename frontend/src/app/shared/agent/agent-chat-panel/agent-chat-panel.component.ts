@@ -40,23 +40,21 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   private wasRecording = false;
 
   private transcriptEffect = effect(() => {
-    const recording = this.chatService.isRecording();
-    const transcript = this.chatService.transcriptBuffer();
+    const speech = this.chatService.speech;
+    const recording = speech.isRecording();
+    const transcript = speech.transcriptBuffer();
 
     if (recording && !this.wasRecording) {
-      // Recording just started — snapshot current text as user prefix
       this.userPrefix = this.inputText;
     }
 
     if (recording && transcript) {
-      // Live update: user prefix + speech transcript
       const separator = this.userPrefix && !this.userPrefix.endsWith(' ') ? ' ' : '';
       this.inputText = this.userPrefix + separator + transcript;
     }
 
     if (!recording && this.wasRecording) {
-      // Recording stopped — keep inputText as-is, clear buffer
-      this.chatService.transcriptBuffer.set('');
+      speech.transcriptBuffer.set('');
       this.userPrefix = '';
     }
 
@@ -71,10 +69,10 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.chatService.isRecording()) {
-      this.chatService.stopVoiceInput();
+    if (this.chatService.speech.isRecording()) {
+      this.chatService.speech.stopVoiceInput();
     }
-    if (this.chatService.isSpeaking()) {
+    if (this.chatService.speech.isSpeaking()) {
       this.chatService.stopSpeaking();
     }
   }
@@ -82,8 +80,8 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   send(): void {
     if (!this.inputText.trim() || this.chatService.isLoading()) return;
     // Stop recording if active before sending
-    if (this.chatService.isRecording()) {
-      this.chatService.stopVoiceInput();
+    if (this.chatService.speech.isRecording()) {
+      this.chatService.speech.stopVoiceInput();
     }
     this.chatService.sendMessage(this.inputText.trim());
     this.inputText = '';
@@ -130,10 +128,10 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   }
 
   toggleMic(): void {
-    if (this.chatService.isRecording()) {
-      this.chatService.stopVoiceInput();
+    if (this.chatService.speech.isRecording()) {
+      this.chatService.speech.stopVoiceInput();
     } else {
-      this.chatService.startVoiceInput();
+      this.chatService.speech.startVoiceInput();
     }
   }
 
@@ -142,11 +140,11 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   }
 
   onVoiceChange(voiceURI: string): void {
-    this.chatService.setVoice(voiceURI);
+    this.chatService.speech.setVoice(voiceURI);
   }
 
   onRateChange(rate: number): void {
-    this.chatService.speechRate.set(rate);
+    this.chatService.speech.speechRate.set(rate);
   }
 
   openItem(item: Record<string, any>): void {

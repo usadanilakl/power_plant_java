@@ -187,6 +187,54 @@ export class CurrentJobLogService {
     });
   }
 
+  deleteJob(id: number) {
+    this.jobLogService.deleteJob(id.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.removeJobLogFromList(id);
+        this.selectedJobLogSubject.next(new JobLogDto());
+      },
+      error: err => console.error('Error deleting job:', err)
+    });
+  }
+
+  movePackageToJob(packageId: number, targetJobId: number) {
+    const job = this.selectedJobLogSubject.value;
+    if (!job?.id) return;
+    this.jobLogService.movePackage(job.id.toString(), packageId.toString(), targetJobId.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: response => {
+        if (response?.responseData) {
+          const [updatedSource, updatedTarget] = response.responseData.map((j: any) => JobLogDto.fromJson(j));
+          this.updateJobLogInList(updatedSource);
+          this.updateJobLogInList(updatedTarget);
+          this.setCurrentJobLogWithDto(updatedSource);
+        }
+      },
+      error: err => console.error('Error moving package:', err)
+    });
+  }
+
+  mergeCurrentJobInto(targetJobId: number) {
+    const job = this.selectedJobLogSubject.value;
+    if (!job?.id) return;
+    this.jobLogService.mergeJobs(job.id.toString(), targetJobId.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: response => {
+        if (response?.responseData) {
+          const updatedTarget = JobLogDto.fromJson(response.responseData);
+          this.removeJobLogFromList(job.id);
+          this.updateJobLogInList(updatedTarget);
+          this.setCurrentJobLogWithDto(updatedTarget);
+        }
+      },
+      error: err => console.error('Error merging jobs:', err)
+    });
+  }
+
   removeJobLogFromList(id: number) {
     const current = this.allJobLogsSubject.value;
     this.allJobLogsSubject.next(current.filter(j => j.id !== id));

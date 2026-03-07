@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ElectronService, WeatherStatus, WeatherForecast } from '../../services/electron.service';
+import { ElectronService, WeatherStatus, WeatherForecast, PerryWeatherStatus } from '../../services/electron.service';
 
 /** WMO weather code → description + icon */
 const WMO_CODES: Record<number, { desc: string; icon: string }> = {
@@ -40,10 +40,11 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
     <div class="page">
       <h1 class="page-title">Weather Monitoring</h1>
 
-      <!-- Top row: Lightning + Current conditions side by side -->
-      <div class="top-row">
-        <!-- Lightning distance display -->
-        <div class="lightning-panel" [class]="lightningLevel">
+      <!-- Top row: Two lightning panels + Current conditions -->
+      <div class="top-row triple">
+        <!-- WeatherBug Lightning -->
+        <div class="lightning-panel clickable" [class]="lightningLevel" (click)="openWeatherPage()">
+          <span class="source-label">WeatherBug</span>
           <div class="lightning-icon"><span class="material-icons">bolt</span></div>
           <div class="lightning-info">
             <span class="lightning-distance">{{ lightningDistance || '--' }}</span>
@@ -51,6 +52,26 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
           </div>
           <span class="lightning-label">Lightning Distance</span>
           <span class="lightning-status" [class]="lightningLevel">{{ statusText }}</span>
+        </div>
+
+        <!-- Perry Weather Lightning -->
+        <div class="lightning-panel clickable" [class]="perryLightningLevel" (click)="openPerryPage()">
+          <span class="source-label">Perry Weather</span>
+          <div class="lightning-icon"><span class="material-icons">bolt</span></div>
+          <div class="lightning-info">
+            <span class="lightning-distance">{{ perryStatus?.lightningDistance || '--' }}</span>
+          </div>
+          <span class="lightning-label">Lightning Status</span>
+          <span class="lightning-status" [class]="perryLightningLevel">{{ perryStatusText }}</span>
+          <div class="perry-timer" *ngIf="perryStatus?.lightningTimer">
+            <span class="material-icons timer-icon">timer</span>
+            <span class="timer-value">{{ perryStatus!.lightningTimer }}</span>
+          </div>
+          <div class="perry-extra" *ngIf="perryStatus?.status === 'available' && perryStatus?.temperature">
+            <span>{{ perryStatus!.temperature }}&deg;F</span>
+            <span *ngIf="perryStatus?.wind">&middot; Wind {{ perryStatus!.wind }}</span>
+          </div>
+          <span class="perry-login-hint" *ngIf="perryStatus?.status === 'login-pending'">Logging in...</span>
         </div>
 
         <!-- Current conditions -->
@@ -133,6 +154,7 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
           </select>
         </div>
         <button class="btn btn-secondary" (click)="openWeatherPage()">Open WeatherBug</button>
+        <button class="btn btn-secondary" (click)="openPerryPage()">Open Perry Weather</button>
       </div>
 
       <div class="notice">
@@ -140,7 +162,7 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
         <div>
           <strong>Data Sources</strong>
           <p>
-            Lightning: WeatherBug Spark (polling {{ intervalLabel }}).
+            Lightning: WeatherBug Spark (polling {{ intervalLabel }}) + Perry Weather.
             Forecast: Open-Meteo (updates every 15 min). Elwood, IL 60421.
           </p>
           <p>
@@ -165,12 +187,16 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
       margin-bottom: 20px;
     }
 
-    /* Top row: lightning + current side by side */
+    /* Top row: lightning panels + current side by side */
     .top-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 20px;
+    }
+
+    .top-row.triple {
+      grid-template-columns: 1fr 1fr 1fr;
     }
 
     .lightning-panel {
@@ -230,6 +256,52 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
     .lightning-status.safe { color: var(--accent-success); }
     .lightning-status.caution { color: var(--accent-warning); }
     .lightning-status.danger { color: var(--accent-error); }
+
+    .lightning-panel.clickable {
+      cursor: pointer;
+    }
+
+    .lightning-panel.clickable:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--accent-primary);
+    }
+
+    .source-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .perry-timer {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--accent-error);
+      font-weight: 600;
+    }
+
+    .timer-icon {
+      font-size: 18px;
+    }
+
+    .timer-value {
+      font-size: 20px;
+    }
+
+    .perry-extra {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 6px;
+    }
+
+    .perry-login-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
 
     /* Current conditions panel */
     .current-panel {
@@ -554,8 +626,10 @@ export class WeatherComponent implements OnInit, OnDestroy {
   intervalSeconds = 10;
   refreshing = false;
   forecast: WeatherForecast | null = null;
+  perryStatus: PerryWeatherStatus | null = null;
   private unsubLightning?: () => void;
   private unsubForecast?: () => void;
+  private unsubPerry?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
@@ -582,11 +656,22 @@ export class WeatherComponent implements OnInit, OnDestroy {
     this.unsubForecast = this.electronService.onWeatherForecastChange((f) => {
       this.forecast = f;
     });
+
+    // Load Perry Weather status
+    const perryResult = await this.electronService.getPerryStatus();
+    if (perryResult.success && perryResult.data) {
+      this.perryStatus = perryResult.data;
+    }
+
+    this.unsubPerry = this.electronService.onPerryStatusChange((status) => {
+      this.perryStatus = status;
+    });
   }
 
   ngOnDestroy(): void {
     this.unsubLightning?.();
     this.unsubForecast?.();
+    this.unsubPerry?.();
   }
 
   private applyStatus(status: WeatherStatus): void {
@@ -599,14 +684,18 @@ export class WeatherComponent implements OnInit, OnDestroy {
     this.refreshing = true;
     await Promise.all([
       this.electronService.weatherRefresh(),
-      this.electronService.weatherRefreshForecast()
+      this.electronService.weatherRefreshForecast(),
+      this.electronService.perryRefresh()
     ]);
     setTimeout(() => this.refreshing = false, 3000);
   }
 
   async onIntervalChange(event: Event): Promise<void> {
     const seconds = parseInt((event.target as HTMLSelectElement).value, 10);
-    const r = await this.electronService.weatherSetInterval(seconds);
+    const [r] = await Promise.all([
+      this.electronService.weatherSetInterval(seconds),
+      this.electronService.perrySetInterval(seconds)
+    ]);
     if (r.intervalSeconds) {
       this.intervalSeconds = r.intervalSeconds;
     }
@@ -614,6 +703,34 @@ export class WeatherComponent implements OnInit, OnDestroy {
 
   openWeatherPage(): void {
     this.electronService.openWebView('weather', 'https://www.weatherbug.com/alerts/lightning/elwood-il-60421/');
+  }
+
+  openPerryPage(): void {
+    this.electronService.openWebView('perry-weather', 'https://app.perryweather.com/');
+  }
+
+  get perryLightningLevel(): string {
+    if (!this.perryStatus || this.perryStatus.status !== 'available') return '';
+    const status = this.perryStatus.lightningStatus;
+    if (status === 'Lightning Alarm') return 'danger';
+    if (status === 'Lightning Watch') return 'caution';
+    if (status === 'All Clear') return 'safe';
+    // Try parsing distance range like "0-10 mi"
+    const match = this.perryStatus.lightningDistance?.match(/(\d+)-(\d+)/);
+    if (match) {
+      const low = parseInt(match[1], 10);
+      if (low <= 8) return 'danger';
+      if (low <= 20) return 'caution';
+      return 'safe';
+    }
+    return '';
+  }
+
+  get perryStatusText(): string {
+    if (!this.perryStatus) return 'Loading...';
+    if (this.perryStatus.status === 'login-pending') return 'Logging in...';
+    if (this.perryStatus.status === 'unavailable') return 'Unavailable';
+    return this.perryStatus.lightningStatus || 'No data';
   }
 
   get intervalLabel(): string {

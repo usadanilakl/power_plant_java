@@ -22,24 +22,24 @@
       <div class="setting-row">
         <label class="setting-toggle-label">Auto-speak responses</label>
         <input type="checkbox" class="setting-checkbox"
-          [ngModel]="chatService.autoSpeak()"
-          (ngModelChange)="chatService.autoSpeak.set($event)">
+          [ngModel]="chatService.speech.autoSpeak()"
+          (ngModelChange)="chatService.speech.autoSpeak.set($event)">
       </div>
       <div class="setting-group">
         <label class="setting-label">Voice</label>
         <select class="setting-select"
-          [ngModel]="chatService.selectedVoiceURI()"
+          [ngModel]="chatService.speech.selectedVoiceURI()"
           (ngModelChange)="onVoiceChange($event)">
-          @for (voice of chatService.availableVoices(); track voice.voiceURI) {
+          @for (voice of chatService.speech.availableVoices(); track voice.voiceURI) {
             <option [value]="voice.voiceURI">{{ voice.name }} ({{ voice.lang }})</option>
           }
         </select>
       </div>
       <div class="setting-group">
-        <label class="setting-label">Speed: {{ chatService.speechRate() | number:'1.2-2' }}x</label>
+        <label class="setting-label">Speed: {{ chatService.speech.speechRate() | number:'1.2-2' }}x</label>
         <input type="range" class="setting-slider"
           min="0.5" max="2.0" step="0.05"
-          [ngModel]="chatService.speechRate()"
+          [ngModel]="chatService.speech.speechRate()"
           (ngModelChange)="onRateChange($event)">
         <div class="slider-labels">
           <span>0.5x</span>
@@ -309,19 +309,19 @@
   @if (chatService.isAvailable()) {
     <div class="agent-input">
       <button mat-icon-button
-        [matTooltip]="chatService.sttSupported() ? (chatService.isRecording() ? 'Stop recording' : 'Voice input') : 'Voice input not available'"
-        [disabled]="!chatService.sttSupported()"
-        [class.recording]="chatService.isRecording()"
+        [matTooltip]="chatService.speech.sttSupported() ? (chatService.speech.isRecording() ? 'Stop recording' : 'Voice input') : 'Voice input not available'"
+        [disabled]="!chatService.speech.sttSupported()"
+        [class.recording]="chatService.speech.isRecording()"
         class="mic-btn"
         (click)="toggleMic()">
-        <mat-icon>{{ chatService.isRecording() ? 'mic_off' : 'mic' }}</mat-icon>
+        <mat-icon>{{ chatService.speech.isRecording() ? 'mic_off' : 'mic' }}</mat-icon>
       </button>
       <textarea #messageInput
         [(ngModel)]="inputText"
         (keydown)="onKeyDown($event)"
         (input)="autoResize($event)"
-        [class.recording-active]="chatService.isRecording()"
-        [placeholder]="chatService.isRecording() ? 'Listening... speak or type' : 'Ask Jackson anything...'"
+        [class.recording-active]="chatService.speech.isRecording()"
+        [placeholder]="chatService.speech.isRecording() ? 'Listening... speak or type' : 'Ask Jackson anything...'"
         rows="1"></textarea>
       <button mat-icon-button (click)="send()"
         class="send-btn"

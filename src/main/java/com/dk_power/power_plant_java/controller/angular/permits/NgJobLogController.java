@@ -143,6 +143,44 @@ public class NgJobLogController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteJob(@PathVariable String id) {
+        try {
+            service.deleteJob(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(null, "Job deleted successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{sourceJobId}/move-package/{packageId}/to/{targetJobId}")
+    public ResponseEntity<NgApiResponse<List<JobLogDto>>> movePackage(
+            @PathVariable String sourceJobId, @PathVariable String packageId, @PathVariable String targetJobId) {
+        try {
+            List<JobLogDto> result = service.movePackageToJob(sourceJobId, packageId, targetJobId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Package moved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{sourceJobId}/merge-into/{targetJobId}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> mergeJobs(
+            @PathVariable String sourceJobId, @PathVariable String targetJobId) {
+        try {
+            JobLogDto result = service.mergeJobs(sourceJobId, targetJobId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Jobs merged successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/{jobId}/close")
     public ResponseEntity<NgApiResponse<JobLogDto>> closeJob(@PathVariable String jobId) {
         try {

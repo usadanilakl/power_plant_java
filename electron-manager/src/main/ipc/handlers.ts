@@ -12,6 +12,7 @@ import { SyncStatusManager } from '../managers/sync-status.manager';
 import { ColdResyncManager } from '../managers/cold-resync.manager';
 import { GateLogManager } from '../managers/gate-log.manager';
 import { WeatherManager } from '../managers/weather.manager';
+import { PerryWeatherManager } from '../managers/perry-weather.manager';
 import { PjmManager } from '../managers/pjm.manager';
 import { ResourcePackManager } from '../managers/resource-pack.manager';
 import { ElectronUpdateManager } from '../managers/electron-update.manager';
@@ -19,7 +20,7 @@ import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DaEmailManager } from '../managers/da-email.manager';
 import { VoskManager } from '../managers/vosk.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
-import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PjmStatus, VoskResult } from '../../shared/types';
+import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult } from '../../shared/types';
 
 export class IpcHandlers {
   private springBoot: SpringBootManager;
@@ -29,6 +30,7 @@ export class IpcHandlers {
   private coldResyncManager: ColdResyncManager;
   private gateLogManager: GateLogManager;
   private weatherManager: WeatherManager;
+  private perryWeatherManager: PerryWeatherManager;
   private pjmManager: PjmManager;
   private daEmailManager: DaEmailManager;
   private resourcePackManager: ResourcePackManager;
@@ -75,6 +77,14 @@ export class IpcHandlers {
       }
     );
     this.weatherManager.start();
+    this.perryWeatherManager = new PerryWeatherManager(
+      (status: PerryWeatherStatus) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send(events.IPC_PERRY_STATUS, status);
+        }
+      }
+    );
+    this.perryWeatherManager.start();
     this.pjmManager = new PjmManager(this.windowLayoutManager, this.daEmailManager, (status: PjmStatus) => {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send(events.IPC_PJM_STATUS, status);
@@ -151,6 +161,7 @@ export class IpcHandlers {
     this.registerPermitsHandlers();
     this.registerGateLogHandlers();
     this.registerWeatherHandlers();
+    this.registerPerryWeatherHandlers();
     this.registerPjmHandlers();
     this.registerElectronUpdateHandlers();
     this.registerMenuHandlers();
@@ -916,6 +927,26 @@ export class IpcHandlers {
     });
   }
 
+  private registerPerryWeatherHandlers(): void {
+    ipcMain.handle(events.IPC_PERRY_GET_STATUS, () => {
+      return {
+        success: true,
+        data: this.perryWeatherManager.getStatus(),
+        intervalSeconds: this.perryWeatherManager.getIntervalSeconds()
+      };
+    });
+
+    ipcMain.handle(events.IPC_PERRY_REFRESH, () => {
+      this.perryWeatherManager.refresh();
+      return { success: true };
+    });
+
+    ipcMain.handle(events.IPC_PERRY_SET_INTERVAL, (_event, seconds: number) => {
+      this.perryWeatherManager.setScrapeInterval(seconds);
+      return { success: true, intervalSeconds: this.perryWeatherManager.getIntervalSeconds() };
+    });
+  }
+
   private registerPjmHandlers(): void {
     ipcMain.handle(events.IPC_PJM_GET_STATUS, () => {
       return { success: true, data: this.pjmManager.getStatus(), polling: this.pjmManager.isPolling() };
@@ -1370,6 +1401,7 @@ export class IpcHandlers {
   public async cleanup(): Promise<void> {
     this.gateLogManager.cleanup();
     this.weatherManager.cleanup();
+    this.perryWeatherManager.cleanup();
     this.pjmManager.cleanup();
     this.voskManager.cleanup();
     this.webview.closeAll();

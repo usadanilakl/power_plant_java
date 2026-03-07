@@ -290,7 +290,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
         for (int i = 0; i < parts.length - 1; i++) {
             String part = parts[i];
             if (!joins.containsKey(part)) {
-                Join<?, ?> join = from.join(part);
+                Join<?, ?> join = from.join(part, JoinType.LEFT);
                 joins.put(part, join);
             }
             from = joins.get(part);

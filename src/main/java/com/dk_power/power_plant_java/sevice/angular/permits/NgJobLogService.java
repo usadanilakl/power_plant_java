@@ -21,6 +21,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -91,7 +92,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         if (wr == null) throw new RuntimeException("WorkRequest not found: " + workRequestId);
 
         JobLog job = new JobLog();
-        job.setName(wr.getWorkScope());
+        job.setName(truncate(wr.getWorkScope(), 250));
         job.setWorkScope(wr.getWorkScope());
         job.setCompany(wr.getCompany());
         job.setForeman(wr.getRequestedBy());
@@ -117,7 +118,20 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
 
     public JobLogDto removePackageFromJob(String jobId, String packageId) {
         JobLog job = getEntityById(jobId);
-        job.getPackages().removeIf(pkg -> pkg.getId().equals(Long.parseLong(packageId)));
+        Long pkgId = Long.parseLong(packageId);
+
+        DailyPermitPackage pkg = job.getPackages().stream()
+                .filter(p -> p.getId().equals(pkgId))
+                .findFirst().orElseThrow(() -> new RuntimeException("Package not found"));
+        Set<Long> wrIds = pkg.getWorkRequests().stream()
+                .map(wr -> wr.getId()).collect(Collectors.toSet());
+
+        if (job.getOriginatingWorkRequest() != null
+                && wrIds.contains(job.getOriginatingWorkRequest().getId())) {
+            job.setOriginatingWorkRequest(null);
+        }
+
+        job.getPackages().removeIf(p -> p.getId().equals(pkgId));
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
     }
@@ -125,7 +139,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     public JobLogDto createEmptyPackageForJob(String jobId) {
         JobLog job = getEntityById(jobId);
         DailyPermitPackage pkg = new DailyPermitPackage();
-        pkg.setName(job.getName() + " - Package " + (job.getPackages().size() + 1));
+        pkg.setName(truncate(job.getName() + " - Package " + (job.getPackages().size() + 1), 250));
         pkg.setCompanyName(job.getCompany());
         pkg.setPermitNumber(permitNumberGenerator.generate(job.getStartDate()));
         job.getPackages().add(pkg);
@@ -174,6 +188,85 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         return jobLogMapper.convertToDto(saved);
     }
 
+    public void deleteJob(String id) {
+        JobLog job = getEntityById(id);
+        if (job == null) throw new RuntimeException("Job not found: " + id);
+        job.setOriginatingWorkRequest(null);
+        jobLogRepo.save(job);
+        jobLogRepo.delete(job);
+    }
+
+    public List<JobLogDto> movePackageToJob(String sourceJobId, String packageId, String targetJobId) {
+        Long sourceId = Long.parseLong(sourceJobId);
+        Long targetId = Long.parseLong(targetJobId);
+        Long pkgId = Long.parseLong(packageId);
+
+        if (sourceId.equals(targetId)) throw new RuntimeException("Source and target jobs are the same");
+
+        JobLog source = getEntityById(sourceJobId);
+        JobLog target = getEntityById(targetJobId);
+        if (source == null) throw new RuntimeException("Source job not found: " + sourceJobId);
+        if (target == null) throw new RuntimeException("Target job not found: " + targetJobId);
+
+        boolean owns = source.getPackages().stream().anyMatch(p -> p.getId().equals(pkgId));
+        if (!owns) throw new RuntimeException("Package " + packageId + " not found in source job " + sourceJobId);
+
+        // Null out originatingWorkRequest on source if it references a WR in the moving package
+        DailyPermitPackage pkg = source.getPackages().stream()
+                .filter(p -> p.getId().equals(pkgId)).findFirst().orElseThrow();
+        Set<Long> wrIds = pkg.getWorkRequests().stream()
+                .map(wr -> wr.getId()).collect(Collectors.toSet());
+        if (source.getOriginatingWorkRequest() != null
+                && wrIds.contains(source.getOriginatingWorkRequest().getId())) {
+            source.setOriginatingWorkRequest(null);
+            jobLogRepo.save(source);
+        }
+
+        // Use native SQL to move the package without triggering orphanRemoval
+        entityManager.createNativeQuery("UPDATE daily_permit_package SET job_log_id = :targetId WHERE id = :pkgId AND job_log_id = :sourceId")
+                .setParameter("targetId", targetId)
+                .setParameter("pkgId", pkgId)
+                .setParameter("sourceId", sourceId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        JobLog updatedSource = getEntityById(sourceJobId);
+        JobLog updatedTarget = getEntityById(targetJobId);
+        return List.of(jobLogMapper.convertToDto(updatedSource), jobLogMapper.convertToDto(updatedTarget));
+    }
+
+    public JobLogDto mergeJobs(String sourceJobId, String targetJobId) {
+        Long sourceId = Long.parseLong(sourceJobId);
+        Long targetId = Long.parseLong(targetJobId);
+
+        if (sourceId.equals(targetId)) throw new RuntimeException("Cannot merge a job into itself");
+
+        JobLog source = getEntityById(sourceJobId);
+        JobLog target = getEntityById(targetJobId);
+        if (source == null) throw new RuntimeException("Source job not found: " + sourceJobId);
+        if (target == null) throw new RuntimeException("Target job not found: " + targetJobId);
+
+        // Null out originatingWorkRequest before deleting source
+        source.setOriginatingWorkRequest(null);
+        jobLogRepo.save(source);
+
+        // Move all packages via native SQL
+        entityManager.createNativeQuery("UPDATE daily_permit_package SET job_log_id = :targetId WHERE job_log_id = :sourceId")
+                .setParameter("targetId", targetId)
+                .setParameter("sourceId", sourceId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        // Delete empty source job
+        JobLog emptySource = getEntityById(sourceJobId);
+        jobLogRepo.delete(emptySource);
+
+        JobLog updatedTarget = getEntityById(targetJobId);
+        return jobLogMapper.convertToDto(updatedTarget);
+    }
+
     public JobLogDto processWorkRequest(String jobId, String workRequestId) {
         JobLog job = getEntityById(jobId);
         WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))
@@ -184,8 +277,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
 
         // 2. Create DailyPermitPackage from WR data
         DailyPermitPackage pkg = new DailyPermitPackage();
-        String scope = wr.getWorkScope();
-        pkg.setName(scope != null && scope.length() > 250 ? scope.substring(0, 250) + "..." : scope);
+        pkg.setName(truncate(wr.getWorkScope(), 250));
         pkg.setCompanyName(wr.getCompany());
         pkg.setPersonName(wr.getRequestedBy());
         pkg.setDate(wr.getDateOfWorkToBePerformed());
@@ -215,5 +307,10 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         }
 
         return jobLogMapper.convertToDto(saved);
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) return null;
+        return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
     }
 }

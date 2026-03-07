@@ -1,12 +1,22 @@
 <div class="ai-form-bar">
   <div class="ai-input-row">
     <div class="ai-label">AI</div>
+    <button
+      class="ai-mic-btn"
+      (click)="toggleMic()"
+      [class.recording]="speech.isRecording()"
+      [disabled]="!speech.sttSupported() || isProcessing()"
+      [title]="speech.isRecording() ? 'Stop recording' : 'Voice input'"
+    >
+      {{ speech.isRecording() ? 'Stop' : 'Mic' }}
+    </button>
     <input
       type="text"
       [(ngModel)]="promptText"
       (keydown)="onKeyDown($event)"
-      placeholder="Describe this item to auto-fill the form..."
+      [placeholder]="speech.isRecording() ? 'Listening... speak or type' : 'Describe this item to auto-fill the form...'"
       [disabled]="isProcessing()"
+      [class.recording-active]="speech.isRecording()"
       class="ai-input"
     />
     <button
@@ -22,6 +32,22 @@
     </button>
   </div>
   @if (lastMessage()) {
-    <div class="ai-message">{{ lastMessage() }}</div>
+    <div class="ai-message">
+      <span>{{ lastMessage() }}</span>
+      <button
+        class="ai-speak-btn"
+        (click)="speakResponse()"
+        [title]="speech.isSpeaking() ? 'Stop' : 'Read aloud'"
+      >
+        {{ speech.isSpeaking() ? 'Stop' : 'Listen' }}
+      </button>
+    </div>
+  }
+  @if (guidanceItems().length > 0) {
+    <div class="ai-guidance">
+      @for (tip of guidanceItems(); track tip) {
+        <div class="ai-guidance-item">{{ tip }}</div>
+      }
+    </div>
   }
 </div>

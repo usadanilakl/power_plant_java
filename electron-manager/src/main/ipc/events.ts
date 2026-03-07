@@ -51,6 +51,12 @@ export const IPC_WEATHER_GET_FORECAST = 'weather:get-forecast';
 export const IPC_WEATHER_REFRESH_FORECAST = 'weather:refresh-forecast';
 export const IPC_WEATHER_FORECAST = 'weather:forecast';   // send/on broadcast
 
+// Perry Weather (invoke/handle + send/on)
+export const IPC_PERRY_GET_STATUS = 'perry:get-status';
+export const IPC_PERRY_REFRESH = 'perry:refresh';
+export const IPC_PERRY_SET_INTERVAL = 'perry:set-interval';
+export const IPC_PERRY_STATUS = 'perry:status';             // send/on broadcast
+
 // PJM (invoke/handle + send/on)
 export const IPC_PJM_GET_STATUS = 'pjm:get-status';
 export const IPC_PJM_SHOW_WINDOW = 'pjm:show-window';

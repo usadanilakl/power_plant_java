@@ -250,14 +250,14 @@ export class AdminFunctionalitiesService {
 
   getSharePointListStatuses(): Observable<SpListStatus[]> {
     return this.http.get<SpListStatus[]>(
-      `${environment.apiUrl}/ng/sharepoint/list-status`
+      `${environment.apiUrl}/sharepoint/list-status`
     );
   }
 
   provisionSharePointList(title: string): Observable<SpProvisionSingleResult> {
     const params = new HttpParams().set('title', title);
     return this.http.post<SpProvisionSingleResult>(
-      `${environment.apiUrl}/ng/sharepoint/provision-list`,
+      `${environment.apiUrl}/sharepoint/provision-list`,
       {},
       { params }
     );
@@ -265,7 +265,7 @@ export class AdminFunctionalitiesService {
 
   provisionAllSharePointLists(): Observable<SharePointProvisionResult> {
     return this.http.post<SharePointProvisionResult>(
-      `${environment.apiUrl}/ng/sharepoint/provision-lists`,
+      `${environment.apiUrl}/sharepoint/provision-lists`,
       {}
     );
   }

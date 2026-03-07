@@ -160,6 +160,7 @@ public class RedTagStepExecutionService {
     // --- Execution Loop ---
 
     private void executeLoop() {
+        Thread.interrupted(); // clear any stale interrupt flag from previous tasks on this executor thread
         try {
             List<AutomationStep> steps = session.getSteps();
             int startIdx = session.getCurrentStepIndex();
@@ -210,7 +211,7 @@ public class RedTagStepExecutionService {
                 progressController.broadcastSessionState("session_complete", session);
             }
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            // Don't re-set interrupt flag — executor thread is reused for future tasks
             log.info("Build execution interrupted");
         } catch (Exception e) {
             log.error("Unexpected error in build execution: {}", e.getMessage(), e);
