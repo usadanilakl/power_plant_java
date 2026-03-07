@@ -484,6 +484,13 @@
                       [disabled]="spProvisioningList === list.title">
                 {{ spProvisioningList === list.title ? 'Creating...' : 'Create List' }}
               </button>
+              <a *ngIf="list.exists"
+                 class="nav-btn sp-open-btn"
+                 [href]="getSharePointListUrl(list.title)"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                Open in SharePoint
+              </a>
             </div>
           </div>
         </div>

@@ -1,3 +1,6 @@
+-- Clean orphan FK references before Hibernate adds constraints (ignored on fresh DB via continue-on-error)
+UPDATE loto_point SET zero_energy_id = NULL WHERE zero_energy_id IS NOT NULL AND zero_energy_id NOT IN (SELECT id FROM zero_energy);
+
 CREATE SEQUENCE IF NOT EXISTS id_seq
     START WITH 1
     INCREMENT BY 1

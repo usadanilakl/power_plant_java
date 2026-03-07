@@ -15,4 +15,5 @@ public class FormContainerDto extends BaseDto {
     private Map<String, Object> position;
     private Map<String, Object> size;
     private Map<String, Object> style;
+    private Map<String, Object> contentStyle;
 }

@@ -66,10 +66,11 @@ public class SharePointListProvisioner {
             List<String> addedFields = new ArrayList<>();
             for (FieldDef field : def.fields) {
                 spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                spAccess.addFieldToDefaultView(def.title, field.name);
                 addedFields.add(field.name);
             }
 
-            log.info("[SP-Provision] Created list '{}' with {} fields", def.title, addedFields.size());
+            log.info("[SP-Provision] Created list '{}' with {} fields (added to default view)", def.title, addedFields.size());
             result.put("success", true);
             result.put("alreadyExisted", false);
             result.put("fieldsAdded", addedFields);
@@ -98,8 +99,9 @@ public class SharePointListProvisioner {
                     spAccess.createList(def.title);
                     for (FieldDef field : def.fields) {
                         spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                        spAccess.addFieldToDefaultView(def.title, field.name);
                     }
-                    log.info("[SP-Provision] Created list '{}' with {} fields", def.title, def.fields.size());
+                    log.info("[SP-Provision] Created list '{}' with {} fields (added to default view)", def.title, def.fields.size());
                     created.add(def.title);
                 }
             } catch (Exception e) {

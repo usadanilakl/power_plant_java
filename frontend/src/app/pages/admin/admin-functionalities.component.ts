@@ -350,4 +350,8 @@ export class AdminFunctionalitiesComponent {
   getMissingListCount(): number {
     return this.spListStatuses.filter(s => !s.exists).length;
   }
+
+  getSharePointListUrl(title: string): string {
+    return `https://jpowerusa.sharepoint.com/sites/JG/Lists/${encodeURIComponent(title)}`;
+  }
 }

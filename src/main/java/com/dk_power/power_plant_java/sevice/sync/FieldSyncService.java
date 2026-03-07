@@ -539,7 +539,7 @@ public class FieldSyncService {
         // has no @ManyToOne back-reference. We must defer these FK UPDATEs until all child
         // entities have been created in the first pass.
         if (!oneToManyChanges.isEmpty()) {
-            log.debug("Second pass: applying {} OneToMany changes", oneToManyChanges.size());
+            log.info("Second pass: applying {} OneToMany changes", oneToManyChanges.size());
 
             Map<String, Map<Long, List<FieldChange>>> oneToManyByEntity = oneToManyChanges.stream()
                 .collect(Collectors.groupingBy(
@@ -571,8 +571,13 @@ public class FieldSyncService {
                     }
 
                     for (FieldChange change : changes) {
-                        if (shouldApplyChange(change, latestChangesMap)) {
+                        boolean shouldApply = shouldApplyChange(change, latestChangesMap);
+                        log.info("OneToMany {}.{} #{}: shouldApply={}, newValue={}",
+                            entityType, change.getFieldName(), resolvedId, shouldApply,
+                            change.getNewValue() != null ? change.getNewValue().substring(0, Math.min(100, change.getNewValue().length())) : "null");
+                        if (shouldApply) {
                             boolean applied = applyFieldChange(parentEntity, change, null, idRemapTable);
+                            log.info("OneToMany {}.{} #{}: applied={}", entityType, change.getFieldName(), resolvedId, applied);
                             if (applied) {
                                 saveIncomingChange(change);
                                 totalApplied++;
@@ -1442,6 +1447,9 @@ public class FieldSyncService {
 
             // Check that ALL referenced children exist before applying
             List<Long> existingIds = filterExistingIds(field, childIds);
+            log.info("OneToMany {}.{}: childIds={}, existingIds={}, childTable={}, fkColumn={}",
+                entity.getClass().getSimpleName(), change.getFieldName(),
+                childIds, existingIds, childTable, fkColumn);
             if (existingIds.size() < childIds.size()) {
                 log.info("OneToMany {}.{}: {}/{} child entities not found yet — deferring to next sync",
                     entity.getClass().getSimpleName(), change.getFieldName(),
@@ -1473,7 +1481,7 @@ public class FieldSyncService {
                 return false; // Incomplete — don't save, retry next sync
             }
 
-            log.debug("Applied OneToMany {}.{}: set {}={} on {} child rows in {}",
+            log.info("Applied OneToMany {}.{}: set {}={} on {} child rows in {}",
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 fkColumn, parentId, childIds.size(), childTable);
             return true;

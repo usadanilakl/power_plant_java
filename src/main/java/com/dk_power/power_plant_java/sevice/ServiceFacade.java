@@ -24,7 +24,9 @@ import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
+import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -78,6 +80,7 @@ public class ServiceFacade {
             @Lazy NgExcavationPermitService ngExcavationPermitService,
             @Lazy NgVentingPermitService ngVentingPermitService,
             // Forms
+            @Lazy PrintableFormService printableFormService,
             @Lazy FormContainerService formContainerService,
             // Scheduler
             @Lazy FlowService flowService,
@@ -121,6 +124,7 @@ public class ServiceFacade {
         serviceMap.put(ExcavationPermit.class.getSimpleName(), ngExcavationPermitService);
         serviceMap.put(VentingPermit.class.getSimpleName(), ngVentingPermitService);
         // Forms
+        serviceMap.put(PrintableForm.class.getSimpleName(), printableFormService);
         serviceMap.put(FormContainer.class.getSimpleName(), formContainerService);
         // Scheduler
         serviceMap.put(Flow.class.getSimpleName(), flowService);

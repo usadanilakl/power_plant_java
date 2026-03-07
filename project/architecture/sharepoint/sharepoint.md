@@ -51,6 +51,10 @@ SharePoint operations are now handled by entity-specific adapters that wrap the 
 - `SpaceService` — confined spaces
 - `PowerAutomateController` — REST endpoints
 
+## List Provisioning
+
+Auto-creates SharePoint lists with correct columns for all 9 permit types. See [](./sharepoint-list-provisioning.md)
+
 ## Remaining Work
 
 - Verify field name mappings from first successful getAllWorkRequests() call

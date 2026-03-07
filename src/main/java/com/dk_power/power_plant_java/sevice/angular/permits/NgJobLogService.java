@@ -112,6 +112,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         JobLog job = getEntityById(jobId);
         DailyPermitPackage pkg = dailyPermitPackageMapper.convertToEntity(packageDto);
         job.getPackages().add(pkg);
+        job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
     }
@@ -132,6 +133,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         }
 
         job.getPackages().removeIf(p -> p.getId().equals(pkgId));
+        job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
     }
@@ -143,6 +145,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         pkg.setCompanyName(job.getCompany());
         pkg.setPermitNumber(permitNumberGenerator.generate(job.getStartDate()));
         job.getPackages().add(pkg);
+        job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
     }
@@ -292,6 +295,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
 
         // 4. Attach package to job
         job.getPackages().add(pkg);
+        job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
 
         // 5. Persist
         JobLog saved = jobLogRepo.save(job);

@@ -1,10 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -35,6 +32,7 @@ public class EntityStateCapture {
     private EntityManager entityManager;
 
     private final SyncContext syncContext;
+    private final EntityTableRegistry entityTableRegistry;
 
     // Thread-local map to store entity field values before update
     // Key: entity ID, Value: map of field name -> original value
@@ -101,15 +99,16 @@ public class EntityStateCapture {
             log.trace("Retrieved {} original values from database for {} #{}",
                 originalValues.size(), entity.getClass().getSimpleName(), entity.getId());
 
-            // Also capture ManyToMany collections (not included in getDatabaseSnapshot)
+            // Also capture ManyToMany and OneToMany collections (not included in getDatabaseSnapshot)
             // Skip during sync context - the connection may be closed or in an inconsistent state,
-            // and we don't need to track ManyToMany changes for incoming sync (they're already handled)
+            // and we don't need to track collection changes for incoming sync (they're already handled)
             if (!syncContext.isSyncing()) {
-                log.trace("Capturing ManyToMany collections for {} #{} (not in sync context)",
+                log.trace("Capturing collections for {} #{} (not in sync context)",
                     entity.getClass().getSimpleName(), entity.getId());
                 captureManyToManyCollections(entity, originalValues);
+                captureOneToManyCollections(entity, originalValues);
             } else {
-                log.trace("Skipping ManyToMany capture for {} #{} - in sync context",
+                log.trace("Skipping collection capture for {} #{} - in sync context",
                     entity.getClass().getSimpleName(), entity.getId());
             }
 
@@ -153,6 +152,51 @@ public class EntityStateCapture {
                         }
                     }
                     // Skip inverse side (mappedBy) - will be handled by owning side
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+    }
+
+    /**
+     * Capture unidirectional OneToMany collection values by querying the child table FK column.
+     * These are NOT included in Hibernate's getDatabaseSnapshot() because the FK column
+     * lives on the child table, not the parent entity's own table.
+     *
+     * Only captures owning-side OneToMany (no mappedBy) with @JoinColumn.
+     */
+    private void captureOneToManyCollections(BaseIdEntity entity, Map<String, Object> originalValues) {
+        Class<?> currentClass = entity.getClass();
+        while (currentClass != null && currentClass != Object.class) {
+            for (Field field : currentClass.getDeclaredFields()) {
+                if (field.isAnnotationPresent(OneToMany.class)) {
+                    OneToMany oneToMany = field.getAnnotation(OneToMany.class);
+                    // Only handle unidirectional (no mappedBy) - owning side with @JoinColumn
+                    if (oneToMany.mappedBy() != null && !oneToMany.mappedBy().isEmpty()) {
+                        continue;
+                    }
+                    JoinColumn joinColumn = field.getAnnotation(JoinColumn.class);
+                    if (joinColumn != null) {
+                        try {
+                            // Get child entity type from collection generic type
+                            java.lang.reflect.ParameterizedType paramType =
+                                (java.lang.reflect.ParameterizedType) field.getGenericType();
+                            Class<?> childClass = (Class<?>) paramType.getActualTypeArguments()[0];
+                            String childEntityType = childClass.getSimpleName();
+
+                            String childTable = entityTableRegistry.getTableName(childEntityType);
+                            String fkColumn = joinColumn.name();
+
+                            // Query: SELECT id FROM childTable WHERE fkColumn = ? (reuse queryJoinTable)
+                            Set<Long> childIds = queryJoinTable(childTable, fkColumn, "id", entity.getId());
+                            originalValues.put(field.getName(), childIds);
+                            log.trace("Captured OneToMany {}.{}: {} child IDs",
+                                entity.getClass().getSimpleName(), field.getName(), childIds.size());
+                        } catch (Exception e) {
+                            log.warn("Error capturing OneToMany field {}.{}: {}",
+                                entity.getClass().getSimpleName(), field.getName(), e.getMessage());
+                        }
+                    }
                 }
             }
             currentClass = currentClass.getSuperclass();

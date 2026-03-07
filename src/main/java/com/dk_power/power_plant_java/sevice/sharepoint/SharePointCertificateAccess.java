@@ -134,6 +134,18 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    public void addFieldToDefaultView(String listTitle, String fieldName) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/DefaultView/ViewFields/addviewfield('" + fieldName + "')";
+        try {
+            ResponseEntity<String> response = sendPostRequest(endpoint, "{}");
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("[SharePoint] Failed to add '{}' to default view of '{}': {}", fieldName, listTitle, response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.warn("[SharePoint] Failed to add '{}' to default view of '{}': {}", fieldName, listTitle, e.getMessage());
+        }
+    }
+
     // ====================== Generic list methods (used by adapters) ======================
 
     public List<JsonNode> getListItems(String listTitle) {

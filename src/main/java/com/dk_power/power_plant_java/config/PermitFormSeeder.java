@@ -23,6 +23,7 @@ public class PermitFormSeeder {
 
     private final PrintableFormRepo printableFormRepo;
     private final SyncContext syncContext;
+    private final SyncConfig syncConfig;
 
     private static final int M = 20; // margin
     private static final int FW = 776; // full width (816 - 2 * margin)
@@ -30,14 +31,58 @@ public class PermitFormSeeder {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedForms() {
+        // Non-hub machines: clean up any locally-seeded forms (they'll receive hub's forms via sync)
+        if (!syncConfig.isHubMode()) {
+            cleanupLocalDuplicateForms();
+            log.info("Permit form seeder skipped (not hub mode)");
+            return;
+        }
+
+        // Hub seeds forms WITHOUT syncContext so FieldChanges are created and synced to clients.
+        // Existing guards (findByFormTypeAndIsPrimary) prevent re-seeding on subsequent startups.
+        try {
+            seedEnergizedWorkForm();
+            seedVentingForm();
+            seedExcavationForm();
+            log.info("Permit form seeder completed");
+        } catch (Exception e) {
+            log.error("Permit form seeder failed (non-fatal): {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * On non-hub machines, remove locally-seeded forms if hub-sourced forms have arrived via sync.
+     * This prevents duplicates (same formType but different device-prefixed IDs).
+     * Runs inside syncContext since this is local cleanup, not a change to broadcast.
+     */
+    private void cleanupLocalDuplicateForms() {
         syncContext.executeInSyncContext(() -> {
             try {
-                seedEnergizedWorkForm();
-                seedVentingForm();
-                seedExcavationForm();
-                log.info("Permit form seeder completed");
+                long devicePrefix = syncConfig.getDeviceNumber() * 1_000_000_000L;
+                long deviceCeiling = devicePrefix + 1_000_000_000L;
+
+                for (String formType : List.of("EnergizedWorkPermit", "VentingPermit", "ExcavationPermit")) {
+                    List<PrintableForm> forms = printableFormRepo.findAllByFormType(formType);
+                    if (forms.size() <= 1) continue;
+
+                    // Check if any form came from a different device (i.e., hub-synced)
+                    boolean hasHubForm = forms.stream()
+                        .anyMatch(f -> f.getId() < devicePrefix || f.getId() >= deviceCeiling);
+
+                    if (!hasHubForm) continue;
+
+                    // Soft-delete local forms, keep hub-synced ones
+                    for (PrintableForm form : forms) {
+                        if (form.getId() >= devicePrefix && form.getId() < deviceCeiling) {
+                            form.setDeleted(true);
+                            printableFormRepo.save(form);
+                            log.info("Cleaned up locally-seeded form: {} #{} (hub-synced form exists)",
+                                formType, form.getId());
+                        }
+                    }
+                }
             } catch (Exception e) {
-                log.error("Permit form seeder failed (non-fatal): {}", e.getMessage(), e);
+                log.warn("Form cleanup failed (non-fatal): {}", e.getMessage());
             }
         });
     }

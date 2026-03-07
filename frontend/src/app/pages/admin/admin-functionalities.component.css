@@ -310,7 +310,21 @@ code {
   justify-content: flex-end;
 }
 
-.sp-list-action button {
+.sp-list-action button,
+.sp-list-action .sp-open-btn {
   padding: 6px 14px;
   font-size: 13px;
+}
+
+.sp-open-btn {
+  background-color: #17a2b8;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: white;
+}
+
+.sp-open-btn:hover {
+  background-color: #138496;
 }
