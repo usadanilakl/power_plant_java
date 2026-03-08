@@ -1,0 +1,131 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.permit-menu-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  flex-shrink: 0;
+}
+
+.menu-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-button {
+  background: none;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  color: var(--primary-text, #333);
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background: var(--secondary-background, #f5f5f5);
+}
+
+.icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.grouping-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  flex-shrink: 0;
+}
+
+.controls-label {
+  font-size: 12px;
+  color: var(--secondary-text, #666);
+  white-space: nowrap;
+}
+
+.grouping-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.group-button {
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--primary-text, #333);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.group-button:hover {
+  background: rgba(33, 150, 243, 0.1);
+  border-color: var(--primary-color, #2196F3);
+}
+
+.group-button.active {
+  background: var(--primary-color, #2196F3);
+  color: white;
+  border-color: var(--primary-color, #2196F3);
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 8px;
+  color: var(--secondary-text, #666);
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-color, #e0e0e0);
+  border-top-color: var(--primary-color, #2196F3);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+app-rf-toggle-menu {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

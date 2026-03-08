@@ -386,6 +386,9 @@ interface ElectronAPI {
   minimizeWindow: () => void;
   maximizeWindow: () => void;
 
+  // Sync entity updates
+  onSyncEntityUpdated: (callback: (entityType: string, entityId: number) => void) => () => void;
+
   // General
   getAppVersion: () => Promise<string>;
   openExternal: (url: string) => Promise<void>;
@@ -894,6 +897,15 @@ export class ElectronService implements OnDestroy {
   async pjmDaRefresh(): Promise<IpcResult<PjmDaAward[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.pjmDaRefresh();
+  }
+
+  // Sync entity updates
+
+  onSyncEntityUpdated(callback: (entityType: string, entityId: number) => void): () => void {
+    if (!this.isElectron) return () => {};
+    return window.electronAPI!.onSyncEntityUpdated((entityType, entityId) => {
+      this.ngZone.run(() => callback(entityType, entityId));
+    });
   }
 
   // Print

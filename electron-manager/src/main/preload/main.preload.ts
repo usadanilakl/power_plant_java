@@ -221,6 +221,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pjmDaFetch: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_FETCH),
   pjmDaRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_REFRESH),
 
+  // Sync entity updates (broadcast from main when sync applies changes)
+  onSyncEntityUpdated: (callback: (entityType: string, entityId: number) => void) => {
+    const sub = (_event: Electron.IpcRendererEvent, entityType: string, entityId: number) => callback(entityType, entityId);
+    ipcRenderer.on(events.IPC_SYNC_ENTITY_UPDATED, sub);
+    return () => { ipcRenderer.removeListener(events.IPC_SYNC_ENTITY_UPDATED, sub); };
+  },
+
   // Menu
   popupMenu: (menuId: string, x: number, y: number): Promise<void> =>
     ipcRenderer.invoke(events.IPC_MENU_POPUP, menuId, x, y),

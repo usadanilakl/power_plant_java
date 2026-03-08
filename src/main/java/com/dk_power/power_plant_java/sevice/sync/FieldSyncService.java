@@ -1710,9 +1710,17 @@ public class FieldSyncService {
 
             // Handle primitives and wrappers
             if (targetType == String.class) {
-                // Remove surrounding quotes if present
+                // Remove surrounding quotes if present (from old-format FieldChanges
+                // where serializeValue used writeValueAsString on strings).
+                // Use Jackson to properly unescape JSON escape sequences (e.g., \" → ")
+                // so that JSON LOB fields like positionJson are restored correctly.
                 if (json.startsWith("\"") && json.endsWith("\"")) {
-                    return json.substring(1, json.length() - 1);
+                    try {
+                        return objectMapper.readValue(json, String.class);
+                    } catch (Exception e) {
+                        // Fallback: strip quotes manually
+                        return json.substring(1, json.length() - 1);
+                    }
                 }
                 return json;
             }

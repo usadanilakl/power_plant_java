@@ -474,34 +474,34 @@ export class GateLogManager {
         })();
       `);
 
-      if (!fieldsCheck.login || !fieldsCheck.password || !fieldsCheck.loginBtn) {
-        throw new Error(`Gate login fields not found: ${JSON.stringify(fieldsCheck)}`);
+      if (fieldsCheck.login && fieldsCheck.password && fieldsCheck.loginBtn) {
+        // Login page detected — fill credentials
+        await win.webContents.executeJavaScript(`
+          var el = document.getElementById('login');
+          el.focus();
+          el.click();
+          el.value = '';
+        `);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await win.webContents.insertText(this.config.gateUsername);
+
+        await win.webContents.executeJavaScript(`
+          var el = document.getElementById('password');
+          el.focus();
+          el.click();
+          el.value = '';
+        `);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await win.webContents.insertText(this.config.gatePassword);
+
+        await win.webContents.executeJavaScript(`document.getElementById('login-button').click()`);
+
+        // Wait for navigation after login
+        await this.waitForNavigation(win, 10000);
+      } else {
+        // Already logged in (session cookie persisted) — skip login
+        console.log('[GateLog] Gate: already logged in, skipping login');
       }
-
-      // Focus username field, clear it, then type via insertText
-      await win.webContents.executeJavaScript(`
-        var el = document.getElementById('login');
-        el.focus();
-        el.click();
-        el.value = '';
-      `);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await win.webContents.insertText(this.config.gateUsername);
-
-      // Focus password field, clear it, then type via insertText
-      await win.webContents.executeJavaScript(`
-        var el = document.getElementById('password');
-        el.focus();
-        el.click();
-        el.value = '';
-      `);
-      await new Promise(resolve => setTimeout(resolve, 200));
-      await win.webContents.insertText(this.config.gatePassword);
-
-      await win.webContents.executeJavaScript(`document.getElementById('login-button').click()`);
-
-      // Step 3: Wait for navigation after login
-      await this.waitForNavigation(win, 10000);
 
       // Step 4: Navigate to reports — use exact ID from old app
       const navScript = `

@@ -97,6 +97,11 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 //    }
 
     public DailyPermitPackageDto createDailyPermitPackage(DailyPermitPackageDto permitPackageDto) {
+        // If the DTO has an existing ID, do an in-place update to avoid orphanRemoval issues
+        if (permitPackageDto.getId() != 0) {
+            return updateDailyPermitPackage(String.valueOf(permitPackageDto.getId()), permitPackageDto);
+        }
+
         DailyPermitPackage dailyPermitPackage = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
         DailyPermitPackage saved = dailyPermitPackageRepo.save(dailyPermitPackage);
         if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
@@ -109,19 +114,74 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     public DailyPermitPackageDto updateDailyPermitPackage(String id, DailyPermitPackageDto permitPackageDto) {
         Long packageId = Long.parseLong(id);
         DailyPermitPackage existing = dailyPermitPackageRepo.findById(packageId).orElse(null);
-
-        DailyPermitPackage updated = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
-        updated.setId(packageId);
-
-        if (existing != null) {
-            List<PackageModification> mods = detectChanges(existing, updated);
-            List<PackageModification> allMods = existing.getModifications();
-            allMods.addAll(mods);
-            updated.setModifications(allMods);
+        if (existing == null) {
+            throw new RuntimeException("DailyPermitPackage not found: " + id);
         }
 
-        dailyPermitPackageRepo.save(updated);
-        return dailyPermitPackageMapper.convertToDto(updated);
+        // Build the "incoming" entity for change detection only
+        DailyPermitPackage incoming = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
+
+        // Detect modifications before applying changes
+        List<PackageModification> mods = detectChanges(existing, incoming);
+        List<PackageModification> allMods = existing.getModifications();
+        allMods.addAll(mods);
+        existing.setModifications(allMods);
+
+        // Update scalar fields on the MANAGED entity (safe — no orphanRemoval risk)
+        if (permitPackageDto.getName() != null) existing.setName(permitPackageDto.getName());
+        if (permitPackageDto.getDate() != null) existing.setDate(permitPackageDto.getDate());
+        if (permitPackageDto.getTime() != null) existing.setTime(permitPackageDto.getTime());
+        if (permitPackageDto.getCompanyName() != null) existing.setCompanyName(permitPackageDto.getCompanyName());
+        if (permitPackageDto.getPersonName() != null) existing.setPersonName(permitPackageDto.getPersonName());
+        if (permitPackageDto.getPermitNumber() != null) existing.setPermitNumber(permitPackageDto.getPermitNumber());
+        if (permitPackageDto.getPackageStatus() != null) existing.setPackageStatus(incoming.getPackageStatus());
+
+        // Update child collections ONLY when explicitly provided (non-empty IDs or DTOs)
+        // This prevents orphanRemoval from deleting children when stale/empty data is sent
+        updateCollectionIfProvided(existing, permitPackageDto, incoming);
+
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(existing);
+        return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    private void updateCollectionIfProvided(DailyPermitPackage existing, DailyPermitPackageDto dto, DailyPermitPackage incoming) {
+        // Only replace a collection if the DTO explicitly provides IDs or nested DTOs
+        if (hasCollectionData(dto.getWorkRequestIds(), dto.getWorkRequests())) {
+            existing.getWorkRequests().clear();
+            existing.getWorkRequests().addAll(incoming.getWorkRequests());
+        }
+        if (hasCollectionData(dto.getSafeWorkIds(), dto.getSafeWorks())) {
+            existing.getSafeWorks().clear();
+            existing.getSafeWorks().addAll(incoming.getSafeWorks());
+        }
+        if (hasCollectionData(dto.getHotWorkIds(), dto.getHotWorks())) {
+            existing.getHotWorks().clear();
+            existing.getHotWorks().addAll(incoming.getHotWorks());
+        }
+        if (hasCollectionData(dto.getConfinedSpaceIds(), dto.getConfinedSpaces())) {
+            existing.getConfinedSpaces().clear();
+            existing.getConfinedSpaces().addAll(incoming.getConfinedSpaces());
+        }
+        if (hasCollectionData(dto.getLotoIds(), dto.getLotos())) {
+            existing.getLotos().clear();
+            existing.getLotos().addAll(incoming.getLotos());
+        }
+        if (hasCollectionData(dto.getEnergizedWorkPermitIds(), dto.getEnergizedWorkPermits())) {
+            existing.getEnergizedWorkPermits().clear();
+            existing.getEnergizedWorkPermits().addAll(incoming.getEnergizedWorkPermits());
+        }
+        if (hasCollectionData(dto.getExcavationPermitIds(), dto.getExcavationPermits())) {
+            existing.getExcavationPermits().clear();
+            existing.getExcavationPermits().addAll(incoming.getExcavationPermits());
+        }
+        if (hasCollectionData(dto.getVentingPermitIds(), dto.getVentingPermits())) {
+            existing.getVentingPermits().clear();
+            existing.getVentingPermits().addAll(incoming.getVentingPermits());
+        }
+    }
+
+    private boolean hasCollectionData(Set<Long> ids, List<?> dtos) {
+        return (ids != null && !ids.isEmpty()) || (dtos != null && !dtos.isEmpty());
     }
 
     public String buildPermits(DailyPermitPackageDto dailyPermitPackageDto) throws FindFailed, IOException, InterruptedException {

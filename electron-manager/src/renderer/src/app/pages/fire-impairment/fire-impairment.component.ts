@@ -458,6 +458,7 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
   private lastCreatedId: number | null = null;
   private sub?: Subscription;
   private unsubFormSubmitted?: () => void;
+  private unsubSync?: () => void;
 
   constructor(private electronService: ElectronService) {}
 
@@ -528,11 +529,20 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
     this.unsubFormSubmitted = this.electronService.onFireImpFormSubmitted((data) => {
       this.onFmGlobalFormData(data);
     });
+
+    // Auto-refresh when sync applies fire impairment changes from another client
+    this.unsubSync = this.electronService.onSyncEntityUpdated((entityType) => {
+      if (entityType === 'FireImpairment') {
+        this.loadActive();
+        if (this.closedLoaded) this.loadClosed();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     this.unsubFormSubmitted?.();
+    this.unsubSync?.();
   }
 
   switchTab(tab: 'active' | 'closed'): void {

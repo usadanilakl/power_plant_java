@@ -44,6 +44,7 @@ public class PermitFormSeeder {
             seedEnergizedWorkForm();
             seedVentingForm();
             seedExcavationForm();
+            seedLotoForm();
             log.info("Permit form seeder completed");
         } catch (Exception e) {
             log.error("Permit form seeder failed (non-fatal): {}", e.getMessage(), e);
@@ -61,7 +62,7 @@ public class PermitFormSeeder {
                 long devicePrefix = syncConfig.getDeviceNumber() * 1_000_000_000L;
                 long deviceCeiling = devicePrefix + 1_000_000_000L;
 
-                for (String formType : List.of("EnergizedWorkPermit", "VentingPermit", "ExcavationPermit")) {
+                for (String formType : List.of("EnergizedWorkPermit", "VentingPermit", "ExcavationPermit", "Loto")) {
                     List<PrintableForm> forms = printableFormRepo.findAllByFormType(formType);
                     if (forms.size() <= 1) continue;
 
@@ -814,6 +815,323 @@ public class PermitFormSeeder {
 
     // ========== HELPER METHODS ==========
 
+    // ========== LOTO (3 pages) ==========
+
+    private void seedLotoForm() {
+        if (printableFormRepo.findByFormTypeAndIsPrimary("Loto", true).isPresent()) return;
+
+        PrintableForm form = createForm("LOTO Record Sheet", "Loto");
+        seedLotoPage1(form);
+        seedLotoPage2(form);
+        seedLotoPage3(form);
+        printableFormRepo.save(form);
+        log.info("Seeded LOTO form (3 pages)");
+    }
+
+    private void seedLotoPage1(PrintableForm form) {
+        int p = 1;
+        int y = M;
+
+        // Header
+        form.addFormContainer(text(M, y, FW, 24, "Jackson Generation", p, bold(14)));
+        y += 22;
+        form.addFormContainer(text(M, y, FW, 20, "SMP-3: Hazardous Energy Control Program (LOTO)", p,
+                Map.of("textAlign", "center", "fontSize", "11px")));
+        y += 20;
+        form.addFormContainer(text(M, y, FW, 22, "LOTO Record Sheet", p,
+                Map.of("textAlign", "center", "fontWeight", "bold", "fontSize", "13px")));
+        y += 28;
+
+        // General Information red header bar
+        form.addFormContainer(text(M, y, FW, 22, "General Information", p,
+                Map.of("fontWeight", "bold", "fontSize", "11px", "backgroundColor", "#e53935", "color", "white", "paddingLeft", "6px")));
+        y += 26;
+
+        // Equipment/System + Index # + Box #
+        form.addFormContainer(text(M, y, 120, 20, "Equipment/System:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(140, y, 380, 24, "equipmentSystem", "text", p));
+        form.addFormContainer(text(530, y, 50, 20, "Index #", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(580, y, 100, 24, "name", "text", p));
+        form.addFormContainer(text(690, y, 40, 20, "Box #", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(730, y, 66, 24, "boxNumber", "number", p));
+        y += 28;
+
+        // LOTO Requestor + Date
+        form.addFormContainer(text(M, y, 110, 20, "LOTO Requestor:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(130, y, 400, 24, "lotoRequestor", "text", p));
+        form.addFormContainer(text(540, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(580, y, 216, 24, "date", "date", p));
+        y += 28;
+
+        // Reason for LOTO
+        form.addFormContainer(text(M, y, 120, 20, "Reason for LOTO:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(140, y, FW - 120, 24, "workScope", "text", p));
+        y += 32;
+
+        // LOTO Approved By / Date / Time
+        form.addFormContainer(text(M, y, 120, 20, "LOTO Approved By:", p, bold(10)));
+        form.addFormContainer(field(140, y, 240, 24, "approvedBy", "text", p));
+        form.addFormContainer(text(390, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(430, y, 120, 24, "approvedDate", "date", p));
+        form.addFormContainer(text(560, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(600, y, 196, 24, "approvedTime", "text", p));
+        y += 32;
+
+        // Tagged\Locked by / # Tags Placed / Time / Date
+        form.addFormContainer(text(M + 10, y, 120, 20, "Tagged\\Locked by:", p, bold(10)));
+        form.addFormContainer(field(150, y, 230, 24, "taggedLockedBy", "text", p));
+        form.addFormContainer(text(390, y, 80, 20, "# Tags Placed:", p, bold(10)));
+        form.addFormContainer(field(470, y, 60, 24, "tagsPlaced", "number", p));
+        form.addFormContainer(text(540, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(580, y, 80, 24, "taggedTime", "text", p));
+        form.addFormContainer(text(670, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(710, y, 86, 24, "taggedDate", "date", p));
+        y += 32;
+
+        // Verified By / Points Verified / Time / Date
+        form.addFormContainer(text(M + 10, y, 80, 20, "Verified By:", p, bold(10)));
+        form.addFormContainer(field(110, y, 270, 24, "verifiedBy", "text", p));
+        form.addFormContainer(text(390, y, 100, 20, "Points Verified:", p, bold(10)));
+        form.addFormContainer(field(490, y, 40, 24, "pointsVerified", "number", p));
+        form.addFormContainer(text(540, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(580, y, 80, 24, "verifiedTime", "text", p));
+        form.addFormContainer(text(670, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(710, y, 86, 24, "verifiedDate", "date", p));
+        y += 34;
+
+        // Certification text
+        form.addFormContainer(text(M + 10, y, FW - 20, 36, "The above equipment has been properly positioned, locked/tagged, a Safe to Work (Zero Energy) check has been performed and equipment is safe to perform the work described in the Scope of Work above.", p,
+                Map.of("fontSize", "9px", "fontWeight", "bold")));
+        y += 42;
+
+        // Control Authority Issued / Lock # Placed / Time / Date
+        form.addFormContainer(text(M + 10, y, 140, 20, "Control Authority Issued:", p, bold(10)));
+        form.addFormContainer(field(170, y, 210, 24, "controlAuthorityIssued", "text", p));
+        form.addFormContainer(text(390, y, 80, 20, "Lock # Placed:", p, bold(10)));
+        form.addFormContainer(field(470, y, 60, 24, "lockPlaced", "text", p));
+        form.addFormContainer(text(540, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(580, y, 80, 24, "controlAuthorityTime", "text", p));
+        form.addFormContainer(text(670, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(710, y, 86, 24, "controlAuthorityDate", "date", p));
+        y += 32;
+
+        // Initial Req Released / Date / Transfer Req Acpt / Date
+        form.addFormContainer(text(M + 10, y, 130, 20, "Initial Req Released:", p, bold(10)));
+        form.addFormContainer(field(150, y, 140, 24, "initialReqReleased", "text", p));
+        form.addFormContainer(text(300, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(340, y, 100, 24, "initialReqReleasedDate", "date", p));
+        form.addFormContainer(text(460, y, 110, 20, "Transfer Req Acpt:", p, bold(10)));
+        form.addFormContainer(field(570, y, 120, 24, "transferReqAccepted1", "text", p));
+        form.addFormContainer(text(700, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(740, y, 56, 24, "transferReqAcceptedDate1", "date", p));
+        y += 32;
+
+        // Transfer Req Released / Date / Transfer Req Acpt / Date
+        form.addFormContainer(text(M + 10, y, 140, 20, "Transfer Req Released:", p, bold(10)));
+        form.addFormContainer(field(160, y, 130, 24, "transferReqReleased", "text", p));
+        form.addFormContainer(text(300, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(340, y, 100, 24, "transferReqReleasedDate", "date", p));
+        form.addFormContainer(text(460, y, 110, 20, "Transfer Req Acpt:", p, bold(10)));
+        form.addFormContainer(field(570, y, 120, 24, "transferReqAccepted2", "text", p));
+        form.addFormContainer(text(700, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(740, y, 56, 24, "transferReqAcceptedDate2", "date", p));
+        y += 32;
+
+        // Authorization to Remove LOTO, Requestor / Time / Date
+        form.addFormContainer(text(M + 10, y, 260, 20, "Authorization to Remove LOTO, Requestor:", p, bold(10)));
+        form.addFormContainer(field(280, y, 260, 24, "authorizationToRemove", "text", p));
+        form.addFormContainer(text(550, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(590, y, 80, 24, "authRemoveTime", "text", p));
+        form.addFormContainer(text(680, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(720, y, 76, 24, "authRemoveDate", "date", p));
+        y += 32;
+
+        // Control Authority Released / Lock # Removed / Time / Date
+        form.addFormContainer(text(M + 10, y, 160, 20, "Control Authority Released:", p, bold(10)));
+        form.addFormContainer(field(180, y, 200, 24, "controlAuthorityReleased", "text", p));
+        form.addFormContainer(text(390, y, 90, 20, "Lock # Removed:", p, bold(10)));
+        form.addFormContainer(field(480, y, 60, 24, "lockRemoved", "text", p));
+        form.addFormContainer(text(550, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(590, y, 80, 24, "controlReleasedTime", "text", p));
+        form.addFormContainer(text(680, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(720, y, 76, 24, "controlReleasedDate", "date", p));
+        y += 32;
+
+        // Removed By / #Tags Removed / Time / Date
+        form.addFormContainer(text(M + 10, y, 80, 20, "Removed By:", p, bold(10)));
+        form.addFormContainer(field(110, y, 270, 24, "removedBy", "text", p));
+        form.addFormContainer(text(390, y, 90, 20, "#Tags Removed:", p, bold(10)));
+        form.addFormContainer(field(480, y, 60, 24, "tagsRemoved", "number", p));
+        form.addFormContainer(text(550, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(590, y, 80, 24, "removedTime", "text", p));
+        form.addFormContainer(text(680, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(720, y, 76, 24, "removedDate", "date", p));
+        y += 32;
+
+        // All tags removed and equipment ready for service / Time / Date
+        form.addFormContainer(text(M + 10, y, 330, 20, "All tags removed and equipment ready for service:", p, bold(10)));
+        form.addFormContainer(field(350, y, 190, 24, "allTagsRemovedConfirmation", "text", p));
+        form.addFormContainer(text(550, y, 40, 20, "Time:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(590, y, 80, 24, "allTagsRemovedTime", "text", p));
+        form.addFormContainer(text(680, y, 40, 20, "Date:", p, Map.of("fontSize", "10px")));
+        form.addFormContainer(field(720, y, 76, 24, "allTagsRemovedDate", "date", p));
+        y += 36;
+
+        // Notes section
+        form.addFormContainer(text(M, y, FW, 24, "Notes", p,
+                Map.of("fontWeight", "bold", "fontSize", "14px", "textAlign", "center")));
+        y += 26;
+        form.addFormContainer(field(M, y, FW, 120, "notes", "textarea", p));
+    }
+
+    private void seedLotoPage2(PrintableForm form) {
+        int p = 2;
+        int y = M;
+
+        // Tags and Locks red header bar
+        form.addFormContainer(text(M, y, FW, 22, "Tags and Locks", p,
+                Map.of("fontWeight", "bold", "fontSize", "11px", "backgroundColor", "#e53935", "color", "white", "paddingLeft", "6px")));
+        y += 24;
+
+        // Column header row (matching original form table)
+        int c1 = M, c1w = 35;          // Tag #
+        int c2 = c1 + c1w, c2w = 55;   // Lock #
+        int c3 = c2 + c2w, c3w = 260;  // EID to be Tagged/Locked
+        int c4 = c3 + c3w, c4w = 80;   // LOTO Position
+        int c5 = c4 + c4w, c5w = 70;   // Hung By
+        int c6 = c5 + c5w, c6w = 70;   // Verified By
+        int c7 = c6 + c6w, c7w = 80;   // Released Position
+        int c8 = c7 + c7w;
+        int c8w = FW - (c8 - M);       // Removed By (remainder)
+
+        Map<String, Object> hdr = new HashMap<>();
+        hdr.put("fontSize", "8px");
+        hdr.put("fontWeight", "bold");
+        hdr.put("textAlign", "center");
+        hdr.put("border", "1px solid #999");
+        hdr.put("backgroundColor", "#f5f5f5");
+
+        form.addFormContainer(text(c1, y, c1w, 40, "Tag\n#", p, hdr));
+        form.addFormContainer(text(c2, y, c2w, 40, "Lock #", p, hdr));
+        form.addFormContainer(text(c3, y, c3w, 40, "EID to be Tagged/Locked\n(Equipment Isolation Device)", p, hdr));
+        form.addFormContainer(text(c4, y, c4w, 40, "LOTO\nPosition", p, hdr));
+        form.addFormContainer(text(c5, y, c5w, 40, "Hung By", p, hdr));
+        form.addFormContainer(text(c6, y, c6w, 40, "Verified\nBy", p, hdr));
+        form.addFormContainer(text(c7, y, c7w, 40, "Released\nPosition", p, hdr));
+        form.addFormContainer(text(c8, y, c8w, 40, "Removed\nBy", p, hdr));
+        y += 42;
+
+        // LOTO Points form-array with custom nestedForm layout
+        {
+            FormContainer c = new FormContainer();
+            c.setContentType("formField");
+
+            // Relative column x-offsets within each nested item (0-based)
+            int rx1 = 0, rx2 = c1w, rx3 = c1w + c2w;
+            int rx4 = rx3 + c3w, rx5 = rx4 + c4w, rx6 = rx5 + c5w;
+            int rx7 = rx6 + c6w, rx8 = rx7 + c7w;
+
+            int id = -1;
+            List<Map<String, Object>> nc = new java.util.ArrayList<>();
+
+            // Row 1 (y=0, h=26): main fields across columns
+            nc.add(nField(id--, rx1, 0, c1w, 26, "tagNumber", "text"));
+            nc.add(nField(id--, rx2, 0, c2w, 26, "lockNumber", "text"));
+            nc.add(nField(id--, rx3, 0, c3w, 26, "description", "text"));
+            nc.add(nField(id--, rx4, 0, c4w, 70, "isoPos", "text"));
+            nc.add(nField(id--, rx5, 0, c5w, 70, "hungBy", "text"));
+            nc.add(nField(id--, rx6, 0, c6w, 70, "verifiedBy", "text"));
+            nc.add(nField(id--, rx7, 0, c7w, 70, "normPos", "text"));
+            nc.add(nField(id--, rx8, 0, c8w, 70, "removedBy", "text"));
+
+            // Row 2 (y=26, h=22): location under EID column
+            nc.add(nField(id--, rx3, 26, c3w, 22, "specificLocation", "text"));
+
+            // Row 3 (y=48, h=22): EID number under EID column
+            nc.add(nField(id--, rx3, 48, c3w, 22, "eidNumber", "text"));
+
+            // Row 4 (y=74, h=18): "Zero Energy Verification Method" label + "Completed By" label
+            nc.add(nText(id--, 0, 74, rx7, 18, "Zero Energy Verification Method",
+                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center")));
+            nc.add(nText(id--, rx7, 74, c7w + c8w, 18, "Completed By",
+                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center")));
+
+            // Row 5 (y=92, h=34): zero energy textarea + completed by field
+            nc.add(nField(id--, 0, 92, rx7, 34, "zeroEnergyMethod", "textarea"));
+            nc.add(nField(id--, rx7, 92, c7w + c8w, 34, "completedBy", "text"));
+
+            Map<String, Object> faContent = new HashMap<>();
+            faContent.put("name", "lotoPoints");
+            faContent.put("type", "form-array");
+            faContent.put("fields", List.of(
+                Map.of("name", "tagNumber", "label", "Tag #", "type", "text"),
+                Map.of("name", "lockNumber", "label", "Lock #", "type", "text"),
+                Map.of("name", "description", "label", "EID to be Tagged/Locked", "type", "text"),
+                Map.of("name", "specificLocation", "label", "Location", "type", "text"),
+                Map.of("name", "eidNumber", "label", "Equipment Isolation Device", "type", "text"),
+                Map.of("name", "isoPos", "label", "LOTO Position", "type", "text"),
+                Map.of("name", "hungBy", "label", "Hung By", "type", "text"),
+                Map.of("name", "verifiedBy", "label", "Verified By", "type", "text"),
+                Map.of("name", "normPos", "label", "Released Position", "type", "text"),
+                Map.of("name", "removedBy", "label", "Removed By", "type", "text"),
+                Map.of("name", "zeroEnergyMethod", "label", "Zero Energy Verification Method", "type", "textarea"),
+                Map.of("name", "completedBy", "label", "Completed By", "type", "text")
+            ));
+            faContent.put("nestedForm", Map.of(
+                "formContainers", nc,
+                "size", Map.of("width", 8.08, "height", 1.35)
+            ));
+
+            c.setContentJson(faContent);
+            c.setPositionJson(Map.of("x", M, "y", y));
+            c.setSizeJson(Map.of("width", FW, "height", 960));
+            c.setPageNumber(p);
+            c.setLocked(true);
+            c.setStyleJson(paperStyle());
+            form.addFormContainer(c);
+        }
+    }
+
+    private void seedLotoPage3(PrintableForm form) {
+        int p = 3;
+        int y = M;
+
+        // Header
+        form.addFormContainer(text(M, y, FW, 28, "LOTO SIGN-ON/SIGN-OFF SHEET", p,
+                Map.of("fontWeight", "bold", "fontSize", "16px", "textAlign", "center")));
+        y += 30;
+
+        // LOTO #
+        form.addFormContainer(text(M, y, 60, 20, "LOTO #:", p, Map.of("fontSize", "11px")));
+        form.addFormContainer(field(80, y, 200, 24, "name", "text", p));
+        y += 32;
+
+        // Sign-On/Sign-Off form-array
+        {
+            FormContainer c = new FormContainer();
+            c.setContentType("formField");
+            Map<String, Object> faContent = new HashMap<>();
+            faContent.put("name", "signOnSignOffJson");
+            faContent.put("type", "form-array");
+            faContent.put("fields", List.of(
+                Map.of("name", "personName", "label", "NAME", "type", "text"),
+                Map.of("name", "company", "label", "COMPANY", "type", "text"),
+                Map.of("name", "lockNumber", "label", "Lock #", "type", "text"),
+                Map.of("name", "signOnDate", "label", "Sign-On Date", "type", "date"),
+                Map.of("name", "signOnTime", "label", "Sign-On Time", "type", "text"),
+                Map.of("name", "signOffDate", "label", "Sign-Off Date", "type", "date"),
+                Map.of("name", "signOffTime", "label", "Sign-Off Time", "type", "text")
+            ));
+            c.setContentJson(faContent);
+            c.setPositionJson(Map.of("x", M, "y", y));
+            c.setSizeJson(Map.of("width", FW, "height", 900));
+            c.setPageNumber(p);
+            c.setLocked(true);
+            c.setStyleJson(paperStyle());
+            form.addFormContainer(c);
+        }
+    }
+
     private int addChecklistSection(PrintableForm form, String[][] items, int startY, int page, int labelW, int fieldX) {
         int y = startY;
         for (String[] item : items) {
@@ -888,5 +1206,30 @@ public class PermitFormSeeder {
 
     private Map<String, Object> centered() {
         return Map.of("textAlign", "center");
+    }
+
+    /** Nested form field container (for use inside nestedForm definitions) */
+    private Map<String, Object> nField(int id, int x, int y, int w, int h, String name, String type) {
+        return Map.ofEntries(
+            Map.entry("id", id),
+            Map.entry("contentType", "formField"),
+            Map.entry("content", Map.of("name", name, "type", type)),
+            Map.entry("position", Map.of("x", x, "y", y)),
+            Map.entry("size", Map.of("width", w, "height", h)),
+            Map.entry("pageNumber", 1)
+        );
+    }
+
+    /** Nested text container (for use inside nestedForm definitions) */
+    private Map<String, Object> nText(int id, int x, int y, int w, int h, String content, Map<String, Object> style) {
+        return Map.ofEntries(
+            Map.entry("id", id),
+            Map.entry("contentType", "text"),
+            Map.entry("content", content),
+            Map.entry("position", Map.of("x", x, "y", y)),
+            Map.entry("size", Map.of("width", w, "height", h)),
+            Map.entry("pageNumber", 1),
+            Map.entry("style", style != null ? style : Map.of())
+        );
     }
 }

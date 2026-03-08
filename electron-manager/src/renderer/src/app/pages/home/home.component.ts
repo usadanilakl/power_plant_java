@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 
 @Component({
   selector: 'app-home',
@@ -73,6 +73,16 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
           <div class="feature-info">
             <h3>Gate Log</h3>
             <p class="feature-desc">Monitor site access and personnel</p>
+            <div class="gate-snippets" *ngIf="gateLogPeopleCount > 0">
+              <div class="gate-count-row">
+                <span class="gate-total">{{ gateLogPeopleCount }} on site</span>
+                <span class="gate-breakdown">({{ gateSourceCount }} gate / {{ onlocSourceCount }} OnLoc)</span>
+              </div>
+              <span class="gate-update" *ngIf="gateLogStatus?.lastUpdate">Updated {{ gateLogLastUpdateLabel }}</span>
+            </div>
+            <div class="gate-snippets" *ngIf="gateLogPeopleCount === 0 && gateLogStatus?.lastUpdate">
+              <span class="gate-update">No entries (12h) &middot; Updated {{ gateLogLastUpdateLabel }}</span>
+            </div>
           </div>
           <span class="feature-status available">Independent</span>
         </a>
@@ -442,6 +452,35 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
       margin-left: 2px;
     }
 
+    .gate-snippets {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .gate-count-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .gate-total {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .gate-breakdown {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .gate-update {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      display: block;
+    }
+
     .pjm-snippet {
       font-size: 12px;
       color: var(--text-secondary);
@@ -634,11 +673,15 @@ export class HomeComponent implements OnInit, OnDestroy {
   perryStatus: PerryWeatherStatus | null = null;
   pjmStatus: PjmStatus | null = null;
   pjmPolling = false;
+  gateLogStatus: GateLogStatus | null = null;
+  private gateLogPeople: GateLogEntry[] = [];
   private sub?: Subscription;
   private unsubWeather?: () => void;
   private unsubForecast?: () => void;
   private unsubPerry?: () => void;
   private unsubPjm?: () => void;
+  private unsubGateLog?: () => void;
+  private unsubSync?: () => void;
 
   constructor(private electronService: ElectronService, private router: Router) {}
 
@@ -670,6 +713,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadPjmStatus();
     this.unsubPjm = this.electronService.onPjmStatusChange((s) => {
       this.pjmStatus = s;
+    });
+
+    this.loadGateLogData();
+    this.unsubGateLog = this.electronService.onGateLogPeopleUpdated(() => {
+      this.loadGateLogData();
+    });
+
+    // Auto-refresh counts when sync applies changes from another client
+    this.unsubSync = this.electronService.onSyncEntityUpdated((entityType) => {
+      if (entityType === 'FireImpairment') {
+        this.loadFireImpCount();
+      }
     });
   }
 
@@ -761,6 +816,65 @@ export class HomeComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
+  private async loadGateLogData(): Promise<void> {
+    try {
+      const [peopleResult, statusResult] = await Promise.all([
+        this.electronService.gateLogGetPeople(),
+        this.electronService.gateLogGetStatus(),
+      ]);
+      if (peopleResult.success && peopleResult.data) {
+        this.gateLogPeople = peopleResult.data;
+      }
+      if (statusResult.success && statusResult.data) {
+        this.gateLogStatus = statusResult.data;
+      }
+    } catch {}
+  }
+
+  private get filteredGateLogPeople(): GateLogEntry[] {
+    const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    return this.gateLogPeople.filter(p => {
+      if (!p.checkIn) return false;
+      return this.parseCheckIn(p.checkIn) >= cutoff;
+    });
+  }
+
+  get gateLogPeopleCount(): number {
+    return this.filteredGateLogPeople.length;
+  }
+
+  get gateSourceCount(): number {
+    return this.filteredGateLogPeople.filter(p => p.source === 'gate').length;
+  }
+
+  get onlocSourceCount(): number {
+    return this.filteredGateLogPeople.filter(p => p.source === 'onlocation').length;
+  }
+
+  get gateLogLastUpdateLabel(): string {
+    if (!this.gateLogStatus?.lastUpdate) return '';
+    const update = new Date(this.gateLogStatus.lastUpdate);
+    const now = new Date();
+    const diffMin = Math.floor((now.getTime() - update.getTime()) / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffH = Math.floor(diffMin / 60);
+    return `${diffH}h ago`;
+  }
+
+  private parseCheckIn(checkIn: string): Date {
+    const parts = checkIn.match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)/);
+    if (!parts) return new Date(0);
+    return new Date(
+      parseInt(parts[3]),
+      parseInt(parts[1]) - 1,
+      parseInt(parts[2]),
+      parseInt(parts[4]),
+      parseInt(parts[5]),
+      parseInt(parts[6])
+    );
+  }
+
   get perryLightningLevel(): string {
     if (!this.perryStatus || this.perryStatus.status !== 'available') return '';
     const status = this.perryStatus.lightningStatus;
@@ -776,6 +890,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.unsubForecast?.();
     this.unsubPerry?.();
     this.unsubPjm?.();
+    this.unsubGateLog?.();
+    this.unsubSync?.();
   }
 
   get stateLabel(): string {

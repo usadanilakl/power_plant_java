@@ -396,9 +396,10 @@ export class CurrentDailyPermitPackageService {
 
       return this.workRequestService.save(requests).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newWorkRequests = response.responseData;
           const newWorkRequestIds = newWorkRequests.map(req => req.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.workRequestIds = [...updatedPackage.workRequests.map(w=>w.id), ...newWorkRequestIds];
 
           // Using createDailyPermitPackage to update the package
@@ -430,9 +431,10 @@ export class CurrentDailyPermitPackageService {
     
       return this.safeWorkService.save(requests).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.safeWorkIds = [...updatedPackage.safeWorks.map(sw=>sw.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
@@ -463,9 +465,10 @@ export class CurrentDailyPermitPackageService {
     
       return this.hotWorkService.save(requests).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.hotWorkIds = [...updatedPackage.hotWorks.map(hw=>hw.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
@@ -496,9 +499,10 @@ export class CurrentDailyPermitPackageService {
     
       return this.confinedSpaceService.save(requests).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.confinedSpaceIds = [...updatedPackage.confinedSpaces.map(c=>c.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
@@ -529,9 +533,10 @@ export class CurrentDailyPermitPackageService {
 
       return this.lotoService.save(lotos).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.lotoIds = [...updatedPackage.lotos.map(l=>l.id),...newPermitIds];
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),
@@ -783,8 +788,9 @@ export class CurrentDailyPermitPackageService {
       if (!currentPackage || !currentPackage.id || !permits?.length) return;
       return this.energizedWorkPermitService.save(permits).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newIds = response.responseData.map(p => p.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.energizedWorkPermitIds = [...updatedPackage.energizedWorkPermits.map(p => p.id), ...newIds];
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),
@@ -804,8 +810,9 @@ export class CurrentDailyPermitPackageService {
       if (!currentPackage || !currentPackage.id || !permits?.length) return;
       return this.excavationPermitService.save(permits).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newIds = response.responseData.map(p => p.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.excavationPermitIds = [...updatedPackage.excavationPermits.map(p => p.id), ...newIds];
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),
@@ -825,8 +832,9 @@ export class CurrentDailyPermitPackageService {
       if (!currentPackage || !currentPackage.id || !permits?.length) return;
       return this.ventingPermitService.save(permits).pipe(
         switchMap(response => {
+          const latestPackage = this.selectedDailyPermitPackageSubject.value!;
           const newIds = response.responseData.map(p => p.id);
-          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          const updatedPackage = new DailyPermitPackageDto(latestPackage);
           updatedPackage.ventingPermitIds = [...updatedPackage.ventingPermits.map(p => p.id), ...newIds];
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),

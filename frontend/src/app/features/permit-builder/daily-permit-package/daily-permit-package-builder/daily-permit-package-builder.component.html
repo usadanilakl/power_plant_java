@@ -81,19 +81,23 @@
     <!-- Tab bar -->
     <div class="tab-bar">
       @for(tab of permitTabs(); track tab.key) {
-        <button class="tab"
-          [class.active]="activeTab() === tab.key && !pinnedTabs().includes(tab.key)"
-          [class.pinned]="pinnedTabs().includes(tab.key)"
-          (click)="selectTab(tab.key)"
-          (contextmenu)="$event.preventDefault(); togglePin(tab.key)">
-          {{ tab.label }}
-          @if(tab.count > 0) {
-            <span class="tab-badge">{{ tab.count }}</span>
-          }
-          @if(pinnedTabs().includes(tab.key)) {
-            <span class="tab-pin">&#128204;</span>
-          }
-        </button>
+        <div class="tab-wrapper">
+          <button class="tab"
+            [class.active]="activeTab() === tab.key && !pinnedTabs().includes(tab.key)"
+            [class.pinned]="pinnedTabs().includes(tab.key)"
+            (click)="selectTab(tab.key)">
+            {{ tab.label }}
+            @if(tab.count > 0) {
+              <span class="tab-badge">{{ tab.count }}</span>
+            }
+          </button>
+          <button class="tab-pin-btn"
+            [class.pinned]="pinnedTabs().includes(tab.key)"
+            (click)="togglePin(tab.key)"
+            [title]="pinnedTabs().includes(tab.key) ? 'Unpin' : 'Pin side-by-side'">
+            <span class="pin-icon">&#128204;</span>
+          </button>
+        </div>
       }
       <button class="tab paper-tab" (click)="openPaperFormPopup()">Paper Forms</button>
     </div>

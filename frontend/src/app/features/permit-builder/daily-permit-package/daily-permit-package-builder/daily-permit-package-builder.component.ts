@@ -124,10 +124,7 @@ export class DailyPermitPackageBuilderComponent {
   ]);
 
   selectTab(tab: string) {
-    if (this.pinnedTabs().includes(tab)) {
-      this.pinnedTabs.update(pins => pins.filter(p => p !== tab));
-      return;
-    }
+    if (this.pinnedTabs().includes(tab)) return;
     this.activeTab.set(tab);
   }
 

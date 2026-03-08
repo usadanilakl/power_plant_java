@@ -106,6 +106,7 @@ export const IPC_STARTUP_GET_ASSESSMENT = 'startup:get-assessment';
 // Selective sync (invoke/handle + progress via send/on)
 export const IPC_SYNC_EXECUTE = 'sync:execute';
 export const IPC_SYNC_EXECUTE_PROGRESS = 'sync:execute-progress';
+export const IPC_SYNC_ENTITY_UPDATED = 'sync:entity-updated';  // broadcast: entity changed via sync
 
 // Electron self-update (invoke/handle + send/on for progress)
 export const IPC_ELECTRON_UPDATE_CHECK = 'electron-update:check';

@@ -19,6 +19,7 @@ import { ElectronUpdateManager } from '../managers/electron-update.manager';
 import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DaEmailManager } from '../managers/da-email.manager';
 import { VoskManager } from '../managers/vosk.manager';
+import { SyncUpdateManager } from '../managers/sync-update.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult } from '../../shared/types';
 
@@ -37,6 +38,7 @@ export class IpcHandlers {
   private electronUpdateManager: ElectronUpdateManager;
   private windowLayoutManager: WindowLayoutManager;
   private voskManager: VoskManager;
+  private syncUpdateManager: SyncUpdateManager;
   private mainWindow: BrowserWindow;
   private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
@@ -95,10 +97,21 @@ export class IpcHandlers {
         this.mainWindow.webContents.send(events.IPC_GATE_LOG_PEOPLE_UPDATED);
       }
     });
+    this.syncUpdateManager = new SyncUpdateManager((entityType, entityId) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(events.IPC_SYNC_ENTITY_UPDATED, entityType, entityId);
+      }
+    });
     this.springBoot = new SpringBootManager(
       (status) => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send(events.IPC_APP_STATUS_CHANGED, status);
+        }
+        // Connect/disconnect SSE sync updates based on Spring Boot state
+        if (status.state === 'running' && status.healthStatus === 'healthy') {
+          this.syncUpdateManager.connect(DEFAULT_SPRING_BOOT_CONFIG.port);
+        } else if (status.state === 'stopped' || status.state === 'error') {
+          this.syncUpdateManager.disconnect();
         }
         // Rebuild menu to reflect new state (Start/Stop/Restart enabled/disabled)
         try {
@@ -1404,6 +1417,7 @@ export class IpcHandlers {
     this.perryWeatherManager.cleanup();
     this.pjmManager.cleanup();
     this.voskManager.cleanup();
+    this.syncUpdateManager.disconnect();
     this.webview.closeAll();
     await this.springBoot.stop();
   }

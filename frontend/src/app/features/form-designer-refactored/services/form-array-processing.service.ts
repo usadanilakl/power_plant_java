@@ -133,21 +133,41 @@ export class FormArrayProcessingService {
 
   private buildNestedFormFromFields(fields: FormField[], formSize: { width: number; height: number }): any {
     const rowHeight = 30;
-    const gap = 5;
+    const gap = 4;
+    const labelWidth = 160;
     let yOffset = 0;
+    let idCounter = -1;
     const containers: any[] = [];
+    const totalWidth = formSize.width * this.PIXELS_PER_INCH - 20;
 
-    for (let i = 0; i < fields.length; i++) {
-      const f = fields[i];
+    for (const f of fields) {
       const h = f.type === 'textarea' ? rowHeight * 2 : rowHeight;
+
+      // Add label text container
+      if (f.label) {
+        containers.push({
+          id: idCounter--,
+          contentType: 'text',
+          content: f.label + ':',
+          position: { x: 0, y: yOffset },
+          size: { width: labelWidth, height: h },
+          pageNumber: 1,
+          style: { fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center' },
+        });
+      }
+
+      // Add field container offset by label
+      const fieldX = f.label ? labelWidth : 0;
+      const fieldW = f.label ? totalWidth - labelWidth : totalWidth;
       containers.push({
-        id: -(i + 1),
+        id: idCounter--,
         contentType: 'formField',
         content: f,
-        position: { x: 0, y: yOffset },
-        size: { width: formSize.width * this.PIXELS_PER_INCH - 20, height: h },
+        position: { x: fieldX, y: yOffset },
+        size: { width: fieldW, height: h },
         pageNumber: 1,
       });
+
       yOffset += h + gap;
     }
 

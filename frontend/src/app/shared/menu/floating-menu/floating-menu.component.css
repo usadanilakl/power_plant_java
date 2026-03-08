@@ -33,7 +33,7 @@
 
 .menu-content {
   padding: 10px;
-  overflow: visible;
+  overflow: auto;
   height: calc(100% - 40px);
   display: flex;
   flex-direction: column;

@@ -68,6 +68,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/permit-builder/energized-work-permits', label: 'Energized Work' },
             { route: '/permit-builder/excavation-permits', label: 'Excavation' },
             { route: '/permit-builder/venting-permits', label: 'Venting/Purging' },
+            { route: '/permit-builder/lotos', label: 'LOTO' },
             { route: '/permit-builder/work-areas', label: 'Work Areas' },
             { route: '/work-area-map', label: 'Work Map' },
             { route: '/scheduler', label: 'Scheduler' }
@@ -159,6 +160,7 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Energized Work', route: './energized-work-permits' },
     { label: 'Excavation', route: './excavation-permits' },
     { label: 'Venting/Purging', route: './venting-permits' },
+    { label: 'LOTO', route: './lotos' },
     { label: 'Work Areas', route: './work-areas' },
     { label: 'Work Map', route: './work-area-map' },
 

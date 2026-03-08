@@ -151,9 +151,35 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     }
 
     public JobLogDto updateJob(String id, JobLogDto dto) {
-        JobLog entity = jobLogMapper.convertToEntity(dto);
-        entity.setId(Long.parseLong(id));
-        JobLog saved = jobLogRepo.save(entity);
+        // Load the managed entity to avoid orphanRemoval deleting child packages
+        JobLog existing = getEntityById(id);
+        if (existing == null) throw new RuntimeException("Job not found: " + id);
+
+        // Update only scalar fields — NEVER replace the packages collection.
+        // Packages are managed via addDailyPackage/removePackageFromJob/processWorkRequest.
+        if (dto.getName() != null) existing.setName(dto.getName());
+        if (dto.getWorkScope() != null) existing.setWorkScope(dto.getWorkScope());
+        if (dto.getCompany() != null) existing.setCompany(dto.getCompany());
+        if (dto.getForeman() != null) existing.setForeman(dto.getForeman());
+        if (dto.getLocation() != null) existing.setLocation(dto.getLocation());
+        if (dto.getStartDate() != null) existing.setStartDate(dto.getStartDate());
+        if (dto.getEndDate() != null) existing.setEndDate(dto.getEndDate());
+        if (dto.getPermitNumber() != null) existing.setPermitNumber(dto.getPermitNumber());
+        if (dto.getJobStatus() != null && dto.getJobStatus().getName() != null) {
+            existing.setJobStatus(ngValueService.createValue("Job Status", dto.getJobStatus().getName()));
+        }
+        if (dto.getOriginatingWorkRequest() != null && dto.getOriginatingWorkRequest().getId() != null) {
+            existing.setOriginatingWorkRequest(
+                workRequestRepo.findById(dto.getOriginatingWorkRequest().getId()).orElse(null)
+            );
+        }
+        if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
+            existing.setWorkArea(
+                entityManager.find(com.dk_power.power_plant_java.entities.permits.WorkArea.class, dto.getWorkArea().getId())
+            );
+        }
+
+        JobLog saved = jobLogRepo.save(existing);
         return jobLogMapper.convertToDto(saved);
     }
 

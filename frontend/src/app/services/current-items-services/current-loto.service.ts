@@ -1,4 +1,5 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { LotoService } from "../loto/loto.service";
 import { BehaviorSubject, catchError, map, Observable, of, tap } from "rxjs";
 import { LotoDto } from "../../models/loto/loto.model";
@@ -39,6 +40,7 @@ export class CurrentLotoService{
     paperForm$ = this.paperFormSubject.asObservable();
   
     isPaperViewActive = signal<boolean>(false);
+    selectedItem = toSignal(this.currentLotoSubject.asObservable(), { initialValue: new LotoDto() });
 
     constructor() {
         this.loadLotosFromServer();
@@ -74,18 +76,22 @@ export class CurrentLotoService{
 
     setCurrentLoto(loto: LotoDto | null) {
       if(loto && loto.id && loto.id!=0){
-        this.lotoService.getLotoById(loto.id.toString()).pipe(
-          takeUntilDestroyed(this.destroyRef),
-          map((response: SpringApiResponse<LotoDto>) => response.responseData)
-        ).subscribe((lotoFromServer: LotoDto) => {
-          if(lotoFromServer){
-            this.currentLotoSubject.next(lotoFromServer);
-            this.loadCurrentLotoFiles(lotoFromServer.id);
-          }
-        });
+        this.setCurrentLotoById(loto.id);
       }else{
         this.currentLotoSubject.next(new LotoDto());
       }
+    }
+
+    setCurrentLotoById(id: number) {
+      this.lotoService.getLotoById(id.toString()).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringApiResponse<LotoDto>) => response.responseData)
+      ).subscribe((lotoFromServer: LotoDto) => {
+        if(lotoFromServer){
+          this.currentLotoSubject.next(lotoFromServer);
+          this.loadCurrentLotoFiles(lotoFromServer.id);
+        }
+      });
     }
 
     addLotoPointToCurrentLoto(pointId: number) {
@@ -118,6 +124,16 @@ export class CurrentLotoService{
               this.loadCurrentLotoFiles(receivedLoto.id);
           });
       }
+    }
+
+    addLotoToList(loto: LotoDto) {
+      const currentLotos = this.allLotosSubject.value;
+      this.allLotosSubject.next([...currentLotos, loto]);
+    }
+
+    removeLotoFromList(id: number) {
+      const currentLotos = this.allLotosSubject.value;
+      this.allLotosSubject.next(currentLotos.filter(l => l.id !== id));
     }
 
     updateLotoInList(loto: LotoDto) {

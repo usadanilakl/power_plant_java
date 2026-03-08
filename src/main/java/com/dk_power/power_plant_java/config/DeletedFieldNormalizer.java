@@ -60,6 +60,57 @@ public class DeletedFieldNormalizer {
         }
 
         repairOrphanedValues();
+        repairDoubleEncodedJsonLobs();
+    }
+
+    /**
+     * Repair JSON LOB fields in FormContainer and PrintableForm that were corrupted
+     * by sync double-encoding. The serializeValue() method used to JSON-encode String
+     * values (adding quotes + escaping inner quotes), but deserializeValue() only stripped
+     * surrounding quotes without unescaping — leaving literal backslash characters.
+     *
+     * Detects corruption by checking for literal backslash-quote sequences in JSON columns.
+     * Fixes by replacing \" with " (unescaping the JSON).
+     */
+    private void repairDoubleEncodedJsonLobs() {
+        String[] columns = {"content_json", "position_json", "size_json", "style_json", "content_style_json"};
+        int totalFixed = 0;
+
+        try (Connection conn = dataSource.getConnection()) {
+            for (String col : columns) {
+                try (Statement stmt = conn.createStatement()) {
+                    // Fix double-encoded JSON: {\"x\":0} → {"x":0}
+                    int fixed = stmt.executeUpdate(
+                        "UPDATE form_container SET " + col + " = REPLACE(" + col + ", '\\\"', '\"') " +
+                        "WHERE " + col + " LIKE '%\\\"%' AND deleted = false");
+                    if (fixed > 0) {
+                        totalFixed += fixed;
+                        log.info("Repaired {} double-encoded JSON values in form_container.{}", fixed, col);
+                    }
+                } catch (Exception e) {
+                    log.debug("Could not repair form_container.{}: {}", col, e.getMessage());
+                }
+            }
+
+            // Also repair PrintableForm.size column
+            try (Statement stmt = conn.createStatement()) {
+                int fixed = stmt.executeUpdate(
+                    "UPDATE printable_form SET size = REPLACE(size, '\\\"', '\"') " +
+                    "WHERE size LIKE '%\\\"%' AND deleted = false");
+                if (fixed > 0) {
+                    totalFixed += fixed;
+                    log.info("Repaired {} double-encoded JSON values in printable_form.size", fixed);
+                }
+            } catch (Exception e) {
+                log.debug("Could not repair printable_form.size: {}", e.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("JSON LOB repair failed (non-fatal): {}", e.getMessage());
+        }
+
+        if (totalFixed > 0) {
+            log.info("Total repaired double-encoded JSON LOB values: {}", totalFixed);
+        }
     }
 
     /**

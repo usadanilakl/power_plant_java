@@ -4,6 +4,7 @@ import { LockDto } from './lock.model';
 import { LotoBoxDto } from './loto-box.model';
 import { LotoIdDto } from './loto-id.model';
 import { FormField } from '../ui/form-field.model';
+import { Column } from '../column.model';
 import { Validators } from '@angular/forms';
 
 export interface LotoModel extends BasePermitModel {
@@ -83,6 +84,17 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       date: this.date
     });
   }
+  static toTableColumns(): Column[] {
+    return [
+      { id: 'id', header: 'ID', accessorKey: 'id' },
+      { id: 'name', header: 'LOTO Number', accessorKey: 'name' },
+      { id: 'equipmentSystem', header: 'Equipment/System', accessorKey: 'equipmentSystem' },
+      { id: 'lotoRequestor', header: 'Requestor', accessorKey: 'lotoRequestor' },
+      { id: 'date', header: 'Date', accessorKey: 'date' },
+      { id: 'boxNumber', header: 'Box #', accessorKey: 'boxNumber' },
+    ];
+  }
+
   static toFormFields(dto: LotoDto): FormField[] {
     const fields: FormField[] = [
       {
@@ -107,18 +119,10 @@ export class LotoDto extends BasePermitDto implements LotoModel {
         validators: [Validators.required]
       },
       {
-        name: 'lotoPoints',
-        label: 'LOTO Points',
-        type: 'multi-select',
-        initialValue: dto.lotoPoints.map(p => p.id),
-        options: dto.lotoPoints.map(p => ({ value: p.id, label: `${p.tagNumber} - ${p.description}` }))
-      },
-      {
-        name: 'locks',
-        label: 'Locks',
-        type: 'multi-select',
-        initialValue: dto.locks.map(l => l.id),
-        options: dto.locks.map(l => ({ value: l.id, label: `Lock #${l.number}` }))
+        name: 'boxNumber',
+        label: 'Box Number',
+        type: 'number',
+        initialValue: dto.boxNumber?.toString() || ''
       },
       {
         name: 'lotoBox',
@@ -136,12 +140,29 @@ export class LotoDto extends BasePermitDto implements LotoModel {
           { value: 'true', label: 'Yes' },
           { value: 'false', label: 'No' }
         ]
-      }, 
+      },
       {
-        name: 'boxNumber',
-        label: 'Box Number',
-        type: 'number',
-        initialValue: dto.boxNumber?.toString() || ''
+        name: 'locks',
+        label: 'Locks',
+        type: 'multi-select',
+        initialValue: dto.locks.map(l => l.id),
+        options: dto.locks.map(l => ({ value: l.id, label: `Lock #${l.number}` }))
+      },
+      {
+        name: 'lotoPoints',
+        label: 'Tags and Locks',
+        type: 'form-array',
+        initialValue: dto.lotoPoints,
+        fields: [
+          { name: 'tagNumber', label: 'Tag #', type: 'text' },
+          { name: 'description', label: 'EID to be Tagged/Locked', type: 'text' },
+          { name: 'specificLocation', label: 'Location', type: 'text' },
+          { name: 'isoPos', label: 'LOTO Position', type: 'text' },
+          { name: 'normPos', label: 'Released Position', type: 'text' },
+          { name: 'hungBy', label: 'Hung By', type: 'text' },
+          { name: 'verifiedBy', label: 'Verified By', type: 'text' },
+          { name: 'zeroEnergyMethod', label: 'Zero Energy Verification', type: 'textarea' },
+        ]
       }
     ];
     return fields;

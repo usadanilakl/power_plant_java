@@ -1,0 +1,71 @@
+<div class="points-panel">
+  <div class="panel-header">
+    <h3>LOTO Points ({{ lotoPoints().length }})</h3>
+    <button class="add-btn" (click)="openSearch()" [disabled]="!currentLoto()?.id">+ Add Point</button>
+  </div>
+
+  @if (lotoPoints().length === 0) {
+    <div class="empty-state">No LOTO points assigned</div>
+  } @else {
+    <div class="points-table">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tag #</th>
+            <th>Description</th>
+            <th>Location</th>
+            <th>LOTO Position</th>
+            <th>Normal Position</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (point of lotoPoints(); track point.id; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td>{{ point.tagNumber }}</td>
+              <td>{{ point.description }}</td>
+              <td>{{ point.specificLocation }}</td>
+              <td>{{ point.isoPos?.name }}</td>
+              <td>{{ point.normPos?.name }}</td>
+              <td>
+                <button class="remove-btn" (click)="removePoint(point.id)" title="Remove point">✕</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (isSearchOpen()) {
+  <div class="search-overlay" (click)="closeSearch()">
+    <div class="search-dialog" (click)="$event.stopPropagation()">
+      <div class="search-header">
+        <h3>Add LOTO Point</h3>
+        <button class="close-btn" (click)="closeSearch()">✕</button>
+      </div>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by tag number, description, or location..."
+        [value]="searchTerm()"
+        (input)="onSearchInput($event)"
+        autofocus
+      />
+      <div class="search-results">
+        @for (point of filteredPoints(); track point.id) {
+          <div class="search-result-item" (click)="addPoint(point)">
+            <span class="result-tag">{{ point.tagNumber }}</span>
+            <span class="result-desc">{{ point.description }}</span>
+            <span class="result-loc">{{ point.specificLocation }}</span>
+          </div>
+        } @empty {
+          <div class="empty-state">No matching points found</div>
+        }
+      </div>
+    </div>
+  </div>
+}

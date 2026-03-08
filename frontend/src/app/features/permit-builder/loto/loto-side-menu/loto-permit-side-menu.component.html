@@ -1,0 +1,7 @@
+<app-permit-left-panel
+  [isPaperViewInput]="currentLotoService.isPaperViewActive()"
+  (formViewChanged)="onFormViewChanged($event)"
+>
+  <app-loto-permit-left-menu menu></app-loto-permit-left-menu>
+  <app-loto-permit-table table></app-loto-permit-table>
+</app-permit-left-panel>

@@ -18,6 +18,8 @@ import { ConfinedSpaceSideMenuComponent } from '../features/permit-builder/confi
 import { EnergizedWorkPermitSideMenuComponent } from '../features/permit-builder/energized-work-permit/energized-work-permit-side-menu/energized-work-permit-side-menu.component';
 import { ExcavationPermitSideMenuComponent } from '../features/permit-builder/excavation-permit/excavation-permit-side-menu/excavation-permit-side-menu.component';
 import { VentingPermitSideMenuComponent } from '../features/permit-builder/venting-permit/venting-permit-side-menu/venting-permit-side-menu.component';
+import { LotoPermitComponent } from '../features/permit-builder/loto/loto-permit.component';
+import { LotoPermitSideMenuComponent } from '../features/permit-builder/loto/loto-side-menu/loto-permit-side-menu.component';
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
 import { WorkAreaPageComponent } from '../features/permit-builder/work-area/work-area-page.component';
@@ -84,6 +86,11 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         path: 'venting-permits',
         component: VentingPermitComponent,
         data: { leftMenu: VentingPermitSideMenuComponent }
+      },
+      {
+        path: 'lotos',
+        component: LotoPermitComponent,
+        data: { leftMenu: LotoPermitSideMenuComponent }
       },
       { path: 'work-areas', component: WorkAreaPageComponent },
     ]

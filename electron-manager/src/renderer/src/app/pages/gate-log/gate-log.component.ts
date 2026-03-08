@@ -52,6 +52,7 @@ import {
             <button class="filter-btn" [class.active]="timeFilter === 'all'" (click)="setTimeFilter('all')">All</button>
             <button class="filter-btn" [class.active]="timeFilter === '48h'" (click)="setTimeFilter('48h')">48h</button>
             <button class="filter-btn" [class.active]="timeFilter === '24h'" (click)="setTimeFilter('24h')">24h</button>
+            <button class="filter-btn" [class.active]="timeFilter === '12h'" (click)="setTimeFilter('12h')">12h</button>
           </div>
         </div>
 
@@ -554,7 +555,7 @@ export class GateLogComponent implements OnInit, OnDestroy {
   configSaved = false;
   sortField: 'name' | 'checkIn' | 'duration' = 'checkIn';
   sortAsc = false;
-  timeFilter: 'all' | '24h' | '48h' = '48h';
+  timeFilter: 'all' | '48h' | '24h' | '12h' = '12h';
 
   private unsubscribePeopleUpdated?: () => void;
 
@@ -577,7 +578,7 @@ export class GateLogComponent implements OnInit, OnDestroy {
 
   get filteredPeople(): GateLogEntry[] {
     if (this.timeFilter === 'all') return this.people;
-    const hours = this.timeFilter === '24h' ? 24 : 48;
+    const hours = this.timeFilter === '12h' ? 12 : this.timeFilter === '24h' ? 24 : 48;
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
     return this.people.filter(p => {
       if (!p.checkIn) return true; // keep entries without a timestamp
@@ -726,7 +727,7 @@ export class GateLogComponent implements OnInit, OnDestroy {
     }
   }
 
-  setTimeFilter(filter: 'all' | '24h' | '48h'): void {
+  setTimeFilter(filter: 'all' | '48h' | '24h' | '12h'): void {
     this.timeFilter = filter;
   }
 

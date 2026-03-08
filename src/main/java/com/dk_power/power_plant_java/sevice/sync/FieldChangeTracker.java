@@ -512,7 +512,15 @@ public class FieldChangeTracker {
                 return ((Enum<?>) value).name();
             }
 
-            // Handle simple values
+            // Handle plain strings — return as-is to avoid double-encoding.
+            // JSON LOB fields (e.g., positionJson, sizeJson) are stored as raw JSON strings.
+            // Using writeValueAsString on them would add surrounding quotes and escape inner
+            // quotes, causing corruption when deserializeValue strips quotes but not escapes.
+            if (value instanceof String) {
+                return (String) value;
+            }
+
+            // Handle other complex types via Jackson
             return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
             log.warn("Error serializing value of type {}: {}", value.getClass().getSimpleName(), e.getMessage());
