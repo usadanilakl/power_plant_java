@@ -89,17 +89,18 @@ public class InstrumentBulkUploadService {
         return results;
     }
 
-    public BulkUploadResult uploadToSharePoint(List<InstrumentDto> instruments) {
+    public BulkUploadResult uploadToSharePoint(List<InstrumentDto> instruments, String onConflictRaw) {
         BulkUploadResult result = new BulkUploadResult();
         result.setTotal(instruments.size());
+        ConflictPolicy conflictPolicy = ConflictPolicy.from(onConflictRaw);
 
         // Fetch all existing SP items once for efficient lookup
-        Map<String, String> tagToSpId = new LinkedHashMap<>();
+        Map<String, InstrumentDto> existingByTag = new LinkedHashMap<>();
         try {
             List<InstrumentDto> existing = instrumentAdapter.getAll();
             for (InstrumentDto dto : existing) {
                 if (dto.getTagNumber() != null) {
-                    tagToSpId.put(dto.getTagNumber(), dto.getSharepointId());
+                    existingByTag.put(normalizeTag(dto.getTagNumber()), dto);
                 }
             }
         } catch (Exception e) {
@@ -108,17 +109,32 @@ public class InstrumentBulkUploadService {
 
         for (InstrumentDto dto : instruments) {
             try {
-                String existingSpId = tagToSpId.get(dto.getTagNumber());
-                if (existingSpId != null) {
-                    instrumentAdapter.update(existingSpId, dto);
+                dto.setTagNumber(normalizeTag(dto.getTagNumber()));
+                if (dto.getTagNumber().isEmpty()) {
+                    result.incrementSkipped();
+                    continue;
+                }
+
+                InstrumentDto existing = existingByTag.get(dto.getTagNumber());
+                if (existing != null) {
+                    if (conflictPolicy == ConflictPolicy.SKIP) {
+                        result.incrementSkipped();
+                        continue;
+                    }
+
+                    InstrumentDto merged = mergeDtos(existing, dto);
+                    instrumentAdapter.update(existing.getSharepointId(), merged);
+                    merged.setSharepointId(existing.getSharepointId());
+                    existingByTag.put(merged.getTagNumber(), merged);
+                    upsertToH2(merged);
                     result.incrementUpdated();
                 } else {
                     String newSpId = instrumentAdapter.create(dto);
                     dto.setSharepointId(newSpId);
+                    existingByTag.put(dto.getTagNumber(), dto);
+                    upsertToH2(dto);
                     result.incrementCreated();
                 }
-                // Also upsert to H2
-                upsertToH2(dto);
             } catch (Exception e) {
                 result.incrementFailed();
                 result.addError(dto.getTagNumber() + ": " + e.getMessage());
@@ -126,8 +142,8 @@ public class InstrumentBulkUploadService {
             }
         }
 
-        log.info("[BulkUpload] Complete: created={}, updated={}, failed={} of {} total",
-                result.getCreated(), result.getUpdated(), result.getFailed(), result.getTotal());
+        log.info("[BulkUpload] Complete: created={}, updated={}, skipped={}, failed={} of {} total",
+                result.getCreated(), result.getUpdated(), result.getSkipped(), result.getFailed(), result.getTotal());
         return result;
     }
 
@@ -140,13 +156,55 @@ public class InstrumentBulkUploadService {
             entity = new Instrument();
             entity.setTagNumber(dto.getTagNumber());
         }
-        entity.setDescription(dto.getDescription());
-        entity.setVendor(dto.getVendor());
-        entity.setLocation(dto.getLocation());
-        entity.setType(dto.getType());
-        if (dto.getCurrentStatus() != null) entity.setCurrentStatus(dto.getCurrentStatus());
-        if (dto.getSharepointId() != null) entity.setSharepointId(dto.getSharepointId());
+        setIfNotBlank(dto.getDescription(), entity::setDescription);
+        setIfNotBlank(dto.getVendor(), entity::setVendor);
+        setIfNotBlank(dto.getLocation(), entity::setLocation);
+        setIfNotBlank(dto.getType(), entity::setType);
+        setIfNotBlank(dto.getCurrentStatus(), entity::setCurrentStatus);
+        setIfNotBlank(dto.getSharepointId(), entity::setSharepointId);
         instrumentRepo.save(entity);
+    }
+
+    private InstrumentDto mergeDtos(InstrumentDto base, InstrumentDto incoming) {
+        InstrumentDto merged = new InstrumentDto();
+        merged.setTagNumber(normalizeTag(base.getTagNumber()));
+        merged.setSharepointId(base.getSharepointId());
+        merged.setLocalUuid(firstNonBlank(incoming.getLocalUuid(), base.getLocalUuid()));
+        merged.setDescription(firstNonBlank(incoming.getDescription(), base.getDescription()));
+        merged.setVendor(firstNonBlank(incoming.getVendor(), base.getVendor()));
+        merged.setLocation(firstNonBlank(incoming.getLocation(), base.getLocation()));
+        merged.setType(firstNonBlank(incoming.getType(), base.getType()));
+        merged.setCurrentStatus(firstNonBlank(incoming.getCurrentStatus(), base.getCurrentStatus()));
+        merged.setLastUpdatedDate(firstNonBlank(incoming.getLastUpdatedDate(), base.getLastUpdatedDate()));
+        merged.setLastUpdatedTime(firstNonBlank(incoming.getLastUpdatedTime(), base.getLastUpdatedTime()));
+        merged.setLastUpdatedBy(firstNonBlank(incoming.getLastUpdatedBy(), base.getLastUpdatedBy()));
+        merged.setLastComment(firstNonBlank(incoming.getLastComment(), base.getLastComment()));
+        return merged;
+    }
+
+    private static void setIfNotBlank(String value, java.util.function.Consumer<String> setter) {
+        if (value != null && !value.trim().isEmpty()) {
+            setter.accept(value.trim());
+        }
+    }
+
+    private static String firstNonBlank(String first, String fallback) {
+        if (first != null && !first.trim().isEmpty()) return first.trim();
+        return fallback;
+    }
+
+    private static String normalizeTag(String tag) {
+        return tag == null ? "" : tag.trim().toUpperCase();
+    }
+
+    private enum ConflictPolicy {
+        MERGE,
+        SKIP;
+
+        static ConflictPolicy from(String raw) {
+            if (raw != null && raw.equalsIgnoreCase("skip")) return SKIP;
+            return MERGE;
+        }
     }
 
     private InstrumentDto mapRowToDto(Map<String, Integer> headerMap, String[] values) {

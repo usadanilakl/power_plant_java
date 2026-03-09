@@ -20,4 +20,5 @@ public class InstrumentDto {
     private String sharepointId;
     private String localUuid;
     private Instant spModifiedTime;
+    private String mergePolicy;
 }

@@ -1,8 +1,30 @@
+@if (mode() === 'select') {
+  <div class="action-selector">
+    <h2 class="action-title">Work Request</h2>
+    <p class="action-subtitle">What would you like to do?</p>
+    <div class="action-cards">
+      <button class="action-card" (click)="selectNew()">
+        <span class="action-card-icon">📝</span>
+        <span class="action-card-label">Submit New Work Request</span>
+        <span class="action-card-desc">Start a blank form</span>
+      </button>
+      <button class="action-card" (click)="selectResubmit()">
+        <span class="action-card-icon">📋</span>
+        <span class="action-card-label">Resubmit Existing Request</span>
+        <span class="action-card-desc">Select from previous submissions</span>
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="form-header">
+    <button class="back-button" (click)="backToSelect()">← Back</button>
+    <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
+  </div>
+  <app-work-request-form></app-work-request-form>
+}
 
-<button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
-<app-work-request-form></app-work-request-form>
 <app-popup
-    [title]="'Table contains previously submitted requests from THIS divice and THIS browser'"
+    [title]="'Table contains previously submitted requests from THIS device and THIS browser'"
     [size]="'large'"
     [isOpen]="isTablePopupOpen"
     (close)="closeTablePopup()"

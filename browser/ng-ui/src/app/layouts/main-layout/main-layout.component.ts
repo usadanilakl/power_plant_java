@@ -17,6 +17,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
   @ViewChild('mainContent') mainContent!: ElementRef;
   @ViewChild('footer') footer!: ElementRef;
   @ViewChild('overlay') overlay!: ElementRef;
+  @ViewChild('headerContent') headerContent!: ElementRef;
 
   authService = inject(AuthService);
   private router = inject(Router);
@@ -46,8 +47,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   isMobileView = false;
   isMenuVisible: boolean = true;
-  
+  headerScrolled = false;
+
   private mediaQuery: MediaQueryList;
+  private headerScrollListener?: () => void;
   private resizeObserver?: ResizeObserver;
   
   constructor(private ngZone: NgZone) {
@@ -75,6 +78,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
       this.overlay.nativeElement.removeEventListener('click', this.onOverlayClick);
     }
     
+    if (this.headerScrollListener && this.headerContent?.nativeElement) {
+      this.headerContent.nativeElement.removeEventListener('scroll', this.headerScrollListener);
+    }
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
@@ -138,6 +145,15 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
     // Add click listener to overlay for mobile
     if (this.overlay?.nativeElement) {
       this.overlay.nativeElement.addEventListener('click', this.onOverlayClick);
+    }
+
+    // Header scroll hint — hide after first scroll
+    if (this.headerContent?.nativeElement) {
+      this.headerScrollListener = () => {
+        this.headerScrolled = true;
+        this.headerContent.nativeElement.removeEventListener('scroll', this.headerScrollListener!);
+      };
+      this.headerContent.nativeElement.addEventListener('scroll', this.headerScrollListener);
     }
     }, 0);
   }

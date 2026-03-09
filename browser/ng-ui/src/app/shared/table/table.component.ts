@@ -64,7 +64,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   private _items: any[] = [];
   filteredItems: any[] = [];
   globalSearchQuery: string = '';
+  globalFilterLogic: 'AND' | 'OR' = 'AND';
   columnFilters: { [key: string]: string } = {};
+  columnFilterLogic: { [key: string]: 'AND' | 'OR' } = {};
 
   currentSortColumn: string | null = null;
   isAscending: boolean = true;
@@ -241,20 +243,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   
   private updateFilteredItems() {
-    // console.log('Updating filtered items: ', this._items.length);
-    
-    // Apply global search filter
-    let filtered = this._items.filter(item => {
-      if (this.globalSearchQuery) {
-        const query = this.globalSearchQuery.toLowerCase();
-        const rawMatch = Object.values(item).some(v => String(v).toLowerCase().includes(query));
-        if (rawMatch) return true;
-        return this.columns.some(col =>
-          col.accessorFn && String(this.getCellValue(item, col)).toLowerCase().includes(query)
-        );
-      }
-      return true;
-    });
+    let filtered = this._items.filter(item => this.matchesGlobalSearch(item, this.globalSearchQuery));
 
     // Apply column filters
     filtered = filtered.filter(item => {
@@ -262,7 +251,7 @@ export class TableComponent implements OnInit, AfterViewInit {
         if (!value) return true;
         const column = this.columns.find(col => col.id === key || col.accessorKey === key);
         const cellValue = column ? this.getCellValue(item, column) : this.getNestedProperty(item, key);
-        return String(cellValue).toLowerCase().includes(value.toLowerCase());
+        return this.matchesWordBucket(String(cellValue), value, this.getColumnFilterLogic(key));
       });
     });
   
@@ -291,12 +280,71 @@ export class TableComponent implements OnInit, AfterViewInit {
     // console.log('Filtered items updated:', this.filteredItems.length);
   }
 
+  private matchesGlobalSearch(item: any, query: string): boolean {
+    if (!query || !query.trim()) return true;
+    const tokens = this.tokenize(query);
+    if (tokens.length === 0) return true;
+
+    const rowValues: string[] = [
+      ...Object.values(item ?? {}).map(v => String(v ?? '').toLowerCase()),
+      ...this.columns.map(col => String(this.getCellValue(item, col) ?? '').toLowerCase())
+    ];
+
+    if (this.globalFilterLogic === 'AND') {
+      // At least one field must contain all tokens.
+      return rowValues.some(value => tokens.every(token => value.includes(token)));
+    }
+
+    // Every token must be found somewhere in the row.
+    return tokens.every(token => rowValues.some(value => value.includes(token)));
+  }
+
+  private matchesWordBucket(fieldValue: string, query: string, logic: 'AND' | 'OR'): boolean {
+    const tokens = this.tokenize(query);
+    if (tokens.length === 0) return true;
+    const field = (fieldValue ?? '').toLowerCase();
+    return logic === 'AND'
+      ? tokens.every(token => field.includes(token))
+      : tokens.some(token => field.includes(token));
+  }
+
+  private tokenize(value: string): string[] {
+    return value
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  toggleGlobalFilterLogic() {
+    this.globalFilterLogic = this.globalFilterLogic === 'AND' ? 'OR' : 'AND';
+    this.performSearch();
+  }
+
+  getColumnFilterLogic(columnId: string): 'AND' | 'OR' {
+    return this.columnFilterLogic[columnId] ?? 'AND';
+  }
+
+  toggleColumnFilterLogic(columnId: string) {
+    this.columnFilterLogic[columnId] = this.getColumnFilterLogic(columnId) === 'AND' ? 'OR' : 'AND';
+    this.performSearch();
+  }
+
   handleScroll() {
     this.syncHorizontalScroll();
   }
 
   trackByFn(index: number, item: any): any {
-    return item.id; // Assuming each item has a unique 'id' property
+    if (!item) return index;
+
+    // Prefer explicit ids, then stable domain identifiers used across offline/online sync.
+    if (item.id !== undefined && item.id !== null && item.id !== '') return `id:${item.id}`;
+    if (item.sharepointId) return `sharepointId:${item.sharepointId}`;
+    if (item.localUuid) return `localUuid:${item.localUuid}`;
+    if (item.tagNumber) return `tagNumber:${item.tagNumber}`;
+    if (item.instrumentTagNumber) return `instrumentTagNumber:${item.instrumentTagNumber}`;
+
+    return index;
   }
 
   sortColumn(column: Column) {

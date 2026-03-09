@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.pwa;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.instrumentation.InstrumentDto;
+import com.dk_power.power_plant_java.dto.pwa.PwaInstrumentStateDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.sevice.pwa.PwaInstrumentService;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/pwa/instruments")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"https://dk-power.github.io", "http://localhost:4200"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"https://dk-power.github.io", "http://localhost:*", "http://127.0.0.1:*"}, allowCredentials = "true")
 public class PwaInstrumentController {
 
     private final PwaInstrumentService pwaService;
@@ -29,6 +30,18 @@ public class PwaInstrumentController {
             log.error("[PWA] Failed to fetch instruments: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(new NgApiResponse<>(List.of(), "Failed to fetch instruments: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/state")
+    public ResponseEntity<NgApiResponse<PwaInstrumentStateDto>> state() {
+        try {
+            PwaInstrumentStateDto state = pwaService.getInstrumentsState();
+            return ResponseEntity.ok(new NgApiResponse<>(state, "Instrument state fetched successfully"));
+        } catch (Exception e) {
+            log.error("[PWA] Failed to fetch instrument state: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(new NgApiResponse<>(null, "Failed to fetch instrument state: " + e.getMessage()));
         }
     }
 

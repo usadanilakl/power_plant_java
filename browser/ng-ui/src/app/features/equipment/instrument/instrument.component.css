@@ -1,3 +1,78 @@
 .instrument-log-table {
   margin-top: 1rem;
 }
+
+.action-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  min-height: 60vh;
+}
+
+.action-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  margin: 0 0 0.25rem;
+}
+
+.action-subtitle {
+  font-size: 1rem;
+  color: var(--secondary-text, #888);
+  margin: 0 0 2rem;
+}
+
+.action-cards {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.action-card {
+  flex: 1 1 240px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  background-color: var(--card-bg, var(--secondary-background));
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,0.1));
+  min-height: 140px;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: var(--accent-color);
+}
+
+.action-card:active {
+  transform: translateY(0);
+}
+
+.action-card-icon {
+  font-size: 2rem;
+}
+
+.action-card-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  text-align: center;
+}
+
+.action-card-desc {
+  font-size: 0.85rem;
+  color: var(--secondary-text, #888);
+  text-align: center;
+}

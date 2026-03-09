@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, switchMap } from 'rxjs';
-import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto, PwaInstrumentLogDto, PwaInstrumentDto } from './server-api.service';
+import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto, PwaInstrumentLogDto, PwaInstrumentDto, PwaInstrumentStateDto } from './server-api.service';
 import { PowerAutomateService } from './power-automate.service';
 import { UserSetupService } from './user-setup.service';
 import { WorkRequest } from '../models/permits/work-request.model';
@@ -16,12 +16,20 @@ export interface SubmissionResult {
   localUuid: string;
   message?: string;
   requiresEmail?: boolean;
+  requiresMerge?: boolean;
+  conflictType?: string;
 }
 
 export interface FetchResult {
   success: boolean;
   method: 'server' | 'powerAutomate' | 'static';
   instruments: PwaInstrumentDto[];
+}
+
+export interface InstrumentStateFetchResult {
+  success: boolean;
+  method: 'server' | 'powerAutomate' | 'cache';
+  state?: PwaInstrumentStateDto;
 }
 
 @Injectable({
@@ -200,6 +208,42 @@ export class SubmissionOrchestratorService {
 
   // ====================== Instrument Fetch & Create ======================
 
+  fetchInstrumentsState(): Observable<InstrumentStateFetchResult> {
+    return this.serverApi.getInstrumentsState().pipe(
+      map(state => ({
+        success: true,
+        method: 'server' as const,
+        state
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server fetch instrument state failed:', serverError.message);
+        if (!this.powerAutomate.isV2Configured('instrument')) {
+          return of({ success: false, method: 'cache' as const });
+        }
+        return this.powerAutomate.submitV2('instrument', { actionType: 'getState', data: {} }).pipe(
+          map(response => {
+            const row = Array.isArray(response.data) ? response.data[0] : undefined;
+            if (!row) {
+              return { success: false, method: 'cache' as const };
+            }
+            const itemCount = Number((row as any).itemCount ?? 0);
+            const lastModified = (row as any).lastModified ? String((row as any).lastModified) : undefined;
+            const version = String((row as any).version ?? `${itemCount}:${lastModified ?? 'none'}`);
+            return {
+              success: true,
+              method: 'powerAutomate' as const,
+              state: { itemCount, lastModified, version }
+            };
+          }),
+          catchError(paError => {
+            console.warn('[Orchestrator] PA fetch instrument state failed:', paError.message);
+            return of({ success: false, method: 'cache' as const });
+          })
+        );
+      })
+    );
+  }
+
   fetchInstruments(): Observable<FetchResult> {
     return this.serverApi.getInstruments().pipe(
       map(instruments => ({
@@ -249,7 +293,9 @@ export class SubmissionOrchestratorService {
         method: 'server' as const,
         sharepointId: response.sharepointId,
         localUuid,
-        message: response.message
+        message: response.message,
+        requiresMerge: response.requiresMerge,
+        conflictType: response.conflictType
       })),
       catchError(serverError => {
         console.warn('[Orchestrator] Server create instrument failed, trying PA:', serverError.message);

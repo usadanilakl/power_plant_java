@@ -1,10 +1,10 @@
 <div class="layout-container">
   <header class="header">
-    <div class="header-content">
+    <div class="header-content" #headerContent [class.scrolled]="headerScrolled">
       @if (header()) {
         <h1>{{ header() }}</h1>
       }@else {
-        <h1>Jackson Generation</h1>  
+        <h1>Jackson Generation</h1>
       }
       <ng-content select="[header]"></ng-content>
     </div>
@@ -31,7 +31,11 @@
       </nav>
       <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)">
         <button class="menu-toggle-btn" (click)="toggleMenu()">
-          <i class="arrow" [class.collapsed]="!isMenuVisible"></i>
+          @if (isMobileView) {
+            <span class="mobile-menu-label">{{ isMenuVisible ? '✕ Close' : '☰ Menu' }}</span>
+          } @else {
+            <i class="arrow" [class.collapsed]="!isMenuVisible"></i>
+          }
         </button>
       </div>
     }

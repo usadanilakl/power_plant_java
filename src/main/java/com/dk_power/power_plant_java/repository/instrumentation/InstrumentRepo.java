@@ -10,6 +10,7 @@ public interface InstrumentRepo extends BaseRepository<Instrument> {
     Optional<Instrument> findByTagNumber(String tagNumber);
     Optional<Instrument> findFirstBySharepointIdOrderByIdAsc(String sharepointId);
     Optional<Instrument> findFirstByLocalUuidOrderByIdAsc(String localUuid);
+    Optional<Instrument> findTopByOrderByDateModifiedDesc();
     boolean existsBySharepointId(String sharepointId);
     List<Instrument> findAllByCurrentStatus(String status);
 }

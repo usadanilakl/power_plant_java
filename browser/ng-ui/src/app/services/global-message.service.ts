@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
-export type MessageColor = 'red' | 'green' | 'white' | 'yellow';
+export type MessageColor = 'red' | 'green' | 'white' | 'yellow' | 'orange';
 
 export interface Message {
   text: string;

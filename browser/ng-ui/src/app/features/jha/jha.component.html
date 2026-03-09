@@ -55,8 +55,27 @@
     </div>
   }
 } @else {
-  <div class="wr-header wr-header--empty">
-    Select a Work Request from the left panel to begin.
+  <div class="wr-selector">
+    <h2 class="wr-selector-title">JHA — Select a Work Request</h2>
+    <p class="wr-selector-subtitle">Choose a work request to fill out a JHA</p>
+    @if (workRequestsForJha().length === 0) {
+      <div class="wr-selector-empty">No work requests need JHA at this time.</div>
+    }
+    <div class="wr-card-list">
+      @for (wr of workRequestsForJha(); track wr.sharepointId) {
+        <div class="wr-card">
+          <div class="wr-card-info">
+            <span class="wr-card-scope">{{ wr.workScope }}</span>
+            <span class="wr-card-meta">{{ wr.company }} — {{ wr.dateOfWork | date:'shortDate' }}</span>
+            <span class="wr-card-id">#{{ wr.sharepointId }}</span>
+          </div>
+          <div class="wr-card-actions">
+            <button class="wr-card-btn wr-card-btn--new" (click)="selectWrForNewJha(wr)">New JHA</button>
+            <button class="wr-card-btn wr-card-btn--existing" (click)="selectWrForExistingJha(wr)">Existing JHA</button>
+          </div>
+        </div>
+      }
+    </div>
   </div>
 }
 

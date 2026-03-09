@@ -8,12 +8,14 @@ import java.util.List;
 public class BulkUploadResult {
     private int created;
     private int updated;
+    private int skipped;
     private int failed;
     private int total;
     private List<String> errors = new ArrayList<>();
 
     public void incrementCreated() { created++; }
     public void incrementUpdated() { updated++; }
+    public void incrementSkipped() { skipped++; }
     public void incrementFailed() { failed++; }
     public void addError(String error) { errors.add(error); }
 }

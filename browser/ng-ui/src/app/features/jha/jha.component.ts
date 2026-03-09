@@ -7,6 +7,7 @@ import { JhaPaperPreviewComponent } from "./jha-paper-preview/jha-paper-preview.
 import { JhaStateService } from './jha-state.service';
 import { Jha } from '../../models/permits/jha.model';
 import { IAttachment } from '../../models/permits/attachment.model';
+import { WorkRequest } from '../../models/permits/work-request.model';
 import { DatePipe } from '@angular/common';
 import { GlobalMessageService } from '../../services/global-message.service';
 
@@ -22,6 +23,7 @@ export class JhaComponent {
   jhaStateService = inject(JhaStateService);
   globalMessageService = inject(GlobalMessageService);
   selectedWr = this.jhaStateService.selectedWorkRequestSignal;
+  workRequestsForJha = toSignal(this.jhaStateService.workRequestsForJha$, { initialValue: [] });
 
   submissionMode = signal<'form' | 'file'>('form');
   selectedFiles = signal<IAttachment[]>([]);
@@ -41,6 +43,15 @@ export class JhaComponent {
   }
   onJhaReused() {
     this.closeTablePopup();
+  }
+
+  selectWrForNewJha(wr: WorkRequest) {
+    this.jhaStateService.selectWorkRequestForJha(wr);
+  }
+
+  selectWrForExistingJha(wr: WorkRequest) {
+    this.jhaStateService.selectWorkRequestForJha(wr);
+    this.isTablePopupOpen = true;
   }
 
   togglePreview() {

@@ -28,11 +28,21 @@ public class InstrumentSharePointAdapter {
 
     private static final String LIST_TITLE = "Instrumentation";
 
+    public record ProbeState(int itemCount, Instant lastModified) {}
+
     public List<InstrumentDto> getAll() {
         return spService.executeWithFallback(
                 this::certGetAll,
                 this::paGetAll,
                 "getAll Instrumentation"
+        );
+    }
+
+    public ProbeState getProbeState() {
+        return spService.executeWithFallback(
+                this::certGetProbeState,
+                this::paGetProbeState,
+                "getState Instrumentation"
         );
     }
 
@@ -65,6 +75,19 @@ public class InstrumentSharePointAdapter {
     private List<InstrumentDto> certGetAll() {
         List<JsonNode> items = certAccess.getListItems(LIST_TITLE);
         return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
+    private ProbeState certGetProbeState() {
+        JsonNode metadata = certAccess.getListMetadata(LIST_TITLE);
+        int itemCount = parseIntSafe(metadata.path("ItemCount").asText(null), 0);
+
+        String modifiedRaw = firstNonBlank(
+                metadata.path("LastItemModifiedDate").asText(null),
+                metadata.path("lastItemModifiedDate").asText(null),
+                metadata.path("LastItemUserModifiedDate").asText(null)
+        );
+
+        return new ProbeState(itemCount, parseInstant(modifiedRaw));
     }
 
     private String certCreate(InstrumentDto dto) {
@@ -109,6 +132,22 @@ public class InstrumentSharePointAdapter {
             throw new RuntimeException("PA-V2 getAll Instrumentation failed: " + resp.getMessage());
         }
         return resp.getData().stream().map(this::mapFromPaResponse).collect(Collectors.toList());
+    }
+
+    private ProbeState paGetProbeState() {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("getState");
+        req.setData(Map.of());
+
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess() || resp.getData() == null || resp.getData().isEmpty()) {
+            throw new RuntimeException("PA-V2 getState Instrumentation failed: " + resp.getMessage());
+        }
+
+        Map<String, Object> first = resp.getData().get(0);
+        int itemCount = parseIntSafe(first.get("itemCount"), 0);
+        Instant lastModified = parseInstant(objectToString(first.get("lastModified")));
+        return new ProbeState(itemCount, lastModified);
     }
 
     private String paCreate(InstrumentDto dto) {
@@ -205,5 +244,29 @@ public class InstrumentSharePointAdapter {
             log.warn("[Instrument-Adapter] Failed to parse Modified datetime '{}': {}", raw, e.getMessage());
             return null;
         }
+    }
+
+    private static int parseIntSafe(Object value, int defaultVal) {
+        if (value == null) return defaultVal;
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (Exception ignored) {
+            return defaultVal;
+        }
+    }
+
+    private static String objectToString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return null;
     }
 }

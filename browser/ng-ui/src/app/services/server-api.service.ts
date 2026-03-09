@@ -9,9 +9,11 @@ import { IAttachment } from '../models/permits/attachment.model';
 export interface PwaSubmissionResult {
   success: boolean;
   sharepointId?: string;
-  method: 'server' | 'powerAutomate' | 'email' | 'local';
+  method: 'server' | 'powerAutomate' | 'email' | 'local' | 'duplicate' | 'merge_required' | 'merge';
   message?: string;
   localUuid: string;
+  requiresMerge?: boolean;
+  conflictType?: string;
 }
 
 export interface PwaStatusResult {
@@ -72,6 +74,13 @@ export interface PwaInstrumentDto {
   lastComment?: string;
   sharepointId?: string;
   localUuid?: string;
+  mergePolicy?: 'merge' | 'skip' | 'none';
+}
+
+export interface PwaInstrumentStateDto {
+  itemCount: number;
+  lastModified?: string;
+  version: string;
 }
 
 export interface PwaJhaDto {
@@ -171,6 +180,14 @@ export class ServerApiService {
 
   getInstruments(): Observable<PwaInstrumentDto[]> {
     return this.http.get<{ responseData: PwaInstrumentDto[] }>(`${this.baseUrl}/api/pwa/instruments/get-all`).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getInstrumentsState(): Observable<PwaInstrumentStateDto> {
+    return this.http.get<{ responseData: PwaInstrumentStateDto }>(`${this.baseUrl}/api/pwa/instruments/state`).pipe(
       timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)

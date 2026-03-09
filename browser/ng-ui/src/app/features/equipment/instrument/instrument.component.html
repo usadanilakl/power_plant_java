@@ -1,2 +1,39 @@
-<app-instrument-log-form></app-instrument-log-form>
-<app-instrument-log-table></app-instrument-log-table>
+@if (selectedInstrument()) {
+  <app-instrument-log-form></app-instrument-log-form>
+  <app-instrument-log-table></app-instrument-log-table>
+} @else {
+  <div class="action-selector">
+    <h2 class="action-title">Instrumentation</h2>
+    <p class="action-subtitle">What would you like to do?</p>
+    <div class="action-cards">
+      <button class="action-card" (click)="openSelectInstrument()">
+        <span class="action-card-icon">🔍</span>
+        <span class="action-card-label">Select Instrument</span>
+        <span class="action-card-desc">Browse and select from existing instruments to fill out a log</span>
+      </button>
+      <button class="action-card" (click)="openNewInstrumentPopup()">
+        <span class="action-card-icon">➕</span>
+        <span class="action-card-label">Create New Instrument</span>
+        <span class="action-card-desc">Add a new instrument to the database</span>
+      </button>
+    </div>
+  </div>
+}
+
+<app-popup
+    [title]="'Select an Instrument'"
+    [size]="'large'"
+    [isOpen]="isSelectInstrumentPopupOpen"
+    (close)="closeSelectInstrument()"
+>
+    <app-instrument-table (actionPopupClosed)="onInstrumentSelected()"></app-instrument-table>
+</app-popup>
+
+<app-popup
+    [title]="'Add New Instrument to Database'"
+    [size]="'medium'"
+    [isOpen]="isNewInstrumentPopupOpen"
+    (close)="closeNewInstrumentPopup()"
+>
+    <app-instrument-form></app-instrument-form>
+</app-popup>

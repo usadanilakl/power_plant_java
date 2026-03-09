@@ -5,8 +5,10 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface EquipmentRepo extends BaseRepository<Equipment> {
 //    @Query("SELECT new com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight(e.id,e.tagNumber,e.description,e.specificLocation,e.eqType.name,e.vendor.name, e.location.name,e.system.name)FROM Equipment e")
@@ -26,6 +28,8 @@ public interface EquipmentRepo extends BaseRepository<Equipment> {
         "LEFT JOIN e.location l " +
         "LEFT JOIN e.system s")
 List<EquipmentDtoLight> getAllLight();
+    @Query("SELECT e FROM Equipment e WHERE UPPER(e.tagNumber) = UPPER(:tagNumber) AND (e.deleted IS NULL OR e.deleted = false)")
+    Optional<Equipment> findFirstActiveByTagNumberIgnoreCase(@Param("tagNumber") String tagNumber);
     List<Equipment> findByTagNumber(String lable);
     List<Equipment> findByTagNumberContaining(String lable);
 

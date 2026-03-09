@@ -2,7 +2,7 @@ import { DestroyRef, inject, Injectable } from "@angular/core";
 import { Instrument } from "../../../models/equipment/instrument.model";
 import { BaseStateService } from "../../../services/base-state.service";
 import { HttpClient } from "@angular/common/http";
-import { BehaviorSubject, map, take } from "rxjs";
+import { BehaviorSubject, map, of, switchMap, take } from "rxjs";
 import { InstrumentLogEntry } from "../../../models/equipment/instrument-log.model";
 import { IAttachment } from "../../../models/permits/attachment.model";
 import { SubmissionOrchestratorService, SubmissionResult } from "../../../services/submission-orchestrator.service";
@@ -23,6 +23,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     private instrumentLogDraftStorage = inject(InstrumentLogEntryLocalStorageService);
     private instrumentDbService = inject(InstrumentDbService);
     private instrumentLogDbService = inject(InstrumentLogDbService);
+    private readonly instrumentsStateCacheKey = 'instrument-state-version-v1';
     destroyRef = inject(DestroyRef);
 
     public allInstruments$ = this.allItems$;
@@ -46,11 +47,36 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     }
 
     loadAllInstruments() {
-        this.orchestrator.fetchInstruments().pipe(take(1)).subscribe({
-            next: result => {
+        this.orchestrator.fetchInstrumentsState().pipe(
+            take(1),
+            switchMap(stateResult => {
+                const hasCached = this.allItemsSubject.getValue().length > 0;
+                const currentVersion = stateResult.state?.version;
+                const cachedVersion = localStorage.getItem(this.instrumentsStateCacheKey) ?? undefined;
+
+                // Cache already matches server state; skip full data transfer.
+                if (stateResult.success && hasCached && currentVersion && cachedVersion === currentVersion) {
+                    return of({ success: false, method: 'cache' as const, instruments: [] });
+                }
+
+                return this.orchestrator.fetchInstruments().pipe(
+                    map(result => ({
+                        ...result,
+                        stateVersion: currentVersion
+                    }))
+                );
+            })
+        ).subscribe({
+            next: (result: any) => {
                 if (result.success) {
-                    const instruments = result.instruments.map(dto => new Instrument(dto));
-                    this.instrumentDbService.replaceAll(instruments).pipe(take(1)).subscribe();
+                    const instruments = result.instruments.map((dto: any) => new Instrument(dto));
+                    this.allItemsSubject.next(instruments);
+                    if (result.stateVersion) {
+                        localStorage.setItem(this.instrumentsStateCacheKey, result.stateVersion);
+                    }
+                    this.instrumentDbService.replaceAll(instruments).pipe(take(1)).subscribe({
+                        error: (err) => console.error('Failed to cache instruments:', err)
+                    });
                     return;
                 }
                 if (this.allItemsSubject.getValue().length === 0) this.loadFromStaticJson();
@@ -67,6 +93,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             take(1)
         ).subscribe({
             next: instruments => {
+                this.allItemsSubject.next(instruments);
                 this.instrumentDbService.replaceAll(instruments).pipe(take(1)).subscribe();
             },
             error: err => {
@@ -124,7 +151,12 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             location: instrument.location,
             type: instrument.type,
             currentStatus: 'Normal Operation',
+            mergePolicy: 'none'
         };
+        this.submitInstrumentCreate(dto, false);
+    }
+
+    private submitInstrumentCreate(dto: PwaInstrumentDto, mergeRetryUsed: boolean) {
         this.globalMessageService.showMessage('Creating instrument...', 'white', 20000);
         this.orchestrator.createInstrument(dto).pipe(
             takeUntilDestroyed(this.destroyRef)
@@ -133,6 +165,16 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (result.success) {
                     this.globalMessageService.showMessage('Instrument created.', 'green', 3000);
                     this.loadAllInstruments();
+                } else if (result.requiresMerge && !mergeRetryUsed) {
+                    const userConfirmed = window.confirm(
+                        `${result.message || 'A record with this tag already exists.'}\n\nSelect OK to merge your non-empty values into the existing instrument record.`
+                    );
+                    if (userConfirmed) {
+                        const mergedDto: PwaInstrumentDto = { ...dto, mergePolicy: 'merge' };
+                        this.submitInstrumentCreate(mergedDto, true);
+                    } else {
+                        this.globalMessageService.showMessage('Instrument creation canceled due to duplicate tag.', 'orange', 5000);
+                    }
                 } else if (result.requiresEmail) {
                     this.globalMessageService.showMessage(
                         'All creation methods failed. Please submit via email.', 'red', 7000);

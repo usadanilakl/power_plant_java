@@ -1,7 +1,105 @@
-.resubmit-button {
+.action-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  min-height: 60vh;
+}
+
+.action-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  margin: 0 0 0.25rem;
+}
+
+.action-subtitle {
+  font-size: 1rem;
+  color: var(--secondary-text);
+  margin: 0 0 2rem;
+}
+
+.action-cards {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
   width: 100%;
-  padding: 12px 20px;
+  max-width: 600px;
+}
+
+.action-card {
+  flex: 1 1 240px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  background-color: var(--card-bg, var(--secondary-background));
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,0.1));
+  min-height: 140px;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: var(--accent-color);
+}
+
+.action-card:active {
+  transform: translateY(0);
+}
+
+.action-card-icon {
+  font-size: 2rem;
+}
+
+.action-card-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+  text-align: center;
+}
+
+.action-card-desc {
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  text-align: center;
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.back-button {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-text);
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.back-button:hover {
+  background-color: var(--border-color);
+}
+
+.resubmit-button {
+  flex: 1;
+  padding: 12px 20px;
   font-size: 16px;
   font-weight: 500;
   color: var(--header-text);
@@ -10,7 +108,7 @@
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease-in-out;
-  box-sizing: border-box; /* Ensures padding doesn't add to the width */
+  box-sizing: border-box;
 }
 
 .resubmit-button:hover {

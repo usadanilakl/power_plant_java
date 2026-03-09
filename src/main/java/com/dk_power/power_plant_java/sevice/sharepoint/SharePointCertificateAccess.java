@@ -166,6 +166,21 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    /**
+     * Fetch list-level metadata fields (for cheap change probes).
+     */
+    public JsonNode getListMetadata(String listTitle) {
+        ResponseEntity<String> response = sendGetRequest(
+                "/_api/web/lists/getbytitle('" + listTitle + "')?$select=ItemCount,LastItemModifiedDate"
+        );
+        try {
+            JsonNode root = objectMapper.readTree(response.getBody());
+            return root.has("d") ? root.path("d") : root;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse metadata for list '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
     public String createListItem(String listTitle, Map<String, Object> body) {
         String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/items";
         try {

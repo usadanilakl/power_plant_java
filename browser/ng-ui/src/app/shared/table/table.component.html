@@ -6,6 +6,9 @@
         <ng-content select="[table-controls]"></ng-content>
       </div>
       <div class="search-row">
+        <button type="button" (click)="toggleGlobalFilterLogic()">
+          {{ globalFilterLogic }}
+        </button>
         <input appCopyPaste type="text" class="search-input" placeholder="Global Search..." 
                [(ngModel)]="globalSearchQuery" 
                (ngModelChange)="onGlobalSearchChange()">
@@ -27,6 +30,9 @@
         <tr>
           @for (column of columns; track column.id) {
             <th>
+              <button type="button" (click)="toggleColumnFilterLogic(column.id)">
+                {{ getColumnFilterLogic(column.id) }}
+              </button>
               <input appCopyPaste type="text" class="filter-input" 
                      [placeholder]="'Filter ' + column.header" 
                      [(ngModel)]="columnFilters[column.id]" 

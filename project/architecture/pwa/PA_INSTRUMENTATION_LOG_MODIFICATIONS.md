@@ -1,252 +1,196 @@
-# Power Automate Flow Modifications — Instrumentation
+# Power Automate Flow Modifications - Instrumentation
 
-This document describes all changes needed to the existing **Instrumentation Log** Power Automate flow. The same flow handles log creation, instrument management (get all / create), attachments, and PwaId tracking.
+This document defines required Power Automate changes for instrumentation so the server can:
+- do a full SharePoint pull at most once every 24 hours,
+- run lightweight change checks between pulls,
+- keep instrument log + instrument master actions working as-is.
 
-## Flow Architecture
+## Required Action Types
 
-The flow uses a **Switch** on `actionType` to handle multiple operations:
+Configure the flow to support these `actionType` values:
 
-| `actionType` | Purpose |
+| actionType | Purpose |
 |---|---|
-| `addInstrumentationLog` | Create a log entry + upsert instrument + upload attachments |
-| `getAllInstruments` | Return all instruments from the "Instrumentation" SP list |
-| `addInstrument` | Create a new instrument in the "Instrumentation" SP list |
+| `addInstrumentationLog` | Create instrumentation log item, add attachments, upsert instrument master row |
+| `getAllInstruments` | Return full instrument list (PWA compatibility) |
+| `addInstrument` | Create new instrument (PWA compatibility) |
+| `getAll` | Return full instrument list (server adapter compatibility) |
+| `create` | Create new instrument (server adapter compatibility) |
+| `update` | Update existing instrument by `id` |
+| `upsertByTagNumber` | Update/create instrument by `Tag_x0020_Number` |
+| `getState` | Return lightweight probe state: `itemCount` + `lastModified` |
 
----
+`getAllInstruments` and `getAll` should return the same shape.
+`addInstrument` and `create` should perform the same create behavior.
 
-## Updated Trigger Schema
+## Trigger Contract
 
-The trigger must accept all action types. Extend your existing schema to include `data` (for instrument management actions) alongside the existing fields:
+Trigger body must accept:
+- `actionType: string` (required)
+- `id: string` (for update paths)
+- `localUuid: string`
+- `instrumentationLog: object`
+- `attachments: array`
+- `data: object`
 
+`data` should support:
+- `Tag_x0020_Number`
+- `Description`
+- `Vendor`
+- `Location`
+- `Type`
+- `CurrentStatus`
+- `LastUpdatedDate`
+- `LastUpdatedTime`
+- `LastUpdatedBy`
+- `LastComment`
+- `PwaId`
+- `mergePolicy` (`none` | `merge` | `skip`)
+
+## Switch Cases
+
+## Case: `getState`
+
+Goal: cheap probe, no full list transfer.
+
+1. SharePoint `Get items` on `Instrumentation`:
+- Order by `Modified desc`
+- Top count `1`
+- Select only `ID,Modified`
+
+2. SharePoint list metadata read for `ItemCount`:
+- any method is acceptable (SharePoint connector, REST, or cached value),
+- must return total current item count for the list.
+
+3. Build response:
+- `itemCount`: total count (integer)
+- `lastModified`: newest Modified value in ISO-8601 UTC or `null` if empty list
+
+Response body:
 ```json
 {
-  "type": "object",
-  "additionalProperties": {
-    "type": "string"
-  },
-  "properties": {
-    "actionType": {
-      "type": "string"
-    },
-    "localUuid": {
-      "type": "string"
-    },
-    "user": {
-      ...existing user schema...
-    },
-    "instrumentationLog": {
-      "type": "object",
-      "properties": {
-        "instrumentTagNumber": { "type": "string" },
-        "instrumentDescription": { "type": "string" },
-        "status": { "type": "string" },
-        "date": { "type": "string", "format": "date-time" },
-        "time": { "type": "string" },
-        "name": { "type": "string" },
-        "comment": { "type": "string" }
-      },
-      "required": ["instrumentTagNumber", "status", "date", "time", "name", "comment"]
-    },
-    "attachments": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "fileName": { "type": "string" },
-          "contentType": { "type": "string" },
-          "base64Content": { "type": "string" }
-        }
-      }
-    },
-    "data": {
-      "type": "object",
-      "properties": {
-        "Tag_x0020_Number": { "type": "string" },
-        "Description": { "type": "string" },
-        "Vendor": { "type": "string" },
-        "Location": { "type": "string" },
-        "Type": { "type": "string" },
-        "CurrentStatus": { "type": "string" },
-        "PwaId": { "type": "string" }
-      }
+  "success": true,
+  "data": [
+    {
+      "itemCount": 1234,
+      "lastModified": "2026-03-09T14:22:31Z"
     }
-  },
-  "required": ["actionType"]
+  ]
 }
 ```
 
----
+## Case: `getAllInstruments` and `getAll`
 
-## Switch Control
+Return all rows from `Instrumentation` list with fields:
+- `ID`, `Tag_x0020_Number`, `Description`, `Vendor`, `Location`, `Type`,
+- `CurrentStatus`, `LastUpdatedDate`, `LastUpdatedTime`, `LastUpdatedBy`, `LastComment`,
+- `PwaId`, `Modified`.
 
-After the trigger, add a **Switch** control:
-- **On:** `triggerBody()?['actionType']`
+Response item mapping:
+```json
+{
+  "ID": "15",
+  "Tag_x0020_Number": "PT-101",
+  "Description": "Pressure Transmitter",
+  "Vendor": "ABB",
+  "Location": "Turbine Hall",
+  "Type": "Transmitter",
+  "CurrentStatus": "Normal Operation",
+  "LastUpdatedDate": "2026-03-09",
+  "LastUpdatedTime": "09:15",
+  "LastUpdatedBy": "Operator A",
+  "LastComment": "OK",
+  "PwaId": "uuid-value",
+  "Modified": "2026-03-09T14:22:31Z"
+}
+```
 
-Three cases + default:
+Response envelope:
+```json
+{
+  "success": true,
+  "data": [ ...items... ]
+}
+```
 
----
+## Case: `addInstrument` and `create`
+
+Create in `Instrumentation` using `data.*` fields.
+
+Conflict behavior by tag number (`Tag_x0020_Number`):
+- `mergePolicy=merge`: update existing item with non-empty incoming fields; keep existing value when incoming is blank.
+- `mergePolicy=skip`: do not change existing item, return success with message indicating skipped.
+- `mergePolicy=none` (or omitted): return a merge-required style response for duplicate tags.
+
+Response body:
+```json
+{
+  "success": true,
+  "id": "123"
+}
+```
+
+## Case: `update`
+
+Update `Instrumentation` item by `id` using `data.*` fields.
+
+Response body:
+```json
+{
+  "success": true
+}
+```
+
+## Case: `upsertByTagNumber`
+
+Find by `Tag_x0020_Number`:
+- if found, update it,
+- if not found, create it.
+
+When updating existing row, apply merge semantics:
+- non-empty incoming fields overwrite,
+- empty incoming fields do not clear existing fields.
+
+Response body:
+```json
+{
+  "success": true
+}
+```
 
 ## Case: `addInstrumentationLog`
 
-This is the existing log creation flow, now extended with attachments and instrument upsert.
-
-### Step 1: Create Log Item in "Instrumentation Log" List
-
-Use **SharePoint — Create item** action:
-- **List Name:** `Instrumentation Log`
-- Map all fields from `triggerBody()?['instrumentationLog']`
-- **PwaId** column → `triggerBody()?['localUuid']`
-
-### Step 2: Upload Attachments
-
-1. **Condition:** `length(triggerBody()?['attachments'])` **is greater than** `0`
-
-2. **Apply to each:** Loop over `triggerBody()?['attachments']`
-
-3. Inside the loop, use **SharePoint — Add attachment** action:
-   - **List Name:** `Instrumentation Log`
-   - **Id:** The ID from the "Create item" step output
-   - **File Name:** `items('Apply_to_each')?['fileName']`
-   - **File Content:** `base64ToBinary(items('Apply_to_each')?['base64Content'])`
-
-### Step 3: Upsert the "Instrumentation" List
-
-After log creation and attachments, update (or create) the instrument master record.
-
-#### 3a. Look Up Existing Instrument
-
-Use **SharePoint — Get items** action:
-- **List Name:** `Instrumentation`
-- **Filter Query:** `Tag_x0020_Number eq 'triggerBody()?['instrumentationLog']?['instrumentTagNumber']'`
-- **Top Count:** `1`
-
-#### 3b. Condition: Instrument Found?
-
-- Expression: `length(body('Get_items_-_Instrumentation')?['value'])` **is greater than** `0`
-
-#### 3c. If Yes — Update Existing Instrument
-
-Use **SharePoint — Update item** action:
-- **List Name:** `Instrumentation`
-- **Id:** `first(body('Get_items_-_Instrumentation')?['value'])?['ID']`
-- **CurrentStatus:** `triggerBody()?['instrumentationLog']?['status']`
-- **LastUpdatedDate:** `triggerBody()?['instrumentationLog']?['date']`
-- **LastUpdatedTime:** `triggerBody()?['instrumentationLog']?['time']`
-- **LastUpdatedBy:** `triggerBody()?['instrumentationLog']?['name']`
-- **LastComment:** `triggerBody()?['instrumentationLog']?['comment']`
-- **Description:** `triggerBody()?['instrumentationLog']?['instrumentDescription']`
-
-#### 3d. If No — Create New Instrument
-
-Use **SharePoint — Create item** action:
-- **List Name:** `Instrumentation`
-- **Tag_x0020_Number:** `triggerBody()?['instrumentationLog']?['instrumentTagNumber']`
-- **Description:** `triggerBody()?['instrumentationLog']?['instrumentDescription']`
-- **CurrentStatus:** `triggerBody()?['instrumentationLog']?['status']`
-- **LastUpdatedDate:** `triggerBody()?['instrumentationLog']?['date']`
-- **LastUpdatedTime:** `triggerBody()?['instrumentationLog']?['time']`
-- **LastUpdatedBy:** `triggerBody()?['instrumentationLog']?['name']`
-- **LastComment:** `triggerBody()?['instrumentationLog']?['comment']`
-- **PwaId:** `triggerBody()?['localUuid']`
-
----
-
-## Case: `getAllInstruments`
-
-Returns all instruments from the "Instrumentation" SP list. Used by the PWA as a fallback when the server is down.
-
-### Step 1: Get Items from SharePoint
-
-Use **SharePoint — Get items** action:
-- **List Name:** `Instrumentation`
-- **Top Count:** `5000` (or leave blank for default)
-
-### Step 2: Build Response Array
-
-Use **Select** action to map each item to a clean JSON object:
-- **From:** `body('Get_items_-_All_Instruments')?['value']`
-- **Map:**
-  - `sharepointId` → `item()?['ID']`
-  - `tagNumber` → `item()?['Tag_x0020_Number']`
-  - `description` → `item()?['Description']`
-  - `vendor` → `item()?['Vendor']`
-  - `location` → `item()?['Location']`
-  - `type` → `item()?['Type']`
-  - `currentStatus` → `item()?['CurrentStatus']`
-  - `lastUpdatedDate` → `item()?['LastUpdatedDate']`
-  - `lastUpdatedTime` → `item()?['LastUpdatedTime']`
-  - `lastUpdatedBy` → `item()?['LastUpdatedBy']`
-  - `lastComment` → `item()?['LastComment']`
-  - `localUuid` → `item()?['PwaId']`
-
-### Step 3: Return Response
-
-Use **Response** action:
-- **Status Code:** `200`
-- **Body:**
-```json
-{
-  "success": true,
-  "data": @{body('Select')}
-}
-```
-
----
-
-## Case: `addInstrument`
-
-Creates a new instrument in the "Instrumentation" SP list. Used by the PWA when adding a new instrument while the server is down.
-
-### Step 1: Create Item in SharePoint
-
-Use **SharePoint — Create item** action:
-- **List Name:** `Instrumentation`
-- **Tag_x0020_Number:** `triggerBody()?['data']?['Tag_x0020_Number']`
-- **Description:** `triggerBody()?['data']?['Description']`
-- **Vendor:** `triggerBody()?['data']?['Vendor']`
-- **Location:** `triggerBody()?['data']?['Location']`
-- **Type:** `triggerBody()?['data']?['Type']`
-- **CurrentStatus:** `triggerBody()?['data']?['CurrentStatus']`
-- **PwaId:** `triggerBody()?['data']?['PwaId']`
-
-### Step 2: Return Response
-
-Use **Response** action:
-- **Status Code:** `200`
-- **Body:**
-```json
-{
-  "success": true,
-  "id": "@{body('Create_item_-_New_Instrument')?['ID']}"
-}
-```
-
----
+Keep existing behavior:
+1. Create item in `Instrumentation Log`,
+2. Add attachments,
+3. Upsert instrument status fields in `Instrumentation`.
 
 ## Default Case
 
-Return an error response:
-- **Status Code:** `400`
-- **Body:** `{ "success": false, "message": "Unknown actionType" }`
-
----
-
-## PWA Configuration
-
-Since all actions use the **same flow URL**, the PWA environment config should point both `instrumentLog` and `instrument` to the same URL:
-
-```typescript
-paFlowUrls: {
-  instrumentLog: '<THIS_FLOW_URL>',
-  instrument: '<THIS_FLOW_URL>',   // same URL, different actionType
+Return:
+```json
+{
+  "success": false,
+  "message": "Unknown actionType"
 }
 ```
 
-## Summary
+HTTP status: `400`.
 
-1. Update trigger schema to accept `actionType`, `data`, `localUuid`, `instrumentationLog`, `attachments`
-2. Add **Switch** on `actionType` with three cases
-3. `addInstrumentationLog`: Create log → upload attachments → upsert instrument
-4. `getAllInstruments`: Get all items from "Instrumentation" list → return as JSON array
-5. `addInstrument`: Create new item in "Instrumentation" list → return SP ID
-6. Test each action type independently, then test from PWA with server stopped
+## Server Behavior This Enables
+
+With the `getState` case added, server logic is:
+1. Full pull from SharePoint at least once every 24 hours.
+2. Inside 24 hours, call `getState`.
+3. If `itemCount` or `lastModified` changed, run full pull.
+4. If unchanged, serve H2 cache.
+
+This reduces SharePoint load while keeping data freshness predictable.
+
+## Bulk Upload Policy (Server API)
+
+Backend bulk endpoint supports:
+- `onConflict=merge` (default): merge with existing same-tag rows.
+- `onConflict=skip`: skip same-tag rows.
+
+Result payload now includes `skipped` count in addition to `created`, `updated`, and `failed`.

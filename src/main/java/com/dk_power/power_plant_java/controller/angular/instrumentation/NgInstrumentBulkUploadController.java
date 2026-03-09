@@ -34,13 +34,15 @@ public class NgInstrumentBulkUploadController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<NgApiResponse<BulkUploadResult>> upload(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<NgApiResponse<BulkUploadResult>> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "onConflict", defaultValue = "merge") String onConflict) {
         try {
             List<InstrumentDto> instruments = parseFile(file);
-            BulkUploadResult result = bulkUploadService.uploadToSharePoint(instruments);
+            BulkUploadResult result = bulkUploadService.uploadToSharePoint(instruments, onConflict);
             return ResponseEntity.ok(new NgApiResponse<>(result,
-                    String.format("Upload complete: %d created, %d updated, %d failed",
-                            result.getCreated(), result.getUpdated(), result.getFailed())));
+                    String.format("Upload complete: %d created, %d updated, %d skipped, %d failed",
+                            result.getCreated(), result.getUpdated(), result.getSkipped(), result.getFailed())));
         } catch (Exception e) {
             log.error("[BulkUpload] Upload failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()

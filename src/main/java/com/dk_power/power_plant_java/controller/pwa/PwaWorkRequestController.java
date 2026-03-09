@@ -18,7 +18,7 @@ import java.util.Base64;
 @RequestMapping("/api/pwa/work-request")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"https://dk-power.github.io", "http://localhost:4200"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"https://dk-power.github.io", "http://localhost:*", "http://127.0.0.1:*"}, allowCredentials = "true")
 public class PwaWorkRequestController {
 
     private final PwaWorkRequestService pwaService;
