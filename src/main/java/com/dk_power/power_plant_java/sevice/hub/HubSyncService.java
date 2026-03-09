@@ -159,7 +159,7 @@ public class HubSyncService {
         client.setMachineName(machineName);
         client.setIpAddress(ipAddress);
         client.recordActivity();
-        if (deviceNumber != null && deviceNumber > 0) {
+        if (deviceNumber != null && deviceNumber >= 0) {
             client.setDeviceNumber(deviceNumber);
         }
 

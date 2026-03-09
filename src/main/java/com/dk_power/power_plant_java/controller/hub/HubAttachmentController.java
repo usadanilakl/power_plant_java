@@ -48,6 +48,7 @@ public class HubAttachmentController {
         String contentType = (String) body.get("contentType");
         String attachmentType = (String) body.get("attachmentType");
         String base64Content = (String) body.get("base64Content");
+        String contentHash = (String) body.get("contentHash");
         String originMachineId = (String) body.get("originMachineId");
 
         if (entityType == null || entityIdNum == null || fileName == null || base64Content == null) {
@@ -63,7 +64,7 @@ public class HubAttachmentController {
 
         PermitAttachment saved = hubAttachmentService.storeAttachment(
             entityType, entityIdNum.longValue(), fileName,
-            contentType, attachmentType, base64Content, originMachineId);
+            contentType, attachmentType, base64Content, contentHash, originMachineId);
 
         // Broadcast to other SSE clients
         hubSseService.broadcastFileUpload(entityType, entityIdNum.longValue(),
@@ -119,6 +120,7 @@ public class HubAttachmentController {
         result.put("fileName", att.getFileName());
         result.put("contentType", att.getContentType());
         result.put("attachmentType", att.getAttachmentType());
+        result.put("contentHash", att.getContentHash());
         result.put("base64Content", att.getBase64Content());
         result.put("originMachineId", att.getOriginMachineId());
         result.put("createdAt", att.getCreatedAt() != null ? att.getCreatedAt().toString() : null);

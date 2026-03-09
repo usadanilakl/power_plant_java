@@ -1,0 +1,52 @@
+LOTO Number,Equipment Description,Job Description,Lock Box Description,Status
+24541,Fire system,Fire system maint,57,ACTIVE
+24540,Elertical receptecal CKT 14 bad,Replace elec recpt at DFP building,54,ACTIVE
+24539,Diesel Fire Pump,Diesel Fire Pump,64,ACTIVE
+24538,FIRE WATER LEAK ISOLATION,FIRE WATER LEAK ISOLATION,05,ACTIVE
+24536,U2 air puffer system,Isolate air to U2 puffer system,67,ACTIVE
+24531,U1 air puffer system,Isolate air to U1 puffer system,56,ACTIVE
+24525,U1 duct burner skid,Add vent line to U1 DB skid,46,ACTIVE
+24522,#1 bearing seal + vibration air,#1 bearing seal + vibration air,45,ACTIVE
+24521,Vibration pick up cooling air,Vibration pick up cooling air,41,ACTIVE
+24513,U1 ACC Fan 01E U2 ACC fan 4C,U1 ACC Fan 01E U2 ACC fan 4C,69,ACTIVE
+24512,U1 TURNING GEAR,U1 TURNING GEAR,19,ACTIVE
+24509,Aux Boiler SPRING 2026,Aux Boiler inspection,31,ACTIVE
+24504,U2 CCW ACHE FANS (SPRING 2026),U2 CCW ACHE FANS (SPRING 2026),04,ACTIVE
+24503,U1 CCW ACHE FANS (SPRING 2026),U1 CCW ACHE FANS (SPRING 2026),03,ACTIVE
+24501,U1 SEAL OIL SYSTEM (SPRING 2026),U1 SEAL OIL SYSTEM (SPRING 2026),16,ACTIVE
+24497,U2 ACC FANS (Spring 2026),U2 ACC FANS (Spring 2026),02,ACTIVE
+24496,U1 ACC FANS (Spring 2026),U1 ACC FANS (Spring 2026),01,ACTIVE
+24495,U2 ACC Fan 03B,U2 ACC Fan 03B,51,ACTIVE
+24493,U1 Control Oil,U1 Control Oil,13,ACTIVE
+24490,U2 GT IGNITOR (Spring 2026),U2 GT IGNITOR (Spring 2026),48,ACTIVE
+24489,U1 GT IGNITOR (Spring 2026),U1 GT IGNITOR (Spring 2026),47,ACTIVE
+24487,U1 LUBE OIL (Spring 2026),U1 LUBE OIL (Spring 2026),11,ACTIVE
+24486,U2 TURNING GEAR (Spring 2026),U2 TURNING GEAR (Spring 2026),63,ACTIVE
+24484,Unit 2 Air bowl regulators changeover,Unit 2 Air bowl regulators changeover,08,ACTIVE
+24476,U1 GENERATOR (Spring 2026),U1 GENERATOR (Spring 2026),21,ACTIVE
+24474,U2 CO2 TANK (Spring 2026),U2 CO2 TANK (Spring 2026),60,ACTIVE
+24473,U1 CO2 TANK(Spring 2026),U1 CO2 TANK(Spring 2026),59,ACTIVE
+24472,U2 FIRESIDE LOTO (Spring 2026),U2 FIRESIDE LOTO (Spring 2026),36,ACTIVE
+24471,U1 FIRESIDE LOTO,U1 FIRESIDE LOTO,34,ACTIVE
+24470,U2 Waterside (Spring 2026),U2 Waterside (Spring 2026),35,ACTIVE
+24469,U1 Waterside (Spring 2026),U1 Waterside (Spring 2026),33,ACTIVE
+24443,CIP TANK,CIP TANK,38,ACTIVE
+24397,"FGC ""A"" main oil pump","""A"" FGC troubleshoot shaft driven oil pump",37,ACTIVE
+24344,U1 ACHE FAN 5B,U1 ACHE FAN 5B,42,ACTIVE
+24044,U1 ACC 3rd Street 120V Circuit,Unit 1 ACC 3rd Street 120V power,40,ACTIVE
+24549,U1 Essential service spare breaker,U1 Essential service spare breaker,62,INACTIVE
+24548,U2 UPS System,U2 UPS Sytem Annual PM,53,INACTIVE
+24547,U1 UPS System,U1 UPS Sytem Annual PM,52,INACTIVE
+24546,ANR offsite yard regulating skid.,Lube all of the valves at the T/C and Alliance offsite,68,INACTIVE
+24545,ANR offsite gas yard regulating skid.,Lube all of the valves at the T/C and Alliance offsite,66,INACTIVE
+24544,ANR offsite gas yard regulating skid,Lube all of the valves out at the T/C and Alliance,65,INACTIVE
+24511,Demin/Service water pumps,BOP Outage Demin/Service water pumps,18,INACTIVE
+24510,U2 ACC Fan 02F,U2 ACC Fan 02F,70,INACTIVE
+24506,INA Comp A And AIR DRYER A (SPRING 2026),INA Comp A And AIR DRYER A (SPRING 2026),50,INACTIVE
+24505,INA Comp B And AIR DRYER B (SPRING 2026),INA Comp B And AIR DRYER B (SPRING 2026),49,INACTIVE
+24502,U2 SEAL OIL SYSTEM (SPRING 2026),U2 SEAL OIL SYSTEM (SPRING 2026),17,INACTIVE
+24491,U2 Control Oil (Spring 2026),U2 Control Oil (Spring 2026),14,INACTIVE
+24488,U2 LUBE OIL (Spring 2026),U2 LUBE OIL (Spring 2026),12,INACTIVE
+24480,BOP Fuel Gas System (Spring 2026),BOP Fuel Gas System (Spring 2026),23,INACTIVE
+24479,U2 ST Building Fire System (Spring 2026),U2 ST Building Fire System (Spring 2026),10,INACTIVE
+24477,U2 GENERATOR (Spring 2026),U2 GENERATOR (Spring 2026),22,INACTIVE

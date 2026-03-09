@@ -80,6 +80,11 @@ public class JhaSyncService {
                         }
                         linkToWorkRequest(existing, remote.getWorkRequestSharepointId());
                         jhaRepo.save(existing);
+                        try {
+                            permitAttachmentSyncService.syncAttachmentsForJha(existing.getId(), remote.getSharepointId());
+                        } catch (Exception attEx) {
+                            log.warn("[JHA Sync] Attachment sync failed for JHA spId={}: {}", remote.getSharepointId(), attEx.getMessage());
+                        }
                         if (statusChanged) {
                             result.incrementUpdated();
                             log.debug("[JHA Sync] Updated status for sharepointId={}: {} -> {}",
@@ -116,3 +121,4 @@ public class JhaSyncService {
         }
     }
 }
+

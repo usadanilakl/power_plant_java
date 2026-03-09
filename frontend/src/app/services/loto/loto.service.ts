@@ -82,4 +82,16 @@ export class LotoService {
   reorderLotoPoints(currentLotoId: number, lotoPointsIds: number[]): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${currentLotoId}/reorder-loto-points`, lotoPointsIds);
   }
+
+  previewImport(file: File): Observable<SpringApiResponse<any[]>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<SpringApiResponse<any[]>>(`${this.apiUrl}/import/preview`, formData);
+  }
+
+  importLotos(file: File): Observable<SpringApiResponse<LotoDto[]>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<SpringApiResponse<LotoDto[]>>(`${this.apiUrl}/import`, formData);
+  }
 }

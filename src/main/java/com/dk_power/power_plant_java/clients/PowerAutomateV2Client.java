@@ -49,6 +49,12 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.venting-url:}")
     private String ventingFlowUrl;
 
+    @Value("${pa.flow.instrument-url:}")
+    private String instrumentFlowUrl;
+
+    @Value("${pa.flow.instrument-log-url:}")
+    private String instrumentLogFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -171,6 +177,22 @@ public class PowerAutomateV2Client {
 
     public boolean isVentingConfigured() {
         return ventingFlowUrl != null && !ventingFlowUrl.isBlank();
+    }
+
+    public PaResponseDto instrument(PaRequestDto request) {
+        return sendRequest(instrumentFlowUrl, request);
+    }
+
+    public PaResponseDto instrumentLog(PaRequestDto request) {
+        return sendRequest(instrumentLogFlowUrl, request);
+    }
+
+    public boolean isInstrumentConfigured() {
+        return instrumentFlowUrl != null && !instrumentFlowUrl.isBlank();
+    }
+
+    public boolean isInstrumentLogConfigured() {
+        return instrumentLogFlowUrl != null && !instrumentLogFlowUrl.isBlank();
     }
 
 }

@@ -53,4 +53,9 @@ export class FormDesignerLeftMenuComponent {
     this.closePopup();
     this.router.navigate(['/form-designer/design']);
   }
+
+  deleteForm(formId: number): void {
+    this.formState.deleteForm(formId);
+    this.closePopup();
+  }
 }

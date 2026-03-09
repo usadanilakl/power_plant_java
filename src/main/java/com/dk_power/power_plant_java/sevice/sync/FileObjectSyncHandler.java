@@ -334,7 +334,8 @@ public class FileObjectSyncHandler {
         return "fileNumber".equals(fieldName) ||
                "fileType".equals(fieldName) ||
                "vendor".equals(fieldName) ||
-               "extension".equals(fieldName);
+               "extension".equals(fieldName) ||
+               "extensions".equals(fieldName);
     }
 
     /**
@@ -410,7 +411,12 @@ public class FileObjectSyncHandler {
                 oldVendor = resolveValueNameById(oldVendorId);
                 log.info("Vendor change: oldId={} resolved to '{}'", oldVendorId, oldVendor);
             }
-            if (pathChanges.containsKey("extension")) {
+            if (pathChanges.containsKey("extensions")) {
+                String oldExtValue = stripJsonQuotes(pathChanges.get("extensions").getOldValue());
+                if (oldExtValue != null && !oldExtValue.isEmpty()) {
+                    oldExtensions = Arrays.asList(oldExtValue.split(","));
+                }
+            } else if (pathChanges.containsKey("extension")) {
                 String oldExtValue = stripJsonQuotes(pathChanges.get("extension").getOldValue());
                 if (oldExtValue != null && !oldExtValue.isEmpty()) {
                     oldExtensions = Arrays.asList(oldExtValue.split(","));

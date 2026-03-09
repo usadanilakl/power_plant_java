@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -77,6 +79,7 @@ public class PwaJhaService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachment.setContentHash(computeContentHash(att.getBase64Content()));
                 attachmentRepo.save(attachment);
             }
         }
@@ -119,6 +122,7 @@ public class PwaJhaService {
                             String fn = att.getFileName();
                             wrAtt.setFileName(fn.startsWith("JHA-") ? fn : "JHA-" + fn);
                             wrAdapter.addAttachment(wrSpId, wrAtt);
+                            saveWorkRequestAttachmentFromJha(wrSpId, wrAtt);
                         } catch (Exception attEx) {
                             log.warn("[PWA JHA Submit] Failed to upload attachment to WR {}: {}",
                                     att.getFileName(), attEx.getMessage());
@@ -217,5 +221,70 @@ public class PwaJhaService {
         if (contentType == null) return "document";
         if (contentType.startsWith("image/")) return "photo";
         return "document";
+    }
+
+    private void saveWorkRequestAttachmentFromJha(String workRequestSharepointId, PaAttachmentDto wrAttachment) {
+        if (workRequestSharepointId == null || workRequestSharepointId.isEmpty() || wrAttachment == null) {
+            return;
+        }
+
+        Optional<com.dk_power.power_plant_java.entities.permits.WorkRequest> wrOpt =
+            workRequestRepo.findFirstBySharepointIdOrderByIdAsc(workRequestSharepointId);
+        if (wrOpt.isEmpty()) {
+            log.debug("[PWA JHA Submit] Local WR not found for spId={} when saving mirrored attachment",
+                workRequestSharepointId);
+            return;
+        }
+
+        Long wrId = wrOpt.get().getId();
+        String fileName = wrAttachment.getFileName();
+        String contentHash = computeContentHash(wrAttachment.getBase64Content());
+
+        boolean exists = contentHash != null && !contentHash.isEmpty()
+            ? attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash("WorkRequest", wrId, fileName, contentHash)
+            : attachmentRepo.existsByEntityTypeAndEntityIdAndFileName("WorkRequest", wrId, fileName);
+
+        if (exists) {
+            return;
+        }
+
+        PermitAttachment localWrAttachment = new PermitAttachment();
+        localWrAttachment.setEntityType("WorkRequest");
+        localWrAttachment.setEntityId(wrId);
+        localWrAttachment.setFileName(fileName);
+        localWrAttachment.setContentType(wrAttachment.getContentType());
+        localWrAttachment.setBase64Content(wrAttachment.getBase64Content());
+        localWrAttachment.setAttachmentType(guessAttachmentType(wrAttachment.getContentType()));
+        localWrAttachment.setContentHash(contentHash);
+        attachmentRepo.save(localWrAttachment);
+    }
+
+    private String computeContentHash(String base64Content) {
+        if (base64Content == null || base64Content.isEmpty()) {
+            return null;
+        }
+
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64Content);
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception decodeError) {
+            try {
+                byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(base64Content.getBytes(StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder(hash.length * 2);
+                for (byte b : hash) {
+                    sb.append(String.format("%02x", b));
+                }
+                return sb.toString();
+            } catch (Exception hashError) {
+                log.warn("[PWA JHA Submit] Could not hash attachment payload: {}", hashError.getMessage());
+                return null;
+            }
+        }
     }
 }

@@ -18,6 +18,7 @@
   [isOpen]="isPopupOpen()"
   (close)="closePopup()">
   <app-form-metadata-dialog
-    (submitEvent)="saveForm($event)">
+    (submitEvent)="saveForm($event)"
+    (deleteEvent)="deleteForm($event)">
   </app-form-metadata-dialog>
 </app-popup-projection>

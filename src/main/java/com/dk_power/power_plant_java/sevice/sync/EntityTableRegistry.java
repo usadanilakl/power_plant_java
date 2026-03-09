@@ -36,6 +36,8 @@ public class EntityTableRegistry {
         Map.entry("EqBreaker", "eq_breaker"),
         Map.entry("HtPanel", "ht_panel"),
         Map.entry("HtBreaker", "ht_breaker"),
+        Map.entry("Instrument", "instrument"),
+        Map.entry("InstrumentLog", "instrument_log"),
 
         // LOTO
         Map.entry("LotoPoint", "loto_point"),
@@ -111,6 +113,8 @@ public class EntityTableRegistry {
         "EqBreaker",
         "HtPanel",
         "HtBreaker",
+        "Instrument",
+        "InstrumentLog",
         "EspDevice",
         "LedStrip",
         // Tier 3: Permits & work management (depend on Value, Equipment)

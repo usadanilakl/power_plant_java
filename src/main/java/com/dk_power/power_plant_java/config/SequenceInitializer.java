@@ -35,7 +35,7 @@ public class SequenceInitializer {
     public void ensureSequenceConsistency() {
         try {
             long deviceNumber = readDeviceNumber();
-            if (deviceNumber < 1 || deviceNumber > 9) {
+            if (deviceNumber < 0 || deviceNumber > 99) {
                 return;
             }
 

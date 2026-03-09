@@ -7,15 +7,18 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.sevice.angular.loto.LotoImportService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -23,6 +26,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class NgLotoController {
     private final NgLotoService ngLotoService;
+    private final LotoImportService lotoImportService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoDto>>> getPaginatedFiles(
@@ -66,6 +70,17 @@ public class NgLotoController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteLoto(@PathVariable Long id) {
+        try {
+            ngLotoService.deleteLoto(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "LOTO deleted successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting LOTO: " + e.getMessage()));
         }
     }
 
@@ -176,5 +191,26 @@ public class NgLotoController {
         }
     }
 
+    @PostMapping(value = "/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NgApiResponse<List<Map<String, String>>>> previewImport(@RequestParam("file") MultipartFile file) {
+        try {
+            List<Map<String, String>> rows = lotoImportService.parseFile(file);
+            return ResponseEntity.ok(new NgApiResponse<>(rows, "Parsed " + rows.size() + " rows"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error parsing file: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NgApiResponse<List<LotoDto>>> importLotos(@RequestParam("file") MultipartFile file) {
+        try {
+            List<LotoDto> imported = lotoImportService.importLotos(file);
+            return ResponseEntity.ok(new NgApiResponse<>(imported, "Imported " + imported.size() + " LOTOs"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error importing LOTOs: " + e.getMessage()));
+        }
+    }
 
 }

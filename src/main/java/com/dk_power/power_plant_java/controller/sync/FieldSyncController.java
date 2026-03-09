@@ -227,7 +227,7 @@ public class FieldSyncController {
         status.put("deviceNumber", syncConfig.getDeviceNumber());
 
         // Check for device number conflicts
-        if (syncConfig.getDeviceNumber() > 0) {
+        if (syncConfig.getDeviceNumber() >= 0) {
             boolean hasConflict = peerRepository.findAll().stream()
                 .anyMatch(p -> syncConfig.getDeviceNumber() == (p.getDeviceNumber() != null ? p.getDeviceNumber() : -1)
                     && !syncConfig.getMachineId().equals(p.getMachineId()));
@@ -1052,7 +1052,7 @@ public class FieldSyncController {
             .collect(Collectors.toList());
 
         // Also include this machine if it has a device number
-        if (syncConfig.getDeviceNumber() > 0) {
+        if (syncConfig.getDeviceNumber() >= 0) {
             boolean selfIncluded = devices.stream()
                 .anyMatch(d -> syncConfig.getMachineId().equals(d.get("machineId")));
             if (!selfIncluded) {
@@ -1074,12 +1074,12 @@ public class FieldSyncController {
             .map(d -> (Integer) d.get("deviceNumber"))
             .collect(Collectors.toList()));
 
-        // Available numbers (1-9 minus taken)
+        // Available numbers (0-99 minus taken)
         Set<Integer> taken = devices.stream()
             .map(d -> (Integer) d.get("deviceNumber"))
             .collect(Collectors.toSet());
         List<Integer> available = new ArrayList<>();
-        for (int i = 1; i <= 9; i++) {
+        for (int i = 0; i <= 99; i++) {
             if (!taken.contains(i)) available.add(i);
         }
         result.put("availableNumbers", available);
@@ -1135,15 +1135,15 @@ public class FieldSyncController {
             .map(Peer::getDeviceNumber)
             .collect(Collectors.toSet());
         // Include self
-        if (syncConfig.getDeviceNumber() > 0) {
+        if (syncConfig.getDeviceNumber() >= 0) {
             taken.add(syncConfig.getDeviceNumber());
         }
 
         int assignedNumber;
         if (requestedNumber != null) {
-            if (requestedNumber < 1 || requestedNumber > 9) {
+            if (requestedNumber < 0 || requestedNumber > 99) {
                 result.put("success", false);
-                result.put("message", "Device number must be between 1 and 9");
+                result.put("message", "Device number must be between 0 and 99");
                 return ResponseEntity.badRequest().body(result);
             }
             if (taken.contains(requestedNumber)) {
@@ -1156,7 +1156,7 @@ public class FieldSyncController {
         } else {
             // Auto-assign next available
             assignedNumber = -1;
-            for (int i = 1; i <= 9; i++) {
+            for (int i = 0; i <= 99; i++) {
                 if (!taken.contains(i)) {
                     assignedNumber = i;
                     break;
@@ -1164,7 +1164,7 @@ public class FieldSyncController {
             }
             if (assignedNumber == -1) {
                 result.put("success", false);
-                result.put("message", "All device numbers (1-9) are taken");
+                result.put("message", "All device numbers (0-99) are taken");
                 return ResponseEntity.ok(result);
             }
         }

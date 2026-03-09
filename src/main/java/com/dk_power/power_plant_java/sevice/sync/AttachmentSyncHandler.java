@@ -12,7 +12,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,9 @@ public class AttachmentSyncHandler {
                 body.put("attachmentType", att.getAttachmentType());
                 body.put("base64Content", att.getBase64Content());
                 body.put("originMachineId", att.getOriginMachineId());
+                body.put("contentHash", att.getContentHash() != null
+                    ? att.getContentHash()
+                    : computeContentHash(att.getBase64Content()));
 
                 HttpHeaders headers = createHeaders();
                 HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
@@ -112,13 +116,6 @@ public class AttachmentSyncHandler {
                     Long entityId = entityIdNum.longValue();
                     Long serverId = idNum.longValue();
 
-                    // Dedup check
-                    if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(entityType, entityId, fileName)) {
-                        // Still mark as downloaded on server
-                        markDownloaded(baseUrl, serverId);
-                        continue;
-                    }
-
                     // Download full attachment
                     ResponseEntity<String> downloadResp = restTemplate.exchange(
                             baseUrl + "/api/attachments/download/" + serverId,
@@ -129,6 +126,19 @@ public class AttachmentSyncHandler {
                     Map<String, Object> attData = objectMapper.readValue(
                             downloadResp.getBody(), new TypeReference<>() {});
 
+                    String contentHash = (String) attData.get("contentHash");
+                    if (contentHash == null || contentHash.isEmpty()) {
+                        contentHash = computeContentHash((String) attData.get("base64Content"));
+                    }
+
+                    boolean exists = contentHash != null && !contentHash.isEmpty()
+                        ? attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                            entityType, entityId, fileName, contentHash)
+                        : attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(entityType, entityId, fileName);
+                    if (exists) {
+                        continue;
+                    }
+
                     PermitAttachment att = new PermitAttachment();
                     att.setEntityType(entityType);
                     att.setEntityId(entityId);
@@ -136,6 +146,7 @@ public class AttachmentSyncHandler {
                     att.setContentType((String) attData.get("contentType"));
                     att.setAttachmentType((String) attData.get("attachmentType"));
                     att.setBase64Content((String) attData.get("base64Content"));
+                    att.setContentHash(contentHash);
                     att.setOriginMachineId((String) attData.get("originMachineId"));
                     att.setSyncedToServer(true);
                     attachmentRepo.save(att);
@@ -167,5 +178,34 @@ public class AttachmentSyncHandler {
         headers.set("Accept", "application/json");
         headers.set("X-Machine-Id", syncConfig.getMachineId());
         return headers;
+    }
+
+    private String computeContentHash(String base64Content) {
+        if (base64Content == null || base64Content.isEmpty()) {
+            return null;
+        }
+
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64Content);
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception decodeError) {
+            try {
+                byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(base64Content.getBytes(StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder(hash.length * 2);
+                for (byte b : hash) {
+                    sb.append(String.format("%02x", b));
+                }
+                return sb.toString();
+            } catch (Exception hashError) {
+                log.warn("[Attachment Sync] Could not hash attachment payload: {}", hashError.getMessage());
+                return null;
+            }
+        }
     }
 }

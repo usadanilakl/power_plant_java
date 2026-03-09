@@ -1,0 +1,104 @@
+<div class="overlay" (click)="close()"></div>
+<div class="dialog">
+  <div class="dialog-header">
+    <h3>Import LOTOs</h3>
+    <button class="close-btn" (click)="close()">&times;</button>
+  </div>
+
+  <div class="dialog-body">
+    <!-- File Drop Zone -->
+    @if (!selectedFile()) {
+      <div
+        class="drop-zone"
+        [class.drag-over]="isDragOver()"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+      >
+        <p>Drag & drop a CSV or Excel file here</p>
+        <p class="or-text">or</p>
+        <label class="browse-btn">
+          Browse Files
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            (change)="onFileSelected($event)"
+            hidden
+          />
+        </label>
+      </div>
+    }
+
+    <!-- File Selected Info -->
+    @if (selectedFile()) {
+      <div class="file-info">
+        <span class="file-name">{{ selectedFile()!.name }}</span>
+        <button class="reset-btn" (click)="reset()">Change File</button>
+      </div>
+    }
+
+    <!-- Loading -->
+    @if (isPreviewing()) {
+      <div class="loading">Parsing file...</div>
+    }
+
+    <!-- Preview Table -->
+    @if (previewRows().length > 0) {
+      <div class="preview-section">
+        <p class="preview-count">{{ previewRows().length }} rows found</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                @for (col of previewColumns; track col) {
+                  <th>{{ columnLabels[col] }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of previewRows(); track $index) {
+                <tr>
+                  <td>{{ $index + 1 }}</td>
+                  @for (col of previewColumns; track col) {
+                    <td>{{ row[col] || '' }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (errorMessage()) {
+      <div class="error-message">{{ errorMessage() }}</div>
+    }
+
+    <!-- Success -->
+    @if (importResult()) {
+      <div class="success-message">{{ importResult() }}</div>
+    }
+  </div>
+
+  <div class="dialog-footer">
+    @if (previewRows().length > 0 && !importResult()) {
+      <button
+        class="import-btn"
+        (click)="doImport()"
+        [disabled]="isLoading()"
+      >
+        @if (isLoading()) {
+          Importing...
+        } @else {
+          Import {{ previewRows().length }} LOTOs
+        }
+      </button>
+    }
+    @if (importResult()) {
+      <button class="import-btn" (click)="close()">Done</button>
+    }
+    <button class="cancel-btn" (click)="close()">Cancel</button>
+  </div>
+</div>

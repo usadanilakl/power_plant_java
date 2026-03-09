@@ -92,7 +92,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         requiresFullAccess: true,
         items: [
             { route: '/log/table', label: 'System Log' },
-            { route: '/log/correspondence', label: 'Correspondence' }
+            { route: '/log/correspondence', label: 'Correspondence' },
+            { route: '/instrumentation', label: 'Instruments' }
         ]
     },
     {

@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.dto.instrumentation;
 
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 public class InstrumentLogDto {
     private Long id;
@@ -14,4 +16,5 @@ public class InstrumentLogDto {
     private String comment;
     private String sharepointId;
     private String localUuid;
+    private Instant spModifiedTime;
 }

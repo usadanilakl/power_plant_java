@@ -23,23 +23,13 @@ export class FormRenderingService {
       const name = field.name || '';
       if (!name) continue;
 
-      const existing = existingForm?.get(name);
-
       if (field.type === 'form-array') {
-        if (existing instanceof FormArray) {
-          this.addControlByPath(form, name, existing);
-        } else {
-          const arrayData = this.getNestedValue(formData, name) || [];
-          this.addControlByPath(form, name, this.createFormArray(field, arrayData));
-        }
+        const arrayData = this.getNestedValue(formData, name) || [];
+        this.addControlByPath(form, name, this.createFormArray(field, arrayData));
       } else {
-        if (existing) {
-          this.addControlByPath(form, name, existing);
-        } else {
-          let value = this.getNestedValue(formData, name);
-          value = this.normalizeFieldValue(field, value);
-          this.addControlByPath(form, name, new FormControl(value, field.validators || []));
-        }
+        let value = this.getNestedValue(formData, name);
+        value = this.normalizeFieldValue(field, value);
+        this.addControlByPath(form, name, new FormControl(value, field.validators || []));
       }
     }
 

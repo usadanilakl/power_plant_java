@@ -39,6 +39,10 @@ export class FormApiService {
     return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.formsUrl}/copy/${formId}`, {});
   }
 
+  deleteForm(id: number): Observable<SpringApiResponse<void>> {
+    return this.http.delete<SpringApiResponse<void>>(`${this.formsUrl}/${id}`);
+  }
+
   getPrimaryFormByType(
     permitType: 'SafeWork' | 'HotWork' | 'ConfinedSpace' | 'Loto' | 'Jha' | 'JobStep' | 'WorkRequest'
   ): Observable<SpringApiResponse<PrintableFormDto>> {

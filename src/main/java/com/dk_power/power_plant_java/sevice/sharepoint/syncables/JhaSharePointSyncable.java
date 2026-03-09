@@ -114,6 +114,7 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
         // Existing — field-level merge
         Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
         if (spChangedColumns.isEmpty()) {
+            syncAttachmentsSafely(existing.getId(), spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
@@ -127,6 +128,7 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
             // Don't update snapshot here — if we do, the SP change is permanently
             // lost from diff detection. Leave snapshot stale so next sync re-evaluates.
             log.info("[JHA Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            syncAttachmentsSafely(existing.getId(), spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
@@ -145,6 +147,7 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
         }
 
         jhaRepo.save(existing);
+        syncAttachmentsSafely(existing.getId(), spId);
         result.incrementUpdated();
         log.info("[JHA Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
@@ -266,4 +269,13 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
                 .ifPresent(entity::setWorkRequest);
         }
     }
+
+    private void syncAttachmentsSafely(Long entityId, String sharepointId) {
+        try {
+            permitAttachmentSyncService.syncAttachmentsForJha(entityId, sharepointId);
+        } catch (Exception e) {
+            log.warn("[JHA Syncable] Attachment sync failed for spId={}: {}", sharepointId, e.getMessage());
+        }
+    }
 }
+

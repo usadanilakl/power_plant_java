@@ -123,6 +123,16 @@ public class PrintableFormRestController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteForm(@PathVariable Long id) {
+        try {
+            printableFormService.deleteById(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Form deleted successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error deleting form: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/get-primary-form-by-type/{permitType}")
     public ResponseEntity<NgApiResponse<PrintableForm>> getPrimaryFormByType(@PathVariable String permitType) {
         try {

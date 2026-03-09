@@ -26,6 +26,9 @@ public class PermitAttachment {
     @Column(columnDefinition = "TEXT")
     private String base64Content;
 
+    @Column(length = 64)
+    private String contentHash;
+
     private LocalDateTime createdAt;
 
     private String originMachineId;

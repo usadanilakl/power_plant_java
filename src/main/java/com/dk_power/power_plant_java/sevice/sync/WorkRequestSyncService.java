@@ -86,6 +86,11 @@ public class WorkRequestSyncService {
                             existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
                         }
                         workRequestRepo.save(existing);
+                        try {
+                            permitAttachmentSyncService.syncAttachmentsForWorkRequest(existing.getId(), remote.getSharepointId());
+                        } catch (Exception attEx) {
+                            log.warn("[SharePoint Sync] Attachment sync failed for WR spId={}: {}", remote.getSharepointId(), attEx.getMessage());
+                        }
                         if (statusChanged) {
                             result.incrementUpdated();
                             log.debug("[SharePoint Sync] Updated status for sharepointId={}: {} → {}", remote.getSharepointId(), existingStatus, remoteStatus);
@@ -128,3 +133,4 @@ public class WorkRequestSyncService {
         return result;
     }
 }
+

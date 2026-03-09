@@ -46,6 +46,34 @@ export interface PwaWorkRequestDto {
   attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
+export interface PwaInstrumentLogDto {
+  localUuid: string;
+  instrumentTagNumber: string;
+  instrumentDescription: string;
+  status: string;
+  date: string;
+  time: string;
+  name: string;
+  comment: string;
+  attachments?: { fileName: string; contentType: string; base64Content: string }[];
+}
+
+export interface PwaInstrumentDto {
+  id?: number;
+  tagNumber: string;
+  description: string;
+  vendor: string;
+  location: string;
+  type: string;
+  currentStatus?: string;
+  lastUpdatedDate?: string;
+  lastUpdatedTime?: string;
+  lastUpdatedBy?: string;
+  lastComment?: string;
+  sharepointId?: string;
+  localUuid?: string;
+}
+
 export interface PwaJhaDto {
   localUuid: string;
   workRequestLocalUuid?: string;
@@ -136,6 +164,38 @@ export class ServerApiService {
       subject, body, attachments
     }).pipe(
       timeout(20000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getInstruments(): Observable<PwaInstrumentDto[]> {
+    return this.http.get<{ responseData: PwaInstrumentDto[] }>(`${this.baseUrl}/api/pwa/instruments/get-all`).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  createInstrument(dto: PwaInstrumentDto): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/instruments/create`, dto).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  submitInstrumentLog(dto: PwaInstrumentLogDto): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/instrument-log/submit`, dto).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getInstrumentLogsByTag(tagNumber: string): Observable<PwaInstrumentLogDto[]> {
+    return this.http.get<{ responseData: PwaInstrumentLogDto[] }>(`${this.baseUrl}/api/pwa/instrument-log/by-instrument/${encodeURIComponent(tagNumber)}`).pipe(
+      timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)
     );

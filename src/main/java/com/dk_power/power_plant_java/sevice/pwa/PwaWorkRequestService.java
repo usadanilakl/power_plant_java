@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -77,6 +79,7 @@ public class PwaWorkRequestService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachment.setContentHash(computeContentHash(att.getBase64Content()));
                 attachmentRepo.save(attachment);
             }
             log.info("[PWA Submit] Saved {} attachments for localUuid={}", dto.getAttachments().size(), dto.getLocalUuid());
@@ -260,6 +263,7 @@ public class PwaWorkRequestService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
+                attachment.setContentHash(computeContentHash(att.getBase64Content()));
                 attachmentRepo.save(attachment);
             }
             log.info("[PWA Update] Saved {} new attachments for localUuid={}", dto.getAttachments().size(), localUuid);
@@ -318,5 +322,34 @@ public class PwaWorkRequestService {
         result.setTimeSubmitted(entity.getTimeSubmitted());
         result.setSubmissionMethod(entity.getSharepointId() != null ? "sharepoint" : "local");
         return result;
+    }
+
+    private String computeContentHash(String base64Content) {
+        if (base64Content == null || base64Content.isEmpty()) {
+            return null;
+        }
+
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64Content);
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception decodeError) {
+            try {
+                byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(base64Content.getBytes(StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder(hash.length * 2);
+                for (byte b : hash) {
+                    sb.append(String.format("%02x", b));
+                }
+                return sb.toString();
+            } catch (Exception hashError) {
+                log.warn("[PWA Submit] Could not hash attachment payload: {}", hashError.getMessage());
+                return null;
+            }
+        }
     }
 }

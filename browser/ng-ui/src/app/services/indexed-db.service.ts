@@ -4,6 +4,8 @@ import { IWorkRequest, WorkRequest } from '../models/permits/work-request.model'
 import { IJha, Jha } from '../models/permits/jha.model';
 import { Space } from '../models/permits/space.model';
 import { User } from '../models/auth/user.model';
+import { Instrument } from '../models/equipment/instrument.model';
+import { InstrumentLogEntry } from '../models/equipment/instrument-log.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +15,8 @@ export class IndexedDbService extends Dexie {
   jhas!: Table<Jha, number>;
   spaces!: Table<Space, number>;
   users!: Table<User, number>;
+  instruments!: Table<Instrument, number>;
+  instrumentLogs!: Table<InstrumentLogEntry, number>;
 
   constructor() {
     // 1. Database Name
@@ -70,10 +74,18 @@ export class IndexedDbService extends Dexie {
       });
     });
 
+    // Version 8: Instrumentation cache tables
+    this.version(8).stores({
+      instruments: '++id, tagNumber, sharepointId, localUuid, currentStatus, updatedAt',
+      instrumentLogs: '++id, instrumentTagNumber, localUuid, status, date, time, createdAt, updatedAt'
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);
     this.spaces.mapToClass(Space);
     this.users.mapToClass(User);
+    this.instruments.mapToClass(Instrument);
+    this.instrumentLogs.mapToClass(InstrumentLogEntry);
   }
 }

@@ -13,7 +13,7 @@ import { FormContainerDto } from '../../../../../models/forms/form-container.mod
   imports: [FormRendererComponent],
   template: `
     <app-form-renderer
-      [formData]="data"
+      [formData]="data()"
       [formDefinition]="form()"
       (formSubmit)="onSubmit($event)"
     ></app-form-renderer>

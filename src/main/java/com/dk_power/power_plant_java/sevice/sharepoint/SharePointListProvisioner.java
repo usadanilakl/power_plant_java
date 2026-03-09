@@ -183,12 +183,12 @@ public class SharePointListProvisioner {
                         text("CalculatedVolume"), text("Pressure"), text("GasIndicatorModel"),
                         text("GasIndicatorSerial"), text("CalibrationDate"), text("Status")),
 
-                list("Instrument Log",
-                        text("PwaId"), text("InstrumentTagNumber"), text("InstrumentDescription"),
+                list("Instrumentation Log",
+                        text("PwaId"), text("Tag Number"), text("Description"),
                         text("Status"), text("Date"), text("Time"), text("Name"), note("Comment")),
 
-                list("Instruments",
-                        text("PwaId"), text("TagNumber"), text("Description"), text("Vendor"),
+                list("Instrumentation",
+                        text("PwaId"), text("Tag Number"), text("Description"), text("Vendor"),
                         text("Location"), text("Type"), text("CurrentStatus"),
                         text("LastUpdatedDate"), text("LastUpdatedTime"), text("LastUpdatedBy"),
                         note("LastComment"))

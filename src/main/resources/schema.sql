@@ -47,6 +47,20 @@ ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_email 
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);
 ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_company VARCHAR(255);
 
+-- Instrumentation dedup and lookup indexes
+CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);
+CREATE INDEX IF NOT EXISTS idx_instrument_local_uuid ON instrument(local_uuid);
+CREATE INDEX IF NOT EXISTS idx_instrument_tag_number ON instrument(tag_number);
+CREATE INDEX IF NOT EXISTS idx_instrument_log_sharepoint_id ON instrument_log(sharepoint_id);
+CREATE INDEX IF NOT EXISTS idx_instrument_log_local_uuid ON instrument_log(local_uuid);
+CREATE INDEX IF NOT EXISTS idx_instrument_log_tag_number ON instrument_log(instrument_tag_number);
+
+-- Best-effort uniqueness constraints for dedup keys (non-null values)
+CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_sharepoint_id ON instrument(sharepoint_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_local_uuid ON instrument(local_uuid);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_log_sharepoint_id ON instrument_log(sharepoint_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_instrument_log_local_uuid ON instrument_log(local_uuid);
+
 --CREATE TABLE IF NOT EXISTS reference_object (
 --    id BIGINT AUTO_INCREMENT PRIMARY KEY,
 --    description VARCHAR(255),

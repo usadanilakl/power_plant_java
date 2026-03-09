@@ -158,7 +158,7 @@ public class HubSyncController {
             .collect(Collectors.toSet());
 
         List<Integer> availableNumbers = new ArrayList<>();
-        for (int i = 1; i <= 9; i++) {
+        for (int i = 0; i <= 99; i++) {
             if (!takenNumbers.contains(i)) {
                 availableNumbers.add(i);
             }
@@ -185,8 +185,8 @@ public class HubSyncController {
             return ResponseEntity.badRequest().body(Map.of("error", "deviceName is required"));
         }
 
-        if (requestedNumber != null && (requestedNumber < 1 || requestedNumber > 9)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "deviceNumber must be between 1 and 9"));
+        if (requestedNumber != null && (requestedNumber < 0 || requestedNumber > 99)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "deviceNumber must be between 0 and 99"));
         }
 
         List<HubClientInfo> allClients = hubSyncService.getAllClients();
@@ -210,7 +210,7 @@ public class HubSyncController {
             deviceNumber = requestedNumber;
         } else {
             int assigned = -1;
-            for (int i = 1; i <= 9; i++) {
+            for (int i = 0; i <= 99; i++) {
                 if (!taken.contains(i)) {
                     assigned = i;
                     break;
@@ -218,7 +218,7 @@ public class HubSyncController {
             }
             if (assigned == -1) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                    "error", "All device numbers (1-9) are taken"
+                    "error", "All device numbers (0-99) are taken"
                 ));
             }
             deviceNumber = assigned;

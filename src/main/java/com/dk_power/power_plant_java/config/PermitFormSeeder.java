@@ -1034,31 +1034,35 @@ public class PermitFormSeeder {
             int id = -1;
             List<Map<String, Object>> nc = new java.util.ArrayList<>();
 
-            // Row 1 (y=0, h=26): main fields across columns
-            nc.add(nField(id--, rx1, 0, c1w, 26, "tagNumber", "text"));
-            nc.add(nField(id--, rx2, 0, c2w, 26, "lockNumber", "text"));
-            nc.add(nField(id--, rx3, 0, c3w, 26, "description", "text"));
-            nc.add(nField(id--, rx4, 0, c4w, 70, "isoPos", "text"));
-            nc.add(nField(id--, rx5, 0, c5w, 70, "hungBy", "text"));
-            nc.add(nField(id--, rx6, 0, c6w, 70, "verifiedBy", "text"));
-            nc.add(nField(id--, rx7, 0, c7w, 70, "normPos", "text"));
-            nc.add(nField(id--, rx8, 0, c8w, 70, "removedBy", "text"));
+            // Cell border style for table appearance
+            Map<String, Object> cell = Map.of("border", "1px solid #ccc");
+            Map<String, Object> cellCenter = Map.of("border", "1px solid #ccc", "textAlign", "center");
+
+            // Row 1 (y=0): main fields across columns — tagNumber & lockNumber span full 70px height, centered
+            nc.add(nField(id--, rx1, 0, c1w, 70, "tagNumber", "text", cellCenter));
+            nc.add(nField(id--, rx2, 0, c2w, 70, "lockNumber", "text", cellCenter));
+            nc.add(nField(id--, rx3, 0, c3w, 26, "description", "text", cell));
+            nc.add(nField(id--, rx4, 0, c4w, 70, "isoPos", "text", cell));
+            nc.add(nField(id--, rx5, 0, c5w, 70, "hungBy", "text", cell));
+            nc.add(nField(id--, rx6, 0, c6w, 70, "verifiedBy", "text", cell));
+            nc.add(nField(id--, rx7, 0, c7w, 70, "normPos", "text", cell));
+            nc.add(nField(id--, rx8, 0, c8w, 70, "removedBy", "text", cell));
 
             // Row 2 (y=26, h=22): location under EID column
-            nc.add(nField(id--, rx3, 26, c3w, 22, "specificLocation", "text"));
+            nc.add(nField(id--, rx3, 26, c3w, 22, "specificLocation", "text", cell));
 
             // Row 3 (y=48, h=22): EID number under EID column
-            nc.add(nField(id--, rx3, 48, c3w, 22, "eidNumber", "text"));
+            nc.add(nField(id--, rx3, 48, c3w, 22, "eidNumber", "text", cell));
 
             // Row 4 (y=74, h=18): "Zero Energy Verification Method" label + "Completed By" label
             nc.add(nText(id--, 0, 74, rx7, 18, "Zero Energy Verification Method",
-                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center")));
+                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center", "border", "1px solid #ccc", "borderBottom", "none")));
             nc.add(nText(id--, rx7, 74, c7w + c8w, 18, "Completed By",
-                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center")));
+                    Map.of("fontSize", "9px", "fontWeight", "bold", "textAlign", "center", "border", "1px solid #ccc", "borderBottom", "none")));
 
             // Row 5 (y=92, h=34): zero energy textarea + completed by field
-            nc.add(nField(id--, 0, 92, rx7, 34, "zeroEnergyMethod", "textarea"));
-            nc.add(nField(id--, rx7, 92, c7w + c8w, 34, "completedBy", "text"));
+            nc.add(nField(id--, 0, 92, rx7, 34, "zeroEnergyMethod", "textarea", cell));
+            nc.add(nField(id--, rx7, 92, c7w + c8w, 34, "completedBy", "text", cell));
 
             Map<String, Object> faContent = new HashMap<>();
             faContent.put("name", "lotoPoints");
@@ -1210,13 +1214,19 @@ public class PermitFormSeeder {
 
     /** Nested form field container (for use inside nestedForm definitions) */
     private Map<String, Object> nField(int id, int x, int y, int w, int h, String name, String type) {
+        return nField(id, x, y, w, h, name, type, null);
+    }
+
+    /** Nested form field container with style (for use inside nestedForm definitions) */
+    private Map<String, Object> nField(int id, int x, int y, int w, int h, String name, String type, Map<String, Object> style) {
         return Map.ofEntries(
             Map.entry("id", id),
             Map.entry("contentType", "formField"),
             Map.entry("content", Map.of("name", name, "type", type)),
             Map.entry("position", Map.of("x", x, "y", y)),
             Map.entry("size", Map.of("width", w, "height", h)),
-            Map.entry("pageNumber", 1)
+            Map.entry("pageNumber", 1),
+            Map.entry("style", style != null ? style : Map.of())
         );
     }
 

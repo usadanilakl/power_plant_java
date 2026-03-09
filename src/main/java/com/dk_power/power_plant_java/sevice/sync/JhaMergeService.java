@@ -28,4 +28,19 @@ public class JhaMergeService extends SharePointMergeTemplate<Jha> {
     protected void markDeleted(Jha entity) {
         entity.setDeleted(true);
     }
+
+    @Override
+    protected void transferRelationships(Long duplicateId, Long canonicalId, String naturalKeyValue) {
+        int updated = entityManager.createNativeQuery(
+            "UPDATE permit_attachment SET entity_id = :canId " +
+            "WHERE entity_type = 'Jha' AND entity_id = :dupId")
+            .setParameter("canId", canonicalId)
+            .setParameter("dupId", duplicateId)
+            .executeUpdate();
+
+        if (updated > 0) {
+            log.info("[JHA Merge] Transferred {} attachment(s) from JHA ID={} to ID={}",
+                updated, duplicateId, canonicalId);
+        }
+    }
 }

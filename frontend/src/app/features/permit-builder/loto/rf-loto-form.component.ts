@@ -41,7 +41,7 @@ export class RfLotoFormComponent {
   onDelete(): void {
     const entity = this.entity();
     if (entity?.id) {
-      this.currentService.removeLotoFromList(entity.id);
+      this.currentService.deleteLoto(entity.id);
     }
   }
 }

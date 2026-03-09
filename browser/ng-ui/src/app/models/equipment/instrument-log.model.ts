@@ -1,10 +1,12 @@
 import { BaseModel, IBaseModel } from "../permits/base.model";
 import { FormField } from "../inputs/form-field.model";
 import { Column } from "../inputs/column.model";
+import { IAttachment } from "../permits/attachment.model";
 
 export type InstrumentStatus = 'Disconnected/Removed' | 'In Progress' | 'Normal Operation';
 
 export interface IInstrumentLogEntry extends IBaseModel {
+    localUuid?: string;
     instrumentTagNumber: string;
     instrumentDescription: string;
     status: InstrumentStatus;
@@ -12,9 +14,11 @@ export interface IInstrumentLogEntry extends IBaseModel {
     time: string;
     name: string;
     comment: string;
+    attachments: IAttachment[];
 }
 
 export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implements IInstrumentLogEntry {
+    localUuid?: string;
     instrumentTagNumber: string;
     instrumentDescription: string;
     override status: InstrumentStatus;
@@ -22,9 +26,11 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
     time: string;
     name: string;
     comment: string;
+    attachments: IAttachment[];
 
     constructor(data: Partial<IInstrumentLogEntry> = {}) {
         super(data);
+        this.localUuid = data.localUuid;
         this.instrumentTagNumber = data.instrumentTagNumber ?? '';
         this.instrumentDescription = data.instrumentDescription?? '';
 
@@ -33,6 +39,7 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
         this.time = data.time?? new Date().toTimeString().slice(0, 5);;
         this.name = data.name ?? '';
         this.comment = data.comment ?? '';
+        this.attachments = data.attachments ?? [];
     }
 
     getFormFields(): FormField[] {
@@ -54,6 +61,8 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
             { name: 'time', label: 'Time', type: 'time', initialValue: this.time },
             { name: 'name', label: 'Name', type: 'text', initialValue: this.name, placeholder: 'Your name' },
             { name: 'comment', label: 'Comment', type: 'textarea', initialValue: this.comment, placeholder: 'Add any notes or observations' },
+            { name: 'files', label: 'Attachments', type: 'file', accept: 'image/*,.pdf,.doc,.docx', multiple: true,
+              initialValue: this.attachments.filter(a => a.type !== 'signature'), group: { label: 'Attachments' } },
         ];
     }
 

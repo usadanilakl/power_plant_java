@@ -115,6 +115,17 @@ export class FormStateService {
     });
   }
 
+  deleteForm(formId: number): void {
+    this.api.deleteForm(formId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.formsSubject.next(this.formsSubject.value.filter(f => f.id !== formId));
+      },
+      error: err => console.error('Error deleting form:', err),
+    });
+  }
+
   // ==================== Page Operations ====================
 
   goToPage(page: number): void {

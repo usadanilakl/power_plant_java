@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, output } from '@angular/core';
+import { Router } from '@angular/router';
 import { InstrumentStateService } from '../instrument-state.service';
 import { Instrument } from '../../../../models/equipment/instrument.model';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -15,6 +16,7 @@ import { PopupComponent } from "../../../../shared/menus/popup/popup.component";
 export class InstrumentTableComponent implements OnInit {
 
   instrumentStateService = inject(InstrumentStateService);
+  private router = inject(Router);
   destroyRef = inject(DestroyRef);
 
   itemsInput = input<Instrument[]>();
@@ -25,30 +27,22 @@ export class InstrumentTableComponent implements OnInit {
   actionPopupClosed = output<void>();
 
   columns = new Instrument().toTableColumns();
-  actionButtons: ButtonConfig[] = [];
+  actionButtons: ButtonConfig[] = [
+    { name: 'Add New Instrument', action: () => this.router.navigate(['/instruments/new']), color: 'primary' }
+  ];
 
   isActionMenuOpen = false;
 
   constructor() { }
 
-  ngOnInit(): void {
-    // Populate items and columns as needed
-    // this.actionButtons = [
-    //   { name: 'Resubmit', action: () => this.resubmitSelected(), color: 'primary' },
-    //   { name: 'Revoke', action: () => this.Revoke(), color: 'accent' },
-    //   { name: 'Delete', action: () => this.deleteSelected(), color: 'warn' }
-    // ];
-  }
+  ngOnInit(): void { }
 
   onRowClick({ item }: { item: Instrument, event: MouseEvent}){
     this.instrumentStateService.selectInstrument(item);
-    // this.isActionMenuOpen = true;
   }
 
   closeActionMenu() {
     this.isActionMenuOpen = false;
     this.actionPopupClosed.emit();
   }
-
-
 }

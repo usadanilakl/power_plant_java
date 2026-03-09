@@ -9,6 +9,13 @@ export interface IInstrument extends IBaseModel {
     vendor: string;
     location: string;
     type: string;
+    currentStatus?: string;
+    lastUpdatedDate?: string;
+    lastUpdatedTime?: string;
+    lastUpdatedBy?: string;
+    lastComment?: string;
+    sharepointId?: string;
+    localUuid?: string;
 }
 
 export class Instrument extends BaseModel<IInstrument> implements IInstrument {
@@ -17,6 +24,13 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
     vendor: string;
     location: string;
     type: string;
+    currentStatus?: string;
+    lastUpdatedDate?: string;
+    lastUpdatedTime?: string;
+    lastUpdatedBy?: string;
+    lastComment?: string;
+    sharepointId?: string;
+    localUuid?: string;
 
     constructor(data: Partial<IInstrument> = {}) {
         super(data);
@@ -25,6 +39,13 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
         this.vendor = data.vendor ?? '';
         this.location = data.location ?? '';
         this.type = data.type ?? '';
+        this.currentStatus = data.currentStatus;
+        this.lastUpdatedDate = data.lastUpdatedDate;
+        this.lastUpdatedTime = data.lastUpdatedTime;
+        this.lastUpdatedBy = data.lastUpdatedBy;
+        this.lastComment = data.lastComment;
+        this.sharepointId = data.sharepointId;
+        this.localUuid = data.localUuid;
     }
 
     getFormFields(): FormField[] {
@@ -44,12 +65,9 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
             { id: 'vendor', header: 'Vendor', accessorKey: 'vendor' },
             { id: 'location', header: 'Location', accessorKey: 'location' },
             { id: 'type', header: 'Type', accessorKey: 'type' },
-            { id: 'status', header: 'Status', accessorKey: 'status' },
-            {
-                id: 'updatedAt',
-                header: 'Last Updated',
-                accessorFn: (item: IInstrument) => new Date(item.updatedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
-            },
+            { id: 'currentStatus', header: 'Status', accessorKey: 'currentStatus' },
+            { id: 'lastUpdatedBy', header: 'Updated By', accessorKey: 'lastUpdatedBy' },
+            { id: 'lastUpdatedDate', header: 'Last Updated', accessorKey: 'lastUpdatedDate' },
         ];
     }
 

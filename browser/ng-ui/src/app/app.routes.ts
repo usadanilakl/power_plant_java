@@ -14,6 +14,7 @@ import { UserPageComponent } from './pages/user-page/user-page.component';
 import { UserProfilePageComponent } from './pages/user-profile-page/user-profile-page.component';
 import { InstrumentPageComponent } from './pages/instrument-page/instrument-page.component';
 import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
+import { InstrumentFormComponent } from './features/equipment/instrument/instrument-form/instrument-form.component';
 import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
 import { LotoPageComponent } from './pages/loto-page/loto-page.component';
 import { LotoProcessorComponent } from './features/loto/loto-processor/loto-processor.component';
@@ -83,7 +84,8 @@ export const routes: Routes = [
       canActivate: [standaloneGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: InstrumentComponent }
+        { path: 'form', component: InstrumentComponent },
+        { path: 'new', component: InstrumentFormComponent }
       ]
     },
       {

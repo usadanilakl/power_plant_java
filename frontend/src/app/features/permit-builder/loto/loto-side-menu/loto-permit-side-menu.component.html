@@ -5,3 +5,11 @@
   <app-loto-permit-left-menu menu></app-loto-permit-left-menu>
   <app-loto-permit-table table></app-loto-permit-table>
 </app-permit-left-panel>
+
+<div class="import-bar">
+  <button class="import-btn" (click)="openImportDialog()">Import LOTOs</button>
+</div>
+
+@if (showImportDialog()) {
+  <app-loto-import-dialog (closeDialog)="closeImportDialog()"></app-loto-import-dialog>
+}

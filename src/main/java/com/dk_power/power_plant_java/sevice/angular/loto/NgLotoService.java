@@ -79,6 +79,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return this.repo.save(entity);
     }
 
+    @Transactional
+    public void deleteLoto(Long id) {
+        Loto loto = repo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + id));
+        loto.setDeleted(true);
+        repo.save(loto);
+    }
+
     public Optional<Loto> findById(Long id) {
         return this.repo.findById(id);
     }

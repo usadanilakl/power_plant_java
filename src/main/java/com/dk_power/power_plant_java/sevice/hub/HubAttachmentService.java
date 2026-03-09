@@ -32,10 +32,22 @@ public class HubAttachmentService {
     @Transactional
     public PermitAttachment storeAttachment(String entityType, Long entityId, String fileName,
                                              String contentType, String attachmentType,
-                                             String base64Content, String originMachineId) {
+                                             String base64Content, String contentHash,
+                                             String originMachineId) {
 
-        // Dedup: if same file already exists for this entity, skip
-        if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(entityType, entityId, fileName)) {
+        // Dedup by filename + content hash when available.
+        if (contentHash != null && !contentHash.isEmpty() &&
+            attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                entityType, entityId, fileName, contentHash)) {
+            log.debug("[Hub Attachment] Duplicate skipped by hash: {} for {}#{}", fileName, entityType, entityId);
+            var existing = attachmentRepo.findFirstByEntityTypeAndEntityIdAndFileNameAndContentHashOrderByIdAsc(
+                entityType, entityId, fileName, contentHash);
+            if (existing.isPresent()) {
+                PermitAttachment att = existing.get();
+                att.addSyncedMachine(originMachineId);
+                return attachmentRepo.save(att);
+            }
+        } else if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileName(entityType, entityId, fileName)) {
             log.debug("[Hub Attachment] Duplicate skipped: {} for {}#{}", fileName, entityType, entityId);
             // Find existing and mark origin as synced
             List<PermitAttachment> existing = attachmentRepo.findByEntityTypeAndEntityId(entityType, entityId);
@@ -54,6 +66,7 @@ public class HubAttachmentService {
         att.setContentType(contentType);
         att.setAttachmentType(attachmentType);
         att.setBase64Content(base64Content);
+        att.setContentHash(contentHash);
         att.setCreatedAt(LocalDateTime.now());
         att.setOriginMachineId(originMachineId);
         att.setSyncedToServer(true); // Hub IS the server

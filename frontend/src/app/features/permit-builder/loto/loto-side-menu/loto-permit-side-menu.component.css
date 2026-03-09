@@ -16,3 +16,24 @@ app-permit-left-panel {
   overflow: hidden;
   flex: 1;
 }
+
+.import-bar {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  flex-shrink: 0;
+}
+
+.import-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--primary-color, #2196F3);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.import-btn:hover {
+  opacity: 0.9;
+}

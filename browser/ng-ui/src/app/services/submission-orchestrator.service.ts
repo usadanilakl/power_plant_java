@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, switchMap } from 'rxjs';
-import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto } from './server-api.service';
+import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto, PwaInstrumentLogDto, PwaInstrumentDto } from './server-api.service';
 import { PowerAutomateService } from './power-automate.service';
 import { UserSetupService } from './user-setup.service';
 import { WorkRequest } from '../models/permits/work-request.model';
 import { Jha } from '../models/permits/jha.model';
+import { InstrumentLogEntry } from '../models/equipment/instrument-log.model';
+import { PowerAutomateRequest } from '../models/api/power-automate-request.model';
 import { environment } from '../../environments/environment';
 
 export interface SubmissionResult {
@@ -14,6 +16,12 @@ export interface SubmissionResult {
   localUuid: string;
   message?: string;
   requiresEmail?: boolean;
+}
+
+export interface FetchResult {
+  success: boolean;
+  method: 'server' | 'powerAutomate' | 'static';
+  instruments: PwaInstrumentDto[];
 }
 
 @Injectable({
@@ -188,6 +196,242 @@ export class SubmissionOrchestratorService {
       localUuid,
       'JHA Power Automate flow not configured.'
     );
+  }
+
+  // ====================== Instrument Fetch & Create ======================
+
+  fetchInstruments(): Observable<FetchResult> {
+    return this.serverApi.getInstruments().pipe(
+      map(instruments => ({
+        success: true,
+        method: 'server' as const,
+        instruments
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server fetch instruments failed, trying PA:', serverError.message);
+        if (!this.powerAutomate.isV2Configured('instrument')) {
+          return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
+        }
+        return this.powerAutomate.submitV2('instrument', { actionType: 'getAllInstruments', data: {} }).pipe(
+          map(response => ({
+            success: true,
+            method: 'powerAutomate' as const,
+            instruments: (response.data || []) as PwaInstrumentDto[]
+          })),
+          catchError(paError => {
+            console.warn('[Orchestrator] PA fetch instruments failed:', paError.message);
+            return of({ success: false, method: 'static' as const, instruments: [] as PwaInstrumentDto[] });
+          })
+        );
+      })
+    );
+  }
+
+  fetchInstrumentLogs(tagNumber: string): Observable<PwaInstrumentLogDto[]> {
+    if (!tagNumber) {
+      return of([]);
+    }
+    return this.serverApi.getInstrumentLogsByTag(tagNumber).pipe(
+      catchError((serverError) => {
+        console.warn('[Orchestrator] Server fetch instrument logs failed:', serverError.message);
+        return of([]);
+      })
+    );
+  }
+
+  createInstrument(dto: PwaInstrumentDto): Observable<SubmissionResult> {
+    const localUuid = dto.localUuid || crypto.randomUUID();
+    dto.localUuid = localUuid;
+
+    return this.serverApi.createInstrument(dto).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as const,
+        sharepointId: response.sharepointId,
+        localUuid,
+        message: response.message
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server create instrument failed, trying PA:', serverError.message);
+        if (!this.powerAutomate.isV2Configured('instrument')) {
+          return this.tryServerEmail(
+            { subject: `[PWA:INST] New Instrument: ${dto.tagNumber}`, body: this.generateInstrumentEmailBody(dto) },
+            [],
+            localUuid,
+            'Instrument creation failed — server and PA unavailable.'
+          );
+        }
+        return this.powerAutomate.submitV2('instrument', {
+          actionType: 'addInstrument',
+          data: {
+            Tag_x0020_Number: dto.tagNumber,
+            Description: dto.description,
+            Vendor: dto.vendor,
+            Location: dto.location,
+            Type: dto.type,
+            CurrentStatus: dto.currentStatus || 'Normal Operation',
+            PwaId: localUuid
+          }
+        }).pipe(
+          map(response => ({
+            success: response.success,
+            method: 'powerAutomate' as const,
+            sharepointId: response.id,
+            localUuid,
+            message: 'Instrument created via Power Automate.'
+          })),
+          catchError(paError => {
+            console.warn('[Orchestrator] PA create instrument failed:', paError.message);
+            return this.tryServerEmail(
+              { subject: `[PWA:INST] New Instrument: ${dto.tagNumber}`, body: this.generateInstrumentEmailBody(dto) },
+              [],
+              localUuid,
+              'All instrument creation methods failed.'
+            );
+          })
+        );
+      })
+    );
+  }
+
+  private generateInstrumentEmailBody(dto: PwaInstrumentDto): string {
+    let body = `--- New Instrument ---\n`;
+    body += `Tag Number: ${dto.tagNumber}\n`;
+    body += `Description: ${dto.description}\n`;
+    body += `Vendor: ${dto.vendor}\n`;
+    body += `Location: ${dto.location}\n`;
+    body += `Type: ${dto.type}\n`;
+
+    const userData = this.userSetup.getUserData();
+    if (userData) {
+      body += `\n--- Submitter Info ---\n`;
+      body += `Name: ${userData.name}\n`;
+      body += `Email: ${userData.email}\n`;
+    }
+    return body;
+  }
+
+  // ====================== Instrument Log Submission ======================
+
+  submitInstrumentLog(entry: InstrumentLogEntry): Observable<SubmissionResult> {
+    const localUuid = entry.localUuid || crypto.randomUUID();
+    entry.localUuid = localUuid;
+    const dto = this.convertInstrumentLogToDto(entry);
+
+    return this.tryServerInstrumentLog(dto).pipe(
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for instrument log, trying PA V1:', serverError.message);
+        return this.tryPaInstrumentLog(entry, localUuid);
+      })
+    );
+  }
+
+  private tryServerInstrumentLog(dto: PwaInstrumentLogDto): Observable<SubmissionResult> {
+    return this.serverApi.submitInstrumentLog(dto).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as const,
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || dto.localUuid,
+        message: response.method === 'local'
+          ? 'Instrument log saved locally. Will sync to SharePoint when available.'
+          : 'Instrument log submitted successfully via server.'
+      }))
+    );
+  }
+
+  private tryPaInstrumentLog(entry: InstrumentLogEntry, localUuid: string): Observable<SubmissionResult> {
+    const paUrl = (environment as any).paFlowUrls?.instrumentLog;
+    const dtoAttachments = (entry.attachments || []).map(a => ({
+      fileName: a.fileName, contentType: a.contentType, base64Content: a.base64Content
+    }));
+
+    if (!paUrl) {
+      console.warn('[Orchestrator] No PA URL configured for instrumentLog, skipping to email.');
+      return this.tryServerEmail(
+        this.generateInstrumentLogEmailContent(entry),
+        dtoAttachments,
+        localUuid,
+        'Instrument log PA flow not configured.'
+      );
+    }
+
+    const request: PowerAutomateRequest<InstrumentLogEntry> = {
+      url: paUrl,
+      instrumentationLog: entry,
+      actionType: 'addInstrumentationLog',
+      localUuid,
+      attachments: dtoAttachments
+    };
+
+    return this.powerAutomate.submitForm(request).pipe(
+      map(() => ({
+        success: true,
+        method: 'powerAutomate' as const,
+        localUuid,
+        message: 'Instrument log submitted via Power Automate.'
+      })),
+      catchError(paError => {
+        console.warn('[Orchestrator] PA V1 failed for instrument log:', paError.message);
+        return this.tryServerEmail(
+          this.generateInstrumentLogEmailContent(entry),
+          dtoAttachments,
+          localUuid,
+          'Server and Power Automate failed for instrument log.'
+        );
+      })
+    );
+  }
+
+  private convertInstrumentLogToDto(entry: InstrumentLogEntry): PwaInstrumentLogDto {
+    let dateStr: string;
+    if (entry.date instanceof Date) {
+      const d = entry.date;
+      dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else {
+      dateStr = String(entry.date || '');
+    }
+
+    return {
+      localUuid: entry.localUuid || crypto.randomUUID(),
+      instrumentTagNumber: entry.instrumentTagNumber || '',
+      instrumentDescription: entry.instrumentDescription || '',
+      status: entry.status || '',
+      date: dateStr,
+      time: entry.time || '',
+      name: entry.name || '',
+      comment: entry.comment || '',
+      attachments: (entry.attachments || []).map(a => ({
+        fileName: a.fileName,
+        contentType: a.contentType,
+        base64Content: a.base64Content
+      })),
+    };
+  }
+
+  private generateInstrumentLogEmailContent(entry: InstrumentLogEntry): { subject: string; body: string } {
+    const subject = `[PWA:INST] Instrument Log: ${entry.instrumentTagNumber || 'Unknown'}`;
+    let body = `--- Instrument Log Entry ---\n`;
+    body += `Tag Number: ${entry.instrumentTagNumber}\n`;
+    body += `Description: ${entry.instrumentDescription}\n`;
+    body += `Status: ${entry.status}\n`;
+    body += `Date: ${entry.date}\n`;
+    body += `Time: ${entry.time}\n`;
+    body += `Name: ${entry.name}\n`;
+    body += `Comment: ${entry.comment}\n`;
+    if (entry.attachments?.length) {
+      body += `Attachments: ${entry.attachments.length} file(s) — not included in email, please retrieve from server.\n`;
+    }
+
+    const userData = this.userSetup.getUserData();
+    if (userData) {
+      body += `\n--- Submitter Info ---\n`;
+      body += `Name: ${userData.name}\n`;
+      body += `Email: ${userData.email}\n`;
+      body += `Phone: ${userData.phone}\n`;
+      body += `Company: ${userData.company}\n`;
+    }
+    return { subject, body };
   }
 
   // ====================== Revoke Methods ======================

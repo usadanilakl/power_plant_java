@@ -108,6 +108,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         // Existing — field-level merge
         Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
         if (spChangedColumns.isEmpty()) {
+            syncAttachmentsSafely(existing.getId(), spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
@@ -121,6 +122,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             // Don't update snapshot here — if we do, the SP change is permanently
             // lost from diff detection. Leave snapshot stale so next sync re-evaluates.
             log.info("[WR Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            syncAttachmentsSafely(existing.getId(), spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
@@ -134,6 +136,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         }
 
         workRequestRepo.save(existing);
+        syncAttachmentsSafely(existing.getId(), spId);
         result.incrementUpdated();
         log.info("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
@@ -240,4 +243,14 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             .map(WorkRequest::getId)
             .orElse(null);
     }
+
+    private void syncAttachmentsSafely(Long entityId, String sharepointId) {
+        try {
+            permitAttachmentSyncService.syncAttachmentsForWorkRequest(entityId, sharepointId);
+        } catch (Exception e) {
+            log.warn("[WR Syncable] Attachment sync failed for spId={}: {}", sharepointId, e.getMessage());
+        }
+    }
 }
+
+

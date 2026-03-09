@@ -88,8 +88,9 @@ export class CurrentLotoService{
         map((response: SpringApiResponse<LotoDto>) => response.responseData)
       ).subscribe((lotoFromServer: LotoDto) => {
         if(lotoFromServer){
-          this.currentLotoSubject.next(lotoFromServer);
-          this.loadCurrentLotoFiles(lotoFromServer.id);
+          const lotoDto = new LotoDto(lotoFromServer);
+          this.currentLotoSubject.next(lotoDto);
+          this.loadCurrentLotoFiles(lotoDto.id);
         }
       });
     }
@@ -134,6 +135,19 @@ export class CurrentLotoService{
     removeLotoFromList(id: number) {
       const currentLotos = this.allLotosSubject.value;
       this.allLotosSubject.next(currentLotos.filter(l => l.id !== id));
+    }
+
+    deleteLoto(id: number) {
+      this.lotoService.deleteLoto(id.toString()).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError((error) => {
+          console.error('Error deleting LOTO:', error);
+          return of(null);
+        })
+      ).subscribe(() => {
+        this.removeLotoFromList(id);
+        this.currentLotoSubject.next(null);
+      });
     }
 
     updateLotoInList(loto: LotoDto) {
@@ -275,6 +289,22 @@ export class CurrentLotoService{
     }
 
     
+    importLotos(file: File) {
+      this.lotoService.importLotos(file).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError((error) => {
+          console.error('Error importing LOTOs:', error);
+          return of(null);
+        })
+      ).subscribe(response => {
+        if (response?.responseData) {
+          const current = this.allLotosSubject.value;
+          const imported = response.responseData.map((l: any) => new LotoDto(l));
+          this.allLotosSubject.next([...imported, ...current]);
+        }
+      });
+    }
+
     save(form: LotoDto[]) {
       if (!form.length) {
         console.error('No LOTOs provided');

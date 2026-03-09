@@ -1,6 +1,6 @@
 export interface PowerAutomateRequest<T> {
   actionType: 'save' | 'saveJha' | 'revoke' | 'revokeJha' | 'delete' | 'authenticate' | 'getAll' | 'create' | 'newTest' |
-  'addInstrumentationLog';
+  'addInstrumentationLog' | 'getAllInstruments' | 'addInstrument';
   url?: string;
   workForm?: T;
   jhaForm?: T;
@@ -11,4 +11,6 @@ export interface PowerAutomateRequest<T> {
   id?: number | string;
   email?: string;
   password?: string;
+  localUuid?: string;
+  attachments?: { fileName: string; contentType: string; base64Content: string }[];
 }

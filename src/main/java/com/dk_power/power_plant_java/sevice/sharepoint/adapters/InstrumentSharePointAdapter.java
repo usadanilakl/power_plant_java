@@ -1,5 +1,8 @@
 package com.dk_power.power_plant_java.sevice.sharepoint.adapters;
 
+import com.dk_power.power_plant_java.clients.PowerAutomateV2Client;
+import com.dk_power.power_plant_java.dto.pa.PaRequestDto;
+import com.dk_power.power_plant_java.dto.pa.PaResponseDto;
 import com.dk_power.power_plant_java.dto.instrumentation.InstrumentDto;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointCertificateAccess;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharepointAccessService;
@@ -8,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,21 +24,22 @@ public class InstrumentSharePointAdapter {
 
     private final SharepointAccessService spService;
     private final SharePointCertificateAccess certAccess;
+    private final PowerAutomateV2Client v2Client;
 
-    private static final String LIST_TITLE = "Instruments";
+    private static final String LIST_TITLE = "Instrumentation";
 
     public List<InstrumentDto> getAll() {
         return spService.executeWithFallback(
                 this::certGetAll,
-                () -> { throw new RuntimeException("No PA fallback configured for Instruments"); },
-                "getAll Instruments"
+                this::paGetAll,
+                "getAll Instrumentation"
         );
     }
 
     public String create(InstrumentDto dto) {
         return spService.executeWithFallback(
                 () -> certCreate(dto),
-                () -> { throw new RuntimeException("No PA fallback configured for Instruments"); },
+                () -> paCreate(dto),
                 "create Instrument"
         );
     }
@@ -42,7 +47,7 @@ public class InstrumentSharePointAdapter {
     public void update(String sharepointId, InstrumentDto dto) {
         spService.executeWithFallback(
                 () -> { certUpdate(sharepointId, dto); return null; },
-                () -> { throw new RuntimeException("No PA fallback configured for Instruments"); },
+                () -> { paUpdate(sharepointId, dto); return null; },
                 "update Instrument"
         );
     }
@@ -50,7 +55,7 @@ public class InstrumentSharePointAdapter {
     public void upsertByTagNumber(InstrumentDto dto) {
         spService.executeWithFallback(
                 () -> { certUpsertByTagNumber(dto); return null; },
-                () -> { throw new RuntimeException("No PA fallback configured for Instruments"); },
+                () -> { paUpsertByTagNumber(dto); return null; },
                 "upsert Instrument"
         );
     }
@@ -76,7 +81,7 @@ public class InstrumentSharePointAdapter {
         List<JsonNode> items = certAccess.getListItems(LIST_TITLE);
         String existingSpId = null;
         for (JsonNode item : items) {
-            String tag = item.path("TagNumber").asText(null);
+            String tag = item.path("Tag_x0020_Number").asText(item.path("Tag Number").asText(null));
             if (dto.getTagNumber() != null && dto.getTagNumber().equals(tag)) {
                 existingSpId = item.path("ID").asText(item.path("Id").asText(null));
                 break;
@@ -92,13 +97,59 @@ public class InstrumentSharePointAdapter {
         }
     }
 
+    // ====================== Power Automate path ======================
+
+    private List<InstrumentDto> paGetAll() {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("getAll");
+        req.setData(Map.of());
+
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess() || resp.getData() == null) {
+            throw new RuntimeException("PA-V2 getAll Instrumentation failed: " + resp.getMessage());
+        }
+        return resp.getData().stream().map(this::mapFromPaResponse).collect(Collectors.toList());
+    }
+
+    private String paCreate(InstrumentDto dto) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("create");
+        req.setData(toMap(dto));
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess()) {
+            throw new RuntimeException("PA-V2 create Instrument failed: " + resp.getMessage());
+        }
+        return resp.getId();
+    }
+
+    private void paUpdate(String sharepointId, InstrumentDto dto) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("update");
+        req.setId(sharepointId);
+        req.setData(toMap(dto));
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess()) {
+            throw new RuntimeException("PA-V2 update Instrument failed: " + resp.getMessage());
+        }
+    }
+
+    private void paUpsertByTagNumber(InstrumentDto dto) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("upsertByTagNumber");
+        req.setData(toMap(dto));
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess()) {
+            throw new RuntimeException("PA-V2 upsertByTagNumber Instrument failed: " + resp.getMessage());
+        }
+    }
+
     // ====================== Column mapping ======================
 
     private InstrumentDto mapFromSharePoint(JsonNode item) {
         InstrumentDto dto = new InstrumentDto();
         dto.setSharepointId(item.path("ID").asText(item.path("Id").asText(null)));
         dto.setLocalUuid(item.path("PwaId").asText(null));
-        dto.setTagNumber(item.path("TagNumber").asText(null));
+        dto.setTagNumber(item.path("Tag_x0020_Number").asText(item.path("Tag Number").asText(null)));
         dto.setDescription(item.path("Description").asText(null));
         dto.setVendor(item.path("Vendor").asText(null));
         dto.setLocation(item.path("Location").asText(null));
@@ -108,13 +159,32 @@ public class InstrumentSharePointAdapter {
         dto.setLastUpdatedTime(item.path("LastUpdatedTime").asText(null));
         dto.setLastUpdatedBy(item.path("LastUpdatedBy").asText(null));
         dto.setLastComment(item.path("LastComment").asText(null));
+        dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
+        return dto;
+    }
+
+    private InstrumentDto mapFromPaResponse(Map<String, Object> map) {
+        InstrumentDto dto = new InstrumentDto();
+        dto.setSharepointId(str(map, "ID"));
+        dto.setLocalUuid(str(map, "PwaId"));
+        dto.setTagNumber(str(map, "Tag_x0020_Number"));
+        dto.setDescription(str(map, "Description"));
+        dto.setVendor(str(map, "Vendor"));
+        dto.setLocation(str(map, "Location"));
+        dto.setType(str(map, "Type"));
+        dto.setCurrentStatus(str(map, "CurrentStatus"));
+        dto.setLastUpdatedDate(str(map, "LastUpdatedDate"));
+        dto.setLastUpdatedTime(str(map, "LastUpdatedTime"));
+        dto.setLastUpdatedBy(str(map, "LastUpdatedBy"));
+        dto.setLastComment(str(map, "LastComment"));
+        dto.setSpModifiedTime(parseInstant(str(map, "Modified")));
         return dto;
     }
 
     private Map<String, Object> toMap(InstrumentDto dto) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
-        map.put("TagNumber", orEmpty(dto.getTagNumber()));
+        map.put("Tag_x0020_Number", orEmpty(dto.getTagNumber()));
         map.put("Description", orEmpty(dto.getDescription()));
         map.put("Vendor", orEmpty(dto.getVendor()));
         map.put("Location", orEmpty(dto.getLocation()));
@@ -125,5 +195,15 @@ public class InstrumentSharePointAdapter {
         map.put("LastUpdatedBy", orEmpty(dto.getLastUpdatedBy()));
         map.put("LastComment", orEmpty(dto.getLastComment()));
         return map;
+    }
+
+    private static Instant parseInstant(String raw) {
+        if (raw == null || raw.isEmpty()) return null;
+        try {
+            return Instant.parse(raw);
+        } catch (Exception e) {
+            log.warn("[Instrument-Adapter] Failed to parse Modified datetime '{}': {}", raw, e.getMessage());
+            return null;
+        }
     }
 }

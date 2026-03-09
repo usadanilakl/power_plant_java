@@ -135,7 +135,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
         name: 'isVerified',
         label: 'Is Verified',
         type: 'select',
-        initialValue: dto.isVerified.toString(),
+        initialValue: (dto.isVerified ?? false).toString(),
         options: [
           { value: 'true', label: 'Yes' },
           { value: 'false', label: 'No' }
@@ -145,14 +145,14 @@ export class LotoDto extends BasePermitDto implements LotoModel {
         name: 'locks',
         label: 'Locks',
         type: 'multi-select',
-        initialValue: dto.locks.map(l => l.id),
-        options: dto.locks.map(l => ({ value: l.id, label: `Lock #${l.number}` }))
+        initialValue: (dto.locks ?? []).map(l => l.id),
+        options: (dto.locks ?? []).map(l => ({ value: l.id, label: `Lock #${l.number}` }))
       },
       {
         name: 'lotoPoints',
         label: 'Tags and Locks',
         type: 'form-array',
-        initialValue: dto.lotoPoints,
+        initialValue: dto.lotoPoints ?? [],
         fields: [
           { name: 'tagNumber', label: 'Tag #', type: 'text' },
           { name: 'description', label: 'EID to be Tagged/Locked', type: 'text' },

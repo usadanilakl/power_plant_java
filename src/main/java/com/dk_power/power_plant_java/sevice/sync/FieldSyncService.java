@@ -61,6 +61,8 @@ public class FieldSyncService {
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
     private final UserMergeService userMergeService;
+    private final InstrumentMergeService instrumentMergeService;
+    private final InstrumentLogMergeService instrumentLogMergeService;
     private final DedupKeyResolver dedupKeyResolver;
     @PersistenceContext
     private EntityManager entityManager;
@@ -109,6 +111,8 @@ public class FieldSyncService {
             JhaMergeService jhaMergeService,
             EmailCorrespondenceMergeService emailCorrespondenceMergeService,
             UserMergeService userMergeService,
+            InstrumentMergeService instrumentMergeService,
+            InstrumentLogMergeService instrumentLogMergeService,
             DedupKeyResolver dedupKeyResolver) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
@@ -134,6 +138,8 @@ public class FieldSyncService {
         this.jhaMergeService = jhaMergeService;
         this.emailCorrespondenceMergeService = emailCorrespondenceMergeService;
         this.userMergeService = userMergeService;
+        this.instrumentMergeService = instrumentMergeService;
+        this.instrumentLogMergeService = instrumentLogMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
     }
 
@@ -731,6 +737,8 @@ public class FieldSyncService {
                             jhaMergeService.mergeIfDuplicatesExist();
                             emailCorrespondenceMergeService.mergeIfDuplicatesExist();
                             userMergeService.mergeIfDuplicatesExist();
+                            instrumentMergeService.mergeIfDuplicatesExist();
+                            instrumentLogMergeService.mergeIfDuplicatesExist();
                         } catch (Exception e) {
                             log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                         } finally {
@@ -764,6 +772,8 @@ public class FieldSyncService {
                     jhaMergeService.mergeIfDuplicatesExist();
                     emailCorrespondenceMergeService.mergeIfDuplicatesExist();
                     userMergeService.mergeIfDuplicatesExist();
+                    instrumentMergeService.mergeIfDuplicatesExist();
+                    instrumentLogMergeService.mergeIfDuplicatesExist();
                 } catch (Exception e) {
                     log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                 } finally {
@@ -1835,7 +1845,7 @@ public class FieldSyncService {
     private void advanceSequencePastIfNeeded(Long entityId) {
         if (entityId == null) return;
         int deviceNumber = syncConfig.getDeviceNumber();
-        if (deviceNumber < 1 || deviceNumber > 9) return;
+        if (deviceNumber < 0 || deviceNumber > 99) return;
 
         long multiplier = 1_000_000_000L;
         long rangeStart = (long) deviceNumber * multiplier;

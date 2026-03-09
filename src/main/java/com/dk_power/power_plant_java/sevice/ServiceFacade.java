@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
+import com.dk_power.power_plant_java.entities.instrumentation.Instrument;
+import com.dk_power.power_plant_java.entities.instrumentation.InstrumentLog;
 import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
@@ -27,6 +29,8 @@ import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
+import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentLogSyncService;
+import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentSyncService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -55,6 +59,8 @@ public class ServiceFacade {
             @Lazy EqBreakerService eqBreakerService,
             @Lazy HtPanelService htPanelService,
             @Lazy HtBreakerService htBreakerService,
+            @Lazy InstrumentSyncService instrumentSyncService,
+            @Lazy InstrumentLogSyncService instrumentLogSyncService,
             // LOTO
             @Lazy LotoPointService lotoPointService,
             @Lazy NgLotoService ngLotoService,
@@ -99,6 +105,8 @@ public class ServiceFacade {
         serviceMap.put(EqBreaker.class.getSimpleName(), eqBreakerService);
         serviceMap.put(HtPanel.class.getSimpleName(), htPanelService);
         serviceMap.put(HtBreaker.class.getSimpleName(), htBreakerService);
+        serviceMap.put(Instrument.class.getSimpleName(), instrumentSyncService);
+        serviceMap.put(InstrumentLog.class.getSimpleName(), instrumentLogSyncService);
         // LOTO
         serviceMap.put(LotoPoint.class.getSimpleName(), lotoPointService);
         serviceMap.put(Loto.class.getSimpleName(), ngLotoService);
