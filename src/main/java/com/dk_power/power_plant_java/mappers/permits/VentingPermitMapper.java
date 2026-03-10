@@ -92,7 +92,7 @@ public class VentingPermitMapper implements BaseMapper {
         }
         if (entity == null) entity = new VentingPermit();
 
-        if (dto.getId() != null) entity.setId(dto.getId());
+        if (dto.getId() != null && dto.getId() != 0) entity.setId(dto.getId());
         if (dto.getDate() != null) entity.setDate(dto.getDate());
         if (dto.getTime() != null) entity.setTime(dto.getTime());
         if (dto.getLocation() != null) entity.setLocation(dto.getLocation());

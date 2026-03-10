@@ -73,6 +73,12 @@ public class NgVentingPermitService implements NgCrudService<VentingPermit, Vent
     }
 
     public List<VentingPermitDto> saveAll(List<VentingPermitDto> permits) {
-        return permits.stream().map(mapper::convertToEntity).map(repo::save).map(mapper::convertToDto).toList();
+        return permits.stream().map(this::save).map(saved -> {
+            if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+                saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+                saved = repo.save(saved);
+            }
+            return mapper.convertToDto(saved);
+        }).toList();
     }
 }

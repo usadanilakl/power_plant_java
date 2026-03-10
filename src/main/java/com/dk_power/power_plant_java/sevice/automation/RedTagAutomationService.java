@@ -25,7 +25,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -818,7 +820,7 @@ public class RedTagAutomationService {
             currentField = "Date Issued";
             Region dateIssued = screen.wait(SW_DATE_ISSUED, 5);
             dateIssued.offset(0, 15).click();
-            pasteText(sw.getDate());
+            pasteText(formatDate(sw.getDate()));
             screen.type(Key.TAB);
 
             currentField = "Time";
@@ -1130,7 +1132,7 @@ public class RedTagAutomationService {
             clickRightSideOfElement(CS_ISSUED_TO, 20);
             pasteText(cs.getIssuedTo());
             clickRightSideOfElement(CS_ENTRY_DATE, 20);
-            pasteText(cs.getDate());
+            pasteText(formatDate(cs.getDate()));
             clickRightSideOfElement(CS_START_TIME, 20);
             pasteText(cs.getTime());
             clickRightSideOfElement(CS_DURATION, 20);
@@ -1174,7 +1176,7 @@ public class RedTagAutomationService {
             int width = meterData.w / 2 - 5;
             int height = meterData.h / 2;
             meterData.offset(width, 30 - height).click();
-            pasteText(cs.getDate());
+            pasteText(formatDate(cs.getDate()));
 
             meterData.offset(width, 60 - height).click();
             pasteText(cs.getMeterModel());
@@ -1183,7 +1185,7 @@ public class RedTagAutomationService {
 //            pasteText(cs.getMeterNum());
 
             meterData.offset(width, 120 - height).click();
-            pasteText(cs.getDate());
+            pasteText(formatDate(cs.getDate()));
 
             meterData.offset(width, 140 - height).click();
             pasteText("Y");
@@ -1294,7 +1296,7 @@ public class RedTagAutomationService {
             location.offset(location.w / 2 - 5, 0).click();
             pasteText(hw.getLocation());
             screen.type(Key.TAB);
-            pasteText(hw.getDate());
+            pasteText(formatDate(hw.getDate()));
             screen.type(Key.TAB);
             pasteText(hw.getForeman());
             screen.type(Key.TAB);
@@ -1306,7 +1308,7 @@ public class RedTagAutomationService {
             screen.type(Key.TAB);
 //            pasteText(hw.getMeterNum());
             screen.type(Key.TAB);
-            pasteText(hw.getDate());
+            pasteText(formatDate(hw.getDate()));
 
             clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED, -2);
 //
@@ -1550,6 +1552,15 @@ public class RedTagAutomationService {
         App.setClipboard(text);
         screen.type("v", KeyModifier.CTRL);
         System.out.println("Pasted: " + text);
+    }
+
+    /** Converts ISO date (2026-03-09) to US format (03/09/2026). Passes through if already in MM/dd/yyyy. */
+    private String formatDate(String date) {
+        if (date == null) return "";
+        if (date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return LocalDate.parse(date).format(DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+        }
+        return date;
     }
 
     private void clickLeftSideOfElement(Pattern pattern, int offsetFromLeft) throws FindFailed {

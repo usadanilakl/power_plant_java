@@ -136,52 +136,39 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (permitPackageDto.getPermitNumber() != null) existing.setPermitNumber(permitPackageDto.getPermitNumber());
         if (permitPackageDto.getPackageStatus() != null) existing.setPackageStatus(incoming.getPackageStatus());
 
-        // Update child collections ONLY when explicitly provided (non-empty IDs or DTOs)
-        // This prevents orphanRemoval from deleting children when stale/empty data is sent
-        updateCollectionIfProvided(existing, permitPackageDto, incoming);
+        // Synchronize child collections with the DTO payload.
+        // The daily package client sends the full package state, and removals must persist
+        // even when a collection becomes empty.
+        syncCollections(existing, incoming);
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(existing);
         return dailyPermitPackageMapper.convertToDto(saved);
     }
 
-    private void updateCollectionIfProvided(DailyPermitPackage existing, DailyPermitPackageDto dto, DailyPermitPackage incoming) {
-        // Only replace a collection if the DTO explicitly provides IDs or nested DTOs
-        if (hasCollectionData(dto.getWorkRequestIds(), dto.getWorkRequests())) {
-            existing.getWorkRequests().clear();
-            existing.getWorkRequests().addAll(incoming.getWorkRequests());
-        }
-        if (hasCollectionData(dto.getSafeWorkIds(), dto.getSafeWorks())) {
-            existing.getSafeWorks().clear();
-            existing.getSafeWorks().addAll(incoming.getSafeWorks());
-        }
-        if (hasCollectionData(dto.getHotWorkIds(), dto.getHotWorks())) {
-            existing.getHotWorks().clear();
-            existing.getHotWorks().addAll(incoming.getHotWorks());
-        }
-        if (hasCollectionData(dto.getConfinedSpaceIds(), dto.getConfinedSpaces())) {
-            existing.getConfinedSpaces().clear();
-            existing.getConfinedSpaces().addAll(incoming.getConfinedSpaces());
-        }
-        if (hasCollectionData(dto.getLotoIds(), dto.getLotos())) {
-            existing.getLotos().clear();
-            existing.getLotos().addAll(incoming.getLotos());
-        }
-        if (hasCollectionData(dto.getEnergizedWorkPermitIds(), dto.getEnergizedWorkPermits())) {
-            existing.getEnergizedWorkPermits().clear();
-            existing.getEnergizedWorkPermits().addAll(incoming.getEnergizedWorkPermits());
-        }
-        if (hasCollectionData(dto.getExcavationPermitIds(), dto.getExcavationPermits())) {
-            existing.getExcavationPermits().clear();
-            existing.getExcavationPermits().addAll(incoming.getExcavationPermits());
-        }
-        if (hasCollectionData(dto.getVentingPermitIds(), dto.getVentingPermits())) {
-            existing.getVentingPermits().clear();
-            existing.getVentingPermits().addAll(incoming.getVentingPermits());
-        }
-    }
+    private void syncCollections(DailyPermitPackage existing, DailyPermitPackage incoming) {
+        existing.getWorkRequests().clear();
+        existing.getWorkRequests().addAll(incoming.getWorkRequests());
 
-    private boolean hasCollectionData(Set<Long> ids, List<?> dtos) {
-        return (ids != null && !ids.isEmpty()) || (dtos != null && !dtos.isEmpty());
+        existing.getSafeWorks().clear();
+        existing.getSafeWorks().addAll(incoming.getSafeWorks());
+
+        existing.getHotWorks().clear();
+        existing.getHotWorks().addAll(incoming.getHotWorks());
+
+        existing.getConfinedSpaces().clear();
+        existing.getConfinedSpaces().addAll(incoming.getConfinedSpaces());
+
+        existing.getLotos().clear();
+        existing.getLotos().addAll(incoming.getLotos());
+
+        existing.getEnergizedWorkPermits().clear();
+        existing.getEnergizedWorkPermits().addAll(incoming.getEnergizedWorkPermits());
+
+        existing.getExcavationPermits().clear();
+        existing.getExcavationPermits().addAll(incoming.getExcavationPermits());
+
+        existing.getVentingPermits().clear();
+        existing.getVentingPermits().addAll(incoming.getVentingPermits());
     }
 
     public String buildPermits(DailyPermitPackageDto dailyPermitPackageDto) throws FindFailed, IOException, InterruptedException {

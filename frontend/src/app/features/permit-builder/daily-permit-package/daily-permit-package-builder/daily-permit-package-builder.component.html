@@ -125,6 +125,7 @@
             (addItemEvent)="attachNew('Work Request')">
             <ng-template let-wr>
               <app-work-request-display [workRequest]="wr"></app-work-request-display>
+              <button class="remove-permit-btn" (click)="currentDailyPermitPackageService.removeAttachment(wr.id, 'workRequests')">Remove WR</button>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate</button>
           </app-item-carousel>
@@ -141,11 +142,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
                 (formSubmit)="buildInRedTag($event, 'safeWork')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'safeWorks')">
+                (formDelete)="currentDailyPermitPackageService.removeAttachment(sw.id, 'safeWorks')">
               </app-safe-work-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
-            <button [disabled]="emptySafeWorksExists()" (click)="addSafeWork()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addSafeWork()">Add Empty</button>
           </app-item-carousel>
         }
         @case('hotWorks') {
@@ -160,11 +161,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
                 (formSubmit)="buildInRedTag($event, 'hotWork')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'hotWorks')"
+                (formDelete)="currentDailyPermitPackageService.removeAttachment(hw.id, 'hotWorks')"
               ></app-hot-work-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
-            <button [disabled]="emptyHotWorksExists()" (click)="addHotWork()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addHotWork()">Add Empty</button>
           </app-item-carousel>
         }
         @case('confinedSpaces') {
@@ -179,11 +180,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
                 (formSubmit)="buildInRedTag($event, 'confinedSpace')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'confinedSpaces')"
+                (formDelete)="currentDailyPermitPackageService.removeAttachment(cs.id, 'confinedSpaces')"
               ></app-confined-space-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
-            <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addConfinedSpace()">Add Empty</button>
           </app-item-carousel>
         }
         @case('lotos') {
@@ -197,7 +198,7 @@
                 [values]="loto"
                 [withLotoPointDataBase]="false"
                 (formSubmitEvent)="buildInRedTag($event, 'loto')"
-                (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment($event, 'lotos')"
+                (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment(loto.id, 'lotos')"
               ></app-loto-detail-form>
             </ng-template>
           </app-item-carousel>
@@ -221,7 +222,7 @@
               ></app-rf-reactive-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate</button>
-            <button (click)="addEnergizedWorkPermit()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addEnergizedWorkPermit()">Add Empty</button>
           </app-item-carousel>
         }
         @case('excavation') {
@@ -243,7 +244,7 @@
               ></app-rf-reactive-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate</button>
-            <button (click)="addExcavationPermit()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addExcavationPermit()">Add Empty</button>
           </app-item-carousel>
         }
         @case('venting') {
@@ -265,7 +266,7 @@
               ></app-rf-reactive-form>
             </ng-template>
             <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate</button>
-            <button (click)="addVentingPermit()">Add Empty</button>
+            <button [disabled]="isReadOnly()" (click)="addVentingPermit()">Add Empty</button>
           </app-item-carousel>
         }
       }
@@ -399,8 +400,24 @@
         <button (click)="handlePopupStepOne(true)">Attach Existing</button>
       }@else{
         @if(isAttachingExisting){
+          @if(selectedLotosForAttach().length > 0) {
+            <div class="selected-lotos-section">
+              <h4>Selected LOTOs ({{ selectedLotosForAttach().length }})</h4>
+              <div class="selected-lotos-list">
+                @for(loto of selectedLotosForAttach(); track loto.id) {
+                  <div class="selected-loto-chip">
+                    <span>{{ loto.docNum || loto.name || '#' + loto.id }}</span>
+                    <button class="chip-remove" (click)="removeFromLotoSelection(loto.id)">&times;</button>
+                  </div>
+                }
+              </div>
+              <button class="attach-selected-btn" (click)="attachSelectedLotos()">
+                Attach {{ selectedLotosForAttach().length }} LOTO{{ selectedLotosForAttach().length > 1 ? 's' : '' }}
+              </button>
+            </div>
+          }
           <app-loto-table
-            (onTableRowLeftClickEvent)="attachExisting($event, 'lotos')"
+            (onTableRowLeftClickEvent)="toggleLotoSelection($event)"
           ></app-loto-table>
         }@else {
           <app-loto-detail-form

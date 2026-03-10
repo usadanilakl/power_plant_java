@@ -11,7 +11,7 @@ export interface IWorkRequest extends IBaseModel {
   sharepointId: string;
   localUuid: string;
   submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed' | 'sent via email';
-  submissionMethod?: 'server' | 'powerAutomate' | 'email';
+  submissionMethod?: string;
   company: string;
   dateOfWork: Date;
   timeOfWork: string;
@@ -33,7 +33,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   sharepointId: string;
   localUuid: string;
   submissionStatus: 'draft' | 'pending' | 'submitted' | 'failed' | 'sent via email';
-  submissionMethod?: 'server' | 'powerAutomate' | 'email';
+  submissionMethod?: string;
   company: string;
   dateOfWork: Date;
   timeOfWork: string;

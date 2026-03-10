@@ -35,5 +35,8 @@
     [isOpen]="isNewInstrumentPopupOpen"
     (close)="closeNewInstrumentPopup()"
 >
-    <app-instrument-form></app-instrument-form>
+    <app-instrument-form
+        [formTitle]="''"
+        [submitButtonText]="'Add New Instrument to Database'"
+    ></app-instrument-form>
 </app-popup>

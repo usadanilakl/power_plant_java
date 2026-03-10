@@ -5,11 +5,33 @@ import { Column } from '../../../models/column.model';
 import { InstrumentDto } from '../../../models/instrumentation/instrument.model';
 import { InstrumentApiService } from '../../../services/instrumentation/instrument-api.service';
 import { map } from 'rxjs/operators';
+import { TableSearchService } from '../../../shared/table/refactored/services/table-search.service';
+import { TableStateService } from '../../../shared/table/refactored/services/table-state.service';
+import { TableSelectionService } from '../../../shared/table/refactored/services/table-selection.service';
+import { TableSortService } from '../../../shared/table/refactored/services/table-sort.service';
+import { TableDragService } from '../../../shared/table/refactored/services/table-drag.service';
+import { TableResizeService } from '../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../shared/table/refactored/services/table-sync.service';
+import { TableClickService } from '../../../shared/table/refactored/services/table-click.service';
+import { TableControlsService } from '../../../shared/table/refactored/services/table-controls.service';
+import { TableDataService } from '../../../shared/table/refactored/services/table-data.service';
 
 @Component({
   selector: 'app-instrument-table',
   standalone: true,
   imports: [TableComponent],
+  providers: [
+    TableSearchService,
+    TableStateService,
+    TableSelectionService,
+    TableSortService,
+    TableDragService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    TableDataService,
+  ],
   template: `
     <div class="table-wrapper">
       <app-table

@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { InstrumentLogFormComponent } from "./instrument-log/instrument-log-form/instrument-log-form.component";
 import { InstrumentLogTableComponent } from "./instrument-log/instrument-log-table/instrument-log-table.component";
 import { InstrumentFormComponent } from "./instrument-form/instrument-form.component";
@@ -16,10 +16,19 @@ import { InstrumentStateService } from './instrument-state.service';
 export class InstrumentComponent {
 
   private instrumentStateService = inject(InstrumentStateService);
+  private destroyRef = inject(DestroyRef);
   selectedInstrument = toSignal(this.instrumentStateService.selectedInstrument$, { initialValue: null });
 
   isNewInstrumentPopupOpen = false;
   isSelectInstrumentPopupOpen = false;
+
+  constructor() {
+    this.instrumentStateService.openNewInstrumentPopup$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.isNewInstrumentPopupOpen = true;
+    });
+  }
 
   openNewInstrumentPopup() {
     this.isNewInstrumentPopupOpen = true;

@@ -20,6 +20,8 @@ export class InstrumentFormComponent {
 
   entityInput = input<Instrument>();
   fieldsInput = input<FormField[]>();
+  formTitle = input<string>('Instrumentation Form');
+  submitButtonText = input<string>('Submit');
 
   private entityFromState = toSignal(this.instrumentStateService.selectedInstrument$, { initialValue: new Instrument() });
   entity = computed(() => this.entityInput() ?? this.entityFromState());

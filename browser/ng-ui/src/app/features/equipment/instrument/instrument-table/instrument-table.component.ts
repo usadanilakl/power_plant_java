@@ -27,8 +27,13 @@ export class InstrumentTableComponent implements OnInit {
   actionPopupClosed = output<void>();
 
   columns = new Instrument().toTableColumns();
+  addNewInstrument = output<void>();
+
   actionButtons: ButtonConfig[] = [
-    { name: 'Add New Instrument', action: () => this.router.navigate(['/instruments/new']), color: 'primary' }
+    { name: 'Add New Instrument', action: () => {
+      this.instrumentStateService.requestOpenNewInstrumentPopup();
+      this.addNewInstrument.emit();
+    }, color: 'primary' }
   ];
 
   isActionMenuOpen = false;

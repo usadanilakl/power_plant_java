@@ -16,6 +16,7 @@ export class ItemCarouselComponent<T> {
   itemChangedEvent = output<T>();
 
   currentIndex = signal(0);
+  private previousLength = 0;
 
   currentItem = computed(() => {
     const items = this.items();
@@ -27,6 +28,22 @@ export class ItemCarouselComponent<T> {
   });
 
   constructor() {
+    effect(() => {
+      const items = this.items();
+      const length = items.length;
+      const previousLength = this.previousLength;
+
+      if (length === 0) {
+        this.currentIndex.set(0);
+      } else if (length > previousLength) {
+        this.currentIndex.set(length - 1);
+      } else if (this.currentIndex() >= length) {
+        this.currentIndex.set(length - 1);
+      }
+
+      this.previousLength = length;
+    });
+
     effect(() => {
       const current = this.currentItem();
       // We only want to emit after the component is initialized and the item is not null.

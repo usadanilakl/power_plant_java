@@ -69,7 +69,7 @@ export class DailyPermitPackageBuilderComponent {
 
   hotWorks = this.currentDailyPermitPackageService.hotWorks;
   hotWorkCount = this.currentDailyPermitPackageService.hotWorkCount;
-  emptyHotWorksExists = this.currentDailyPermitPackageService.emptyConfinedSpacesExists;
+  emptyHotWorksExists = this.currentDailyPermitPackageService.emptyHotWorksExists;
 
   confinedSpaces = this.currentDailyPermitPackageService.confinedSpaces;
   confinedSpaceCount = this.currentDailyPermitPackageService.confinedSpaceCount;
@@ -103,6 +103,9 @@ export class DailyPermitPackageBuilderComponent {
   isPopupStepOne = true;
   isAttachingExisting = false;
 
+  // Multi-select LOTOs for attach existing
+  selectedLotosForAttach = signal<any[]>([]);
+
   isReusePermitsPopupVisible = false;
   reissueColumns = DailyPermitPackageDto.toTableColumns(['id', 'name', 'permitNumber']);
 
@@ -131,7 +134,7 @@ export class DailyPermitPackageBuilderComponent {
   togglePin(tab: string) {
     if (this.pinnedTabs().includes(tab)) {
       this.pinnedTabs.update(pins => pins.filter(p => p !== tab));
-    } else if (this.pinnedTabs().length < 2) {
+    } else if (this.pinnedTabs().length < 3) {
       this.pinnedTabs.update(pins => [...pins, tab]);
       if (tab === this.activeTab()) {
         const nextTab = this.permitTabs().find(t => t.key !== tab && !this.pinnedTabs().includes(t.key));
@@ -275,12 +278,40 @@ export class DailyPermitPackageBuilderComponent {
     this.isPopupVisible = false;
     this.popupTitle = '';
     this.isPopupStepOne = true;
+    this.selectedLotosForAttach.set([]);
   }
 
   attachExisting(item: any, permitType: string){
     const ids = [item.id];
     this.currentDailyPermitPackageService.addNewAttachments(ids, permitType);
     this.closePopup();
+  }
+
+  toggleLotoSelection(loto: any) {
+    const current = this.selectedLotosForAttach();
+    const exists = current.some(l => l.id === loto.id);
+    if (exists) {
+      this.selectedLotosForAttach.set(current.filter(l => l.id !== loto.id));
+    } else {
+      this.selectedLotosForAttach.set([...current, loto]);
+    }
+  }
+
+  isLotoSelected(lotoId: number): boolean {
+    return this.selectedLotosForAttach().some(l => l.id === lotoId);
+  }
+
+  attachSelectedLotos() {
+    const ids = this.selectedLotosForAttach().map(l => l.id);
+    if (ids.length > 0) {
+      this.currentDailyPermitPackageService.addNewAttachments(ids, 'lotos');
+    }
+    this.selectedLotosForAttach.set([]);
+    this.closePopup();
+  }
+
+  removeFromLotoSelection(lotoId: number) {
+    this.selectedLotosForAttach.update(list => list.filter(l => l.id !== lotoId));
   }
 
   reusePermitsPopupOpen(){

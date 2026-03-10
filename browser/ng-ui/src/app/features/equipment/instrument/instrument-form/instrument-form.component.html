@@ -1,13 +1,14 @@
 <app-reactive-form
   [entity]="entity()"
   [fields]="fields()"
-  [title]="'Instrumentation Form'"
+  [title]="formTitle()"
+  [submitButtonText]="submitButtonText()"
   (formValueChange)="onAnyValueChange($event)"
   (formSubmit)="onSubmit($event)"
 >
   <!-- <ng-container extra-buttons>
     <app-email-prompt
-      to="dklokov@jpowerusa.com"
+      to="jgportal@jpowerusa.com"
       subject="Failed to submit work request"
       [body]="entity().getEmailBody()"
     ></app-email-prompt>

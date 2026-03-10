@@ -10,9 +10,8 @@ export const environment = {
     instrumentLog: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4',
     instrument: ''
   },
-  emailRecipient: 'dklokov@jpowerusa.onmicrosoft.com',
-  // emailRecipient: 'operations@jpowerusa.com',
-  emailCcRecipients: 'dklokov@jpowerusa.com;sowens@jpowerusa.com;rgarcia@jpowerusa.com;jnoble@jpowerusa.com;agorelik@jpowerusa.com',
+  emailRecipient: 'jgportal@jpowerusa.com',
+  emailCcRecipients: 'jgportal@jpowerusa.com',
   retryAttempts: 3,
   retryDelayMs: 2000,
 };

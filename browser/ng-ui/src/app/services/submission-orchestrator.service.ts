@@ -11,7 +11,7 @@ import { environment } from '../../environments/environment';
 
 export interface SubmissionResult {
   success: boolean;
-  method: 'server' | 'powerAutomate' | 'email';
+  method: 'server' | 'local' | 'duplicate' | 'powerAutomate' | 'email';
   sharepointId?: string;
   localUuid: string;
   message?: string;
@@ -365,6 +365,16 @@ export class SubmissionOrchestratorService {
     const dto = this.convertInstrumentLogToDto(entry);
 
     return this.tryServerInstrumentLog(dto).pipe(
+      switchMap(serverResult => {
+        if (serverResult.success && serverResult.method === 'local') {
+          console.warn('[Orchestrator] Server stored instrument log locally only, trying PA V1 to reach SharePoint.');
+          return this.tryPaInstrumentLog(entry, localUuid).pipe(
+            // If PA also fails, keep the local-success result from server.
+            catchError(() => of(serverResult))
+          );
+        }
+        return of(serverResult);
+      }),
       catchError(serverError => {
         console.warn('[Orchestrator] Server failed for instrument log, trying PA V1:', serverError.message);
         return this.tryPaInstrumentLog(entry, localUuid);
@@ -376,7 +386,7 @@ export class SubmissionOrchestratorService {
     return this.serverApi.submitInstrumentLog(dto).pipe(
       map(response => ({
         success: response.success,
-        method: 'server' as const,
+        method: (response.method as SubmissionResult['method']) || 'server',
         sharepointId: response.sharepointId,
         localUuid: response.localUuid || dto.localUuid,
         message: response.method === 'local'

@@ -64,11 +64,23 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
               @for(pkg of packages(); track pkg.id) {
                 <div class="package-card">
                   <div class="package-info" (click)="openPackage(pkg)">
-                    <span class="pkg-name">{{ pkg.permitNumber || pkg.name || 'Package #' + pkg.id }}</span>
-                    <span class="pkg-date">{{ pkg.date || '' }}</span>
-                    <span class="status-badge" [attr.data-status]="pkg.packageStatus?.name || 'Building'">
-                      {{ pkg.packageStatus?.name || 'Building' }}
-                    </span>
+                    <div class="pkg-header">
+                      <span class="pkg-name">{{ pkg.permitNumber || pkg.name || 'Package #' + pkg.id }}</span>
+                      <span class="pkg-date">{{ pkg.date || '' }}</span>
+                      <span class="status-badge" [attr.data-status]="pkg.packageStatus?.name || 'Building'">
+                        {{ pkg.packageStatus?.name || 'Building' }}
+                      </span>
+                    </div>
+                    @if (getPackageLocation(pkg) || getPackageWorkScope(pkg)) {
+                      <div class="pkg-details">
+                        @if (getPackageLocation(pkg)) {
+                          <span class="pkg-location">{{ getPackageLocation(pkg) }}</span>
+                        }
+                        @if (getPackageWorkScope(pkg)) {
+                          <span class="pkg-scope">{{ getPackageWorkScope(pkg) }}</span>
+                        }
+                      </div>
+                    }
                   </div>
                   <div class="package-actions-inline">
                     @switch(pkg.packageStatus?.name || 'Building') {
@@ -298,9 +310,13 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
     .package-cards { display: flex; flex-direction: column; gap: 6px; }
     .package-card { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; transition: border-color 0.2s; }
     .package-card:hover { border-color: #555; }
-    .package-info { display: flex; align-items: center; gap: 12px; cursor: pointer; flex: 1; }
+    .package-info { display: flex; flex-direction: column; gap: 4px; cursor: pointer; flex: 1; min-width: 0; }
+    .pkg-header { display: flex; align-items: center; gap: 12px; }
     .pkg-name { font-size: 13px; font-weight: 500; color: #ddd; }
     .pkg-date { font-size: 12px; color: #888; }
+    .pkg-details { display: flex; gap: 12px; font-size: 11px; min-width: 0; }
+    .pkg-location { color: #64b5f6; white-space: nowrap; }
+    .pkg-scope { color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .package-actions-inline { display: flex; align-items: center; gap: 6px; }
     .action-btn { width: 22px; height: 22px; padding: 0; background: transparent; border: 1px solid #555; border-radius: 4px; color: #999; cursor: pointer; font-size: 12px; line-height: 20px; text-align: center; }
     .action-btn.move:hover { border-color: #64b5f6; color: #64b5f6; }
@@ -533,6 +549,17 @@ export class RfJobLogFormComponent {
     if (!confirm(`Merge all packages into "${targetJob.permitNumber || targetJob.name || 'Job #' + targetJob.id}"? This job will be deleted.`)) return;
     this.isMergeDialogOpen.set(false);
     this.currentService.mergeCurrentJobInto(targetJob.id);
+  }
+
+  getPackageLocation(pkg: DailyPermitPackageDto): string {
+    const permit = pkg.workRequests?.[0] || pkg.safeWorks?.[0] || pkg.hotWorks?.[0] || pkg.confinedSpaces?.[0];
+    return (permit as any)?.location || '';
+  }
+
+  getPackageWorkScope(pkg: DailyPermitPackageDto): string {
+    const permit = pkg.workRequests?.[0] || pkg.safeWorks?.[0] || pkg.hotWorks?.[0] || pkg.confinedSpaces?.[0];
+    const scope = (permit as any)?.workScope || '';
+    return scope.length > 60 ? scope.substring(0, 60) + '...' : scope;
   }
 
   private refreshCurrentJob(): void {

@@ -57,7 +57,7 @@ public class HotWorkMapper implements BaseMapper {
         if(dto.getId()!=null && dto.getId()!=0) entity = hotWorkRepo.findById(dto.getId()).orElse(new HotWork());
         if(entity == null) entity = new HotWork();
 
-        entity.setId(dto.getId());
+        if (dto.getId() != null && dto.getId() != 0) entity.setId(dto.getId());
         entity.setDate(dto.getDate());
         entity.setForeman(dto.getForeman());
         entity.setFireWatch(dto.getFireWatch());

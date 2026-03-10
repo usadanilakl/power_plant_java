@@ -59,7 +59,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
         if(entity == null) entity = new ConfinedSpace();
 
 
-        entity.setId(dto.getId());
+        if (dto.getId() != null && dto.getId() != 0) entity.setId(dto.getId());
         entity.setDate(dto.getDate());
         entity.setTime(dto.getTime());
         entity.setSpace(dto.getSpace());

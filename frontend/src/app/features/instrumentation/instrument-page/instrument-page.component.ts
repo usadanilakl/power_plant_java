@@ -52,6 +52,7 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
       flex-direction: column;
       flex: 1;
       min-height: 0;
+      height: 100%;
       overflow: hidden;
     }
     .action-bar {

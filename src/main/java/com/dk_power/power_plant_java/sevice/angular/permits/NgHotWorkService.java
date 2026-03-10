@@ -100,6 +100,12 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
     }
 
     public List<HotWorkDto> saveAll(List<HotWorkDto> permits) {
-        return permits.stream().map(hotWorkMapper::convertToEntity).map(hotWorkRepo::save).map(hotWorkMapper::convertToDto).toList();
+        return permits.stream().map(this::save).map(saved -> {
+            if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+                saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+                saved = hotWorkRepo.save(saved);
+            }
+            return hotWorkMapper.convertToDto(saved);
+        }).toList();
     }
 }

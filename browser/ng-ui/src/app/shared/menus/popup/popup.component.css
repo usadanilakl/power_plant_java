@@ -21,7 +21,6 @@
   max-width: 90%;
   max-height: 90vh;
   width: 100%; /* Ensure it takes full width up to max-width */
-  height: 100%; /* Ensure it takes full height up to max-height */
 }
 
 .popup-header {
@@ -46,6 +45,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0; /* This is crucial for nested flex containers */
+  overflow-y: auto;
 }
 
 .close-button {
@@ -71,6 +71,7 @@
 .popup-large {
   /* width: 800px; */
   width: 90vw;
+  height: 100%;
 }
 
 @media (max-width: 768px) {

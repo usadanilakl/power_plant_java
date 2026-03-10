@@ -94,6 +94,12 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     }
 
     public List<SafeWorkDto> saveAll(List<SafeWorkDto> permits) {
-        return permits.stream().map(safeWorkMapper::convertToEntity).map(safeWorkRepo::save).map(safeWorkMapper::convertToDto).toList();
+        return permits.stream().map(this::save).map(saved -> {
+            if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+                saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+                saved = safeWorkRepo.save(saved);
+            }
+            return safeWorkMapper.convertToDto(saved);
+        }).toList();
     }
 }

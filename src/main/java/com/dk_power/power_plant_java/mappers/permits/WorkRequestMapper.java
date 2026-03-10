@@ -160,7 +160,7 @@ public class WorkRequestMapper implements BaseMapper {
         WorkRequest entity = new WorkRequest();
         if(dto.getId()!=null && dto.getId()!=0) entity = workRequestRepo.findById(dto.getId()).orElse(new WorkRequest());
 
-        entity.setId(dto.getId());
+        if(dto.getId()!=null && dto.getId()!=0) entity.setId(dto.getId());
         entity.setName(dto.getName());
         entity.setNote(dto.getNote());
         entity.setDateOfWorkToBePerformed(dto.getDateOfWorkToBePerformed());

@@ -103,6 +103,12 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     }
 
     public List<ConfinedSpaceDto> saveAll(List<ConfinedSpaceDto> permits) {
-        return permits.stream().map(confinedSpaceMapper::convertToEntity).map(confinedSpaceRepo::save).map(confinedSpaceMapper::convertToDto).toList();
+        return permits.stream().map(this::save).map(saved -> {
+            if (saved.getPermitNumber() == null || saved.getPermitNumber().isEmpty()) {
+                saved.setPermitNumber(permitNumberGenerator.generate(saved.getDate()));
+                saved = confinedSpaceRepo.save(saved);
+            }
+            return confinedSpaceMapper.convertToDto(saved);
+        }).toList();
     }
 }

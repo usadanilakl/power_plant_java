@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { LotoService } from "../loto/loto.service";
-import { BehaviorSubject, catchError, map, Observable, of, tap } from "rxjs";
+import { BehaviorSubject, catchError, EMPTY, map, Observable, of, tap } from "rxjs";
 import { LotoDto } from "../../models/loto/loto.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
@@ -142,10 +142,10 @@ export class CurrentLotoService{
         takeUntilDestroyed(this.destroyRef),
         catchError((error) => {
           console.error('Error deleting LOTO:', error);
-          return of(null);
+          return EMPTY;
         })
       ).subscribe(() => {
-        this.removeLotoFromList(id);
+        this.loadLotosFromServer();
         this.currentLotoSubject.next(null);
       });
     }

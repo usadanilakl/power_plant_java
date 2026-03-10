@@ -1,8 +1,8 @@
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { Instrument } from "../../../models/equipment/instrument.model";
 import { BaseStateService } from "../../../services/base-state.service";
 import { HttpClient } from "@angular/common/http";
-import { BehaviorSubject, map, of, switchMap, take } from "rxjs";
+import { BehaviorSubject, map, of, Subject, switchMap, take } from "rxjs";
 import { InstrumentLogEntry } from "../../../models/equipment/instrument-log.model";
 import { IAttachment } from "../../../models/permits/attachment.model";
 import { SubmissionOrchestratorService, SubmissionResult } from "../../../services/submission-orchestrator.service";
@@ -30,6 +30,13 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     public selectedInstrument$ = this.selectedItem$;
     private instrumentLogsSubject = new BehaviorSubject<InstrumentLogEntry[]>([]);
     public instrumentLogs$ = this.instrumentLogsSubject.asObservable();
+
+    private openNewInstrumentPopupSubject = new Subject<void>();
+    public openNewInstrumentPopup$ = this.openNewInstrumentPopupSubject.asObservable();
+
+    requestOpenNewInstrumentPopup() {
+        this.openNewInstrumentPopupSubject.next();
+    }
 
     constructor() {
         super(Instrument);
@@ -222,8 +229,14 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                 if (result.success) {
                     this.instrumentLogDraftStorage.clearDraft();
                     instrumentLog.localUuid = undefined;
+                    const messageColor = result.method === 'local' ? 'orange' : 'green';
                     this.globalMessageService.showMessage(
-                        `Log submitted via ${result.method}.`, 'green', 3000);
+                        result.method === 'local'
+                            ? 'Log saved locally only. SharePoint sync pending.'
+                            : `Log submitted via ${result.method}.`,
+                        messageColor,
+                        4000
+                    );
                     this.loadLogsForInstrument(instrumentLog.instrumentTagNumber);
                 } else if (result.requiresEmail) {
                     this.globalMessageService.showMessage(

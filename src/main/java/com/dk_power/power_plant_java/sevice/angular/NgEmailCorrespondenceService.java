@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +36,8 @@ public class NgEmailCorrespondenceService
     private final EntityManager entityManager;
     private final EmailCorrespondenceMapper mapper;
     private final ValueService valueService;
+    @Value("${email.graph.from}")
+    private String defaultSenderEmail;
 
     @Override
     public EmailCorrespondenceRepo getRepo() {
@@ -186,7 +189,7 @@ public class NgEmailCorrespondenceService
         correspondence.setDirection(EmailCorrespondence.Direction.OUTBOUND);
         correspondence.setSubject(subject);
         correspondence.setBodyContent(body);
-        correspondence.setSender("operations@jpowerusa.com"); // from config
+        correspondence.setSender(defaultSenderEmail);
         correspondence.setRecipient(recipient);
         correspondence.setSentDateTime(LocalDateTime.now());
         correspondence.setIsRead(true); // Outbound always "read"
