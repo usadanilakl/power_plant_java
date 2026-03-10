@@ -490,6 +490,12 @@ export class SubmissionOrchestratorService {
     return { subject, body };
   }
 
+  generateInstrumentLogEmail(entry: InstrumentLogEntry): { subject: string; body: string; mailto: string } {
+    const { subject, body } = this.generateInstrumentLogEmailContent(entry);
+    const mailto = this.buildMailtoUrl(subject, body);
+    return { subject, body, mailto };
+  }
+
   // ====================== Revoke Methods ======================
 
   revokeWorkRequest(sharepointId: string, localUuid: string): Observable<SubmissionResult> {

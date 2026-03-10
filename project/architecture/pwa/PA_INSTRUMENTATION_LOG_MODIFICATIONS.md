@@ -1,39 +1,59 @@
-# Power Automate Flow Modifications - Instrumentation
+# Power Automate Flow Modifications - Instrumentation (Revised)
 
-This document defines required Power Automate changes for instrumentation so the server can:
-- do a full SharePoint pull at most once every 24 hours,
-- run lightweight change checks between pulls,
-- keep instrument log + instrument master actions working as-is.
+## Current State Snapshot
 
-## Required Action Types
+- `SUBMIT NEW LOG THROUGH SERVER`: works.
+- `SUBMIT NEW INSTRUMENT THROUGH SERVER`: works.
+- `SUBMIT NEW LOG THROUGH PWA -> PA -> SP`: log row is created, but instrumentation master list is not updated consistently.
+- Missing in current PA flow:
+  - branch for new instrument creation from unified naming (`createNewInst`)
+  - branch for full instrument fetch (`getAllInst`)
 
-Configure the flow to support these `actionType` values:
+## Naming Standard (Required)
+
+All instrumentation-related action cases must use `inst...` prefix.
+
+## Canonical Action Types
 
 | actionType | Purpose |
 |---|---|
-| `addInstrumentationLog` | Create instrumentation log item, add attachments, upsert instrument master row |
-| `getAllInstruments` | Return full instrument list (PWA compatibility) |
-| `addInstrument` | Create new instrument (PWA compatibility) |
-| `getAll` | Return full instrument list (server adapter compatibility) |
-| `create` | Create new instrument (server adapter compatibility) |
-| `update` | Update existing instrument by `id` |
-| `upsertByTagNumber` | Update/create instrument by `Tag_x0020_Number` |
-| `getState` | Return lightweight probe state: `itemCount` + `lastModified` |
+| `instAddLog` | Create instrumentation log row, add attachments, then upsert instrumentation master |
+| `instGetAll` | Return full instrumentation master list |
+| `instCreateNew` | Create new instrumentation master row |
+| `instUpdateById` | Update instrumentation master row by SharePoint ID |
+| `instUpsertByTag` | Upsert instrumentation master row by tag number |
+| `instGetState` | Lightweight probe (`itemCount`, `lastModified`) for 24h server pull strategy |
 
-`getAllInstruments` and `getAll` should return the same shape.
-`addInstrument` and `create` should perform the same create behavior.
+## Backward Compatibility Aliases
+
+Map existing action names to canonical names inside the flow `Switch` entry step:
+
+| Legacy actionType | Canonical actionType |
+|---|---|
+| `addInstrumentationLog` | `instAddLog` |
+| `getAllInstruments` | `instGetAll` |
+| `getAll` | `instGetAll` |
+| `addInstrument` | `instCreateNew` |
+| `create` | `instCreateNew` |
+| `update` | `instUpdateById` |
+| `upsertByTagNumber` | `instUpsertByTag` |
+| `getState` | `instGetState` |
+
+This lets current clients continue working while you migrate to canonical names.
 
 ## Trigger Contract
 
-Trigger body must accept:
+Trigger body should support:
+
 - `actionType: string` (required)
-- `id: string` (for update paths)
+- `id: string` (for `instUpdateById`)
 - `localUuid: string`
 - `instrumentationLog: object`
 - `attachments: array`
 - `data: object`
 
-`data` should support:
+`data` fields for instrumentation master:
+
 - `Tag_x0020_Number`
 - `Description`
 - `Vendor`
@@ -47,150 +67,304 @@ Trigger body must accept:
 - `PwaId`
 - `mergePolicy` (`none` | `merge` | `skip`)
 
-## Switch Cases
+For log submission (`instAddLog` / `addInstrumentationLog`) include:
 
-## Case: `getState`
+- `instrumentTagNumber`
+- optional `instrumentSharepointId` (when known)
+- optional `instrumentId` (resolved in-flow before log create)
 
-Goal: cheap probe, no full list transfer.
+## Switch Cases to Implement / Verify
 
-1. SharePoint `Get items` on `Instrumentation`:
-- Order by `Modified desc`
-- Top count `1`
-- Select only `ID,Modified`
+## Case: `instGetState`
 
-2. SharePoint list metadata read for `ItemCount`:
-- any method is acceptable (SharePoint connector, REST, or cached value),
-- must return total current item count for the list.
+Goal: cheap probe without full list transfer.
 
-3. Build response:
-- `itemCount`: total count (integer)
-- `lastModified`: newest Modified value in ISO-8601 UTC or `null` if empty list
+1. Get newest `Modified` from `Instrumentation` (`Top 1`, order desc).
+2. Get `ItemCount` for `Instrumentation`.
+3. Return:
 
-Response body:
 ```json
 {
   "success": true,
   "data": [
-    {
-      "itemCount": 1234,
-      "lastModified": "2026-03-09T14:22:31Z"
-    }
+    { "itemCount": 1234, "lastModified": "2026-03-09T14:22:31Z" }
   ]
 }
 ```
 
-## Case: `getAllInstruments` and `getAll`
+## Case: `instGetAll`
 
-Return all rows from `Instrumentation` list with fields:
+Return full `Instrumentation` list with:
+
 - `ID`, `Tag_x0020_Number`, `Description`, `Vendor`, `Location`, `Type`,
 - `CurrentStatus`, `LastUpdatedDate`, `LastUpdatedTime`, `LastUpdatedBy`, `LastComment`,
-- `PwaId`, `Modified`.
+- `PwaId`, `Modified`
 
-Response item mapping:
+Envelope:
+
 ```json
-{
-  "ID": "15",
-  "Tag_x0020_Number": "PT-101",
-  "Description": "Pressure Transmitter",
-  "Vendor": "ABB",
-  "Location": "Turbine Hall",
-  "Type": "Transmitter",
-  "CurrentStatus": "Normal Operation",
-  "LastUpdatedDate": "2026-03-09",
-  "LastUpdatedTime": "09:15",
-  "LastUpdatedBy": "Operator A",
-  "LastComment": "OK",
-  "PwaId": "uuid-value",
-  "Modified": "2026-03-09T14:22:31Z"
-}
+{ "success": true, "data": [ ...items... ] }
 ```
 
-Response envelope:
+## Case: `instCreateNew`
+
+Create instrumentation master row from `data.*`.
+
+Duplicate tag conflict behavior:
+
+- `mergePolicy=merge`: update existing with non-empty incoming fields.
+- `mergePolicy=skip`: no update, return success+message skipped.
+- `mergePolicy=none` or missing: return merge-required style response.
+
+Return:
+
 ```json
-{
-  "success": true,
-  "data": [ ...items... ]
-}
+{ "success": true, "id": "123" }
 ```
 
-## Case: `addInstrument` and `create`
+## Case: `instUpdateById`
 
-Create in `Instrumentation` using `data.*` fields.
+Update instrumentation master by `id` using `data.*`.
 
-Conflict behavior by tag number (`Tag_x0020_Number`):
-- `mergePolicy=merge`: update existing item with non-empty incoming fields; keep existing value when incoming is blank.
-- `mergePolicy=skip`: do not change existing item, return success with message indicating skipped.
-- `mergePolicy=none` (or omitted): return a merge-required style response for duplicate tags.
+Return:
 
-Response body:
 ```json
-{
-  "success": true,
-  "id": "123"
-}
+{ "success": true }
 ```
 
-## Case: `update`
-
-Update `Instrumentation` item by `id` using `data.*` fields.
-
-Response body:
-```json
-{
-  "success": true
-}
-```
-
-## Case: `upsertByTagNumber`
+## Case: `instUpsertByTag`
 
 Find by `Tag_x0020_Number`:
-- if found, update it,
-- if not found, create it.
 
-When updating existing row, apply merge semantics:
-- non-empty incoming fields overwrite,
-- empty incoming fields do not clear existing fields.
+- found -> update (merge semantics)
+- not found -> create
 
-Response body:
+Return:
+
 ```json
-{
-  "success": true
-}
+{ "success": true }
 ```
 
-## Case: `addInstrumentationLog`
+## Case: `instAddLog` (Critical)
 
-Keep existing behavior:
-1. Create item in `Instrumentation Log`,
-2. Add attachments,
-3. Upsert instrument status fields in `Instrumentation`.
+Flow must do all 3 steps in this order:
+
+1. Create item in `Instrumentation Log`.
+2. Add attachments (guarded by array-safe condition).
+3. Upsert `Instrumentation` master row using log payload (`tag`, `status`, date/time/user/comment).
+
+This is the missing behavior seen in testing: log creation works, instrumentation master is not always updated.
+
+Required relationship behavior:
+
+- Resolve instrumentation master row by `Tag_x0020_Number`.
+- If missing, create it.
+- When creating log row, set `instrumentId` (lookup/reference to instrumentation row ID).
+- Keep `Tag Number` in log row as denormalized text (do not remove).
+
+## Attachment Condition (PA runtime-safe)
+
+Use expression:
+
+```text
+@greater(length(coalesce(triggerBody()?['attachments'], createArray())), 0)
+```
 
 ## Default Case
 
 Return:
+
+```json
+{ "success": false, "message": "Unknown actionType" }
+```
+
+HTTP status `400`.
+
+## Server Sync Behavior Dependency
+
+Server assumes `instGetState` + `instGetAll` behavior for 24h cached pull:
+
+1. Full pull at least once every 24h.
+2. Inside 24h, call probe action.
+3. If `itemCount` or `lastModified` changed, run full pull.
+4. Else serve H2 cache.
+
+## Implementation Checklist
+
+1. Add/rename action switch cases to canonical `inst...` names.
+2. Add alias normalization for legacy action names.
+3. Implement `instGetAll` branch.
+4. Implement `instCreateNew` branch.
+5. Fix `instAddLog` to always upsert instrumentation master.
+6. Update attachment condition to array-safe expression.
+7. Validate with 3 tests:
+   - server submit log -> SP log + SP instrumentation update
+   - PWA->PA log submit -> SP log + SP instrumentation update
+   - getAll call returns full instrumentation list in expected shape
+
+## Power Automate Designer Blueprint (Exact Build Order)
+
+Use this as the concrete flow structure in PA UI builder.
+
+1. Trigger: `When an HTTP request is received`
+2. Action: `Initialize variable` -> `actionRaw` (String) = `triggerBody()?['actionType']`
+3. Action: `Compose` -> `actionNormalized` (Expression):
+
+```text
+toLower(trim(coalesce(variables('actionRaw'), '')))
+```
+
+4. Action: `Switch` on `outputs('actionNormalized')`
+
+### Switch Case Values (include all)
+
+- `instaddlog`
+- `instgetall`
+- `instcreatenew`
+- `instupdatebyid`
+- `instupsertbytag`
+- `instgetstate`
+- `addinstrumentationlog`
+- `getallinstruments`
+- `getall`
+- `addinstrument`
+- `create`
+- `update`
+- `upsertbytagnumber`
+- `getstate`
+
+### Canonical Routing Pattern
+
+For each legacy case, immediately route to canonical behavior (copy same actions or call child scope).
+
+- `addinstrumentationlog` -> same actions as `instaddlog`
+- `getallinstruments` + `getall` -> same actions as `instgetall`
+- `addinstrument` + `create` -> same actions as `instcreatenew`
+- `update` -> same actions as `instupdatebyid`
+- `upsertbytagnumber` -> same actions as `instupsertbytag`
+- `getstate` -> same actions as `instgetstate`
+
+## Case Template: `instAddLog`
+
+1. Action: `Compose` -> `log`:
+
+```text
+coalesce(triggerBody()?['instrumentationLog'], createObject())
+```
+
+2. Action: `Create item` in list `Instrumentation Log`
+3. Required fields mapping:
+   - `PwaId` <- `coalesce(outputs('log')?['localUuid'], triggerBody()?['localUuid'], '')`
+   - `Tag Number` (or list-internal equivalent) <- `coalesce(outputs('log')?['instrumentTagNumber'], '')`
+   - `instrumentId` (lookup/id column) <- resolved instrumentation item ID
+   - `Description` <- `coalesce(outputs('log')?['instrumentDescription'], '')`
+   - `Status` <- `coalesce(outputs('log')?['status'], '')`
+   - `Date` <- `coalesce(outputs('log')?['date'], '')`
+   - `Time` <- `coalesce(outputs('log')?['time'], '')`
+   - `Name` <- `coalesce(outputs('log')?['name'], '')`
+   - `Comment` <- `coalesce(outputs('log')?['comment'], '')`
+4. Action: `Condition` for attachments (Expression):
+
+```text
+@greater(length(coalesce(triggerBody()?['attachments'], createArray())), 0)
+```
+
+5. If `true`: `Apply to each` over `coalesce(triggerBody()?['attachments'], createArray())`
+6. Inside loop: `Add attachment` to created `Instrumentation Log` item
+   - File name <- `items('Apply_to_each')?['fileName']`
+   - File content <- `base64ToBinary(items('Apply_to_each')?['base64Content'])`
+7. Before/after attachments (either order, same transaction intent): upsert instrumentation master:
+   - `Get items` from `Instrumentation` with filter by tag number
+   - If found -> `Update item` with latest status/date/time/by/comment
+   - Else -> `Create item` in `Instrumentation`
+   - Ensure log row has `instrumentId` reference to that instrumentation item
+8. Action: `Response`:
+
+```json
+{ "success": true, "id": "<InstrumentationLogItemID>" }
+```
+
+## Case Template: `instGetAll`
+
+1. `Get items` from `Instrumentation`
+2. `Select` map fields:
+   - `ID`, `Tag_x0020_Number`, `Description`, `Vendor`, `Location`, `Type`
+   - `CurrentStatus`, `LastUpdatedDate`, `LastUpdatedTime`, `LastUpdatedBy`, `LastComment`
+   - `PwaId`, `Modified`
+3. `Response`:
+
+```json
+{ "success": true, "data": [ ... ] }
+```
+
+## Case Template: `instCreateNew`
+
+1. `Compose` data object:
+
+```text
+coalesce(triggerBody()?['data'], createObject())
+```
+
+2. Find existing by `Tag_x0020_Number`
+3. Branch by `mergePolicy` (`none` / `merge` / `skip`)
+4. Create or update accordingly
+5. `Response`:
+
+```json
+{ "success": true, "id": "<InstrumentationItemID>" }
+```
+
+## Case Template: `instUpdateById`
+
+1. Read `id` from `triggerBody()?['id']`
+2. Update `Instrumentation` item by ID with `data.*`
+3. `Response`: `{ "success": true }`
+
+## Case Template: `instUpsertByTag`
+
+1. Find by `Tag_x0020_Number`
+2. If exists -> update (merge non-empty fields)
+3. Else -> create
+4. `Response`: `{ "success": true }`
+
+## Case Template: `instGetState`
+
+1. `Get items` from `Instrumentation`
+   - order by `Modified desc`
+   - top `1`
+2. Get list `ItemCount` (connector/REST)
+3. `Response`:
+
 ```json
 {
-  "success": false,
-  "message": "Unknown actionType"
+  "success": true,
+  "data": [
+    { "itemCount": 1234, "lastModified": "2026-03-09T14:22:31Z" }
+  ]
 }
 ```
 
-HTTP status: `400`.
+## Default Case Response
 
-## Server Behavior This Enables
+```json
+{ "success": false, "message": "Unknown actionType" }
+```
 
-With the `getState` case added, server logic is:
-1. Full pull from SharePoint at least once every 24 hours.
-2. Inside 24 hours, call `getState`.
-3. If `itemCount` or `lastModified` changed, run full pull.
-4. If unchanged, serve H2 cache.
+## Cross-Layer Relationship Requirement
 
-This reduces SharePoint load while keeping data freshness predictable.
+### PWA
 
-## Bulk Upload Policy (Server API)
+- Sends log by tag number and local UUID.
+- May include `instrumentSharepointId` when known, but server/PA must still resolve by tag if absent.
 
-Backend bulk endpoint supports:
-- `onConflict=merge` (default): merge with existing same-tag rows.
-- `onConflict=skip`: skip same-tag rows.
+### Java
 
-Result payload now includes `skipped` count in addition to `created`, `updated`, and `failed`.
+- Server submit path should preserve local save behavior, then enforce SP linkage:
+  - instrumentation resolved/created first,
+  - log row created with `instrumentId`,
+  - instrumentation status updated from log payload.
+
+### SharePoint
+
+- `Instrumentation Log` must have reference column to `Instrumentation` (`instrumentId` / lookup).
+- Existing text `Tag Number` remains for diagnostics and backward compatibility.

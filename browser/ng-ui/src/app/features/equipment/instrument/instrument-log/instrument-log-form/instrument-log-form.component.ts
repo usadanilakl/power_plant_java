@@ -8,6 +8,7 @@ import { ReactiveFormComponent } from "../../../../../shared/forms/reactive-form
 import { InstrumentLogEntryLocalStorageService } from '../instrument-log-local-storage.service';
 import { InstrumentLogEntry } from '../../../../../models/equipment/instrument-log.model';
 import { UserSetupService } from '../../../../../services/user-setup.service';
+import { environment } from '../../../../../../environments/environment';
 
 @Component({
   selector: 'app-instrument-log-form',
@@ -45,6 +46,13 @@ export class InstrumentLogFormComponent {
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
 
+  emailFallbackData = this.instrumentStateService.emailFallbackData;
+  hasAttachments = computed(() => {
+    const entry = this.emailFallbackData()?.entry;
+    return (entry?.attachments?.length ?? 0) > 0;
+  });
+  attachmentCount = computed(() => this.emailFallbackData()?.entry?.attachments?.length ?? 0);
+
   constructor() { }
 
   onAnyValueChange(instrumentLog: InstrumentLogEntry) {
@@ -55,4 +63,35 @@ export class InstrumentLogFormComponent {
     this.instrumentStateService.submitLogForm(instrumentLog);
   }
 
+  onEmailButtonClick() {
+    if (this.hasAttachments()) this.downloadAttachments();
+    this.instrumentStateService.markSentViaEmail();
+  }
+
+  openGmail() {
+    const data = this.emailFallbackData();
+    if (!data) return;
+    const to = encodeURIComponent(environment.emailRecipient);
+    const cc = encodeURIComponent((environment.emailCcRecipients || '').replace(/;/g, ','));
+    const subject = encodeURIComponent(`[PWA:INST] Instrument Log: ${data.entry?.instrumentTagNumber || 'Unknown'}`);
+    const body = encodeURIComponent(data.body);
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&cc=${cc}&su=${subject}&body=${body}`, '_blank');
+    if (this.hasAttachments()) this.downloadAttachments();
+    this.instrumentStateService.markSentViaEmail();
+  }
+
+  downloadAttachments() {
+    const attachments = this.emailFallbackData()?.entry?.attachments ?? [];
+    for (const att of attachments) {
+      const dataUri = `data:${att.contentType};base64,${att.base64Content}`;
+      const link = document.createElement('a');
+      link.href = dataUri;
+      link.download = att.fileName;
+      link.click();
+    }
+  }
+
+  onEmailSent() {
+    this.instrumentStateService.clearEmailFallback();
+  }
 }

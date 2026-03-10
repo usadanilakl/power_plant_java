@@ -31,7 +31,7 @@ public class SharepointAccessService {
                 return result;
             } catch (Exception e) {
                 log.warn("{} failed via {}: {}. Falling back to V2",
-                        operationName, certificateAccess.getName(), e.getMessage());
+                        operationName, certificateAccess.getName(), e.getMessage(), e);
             }
         } else {
             log.debug("{} skipping {} (not available), using V2",
@@ -43,7 +43,7 @@ public class SharepointAccessService {
             log.debug("{} succeeded via V2", operationName);
             return result;
         } catch (Exception e) {
-            log.error("{} failed via BOTH access methods. Last error: {}", operationName, e.getMessage());
+            log.error("{} failed via BOTH access methods. Last error: {}", operationName, e.getMessage(), e);
             throw new RuntimeException("SharePoint access failed for " + operationName +
                     " via both certificate and Power Automate V2", e);
         }

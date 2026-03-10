@@ -1,3 +1,28 @@
+@if (emailFallbackData()) {
+  <div class="email-fallback-banner">
+    <p><strong>Submission failed.</strong> All automatic methods unavailable. Please submit via email:</p>
+    <div class="email-fallback-actions">
+      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onEmailButtonClick()">
+        Open Email Client
+      </a>
+      <button class="email-button gmail" (click)="openGmail()">
+        Open Gmail
+      </button>
+      @if (hasAttachments()) {
+        <button class="email-button accent" (click)="downloadAttachments()">
+          Download Attachments ({{ attachmentCount() }})
+        </button>
+      }
+      <button class="email-button secondary" (click)="onEmailSent()">
+        Done
+      </button>
+    </div>
+    @if (hasAttachments()) {
+      <p class="attachment-note">Please download and manually attach files to your email.</p>
+    }
+  </div>
+}
+
 <app-reactive-form
   [entity]="entity()"
   [fields]="fields()"
@@ -5,5 +30,4 @@
   (formValueChange)="onAnyValueChange($event)"
   (formSubmit)="onSubmit($event)"
 >
-
 </app-reactive-form>

@@ -134,6 +134,46 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    public void addLookupFieldToList(String listTitle, String fieldName, String targetListTitle, String targetFieldName) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/fields";
+        String targetListId = getListId(targetListTitle);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("Title", fieldName);
+        body.put("FieldTypeKind", 7); // Lookup
+        body.put("Required", false);
+        body.put("LookupList", targetListId);
+        body.put("LookupField", targetFieldName);
+        try {
+            String jsonBody = objectMapper.writeValueAsString(body);
+            ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Failed to add lookup field: " + response.getStatusCode());
+            }
+            log.debug("[SharePoint] Added lookup field '{}' to list '{}' (target='{}.{}')",
+                    fieldName, listTitle, targetListTitle, targetFieldName);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add lookup field '" + fieldName + "' to list '" + listTitle +
+                    "': " + e.getMessage(), e);
+        }
+    }
+
+    private String getListId(String listTitle) {
+        try {
+            ResponseEntity<String> response = sendGetRequest(
+                    "/_api/web/lists/getbytitle('" + listTitle + "')?$select=Id"
+            );
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode node = root.has("Id") ? root.path("Id") : root.path("d").path("Id");
+            String id = node.asText(null);
+            if (id == null || id.isBlank()) {
+                throw new RuntimeException("SharePoint returned empty list ID");
+            }
+            return id;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read list ID for '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
     public void addFieldToDefaultView(String listTitle, String fieldName) {
         String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/DefaultView/ViewFields/addviewfield('" + fieldName + "')";
         try {

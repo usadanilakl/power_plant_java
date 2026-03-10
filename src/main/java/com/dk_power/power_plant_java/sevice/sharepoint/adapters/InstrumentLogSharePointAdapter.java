@@ -82,7 +82,18 @@ public class InstrumentLogSharePointAdapter {
 
     private String certCreate(InstrumentLogDto dto) {
         Map<String, Object> body = toMap(dto);
-        return certAccess.createListItem(LIST_TITLE, body);
+        try {
+            return certAccess.createListItem(LIST_TITLE, body);
+        } catch (RuntimeException ex) {
+            // Some environments have different internal names for "Tag Number" in Instrumentation Log.
+            if (isMissingTagFieldError(ex)) {
+                log.warn("[InstrumentLog-Adapter] '{}' rejected field Tag_x0020_Number. Retrying with TagNumber.",
+                        LIST_TITLE);
+                Map<String, Object> retryBody = toMapWithTagField(dto, "TagNumber");
+                return certAccess.createListItem(LIST_TITLE, retryBody);
+            }
+            throw ex;
+        }
     }
 
     private List<PaAttachmentDto> certGetAttachments(String sharepointId) {
@@ -148,7 +159,11 @@ public class InstrumentLogSharePointAdapter {
         InstrumentLogDto dto = new InstrumentLogDto();
         dto.setSharepointId(item.path("ID").asText(item.path("Id").asText(null)));
         dto.setLocalUuid(item.path("PwaId").asText(null));
-        dto.setInstrumentTagNumber(item.path("Tag_x0020_Number").asText(item.path("Tag Number").asText(null)));
+        dto.setInstrumentTagNumber(firstNonBlank(
+                item.path("Tag_x0020_Number").asText(null),
+                item.path("TagNumber").asText(null),
+                item.path("Tag Number").asText(null)
+        ));
         dto.setInstrumentDescription(item.path("Description").asText(null));
         dto.setStatus(item.path("Status").asText(null));
         dto.setDate(item.path("Date").asText(null));
@@ -163,7 +178,11 @@ public class InstrumentLogSharePointAdapter {
         InstrumentLogDto dto = new InstrumentLogDto();
         dto.setSharepointId(str(map, "ID"));
         dto.setLocalUuid(str(map, "PwaId"));
-        dto.setInstrumentTagNumber(str(map, "Tag_x0020_Number"));
+        dto.setInstrumentTagNumber(firstNonBlank(
+                str(map, "Tag_x0020_Number"),
+                str(map, "TagNumber"),
+                str(map, "Tag Number")
+        ));
         dto.setInstrumentDescription(str(map, "Description"));
         dto.setStatus(str(map, "Status"));
         dto.setDate(str(map, "Date"));
@@ -175,9 +194,13 @@ public class InstrumentLogSharePointAdapter {
     }
 
     private Map<String, Object> toMap(InstrumentLogDto dto) {
+        return toMapWithTagField(dto, "Tag_x0020_Number");
+    }
+
+    private Map<String, Object> toMapWithTagField(InstrumentLogDto dto, String tagFieldName) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("PwaId", orEmpty(dto.getLocalUuid()));
-        map.put("Tag_x0020_Number", orEmpty(dto.getInstrumentTagNumber()));
+        map.put(tagFieldName, orEmpty(dto.getInstrumentTagNumber()));
         map.put("Description", orEmpty(dto.getInstrumentDescription()));
         map.put("Status", orEmpty(dto.getStatus()));
         map.put("Date", orEmpty(dto.getDate()));
@@ -185,6 +208,13 @@ public class InstrumentLogSharePointAdapter {
         map.put("Name", orEmpty(dto.getName()));
         map.put("Comment", orEmpty(dto.getComment()));
         return map;
+    }
+
+    private boolean isMissingTagFieldError(Exception ex) {
+        String msg = ex.getMessage();
+        return msg != null
+                && msg.contains("Tag_x0020_Number")
+                && msg.contains("does not exist");
     }
 
     private static Instant parseInstant(String raw) {
@@ -205,5 +235,13 @@ public class InstrumentLogSharePointAdapter {
         if (lower.endsWith(".gif")) return "image/gif";
         if (lower.endsWith(".pdf")) return "application/pdf";
         return "application/octet-stream";
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return null;
     }
 }

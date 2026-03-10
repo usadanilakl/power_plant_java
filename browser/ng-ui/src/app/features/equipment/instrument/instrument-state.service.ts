@@ -31,6 +31,8 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
     private instrumentLogsSubject = new BehaviorSubject<InstrumentLogEntry[]>([]);
     public instrumentLogs$ = this.instrumentLogsSubject.asObservable();
 
+    emailFallbackData = signal<{ mailto: string; body: string; entry: InstrumentLogEntry } | null>(null);
+
     private openNewInstrumentPopupSubject = new Subject<void>();
     public openNewInstrumentPopup$ = this.openNewInstrumentPopupSubject.asObservable();
 
@@ -222,6 +224,7 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
         this.instrumentLogDraftStorage.saveDraft(instrumentLog);
 
         this.globalMessageService.showMessage('Submitting log...', 'white', 20000);
+        this.emailFallbackData.set(null);
         this.orchestrator.submitInstrumentLog(instrumentLog).pipe(
             takeUntilDestroyed(this.destroyRef),
         ).subscribe({
@@ -239,8 +242,10 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
                     );
                     this.loadLogsForInstrument(instrumentLog.instrumentTagNumber);
                 } else if (result.requiresEmail) {
+                    const emailContent = this.orchestrator.generateInstrumentLogEmail(instrumentLog);
+                    this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body, entry: instrumentLog });
                     this.globalMessageService.showMessage(
-                        'All submission methods failed. Please submit via email.', 'red', 7000);
+                        'Submission failed. Please use email fallback below.', 'red', 10000);
                 } else {
                     this.globalMessageService.showMessage(
                         result.message || 'Submission failed.', 'red', 5000);
@@ -248,9 +253,21 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
             },
             error: (err) => {
                 console.error('Log submission failed!', err);
+                const emailContent = this.orchestrator.generateInstrumentLogEmail(instrumentLog);
+                this.emailFallbackData.set({ mailto: emailContent.mailto, body: emailContent.body, entry: instrumentLog });
                 this.globalMessageService.showMessage(
-                    'Failed to submit log. Please try again or contact your supervisor.', 'red', 7000);
+                    'Submission failed. Please use email fallback below.', 'red', 10000);
             }
         });
+    }
+
+    clearEmailFallback() {
+        this.emailFallbackData.set(null);
+    }
+
+    markSentViaEmail() {
+        this.instrumentLogDraftStorage.clearDraft();
+        this.emailFallbackData.set(null);
+        this.globalMessageService.showMessage('Marked as sent via email.', 'green');
     }
 }

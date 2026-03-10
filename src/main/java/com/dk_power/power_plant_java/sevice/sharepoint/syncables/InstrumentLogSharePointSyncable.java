@@ -68,6 +68,14 @@ public class InstrumentLogSharePointSyncable implements SharePointSyncable<Instr
         Instant spModified = getSpModifiedTime(remote);
 
         InstrumentLog existing = instrumentLogRepo.findFirstBySharepointIdOrderByIdAsc(spId).orElse(null);
+        if (existing == null && remote.getLocalUuid() != null && !remote.getLocalUuid().isBlank()) {
+            // If this item was created locally first, link by stable localUuid instead of inserting a duplicate.
+            existing = instrumentLogRepo.findFirstByLocalUuidOrderByIdAsc(remote.getLocalUuid()).orElse(null);
+            if (existing != null) {
+                existing.setSharepointId(spId);
+                instrumentLogRepo.save(existing);
+            }
+        }
         if (existing == null) {
             InstrumentLog entity = logMapper.fromSharePointDto(remote);
             instrumentLogRepo.save(entity);
@@ -170,4 +178,3 @@ public class InstrumentLogSharePointSyncable implements SharePointSyncable<Instr
         }
     }
 }
-

@@ -101,7 +101,7 @@ public class PwaInstrumentLogService {
             }
         } catch (Exception e) {
             log.error("[Instrument Submit] Failed to push log to SharePoint for localUuid={}: {}",
-                    dto.getLocalUuid(), e.getMessage());
+                    dto.getLocalUuid(), e.getMessage(), e);
         }
 
         // 6. Upsert "Instrumentation" SP list item
@@ -113,7 +113,7 @@ public class PwaInstrumentLogService {
             }
         } catch (Exception e) {
             log.error("[Instrument Submit] Failed to upsert instrument in SharePoint for tagNumber={}: {}",
-                    dto.getInstrumentTagNumber(), e.getMessage());
+                    dto.getInstrumentTagNumber(), e.getMessage(), e);
         }
 
         return PwaSubmissionResult.success(method, sharepointId, dto.getLocalUuid());

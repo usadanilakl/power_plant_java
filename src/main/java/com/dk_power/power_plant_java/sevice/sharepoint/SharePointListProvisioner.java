@@ -15,6 +15,7 @@ public class SharePointListProvisioner {
 
     private static final int TEXT = 2;
     private static final int NOTE = 3;
+    private static final int LOOKUP = 7;
     private static final int BOOLEAN = 8;
 
     // ====================== Status check ======================
@@ -65,7 +66,7 @@ public class SharePointListProvisioner {
             spAccess.createList(def.title);
             List<String> addedFields = new ArrayList<>();
             for (FieldDef field : def.fields) {
-                spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                addField(def.title, field);
                 spAccess.addFieldToDefaultView(def.title, field.name);
                 addedFields.add(field.name);
             }
@@ -98,7 +99,7 @@ public class SharePointListProvisioner {
                 } else {
                     spAccess.createList(def.title);
                     for (FieldDef field : def.fields) {
-                        spAccess.addFieldToList(def.title, field.name, field.typeKind);
+                        addField(def.title, field);
                         spAccess.addFieldToDefaultView(def.title, field.name);
                     }
                     log.info("[SP-Provision] Created list '{}' with {} fields (added to default view)", def.title, def.fields.size());
@@ -183,26 +184,38 @@ public class SharePointListProvisioner {
                         text("CalculatedVolume"), text("Pressure"), text("GasIndicatorModel"),
                         text("GasIndicatorSerial"), text("CalibrationDate"), text("Status")),
 
-                list("Instrumentation Log",
-                        text("PwaId"), text("Tag Number"), text("Description"),
-                        text("Status"), text("Date"), text("Time"), text("Name"), note("Comment")),
-
                 list("Instrumentation",
                         text("PwaId"), text("Tag Number"), text("Description"), text("Vendor"),
                         text("Location"), text("Type"), text("CurrentStatus"),
                         text("LastUpdatedDate"), text("LastUpdatedTime"), text("LastUpdatedBy"),
-                        note("LastComment"))
+                        note("LastComment")),
+
+                list("Instrumentation Log",
+                        text("PwaId"), text("Tag Number"), lookup("InstrumentId", "Instrumentation", "ID"),
+                        text("Description"), text("Status"), text("Date"), text("Time"),
+                        text("Name"), note("Comment"))
         );
     }
 
     // ====================== Helpers ======================
 
-    private record FieldDef(String name, int typeKind) {}
+    private record FieldDef(String name, int typeKind, String lookupListTitle, String lookupFieldName) {}
     private record ListDefinition(String title, List<FieldDef> fields) {}
 
-    private static FieldDef text(String name) { return new FieldDef(name, TEXT); }
-    private static FieldDef note(String name) { return new FieldDef(name, NOTE); }
-    private static FieldDef bool(String name) { return new FieldDef(name, BOOLEAN); }
+    private static FieldDef text(String name) { return new FieldDef(name, TEXT, null, null); }
+    private static FieldDef note(String name) { return new FieldDef(name, NOTE, null, null); }
+    private static FieldDef bool(String name) { return new FieldDef(name, BOOLEAN, null, null); }
+    private static FieldDef lookup(String name, String targetListTitle, String targetFieldName) {
+        return new FieldDef(name, LOOKUP, targetListTitle, targetFieldName);
+    }
+
+    private void addField(String listTitle, FieldDef field) {
+        if (field.typeKind == LOOKUP) {
+            spAccess.addLookupFieldToList(listTitle, field.name, field.lookupListTitle, field.lookupFieldName);
+        } else {
+            spAccess.addFieldToList(listTitle, field.name, field.typeKind);
+        }
+    }
 
     private static ListDefinition list(String title, FieldDef... fields) {
         return new ListDefinition(title, List.of(fields));
