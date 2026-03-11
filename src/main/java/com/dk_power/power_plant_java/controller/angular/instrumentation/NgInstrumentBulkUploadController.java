@@ -2,6 +2,10 @@ package com.dk_power.power_plant_java.controller.angular.instrumentation;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.instrumentation.BulkUploadResult;
+import com.dk_power.power_plant_java.dto.instrumentation.CounterpartCheckReportDto;
+import com.dk_power.power_plant_java.dto.instrumentation.CounterpartCreateResultDto;
+import com.dk_power.power_plant_java.dto.instrumentation.DuplicateCheckReportDto;
+import com.dk_power.power_plant_java.dto.instrumentation.DuplicateMergeResultDto;
 import com.dk_power.power_plant_java.dto.instrumentation.InstrumentDto;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentBulkUploadService;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +25,12 @@ public class NgInstrumentBulkUploadController {
     private final InstrumentBulkUploadService bulkUploadService;
 
     @PostMapping("/preview")
-    public ResponseEntity<NgApiResponse<List<InstrumentDto>>> preview(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<NgApiResponse<List<InstrumentDto>>> preview(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "tagMode", defaultValue = "as_is") String tagMode) {
         try {
             List<InstrumentDto> instruments = parseFile(file);
+            instruments = bulkUploadService.previewByTagMode(instruments, tagMode);
             return ResponseEntity.ok(new NgApiResponse<>(instruments,
                     "Parsed " + instruments.size() + " instruments"));
         } catch (Exception e) {
@@ -36,10 +43,11 @@ public class NgInstrumentBulkUploadController {
     @PostMapping("/upload")
     public ResponseEntity<NgApiResponse<BulkUploadResult>> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "onConflict", defaultValue = "merge") String onConflict) {
+            @RequestParam(value = "onConflict", defaultValue = "merge") String onConflict,
+            @RequestParam(value = "tagMode", defaultValue = "as_is") String tagMode) {
         try {
             List<InstrumentDto> instruments = parseFile(file);
-            BulkUploadResult result = bulkUploadService.uploadToSharePoint(instruments, onConflict);
+            BulkUploadResult result = bulkUploadService.uploadToSharePoint(instruments, onConflict, tagMode);
             return ResponseEntity.ok(new NgApiResponse<>(result,
                     String.format("Upload complete: %d created, %d updated, %d skipped, %d failed",
                             result.getCreated(), result.getUpdated(), result.getSkipped(), result.getFailed())));
@@ -47,6 +55,54 @@ public class NgInstrumentBulkUploadController {
             log.error("[BulkUpload] Upload failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Upload failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/counterpart-check")
+    public ResponseEntity<NgApiResponse<CounterpartCheckReportDto>> counterpartCheck() {
+        try {
+            CounterpartCheckReportDto report = bulkUploadService.checkCounterparts();
+            return ResponseEntity.ok(new NgApiResponse<>(report, "Counterpart check complete"));
+        } catch (Exception e) {
+            log.error("[BulkUpload] Counterpart check failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Counterpart check failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/counterpart-create-missing")
+    public ResponseEntity<NgApiResponse<CounterpartCreateResultDto>> createMissingCounterparts() {
+        try {
+            CounterpartCreateResultDto result = bulkUploadService.createMissingCounterparts();
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Missing counterpart creation complete"));
+        } catch (Exception e) {
+            log.error("[BulkUpload] Create missing counterparts failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Create missing counterparts failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/duplicates-check")
+    public ResponseEntity<NgApiResponse<DuplicateCheckReportDto>> duplicatesCheck() {
+        try {
+            DuplicateCheckReportDto report = bulkUploadService.checkDuplicatesByTag();
+            return ResponseEntity.ok(new NgApiResponse<>(report, "Duplicate check complete"));
+        } catch (Exception e) {
+            log.error("[BulkUpload] Duplicate check failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Duplicate check failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/duplicates-merge")
+    public ResponseEntity<NgApiResponse<DuplicateMergeResultDto>> mergeDuplicates() {
+        try {
+            DuplicateMergeResultDto result = bulkUploadService.mergeDuplicatesByTag();
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Duplicate merge complete"));
+        } catch (Exception e) {
+            log.error("[BulkUpload] Duplicate merge failed: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Duplicate merge failed: " + e.getMessage()));
         }
     }
 

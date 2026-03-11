@@ -6,20 +6,10 @@ import { WorkRequestComponent } from './features/work-request/work-request.compo
 import { JhaComponent } from './features/jha/jha.component';
 import { standaloneGuard } from './guards/standalone.guard';
 import { userSetupGuard } from './guards/user-setup.guard';
-import { SpacePageComponent } from './pages/space-page/space-page.component';
-import { SpaceComponent } from './features/space/space.component';
-import { authGuard } from './auth/auth.guard';
-import { UserComponent } from './auth/user/user.component';
-import { UserPageComponent } from './pages/user-page/user-page.component';
-import { UserProfilePageComponent } from './pages/user-profile-page/user-profile-page.component';
 import { InstrumentPageComponent } from './pages/instrument-page/instrument-page.component';
 import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
 import { InstrumentFormComponent } from './features/equipment/instrument/instrument-form/instrument-form.component';
-import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
-import { LotoPageComponent } from './pages/loto-page/loto-page.component';
-import { LotoProcessorComponent } from './features/loto/loto-processor/loto-processor.component';
-import { ImageComponent } from './shared/image/image.component';
-import { TestPageComponent } from './pages/test-page/test-page.component';
+import { HomePageComponent } from './pages/home-page/home-page.component';
 
 export const routes: Routes = [
     {
@@ -36,7 +26,12 @@ export const routes: Routes = [
       loadComponent: () => import('./pages/user-setup-page/user-setup-page.component').then(m => m.UserSetupPageComponent),
       canActivate: [standaloneGuard]
     },
-    { path: '', redirectTo: '/work-request/form', pathMatch: 'full' },
+    { path: '', redirectTo: '/home', pathMatch: 'full' },
+    {
+      path: 'home',
+      component: HomePageComponent,
+      canActivate: [standaloneGuard, userSetupGuard]
+    },
     {
       path: 'work-request',
       component: WorkRequestPageComponent,
@@ -56,57 +51,13 @@ export const routes: Routes = [
       ]
     },
     {
-      path: 'space',
-      component: SpacePageComponent,
-      canActivate: [standaloneGuard, authGuard],
-      children: [
-        { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: SpaceComponent }
-      ]
-    },
-    {
-      path: 'users',
-      component: UserPageComponent,
-      canActivate: [standaloneGuard, authGuard],
-      children: [
-        { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: UserComponent }
-      ]
-    },
-    {
-      path: 'user-profile',
-      component: UserProfilePageComponent,
-      canActivate: [standaloneGuard, authGuard]
-    },
-    {
       path: 'instruments',
       component: InstrumentPageComponent,
-      canActivate: [standaloneGuard],
+      canActivate: [standaloneGuard, userSetupGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: InstrumentComponent },
         { path: 'new', component: InstrumentFormComponent }
-      ]
-    },
-      {
-        path: 'qr', // <-- Add this route
-        component: QrScannerComponent
-      },
-    {
-      path: 'loto',
-      component: LotoPageComponent,
-      canActivate: [standaloneGuard],
-      children: [
-        { path: '', redirectTo: 'process', pathMatch: 'full' },
-        { path: 'process', component: LotoProcessorComponent }
-      ]
-    },
-    {
-      path: 'img',
-      component: TestPageComponent,
-      children: [
-        { path: '', redirectTo: 'process', pathMatch: 'full' },
-        { path: 'process', component: ImageComponent }
       ]
     },
 ];

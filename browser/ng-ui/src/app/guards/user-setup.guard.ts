@@ -10,7 +10,7 @@ export const userSetupGuard: CanActivateFn = (route, state) => {
 
   if (userSetupService.isValid()) {
     if (isSetupPage) {
-      router.navigate(['/work-request/form']);
+      router.navigate(['/home']);
       return false;
     }
     return true;

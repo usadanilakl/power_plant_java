@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { InstrumentLogFormComponent } from "./instrument-log/instrument-log-form/instrument-log-form.component";
 import { InstrumentFormComponent } from "./instrument-form/instrument-form.component";
@@ -18,34 +18,36 @@ export class InstrumentComponent {
   private destroyRef = inject(DestroyRef);
   selectedInstrument = toSignal(this.instrumentStateService.selectedInstrument$, { initialValue: null });
 
-  isNewInstrumentPopupOpen = false;
-  isSelectInstrumentPopupOpen = false;
+  mode = signal<'select' | 'log' | 'new'>('select');
+  isSelectPopupOpen = false;
 
   constructor() {
     this.instrumentStateService.openNewInstrumentPopup$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => {
-      this.isNewInstrumentPopupOpen = true;
+      this.mode.set('new');
     });
   }
 
-  openNewInstrumentPopup() {
-    this.isNewInstrumentPopupOpen = true;
+  selectExisting() {
+    this.isSelectPopupOpen = true;
   }
 
-  closeNewInstrumentPopup() {
-    this.isNewInstrumentPopupOpen = false;
+  selectNew() {
+    this.mode.set('new');
   }
 
-  openSelectInstrument() {
-    this.isSelectInstrumentPopupOpen = true;
+  backToSelect() {
+    this.mode.set('select');
+    this.instrumentStateService.clearSelection();
   }
 
-  closeSelectInstrument() {
-    this.isSelectInstrumentPopupOpen = false;
+  closeSelectPopup() {
+    this.isSelectPopupOpen = false;
   }
 
   onInstrumentSelected() {
-    this.isSelectInstrumentPopupOpen = false;
+    this.isSelectPopupOpen = false;
+    this.mode.set('log');
   }
 }

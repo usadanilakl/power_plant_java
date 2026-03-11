@@ -253,6 +253,16 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    public void deleteListItem(String listTitle, String itemId) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/items(" + itemId + ")";
+        try {
+            sendDeleteRequest(endpoint);
+            log.debug("[SharePoint] Deleted item {} in '{}'", itemId, listTitle);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete item " + itemId + " in list '" + listTitle + "': " + e.getMessage(), e);
+        }
+    }
+
     public void addListItemAttachment(String listTitle, String itemId, String fileName, byte[] content) {
         String endpoint = String.format(
                 "/_api/web/lists/getbytitle('%s')/items(%s)/AttachmentFiles/add(FileName='%s')",
@@ -425,6 +435,25 @@ public class SharePointCertificateAccess implements SharePointAccess {
             headers.set("IF-MATCH", "*");
             headers.set("X-HTTP-Method", "MERGE");
             HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        }
+    }
+
+    private ResponseEntity<String> sendDeleteRequest(String endpoint) {
+        String fullUrl = siteUrl + endpoint;
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.set("IF-MATCH", "*");
+            headers.set("X-HTTP-Method", "DELETE");
+            HttpEntity<String> entity = new HttpEntity<>("{}", headers);
+            return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.warn("[SharePoint] 401 on DELETE {}, refreshing token and retrying", endpoint);
+            tokenExpirationTime = null;
+            HttpHeaders headers = createHeaders();
+            headers.set("IF-MATCH", "*");
+            headers.set("X-HTTP-Method", "DELETE");
+            HttpEntity<String> entity = new HttpEntity<>("{}", headers);
             return restTemplate.exchange(fullUrl, HttpMethod.POST, entity, String.class);
         }
     }

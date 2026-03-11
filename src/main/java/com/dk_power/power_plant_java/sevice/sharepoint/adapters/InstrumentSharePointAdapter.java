@@ -70,6 +70,14 @@ public class InstrumentSharePointAdapter {
         );
     }
 
+    public void delete(String sharepointId) {
+        spService.executeWithFallback(
+                () -> { certDelete(sharepointId); return null; },
+                () -> { paDelete(sharepointId); return null; },
+                "delete Instrument"
+        );
+    }
+
     // ====================== Certificate path ======================
 
     private List<InstrumentDto> certGetAll() {
@@ -118,6 +126,11 @@ public class InstrumentSharePointAdapter {
             String newId = certCreate(dto);
             log.info("[Instrument-Adapter] Created instrument in SP: tagNumber={}, spId={}", dto.getTagNumber(), newId);
         }
+    }
+
+    private void certDelete(String sharepointId) {
+        certAccess.deleteListItem(LIST_TITLE, sharepointId);
+        log.info("[Instrument-Adapter] Deleted instrument in SP: spId={}", sharepointId);
     }
 
     // ====================== Power Automate path ======================
@@ -179,6 +192,16 @@ public class InstrumentSharePointAdapter {
         PaResponseDto resp = v2Client.instrument(req);
         if (!resp.isSuccess()) {
             throw new RuntimeException("PA-V2 upsertByTagNumber Instrument failed: " + resp.getMessage());
+        }
+    }
+
+    private void paDelete(String sharepointId) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("delete");
+        req.setId(sharepointId);
+        PaResponseDto resp = v2Client.instrument(req);
+        if (!resp.isSuccess()) {
+            throw new RuntimeException("PA-V2 delete Instrument failed: " + resp.getMessage());
         }
     }
 

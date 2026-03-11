@@ -7,14 +7,10 @@ export type RouterMenuItems = RouterMenuItem[];
 
 // Main menu items
 export const MAIN_MENU_ITEMS: RouterMenuItems = [
-    { route: '/', label: 'Home' },
+    { route: '/home', label: 'Home' },
     { route: '/work-request', label: 'Work Request' },
     { route: '/jha', label: 'JHA' },
-    { route: '/space', label: 'Confined Spaces' },
-    { route: '/instruments', label: 'Instrumentation Log' },
-    { route: '/users', label: 'Users' },
-    { route: '/loto', label: 'LOTO' },
-    { route: '/img', label: 'Image' },
+    { route: '/instruments', label: 'Instrumentation' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

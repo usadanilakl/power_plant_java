@@ -2,10 +2,10 @@
   <div class="email-fallback-banner">
     <p><strong>Submission failed.</strong> All automatic methods unavailable. Please submit via email:</p>
     <div class="email-fallback-actions">
-      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onEmailButtonClick()">
+      <a [href]="emailFallbackData()?.mailto" class="email-button primary" (click)="onFallbackEmailClick()">
         Open Email Client
       </a>
-      <button class="email-button gmail" (click)="openGmail()">
+      <button class="email-button gmail" (click)="openFallbackGmail()">
         Open Gmail
       </button>
       @if (hasAttachments()) {
@@ -31,3 +31,15 @@
   (formSubmit)="onSubmit($event)"
 >
 </app-reactive-form>
+
+<div class="email-submit-section">
+  <p class="email-submit-label">Or submit via email:</p>
+  <div class="email-submit-actions">
+    <button class="email-button primary" (click)="submitViaEmail()">
+      Open Email Client
+    </button>
+    <button class="email-button gmail" (click)="submitViaGmail()">
+      Open Gmail
+    </button>
+  </div>
+</div>
