@@ -100,6 +100,25 @@ public class HubSyncController {
             .body(changePage.getContent());
     }
 
+    /**
+     * Compatibility endpoint with sync-server contract.
+     * Returns pending changes for this client without explicit pagination controls.
+     */
+    @GetMapping("/changes")
+    public ResponseEntity<List<FieldChange>> getPendingChanges(
+            @RequestHeader("X-Machine-Id") String machineId,
+            @RequestParam(defaultValue = "500") int size) {
+
+        int safeSize = Math.min(size, 1000);
+        Page<FieldChange> changePage = hubSyncService.getPendingChangesPaginated(
+            machineId, PageRequest.of(0, safeSize));
+
+        return ResponseEntity.ok()
+            .header("X-Total-Count", String.valueOf(changePage.getTotalElements()))
+            .header("X-Has-More", String.valueOf(changePage.hasNext()))
+            .body(changePage.getContent());
+    }
+
     @GetMapping("/changes/count")
     public ResponseEntity<Map<String, Long>> getPendingChangeCount(
             @RequestHeader("X-Machine-Id") String machineId) {
@@ -257,6 +276,55 @@ public class HubSyncController {
             "sseMachinesConnected", hubSseService.getUniqueMachineCount(),
             "realtimeEnabled", true
         ));
+    }
+
+    /**
+     * Compatibility endpoint with sync-server metrics contract.
+     */
+    @GetMapping("/metrics")
+    public ResponseEntity<Map<String, Object>> getMetrics() {
+        List<HubClientInfo> clients = hubSyncService.getAllClients();
+        long totalPushed = clients.stream().mapToLong(HubClientInfo::getTotalChangesPushed).sum();
+        long totalPulled = clients.stream().mapToLong(HubClientInfo::getTotalChangesPulled).sum();
+
+        return ResponseEntity.ok(Map.of(
+            "totalChangesInDb", fieldChangeRepository.count(),
+            "totalClients", clients.size(),
+            "activeClients", hubSyncService.getActiveClients().size(),
+            "sseConnections", hubSseService.getConnectionCount(),
+            "totalChangesPushedByClients", totalPushed,
+            "totalChangesPulledByClients", totalPulled
+        ));
+    }
+
+    /**
+     * Per-client metrics view.
+     */
+    @GetMapping("/metrics/{machineId}")
+    public ResponseEntity<Map<String, Object>> getMetricsByMachine(@PathVariable String machineId) {
+        Optional<HubClientInfo> clientOpt = hubSyncService.getAllClients().stream()
+            .filter(c -> machineId.equals(c.getMachineId()))
+            .findFirst();
+
+        if (clientOpt.isEmpty()) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("error", "Client not found");
+            body.put("machineId", machineId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        }
+
+        HubClientInfo c = clientOpt.get();
+        Map<String, Object> body = new HashMap<>();
+        body.put("machineId", c.getMachineId());
+        body.put("machineName", c.getMachineName());
+        body.put("status", c.getStatus().name());
+        body.put("lastSeen", c.getLastSeen() != null ? c.getLastSeen().toString() : null);
+        body.put("lastSyncTime", c.getLastSyncTime() != null ? c.getLastSyncTime().toString() : null);
+        body.put("totalChangesPushed", c.getTotalChangesPushed());
+        body.put("totalChangesPulled", c.getTotalChangesPulled());
+        body.put("pendingChanges", hubSyncService.getPendingChangeCount(machineId));
+
+        return ResponseEntity.ok(body);
     }
 
     @GetMapping("/health")

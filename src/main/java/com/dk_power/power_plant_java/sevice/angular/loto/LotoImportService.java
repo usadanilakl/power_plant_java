@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class LotoImportService {
     private final NgLotoService ngLotoService;
     private final LotoBoxRepo lotoBoxRepo;
+    private final LotoRepo lotoRepo;
 
     /**
      * Parse uploaded file into rows (for preview or import).
@@ -50,7 +52,7 @@ public class LotoImportService {
 
         for (Map<String, String> row : rows) {
             try {
-                Loto loto = createLotoFromRow(row);
+                Loto loto = createOrUpdateLotoFromRow(row);
                 Loto saved = ngLotoService.save(loto);
                 results.add(ngLotoService.toDto(saved));
             } catch (Exception e) {
@@ -61,12 +63,18 @@ public class LotoImportService {
         return results;
     }
 
-    private Loto createLotoFromRow(Map<String, String> row) {
-        Loto loto = new Loto();
-
+    private Loto createOrUpdateLotoFromRow(Map<String, String> row) {
         String lotoNumber = row.getOrDefault("lotoNumber", "").trim();
+
+        // Find existing LOTO by name or create new
+        Loto loto = lotoNumber.isEmpty() ? new Loto()
+                : lotoRepo.findByName(lotoNumber).orElse(new Loto());
+
         if (!lotoNumber.isEmpty()) {
             loto.setName(lotoNumber);
+            try {
+                loto.setDocNum(Long.parseLong(lotoNumber));
+            } catch (NumberFormatException ignored) {}
         }
 
         String equipmentDesc = row.getOrDefault("equipmentDescription", "").trim();

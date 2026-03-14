@@ -8,7 +8,7 @@ public class HotWorkMeasures {
     private boolean flammablesAreSecured;
     private boolean noCombustibleDustOrDebrisPresent;
     private boolean radiativeHeatPreventiveMeasuresAreTaken;
-    private boolean vesslsArePurged;
+    private boolean vesselsArePurged;
     private boolean openingsAreCovered;
     private boolean ductVentilationIsSecured;
     private boolean lockOutIsCompleted;

@@ -57,10 +57,22 @@
       "Bash(mvn clean package:*)",
       "Read(//c/Users/usada/OneDrive/Desktop/permit-blank-forms/**)",
       "WebFetch(domain:docs.cloud.google.com)",
-      "Read(//c/Users/usada/my_projects/sync-server/**)"
+      "Read(//c/Users/usada/my_projects/sync-server/**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/project/pwa//**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/project/spring-boot//**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/project/**)",
+      "Read(//c/Users/usada/my_projects/power_plant_java/**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/spring-boot/src/**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/frontend/**)",
+      "Read(//c/Users/usada/my_projects/dk_power_plant/spring-boot/**)",
+      "Bash(xargs -I {} basename {})"
     ],
     "additionalDirectories": [
-      "c:\\Users\\usada\\my_projects\\power_plant_java"
+      "c:\\Users\\usada\\my_projects\\power_plant_java",
+      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\integration",
+      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\file",
+      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\equipment",
+      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project"
     ]
   }
 }

@@ -20,5 +20,5 @@ public interface LotoRepo extends PermitRepo<Loto> {
     @Query("SELECT u FROM Loto u WHERE u.docNum IS NULL AND u.createdBy = ?1")
     Loto getTempPermit(String currentUserName);
 
-
+    Optional<Loto> findByName(String name);
 }

@@ -156,7 +156,8 @@ export class LotoDetailFormComponent implements OnInit {
     if (this.formDelete) {
       this.formDelete();
     }
-    this.formDeleteEvent.emit(this.values().id);
+    const val = typeof this.values === 'function' ? this.values() : this.values;
+    this.formDeleteEvent.emit(val?.id);
   }
 
   onOpenImage() {

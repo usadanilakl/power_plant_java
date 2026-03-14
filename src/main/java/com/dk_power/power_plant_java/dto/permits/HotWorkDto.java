@@ -44,7 +44,7 @@ public class HotWorkDto extends BasePermitDto {
         measures.setFlammablesAreSecured(true);
         measures.setNoCombustibleDustOrDebrisPresent(false);
         measures.setRadiativeHeatPreventiveMeasuresAreTaken(true);
-        measures.setVesslsArePurged(false);
+        measures.setVesselsArePurged(false);
         measures.setOpeningsAreCovered(true);
         measures.setDuctVentilationIsSecured(true);
         measures.setLockOutIsCompleted(true);

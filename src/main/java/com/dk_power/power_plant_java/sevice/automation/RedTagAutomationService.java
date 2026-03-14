@@ -739,11 +739,12 @@ public class RedTagAutomationService {
             clickYesNo(SW_LOTO_REQUIRED, true);
             clickYesNo(SW_CONFINED_SPACE, true);
             clickYesNo(SW_HOT_WORK, true);
-            clickYesNo(SW_VENTING_PURGING, true);
+            clickNoBelow(SW_HOT_WORK);
             clickYesNo(SW_JHA, true);
             clickYesNo(SW_GAS_TESTING, true);
             clickYesNo(SW_EXCAVATION_PERMIT, true);
             clickYesNo(SW_ENERGIZED_PERMIT, true);
+            clickNoBelow(SW_ENERGIZED_PERMIT);
 
             screen.find(SW_ENERGIZED_PERMIT).offset(-70,20).click();
 
@@ -770,11 +771,12 @@ public class RedTagAutomationService {
             clickYesNo(SW_LOTO_REQUIRED, false);
             clickYesNo(SW_CONFINED_SPACE, false);
             clickYesNo(SW_HOT_WORK, false);
-            clickYesNo(SW_VENTING_PURGING, false);
+            clickNoBelow(SW_HOT_WORK);
             clickYesNo(SW_JHA, false);
             clickYesNo(SW_GAS_TESTING, false);
             clickYesNo(SW_EXCAVATION_PERMIT, false);
             clickYesNo(SW_ENERGIZED_PERMIT, false);
+            clickNoBelow(SW_ENERGIZED_PERMIT);
             clickYesNo(SW_HARDHAT, false);
             clickYesNo(SW_SAFETY_GLASSES, false);
             clickYesNo(SW_HEARING_PROTECTION, false);
@@ -897,9 +899,8 @@ public class RedTagAutomationService {
             clickYesNo(SW_CONFINED_SPACE, permits.isConfinedSpace());
             currentField = "Permits: Hot Work";
             clickYesNo(SW_HOT_WORK, permits.isHotWork());
+            clickNoBelow(SW_HOT_WORK);
             pause(300);
-//            currentField = "Permits: Venting/Purging";
-//            clickYesNo(SW_VENTING_PURGING, permits.isVentingPurging());
             currentField = "Permits: JHA";
             clickYesNo(SW_JHA, permits.isJha());
             currentField = "Permits: Gas Testing";
@@ -908,10 +909,11 @@ public class RedTagAutomationService {
             clickYesNo(SW_EXCAVATION_PERMIT, permits.isExcavationPermit());
             currentField = "Permits: Energized Permit";
             clickYesNo(SW_ENERGIZED_PERMIT, permits.isEnergizedPermit());
+            clickNoBelow(SW_ENERGIZED_PERMIT);
 
             // Scroll down to PPE section
             currentField = "Scrolling to PPE section";
-            screen.find(SW_ENERGIZED_PERMIT).offset(-70,20).click();
+            screen.find(SW_ENERGIZED_PERMIT).offset(-70,45).click();
 
             // --- PPE section ---
             currentField = "PPE: Hardhat";
@@ -1010,8 +1012,7 @@ public class RedTagAutomationService {
                 pasteText(s);
                 searchBtn.click();
                 Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN,5);
-                column.offset(0, 12).click();
-                column.offset(0, 12).click();
+                clickInactiveOrFirstRow(issuedPermitsSide, column);
             }
             permitTabs.find(SW_ASSOCIATE_ISSUED_LOTOS).click();
 
@@ -1025,8 +1026,8 @@ public class RedTagAutomationService {
                 column.offset(0, 12).click();
                 column.offset(0, 12).click();
             }
-            screen.wait(SW_CONTINUE_BUTTON,1).click();
-            clickSaveButton();
+//            screen.wait(SW_CONTINUE_BUTTON,1).click();
+//            clickSaveButton();
             return "success";
         }catch (Exception e){
             return  "Failed to associate permits";
@@ -1325,7 +1326,7 @@ public class RedTagAutomationService {
             else check.offset(wN, h + 50).click();
             if (hw.getMeasures().isRadiativeHeatPreventiveMeasuresAreTaken()) check.offset(wY, h + 75).click();
             else check.offset(wN, h + 75).click();
-            if (hw.getMeasures().isVesslsArePurged()) check.offset(wY, h + 100).click();
+            if (hw.getMeasures().isVesselsArePurged()) check.offset(wY, h + 100).click();
             else check.offset(wN, h + 100).click();
 
             int correction = 7;
@@ -1574,6 +1575,33 @@ public class RedTagAutomationService {
     private void clickYesNo(Pattern pattern, boolean yes) throws FindFailed {
         if(yes) clickLeftSideOfElement(pattern,7);
         else clickLeftSideOfElement(pattern,40);
+    }
+    private void clickInactiveOrFirstRow(Region searchArea, Region columnHeader) {
+        int step = columnHeader.h;
+        int currentY = columnHeader.y + step;
+        int bottomY = searchArea.y + searchArea.h;
+        Region firstRow = null;
+
+        while (currentY + step <= bottomY) {
+            Region r = new Region(searchArea.x, currentY, searchArea.w, step);
+            String text = r.text();
+            if (text == null || text.trim().isEmpty()) break;
+            if (firstRow == null) firstRow = r;
+            if (text.toUpperCase().contains("INACTIVE")) {
+                r.click();
+                r.click();
+                return;
+            }
+            currentY += step;
+        }
+        if (firstRow != null) {
+            firstRow.click();
+            firstRow.click();
+        }
+    }
+    private void clickNoBelow(Pattern pattern) throws FindFailed {
+        Region element = screen.find(pattern);
+        element.offset(-element.w / 2 + 40, 25).click();
     }
 
     private void saveRegion(Region r, String name){
