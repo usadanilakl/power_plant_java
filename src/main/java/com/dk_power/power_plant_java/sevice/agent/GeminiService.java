@@ -89,6 +89,20 @@ public class GeminiService {
             - A LOTO Standard is a reusable set of LOTO points for a specific isolation procedure.
             - Daily Permit Packages group all permits for a contractor on a given day.
             - The permit hierarchy is: Job Log -> Daily Permit Package -> individual permits (SafeWork, HotWork, ConfinedSpace, etc.)
+
+            WORK REQUEST CREATION GUIDELINES:
+            - When a contractor or user describes work they need to perform, use assistWorkRequestCreation.
+            - Extract as many fields as possible: work scope, location, equipment, company, dates.
+            - Work type indicators:
+              * "welding", "cutting", "grinding", "brazing", "soldering", "torch", "open flame" -> isHotWorkRequired=true
+              * "lockout", "tagout", "de-energize", "isolate", "electrical work" -> isLotoRequired=true
+              * "enter vessel", "tank entry", "manhole", "duct entry", "confined space" -> isConfinedSpaceEntryRequired=true
+            - Do NOT set permit flags to true unless the user's description clearly indicates the need.
+
+            DUPLICATE JOB PREVENTION:
+            - When asked to process a work request into a job, use findMatchingJobsForWorkRequest first.
+            - If matches are found, present them to the operator and ask if they want to attach to an existing job.
+            - Only suggest creating a new job if no good matches exist or the operator explicitly wants a new one.
             """;
 
     private final String systemPrompt;
@@ -218,7 +232,12 @@ public class GeminiService {
         AgentChatResponse chatResponse = new AgentChatResponse();
         chatResponse.setSessionId(sessionId);
         chatResponse.setType("creation_flow");
-        chatResponse.setMessage("I'll help you create a LOTO point. Here's what I gathered from your request:");
+        String wizardMessage = switch (funcName) {
+            case "assistLotoPointCreation" -> "I'll help you create a LOTO point. Here's what I gathered from your request:";
+            case "assistWorkRequestCreation" -> "I'll help you create a work request. Here's what I gathered from your description:";
+            default -> "Starting creation flow...";
+        };
+        chatResponse.setMessage(wizardMessage);
         chatResponse.setData(result);
         return chatResponse;
     }
@@ -284,9 +303,12 @@ public class GeminiService {
             sessionManager.addToHistory(sessionId, functionResponseContent);
             sessionManager.addToHistory(sessionId, getModelContent(finalResponse));
 
+            String responseType = "findMatchingJobsForWorkRequest".equals(funcName)
+                    ? "matching_jobs" : "search_results";
+
             AgentChatResponse chatResponse = new AgentChatResponse();
             chatResponse.setSessionId(sessionId);
-            chatResponse.setType("search_results");
+            chatResponse.setType(responseType);
             chatResponse.setMessage(text);
             chatResponse.setData(result);
             return chatResponse;

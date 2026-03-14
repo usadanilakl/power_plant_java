@@ -8,6 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { AgentChatService, ChatMessage } from '../../../services/agent/agent-chat.service';
 import { AgentCreationFlowService, ValueOption } from '../../../services/agent/agent-creation-flow.service';
+import { CurrentJobLogService } from '../../../services/current-items-services/current-job-log.service';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { AgentResultsDialogComponent } from '../agent-results-dialog/agent-results-dialog.component';
 import { EquipmentConnectionDialogComponent } from '../../guide/guide-form/dialogs/equipment-connection-dialog/equipment-connection-dialog.component';
@@ -23,6 +24,7 @@ import { EquipmentConnectionDialogData, EquipmentConnectionDialogResult } from '
 export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   chatService = inject(AgentChatService);
   creationFlow = inject(AgentCreationFlowService);
+  private currentJobLogService = inject(CurrentJobLogService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
 
@@ -296,6 +298,62 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnDestroy {
   isChipPreSelected(msg: ChatMessage, option: ValueOption): boolean {
     const preSelected = msg.data?.['preSelected'];
     return preSelected && preSelected['id'] === option.id;
+  }
+
+  // ========== Work Request Flow ==========
+
+  onCreateWorkRequest(): void {
+    this.creationFlow.createWorkRequest();
+    this.shouldScroll = true;
+  }
+
+  onSubmitMultiple(fields: Record<string, string>): void {
+    this.creationFlow.submitMultipleText(fields);
+    this.shouldScroll = true;
+  }
+
+  onAttachToJob(jobId: number): void {
+    // This is called from the matching_jobs card in the agent chat.
+    // We need a workRequestId from context — check the last matching_jobs message data.
+    const msgs = this.chatService.messages();
+    const matchMsg = [...msgs].reverse().find(m => m.type === 'matching_jobs' && m.data);
+    const wrId = matchMsg?.data?.['workRequestId'];
+    if (!wrId || !jobId) return;
+
+    this.chatService.messages.update(ms => [...ms, {
+      role: 'user' as const, content: `Attach to Job #${jobId}`, type: 'text' as const, timestamp: new Date()
+    }]);
+
+    this.currentJobLogService.processWorkRequest(jobId.toString(), wrId.toString()).subscribe({
+      next: () => {
+        const msg: ChatMessage = {
+          role: 'assistant',
+          content: `Work request attached to Job #${jobId}. A new package has been created.`,
+          type: 'action_completed',
+          timestamp: new Date()
+        };
+        this.chatService.messages.update(ms => [...ms, msg]);
+        this.shouldScroll = true;
+      },
+      error: (err) => {
+        const msg: ChatMessage = {
+          role: 'assistant',
+          content: 'Failed to attach: ' + (err?.error?.message || err?.message || 'Unknown error'),
+          type: 'error',
+          timestamp: new Date()
+        };
+        this.chatService.messages.update(ms => [...ms, msg]);
+      }
+    });
+  }
+
+  onOpenWrInForm(): void {
+    const data = this.creationFlow.wrData();
+    this.creationFlow.cancelFlow();
+    this.chatService.closePanel();
+    this.router.navigate(['/permit-builder/work-requests'], {
+      queryParams: { prefill: JSON.stringify(data) }
+    });
   }
 
   private scrollToBottom(): void {

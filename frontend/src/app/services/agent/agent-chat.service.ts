@@ -6,7 +6,7 @@ import { SpeechService } from './speech.service';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'creation_flow' | 'error';
+  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'creation_flow' | 'matching_jobs' | 'error';
   data?: Record<string, any>;
   confirmationId?: string;
   pendingAction?: {

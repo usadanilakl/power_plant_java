@@ -76,4 +76,8 @@ export class JobLogService {
   getByPackageId(packageId: string): Observable<SpringApiResponse<JobLogDto>> {
     return this.http.get<SpringApiResponse<JobLogDto>>(`${this.apiUrl}/by-package/${packageId}`);
   }
+
+  findMatchingJobs(workRequestId: string): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(`${this.apiUrl}/find-matching/${workRequestId}`);
+  }
 }

@@ -5,11 +5,14 @@ import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgDailyPermitPackageService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,6 +35,8 @@ public class AgentActionExecutor {
     private final NgLotoStandardService lotoStandardService;
     private final NgDailyPermitPackageService dailyPermitPackageService;
     private final NgValueService valueService;
+    private final NgJobLogService jobLogService;
+    private final WorkAreaRepo workAreaRepo;
 
     public Map<String, Object> executeSearch(String functionName, Map<String, Object> args) {
         try {
@@ -41,6 +46,7 @@ public class AgentActionExecutor {
                 case "searchLotoPoints" -> searchLotoPoints(args);
                 case "searchPermits" -> searchPermits(args);
                 case "getAppHelp" -> getAppHelp(args);
+                case "findMatchingJobsForWorkRequest" -> findMatchingJobsForWorkRequest(args);
                 default -> Map.of("error", "Unknown function: " + functionName);
             };
         } catch (Exception e) {
@@ -64,7 +70,8 @@ public class AgentActionExecutor {
     }
 
     public boolean isWizardAssist(String functionName) {
-        return "assistLotoPointCreation".equals(functionName);
+        return "assistLotoPointCreation".equals(functionName)
+                || "assistWorkRequestCreation".equals(functionName);
     }
 
     public boolean isCreateAction(String functionName) {
@@ -75,6 +82,7 @@ public class AgentActionExecutor {
         try {
             return switch (functionName) {
                 case "assistLotoPointCreation" -> assistLotoPointCreation(args);
+                case "assistWorkRequestCreation" -> assistWorkRequestCreation(args);
                 default -> Map.of("error", "Unknown wizard assist function: " + functionName);
             };
         } catch (Exception e) {
@@ -268,6 +276,7 @@ public class AgentActionExecutor {
         availableOptions.put("zeroEnergyTemplate", loadValueOptions("zeroEnergyTemplate"));
 
         Map<String, Object> result = new LinkedHashMap<>();
+        result.put("flowType", "loto");
         result.put("resolvedData", resolvedData);
         result.put("availableOptions", availableOptions);
         result.put("success", true);
@@ -448,6 +457,116 @@ public class AgentActionExecutor {
         m.put("id", v.getId());
         m.put("name", v.getName() != null ? v.getName() : "");
         return m;
+    }
+
+    // ========== WORK REQUEST WIZARD ASSIST ==========
+
+    private Map<String, Object> assistWorkRequestCreation(Map<String, Object> args) {
+        Map<String, Object> resolvedData = new LinkedHashMap<>();
+        resolvedData.put("workScope", args.getOrDefault("workScope", null));
+        resolvedData.put("company", args.getOrDefault("company", null));
+        resolvedData.put("location", args.getOrDefault("location", null));
+        resolvedData.put("affectedEquipment", args.getOrDefault("affectedEquipment", null));
+        resolvedData.put("isHotWorkRequired", args.getOrDefault("isHotWorkRequired", null));
+        resolvedData.put("isLotoRequired", args.getOrDefault("isLotoRequired", null));
+        resolvedData.put("isConfinedSpaceEntryRequired", args.getOrDefault("isConfinedSpaceEntryRequired", null));
+        resolvedData.put("dateOfWork", args.getOrDefault("dateOfWork", null));
+        resolvedData.put("requestedBy", args.getOrDefault("requestedBy", null));
+        resolvedData.put("foremanName", args.getOrDefault("foremanName", null));
+
+        // Resolve location text to a WorkArea
+        String locationText = (String) args.get("location");
+        Map<String, Object> resolvedWorkArea = resolveWorkArea(locationText);
+        resolvedData.put("workArea", resolvedWorkArea);
+
+        // If work area found, load its constant hazards to provide hints
+        List<String> hazardHints = new ArrayList<>();
+        if (resolvedWorkArea != null) {
+            Long workAreaId = ((Number) resolvedWorkArea.get("id")).longValue();
+            WorkArea wa = workAreaRepo.findById(workAreaId).orElse(null);
+            if (wa != null) {
+                if (wa.getConstantHotWorkMeasuresJson() != null && !wa.getConstantHotWorkMeasuresJson().isBlank()) {
+                    hazardHints.add("This area has hot work measures pre-configured");
+                }
+                if (wa.getConstantConfinedSpaceHazardsJson() != null && !wa.getConstantConfinedSpaceHazardsJson().isBlank()) {
+                    hazardHints.add("This area has confined space hazards pre-configured");
+                }
+                if (wa.getConstantHazardsJson() != null && !wa.getConstantHazardsJson().isBlank()) {
+                    hazardHints.add("This area has general hazards pre-configured");
+                }
+            }
+        }
+
+        // Load available work areas for selection
+        Map<String, Object> availableOptions = new LinkedHashMap<>();
+        availableOptions.put("workAreas", workAreaRepo.findAll().stream()
+                .map(wa -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", wa.getId());
+                    m.put("name", wa.getName() != null ? wa.getName() : "");
+                    m.put("description", wa.getDescription() != null ? wa.getDescription() : "");
+                    return m;
+                })
+                .toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("flowType", "workRequest");
+        result.put("resolvedData", resolvedData);
+        result.put("availableOptions", availableOptions);
+        result.put("hazardHints", hazardHints);
+        result.put("success", true);
+
+        log.info("[Agent] Work request creation assist — resolved: {}", resolvedData);
+        return result;
+    }
+
+    private Map<String, Object> resolveWorkArea(String locationText) {
+        if (locationText == null || locationText.isBlank()) return null;
+
+        String search = locationText.trim().toLowerCase();
+
+        // 1. Exact name match
+        var exact = workAreaRepo.findFirstByNameIgnoreCase(locationText.trim());
+        if (exact.isPresent()) {
+            return workAreaToMap(exact.get());
+        }
+
+        // 2. Fuzzy match: name or description contains search text
+        for (WorkArea wa : workAreaRepo.findAll()) {
+            if (wa.getName() != null && wa.getName().toLowerCase().contains(search)) {
+                return workAreaToMap(wa);
+            }
+            if (wa.getDescription() != null && wa.getDescription().toLowerCase().contains(search)) {
+                return workAreaToMap(wa);
+            }
+        }
+
+        // 3. Reverse: search text contains work area name
+        for (WorkArea wa : workAreaRepo.findAll()) {
+            if (wa.getName() != null && search.contains(wa.getName().toLowerCase())) {
+                return workAreaToMap(wa);
+            }
+        }
+
+        return null;
+    }
+
+    private Map<String, Object> workAreaToMap(WorkArea wa) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", wa.getId());
+        m.put("name", wa.getName() != null ? wa.getName() : "");
+        m.put("description", wa.getDescription() != null ? wa.getDescription() : "");
+        return m;
+    }
+
+    private Map<String, Object> findMatchingJobsForWorkRequest(Map<String, Object> args) {
+        String workRequestId = (String) args.get("workRequestId");
+        List<Map<String, Object>> matches = jobLogService.findMatchingJobs(workRequestId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("results", matches);
+        result.put("totalCount", matches.size());
+        result.put("workRequestId", workRequestId);
+        return result;
     }
 
     // ========== TEACHING ==========

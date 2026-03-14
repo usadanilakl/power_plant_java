@@ -150,11 +150,87 @@
           </div>
         }
 
+        @if (msg.type === 'matching_jobs' && msg.data && msg.data['results']) {
+          <div class="matching-jobs-card">
+            @if (msg.data['results'].length > 0) {
+              @for (match of msg.data['results']; track match['jobId']) {
+                <div class="match-item" (click)="onAttachToJob(match['jobId'])">
+                  <div class="match-header">
+                    <span class="match-name">{{ match['permitNumber'] || 'Job #' + match['jobId'] }}</span>
+                    <span class="match-score-badge">{{ match['score'] }}%</span>
+                  </div>
+                  <div class="match-detail">{{ match['company'] || '' }} {{ match['location'] ? '@ ' + match['location'] : '' }}</div>
+                  @if (match['workScope']) {
+                    <div class="match-scope">{{ match['workScope'].length > 80 ? match['workScope'].substring(0, 80) + '...' : match['workScope'] }}</div>
+                  }
+                  <div class="match-reasons">
+                    @for (reason of match['matchReasons']; track reason) {
+                      <span class="match-reason-chip">{{ reason }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="no-matches">No matching open jobs found.</div>
+            }
+          </div>
+        }
+
         @if (msg.type === 'creation_flow' && msg.data) {
           <!-- Summary card -->
           @if (msg.data['step'] === 'summary') {
             <div class="creation-summary-card">
-              @if (msg.data['collectedData']) {
+              @if (msg.data['flowType'] === 'workRequest' && msg.data['collectedData']) {
+                @if (msg.data['collectedData']['workScope']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Work Scope:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['workScope'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['company']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Company:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['company'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['location']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Location:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['location'] }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['workArea']) {
+                  <div class="summary-row">
+                    <span class="summary-key">Work Area:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['workArea'].name }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['isHotWorkRequired'] !== null) {
+                  <div class="summary-row">
+                    <span class="summary-key">Hot Work:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['isHotWorkRequired'] ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['isLotoRequired'] !== null) {
+                  <div class="summary-row">
+                    <span class="summary-key">LOTO:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['isLotoRequired'] ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (msg.data['collectedData']['isConfinedSpaceEntryRequired'] !== null) {
+                  <div class="summary-row">
+                    <span class="summary-key">Confined Space:</span>
+                    <span class="summary-value">{{ msg.data['collectedData']['isConfinedSpaceEntryRequired'] ? 'Yes' : 'No' }}</span>
+                  </div>
+                }
+                @if (msg.data['hazardHints']?.length > 0) {
+                  <div class="hazard-hints">
+                    @for (hint of msg.data['hazardHints']; track hint) {
+                      <span class="hazard-hint-chip">{{ hint }}</span>
+                    }
+                  </div>
+                }
+              } @else if (msg.data['collectedData']) {
                 @if (msg.data['collectedData']['description']) {
                   <div class="summary-row">
                     <span class="summary-key">Description:</span>
@@ -183,10 +259,10 @@
             </div>
           }
 
-          <!-- Chip select card (eqType, normPos, isoPos, location, zeroEnergyTemplate) -->
+          <!-- Chip select card (eqType, normPos, isoPos, location, zeroEnergyTemplate, workArea) -->
           @if (msg.data['step'] === 'eqType' || msg.data['step'] === 'normPos'
             || msg.data['step'] === 'isoPos' || msg.data['step'] === 'location'
-            || msg.data['step'] === 'zeroEnergyTemplate') {
+            || msg.data['step'] === 'zeroEnergyTemplate' || msg.data['step'] === 'workArea') {
             <div class="chip-select-card">
               <div class="creation-chips">
                 @for (opt of msg.data['options']; track opt.id) {
@@ -211,6 +287,79 @@
                   <button class="cancel-btn" (click)="creationFlow.cancelCreatingNewValue()">Cancel</button>
                 </div>
               }
+            </div>
+          }
+
+          <!-- WR Text input card (workScope, company, affectedEquipment, requestedBy) -->
+          @if (msg.data['step'] === 'workScope' || msg.data['step'] === 'company'
+            || msg.data['step'] === 'affectedEquipment' || msg.data['step'] === 'requestedBy') {
+            <div class="text-input-card">
+              <div class="text-input-row">
+                <input type="text" class="creation-text-input"
+                  [placeholder]="'Enter ' + msg.data['step']"
+                  [value]="msg.data['preSelected'] || ''"
+                  #wrTextInput
+                  (keydown.enter)="onTextSubmit(msg.data['field'], wrTextInput.value)">
+                <button class="confirm-btn" (click)="onTextSubmit(msg.data['field'], wrTextInput.value)">OK</button>
+                @if (msg.data['step'] === 'affectedEquipment') {
+                  <button class="cancel-btn" (click)="onSkipStep()">Skip</button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- WR Date input card -->
+          @if (msg.data['step'] === 'dateOfWork') {
+            <div class="text-input-card">
+              <div class="text-input-row">
+                <input type="date" class="creation-text-input"
+                  [value]="msg.data['preSelected'] || ''"
+                  #dateInput
+                  (keydown.enter)="onTextSubmit(msg.data['field'], dateInput.value)">
+                <button class="confirm-btn" (click)="onTextSubmit(msg.data['field'], dateInput.value)">OK</button>
+              </div>
+            </div>
+          }
+
+          <!-- WR Yes/No card (hotWork, lotoRequired, confinedSpace) -->
+          @if (msg.data['step'] === 'hotWork' || msg.data['step'] === 'lotoRequired'
+            || msg.data['step'] === 'confinedSpace') {
+            <div class="yes-no-card">
+              <button class="confirm-btn" (click)="onYesNo(msg.data['field'], true)">Yes</button>
+              <button class="cancel-btn" (click)="onYesNo(msg.data['field'], false)">No</button>
+            </div>
+          }
+
+          <!-- WR Submitter info group card -->
+          @if (msg.data['step'] === 'submitterInfo') {
+            <div class="submitter-info-card">
+              <div class="submitter-field">
+                <label>Name</label>
+                <input type="text" class="creation-text-input" #subName placeholder="Your name">
+              </div>
+              <div class="submitter-field">
+                <label>Email</label>
+                <input type="text" class="creation-text-input" #subEmail placeholder="Email address">
+              </div>
+              <div class="submitter-field">
+                <label>Phone</label>
+                <input type="text" class="creation-text-input" #subPhone placeholder="Phone number">
+              </div>
+              <div class="submitter-field">
+                <label>Company</label>
+                <input type="text" class="creation-text-input" #subCompany
+                  [value]="msg.data['collectedData']?.['submitterCompany'] || ''"
+                  placeholder="Company name">
+              </div>
+              <div class="submitter-actions">
+                <button class="confirm-btn" (click)="onSubmitMultiple({
+                  submitterName: subName.value,
+                  submitterEmail: subEmail.value,
+                  submitterPhone: subPhone.value,
+                  submitterCompany: subCompany.value
+                })">Submit</button>
+                <button class="cancel-btn" (click)="onSkipStep()">Skip</button>
+              </div>
             </div>
           }
 
@@ -248,8 +397,8 @@
             </div>
           }
 
-          <!-- Review card -->
-          @if (msg.data['step'] === 'review' && msg.data['collectedData']) {
+          <!-- Review card (LOTO) -->
+          @if (msg.data['step'] === 'review' && msg.data['flowType'] !== 'workRequest' && msg.data['collectedData']) {
             <div class="review-card">
               <div class="review-fields">
                 @if (msg.data['collectedData']['tagNumber']) {
@@ -289,6 +438,52 @@
               <div class="review-actions">
                 <button class="confirm-btn" (click)="onCreate()" [disabled]="creationFlow.isCreating()">Create LOTO Point</button>
                 <button class="cancel-btn" (click)="onOpenInWizard()">Edit in Wizard</button>
+                <button class="cancel-btn" (click)="onCancelFlow()">Cancel</button>
+              </div>
+            </div>
+          }
+
+          <!-- Review card (Work Request) -->
+          @if (msg.data['step'] === 'review' && msg.data['flowType'] === 'workRequest' && msg.data['collectedData']) {
+            <div class="review-card">
+              <div class="review-fields">
+                @if (msg.data['collectedData']['workScope']) {
+                  <div class="summary-row"><span class="summary-key">Work Scope:</span><span class="summary-value">{{ msg.data['collectedData']['workScope'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['company']) {
+                  <div class="summary-row"><span class="summary-key">Company:</span><span class="summary-value">{{ msg.data['collectedData']['company'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['location']) {
+                  <div class="summary-row"><span class="summary-key">Location:</span><span class="summary-value">{{ msg.data['collectedData']['location'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['workArea']) {
+                  <div class="summary-row"><span class="summary-key">Work Area:</span><span class="summary-value">{{ msg.data['collectedData']['workArea'].name }}</span></div>
+                }
+                @if (msg.data['collectedData']['affectedEquipment']) {
+                  <div class="summary-row"><span class="summary-key">Equipment:</span><span class="summary-value">{{ msg.data['collectedData']['affectedEquipment'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['isHotWorkRequired'] !== null) {
+                  <div class="summary-row"><span class="summary-key">Hot Work:</span><span class="summary-value">{{ msg.data['collectedData']['isHotWorkRequired'] ? 'Yes' : 'No' }}</span></div>
+                }
+                @if (msg.data['collectedData']['isLotoRequired'] !== null) {
+                  <div class="summary-row"><span class="summary-key">LOTO:</span><span class="summary-value">{{ msg.data['collectedData']['isLotoRequired'] ? 'Yes' : 'No' }}</span></div>
+                }
+                @if (msg.data['collectedData']['isConfinedSpaceEntryRequired'] !== null) {
+                  <div class="summary-row"><span class="summary-key">Confined Space:</span><span class="summary-value">{{ msg.data['collectedData']['isConfinedSpaceEntryRequired'] ? 'Yes' : 'No' }}</span></div>
+                }
+                @if (msg.data['collectedData']['dateOfWork']) {
+                  <div class="summary-row"><span class="summary-key">Date:</span><span class="summary-value">{{ msg.data['collectedData']['dateOfWork'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['requestedBy']) {
+                  <div class="summary-row"><span class="summary-key">Requested By:</span><span class="summary-value">{{ msg.data['collectedData']['requestedBy'] }}</span></div>
+                }
+                @if (msg.data['collectedData']['submitterName']) {
+                  <div class="summary-row"><span class="summary-key">Submitter:</span><span class="summary-value">{{ msg.data['collectedData']['submitterName'] }}</span></div>
+                }
+              </div>
+              <div class="review-actions">
+                <button class="confirm-btn" (click)="onCreateWorkRequest()" [disabled]="creationFlow.isCreating()">Create Work Request</button>
+                <button class="cancel-btn" (click)="onOpenWrInForm()">Edit in Form</button>
                 <button class="cancel-btn" (click)="onCancelFlow()">Cancel</button>
               </div>
             </div>

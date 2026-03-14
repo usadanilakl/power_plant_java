@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ng/job-logs")
@@ -175,6 +176,19 @@ public class NgJobLogController {
             JobLogDto result = service.mergeJobs(sourceJobId, targetJobId);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(result, "Jobs merged successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/find-matching/{workRequestId}")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> findMatchingJobs(
+            @PathVariable String workRequestId) {
+        try {
+            List<Map<String, Object>> matches = service.findMatchingJobs(workRequestId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(matches, "Matching jobs found: " + matches.size(), LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

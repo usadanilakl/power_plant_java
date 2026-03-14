@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { ProcessWrDialogService } from './process-wr-dialog.service';
 import { CurrentJobLogService } from '../../services/current-items-services/current-job-log.service';
+import { JobLogService } from '../../services/permits/job-log.service';
 import { JobLogDto } from '../../models/permits/job-log.model';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
 
@@ -29,6 +30,31 @@ import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-project
         <div class="loading">Processing...</div>
       } @else {
         @if(step() === 'choose') {
+          @if(matchingJobs().length > 0) {
+            <div class="matching-section">
+              <div class="matching-header">Matching Open Jobs Found</div>
+              <div class="job-list">
+                @for(match of matchingJobs(); track match.jobId) {
+                  <div class="job-item matching" (click)="processForExistingJobById(match.jobId)">
+                    <div class="job-main">
+                      <span class="job-name">{{ match.permitNumber || 'Job #' + match.jobId }}</span>
+                      <span class="match-score">{{ match.score }}%</span>
+                    </div>
+                    <div class="job-detail">{{ match.company || '' }} {{ match.location ? '@ ' + match.location : '' }}</div>
+                    @if(match.workScope) {
+                      <div class="job-detail scope">{{ match.workScope.length > 80 ? match.workScope.substring(0, 80) + '...' : match.workScope }}</div>
+                    }
+                    <div class="match-reasons">
+                      @for(reason of match.matchReasons; track reason) {
+                        <span class="reason-chip">{{ reason }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           <div class="options">
             <div class="option-card" (click)="createNewJob()">
               <span class="option-icon">+</span>
@@ -41,7 +67,7 @@ import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-project
               <span class="option-icon">&#8594;</span>
               <div>
                 <strong>Add to Existing Job</strong>
-                <p>Select an existing job to attach a new package to</p>
+                <p>Browse all open jobs to attach a new package to</p>
               </div>
             </div>
           </div>
@@ -100,21 +126,35 @@ import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-project
     .job-status[data-status="Open"] { background: rgba(33, 150, 243, 0.15); color: #64b5f6; border: 1px solid rgba(33, 150, 243, 0.3); }
     .job-status[data-status="Active"] { background: rgba(76, 175, 80, 0.15); color: #81c784; border: 1px solid rgba(76, 175, 80, 0.3); }
     .empty-msg { color: #888; font-style: italic; font-size: 13px; text-align: center; }
+
+    .matching-section { margin-bottom: 12px; }
+    .matching-header { font-size: 13px; font-weight: 600; color: #ffb74d; margin-bottom: 8px; }
+    .job-item.matching { border-color: rgba(255, 152, 0, 0.3); }
+    .job-item.matching:hover { border-color: #FF9800; }
+    .match-score { padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; background: rgba(255, 152, 0, 0.15); color: #ffb74d; border: 1px solid rgba(255, 152, 0, 0.3); }
+    .match-reasons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .reason-chip { padding: 1px 6px; border-radius: 6px; font-size: 10px; background: rgba(100, 181, 246, 0.1); color: #64b5f6; border: 1px solid rgba(100, 181, 246, 0.2); }
+    .job-detail.scope { color: #999; font-style: italic; }
+    .matching-loading { text-align: center; padding: 8px; color: #888; font-size: 12px; font-style: italic; }
   `]
 })
 export class ProcessWrDialogComponent {
   dialogService = inject(ProcessWrDialogService);
   private currentJobLogService = inject(CurrentJobLogService);
+  private jobLogService = inject(JobLogService);
   private router = inject(Router);
 
   step = signal<'choose' | 'selectJob'>('choose');
   loading = signal(false);
   errorMessage = signal('');
+  matchingJobs = signal<any[]>([]);
 
   private openSub = this.dialogService.onOpen$.subscribe(() => {
     this.step.set('choose');
     this.loading.set(false);
     this.errorMessage.set('');
+    this.matchingJobs.set([]);
+    this.loadMatchingJobs();
   });
 
   allJobs = toSignal(this.currentJobLogService.allJobLogs$, { initialValue: [] as JobLogDto[] });
@@ -124,6 +164,19 @@ export class ProcessWrDialogComponent {
       return status !== 'Closed';
     })
   );
+
+  private loadMatchingJobs(): void {
+    const wrId = this.dialogService.workRequestId();
+    if (!wrId) return;
+    this.jobLogService.findMatchingJobs(wrId.toString()).subscribe({
+      next: (response) => {
+        if (response?.responseData) {
+          this.matchingJobs.set(response.responseData);
+        }
+      },
+      error: () => {} // Silently fail — matching is a suggestion, not critical
+    });
+  }
 
   createNewJob(): void {
     const wrId = this.dialogService.workRequestId();
@@ -153,6 +206,27 @@ export class ProcessWrDialogComponent {
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set(err.error?.message || 'Failed to create job');
+      }
+    });
+  }
+
+  processForExistingJobById(jobId: number): void {
+    const wrId = this.dialogService.workRequestId();
+    if (!wrId) return;
+    this.loading.set(true);
+    this.errorMessage.set('');
+
+    this.currentJobLogService.processWorkRequest(jobId.toString(), wrId.toString()).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.dialogService.close();
+        this.dialogService.notifyComplete();
+        this.step.set('choose');
+        this.router.navigate(['/permit-builder/jobs']);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.errorMessage.set(err.error?.message || 'Failed to process work request');
       }
     });
   }

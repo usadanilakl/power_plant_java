@@ -704,6 +704,145 @@
   flex-wrap: wrap;
 }
 
+/* ========== Matching Jobs Card ========== */
+.matching-jobs-card {
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  max-width: 85%;
+  font-size: 12px;
+}
+
+.match-item {
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.match-item:last-child {
+  margin-bottom: 0;
+}
+
+.match-item:hover {
+  border-color: #FF9800;
+  background-color: rgba(255, 152, 0, 0.05);
+}
+
+.match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.match-name {
+  font-weight: 500;
+  color: var(--primary-text);
+  font-size: 13px;
+}
+
+.match-score-badge {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 152, 0, 0.15);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.match-detail {
+  font-size: 11px;
+  color: var(--primary-text);
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.match-scope {
+  font-size: 11px;
+  color: var(--primary-text);
+  opacity: 0.5;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.match-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.match-reason-chip {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  background: rgba(100, 181, 246, 0.1);
+  color: #64b5f6;
+  border: 1px solid rgba(100, 181, 246, 0.2);
+}
+
+.no-matches {
+  text-align: center;
+  padding: 8px;
+  color: var(--primary-text);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ========== Hazard Hints ========== */
+.hazard-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color);
+}
+
+.hazard-hint-chip {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: rgba(255, 152, 0, 0.1);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+/* ========== Submitter Info Card ========== */
+.submitter-info-card {
+  margin-top: 8px;
+  max-width: 85%;
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.submitter-field {
+  margin-bottom: 8px;
+}
+
+.submitter-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary-text);
+  opacity: 0.6;
+  margin-bottom: 3px;
+}
+
+.submitter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* Responsive */
 @media (max-width: 500px) {
   .agent-panel {

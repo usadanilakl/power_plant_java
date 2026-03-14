@@ -20,8 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Set;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -337,6 +338,90 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         }
 
         return jobLogMapper.convertToDto(saved);
+    }
+
+    public List<Map<String, Object>> findMatchingJobs(String workRequestId) {
+        WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))
+                .orElseThrow(() -> new RuntimeException("WorkRequest not found: " + workRequestId));
+
+        List<JobLog> openJobs = jobLogRepo.findAllOpenJobs();
+        List<Map<String, Object>> scored = new ArrayList<>();
+
+        for (JobLog job : openJobs) {
+            double score = 0.0;
+            List<String> matchReasons = new ArrayList<>();
+
+            // Company match (strongest signal, weight 40)
+            if (wr.getCompany() != null && job.getCompany() != null) {
+                if (wr.getCompany().equalsIgnoreCase(job.getCompany())) {
+                    score += 40;
+                    matchReasons.add("Exact company match");
+                } else if (job.getCompany().toLowerCase().contains(wr.getCompany().toLowerCase())
+                        || wr.getCompany().toLowerCase().contains(job.getCompany().toLowerCase())) {
+                    score += 25;
+                    matchReasons.add("Partial company match");
+                }
+            }
+
+            // WorkArea match (second strongest, weight 30)
+            if (wr.getWorkArea() != null && job.getWorkArea() != null
+                    && wr.getWorkArea().getId().equals(job.getWorkArea().getId())) {
+                score += 30;
+                matchReasons.add("Same work area");
+            }
+
+            // Location text match (weight 15)
+            if (wr.getLocation() != null && job.getLocation() != null) {
+                if (wr.getLocation().equalsIgnoreCase(job.getLocation())) {
+                    score += 15;
+                    matchReasons.add("Exact location match");
+                } else if (job.getLocation().toLowerCase().contains(wr.getLocation().toLowerCase())
+                        || wr.getLocation().toLowerCase().contains(job.getLocation().toLowerCase())) {
+                    score += 8;
+                    matchReasons.add("Partial location match");
+                }
+            }
+
+            // Date overlap (weight 15)
+            if (wr.getDateOfWorkToBePerformed() != null && job.getStartDate() != null) {
+                try {
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+                    LocalDate wrDate = LocalDate.parse(wr.getDateOfWorkToBePerformed(), fmt);
+                    LocalDate jobStart = LocalDate.parse(job.getStartDate(), fmt);
+                    LocalDate jobEnd = job.getEndDate() != null && !job.getEndDate().isEmpty()
+                            ? LocalDate.parse(job.getEndDate(), fmt) : null;
+
+                    boolean inRange = !wrDate.isBefore(jobStart)
+                            && (jobEnd == null || !wrDate.isAfter(jobEnd));
+                    if (inRange) {
+                        score += 15;
+                        matchReasons.add("Date within job range");
+                    }
+                } catch (Exception ignored) {
+                    // Malformed date strings — skip date scoring
+                }
+            }
+
+            if (score > 0) {
+                Map<String, Object> match = new LinkedHashMap<>();
+                match.put("jobId", job.getId());
+                match.put("permitNumber", job.getPermitNumber());
+                match.put("company", job.getCompany());
+                match.put("location", job.getLocation());
+                match.put("workScope", job.getWorkScope());
+                match.put("startDate", job.getStartDate());
+                match.put("endDate", job.getEndDate());
+                match.put("status", job.getJobStatus() != null ? job.getJobStatus().getName() : "");
+                match.put("workAreaName", job.getWorkArea() != null ? job.getWorkArea().getName() : "");
+                match.put("packageCount", job.getPackages() != null ? job.getPackages().size() : 0);
+                match.put("score", score);
+                match.put("matchReasons", matchReasons);
+                scored.add(match);
+            }
+        }
+
+        scored.sort((a, b) -> Double.compare((double) b.get("score"), (double) a.get("score")));
+        return scored;
     }
 
     private String truncate(String value, int maxLength) {
