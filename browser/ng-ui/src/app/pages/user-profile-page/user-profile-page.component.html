@@ -1,19 +1,136 @@
-
-<app-main-layout
-  [isBottomMenuEnabled]="false"
-  [isSideMenuEnabled]="false"
->
-  <ng-container header>
-    <div class="header-menus">
-      <div class="menu-container">
-        <app-router-menu [layout]="'row'"></app-router-menu>
-      </div>
-    </div>
-  </ng-container>
+<app-main-layout [isSideMenuEnabled]="false" [isBottomMenuEnabled]="false" header="My Profile">
   <ng-container main-content>
-    <app-user-form></app-user-form>
-  </ng-container>
-  <ng-container bottom-menu>
-    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
+    <div class="profile-container">
+
+      <!-- Account Status -->
+      <div class="profile-card status-card">
+        <h2>Account Status</h2>
+        <div class="status-row">
+          <span class="status-label">Server Registration</span>
+          <span class="status-value" [class.active]="userData?.registeredOnServer">
+            {{ userData?.registeredOnServer ? 'Registered' : 'Not registered' }}
+          </span>
+        </div>
+        @if (isLoggedIn) {
+          <div class="status-row">
+            <span class="status-label">Logged In</span>
+            <span class="status-value active">Yes</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Access Level</span>
+            <span class="status-value" [class.active]="permissionLevel !== 'NONE'">
+              {{ getPermissionLabel(permissionLevel) }}
+            </span>
+          </div>
+        }
+      </div>
+
+      <!-- Server Registration -->
+      @if (needsRegistration) {
+        <div class="profile-card registration-card">
+          <h2>Register on Server</h2>
+          <p class="card-description">
+            Create a server account to access additional features like permit tracking and signing.
+            Choose a password to complete registration.
+          </p>
+          <form [formGroup]="registerForm" (ngSubmit)="registerOnServer()">
+            <div class="form-field">
+              <label for="registerPassword">Password</label>
+              <input id="registerPassword" type="password" formControlName="registerPassword" placeholder="Min 8 characters">
+              <span class="error" *ngIf="getError(registerForm, 'registerPassword')">{{ getError(registerForm, 'registerPassword') }}</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary" [disabled]="registerForm.invalid || registerStatus === 'saving'">
+              {{ registerStatus === 'saving' ? 'Registering...' : 'Register' }}
+            </button>
+
+            @if (registerStatus !== 'idle') {
+              <div class="status-message" [class]="registerStatus">{{ registerMessage }}</div>
+            }
+          </form>
+        </div>
+      }
+
+      <!-- Personal Info -->
+      <div class="profile-card">
+        <h2>Personal Information</h2>
+        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+          <div class="form-field">
+            <label for="name">Full Name</label>
+            <input id="name" type="text" formControlName="name">
+            <span class="error" *ngIf="getError(profileForm, 'name')">{{ getError(profileForm, 'name') }}</span>
+          </div>
+
+          <div class="form-field">
+            <label for="email">Email</label>
+            <input id="email" type="email" formControlName="email">
+            <span class="error" *ngIf="getError(profileForm, 'email')">{{ getError(profileForm, 'email') }}</span>
+          </div>
+
+          <div class="form-field">
+            <label for="phone">Phone</label>
+            <input id="phone" type="tel" formControlName="phone">
+            <span class="error" *ngIf="getError(profileForm, 'phone')">{{ getError(profileForm, 'phone') }}</span>
+          </div>
+
+          <div class="form-field">
+            <label for="company">Company</label>
+            <input id="company" type="text" formControlName="company">
+            <span class="error" *ngIf="getError(profileForm, 'company')">{{ getError(profileForm, 'company') }}</span>
+          </div>
+
+          <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || profileSaveStatus === 'saving'">
+            {{ profileSaveStatus === 'saving' ? 'Saving...' : 'Save Changes' }}
+          </button>
+
+          @if (profileSaveStatus !== 'idle') {
+            <div class="status-message" [class]="profileSaveStatus">{{ profileSaveMessage }}</div>
+          }
+        </form>
+      </div>
+
+      <!-- Password Section -->
+      @if (isLoggedIn) {
+        <div class="profile-card">
+          <h2>Password</h2>
+          @if (!showPasswordForm) {
+            <button class="btn btn-secondary" (click)="showPasswordForm = true">Change Password</button>
+          } @else {
+            <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+              <div class="form-field">
+                <label for="currentPassword">Current Password</label>
+                <input id="currentPassword" type="password" formControlName="currentPassword">
+                <span class="error" *ngIf="getError(passwordForm, 'currentPassword')">{{ getError(passwordForm, 'currentPassword') }}</span>
+              </div>
+
+              <div class="form-field">
+                <label for="newPassword">New Password</label>
+                <input id="newPassword" type="password" formControlName="newPassword" placeholder="Min 8 characters">
+                <span class="error" *ngIf="getError(passwordForm, 'newPassword')">{{ getError(passwordForm, 'newPassword') }}</span>
+              </div>
+
+              <div class="form-field">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input id="confirmPassword" type="password" formControlName="confirmPassword">
+                <span class="error" *ngIf="getError(passwordForm, 'confirmPassword')">{{ getError(passwordForm, 'confirmPassword') }}</span>
+              </div>
+
+              <div class="button-row">
+                <button type="submit" class="btn btn-primary" [disabled]="passwordForm.invalid || passwordStatus === 'saving'">
+                  {{ passwordStatus === 'saving' ? 'Changing...' : 'Change Password' }}
+                </button>
+                <button type="button" class="btn btn-secondary" (click)="showPasswordForm = false; passwordForm.reset()">Cancel</button>
+              </div>
+
+              @if (passwordStatus !== 'idle') {
+                <div class="status-message" [class]="passwordStatus">{{ passwordMessage }}</div>
+              }
+            </form>
+          }
+        </div>
+      }
+
+      <button class="btn btn-back" (click)="goBack()">Back to Home</button>
+    </div>
   </ng-container>
 </app-main-layout>

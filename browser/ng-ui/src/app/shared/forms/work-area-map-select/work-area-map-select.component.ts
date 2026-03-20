@@ -1,5 +1,5 @@
 import {
-  Component, DestroyRef, ElementRef, forwardRef, inject, signal, ViewChild, AfterViewInit, OnInit
+  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, inject, NgZone, OnDestroy, signal, ViewChild, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -20,6 +20,11 @@ interface ShapeEntry {
   workAreaIds: number[];
 }
 
+interface AreaRef {
+  id: number;
+  name: string;
+}
+
 interface ParsedShape {
   entry: ShapeEntry;
   x: number;
@@ -28,7 +33,10 @@ interface ParsedShape {
   height: number;
   originalWidth: number;
   originalHeight: number;
+  areas: AreaRef[];
   areaNames: string[];
+  style: Record<string, string>;
+  labelStyle: Record<string, string>;
 }
 
 @Component({
@@ -37,6 +45,7 @@ interface ParsedShape {
   imports: [CommonModule],
   templateUrl: './work-area-map-select.component.html',
   styleUrl: './work-area-map-select.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -45,13 +54,15 @@ interface ParsedShape {
     },
   ],
 })
-export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit, AfterViewInit {
+export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit, OnDestroy {
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomElement') zoomElement!: ElementRef<HTMLDivElement>;
   @ViewChild('mapImage') mapImage!: ElementRef<HTMLImageElement>;
 
   private http = inject(HttpClient);
   private destroyRef = inject(DestroyRef);
+  private ngZone = inject(NgZone);
+  private cleanupListeners: (() => void)[] = [];
 
   shapes = signal<ParsedShape[]>([]);
   selectedAreaName = signal<string | null>(null);
@@ -83,22 +94,65 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private readonly TAP_DURATION = 300;
 
   // CVA
-  private onChange: (value: string | null) => void = () => {};
+  private onChange: (value: AreaRef | null) => void = () => {};
   private onTouched: () => void = () => {};
 
   ngOnInit(): void {
     this.loadData();
   }
 
-  ngAfterViewInit(): void {}
+  private listenersAttached = false;
+
+  constructor() {
+    effect(() => {
+      if (!this.loading() && !this.listenersAttached) {
+        // Defer to next microtask so the template has rendered the map container
+        Promise.resolve().then(() => this.attachListeners());
+      }
+    });
+  }
+
+  private attachListeners(): void {
+    if (this.listenersAttached) return;
+    const el = this.mapContainer?.nativeElement;
+    if (!el) return;
+    this.listenersAttached = true;
+
+    this.ngZone.runOutsideAngular(() => {
+      const listen = (event: string, handler: (e: any) => void, options?: AddEventListenerOptions) => {
+        el.addEventListener(event, handler, options);
+        this.cleanupListeners.push(() => el.removeEventListener(event, handler));
+      };
+
+      listen('wheel', (e: WheelEvent) => this.onWheel(e), { passive: false });
+      listen('mousedown', (e: MouseEvent) => this.onMouseDown(e));
+      listen('mousemove', (e: MouseEvent) => this.onMouseMove(e));
+      listen('mouseup', () => this.onMouseUp());
+      listen('mouseleave', () => this.onMouseUp());
+      listen('touchstart', (e: TouchEvent) => this.onTouchStart(e), { passive: true });
+      listen('touchmove', (e: TouchEvent) => this.onTouchMove(e), { passive: false });
+      listen('touchend', (e: TouchEvent) => this.onTouchEnd(e));
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.cleanupListeners.forEach(fn => fn());
+  }
 
   // --- ControlValueAccessor ---
 
-  writeValue(value: string | null): void {
-    this.selectedAreaName.set(value);
+  writeValue(value: AreaRef | string | null): void {
+    if (typeof value === 'string') {
+      // Backward compat for old drafts that stored just the name
+      this.selectedAreaName.set(value);
+    } else if (value && typeof value === 'object') {
+      this.selectedAreaName.set(value.name);
+    } else {
+      this.selectedAreaName.set(null);
+    }
   }
 
-  registerOnChange(fn: (value: string | null) => void): void {
+  registerOnChange(fn: (value: AreaRef | null) => void): void {
     this.onChange = fn;
   }
 
@@ -158,44 +212,44 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       if (hMatch) originalHeight = parseFloat(hMatch[1]);
     } catch { /* use defaults */ }
 
-    const areaNames = (entry.workAreaIds ?? [])
-      .map(id => areaMap.get(id))
-      .filter((name): name is string => !!name);
+    const areas: AreaRef[] = (entry.workAreaIds ?? [])
+      .map(id => {
+        const name = areaMap.get(id);
+        return name ? { id, name } : null;
+      })
+      .filter((a): a is AreaRef => !!a);
 
-    if (areaNames.length === 0 && entry.label) {
+    const areaNames = areas.map(a => a.name);
+
+    if (areas.length === 0 && entry.label) {
+      areas.push({ id: 0, name: entry.label });
       areaNames.push(entry.label);
     }
-    if (areaNames.length === 0) {
+    if (areas.length === 0) {
+      areas.push({ id: 0, name: 'Unknown' });
       areaNames.push('Unknown');
     }
 
-    return { entry, x, y, width, height, originalWidth, originalHeight, areaNames };
-  }
+    const leftPct = (x / originalWidth) * 100;
+    const topPct = (y / originalHeight) * 100;
+    const widthPct = (width / originalWidth) * 100;
+    const heightPct = (height / originalHeight) * 100;
 
-  // --- Shape Positioning ---
-
-  getShapeStyle(shape: ParsedShape): Record<string, string> {
-    return {
-      left: `${(shape.x / shape.originalWidth) * 100}%`,
-      top: `${(shape.y / shape.originalHeight) * 100}%`,
-      width: `${(shape.width / shape.originalWidth) * 100}%`,
-      height: `${(shape.height / shape.originalHeight) * 100}%`,
+    const style: Record<string, string> = {
+      left: `${leftPct}%`,
+      top: `${topPct}%`,
+      width: `${widthPct}%`,
+      height: `${heightPct}%`,
     };
-  }
 
-  getLabelStyle(shape: ParsedShape): Record<string, string> {
-    const leftPct = (shape.x / shape.originalWidth) * 100;
-    const topPct = (shape.y / shape.originalHeight) * 100;
-    const widthPct = (shape.width / shape.originalWidth) * 100;
-    const heightPct = (shape.height / shape.originalHeight) * 100;
-    // Center the label anchor on the shape, allow up to 2.5x shape width
-    const maxWidthPct = widthPct * 2.5;
-    return {
+    const labelStyle: Record<string, string> = {
       left: `${leftPct + widthPct / 2}%`,
       top: `${topPct + heightPct / 2}%`,
-      'max-width': `${maxWidthPct}%`,
+      'max-width': `${widthPct * 2.5}%`,
       'max-height': `${heightPct}%`,
     };
+
+    return { entry, x, y, width, height, originalWidth, originalHeight, areas, areaNames, style, labelStyle };
   }
 
   getDisplayName(shape: ParsedShape): string {
@@ -210,16 +264,17 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   // --- Selection ---
 
   selectShape(shape: ParsedShape): void {
-    this.selectedShape.set(shape);
-    if (shape.areaNames.length === 1) {
-      this.setArea(shape.areaNames[0]);
-    }
-    // If multiple areas, user picks from the panel dropdown
+    this.ngZone.run(() => {
+      this.selectedShape.set(shape);
+      if (shape.areas.length === 1) {
+        this.setArea(shape.areas[0]);
+      }
+    });
   }
 
-  setArea(name: string): void {
-    this.selectedAreaName.set(name);
-    this.onChange(name);
+  setArea(area: AreaRef): void {
+    this.selectedAreaName.set(area.name);
+    this.onChange(area);
     this.onTouched();
   }
 

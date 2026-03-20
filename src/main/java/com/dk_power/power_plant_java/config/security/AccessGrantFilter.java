@@ -51,6 +51,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
     // Endpoints that DON'T require full access (public, auth, restricted-tier)
     private static final Set<String> EXEMPT_PREFIXES = Set.of(
             "/api/auth/",
+            "/api/pwa/",
             "/api/sharepoint-sync/",
             "/power-automate/",
             "/actuator/",

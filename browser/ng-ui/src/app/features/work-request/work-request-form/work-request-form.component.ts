@@ -1,8 +1,10 @@
-import { Component, computed, DestroyRef, inject, input } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
 import { WorkRequest } from '../../../models/permits/work-request.model';
 import { FormField } from '../../../models/inputs/form-field.model';
+import { Option } from '../../../models/inputs/option.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/reactive-form.component";
 import { UserSetupService } from '../../../services/user-setup.service';
@@ -15,15 +17,18 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './work-request-form.component.html',
   styleUrl: './work-request-form.component.css'
 })
-export class WorkRequestFormComponent {
+export class WorkRequestFormComponent implements OnInit {
 
   workRequestStateService = inject(WorkRequestStateService);
   orchestrator = inject(SubmissionOrchestratorService);
   userSetupService = inject(UserSetupService);
+  http = inject(HttpClient);
   destroyRef = inject(DestroyRef);
 
   entityInput = input<WorkRequest>();
   fieldsInput = input<FormField[]>();
+
+  private workCategoryOptions = signal<Option[]>([]);
 
   private entityFromState = toSignal(this.workRequestStateService.selectedWorkRequest$, { initialValue: new WorkRequest() });
   entity = computed(() => {
@@ -38,8 +43,38 @@ export class WorkRequestFormComponent {
     return wr;
   });
 
-  private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
+  private defaultFields = computed(() => {
+    const base = this.entity()?.toFormFields() ?? [];
+    const wcOptions = this.workCategoryOptions();
+    return base.map(f => {
+      if (f.name === 'workCategoryName' && wcOptions.length) {
+        return { ...f, options: wcOptions };
+      }
+      return f;
+    });
+  });
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
+
+  ngOnInit() {
+    this.loadDropdownOptions();
+  }
+
+  private loadDropdownOptions() {
+    const cachedCategories = localStorage.getItem('pwa_work_categories');
+    if (cachedCategories) {
+      this.workCategoryOptions.set(JSON.parse(cachedCategories));
+    }
+
+    // Load categories from static file (published via GitHub)
+    this.http.get<{ id: number; name: string }[]>('data/work-categories.json').subscribe({
+      next: categories => {
+        const options: Option[] = categories.map(c => ({ value: c.name, label: c.name }));
+        this.workCategoryOptions.set(options);
+        localStorage.setItem('pwa_work_categories', JSON.stringify(options));
+      },
+      error: () => console.warn('[PWA] Failed to load work-categories.json, using cached values')
+    });
+  }
 
   emailFallbackData = this.workRequestStateService.emailFallbackData;
   emailRecipient = environment.emailRecipient;
@@ -52,17 +87,40 @@ export class WorkRequestFormComponent {
   });
 
   onAnyValueChange(workRequest: WorkRequest) {
+    this.applyMapValue(workRequest);
     this.workRequestStateService.saveDraft(workRequest);
   }
 
   isEditing = this.workRequestStateService.isEditing;
 
   onSubmit(workRequest: WorkRequest) {
+    this.applyMapValue(workRequest);
     if (this.isEditing()) {
       this.workRequestStateService.updateExistingRequest(workRequest);
     } else {
       this.workRequestStateService.submitNewRequest(workRequest);
     }
+  }
+
+  /** Extract map {id, name} → workAreaId/workAreaName, compose locationOfWork */
+  private applyMapValue(workRequest: WorkRequest): void {
+    const mapValue = (workRequest as any).workAreaMap;
+    if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
+      workRequest.workAreaId = mapValue.id;
+      workRequest.workAreaName = mapValue.name;
+    }
+    // Compose locationOfWork: map area name + optional user detail
+    const locationDetail = ((workRequest as any).locationDetail ?? '').trim();
+    if (workRequest.workAreaName) {
+      workRequest.locationOfWork = locationDetail
+        ? `${workRequest.workAreaName} - ${locationDetail}`
+        : workRequest.workAreaName;
+    } else if (locationDetail) {
+      workRequest.locationOfWork = locationDetail;
+    }
+    // Clean up virtual fields before saving
+    delete (workRequest as any).workAreaMap;
+    delete (workRequest as any).locationDetail;
   }
 
   onEmailSent() {

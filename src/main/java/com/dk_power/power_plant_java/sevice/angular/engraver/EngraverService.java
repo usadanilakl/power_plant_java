@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 public class EngraverService {
 
     public static final int BATCH_SIZE = 4;
+    // private static final String QR_BASE_URL = "https://jgportal.jpowerusa.com/qr/";
+    private static final String QR_BASE_URL = "http://localhost:8085/qr/";
 
     @Value("${engraver.data.path:engraver_data}")
     private String engraverDataPath;
@@ -114,8 +116,8 @@ public class EngraverService {
             fourLine4 = lines.length > 3 ? escapeCsvField(lines[3]) : "";
         }
 
-        // QR code is the last column - contains tag number if withQr is true
-        String qrCode = withQr ? tagNumber : "";
+        // QR code is the last column - contains URL to QR traffic endpoint if withQr is true
+        String qrCode = withQr ? QR_BASE_URL + (point.getTagNumber() != null ? point.getTagNumber() : "") : "";
 
         return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode};
     }

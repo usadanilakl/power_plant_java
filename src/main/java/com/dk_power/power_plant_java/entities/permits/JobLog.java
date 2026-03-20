@@ -41,4 +41,8 @@ public class JobLog extends BaseAuditEntity {
     @ManyToOne
     @JoinColumn(name = "work_area_id")
     private WorkArea workArea;
+
+    @ManyToOne
+    @JoinColumn(name = "work_category_id")
+    private Value workCategory;
 }

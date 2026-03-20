@@ -5,11 +5,16 @@ import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
+import com.dk_power.power_plant_java.dto.permits.JobLogDto;
+import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,9 @@ public class PwaWorkRequestService {
     private final WorkRequestRepo workRequestRepo;
     private final PermitAttachmentRepo attachmentRepo;
     private final NgValueService valueService;
+    private final JobLogRepo jobLogRepo;
+    private final WorkAreaRepo workAreaRepo;
+    private final NgJobLogService ngJobLogService;
 
     /**
      * Submit work request from PWA.
@@ -68,6 +76,9 @@ public class PwaWorkRequestService {
         entity = workRequestRepo.saveAndFlush(entity);
         log.info("[PWA Submit] Work request saved locally: id={}, localUuid={}, deleted={}",
                 entity.getId(), dto.getLocalUuid(), entity.getDeleted());
+
+        // Auto-link or create job based on (company + workArea + workCategory) grouping key
+        autoLinkOrCreateJob(entity);
 
         // Save attachments
         if (dto.getAttachments() != null) {
@@ -182,6 +193,17 @@ public class PwaWorkRequestService {
         entity.setForeman(dto.getForemanName());
         entity.setFireWatch(dto.getFireWatchName());
         entity.setSpace(dto.getSpaceToBeEntered());
+
+        // Resolve workArea from ID
+        if (dto.getWorkAreaId() != null) {
+            workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(entity::setWorkArea);
+        }
+
+        // Resolve workCategory from name
+        if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
+            entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+        }
+
         return entity;
     }
 
@@ -322,6 +344,32 @@ public class PwaWorkRequestService {
         result.setTimeSubmitted(entity.getTimeSubmitted());
         result.setSubmissionMethod(entity.getSharepointId() != null ? "sharepoint" : "local");
         return result;
+    }
+
+    private void autoLinkOrCreateJob(WorkRequest wr) {
+        if (wr.getWorkArea() == null || wr.getWorkCategory() == null || wr.getCompany() == null) {
+            log.info("[PWA] WR {} missing workArea, workCategory, or company — skipping auto-job", wr.getId());
+            return;
+        }
+
+        try {
+            Optional<JobLog> existingJob = jobLogRepo.findOpenJobByGroupingKey(
+                    wr.getCompany(), wr.getWorkArea().getId(), wr.getWorkCategory().getId());
+
+            if (existingJob.isPresent()) {
+                ngJobLogService.processWorkRequest(
+                        existingJob.get().getId().toString(), wr.getId().toString());
+                log.info("[PWA] WR {} auto-attached to existing Job {}", wr.getId(), existingJob.get().getId());
+            } else {
+                JobLogDto newJob = ngJobLogService.createJobFromWorkRequest(wr.getId().toString());
+                ngJobLogService.processWorkRequest(
+                        newJob.getId().toString(), wr.getId().toString());
+                log.info("[PWA] WR {} auto-created new Job {}", wr.getId(), newJob.getId());
+            }
+        } catch (Exception e) {
+            log.error("[PWA] Auto-job linking failed for WR {}: {}", wr.getId(), e.getMessage());
+            // Non-fatal — WR is saved, operator can process manually
+        }
     }
 
     private String computeContentHash(String base64Content) {

@@ -7,6 +7,7 @@ export interface PwaUserData {
   phone: string;
   company: string;
   signature?: string;
+  registeredOnServer: boolean;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -41,12 +42,22 @@ export class UserSetupService {
     const existing = this.getUserData();
     const userData: PwaUserData = {
       ...data,
+      registeredOnServer: data.registeredOnServer ?? existing?.registeredOnServer ?? false,
       uuid: existing?.uuid ?? crypto.randomUUID(),
       createdAt: existing?.createdAt ?? new Date(),
       updatedAt: existing ? new Date() : undefined
     };
     localStorage.setItem(this.storageKey, JSON.stringify(userData));
     return userData;
+  }
+
+  markRegistered(): void {
+    const data = this.getUserData();
+    if (data) {
+      data.registeredOnServer = true;
+      data.updatedAt = new Date();
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    }
   }
 
   clearUserData(): void {

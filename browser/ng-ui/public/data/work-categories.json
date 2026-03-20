@@ -1,0 +1,12 @@
+[
+  {"id": 0, "name": "Mechanical"},
+  {"id": 0, "name": "Electrical"},
+  {"id": 0, "name": "I&C"},
+  {"id": 0, "name": "Civil"},
+  {"id": 0, "name": "Scaffolding"},
+  {"id": 0, "name": "Insulation"},
+  {"id": 0, "name": "Painting"},
+  {"id": 0, "name": "Crane/Rigging"},
+  {"id": 0, "name": "Cleaning"},
+  {"id": 0, "name": "General"}
+]

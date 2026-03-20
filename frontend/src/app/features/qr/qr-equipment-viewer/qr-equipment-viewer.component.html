@@ -1,0 +1,88 @@
+<div class="qr-viewer-container">
+  <!-- Header -->
+  <div class="qr-header">
+    <button class="back-btn" (click)="goHome()" title="Home">&larr;</button>
+    <div class="header-info">
+      <span class="tag-number">{{ tagNumber() }}</span>
+      @if (targetEquipment()?.description) {
+        <span class="description">{{ targetEquipment()!.description }}</span>
+      }
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="state-container">
+      <div class="spinner"></div>
+      <p>Loading equipment data...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="state-container error-state">
+      <p class="error-message">{{ error() }}</p>
+      <button class="retry-btn" (click)="goHome()">Go to Home</button>
+    </div>
+  }
+
+  <!-- Viewer -->
+  @if (!loading() && !error()) {
+    <div class="viewer-wrapper">
+      <app-rf-unified-image-viewer
+        [dataSource]="dataSource()"
+        [config]="viewerConfig"
+        [highlightedShapeIds]="highlightedIds()"
+        (shapeClicked)="onShapeClicked($event)">
+      </app-rf-unified-image-viewer>
+    </div>
+
+    <!-- Equipment Detail Panel -->
+    @if (selectedEquipment(); as eq) {
+      <div class="detail-panel">
+        <div class="detail-header">
+          <span class="detail-tag">{{ eq.tagNumber }}</span>
+          <button class="close-btn" (click)="closeDetail()">&times;</button>
+        </div>
+        <div class="detail-body">
+          @if (eq.description) {
+            <div class="detail-row">
+              <span class="detail-label">Description</span>
+              <span class="detail-value">{{ eq.description }}</span>
+            </div>
+          }
+          @if (eq.eqType?.name) {
+            <div class="detail-row">
+              <span class="detail-label">Type</span>
+              <span class="detail-value">{{ eq.eqType?.name }}</span>
+            </div>
+          }
+          @if (eq.system?.name) {
+            <div class="detail-row">
+              <span class="detail-label">System</span>
+              <span class="detail-value">{{ eq.system?.name }}</span>
+            </div>
+          }
+          @if (eq.vendor?.name) {
+            <div class="detail-row">
+              <span class="detail-label">Vendor</span>
+              <span class="detail-value">{{ eq.vendor?.name }}</span>
+            </div>
+          }
+          @if (eq.location?.name) {
+            <div class="detail-row">
+              <span class="detail-label">Location</span>
+              <span class="detail-value">{{ eq.location?.name }}</span>
+            </div>
+          }
+          @if (eq.specificLocation) {
+            <div class="detail-row">
+              <span class="detail-label">Specific Location</span>
+              <span class="detail-value">{{ eq.specificLocation }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

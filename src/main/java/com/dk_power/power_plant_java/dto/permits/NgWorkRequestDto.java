@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -35,4 +36,5 @@ public class NgWorkRequestDto extends BaseDto {
     private Boolean hasJha;
     private Integer attachmentCount;
     private WorkAreaDto workArea;
+    private ValueDto workCategory;
 }

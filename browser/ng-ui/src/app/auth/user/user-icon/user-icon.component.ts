@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth.service';
+import { UserSetupService } from '../../../services/user-setup.service';
 import { AsyncPipe } from '@angular/common';
 
 @Component({
@@ -12,16 +13,23 @@ import { AsyncPipe } from '@angular/common';
 export class UserIconComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
+  private userSetupService = inject(UserSetupService);
 
   currentUser$ = this.authService.currentUser$;
+
+  get localUserName(): string | null {
+    return this.userSetupService.getUserData()?.name ?? null;
+  }
 
   navigateToProfile(): void {
     this.router.navigate(['/user-profile']);
   }
 
-  getInitials(firstName?: string, lastName?: string): string {
-    const first = firstName?.charAt(0)?.toUpperCase() || '';
-    const last = lastName?.charAt(0)?.toUpperCase() || '';
+  getNameInitials(name?: string): string {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0]?.charAt(0)?.toUpperCase() || '';
+    const last = parts.length > 1 ? parts[parts.length - 1]?.charAt(0)?.toUpperCase() || '' : '';
     return first + last || 'U';
   }
 }

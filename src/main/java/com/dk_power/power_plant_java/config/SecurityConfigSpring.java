@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.config;
 
 import com.dk_power.power_plant_java.config.security.AccessGrantFilter;
 import com.dk_power.power_plant_java.config.security.DesktopAutoAuthFilter;
+import com.dk_power.power_plant_java.config.security.PwaJwtAuthFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class SecurityConfigSpring {
 
     private final DesktopAutoAuthFilter desktopAutoAuthFilter;
     private final AccessGrantFilter accessGrantFilter;
+    private final PwaJwtAuthFilter pwaJwtAuthFilter;
 
     @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io,https://*.loclx.io}")
     private String allowedOrigins;
@@ -89,6 +91,10 @@ public class SecurityConfigSpring {
 
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
+                // PWA secured endpoints — JWT auth handled by PwaJwtAuthFilter
+                .requestMatchers("/api/pwa/secured/**").authenticated()
+                .requestMatchers("/api/pwa/auth/me", "/api/pwa/auth/refresh").authenticated()
+
                 // Public endpoints — no auth required
                 .requestMatchers(
                     "/api/auth/login", "/api/auth/logout",
@@ -96,6 +102,7 @@ public class SecurityConfigSpring {
                     "/api/pwa/**",
                     "/api/sharepoint-sync/**", "/power-automate/**",
                     "/actuator/health",
+                    "/qr/**",
                     "/app/**", "/angular/**",
                     "/", "/home", "/login",
                     "/bootstrap-5.3.3-dist/**", "/functions/**",
@@ -158,8 +165,11 @@ public class SecurityConfigSpring {
                 .deleteCookies("JSESSIONID", "ACCESS_TOKEN")
             )
 
-            // Custom filters
+            // Custom filters — order: PwaJwt → DesktopAuto → UsernamePassword → AccessGrant
+            // Both custom pre-auth filters anchored to UsernamePasswordAuthenticationFilter.
+            // PwaJwtAuthFilter self-skips non-PWA paths; DesktopAutoAuthFilter self-skips non-desktop paths.
             .addFilterBefore(desktopAutoAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(pwaJwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(accessGrantFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

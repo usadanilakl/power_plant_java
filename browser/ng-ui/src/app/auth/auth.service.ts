@@ -1,161 +1,126 @@
 import { Injectable, inject } from '@angular/core';
-import { User } from '../models/auth/user.model';
-import { BehaviorSubject, catchError, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
-import { LocalStorageService } from '../services/local-storage.service';
-import { UserApiService } from './user/user-api.service';
-import { UserPa } from '../models/auth/user-pa.model';
-import { UserDbService } from './user/user-db.service';
+import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { ServerApiService, PwaRegistrationStatus } from '../services/server-api.service';
 
-/**
- * Interface for the authentication data structure.
- */
-export interface AuthData {
-  token: string;
-  userId: string;
-  user: User;
-  company: string;
+export interface PwaAuthUser {
+  id: number;
   name: string;
+  email: string;
+  role: string;
+  permissionLevel: string;
+}
+
+export interface PwaAuthData {
+  token: string;
+  expiresAt: number; // epoch ms
+  user: PwaAuthUser;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private localStorageService = inject(LocalStorageService);
-  private userApiService = inject(UserApiService);
-  private userDbService = inject(UserDbService);
-  private readonly AUTH_STORAGE_KEY = 'authData';
+  private serverApi = inject(ServerApiService);
+  private readonly AUTH_STORAGE_KEY = 'pwaAuthData';
 
-  private authDataSubject = new BehaviorSubject<AuthData | null>(this.getAuthDataFromStorage());
+  private authDataSubject = new BehaviorSubject<PwaAuthData | null>(this.getAuthDataFromStorage());
 
-  /**
-   * Observable stream of the current authentication data.
-   * Emits the AuthData object when logged in, and null when logged out.
-   */
-  public authData$: Observable<AuthData | null> = this.authDataSubject.asObservable();
+  public authData$: Observable<PwaAuthData | null> = this.authDataSubject.asObservable();
 
-  /**
-   * Observable stream of the currently authenticated user.
-   * Emits the User object when logged in, and null when logged out.
-   */
-  public currentUser$: Observable<User | null> = this.authData$.pipe(
-    map(authData => authData?.user ?? null)
+  public currentUser$ = this.authData$.pipe(
+    map(data => data?.user ?? null)
   );
 
   public currentUser = toSignal(this.currentUser$, { initialValue: null });
 
-  /**
-   * Observable stream of the authentication status.
-   * Emits true when logged in, false when logged out.
-   */
   public isLoggedIn$: Observable<boolean> = this.authData$.pipe(
-    map(authData => !!authData?.token)
+    map(data => !!data?.token && data.expiresAt > Date.now())
   );
 
-  constructor() { }
-
-  /**
-   * Authenticates the user against the API and logs them in on success.
-   * @param username The user's email.
-   * @param password The user's password.
-   * @returns An observable with the authentication data on success.
-   */
-  authenticate(username: string, password: string): Observable<AuthData> {
-    return this.userApiService.authenticateUser(username, password).pipe(
-      switchMap(response => {
-
-        if(!response.user) throw new Error('User not found');
-
-        const userPa = new UserPa(response.user);
-        const convertedUser = userPa.convertToUser();
-        
-        // Check if user exists in DB
-        return this.userDbService.getBySharepointId(userPa.ID ?? 0).pipe(
-          switchMap(existingUser => {
-            // If user doesn't exist, add them first
-            if (!existingUser) {
-              return this.userDbService.addUser(convertedUser).pipe(
-                map(() => response) // Return original response after adding user
-              );
-            }
-            // User exists, just return the response
-            return of(response);
-          })
-        );
-      }),
+  authenticate(email: string, password: string): Observable<PwaAuthData> {
+    return this.serverApi.pwaLogin(email, password).pipe(
       map(response => {
-        const authData: AuthData = {
-          ...response,
-          user: new UserPa(response.user).convertToUser()
+        const authData: PwaAuthData = {
+          token: response.token,
+          expiresAt: Date.now() + (response.expiresIn * 1000),
+          user: response.user
         };
         return authData;
       }),
       tap(authData => {
-        this.login(authData);
+        this.storeAuth(authData);
       }),
       catchError(error => {
         this.logout();
-        console.error('Authentication failed:', error);
-        return throwError(() => new Error('Authentication failed'));
+        return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Stores authentication data in local storage and updates the auth state.
-   * @param authData The authentication data to store.
-   */
-  login(authData: AuthData): void {
-    this.localStorageService.setItem(this.AUTH_STORAGE_KEY, authData);
-    this.authDataSubject.next(authData);
+  refreshToken(): void {
+    const current = this.getAuthData();
+    if (!current?.token) return;
+
+    this.serverApi.pwaRefreshToken(current.token).subscribe({
+      next: (response) => {
+        const authData: PwaAuthData = {
+          token: response.token,
+          expiresAt: Date.now() + (response.expiresIn * 1000),
+          user: response.user
+        };
+        this.storeAuth(authData);
+      },
+      error: () => this.logout()
+    });
   }
 
-  /**
-   * Clears authentication data from local storage and updates the auth state.
-   */
   logout(): void {
-    this.localStorageService.removeItem(this.AUTH_STORAGE_KEY);
+    localStorage.removeItem(this.AUTH_STORAGE_KEY);
     this.authDataSubject.next(null);
   }
 
-  /**
-   * Retrieves the current authentication data from the service's state.
-   * @returns The current AuthData object, or null if not authenticated.
-   */
-  getAuthData(): AuthData | null {
+  getAuthData(): PwaAuthData | null {
     return this.authDataSubject.getValue();
   }
 
-  /**
-   * Checks if the user is currently authenticated.
-   * @returns True if a token exists in the auth data, false otherwise.
-   */
   isLoggedIn(): boolean {
-    return !!this.getAuthData()?.token;
+    const data = this.getAuthData();
+    return !!data?.token && data.expiresAt > Date.now();
   }
 
-  /**
-   * Retrieves the authentication token.
-   * @returns The token string, or null if not authenticated.
-   */
   getToken(): string | null {
+    if (!this.isLoggedIn()) return null;
     return this.getAuthData()?.token ?? null;
   }
 
-  /**
-   * Retrieves the logged-in user's data.
-   * @returns The User object, or null if not authenticated.
-   */
-  getUser(): User | null {
-    return this.getAuthData()?.user ?? null;
+  hasPermission(requiredLevel: string): boolean {
+    const user = this.getAuthData()?.user;
+    if (!user) return false;
+    const level = user.permissionLevel;
+    if (requiredLevel === 'BASIC') return level === 'BASIC' || level === 'OPERATOR';
+    if (requiredLevel === 'OPERATOR') return level === 'OPERATOR';
+    return false;
   }
 
-  /**
-   * Retrieves authentication data directly from local storage.
-   * @returns The AuthData object from storage, or null if not found.
-   */
-  private getAuthDataFromStorage(): AuthData | null {
-    return this.localStorageService.getItem<AuthData>(this.AUTH_STORAGE_KEY);
+  private storeAuth(authData: PwaAuthData): void {
+    localStorage.setItem(this.AUTH_STORAGE_KEY, JSON.stringify(authData));
+    this.authDataSubject.next(authData);
+  }
+
+  private getAuthDataFromStorage(): PwaAuthData | null {
+    try {
+      const raw = localStorage.getItem(this.AUTH_STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw) as PwaAuthData;
+      // Check not expired
+      if (data.expiresAt <= Date.now()) {
+        localStorage.removeItem(this.AUTH_STORAGE_KEY);
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
   }
 }

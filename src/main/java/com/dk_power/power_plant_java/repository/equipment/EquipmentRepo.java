@@ -85,4 +85,7 @@ List<EquipmentDtoLight> getAllLight();
 
     @Query("SELECT COUNT(e) FROM Equipment e WHERE e.location.id = :valueId")
     long countByLocationId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
+
+    @Query("SELECT e FROM Equipment e WHERE e.mainFile.id = :mainFileId AND (e.deleted IS NULL OR e.deleted = false)")
+    List<Equipment> findByMainFile_Id(@Param("mainFileId") Long mainFileId);
 }

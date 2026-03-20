@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -53,4 +54,8 @@ public class WorkRequest extends BasePermitEntity {
 
     @Column(name = "submitter_company")
     private String submitterCompany;
+
+    @ManyToOne
+    @JoinColumn(name = "work_category_id")
+    private Value workCategory;
 }

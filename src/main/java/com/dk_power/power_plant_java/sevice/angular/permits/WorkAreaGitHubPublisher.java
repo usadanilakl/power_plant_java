@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
 import com.dk_power.power_plant_java.mappers.permits.WorkAreaMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class WorkAreaGitHubPublisher {
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaMapShapeRepo shapeRepo;
     private final WorkAreaMapper workAreaMapper;
+    private final NgValueService valueService;
     private final ObjectMapper objectMapper;
     private final GitHub gitHub;
 
@@ -59,11 +61,13 @@ public class WorkAreaGitHubPublisher {
 
             String areasJson = buildAreasJson();
             String shapesJson = buildShapesJson();
+            String categoriesJson = buildCategoriesJson();
             byte[] imageBytes = readMapImage();
 
             // Local writes
             Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
             Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
+            Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
             if (imageBytes != null) {
                 Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
                         dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
@@ -71,7 +75,7 @@ public class WorkAreaGitHubPublisher {
             log.info("[PWA Publisher] Local files written to {}", dataDir);
 
             // Push to GitHub for live PWA
-            pushToGitHub(areasJson, shapesJson, imageBytes);
+            pushToGitHub(areasJson, shapesJson, categoriesJson, imageBytes);
 
         } catch (Exception e) {
             log.error("[PWA Publisher] Failed: {}", e.getMessage(), e);
@@ -85,6 +89,14 @@ public class WorkAreaGitHubPublisher {
                 .map(area -> Map.<String, Object>of("id", area.getId(), "name", area.getName() != null ? area.getName() : ""))
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(areas);
+    }
+
+    private String buildCategoriesJson() throws IOException {
+        List<com.dk_power.power_plant_java.entities.categories.Value> categories = valueService.getValuesByCategory("Work Category");
+        List<Map<String, Object>> result = categories.stream()
+                .map(cat -> Map.<String, Object>of("id", cat.getId(), "name", cat.getName() != null ? cat.getName() : ""))
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
     }
 
     private String buildShapesJson() throws IOException {
@@ -107,12 +119,13 @@ public class WorkAreaGitHubPublisher {
         return null;
     }
 
-    private void pushToGitHub(String areasJson, String shapesJson, byte[] imageBytes) {
+    private void pushToGitHub(String areasJson, String shapesJson, String categoriesJson, byte[] imageBytes) {
         try {
             GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
 
             pushTextFile(repo, "data/work-areas.json", areasJson);
             pushTextFile(repo, "data/work-area-shapes.json", shapesJson);
+            pushTextFile(repo, "data/work-categories.json", categoriesJson);
             if (imageBytes != null) {
                 pushBinaryFile(repo, "data/work-area-map-image.jpg", imageBytes);
             }

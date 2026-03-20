@@ -9,10 +9,9 @@
       <ng-content select="[header]"></ng-content>
     </div>
     <div class="header-actions">
+        <app-server-status></app-server-status>
         <app-theme-toggle></app-theme-toggle>
-        @if(isLoggedIn()){
-          <app-user-icon></app-user-icon>
-        }
+        <app-user-icon></app-user-icon>
         
         @if (authService.isLoggedIn()) {
           <button class="auth-btn" (click)="logout()">Logout</button>

@@ -692,6 +692,8 @@ export class SubmissionOrchestratorService {
       submitterPhone: userData?.phone || '',
       submitterCompany: userData?.company || '',
       timeSubmitted: ServerApiService.formatCentralTime(new Date()),
+      workCategoryName: workRequest.workCategoryName || undefined,
+      workAreaId: workRequest.workAreaId || undefined,
       attachments: []
     };
     const encoded = btoa(JSON.stringify(dto));

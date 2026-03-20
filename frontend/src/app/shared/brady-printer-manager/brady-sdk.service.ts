@@ -13,6 +13,9 @@ export interface BradyPrinterState {
   error: string | null;
 }
 
+// const QR_BASE_URL = 'https://jgportal.jpowerusa.com/qr/';
+const QR_BASE_URL = 'http://localhost:8085/qr/';
+
 const INITIAL_STATE: BradyPrinterState = {
   isConnected: false,
   status: null,
@@ -215,7 +218,7 @@ export class BradySdkService {
    * @param qrCodeData Optional data to be encoded in a QR code.
    * @returns A promise that resolves with the generated HTMLCanvasElement.
    */
-  async createImageFromStrings(string1: string, string2: string, qrCodeData = `${string1} ${string2}`): Promise<HTMLCanvasElement> {
+  async createImageFromStrings(string1: string, string2: string, qrCodeData = `${QR_BASE_URL}${string1}`): Promise<HTMLCanvasElement> {
     try {
       const canvas = document.createElement('canvas');
       const dpi = 100;
@@ -367,8 +370,8 @@ export class BradySdkService {
     return canvas;
   }
 
-async createImageFromStringsWithQr(string1: string, string2: string, qrCodeData = `${string1} ${string2}`): Promise<HTMLCanvasElement> {
-  const qrData = qrCodeData || `${string1} ${string2}`;
+async createImageFromStringsWithQr(string1: string, string2: string, qrCodeData = `${QR_BASE_URL}${string1}`): Promise<HTMLCanvasElement> {
+  const qrData = qrCodeData || `${QR_BASE_URL}${string1}`;
 
   // Create a canvas element
   const canvas = document.createElement('canvas');

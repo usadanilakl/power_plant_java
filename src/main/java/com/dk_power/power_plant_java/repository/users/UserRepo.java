@@ -34,4 +34,6 @@ public interface UserRepo extends BaseRepository<User> {
     User findFirstByWindowsUsernameOrderByIdAsc(String windowsUsername);
 
     User findFirstByRoleAndIsActiveTrue(String role);
+
+    User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);
 }

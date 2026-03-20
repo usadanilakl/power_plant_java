@@ -101,6 +101,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         job.setStartDate(wr.getDateOfWorkToBePerformed());
         job.setOriginatingWorkRequest(wr);
         if (wr.getWorkArea() != null) job.setWorkArea(wr.getWorkArea());
+        if (wr.getWorkCategory() != null) job.setWorkCategory(wr.getWorkCategory());
         job.setJobStatus(ngValueService.createValue("Job Status", "Open"));
 
         JobLog saved = jobLogRepo.save(job);

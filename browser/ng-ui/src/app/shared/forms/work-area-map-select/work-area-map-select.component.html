@@ -6,15 +6,15 @@
   } @else {
     @if (selectedShape()) {
       <div class="selected-panel">
-        @if (selectedShape()!.areaNames.length > 1) {
+        @if (selectedShape()!.areas.length > 1) {
           <div class="selected-panel-multi">
             <span class="selected-panel-prompt">Select work area:</span>
-            @for (name of selectedShape()!.areaNames; track name) {
+            @for (area of selectedShape()!.areas; track area.id) {
               <button type="button"
                 class="area-option-btn"
-                [class.active]="selectedAreaName() === name"
-                (click)="setArea(name)">
-                {{ name }}
+                [class.active]="selectedAreaName() === area.name"
+                (click)="setArea(area)">
+                {{ area.name }}
               </button>
             }
           </div>
@@ -29,15 +29,7 @@
 
     <div
       #mapContainer
-      class="map-container"
-      (wheel)="onWheel($event)"
-      (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)"
-      (mouseup)="onMouseUp()"
-      (mouseleave)="onMouseUp()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)">
+      class="map-container">
 
       <div #zoomElement class="zoom-element">
         <img
@@ -51,12 +43,12 @@
           <div
             class="shape-overlay"
             [class.selected]="isSelected(shape)"
-            [ngStyle]="getShapeStyle(shape)"
+            [ngStyle]="shape.style"
             (click)="selectShape(shape); $event.stopPropagation()">
           </div>
           <div
             class="shape-label-anchor"
-            [ngStyle]="getLabelStyle(shape)">
+            [ngStyle]="shape.labelStyle">
             <span class="shape-label" [class.selected]="isSelected(shape)">{{ getDisplayName(shape) }}</span>
           </div>
         }

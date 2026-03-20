@@ -14,4 +14,13 @@ public interface JobLogRepo extends BaseRepository<JobLog> {
 
     @Query("SELECT j FROM JobLog j WHERE j.jobStatus IS NULL OR j.jobStatus.name <> 'Closed'")
     List<JobLog> findAllOpenJobs();
+
+    @Query("SELECT j FROM JobLog j WHERE j.company = :company " +
+           "AND j.workArea.id = :workAreaId " +
+           "AND j.workCategory.id = :categoryId " +
+           "AND (j.jobStatus IS NULL OR j.jobStatus.name NOT IN ('Closed', 'Cancelled'))")
+    Optional<JobLog> findOpenJobByGroupingKey(
+        @Param("company") String company,
+        @Param("workAreaId") Long workAreaId,
+        @Param("categoryId") Long categoryId);
 }

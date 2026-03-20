@@ -44,7 +44,7 @@ export class AuthComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = 'Invalid username or password. Please try again.';
+        this.errorMessage = err?.message || 'Invalid email or password. Please try again.';
         console.error(err);
       }
     });

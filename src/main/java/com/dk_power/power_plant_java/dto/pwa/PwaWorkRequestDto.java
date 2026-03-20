@@ -33,6 +33,10 @@ public class PwaWorkRequestDto {
     private String pwaUserUuid;         // PWA user's UUID
     private String timeSubmitted;       // ISO 8601 timestamp
 
+    // Job auto-linking fields
+    private String workCategoryName;    // Resolved to Value entity on backend
+    private Long workAreaId;            // WorkArea entity ID
+
     // Attachments (photos, signatures, documents)
     private List<PaAttachmentDto> attachments;
 }

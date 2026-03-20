@@ -45,7 +45,47 @@ export interface PwaWorkRequestDto {
   submitterPhone: string;
   submitterCompany: string;
   timeSubmitted: string;
+  workCategoryName?: string;
+  workAreaId?: number;
   attachments: { fileName: string; contentType: string; base64Content: string }[];
+}
+
+export interface PwaUserRegistrationDto {
+  pwaUserUuid: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  password: string;
+}
+
+export interface PwaRegistrationResult {
+  success: boolean;
+  status: 'created' | 'already_exists' | 'email_taken' | 'error';
+  message: string;
+  isActive: boolean;
+}
+
+export interface PwaRegistrationStatus {
+  registered: boolean;
+  isActive: boolean;
+}
+
+export interface PwaLoginResponse {
+  token: string;
+  expiresIn: number;
+  user: { id: number; name: string; email: string; role: string; permissionLevel: string };
+}
+
+export interface PwaServerProfile {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  role: string;
+  permissionLevel: string;
+  isActive: boolean;
 }
 
 export interface PwaInstrumentLogDto {
@@ -194,6 +234,26 @@ export class ServerApiService {
     );
   }
 
+  getWorkAreas(): Observable<{ id: number; name: string; description: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string; description: string }[] }>(
+      `${this.baseUrl}/api/pwa/work-request/work-areas`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getWorkCategories(): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string }[] }>(
+      `${this.baseUrl}/api/pwa/work-request/categories`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
   createInstrument(dto: PwaInstrumentDto): Observable<PwaSubmissionResult> {
     return this.http.post<{ responseData: PwaSubmissionResult }>(`${this.baseUrl}/api/pwa/instruments/create`, dto).pipe(
       timeout(15000),
@@ -214,6 +274,93 @@ export class ServerApiService {
     return this.http.get<{ responseData: PwaInstrumentLogDto[] }>(`${this.baseUrl}/api/pwa/instrument-log/by-instrument/${encodeURIComponent(tagNumber)}`).pipe(
       timeout(10000),
       map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  registerUser(dto: PwaUserRegistrationDto): Observable<PwaRegistrationResult> {
+    return this.http.post<{ responseData: PwaRegistrationResult }>(`${this.baseUrl}/api/pwa/user/register`, dto).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  checkRegistrationStatus(pwaUserUuid: string): Observable<PwaRegistrationStatus | null> {
+    return this.http.get<{ responseData: PwaRegistrationStatus }>(`${this.baseUrl}/api/pwa/user/status/${pwaUserUuid}`).pipe(
+      timeout(5000),
+      map(response => response.responseData),
+      catchError(() => of(null))
+    );
+  }
+
+  // ============ PWA Auth ============
+
+  pwaLogin(email: string, password: string): Observable<PwaLoginResponse> {
+    return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  pwaRefreshToken(token: string): Observable<PwaLoginResponse> {
+    return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/refresh`, { token }).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  // ============ PWA Secured Profile ============
+
+  getProfile(): Observable<PwaServerProfile> {
+    return this.http.get<PwaServerProfile>(`${this.baseUrl}/api/pwa/secured/profile`).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  updateProfile(data: { name?: string; email?: string; phone?: string; company?: string }): Observable<{ success: boolean; message: string }> {
+    return this.http.put<{ success: boolean; message: string }>(`${this.baseUrl}/api/pwa/secured/profile`, data).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.baseUrl}/api/pwa/secured/change-password`, {
+      currentPassword, newPassword
+    }).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  // ============ PWA Secured Permits ============
+
+  getMyPermits(): Observable<{ permits: any[] }> {
+    return this.http.get<{ permits: any[] }>(`${this.baseUrl}/api/pwa/secured/my-permits`).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  getPermitDetail(id: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/api/pwa/secured/my-permits/${id}`).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  signOnPermit(id: number): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/permits/${id}/sign-on`, {}).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  signOffPermit(id: number, comments?: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/permits/${id}/sign-off`, { comments }).pipe(
+      timeout(10000),
       catchError(this.handleError)
     );
   }
@@ -257,6 +404,8 @@ export class ServerApiService {
       submitterPhone: userData.phone,
       submitterCompany: userData.company,
       timeSubmitted: ServerApiService.formatCentralTime(new Date()),
+      workCategoryName: workRequest.workCategoryName || undefined,
+      workAreaId: workRequest.workAreaId || undefined,
       attachments: this.convertAttachments(workRequest.attachments)
     };
   }

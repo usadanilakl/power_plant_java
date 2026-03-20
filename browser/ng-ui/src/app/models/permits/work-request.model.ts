@@ -26,6 +26,9 @@ export interface IWorkRequest extends IBaseModel {
   fireWatchName: string;
   spaceToBeEntered: string;
   jhaStatus?: string;
+  workCategoryName: string;
+  workAreaId: number | null;
+  workAreaName: string;
   attachments: IAttachment[];
 }
 
@@ -48,6 +51,9 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   fireWatchName: string;
   spaceToBeEntered: string;
   jhaStatus?: string;
+  workCategoryName: string;
+  workAreaId: number | null;
+  workAreaName: string;
   attachments: IAttachment[];
 
   constructor(data: Partial<IWorkRequest> = {}) {
@@ -70,6 +76,9 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.fireWatchName = data.fireWatchName ?? '';
     this.spaceToBeEntered = data.spaceToBeEntered ?? '';
     this.jhaStatus = data.jhaStatus;
+    this.workCategoryName = data.workCategoryName ?? '';
+    this.workAreaId = data.workAreaId ?? null;
+    this.workAreaName = data.workAreaName ?? '';
     this.attachments = data.attachments ?? [];
   }
 
@@ -84,10 +93,19 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         validators: [Validators.required, futureOrPresentDateValidator()]
       },
       { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork, validators: [Validators.required] },
-      { name: 'locationOfWork', label: 'Location of Work', type: 'work-area-map', initialValue: this.locationOfWork, validators: [Validators.required] },
+      { name: 'workAreaMap', label: 'Work Area', type: 'work-area-map', initialValue: this.workAreaId && this.workAreaName ? { id: this.workAreaId, name: this.workAreaName } : null, validators: [Validators.required] },
+      { name: 'locationDetail', label: 'Location Details', type: 'text', initialValue: this.getLocationDetail(), placeholder: 'Add more location details (optional)' },
+      {
+        name: 'workCategoryName',
+        label: 'Main Work Scope',
+        type: 'select',
+        initialValue: this.workCategoryName,
+        options: [],
+        validators: [Validators.required]
+      },
       { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, placeholder: 'Full name', validators: [Validators.required] },
       { name: 'affectedEquipment', label: 'Affected Equipment', type: 'text', initialValue: this.affectedEquipment, placeholder: 'e.g. Boiler Feed Pump 1A', validators: [Validators.required] },
-      { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: this.workScope, placeholder: 'Describe the work to be performed', validators: [Validators.required] },
+      { name: 'workScope', label: 'Detailed Work Scope', type: 'textarea', initialValue: this.workScope, placeholder: 'Describe the work to be performed', validators: [Validators.required] },
       { name: 'isLOTORequired', label: 'LOTO Required?', type: 'radio-group', initialValue: this.isLOTORequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },
       { name: 'isHotWorkRequired', label: 'Hot Work Required?', type: 'radio-group', initialValue: this.isHotWorkRequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },
       {
@@ -133,8 +151,10 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
 
     getTableColumns(): Column[] {
       return [
-        { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
+        { id: 'workScope', header: 'Detailed Work Scope', accessorKey: 'workScope' },
         { id: 'company', header: 'Company', accessorKey: 'company' },
+        { id: 'workAreaName', header: 'Work Area', accessorKey: 'workAreaName' },
+        { id: 'workCategoryName', header: 'Main Work Scope', accessorKey: 'workCategoryName' },
         { id: 'workRequestedBy', header: 'Requested By', accessorKey: 'workRequestedBy' },
         { id: 'locationOfWork', header: 'Location', accessorKey: 'locationOfWork' },
         { id: 'affectedEquipment', header: 'Affected Equipment', accessorKey: 'affectedEquipment' },
@@ -232,6 +252,14 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     return `data:${sig.contentType || 'image/png'};base64,${sig.base64Content}`;
   }
 
+  getLocationDetail(): string {
+    if (!this.locationOfWork || !this.workAreaName) return this.locationOfWork || '';
+    const prefix = `${this.workAreaName} - `;
+    return this.locationOfWork.startsWith(prefix)
+      ? this.locationOfWork.slice(prefix.length)
+      : (this.locationOfWork === this.workAreaName ? '' : this.locationOfWork);
+  }
+
   convertToPaModel(): WorkRequestPa {
     // Build a UTC ISO string for Power Automate.
     // The user enters date + time which represent Central Time.
@@ -267,12 +295,14 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
 
     const lines: [string, string][] = [
       ['Company', this.company],
+      ['Work Area', this.workAreaName],
+      ['Main Work Scope', this.workCategoryName],
       ['Date of Work', dateStr],
       ['Time of Work', timeStr],
       ['Location of Work', this.locationOfWork],
       ['Work Requested By', this.workRequestedBy],
       ['Affected Equipment', this.affectedEquipment],
-      ['Work Scope', this.workScope],
+      ['Detailed Work Scope', this.workScope],
       ['LOTO Required', this.isLOTORequired],
       ['Hot Work Required', this.isHotWorkRequired],
       ['Foreman Name', this.foremanName],

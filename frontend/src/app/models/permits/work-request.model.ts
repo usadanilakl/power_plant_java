@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
+import { ValueDto } from '../value.model';
 
 export type WorkRequestFieldName = keyof WorkRequestModel;
 
@@ -25,6 +26,7 @@ export interface WorkRequestModel extends BaseModel {
   status: string | null;
   hasJha: boolean | null;
   attachmentCount: number | null;
+  workCategory: ValueDto | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -45,6 +47,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   status: string | null;
   hasJha: boolean | null;
   attachmentCount: number | null;
+  workCategory: ValueDto | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -65,6 +68,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.status = data.status ?? null;
     this.hasJha = data.hasJha ?? null;
     this.attachmentCount = data.attachmentCount ?? null;
+    this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
   }
 
   // Serialization method
@@ -88,6 +92,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       status: this.status,
       hasJha: this.hasJha,
       attachmentCount: this.attachmentCount,
+      workCategory: this.workCategory?.toJson() ?? null,
     };
   }
 
@@ -112,6 +117,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       status: json.status || null,
       hasJha: json.hasJha ?? null,
       attachmentCount: json.attachmentCount ?? null,
+      workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
     });
   }
 
@@ -121,7 +127,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       'id', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
       'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired',
-      'space', 'sharepointId', 'status', 'hasJha', 'attachmentCount', 'isVerified', 'name', 'objectType'
+      'space', 'sharepointId', 'status', 'hasJha', 'attachmentCount', 'workCategory', 'isVerified', 'name', 'objectType'
     ].includes(key);
   }
   static toFormFields(
@@ -182,7 +188,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       },
       workScope: {
         name: 'workScope',
-        label: 'Work Scope',
+        label: 'Detailed Work Scope',
         type: 'text',
         validators: [Validators.required],
         initialValue: dto.workScope
@@ -254,6 +260,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
       hasJha: { name: 'hasJha', label: 'Has JHA', type: 'checkbox', initialValue: dto.hasJha },
       attachmentCount: { name: 'attachmentCount', label: 'Attachments', type: 'text', readonly: true, initialValue: dto.attachmentCount },
+      workCategory: { name: 'workCategory', label: 'Main Work Scope', type: 'text', readonly: true, initialValue: dto.workCategory?.name ?? '' },
     };
 
     return fields.map(fieldName => allFields[fieldName]);
@@ -268,7 +275,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       company: { id: 'company', header: 'Company', accessorKey: 'company' },
       location: { id: 'location', header: 'Location', accessorKey: 'location' },
       affectedEquipment: { id: 'affectedEquipment', header: 'Affected Equipment', accessorKey: 'affectedEquipment' },
-      workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
+      workScope: { id: 'workScope', header: 'Detailed Work Scope', accessorKey: 'workScope' },
         isHotWorkRequired: {
         id: 'isHotWorkRequired',
         header: 'Hot Work Required',
@@ -335,6 +342,10 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: {
         id: 'attachmentCount', header: 'Attachments', accessorKey: 'attachmentCount',
         accessorFn: (item: WorkRequestDto) => item.attachmentCount ? `${item.attachmentCount}` : '0',
+      },
+      workCategory: {
+        id: 'workCategory', header: 'Main Work Scope',
+        accessorFn: (item: WorkRequestDto) => item.workCategory?.name ?? '',
       },
     };
 

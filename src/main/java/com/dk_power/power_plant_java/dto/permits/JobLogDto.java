@@ -24,4 +24,5 @@ public class JobLogDto extends BaseDto {
     private ValueDto jobStatus;
     private NgWorkRequestDto originatingWorkRequest;
     private WorkAreaDto workArea;
+    private ValueDto workCategory;
 }

@@ -40,7 +40,7 @@ export class RfWorkRequestMapperService {
   toTableColumns(
     fields: WorkRequestFieldName[] = [
       'status', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'workScope',
-      'requestedBy', 'company', 'location', 'attachmentCount', 'hasJha',
+      'requestedBy', 'company', 'workCategory', 'location', 'attachmentCount', 'hasJha',
       'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired'
     ]
   ): Column[] {
@@ -63,7 +63,7 @@ export class RfWorkRequestMapperService {
       company: { id: 'company', header: 'Company', accessorKey: 'company', filterable: true, sortable: true, width: 140 },
       location: { id: 'location', header: 'Location', accessorKey: 'location', filterable: true, sortable: true, width: 140 },
       affectedEquipment: { id: 'affectedEquipment', header: 'Affected Equipment', accessorKey: 'affectedEquipment', filterable: true, sortable: true, width: 160 },
-      workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope', filterable: true, sortable: true, width: 200 },
+      workScope: { id: 'workScope', header: 'Detailed Work Scope', accessorKey: 'workScope', filterable: true, sortable: true, width: 200 },
       isHotWorkRequired: {
         id: 'isHotWorkRequired', header: 'Hot Work', accessorKey: 'isHotWorkRequired', filterable: true, sortable: true, width: 100,
         accessorFn: (item: WorkRequestDto) => item.isHotWorkRequired ? 'Yes' : 'No',
@@ -112,6 +112,10 @@ export class RfWorkRequestMapperService {
         conditionalStyling: (item: any) =>
           item.attachmentCount > 0 ? { 'color': 'var(--accent-color, #4a90d9)', 'cursor': 'pointer', 'text-decoration': 'underline' } : { 'color': '', 'cursor': '', 'text-decoration': '' }
       },
+      workCategory: {
+        id: 'workCategory', header: 'Main Work Scope', filterable: true, sortable: true, width: 140,
+        accessorFn: (item: WorkRequestDto) => item.workCategory?.name ?? '',
+      },
       name: { id: 'name', header: 'Name', accessorKey: 'name', filterable: true, sortable: true, width: 140 },
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType', filterable: true, sortable: true, width: 120 },
     };
@@ -125,7 +129,7 @@ export class RfWorkRequestMapperService {
     entity: WorkRequestDto,
     fields: WorkRequestFieldName[] = [
       'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
-      'company', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
+      'company', 'workCategory', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired', 'space', 'status'
     ]
   ): RfFormField[] {
@@ -185,7 +189,7 @@ export class RfWorkRequestMapperService {
       },
       workScope: {
         name: 'workScope',
-        label: 'Work Scope',
+        label: 'Detailed Work Scope',
         type: 'textarea',
         validators: [Validators.required],
         initialValue: entity.workScope,
@@ -219,6 +223,13 @@ export class RfWorkRequestMapperService {
         label: 'Confined Space Entry Required',
         type: 'checkbox',
         initialValue: entity.isConfinedSpaceEntryRequired ?? false,
+      },
+      workCategory: {
+        name: 'workCategory',
+        label: 'Main Work Scope',
+        type: 'text',
+        readonly: true,
+        initialValue: entity.workCategory?.name ?? '',
       },
       space: {
         name: 'space',

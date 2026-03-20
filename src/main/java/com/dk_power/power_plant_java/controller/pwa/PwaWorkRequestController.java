@@ -4,6 +4,10 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.permits.WorkArea;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaWorkRequestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pwa/work-request")
@@ -23,6 +29,8 @@ public class PwaWorkRequestController {
 
     private final PwaWorkRequestService pwaService;
     private final ObjectMapper objectMapper;
+    private final NgValueService valueService;
+    private final WorkAreaRepo workAreaRepo;
 
     @PostMapping("/submit")
     public ResponseEntity<NgApiResponse<PwaSubmissionResult>> submit(
@@ -131,6 +139,36 @@ public class PwaWorkRequestController {
             log.error("[PWA] Update failed: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Update failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkCategories() {
+        try {
+            List<Map<String, Object>> categories = valueService.getValuesByCategory("Work Category")
+                    .stream()
+                    .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName()))
+                    .toList();
+            return ResponseEntity.ok(new NgApiResponse<>(categories, "Work categories retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "No work categories found"));
+        }
+    }
+
+    @GetMapping("/work-areas")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkAreas() {
+        try {
+            List<Map<String, Object>> areas = workAreaRepo.findAll().stream()
+                    .map(wa -> Map.<String, Object>of(
+                            "id", wa.getId(),
+                            "name", wa.getName() != null ? wa.getName() : "",
+                            "description", wa.getDescription() != null ? wa.getDescription() : ""
+                    ))
+                    .toList();
+            return ResponseEntity.ok(new NgApiResponse<>(areas, "Work areas retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Failed to get work areas: " + e.getMessage()));
         }
     }
 

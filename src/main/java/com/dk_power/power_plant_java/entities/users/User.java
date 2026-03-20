@@ -48,4 +48,16 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "windows_username")
     private String windowsUsername;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "company")
+    private String company;
+
+    @Column(name = "pwa_user_uuid", unique = true)
+    private String pwaUserUuid;
+
+    @Column(name = "permission_level")
+    private String permissionLevel;
 }

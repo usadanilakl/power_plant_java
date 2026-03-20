@@ -62,5 +62,14 @@ public class BasePermitEntity extends BaseAuditEntity {
     @JoinColumn(name = "work_area_id")
     private WorkArea workArea;
 
+    @ManyToOne
+    @JoinColumn(name = "signed_on_by_id")
+    private User signedOnBy;
+    private Instant signedOnAt;
+
+    @ManyToOne
+    @JoinColumn(name = "signed_off_by_id")
+    private User signedOffBy;
+    private Instant signedOffAt;
 }
 

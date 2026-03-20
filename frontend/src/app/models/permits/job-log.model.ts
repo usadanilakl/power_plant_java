@@ -21,6 +21,7 @@ export interface JobLogModel extends BaseModel {
   jobStatus: ValueDto | null;
   originatingWorkRequest: WorkRequestDto | null;
   workArea: WorkAreaDto | null;
+  workCategory: ValueDto | null;
 }
 
 export class JobLogDto extends BaseDto implements JobLogModel {
@@ -35,6 +36,7 @@ export class JobLogDto extends BaseDto implements JobLogModel {
   jobStatus: ValueDto | null;
   originatingWorkRequest: WorkRequestDto | null;
   workArea: WorkAreaDto | null;
+  workCategory: ValueDto | null;
 
   constructor(data: Partial<JobLogModel> = {}) {
     super(data);
@@ -49,6 +51,7 @@ export class JobLogDto extends BaseDto implements JobLogModel {
     this.jobStatus = data.jobStatus ? new ValueDto(data.jobStatus) : null;
     this.originatingWorkRequest = data.originatingWorkRequest ? new WorkRequestDto(data.originatingWorkRequest) : null;
     this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
+    this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
   }
 
   override toJson(): any {
@@ -65,6 +68,7 @@ export class JobLogDto extends BaseDto implements JobLogModel {
       jobStatus: this.jobStatus?.toJson() ?? null,
       originatingWorkRequest: this.originatingWorkRequest?.toJson() ?? null,
       workArea: this.workArea?.toJson() ?? null,
+      workCategory: this.workCategory?.toJson() ?? null,
     };
   }
 
@@ -83,12 +87,13 @@ export class JobLogDto extends BaseDto implements JobLogModel {
       jobStatus: json.jobStatus ? ValueDto.fromJson(json.jobStatus) : null,
       originatingWorkRequest: json.originatingWorkRequest ? WorkRequestDto.fromJson(json.originatingWorkRequest) : null,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
+      workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
     });
   }
 
   static toFormFields(
     dto: JobLogDto,
-    fields: JobLogFieldName[] = ['permitNumber', 'company', 'foreman', 'location', 'startDate', 'endDate', 'workScope']
+    fields: JobLogFieldName[] = ['permitNumber', 'company', 'workCategory', 'foreman', 'location', 'startDate', 'endDate', 'workScope']
   ): FormField[] {
     const allFields: { [key in JobLogFieldName]?: FormField } = {
       company: { name: 'company', label: 'Company', type: 'text', initialValue: dto.company },
@@ -96,14 +101,15 @@ export class JobLogDto extends BaseDto implements JobLogModel {
       location: { name: 'location', label: 'Location', type: 'text', initialValue: dto.location },
       startDate: { name: 'startDate', label: 'Start Date', type: 'date', initialValue: dto.startDate ?? new Date().toISOString().split('T')[0] },
       endDate: { name: 'endDate', label: 'End Date', type: 'date', initialValue: dto.endDate },
-      workScope: { name: 'workScope', label: 'Work Scope', type: 'textarea', initialValue: dto.workScope },
+      workScope: { name: 'workScope', label: 'Detailed Work Scope', type: 'textarea', initialValue: dto.workScope },
       permitNumber: { name: 'permitNumber', label: 'Job #', type: 'text', initialValue: dto.permitNumber },
+      workCategory: { name: 'workCategory', label: 'Main Work Scope', type: 'text', readonly: true, initialValue: dto.workCategory?.name ?? '' },
     };
     return fields.map(f => allFields[f]).filter((f): f is FormField => f !== undefined);
   }
 
   static toTableColumns(
-    fields: JobLogFieldName[] = ['id', 'permitNumber', 'company', 'foreman', 'location', 'startDate', 'jobStatus']
+    fields: JobLogFieldName[] = ['id', 'permitNumber', 'company', 'workCategory', 'foreman', 'location', 'startDate', 'jobStatus']
   ): Column[] {
     const allColumns: { [key in JobLogFieldName]?: Column } = {
       id: { id: 'id', header: 'ID', accessorKey: 'id' },
@@ -114,7 +120,7 @@ export class JobLogDto extends BaseDto implements JobLogModel {
       location: { id: 'location', header: 'Location', accessorKey: 'location' },
       startDate: { id: 'startDate', header: 'Start Date', accessorKey: 'startDate' },
       endDate: { id: 'endDate', header: 'End Date', accessorKey: 'endDate' },
-      workScope: { id: 'workScope', header: 'Work Scope', accessorKey: 'workScope' },
+      workScope: { id: 'workScope', header: 'Detailed Work Scope', accessorKey: 'workScope' },
       jobStatus: {
         id: 'jobStatus',
         header: 'Status',
@@ -135,6 +141,11 @@ export class JobLogDto extends BaseDto implements JobLogModel {
         header: 'Work Area',
         accessorFn: (item: JobLogDto) => item.workArea?.name ?? ''
       },
+      workCategory: {
+        id: 'workCategory',
+        header: 'Main Work Scope',
+        accessorFn: (item: JobLogDto) => item.workCategory?.name ?? ''
+      },
     };
     return fields.map(f => allColumns[f]).filter((c): c is Column => c !== undefined);
   }
@@ -142,6 +153,6 @@ export class JobLogDto extends BaseDto implements JobLogModel {
   static isValidKey(key: string): key is keyof JobLogModel {
     return ['id', 'name', 'objectType', 'isVerified', 'packages', 'workScope', 'company',
       'foreman', 'location', 'startDate', 'endDate', 'permitNumber', 'jobStatus',
-      'originatingWorkRequest', 'workArea'].includes(key);
+      'originatingWorkRequest', 'workArea', 'workCategory'].includes(key);
   }
 }

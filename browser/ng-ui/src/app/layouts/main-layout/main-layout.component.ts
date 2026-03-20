@@ -3,11 +3,12 @@ import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.com
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { UserIconComponent } from "../../auth/user/user-icon/user-icon.component";
+import { ServerStatusComponent } from "../../shared/server-status/server-status.component";
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, UserIconComponent],
+  imports: [ThemeToggleComponent, UserIconComponent, ServerStatusComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css'
 })

@@ -8,6 +8,7 @@ import { UserManagementComponent } from './features/admin/user-management/user-m
 import { ProfileComponent } from './features/auth/profile/profile.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
+import { QrEquipmentViewerComponent } from './features/qr/qr-equipment-viewer/qr-equipment-viewer.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 import { fullAccessGuard } from './guards/full-access.guard';
@@ -34,6 +35,9 @@ export const routes: Routes = [
   { path: 'home', component: HomeComponent, canActivate: [authGuard] },
   { path: 'access-request', component: AccessRequestComponent, canActivate: [authGuard] },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+
+  // QR code scanned traffic (restricted access — no fullAccessGuard)
+  { path: 'qr/equipment/:tagNumber', component: QrEquipmentViewerComponent, canActivate: [authGuard] },
 
   // Admin routes
   { path: 'admin/users', component: UserManagementComponent, canActivate: [authGuard, adminGuard] },

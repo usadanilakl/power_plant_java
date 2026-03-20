@@ -199,6 +199,96 @@ public class AccessAdminController {
         return ResponseEntity.ok(allGrants.stream().map(this::toGrantInfo).toList());
     }
 
+    // ============ PWA User Management ============
+
+    @GetMapping("/pwa-users")
+    public ResponseEntity<?> getPwaUsers(HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of(
+                "error", "LOCALHOST_REQUIRED",
+                "message", "PWA user management is only available from the desktop application"
+            ));
+        }
+
+        List<User> pwaUsers = userRepo.findAll().stream()
+                .filter(u -> "PWA_USER".equals(u.getRole()))
+                .toList();
+
+        return ResponseEntity.ok(pwaUsers.stream().map(u -> {
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("id", u.getId());
+            info.put("name", u.getName());
+            info.put("email", u.getEmail());
+            info.put("phone", u.getFirstName()); // phone stored elsewhere; use what we have
+            info.put("isActive", u.getIsActive());
+            info.put("permissionLevel", u.getPermissionLevel());
+            info.put("pwaUserUuid", u.getPwaUserUuid());
+            info.put("dateCreated", u.getDateCreated() != null ? u.getDateCreated().toString() : null);
+            return info;
+        }).toList());
+    }
+
+    @PostMapping("/pwa-users/{id}/activate")
+    public ResponseEntity<?> activatePwaUser(@PathVariable Long id,
+                                              @RequestBody Map<String, String> body,
+                                              HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
+        }
+
+        User user = userRepo.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+
+        String level = body.getOrDefault("permissionLevel", "BASIC");
+        user.setIsActive(true);
+        user.setPermissionLevel(level);
+        userRepo.save(user);
+
+        log.info("PWA user activated: email={}, permissionLevel={}", user.getEmail(), level);
+        return ResponseEntity.ok(Map.of("success", true, "message", "User activated with " + level + " access"));
+    }
+
+    @PostMapping("/pwa-users/{id}/permission-level")
+    public ResponseEntity<?> setPwaUserPermissionLevel(@PathVariable Long id,
+                                                        @RequestBody Map<String, String> body,
+                                                        HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
+        }
+
+        User user = userRepo.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+
+        String level = body.get("level");
+        if (level == null || level.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "MISSING_LEVEL", "message", "Permission level required"));
+        }
+
+        user.setPermissionLevel(level);
+        userRepo.save(user);
+
+        log.info("PWA user permission updated: email={}, permissionLevel={}", user.getEmail(), level);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Permission level set to " + level));
+    }
+
+    @PostMapping("/pwa-users/{id}/deactivate")
+    public ResponseEntity<?> deactivatePwaUser(@PathVariable Long id, HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of("error", "LOCALHOST_REQUIRED"));
+        }
+
+        User user = userRepo.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+
+        user.setIsActive(false);
+        userRepo.save(user);
+
+        log.info("PWA user deactivated: email={}", user.getEmail());
+        return ResponseEntity.ok(Map.of("success", true, "message", "User deactivated"));
+    }
+
+    // ============ Grant Management ============
+
     private Map<String, Object> toGrantInfo(AccessGrant grant) {
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("id", grant.getId());

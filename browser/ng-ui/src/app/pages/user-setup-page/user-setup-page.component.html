@@ -1,45 +1,89 @@
 <div class="setup-container">
   <div class="setup-card">
-    <h1>{{ isUpdate ? 'Update Your Info' : 'Welcome to Jackson Generation' }}</h1>
-    <p class="subtitle">
-      {{ isUpdate ? 'Update your contact information below.' : 'Please provide your contact information to get started. This will be attached to your submissions.' }}
-    </p>
+    @if (needsServerRegistration) {
+      <h1>Complete Server Registration</h1>
+      <p class="subtitle">
+        Your info is saved locally. Enter a password to register your account on the server.
+      </p>
 
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      <div class="form-field">
-        <label for="name">Full Name *</label>
-        <input id="name" type="text" formControlName="name" placeholder="John Doe">
-        <span class="error" *ngIf="getError('name')">{{ getError('name') }}</span>
-      </div>
+      <form [formGroup]="form" (ngSubmit)="completeRegistration()">
+        <div class="form-field">
+          <label for="password">Password *</label>
+          <input id="password" type="password" formControlName="password" placeholder="Minimum 8 characters">
+          <span class="error" *ngIf="getError('password')">{{ getError('password') }}</span>
+        </div>
 
-      <div class="form-field">
-        <label for="email">Email Address *</label>
-        <input id="email" type="email" formControlName="email" placeholder="john.doe@company.com">
-        <span class="error" *ngIf="getError('email')">{{ getError('email') }}</span>
-      </div>
+        <button type="submit" class="submit-button" [disabled]="registrationStatus === 'registering'">
+          {{ registrationStatus === 'registering' ? 'Registering...' : 'Register on Server' }}
+        </button>
 
-      <div class="form-field">
-        <label for="phone">Phone Number *</label>
-        <input id="phone" type="tel" formControlName="phone" placeholder="+1 (555) 123-4567">
-        <span class="error" *ngIf="getError('phone')">{{ getError('phone') }}</span>
-      </div>
+        <button type="button" class="skip-button" (click)="router.navigate(['/work-request/form'])">
+          Skip for now
+        </button>
 
-      <div class="form-field">
-        <label for="company">Company *</label>
-        <input id="company" type="text" formControlName="company" placeholder="Your Company Name">
-        <span class="error" *ngIf="getError('company')">{{ getError('company') }}</span>
-      </div>
+        @if (registrationStatus !== 'idle') {
+          <div class="registration-status" [class]="registrationStatus">
+            {{ registrationMessage }}
+          </div>
+        }
+      </form>
+    } @else {
+      <h1>{{ isUpdate ? 'Update Your Info' : 'Welcome to Jackson Generation' }}</h1>
+      <p class="subtitle">
+        {{ isUpdate ? 'Update your contact information below.' : 'Please provide your contact information to get started. This will be attached to your submissions.' }}
+      </p>
 
-      <div class="form-field">
-        <app-signature-input
-          formControlName="signature"
-          label="Signature">
-        </app-signature-input>
-      </div>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="form-field">
+          <label for="name">Full Name *</label>
+          <input id="name" type="text" formControlName="name" placeholder="John Doe">
+          <span class="error" *ngIf="getError('name')">{{ getError('name') }}</span>
+        </div>
 
-      <button type="submit" class="submit-button" [disabled]="form.invalid">
-        {{ isUpdate ? 'Update Info' : 'Get Started' }}
-      </button>
-    </form>
+        <div class="form-field">
+          <label for="email">Email Address *</label>
+          <input id="email" type="email" formControlName="email" placeholder="john.doe@company.com">
+          <span class="error" *ngIf="getError('email')">{{ getError('email') }}</span>
+        </div>
+
+        <div class="form-field">
+          <label for="phone">Phone Number *</label>
+          <input id="phone" type="tel" formControlName="phone" placeholder="+1 (555) 123-4567">
+          <span class="error" *ngIf="getError('phone')">{{ getError('phone') }}</span>
+        </div>
+
+        <div class="form-field">
+          <label for="company">Company *</label>
+          <input id="company" type="text" formControlName="company" placeholder="Your Company Name">
+          <span class="error" *ngIf="getError('company')">{{ getError('company') }}</span>
+        </div>
+
+        @if (showPasswordField) {
+          <div class="form-field">
+            <label for="password">Password *</label>
+            <input id="password" type="password" formControlName="password" placeholder="Minimum 8 characters">
+            <span class="error" *ngIf="getError('password')">{{ getError('password') }}</span>
+            <span class="hint">Used for server account registration</span>
+          </div>
+        }
+
+        <div class="form-field">
+          <app-signature-input
+            formControlName="signature"
+            label="Signature">
+          </app-signature-input>
+        </div>
+
+        <button type="submit" class="submit-button" [disabled]="form.invalid || registrationStatus === 'registering'">
+          {{ registrationStatus === 'registering' ? 'Registering...' : (isUpdate ? 'Update Info' : 'Get Started') }}
+        </button>
+
+        @if (registrationStatus !== 'idle') {
+          <div class="registration-status" [class]="registrationStatus">
+            {{ registrationMessage }}
+          </div>
+        }
+      </form>
+    }
   </div>
 </div>
