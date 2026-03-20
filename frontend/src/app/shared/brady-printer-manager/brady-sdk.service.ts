@@ -13,8 +13,8 @@ export interface BradyPrinterState {
   error: string | null;
 }
 
-// const QR_BASE_URL = 'https://jgportal.jpowerusa.com/qr/';
-const QR_BASE_URL = 'http://localhost:8085/qr/';
+const QR_BASE_URL = 'https://jgportal.jpowerusa.com/qr/';
+// const QR_BASE_URL = 'http://localhost:8085/qr/';
 
 const INITIAL_STATE: BradyPrinterState = {
   isConnected: false,

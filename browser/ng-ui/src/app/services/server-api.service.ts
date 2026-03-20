@@ -86,6 +86,7 @@ export interface PwaServerProfile {
   role: string;
   permissionLevel: string;
   isActive: boolean;
+  hasSignature?: boolean;
 }
 
 export interface PwaInstrumentLogDto {
@@ -360,6 +361,32 @@ export class ServerApiService {
 
   signOffPermit(id: number, comments?: string): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/permits/${id}/sign-off`, { comments }).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  // ============ Signature (file-based) ============
+
+  /** Upload signature for authenticated user */
+  uploadSignature(base64Data: string): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(`${this.baseUrl}/api/pwa/secured/signature`, { signature: base64Data }).pipe(
+      timeout(15000),
+      catchError(this.handleError)
+    );
+  }
+
+  /** Upload signature by pwaUserUuid (unauthenticated, for initial registration) */
+  uploadSignatureByUuid(pwaUserUuid: string, base64Data: string): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(`${this.baseUrl}/api/pwa/user/signature/${pwaUserUuid}`, { signature: base64Data }).pipe(
+      timeout(15000),
+      catchError(this.handleError)
+    );
+  }
+
+  /** Download signature as base64 data URL for authenticated user */
+  getSignature(): Observable<{ hasSignature: boolean; signature?: string }> {
+    return this.http.get<{ hasSignature: boolean; signature?: string }>(`${this.baseUrl}/api/pwa/secured/signature`).pipe(
       timeout(10000),
       catchError(this.handleError)
     );

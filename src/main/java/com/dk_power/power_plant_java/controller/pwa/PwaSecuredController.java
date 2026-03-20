@@ -7,12 +7,18 @@ import com.dk_power.power_plant_java.sevice.pwa.PwaPermitService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +120,7 @@ public class PwaSecuredController {
         profile.put("role", user.getRole());
         profile.put("permissionLevel", user.getPermissionLevel() != null ? user.getPermissionLevel() : "NONE");
         profile.put("isActive", Boolean.TRUE.equals(user.getIsActive()));
+        profile.put("hasSignature", user.getSignaturePath() != null);
         return ResponseEntity.ok(profile);
     }
 
@@ -180,6 +187,90 @@ public class PwaSecuredController {
         userRepo.save(user);
         log.info("[PWA Profile] Password changed for user: {}", user.getEmail());
         return ResponseEntity.ok(Map.of("success", true, "message", "Password changed successfully"));
+    }
+
+    // ============ Signature (file-based) ============
+
+    private static final Path SIGNATURES_DIR = Paths.get("data", "signatures");
+
+    @PostMapping("/signature")
+    public ResponseEntity<?> uploadSignature(@RequestBody Map<String, String> body) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+
+        String base64Data = body.get("signature");
+        if (base64Data == null || base64Data.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "MISSING_DATA", "message", "No signature data provided"));
+        }
+
+        try {
+            Files.createDirectories(SIGNATURES_DIR);
+
+            // Strip data URL prefix if present (e.g. "data:image/png;base64,...")
+            String rawBase64 = base64Data;
+            if (rawBase64.contains(",")) {
+                rawBase64 = rawBase64.substring(rawBase64.indexOf(",") + 1);
+            }
+
+            byte[] imageBytes = Base64.getDecoder().decode(rawBase64);
+            String fileName = user.getId() + ".png";
+            Path filePath = SIGNATURES_DIR.resolve(fileName);
+            Files.write(filePath, imageBytes);
+
+            user.setSignaturePath(filePath.toString());
+            userRepo.save(user);
+
+            log.info("[PWA Signature] Saved signature for user: {}", user.getEmail());
+            return ResponseEntity.ok(Map.of("success", true, "message", "Signature saved"));
+        } catch (IOException e) {
+            log.error("[PWA Signature] Failed to save signature: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "SAVE_FAILED", "message", "Failed to save signature file"));
+        }
+    }
+
+    @GetMapping("/signature")
+    public ResponseEntity<?> getSignature() {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+
+        if (user.getSignaturePath() == null) {
+            return ResponseEntity.ok(Map.of("hasSignature", false));
+        }
+
+        try {
+            Path filePath = Paths.get(user.getSignaturePath());
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.ok(Map.of("hasSignature", false));
+            }
+
+            byte[] imageBytes = Files.readAllBytes(filePath);
+            String base64 = "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);
+            return ResponseEntity.ok(Map.of("hasSignature", true, "signature", base64));
+        } catch (IOException e) {
+            log.error("[PWA Signature] Failed to read signature: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "READ_FAILED", "message", "Failed to read signature file"));
+        }
+    }
+
+    @GetMapping(value = "/signature/image", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getSignatureImage() {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).build();
+
+        if (user.getSignaturePath() == null) return ResponseEntity.notFound().build();
+
+        try {
+            Path filePath = Paths.get(user.getSignaturePath());
+            if (!Files.exists(filePath)) return ResponseEntity.notFound().build();
+
+            byte[] imageBytes = Files.readAllBytes(filePath);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(imageBytes);
+        } catch (IOException e) {
+            log.error("[PWA Signature] Failed to serve signature image: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     private User getCurrentUser() {

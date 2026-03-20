@@ -60,4 +60,7 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "permission_level")
     private String permissionLevel;
+
+    @Column(name = "signature_path")
+    private String signaturePath;
 }

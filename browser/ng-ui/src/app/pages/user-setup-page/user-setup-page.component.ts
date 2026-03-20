@@ -126,6 +126,12 @@ export class UserSetupPageComponent {
           this.registrationMessage = result.status === 'already_exists'
             ? 'Account already registered on server.'
             : 'Account registered! Awaiting admin approval.';
+          // Upload signature file if present
+          if (userData.signature) {
+            this.serverApi.uploadSignatureByUuid(userData.uuid, userData.signature).subscribe({
+              error: (err) => console.error('[UserSetup] Signature upload failed:', err)
+            });
+          }
           if (this.needsServerRegistration) {
             setTimeout(() => this.router.navigate(['/work-request/form']), 2000);
           }

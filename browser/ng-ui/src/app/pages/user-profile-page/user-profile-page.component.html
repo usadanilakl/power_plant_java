@@ -1,4 +1,7 @@
 <app-main-layout [isSideMenuEnabled]="false" [isBottomMenuEnabled]="false" header="My Profile">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
   <ng-container main-content>
     <div class="profile-container">
 
@@ -77,6 +80,13 @@
             <label for="company">Company</label>
             <input id="company" type="text" formControlName="company">
             <span class="error" *ngIf="getError(profileForm, 'company')">{{ getError(profileForm, 'company') }}</span>
+          </div>
+
+          <div class="form-field">
+            <app-signature-input
+              formControlName="signature"
+              label="Signature">
+            </app-signature-input>
           </div>
 
           <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || profileSaveStatus === 'saving'">

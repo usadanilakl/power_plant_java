@@ -7,11 +7,13 @@ import { ServerApiService } from '../../services/server-api.service';
 import { AuthService } from '../../auth/auth.service';
 import { ServerStatusService } from '../../services/server-status.service';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
+import { SignatureInputComponent } from '../../shared/input-fields/signature-input/signature-input.component';
 
 @Component({
   selector: 'app-user-profile-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MainLayoutComponent],
+  imports: [CommonModule, ReactiveFormsModule, MainLayoutComponent, RouterMenuComponent, SignatureInputComponent],
   templateUrl: './user-profile-page.component.html',
   styleUrl: './user-profile-page.component.css'
 })
@@ -52,7 +54,8 @@ export class UserProfilePageComponent implements OnInit {
       name: [this.userData?.name ?? '', [Validators.required, Validators.minLength(2)]],
       email: [this.userData?.email ?? '', [Validators.required, Validators.email]],
       phone: [this.userData?.phone ?? '', [Validators.required, Validators.pattern(/^[\d\s\-\+\(\)]+$/)]],
-      company: [this.userData?.company ?? '', [Validators.required, Validators.minLength(2)]]
+      company: [this.userData?.company ?? '', [Validators.required, Validators.minLength(2)]],
+      signature: [this.userData?.signature ?? null]
     });
 
     this.passwordForm = this.fb.group({
@@ -64,6 +67,17 @@ export class UserProfilePageComponent implements OnInit {
     this.registerForm = this.fb.group({
       registerPassword: ['', [Validators.required, Validators.minLength(8)]]
     });
+
+    // Load signature from server if logged in
+    if (this.isLoggedIn && this.serverStatus.isOnline()) {
+      this.serverApi.getSignature().subscribe({
+        next: (res) => {
+          if (res.hasSignature && res.signature) {
+            this.profileForm.patchValue({ signature: res.signature });
+          }
+        }
+      });
+    }
   }
 
   get needsRegistration(): boolean {
@@ -84,9 +98,10 @@ export class UserProfilePageComponent implements OnInit {
       email: formValue.email,
       phone: formValue.phone,
       company: formValue.company,
-      signature: this.userData?.signature,
+      signature: formValue.signature ?? this.userData?.signature,
       registeredOnServer: this.userData?.registeredOnServer ?? false
     });
+    this.userData = this.userSetupService.getUserData();
 
     // If logged in and server online, sync name/email to server
     if (this.isLoggedIn && this.serverStatus.isOnline()) {
@@ -102,6 +117,13 @@ export class UserProfilePageComponent implements OnInit {
           this.profileSaveMessage = err?.message ?? 'Failed to update server profile.';
         }
       });
+      // Upload signature file separately if changed
+      const sig = formValue.signature;
+      if (sig) {
+        this.serverApi.uploadSignature(sig).subscribe({
+          error: (err) => console.error('[Profile] Signature upload failed:', err)
+        });
+      }
     } else {
       this.profileSaveStatus = 'success';
       this.profileSaveMessage = 'Saved locally.' + (this.isLoggedIn ? '' : ' Log in to sync with server.');

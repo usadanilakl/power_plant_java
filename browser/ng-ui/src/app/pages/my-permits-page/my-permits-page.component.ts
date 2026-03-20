@@ -4,13 +4,17 @@ import { Router } from '@angular/router';
 import { ServerApiService } from '../../services/server-api.service';
 import { AuthService } from '../../auth/auth.service';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
+import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
 
 @Component({
   selector: 'app-my-permits-page',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent],
+  imports: [CommonModule, MainLayoutComponent, RouterMenuComponent],
   template: `
     <app-main-layout header="My Permits">
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
       <div main-content>
         <div class="permits-container">
           @if (loading) {
