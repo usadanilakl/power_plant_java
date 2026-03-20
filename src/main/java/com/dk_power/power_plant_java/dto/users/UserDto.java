@@ -23,5 +23,6 @@ public class UserDto extends BaseDto {
     private Boolean isActive;
     private LocalDateTime lastLoginDate;
     private String windowsUsername;
+    private String permissionLevel;
 
 }

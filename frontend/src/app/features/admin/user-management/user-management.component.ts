@@ -15,6 +15,7 @@ interface UserForm {
   password: string;
   windowsUsername: string;
   isActive: boolean;
+  permissionLevel: string;
 }
 
 @Component({
@@ -85,7 +86,18 @@ interface UserForm {
                 <label>Windows Username</label>
                 <input type="text" [(ngModel)]="form.windowsUsername" name="windowsUsername" />
               </div>
-              <div class="form-group" *ngIf="editingUser">
+              <div class="form-group">
+                <label>Permission Level</label>
+                <select [(ngModel)]="form.permissionLevel" name="permissionLevel">
+                  <option value="">None</option>
+                  <option value="NONE">NONE</option>
+                  <option value="BASIC">BASIC</option>
+                  <option value="OPERATOR">OPERATOR</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" *ngIf="editingUser">
+              <div class="form-group">
                 <label class="checkbox-label">
                   <input type="checkbox" [(ngModel)]="form.isActive" name="isActive" />
                   Active
@@ -108,6 +120,7 @@ interface UserForm {
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Permission</th>
               <th>Status</th>
               <th>Windows User</th>
               <th>Actions</th>
@@ -118,6 +131,7 @@ interface UserForm {
               <td>{{ user.name }}</td>
               <td>{{ user.email }}</td>
               <td><span class="badge" [ngClass]="getRoleBadgeClass(user.role)">{{ formatRole(user.role) }}</span></td>
+              <td><span class="badge" [ngClass]="getPermissionBadgeClass(user.permissionLevel)">{{ user.permissionLevel || 'NONE' }}</span></td>
               <td><span class="badge" [ngClass]="user.isActive ? 'badge-active' : 'badge-inactive'">{{ user.isActive ? 'Active' : 'Inactive' }}</span></td>
               <td>{{ user.windowsUsername }}</td>
               <td>
@@ -355,7 +369,8 @@ export class UserManagementComponent implements OnInit {
       role: user.role,
       password: '',
       windowsUsername: user.windowsUsername,
-      isActive: user.isActive
+      isActive: user.isActive,
+      permissionLevel: (user as any).permissionLevel || ''
     };
     this.showForm = true;
     this.clearMessages();
@@ -415,11 +430,17 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
+  getPermissionBadgeClass(level: string): string {
+    if (level === 'OPERATOR') return 'badge-admin';
+    if (level === 'BASIC') return 'badge-employee';
+    return 'badge-inactive';
+  }
+
   private emptyForm(): UserForm {
     return {
       username: '', firstName: '', lastName: '',
       email: '', role: '', password: '',
-      windowsUsername: '', isActive: true
+      windowsUsername: '', isActive: true, permissionLevel: ''
     };
   }
 

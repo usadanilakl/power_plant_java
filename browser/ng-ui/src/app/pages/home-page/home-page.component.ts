@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menus/router-menu/router-menu.component';
+import { AuthService } from '../../auth/auth.service';
 
 interface HomeCard {
   title: string;
@@ -24,7 +25,7 @@ interface HomeCard {
           <h1 class="home-title">Jackson Generation</h1>
           <p class="home-subtitle">Select an application to get started</p>
           <div class="card-grid">
-            @for (card of cards; track card.route) {
+            @for (card of allCards; track card.route) {
               <button class="home-card" (click)="navigate(card.route)">
                 <span class="card-icon">{{ card.icon }}</span>
                 <span class="card-title">{{ card.title }}</span>
@@ -135,6 +136,7 @@ interface HomeCard {
 })
 export class HomePageComponent {
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   cards: HomeCard[] = [
     {
@@ -156,6 +158,19 @@ export class HomePageComponent {
       route: '/instruments'
     }
   ];
+
+  get allCards(): HomeCard[] {
+    const extra: HomeCard[] = [];
+    if (this.authService.isLoggedIn() && this.authService.hasPermission('BASIC')) {
+      extra.push({
+        title: 'My Permits',
+        description: 'View permit status and packages',
+        icon: '🛡️',
+        route: '/my-permits'
+      });
+    }
+    return [...this.cards, ...extra];
+  }
 
   navigate(route: string) {
     this.router.navigate([route]);

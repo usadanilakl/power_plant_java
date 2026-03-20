@@ -101,6 +101,7 @@ public class NgUserController {
                 if (request.password() != null && !request.password().isBlank()) {
                     user.setPassword(passwordEncoder.encode(request.password()));
                 }
+                if (request.permissionLevel() != null) user.setPermissionLevel(request.permissionLevel());
 
                 user = userRepo.save(user);
                 UserDto dto = mapper.convert(user, UserDto.class);
@@ -137,6 +138,7 @@ public class NgUserController {
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
-        String email, String role, String password, Boolean isActive, String windowsUsername
+        String email, String role, String password, Boolean isActive, String windowsUsername,
+        String permissionLevel
     ) {}
 }

@@ -16,4 +16,7 @@ public interface WorkRequestRepo extends PermitRepo<WorkRequest> {
 
     // PWA tracking
     Optional<WorkRequest> findFirstByLocalUuidOrderByIdAsc(String localUuid);
+
+    // PWA permit status
+    List<WorkRequest> findBySubmitterEmailIgnoreCase(String email);
 }

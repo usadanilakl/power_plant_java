@@ -8,6 +8,7 @@ export interface UserModel {
   role: string;
   isActive: boolean;
   windowsUsername: string;
+  permissionLevel: string;
 }
 
 export class UserDto implements UserModel {
@@ -20,6 +21,7 @@ export class UserDto implements UserModel {
   role: string;
   isActive: boolean;
   windowsUsername: string;
+  permissionLevel: string;
 
   constructor(data: Partial<UserModel> = {}) {
     this.id = data.id ?? 0;
@@ -31,6 +33,7 @@ export class UserDto implements UserModel {
     this.role = data.role ?? '';
     this.isActive = data.isActive ?? true;
     this.windowsUsername = data.windowsUsername ?? '';
+    this.permissionLevel = data.permissionLevel ?? '';
   }
 
   toJson(): any {
@@ -43,7 +46,8 @@ export class UserDto implements UserModel {
       email: this.email,
       role: this.role,
       isActive: this.isActive,
-      windowsUsername: this.windowsUsername
+      windowsUsername: this.windowsUsername,
+      permissionLevel: this.permissionLevel
     };
   }
 
@@ -58,7 +62,8 @@ export class UserDto implements UserModel {
       email: json.email ?? '',
       role: json.role ?? '',
       isActive: json.isActive ?? true,
-      windowsUsername: json.windowsUsername ?? ''
+      windowsUsername: json.windowsUsername ?? '',
+      permissionLevel: json.permissionLevel ?? ''
     });
   }
 }

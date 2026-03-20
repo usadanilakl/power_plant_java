@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.sevice.pwa;
 
+import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,10 +21,10 @@ import java.util.Map;
 public class PwaPermitService {
 
     private final WorkRequestRepo workRequestRepo;
+    private final DailyPermitPackageRepo dailyPermitPackageRepo;
 
     public List<Map<String, Object>> getPermitsForUser(User user) {
-        return workRequestRepo.findAll().stream()
-                .filter(wr -> user.getEmail().equalsIgnoreCase(wr.getSubmitterEmail()))
+        return workRequestRepo.findBySubmitterEmailIgnoreCase(user.getEmail()).stream()
                 .map(this::toPermitSummary)
                 .toList();
     }
@@ -68,6 +71,10 @@ public class PwaPermitService {
         info.put("timeSubmitted", wr.getTimeSubmitted());
         info.put("signedOnBy", wr.getSignedOnBy() != null ? wr.getSignedOnBy().getName() : null);
         info.put("signedOffBy", wr.getSignedOffBy() != null ? wr.getSignedOffBy().getName() : null);
+
+        // Package info
+        addPackageSummary(wr, info);
+
         return info;
     }
 
@@ -85,6 +92,37 @@ public class PwaPermitService {
         info.put("submitterEmail", wr.getSubmitterEmail());
         info.put("signedOnAt", wr.getSignedOnAt() != null ? wr.getSignedOnAt().toString() : null);
         info.put("signedOffAt", wr.getSignedOffAt() != null ? wr.getSignedOffAt().toString() : null);
+
+        // Full package details
+        addPackageDetail(wr, info);
+
         return info;
+    }
+
+    private void addPackageSummary(WorkRequest wr, Map<String, Object> info) {
+        Optional<DailyPermitPackage> pkgOpt = dailyPermitPackageRepo.findByWorkRequestId(wr.getId());
+        if (pkgOpt.isPresent()) {
+            DailyPermitPackage pkg = pkgOpt.get();
+            info.put("packageId", pkg.getId());
+            info.put("packageNumber", pkg.getPermitNumber());
+            info.put("packageStatus", pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : null);
+            info.put("workCompleted", pkg.getWorkCompleted());
+        }
+    }
+
+    private void addPackageDetail(WorkRequest wr, Map<String, Object> info) {
+        Optional<DailyPermitPackage> pkgOpt = dailyPermitPackageRepo.findByWorkRequestId(wr.getId());
+        if (pkgOpt.isPresent()) {
+            DailyPermitPackage pkg = pkgOpt.get();
+            // Already has summary fields from toPermitSummary → addPackageSummary
+            info.put("packageClosureComments", pkg.getClosureComments());
+            info.put("packageContinueDate", pkg.getContinueDate());
+            info.put("packageDate", pkg.getDate());
+            info.put("packagePersonName", pkg.getPersonName());
+            info.put("safeWorkCount", pkg.getSafeWorks() != null ? pkg.getSafeWorks().size() : 0);
+            info.put("hotWorkCount", pkg.getHotWorks() != null ? pkg.getHotWorks().size() : 0);
+            info.put("confinedSpaceCount", pkg.getConfinedSpaces() != null ? pkg.getConfinedSpaces().size() : 0);
+            info.put("lotoCount", pkg.getLotos() != null ? pkg.getLotos().size() : 0);
+        }
     }
 }

@@ -21,9 +21,63 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
             <div class="detail-card">
               <div class="detail-header">
                 <h2>{{ permit.permitNumber || 'Work Request' }}</h2>
-                <span class="status-badge" [class]="permit.permitStatus?.toLowerCase()">{{ permit.permitStatus }}</span>
+                <span class="status-badge" [class]="getStatusClass(permit.permitStatus)">{{ permit.permitStatus }}</span>
               </div>
 
+              <!-- Package Status Section -->
+              @if (permit.packageNumber) {
+                <div class="package-section">
+                  <div class="package-header">
+                    <span class="package-label">Permit Package</span>
+                    <span class="package-number">{{ permit.packageNumber }}</span>
+                    @if (permit.packageStatus) {
+                      <span class="status-badge" [class]="getStatusClass(permit.packageStatus)">
+                        {{ permit.packageStatus }}
+                      </span>
+                    }
+                  </div>
+
+                  @if (permit.packagePersonName) {
+                    <div class="package-field">Processed by: {{ permit.packagePersonName }}</div>
+                  }
+
+                  <!-- Permit Counts -->
+                  <div class="permit-counts">
+                    @if (permit.safeWorkCount > 0) {
+                      <span class="count-badge">Safe Work: {{ permit.safeWorkCount }}</span>
+                    }
+                    @if (permit.hotWorkCount > 0) {
+                      <span class="count-badge hot">Hot Work: {{ permit.hotWorkCount }}</span>
+                    }
+                    @if (permit.confinedSpaceCount > 0) {
+                      <span class="count-badge confined">Confined Space: {{ permit.confinedSpaceCount }}</span>
+                    }
+                    @if (permit.lotoCount > 0) {
+                      <span class="count-badge loto">LOTO: {{ permit.lotoCount }}</span>
+                    }
+                  </div>
+
+                  @if (permit.workCompleted) {
+                    <div class="closure-info">
+                      <strong>Work Completed</strong>
+                      @if (permit.packageClosureComments) {
+                        <p>{{ permit.packageClosureComments }}</p>
+                      }
+                    </div>
+                  }
+
+                  @if (permit.packageContinueDate) {
+                    <div class="continue-info">Continues on: {{ permit.packageContinueDate }}</div>
+                  }
+                </div>
+              } @else {
+                <div class="no-package">
+                  <span>Your work request has been submitted and is awaiting processing.</span>
+                </div>
+              }
+
+              <!-- Work Request Details -->
+              <div class="section-label">Work Request Details</div>
               <div class="detail-grid">
                 <div class="detail-field"><label>Date</label><span>{{ permit.dateOfWork }}</span></div>
                 <div class="detail-field"><label>Location</label><span>{{ permit.location }}</span></div>
@@ -87,6 +141,49 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
       background: #e0e0e0;
     }
     .status-badge.active { background: #c8e6c9; color: #2e7d32; }
+    .status-badge.completed, .status-badge.closed { background: #bbdefb; color: #1565c0; }
+    .status-badge.draft { background: #f5f5f5; color: #757575; }
+
+    /* Package Section */
+    .package-section {
+      background: var(--background-primary, #f8f9fa);
+      border: 1px solid var(--border-color, #e0e0e0);
+      border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .package-header {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
+    .package-label { font-size: 0.75rem; color: var(--text-secondary, #999); text-transform: uppercase; }
+    .package-number { font-weight: 600; color: var(--primary-color, #007bff); }
+    .package-field { font-size: 0.85rem; color: var(--text-secondary, #666); margin-bottom: 0.25rem; }
+
+    .permit-counts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .count-badge {
+      padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 500;
+      background: #e3f2fd; color: #1565c0;
+    }
+    .count-badge.hot { background: #fff3e0; color: #e65100; }
+    .count-badge.confined { background: #fce4ec; color: #c62828; }
+    .count-badge.loto { background: #f3e5f5; color: #6a1b9a; }
+
+    .closure-info {
+      margin-top: 0.75rem; padding: 0.5rem; border-radius: 6px;
+      background: rgba(76,175,80,0.1); color: #4caf50; font-size: 0.85rem;
+    }
+    .closure-info p { margin: 0.25rem 0 0; font-weight: normal; }
+    .continue-info {
+      margin-top: 0.5rem; font-size: 0.85rem; color: #ff9800; font-weight: 500;
+    }
+    .no-package {
+      background: #fff8e1; border: 1px solid #ffecb3; border-radius: 8px;
+      padding: 0.75rem; margin-bottom: 1rem; font-size: 0.875rem; color: #f57f17;
+    }
+
+    .section-label {
+      font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary, #999);
+      margin-bottom: 0.5rem; font-weight: 500;
+    }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .detail-field { display: flex; flex-direction: column; }
     .detail-field.full-width { grid-column: 1 / -1; }
@@ -107,6 +204,7 @@ import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.compo
     .back-btn {
       margin-top: 1rem; background: none; border: 1px solid var(--border-color, #ddd);
       padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; color: var(--text-secondary, #666);
+      width: 100%;
     }
   `]
 })
@@ -172,5 +270,10 @@ export class PermitDetailPageComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/my-permits']);
+  }
+
+  getStatusClass(status: string | null): string {
+    if (!status) return '';
+    return status.toLowerCase().replace(/\s+/g, '-');
   }
 }

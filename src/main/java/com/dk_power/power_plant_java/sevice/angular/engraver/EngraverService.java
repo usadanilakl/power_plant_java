@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
 public class EngraverService {
 
     public static final int BATCH_SIZE = 4;
-    // private static final String QR_BASE_URL = "https://jgportal.jpowerusa.com/qr/";
-    private static final String QR_BASE_URL = "http://localhost:8085/qr/";
+    private static final String QR_BASE_URL = "https://jgportal.jpowerusa.com/qr/";
+    // private static final String QR_BASE_URL = "http://localhost:8085/qr/";
 
     @Value("${engraver.data.path:engraver_data}")
     private String engraverDataPath;
