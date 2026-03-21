@@ -740,6 +740,157 @@ export class InteractiveImageComponent {
     this.zoomElement.classList.remove('dragging');
   }
 
+  // ==================================================Touch Handlers==================================================
+
+  private touchState = {
+    isPanning: false,
+    isPinching: false,
+    startPos: { x: 0, y: 0 },
+    startTransform: { scale: 1, pointX: 0, pointY: 0 },
+    pinchStartDistance: 0,
+    pinchStartScale: 1,
+    totalMovement: 0,
+    startTime: 0,
+  };
+
+  onTouchStart(event: TouchEvent): void {
+    event.preventDefault();
+
+    if (event.touches.length === 1) {
+      // Single finger — start panning
+      const touch = event.touches[0];
+      this.touchState.isPanning = true;
+      this.touchState.isPinching = false;
+      this.touchState.startPos = { x: touch.clientX, y: touch.clientY };
+      this.touchState.startTransform = { ...this.transformState };
+      this.touchState.totalMovement = 0;
+      this.touchState.startTime = Date.now();
+      this.zoomElement.classList.add('dragging');
+    } else if (event.touches.length === 2) {
+      // Two fingers — start pinch zoom
+      this.touchState.isPanning = false;
+      this.touchState.isPinching = true;
+      this.touchState.pinchStartDistance = this.getPinchDistance(event.touches);
+      this.touchState.pinchStartScale = this.transformState.scale;
+      this.touchState.startTransform = { ...this.transformState };
+      this.zoomElement.classList.add('dragging');
+    }
+  }
+
+  onTouchMove(event: TouchEvent): void {
+    event.preventDefault();
+
+    if (event.touches.length === 1 && this.touchState.isPanning) {
+      const touch = event.touches[0];
+      const dx = touch.clientX - this.touchState.startPos.x;
+      const dy = touch.clientY - this.touchState.startPos.y;
+      this.touchState.totalMovement += Math.abs(dx) + Math.abs(dy);
+
+      const newPosition = this.zoomPanService.calculatePan(
+        this.touchState.startPos,
+        { x: touch.clientX, y: touch.clientY },
+        this.touchState.startTransform
+      );
+
+      this.transformState = {
+        ...this.transformState,
+        pointX: newPosition.pointX,
+        pointY: newPosition.pointY,
+      };
+
+      this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
+    } else if (event.touches.length === 2 && this.touchState.isPinching) {
+      const newDistance = this.getPinchDistance(event.touches);
+      const scaleRatio = newDistance / this.touchState.pinchStartDistance;
+      const newScale = Math.min(Math.max(0.1, this.touchState.pinchStartScale * scaleRatio), 10);
+
+      // Zoom centered between the two fingers
+      const center = this.getPinchCenter(event.touches);
+      const containerRect = this.zoomOuter.getBoundingClientRect();
+      const centerX = center.x - containerRect.left;
+      const centerY = center.y - containerRect.top;
+
+      // Calculate new position to keep the pinch center stationary
+      const scaleChange = newScale / this.touchState.startTransform.scale;
+      const newPointX = centerX - (centerX - this.touchState.startTransform.pointX) * scaleChange;
+      const newPointY = centerY - (centerY - this.touchState.startTransform.pointY) * scaleChange;
+
+      this.transformState = { scale: newScale, pointX: newPointX, pointY: newPointY };
+      this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
+      this.updateImageScale();
+      this.updateTempCanvasSize();
+    }
+  }
+
+  onTouchEnd(event: TouchEvent): void {
+    const wasPanning = this.touchState.isPanning;
+    const wasPinching = this.touchState.isPinching;
+    const elapsed = Date.now() - this.touchState.startTime;
+    const moved = this.touchState.totalMovement;
+
+    this.touchState.isPanning = false;
+    this.touchState.isPinching = false;
+    this.zoomElement.classList.remove('dragging');
+
+    if (wasPinching) {
+      this.updateCanvasAndRedraw();
+      return;
+    }
+
+    if (wasPanning) {
+      // If it was a short tap with minimal movement, treat as shape tap
+      if (elapsed < 300 && moved < 10 && event.changedTouches.length > 0) {
+        const touch = event.changedTouches[0];
+        this.handleTouchTap(touch.clientX, touch.clientY);
+      }
+      this.updateCanvasAndRedraw();
+    }
+  }
+
+  private handleTouchTap(clientX: number, clientY: number): void {
+    const config = this.activeConfig();
+    if (!config.canSelectShapes) return;
+
+    const shapeId = this.isOverShapeAtPoint(clientX, clientY);
+    if (shapeId !== null) {
+      const shape = this.shapeManager.getShapeById(shapeId);
+      if (shape) this.shapeClicked.emit(shape);
+    }
+  }
+
+  /** Hit-test shapes at raw client coordinates (used by both mouse and touch) */
+  private isOverShapeAtPoint(clientX: number, clientY: number): number | null {
+    const imgRect = this.img.getBoundingClientRect();
+    const x = (clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+    const y = (clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+
+    const shapes = this.shapes();
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      const shape = shapes[i];
+      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+        const bounds = this.getNormalizedShapeBounds(shape);
+        if (x >= bounds.x && x <= bounds.x + bounds.width &&
+            y >= bounds.y && y <= bounds.y + bounds.height) {
+          return shape.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  private getPinchDistance(touches: TouchList): number {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private getPinchCenter(touches: TouchList): { x: number; y: number } {
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2,
+    };
+  }
+
   private resetTransform(): void {
     this.transformState = {
       scale: 1,

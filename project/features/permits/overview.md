@@ -22,7 +22,7 @@ Work Request is submitted (saved in DB) -> JHA filled out and attached to Work R
     - Work Area selected (constant hazards auto-apply to permit forms)
                                     ||
                                     \/
-(Manually) Job is generated(or updated) based on the Work Request:
+(Semi-automatic or Manually) Job is generated(or updated) based on the Work Request:
     - Scope of work
     - Requestor
     - Daily Packages

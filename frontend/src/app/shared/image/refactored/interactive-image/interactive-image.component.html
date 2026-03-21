@@ -26,6 +26,9 @@
             (mousedown)="onMouseDown($event)"
             (mousemove)="onMouseMove($event)"
             (mouseup)="onMouseUp($event)"
+            (touchstart)="onTouchStart($event)"
+            (touchmove)="onTouchMove($event)"
+            (touchend)="onTouchEnd($event)"
             (contextmenu)="preventContextMenu($event)"
             [style.cursor]="cursor"
           />
