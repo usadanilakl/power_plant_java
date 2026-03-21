@@ -86,7 +86,9 @@ public class AuthController {
     public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
-            return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+            // Return 200 with empty body instead of 401 to prevent browser's
+            // native login popup (WWW-Authenticate header on 401 responses)
+            return ResponseEntity.ok().build();
         }
 
         CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();

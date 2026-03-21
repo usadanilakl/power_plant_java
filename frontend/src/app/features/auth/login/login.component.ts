@@ -187,7 +187,13 @@ export class LoginComponent {
     this.authService.login(this.credential, this.password).subscribe({
       next: (user) => {
         if (user.accessLevel && user.accessLevel !== 'FULL') {
-          this.router.navigate(['/access-request']);
+          // Restricted user: allow navigation to restricted-allowed routes,
+          // otherwise show access-request page
+          if (this.isRestrictedAllowedRoute(this.returnUrl)) {
+            this.router.navigate([this.returnUrl]);
+          } else {
+            this.router.navigate(['/access-request']);
+          }
         } else {
           this.router.navigate([this.returnUrl]);
         }
@@ -197,5 +203,10 @@ export class LoginComponent {
         this.errorMessage = err.error?.message || 'Invalid email or password';
       }
     });
+  }
+
+  private isRestrictedAllowedRoute(url: string): boolean {
+    const restrictedRoutes = ['/qr/', '/profile'];
+    return restrictedRoutes.some(prefix => url.startsWith(prefix));
   }
 }

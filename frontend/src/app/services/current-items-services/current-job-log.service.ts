@@ -1,11 +1,12 @@
 
 import { computed, DestroyRef, inject, Injectable, signal } from "@angular/core";
-import { BehaviorSubject, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, tap } from "rxjs";
 import { JobLogDto } from "../../models/permits/job-log.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { JobLogService } from "../permits/job-log.service";
 import { DailyPermitPackageDto } from "../../models/permits/dailt-permit-package.model";
 import { Router } from "@angular/router";
+import { AuthService } from "../auth.service";
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,8 @@ export class CurrentJobLogService {
   private jobLogService = inject(JobLogService);
   private destroyRef = inject(DestroyRef);
   private router = inject(Router);
+  private authService = inject(AuthService);
+  private hasLoaded = false;
 
   private allJobLogsSubject = new BehaviorSubject<JobLogDto[]>([]);
   allJobLogs$ = this.allJobLogsSubject.asObservable();
@@ -26,7 +29,21 @@ export class CurrentJobLogService {
   packages = computed(() => this.selectedItem().packages);
 
   constructor() {
-    this.loadJobLogs();
+    combineLatest([this.authService.authChecked$, this.authService.isLoggedIn$])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([checked, isLoggedIn]) => {
+        if (!checked) {
+          return;
+        }
+
+        if (isLoggedIn) {
+          this.ensureJobLogsLoaded();
+        } else {
+          this.hasLoaded = false;
+          this.allJobLogsSubject.next([]);
+          this.selectedJobLogSubject.next(new JobLogDto());
+        }
+      });
   }
 
   private loadJobLogs() {
@@ -36,8 +53,16 @@ export class CurrentJobLogService {
       if (response?.responseData) {
         const items = response.responseData.map((j: any) => JobLogDto.fromJson(j));
         this.allJobLogsSubject.next(items);
+        this.hasLoaded = true;
       }
     });
+  }
+
+  ensureJobLogsLoaded() {
+    if (this.hasLoaded) {
+      return;
+    }
+    this.loadJobLogs();
   }
 
   setCurrentJobLog(id: number) {

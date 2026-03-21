@@ -71,6 +71,11 @@ public class SecurityConfigSpring {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
+            // Disable HTTP Basic auth and form login (prevents browser's native login popup
+            // and Spring's default login page — we use a custom REST/JSON auth flow)
+            .httpBasic(basic -> basic.disable())
+            .formLogin(form -> form.disable())
+
             // Session management
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -97,7 +102,7 @@ public class SecurityConfigSpring {
 
                 // Public endpoints — no auth required
                 .requestMatchers(
-                    "/api/auth/login", "/api/auth/logout",
+                    "/api/auth/login", "/api/auth/logout", "/api/auth/me",
                     "/api/auth/forgot-password", "/api/auth/reset-password",
                     "/api/pwa/**",
                     "/api/sharepoint-sync/**", "/power-automate/**",

@@ -1,7 +1,9 @@
 import { Injectable, inject, DestroyRef, NgZone, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Subject, BehaviorSubject } from 'rxjs';
+import { Subject, BehaviorSubject, combineLatest } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService } from '../auth.service';
 
 export interface FieldChangeDto {
   entityType: string;
@@ -42,6 +44,7 @@ export class SyncUpdateService {
   private ngZone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
+  private authService = inject(AuthService);
 
   private eventSource: EventSource | null = null;
   private reconnectAttempts = 0;
@@ -67,8 +70,21 @@ export class SyncUpdateService {
   constructor() {
     // Only connect in browser environment (not during SSR/prerendering)
     if (isPlatformBrowser(this.platformId)) {
-      // Auto-connect on service initialization
-      this.connect();
+      // Only keep the SSE connection alive for authenticated users.
+      combineLatest([this.authService.authChecked$, this.authService.isLoggedIn$])
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(([checked, isLoggedIn]) => {
+          if (!checked) {
+            return;
+          }
+
+          if (isLoggedIn) {
+            this.connect();
+          } else {
+            this.reconnectAttempts = 0;
+            this.disconnect();
+          }
+        });
 
       // Cleanup on destroy
       this.destroyRef.onDestroy(() => {
