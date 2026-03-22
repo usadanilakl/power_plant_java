@@ -175,3 +175,4 @@ global.env
 # Backend port file for Angular dev server
 backend-port.txt
 /electron-manager/vosk-model/**
+/.m2repo/**
