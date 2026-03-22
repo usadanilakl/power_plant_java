@@ -15,6 +15,7 @@ export class LotoPointIdDto extends BaseDto {
   equipmentIdList: number[] | null;
   normalPosition: string | null;
   isolatedPosition: string | null;
+  characteristicsJson: string | null;
   equipmentList: number[] | null;
   oldId: string | null;
   isUpdated: number | null;
@@ -55,6 +56,7 @@ export class LotoPointIdDto extends BaseDto {
     this.equipmentIdList = data.equipmentIdList ?? null;
     this.normalPosition = data.normalPosition ?? null;
     this.isolatedPosition = data.isolatedPosition ?? null;
+    this.characteristicsJson = data.characteristicsJson ?? null;
     this.equipmentList = data.equipmentList ?? null;
     this.oldId = data.oldId ?? null;
     this.isUpdated = data.isUpdated ?? null;
@@ -134,6 +136,7 @@ export class LotoPointIdDto extends BaseDto {
       equipmentIdList: this.equipmentIdList,
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
+      characteristicsJson: this.characteristicsJson,
       equipmentList: this.equipmentList,
       oldId: this.oldId,
       isUpdated: this.isUpdated,
@@ -175,6 +178,7 @@ export class LotoPointIdDto extends BaseDto {
       equipmentIdList: json.equipmentIdList || [],
       normalPosition: json.normalPosition,
       isolatedPosition: json.isolatedPosition,
+      characteristicsJson: json.characteristicsJson || null,
       equipmentList: json.equipmentList || [],
       oldId: json.oldId,
       isUpdated: json.isUpdated,

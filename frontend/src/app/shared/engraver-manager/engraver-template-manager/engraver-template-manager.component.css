@@ -1,0 +1,195 @@
+.template-manager {
+  padding: 1rem;
+  min-width: 480px;
+  color: var(--primary-text);
+}
+
+/* Template List */
+.template-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.template-list-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+/* Template Card */
+.template-card {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.template-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.template-card-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--primary-text);
+}
+
+.template-card-meta {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+}
+
+.template-card-file {
+  font-size: 0.75rem;
+  color: var(--secondary-text);
+  opacity: 0.7;
+}
+
+.template-card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.4rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Small Buttons */
+.btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--primary-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-sm:hover {
+  background: var(--hover-background);
+}
+
+.btn-sm.danger {
+  color: #f87171;
+  border-color: #f8717144;
+}
+
+.btn-sm.danger:hover {
+  background: #f8717122;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.btn.primary {
+  background: var(--primary-accent);
+  color: #fff;
+  border-color: var(--primary-accent);
+}
+
+.btn.primary:hover {
+  opacity: 0.9;
+}
+
+.btn.secondary {
+  background: var(--secondary-background);
+  color: var(--primary-text);
+}
+
+.btn.secondary:hover {
+  background: var(--hover-background);
+}
+
+/* Form */
+.template-form h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.85rem;
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  font-weight: 500;
+}
+
+.form-field input[type="text"],
+.form-field input[type="number"],
+.form-field select {
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--primary-background);
+  color: var(--primary-text);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-field input[type="text"]:focus,
+.form-field input[type="number"]:focus,
+.form-field select:focus {
+  border-color: var(--primary-accent);
+}
+
+.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* Empty state */
+.empty-msg {
+  font-style: italic;
+  color: var(--secondary-text);
+  text-align: center;
+  padding: 2rem 1rem;
+  margin: 0;
+}

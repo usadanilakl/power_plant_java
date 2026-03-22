@@ -130,10 +130,11 @@ export interface RfFormField {
     | 'zero-energy-phrase-builder'
     | 'work-area-select'
     | 'comment'
+    | 'characteristics-editor'
     | 'hidden';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
-  categoryAlias?: string; // For value-select and multi-value-select types
+  categoryAlias?: string; // For value-select, multi-value-select, and characteristics-editor types
   canManageValues?: boolean; // For value-select and multi-value-select types
   accept?: string; // For file input - accepted file types
   helperCheckbox?: FieldHelperCheckbox; // Optional checkbox displayed under the field

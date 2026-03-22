@@ -160,10 +160,11 @@ public class NgValueService {
     }
 
     public List<Value> getValuesByCategory(String categoryName) {
-        List<Category> byName = categoryRepo.findByName(categoryName);
-        if (byName.size() == 1) return new ArrayList<>(byName.getFirst().getValues());
-        else if (byName.size() == 0) throw new RuntimeException("Category not found with name: " + categoryName);
-        else throw new RuntimeException("2 or more categories found with name: " + categoryName);
+        Category category = getCategoryByIdentifierSafe(categoryName);
+        if (category == null) {
+            throw new RuntimeException("Category not found with identifier: " + categoryName);
+        }
+        return new ArrayList<>(category.getValues());
     }
 
     public List<Value> getValuesByCategoryAlias(String categoryAlias) {
@@ -313,6 +314,34 @@ public class NgValueService {
                     name, categories.get(0).getId());
         }
         return categories.get(0);
+    }
+
+    /**
+     * Safely retrieves a category by either exact name, alias, or case-insensitive name.
+     * Returns the first match and logs when multiple candidates are found.
+     */
+    public Category getCategoryByIdentifierSafe(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return null;
+        }
+
+        Category byName = getCategoryByNameSafe(identifier);
+        if (byName != null) {
+            return byName;
+        }
+
+        Category byAlias = getCategoryByAliasSafe(identifier);
+        if (byAlias != null) {
+            return byAlias;
+        }
+
+        List<Category> byNameIgnoreCase = categoryRepo.findByNameIgnoreCase(identifier);
+        if (byNameIgnoreCase.isEmpty()) return null;
+        if (byNameIgnoreCase.size() > 1) {
+            log.debug("Multiple categories found with identifier '{}' (ignore-case), using first (id={})",
+                    identifier, byNameIgnoreCase.get(0).getId());
+        }
+        return byNameIgnoreCase.get(0);
     }
 
     public Optional<Value> findById(Long system) {

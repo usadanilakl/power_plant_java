@@ -198,6 +198,9 @@ export class CurrentDailyPermitPackageService {
     
     setSelectedPackage(packageItem: DailyPermitPackageDto) {
       this.selectedDailyPermitPackageSubject.next(packageItem);
+      if (packageItem?.id) {
+        this.updateDailyPermitPackageInList(packageItem);
+      }
     }
     setCurrentDailyPackage(id: number) {
       this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
@@ -751,7 +754,7 @@ export class CurrentDailyPermitPackageService {
       takeUntilDestroyed(this.destroyRef),
       tap(response => {
         if(!response?.responseData) throw new Error('No response data from reissuing permits');
-              
+
         // Update the current package with the response from server
         const updatedPackage = new DailyPermitPackageDto(response.responseData);
         this.selectedDailyPermitPackageSubject.next(updatedPackage);
@@ -762,6 +765,48 @@ export class CurrentDailyPermitPackageService {
       error: err => console.error('Error reissuing permits:', err)
     });
   }
+
+  reissuePermitsWithDate(pckg: DailyPermitPackageDto, date: string, time: string) {
+    const packageIdToReissue = pckg.id;
+    const targetPackageId = this.selectedDailyPermitPackageSubject.value?.id;
+    if(!packageIdToReissue || !targetPackageId) throw new Error('No package ID provided to reissue permits');
+    this.dailyPermitPackageService.reissuePermitsWithDate(packageIdToReissue, targetPackageId, date, time).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(response => {
+        if(!response?.responseData) throw new Error('No response data from reissuing permits');
+        const updatedPackage = new DailyPermitPackageDto(response.responseData);
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+    ).subscribe({
+      next: () => console.log('Permits reissued with date successfully.'),
+      error: err => console.error('Error reissuing permits with date:', err)
+    });
+  }
+
+  reissueCurrentPackageWithDate(date: string, time: string) {
+    const sourcePackageId = this.selectedDailyPermitPackageSubject.value?.id;
+    if (!sourcePackageId) {
+      throw new Error('No current package selected to reissue');
+    }
+
+    this.dailyPermitPackageService.reissueCurrentPackage(sourcePackageId, date, time).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(response => {
+        if (!response?.responseData) {
+          throw new Error('No response data from reissuing current package');
+        }
+
+        const newPackage = new DailyPermitPackageDto(response.responseData);
+        this.selectedDailyPermitPackageSubject.next(newPackage);
+        this.updateDailyPermitPackageInList(newPackage);
+      }),
+    ).subscribe({
+      next: () => console.log('Current package reissued successfully.'),
+      error: err => console.error('Error reissuing current package:', err),
+    });
+  }
+
   reIssuePermitsByWorkRequestId(workRequestId: number) {
     this.dailyPermitPackageService.reissuePermitsByWorkRequestId(workRequestId).pipe(
       takeUntilDestroyed(this.destroyRef),

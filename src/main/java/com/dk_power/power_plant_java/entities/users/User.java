@@ -63,4 +63,7 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "signature_path")
     private String signaturePath;
+
+    @Column(name = "last_notification_check")
+    private LocalDateTime lastNotificationCheck;
 }

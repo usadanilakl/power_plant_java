@@ -48,16 +48,24 @@ public class PwaPermitService {
         return Map.of("success", true, "message", "Signed on to permit");
     }
 
-    public Map<String, Object> signOff(Long permitId, User user) {
+    public Map<String, Object> signOff(Long permitId, User user, String comments) {
         WorkRequest wr = workRequestRepo.findById(permitId).orElse(null);
         if (wr == null) return Map.of("error", "NOT_FOUND", "message", "Permit not found");
 
         wr.setSignedOffBy(user);
         wr.setSignedOffAt(Instant.now());
+        if (comments != null && !comments.isBlank()) {
+            wr.setNote(comments.trim());
+        }
         workRequestRepo.save(wr);
 
-        log.info("[PWA Permit] Sign-off: permitId={}, user={}", permitId, user.getEmail());
-        return Map.of("success", true, "message", "Signed off permit");
+        log.info("[PWA Permit] Sign-off: permitId={}, user={}, commentPresent={}",
+                permitId, user.getEmail(), comments != null && !comments.isBlank());
+        return Map.of(
+                "success", true,
+                "message", "Signed off permit",
+                "commentSaved", comments != null && !comments.isBlank()
+        );
     }
 
     private Map<String, Object> toPermitSummary(WorkRequest wr) {
@@ -90,6 +98,7 @@ public class PwaPermitService {
         info.put("fireWatch", wr.getFireWatch());
         info.put("submitterName", wr.getSubmitterName());
         info.put("submitterEmail", wr.getSubmitterEmail());
+        info.put("note", wr.getNote());
         info.put("signedOnAt", wr.getSignedOnAt() != null ? wr.getSignedOnAt().toString() : null);
         info.put("signedOffAt", wr.getSignedOffAt() != null ? wr.getSignedOffAt().toString() : null);
 

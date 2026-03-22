@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Transactional
@@ -53,6 +54,9 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final WorkRequestRepo workRequestRepo;
     private final NgValueService ngValueService;
     private final JobLogRepo jobLogRepo;
+    private final com.dk_power.power_plant_java.sevice.email.EmailFacadeService emailFacadeService;
+    private final com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo;
+    private final com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo;
 
     @Override
     public DailyPermitPackageRepo getRepo() {
@@ -202,60 +206,294 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return "Permits built successfully!";
     }
 
-    public DailyPermitPackageDto reissuePermits(String packageIdToReissue, String targetPackageId) {
+    public DailyPermitPackageDto reissuePermits(String packageIdToReissue, String targetPackageId,
+                                                  String date, String time) {
         DailyPermitPackage packageToReissue = getEntityById(packageIdToReissue);
         DailyPermitPackage targetPackage = getEntityById(targetPackageId);
-//        WorkRequest firstWr = new ArrayList<>(targetPackage.getWorkRequests()).getFirst();
 
+        // Use provided date/time or fall back to target package's
+        String reissueDate = (date != null && !date.isEmpty()) ? date : targetPackage.getDate();
+        String reissueTime = (time != null && !time.isEmpty()) ? time : targetPackage.getTime();
 
-        Set<SafeWorkDto> safeWorks = packageToReissue.getSafeWorks().stream()
-                .map(safeWorkMapper::convertToDto)
-                .map(sw->{
-                    sw.setDate(targetPackage.getDate());
-                    sw.setTime(targetPackage.getTime());
-                    sw.setWorkScope(targetPackage.getName());
-                    sw.setRedTagNum(null);
-                    sw.setId(null);
-                    return sw;
-                })
-                .collect(Collectors.toSet());
+        copyPermitsFromSource(packageToReissue, targetPackage, reissueDate, reissueTime);
 
-        Set<HotWorkDto> hotWorks = packageToReissue.getHotWorks().stream()
-                .map(hotWorkMapper::convertToDto)
-                .map(hw->{
-                    hw.setDate(targetPackage.getDate());
-                    hw.setWorkScope(targetPackage.getName());
-                    hw.setRedTagNum(null);
-                    hw.setId(null);
-                    return hw;
-                })
-                .collect(Collectors.toSet());
-
-        Set<ConfinedSpaceDto> confinedSpaces = packageToReissue.getConfinedSpaces().stream()
-                .map(confinedSpaceMapper::convertToDto)
-                .map(cs->{
-                    cs.setDate(targetPackage.getDate());
-                    cs.setTime(targetPackage.getTime());
-                    cs.setWorkScope(targetPackage.getName());
-                    cs.setRedTagNum(null);
-                    cs.setId(null);
-                    return cs;
-                })
-                .collect(Collectors.toSet());
-
-        Set<Loto> lotos = packageToReissue.getLotos();
-
-        DailyPermitPackageDto targetDto = dailyPermitPackageMapper.convertToDto(targetPackage);
-        targetDto.setSafeWorks(new ArrayList<>(safeWorks));
-        targetDto.setHotWorks(new ArrayList<>(hotWorks));
-        targetDto.setConfinedSpaces(new ArrayList<>(confinedSpaces));
-
-        DailyPermitPackage entity = dailyPermitPackageMapper.convertToEntity(targetDto);
-        entity.setLotos(lotos);
-        System.out.println("Saved lotos during reissue: " + entity.getLotos().size());
-        DailyPermitPackage saved = dailyPermitPackageRepo.save(entity);
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(targetPackage);
         return dailyPermitPackageMapper.convertToDto(saved);
+    }
 
+    public DailyPermitPackageDto reissueFromPackageForWorkRequest(
+            Long sourcePackageId, Long workRequestId, String date, String time) {
+        DailyPermitPackage source = getEntityById(String.valueOf(sourcePackageId));
+        WorkRequest wr = workRequestRepo.findById(workRequestId)
+                .orElseThrow(() -> new RuntimeException("WorkRequest not found: " + workRequestId));
+
+        String reissueDate = (date != null && !date.isBlank()) ? date : wr.getDateOfWorkToBePerformed();
+        String reissueTime = (time != null && !time.isBlank()) ? time : wr.getTimeOfWorkToBePerformed();
+
+        // Create new package
+        DailyPermitPackage newPackage = new DailyPermitPackage();
+        newPackage.setDate(reissueDate);
+        newPackage.setTime(reissueTime);
+        newPackage.setPersonName(source.getPersonName());
+        newPackage.setCompanyName(wr.getCompany());
+        newPackage.setName(wr.getWorkScope());
+        newPackage.setWorkRequests(new HashSet<>(Set.of(wr)));
+        newPackage.setPermitNumber(permitNumberGenerator.generate(reissueDate));
+
+        Value buildingStatus = ngValueService.createValue("Package Status", "Building");
+        newPackage.setPackageStatus(buildingStatus);
+
+        // Save first to get ID
+        newPackage = dailyPermitPackageRepo.save(newPackage);
+
+        // Copy permits from source
+        copyPermitsFromSource(source, newPackage, reissueDate, reissueTime);
+
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(newPackage);
+
+        // Link to parent job if WR has one
+        try {
+            // Find job by source package
+            var jobOpt = jobLogRepo.findByPackageId(source.getId());
+            if (jobOpt.isPresent()) {
+                var job = jobOpt.get();
+                job.getPackages().add(saved);
+                jobLogRepo.save(job);
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Could not link reissued package to job: " + e.getMessage());
+        }
+
+        return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    public DailyPermitPackageDto reissuePackageToNewPackage(Long sourcePackageId, String date, String time) {
+        DailyPermitPackage source = getEntityById(String.valueOf(sourcePackageId));
+
+        String reissueDate = (date != null && !date.isBlank()) ? date : source.getDate();
+        String reissueTime = (time != null && !time.isBlank()) ? time : source.getTime();
+
+        DailyPermitPackage newPackage = new DailyPermitPackage();
+        newPackage.setDate(reissueDate);
+        newPackage.setTime(reissueTime);
+        newPackage.setPersonName(source.getPersonName());
+        newPackage.setCompanyName(source.getCompanyName());
+        newPackage.setName(source.getName());
+        newPackage.setWorkRequests(new HashSet<>(source.getWorkRequests()));
+        newPackage.setPermitNumber(permitNumberGenerator.generate(reissueDate));
+
+        Value buildingStatus = ngValueService.createValue("Package Status", "Building");
+        newPackage.setPackageStatus(buildingStatus);
+
+        newPackage = dailyPermitPackageRepo.save(newPackage);
+        copyPermitsFromSource(source, newPackage, reissueDate, reissueTime);
+
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(newPackage);
+
+        try {
+            var jobOpt = jobLogRepo.findByPackageId(source.getId());
+            if (jobOpt.isPresent()) {
+                var job = jobOpt.get();
+                job.getPackages().add(saved);
+                jobLogRepo.save(job);
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Could not link reissued package to job: " + e.getMessage());
+        }
+
+        return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    public List<DailyPermitPackageDto> searchPackages(String scope, String date, String location) {
+        return dailyPermitPackageRepo.findAll().stream()
+                .filter(pkg -> {
+                    boolean matches = true;
+                    if (scope != null && !scope.isEmpty()) {
+                        String name = pkg.getName() != null ? pkg.getName().toLowerCase() : "";
+                        matches = name.contains(scope.toLowerCase());
+                    }
+                    if (date != null && !date.isEmpty()) {
+                        matches = matches && date.equals(pkg.getDate());
+                    }
+                    if (location != null && !location.isEmpty()) {
+                        String locationLower = location.toLowerCase();
+                        boolean locationMatches = Stream.of(
+                                        pkg.getWorkRequests().stream().map(WorkRequest::getLocation),
+                                        pkg.getSafeWorks().stream().map(SafeWork::getLocation),
+                                        pkg.getHotWorks().stream().map(HotWork::getLocation))
+                                .flatMap(s -> s)
+                                .filter(Objects::nonNull)
+                                .map(String::toLowerCase)
+                                .anyMatch(value -> value.contains(locationLower));
+                        matches = matches && locationMatches;
+                    }
+                    return matches;
+                })
+                .map(dailyPermitPackageMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    private void copyPermitsFromSource(DailyPermitPackage source, DailyPermitPackage target,
+                                       String date, String time) {
+        Value buildingStatus = ngValueService.createValue("Permit Status", "Building");
+        String workScope = target.getName();
+
+        target.getSafeWorks().clear();
+        target.getHotWorks().clear();
+        target.getConfinedSpaces().clear();
+        target.getEnergizedWorkPermits().clear();
+        target.getExcavationPermits().clear();
+        target.getVentingPermits().clear();
+        target.getLotos().clear();
+
+        // Copy SafeWorks
+        source.getSafeWorks().forEach(sw -> {
+            SafeWorkDto dto = safeWorkMapper.convertToDto(sw);
+            dto.setId(null); dto.setDate(date); dto.setTime(time);
+            dto.setWorkScope(workScope); dto.setRedTagNum(null);
+            SafeWork newSw = safeWorkMapper.convertToEntity(dto);
+            newSw.setPermitStatus(buildingStatus);
+            newSw.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getSafeWorks().add(newSw);
+        });
+
+        // Copy HotWorks
+        source.getHotWorks().forEach(hw -> {
+            HotWorkDto dto = hotWorkMapper.convertToDto(hw);
+            dto.setId(null); dto.setDate(date);
+            dto.setWorkScope(workScope); dto.setRedTagNum(null);
+            HotWork newHw = hotWorkMapper.convertToEntity(dto);
+            newHw.setPermitStatus(buildingStatus);
+            newHw.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getHotWorks().add(newHw);
+        });
+
+        // Copy ConfinedSpaces
+        source.getConfinedSpaces().forEach(cs -> {
+            ConfinedSpaceDto dto = confinedSpaceMapper.convertToDto(cs);
+            dto.setId(null); dto.setDate(date); dto.setTime(time);
+            dto.setWorkScope(workScope); dto.setRedTagNum(null);
+            ConfinedSpace newCs = confinedSpaceMapper.convertToEntity(dto);
+            newCs.setPermitStatus(buildingStatus);
+            newCs.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getConfinedSpaces().add(newCs);
+        });
+
+        // Copy EnergizedWorkPermits
+        source.getEnergizedWorkPermits().forEach(ep -> {
+            EnergizedWorkPermit newEp = new EnergizedWorkPermit();
+            newEp.setDate(date);
+            newEp.setTime(time);
+            newEp.setLocation(ep.getLocation());
+            newEp.setIssuedTo(ep.getIssuedTo());
+            newEp.setWorkOrder(ep.getWorkOrder());
+            newEp.setCircuitDescription(ep.getCircuitDescription());
+            newEp.setWorkDescription(ep.getWorkDescription());
+            newEp.setJustification(ep.getJustification());
+            newEp.setRequester(ep.getRequester());
+            newEp.setRequesterDate(ep.getRequesterDate());
+            newEp.setQualifiedPersonSignature(ep.getQualifiedPersonSignature());
+            newEp.setQualifiedPersonDate(ep.getQualifiedPersonDate());
+            newEp.setPlantManagerSignature(ep.getPlantManagerSignature());
+            newEp.setPlantManagerDate(ep.getPlantManagerDate());
+            newEp.setWorkCanBePerformedSafely(ep.getWorkCanBePerformedSafely());
+            newEp.setChecklistJson(ep.getChecklistJson());
+            newEp.setWorkScope(workScope);
+            newEp.setRedTagNum(null);
+            newEp.setPermitStatus(buildingStatus);
+            newEp.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getEnergizedWorkPermits().add(newEp);
+        });
+
+        // Copy ExcavationPermits
+        source.getExcavationPermits().forEach(ep -> {
+            ExcavationPermit newEp = new ExcavationPermit();
+            newEp.setDate(date);
+            newEp.setTime(time);
+            newEp.setLocation(ep.getLocation());
+            newEp.setIssuedTo(ep.getIssuedTo());
+            newEp.setSupervisor(ep.getSupervisor());
+            newEp.setJobLocation(ep.getJobLocation());
+            newEp.setSupervisorPhone(ep.getSupervisorPhone());
+            newEp.setExcavationDescription(ep.getExcavationDescription());
+            newEp.setWorkOrder(ep.getWorkOrder());
+            newEp.setLocationPipingMarked(ep.getLocationPipingMarked());
+            newEp.setSupervisorApprovalDate(ep.getSupervisorApprovalDate());
+            newEp.setSupervisorApprovalTime(ep.getSupervisorApprovalTime());
+            newEp.setPermitClosedDate(ep.getPermitClosedDate());
+            newEp.setPermitClosedTime(ep.getPermitClosedTime());
+            newEp.setJobStatusComplete(ep.getJobStatusComplete());
+            newEp.setSupervisorFieldInspectionName(ep.getSupervisorFieldInspectionName());
+            newEp.setSupervisorFieldInspectionDate(ep.getSupervisorFieldInspectionDate());
+            newEp.setSupervisorFieldInspectionTime(ep.getSupervisorFieldInspectionTime());
+            newEp.setFacilityName(ep.getFacilityName());
+            newEp.setCompetentPerson(ep.getCompetentPerson());
+            newEp.setSoilType(ep.getSoilType());
+            newEp.setExcavationDepth(ep.getExcavationDepth());
+            newEp.setExcavationWidth(ep.getExcavationWidth());
+            newEp.setProtectiveSystemType(ep.getProtectiveSystemType());
+            newEp.setTypeOfWorkJson(ep.getTypeOfWorkJson());
+            newEp.setInspectionsJson(ep.getInspectionsJson());
+            newEp.setChecklistJson(ep.getChecklistJson());
+            newEp.setWorkScope(workScope);
+            newEp.setRedTagNum(null);
+            newEp.setPermitStatus(buildingStatus);
+            newEp.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getExcavationPermits().add(newEp);
+        });
+
+        // Copy VentingPermits
+        source.getVentingPermits().forEach(vp -> {
+            VentingPermit newVp = new VentingPermit();
+            newVp.setDate(date);
+            newVp.setTime(time);
+            newVp.setLocation(vp.getLocation());
+            newVp.setIssuedTo(vp.getIssuedTo());
+            newVp.setPlantName(vp.getPlantName());
+            newVp.setSystemName(vp.getSystemName());
+            newVp.setRequestingIndividual(vp.getRequestingIndividual());
+            newVp.setPurpose(vp.getPurpose());
+            newVp.setTimeCommence(vp.getTimeCommence());
+            newVp.setTimeConclude(vp.getTimeConclude());
+            newVp.setIndividualIssuing(vp.getIndividualIssuing());
+            newVp.setGasType(vp.getGasType());
+            newVp.setLel(vp.getLel());
+            newVp.setUel(vp.getUel());
+            newVp.setCalculatedVolume(vp.getCalculatedVolume());
+            newVp.setPressure(vp.getPressure());
+            newVp.setGasIndicatorModel(vp.getGasIndicatorModel());
+            newVp.setGasIndicatorSerial(vp.getGasIndicatorSerial());
+            newVp.setCalibrationDate(vp.getCalibrationDate());
+            newVp.setSdsProvided(vp.getSdsProvided());
+            newVp.setSdsInitials(vp.getSdsInitials());
+            newVp.setGeneralArrangementProvided(vp.getGeneralArrangementProvided());
+            newVp.setGeneralArrangementInitials(vp.getGeneralArrangementInitials());
+            newVp.setHazardousClassificationDrawing(vp.getHazardousClassificationDrawing());
+            newVp.setHazardousClassificationInitials(vp.getHazardousClassificationInitials());
+            newVp.setPidWithValves(vp.getPidWithValves());
+            newVp.setPidInitials(vp.getPidInitials());
+            newVp.setDrawingNumbers(vp.getDrawingNumbers());
+            newVp.setStackDescription(vp.getStackDescription());
+            newVp.setEquipmentToBeDeenergized(vp.getEquipmentToBeDeenergized());
+            newVp.setLotoDescription(vp.getLotoDescription());
+            newVp.setRadioChannel(vp.getRadioChannel());
+            newVp.setControlRoom(vp.getControlRoom());
+            newVp.setOsmSupervisor(vp.getOsmSupervisor());
+            newVp.setOsmDate(vp.getOsmDate());
+            newVp.setPlantManager(vp.getPlantManager());
+            newVp.setPlantManagerDate(vp.getPlantManagerDate());
+            newVp.setDivisionDirector(vp.getDivisionDirector());
+            newVp.setDivisionDirectorDate(vp.getDivisionDirectorDate());
+            newVp.setChecklistJson(vp.getChecklistJson());
+            newVp.setWorkScope(workScope);
+            newVp.setRedTagNum(null);
+            newVp.setPermitStatus(buildingStatus);
+            newVp.setPermitNumber(permitNumberGenerator.generate(date));
+            target.getVentingPermits().add(newVp);
+        });
+
+        // Associate same LOTOs
+        target.getLotos().addAll(source.getLotos());
     }
 
     public DailyPermitPackageDto reissuePermitsByWorkRequestId(String workRequestId) {
@@ -294,6 +532,104 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private DailyPermitPackage getByWorkRequestId(String workRequestId) {
         return dailyPermitPackageRepo.findByWorkRequestId(Long.parseLong(workRequestId))
                 .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found for work request: " + workRequestId));
+    }
+
+    // --- LOTO Suggestions from WorkArea ---
+
+    public Map<String, Object> getLotoSuggestionsForWorkArea(Long workAreaId) {
+        WorkArea workArea = workAreaRepo.findById(workAreaId).orElse(null);
+        if (workArea == null || workArea.getConstantLotos() == null || workArea.getConstantLotos().isEmpty()) {
+            return Map.of("existingLotos", List.of(), "suggestedStandards", List.of());
+        }
+
+        // For each standard, extract its loto point IDs
+        Map<Long, Set<Long>> standardPointSets = new LinkedHashMap<>();
+        for (var standard : workArea.getConstantLotos()) {
+            Set<Long> pointIds = standard.getLotoPoints() != null
+                    ? standard.getLotoPoints().stream().map(p -> p.getId()).collect(Collectors.toSet())
+                    : Set.of();
+            standardPointSets.put(standard.getId(), pointIds);
+        }
+
+        // Find existing Lotos that share loto points with the standards
+        // Compare using lotoPointOrder JSON keys (point IDs)
+        List<Loto> allLotos = lotoRepo.findAll();
+        List<Map<String, Object>> existingLotoInfos = new ArrayList<>();
+        Set<Long> matchedStandardIds = new HashSet<>();
+
+        for (Loto loto : allLotos) {
+            if (loto.getLotoPointOrder() == null || loto.getLotoPointOrder().isEmpty()) continue;
+            Set<Long> lotoPointIds = loto.getLotoPointOrder().keySet().stream()
+                    .map(Long::parseLong)
+                    .collect(Collectors.toSet());
+
+            for (var entry : standardPointSets.entrySet()) {
+                if (!entry.getValue().isEmpty() && lotoPointIds.containsAll(entry.getValue())) {
+                    Map<String, Object> info = new LinkedHashMap<>();
+                    info.put("id", loto.getId());
+                    info.put("permitNumber", loto.getPermitNumber());
+                    info.put("equipmentSystem", loto.getEquipmentSystem());
+                    info.put("matchedStandardId", entry.getKey());
+                    var matchedStd = workArea.getConstantLotos().stream()
+                            .filter(s -> s.getId().equals(entry.getKey())).findFirst().orElse(null);
+                    info.put("matchedStandardName", matchedStd != null ? matchedStd.getName() : null);
+                    existingLotoInfos.add(info);
+                    matchedStandardIds.add(entry.getKey());
+                    break; // One match per Loto is enough
+                }
+            }
+        }
+
+        // Standards without matching existing Lotos — suggest to operator
+        List<Map<String, Object>> suggestedStandards = workArea.getConstantLotos().stream()
+                .filter(s -> !matchedStandardIds.contains(s.getId()))
+                .map(s -> {
+                    Map<String, Object> info = new LinkedHashMap<>();
+                    info.put("id", s.getId());
+                    info.put("name", s.getName());
+                    info.put("description", s.getDescription());
+                    info.put("lotoPointCount", s.getLotoPoints() != null ? s.getLotoPoints().size() : 0);
+                    return info;
+                })
+                .collect(Collectors.toList());
+
+        return Map.of("existingLotos", existingLotoInfos, "suggestedStandards", suggestedStandards);
+    }
+
+    // --- LOTO Board ---
+
+    public List<Map<String, Object>> getActiveLotosForBoard() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        List<DailyPermitPackage> allPackages = dailyPermitPackageRepo.findAll();
+
+        for (DailyPermitPackage pkg : allPackages) {
+            String status = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+            if (!"Active".equals(status) && !"Test".equals(status)) continue;
+            if (pkg.getLotos() == null || pkg.getLotos().isEmpty()) continue;
+
+            for (Loto loto : pkg.getLotos()) {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("id", loto.getId());
+                info.put("permitNumber", loto.getPermitNumber());
+                info.put("equipmentSystem", loto.getEquipmentSystem());
+                info.put("lotoRequestor", loto.getLotoRequestor());
+                info.put("date", loto.getDate());
+                info.put("boxNumber", loto.getBoxNumber());
+                info.put("lockCount", loto.getLocks() != null ? loto.getLocks().size() : 0);
+                info.put("pointCount", loto.getLotoPointOrder() != null ? loto.getLotoPointOrder().size() : 0);
+                info.put("packageId", pkg.getId());
+                info.put("packageNumber", pkg.getPermitNumber());
+                info.put("packageStatus", status);
+                // WorkArea from package's work requests
+                String workAreaName = pkg.getWorkRequests().stream()
+                        .filter(wr -> wr.getWorkArea() != null)
+                        .map(wr -> wr.getWorkArea().getName())
+                        .findFirst().orElse(null);
+                info.put("workArea", workAreaName);
+                result.add(info);
+            }
+        }
+        return result;
     }
 
     // --- Status Lifecycle ---
@@ -347,11 +683,58 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(pkg);
         updateParentJobStatus(saved);
+        notifyRequestorIfNeeded(saved, targetStatus);
         return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    private void notifyRequestorIfNeeded(DailyPermitPackage pkg, String newStatus) {
+        if (!"Active".equals(newStatus) && !"Closed".equals(newStatus)) return;
+
+        // Find submitter email from package's work requests
+        String submitterEmail = pkg.getWorkRequests().stream()
+                .filter(wr -> wr.getSubmitterEmail() != null && !wr.getSubmitterEmail().isBlank())
+                .map(WorkRequest::getSubmitterEmail)
+                .findFirst().orElse(null);
+        if (submitterEmail == null) return;
+
+        String permitNumber = pkg.getPermitNumber() != null ? pkg.getPermitNumber() : "N/A";
+        String subject = "Permit Package " + permitNumber + " — " + newStatus;
+        String body;
+
+        if ("Active".equals(newStatus)) {
+            String workArea = pkg.getWorkRequests().stream()
+                    .filter(wr -> wr.getWorkArea() != null)
+                    .map(wr -> wr.getWorkArea().getName())
+                    .findFirst().orElse("the designated area");
+            body = "Your work request has been processed.\n\n" +
+                    "Permit Package: " + permitNumber + "\n" +
+                    "Status: Active\n\n" +
+                    "Please report to " + workArea + " for sign-on.";
+        } else {
+            body = "Permit Package " + permitNumber + " has been closed.\n\n" +
+                    "Work completed: " + (Boolean.TRUE.equals(pkg.getWorkCompleted()) ? "Yes" : "No") + "\n" +
+                    (pkg.getClosureComments() != null ? "Comments: " + pkg.getClosureComments() + "\n" : "") +
+                    (pkg.getContinueDate() != null ? "Work continues on: " + pkg.getContinueDate() + "\n" : "") +
+                    (Boolean.TRUE.equals(pkg.getScopeChanged()) ? "\nNote: Scope has changed. A new Work Request may be needed.\n" +
+                            (pkg.getClosureScopeDetails() != null ? "Details: " + pkg.getClosureScopeDetails() : "") : "");
+        }
+
+        try {
+            var emailRequest = com.dk_power.power_plant_java.dto.email.EmailRequest.builder()
+                    .to(submitterEmail)
+                    .subject(subject)
+                    .body(body)
+                    .build();
+            emailFacadeService.sendEmail(emailRequest);
+        } catch (Exception e) {
+            // Don't fail the status change if email fails
+            System.out.println("[Permit Notification] Failed to send email to " + submitterEmail + ": " + e.getMessage());
+        }
     }
 
     private void cascadeStatusToPermits(DailyPermitPackage pkg, String status) {
         Value permitStatus = ngValueService.createValue("Permit Status", status);
+        if (pkg.getWorkRequests() != null) pkg.getWorkRequests().forEach(p -> p.setPermitStatus(permitStatus));
         if (pkg.getSafeWorks() != null) pkg.getSafeWorks().forEach(p -> p.setPermitStatus(permitStatus));
         if (pkg.getHotWorks() != null) pkg.getHotWorks().forEach(p -> p.setPermitStatus(permitStatus));
         if (pkg.getConfinedSpaces() != null) pkg.getConfinedSpaces().forEach(p -> p.setPermitStatus(permitStatus));
@@ -380,6 +763,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
                 job.setJobStatus(ngValueService.createValue("Job Status", "Closed"));
             } else if (anyActiveOrTest) {
                 job.setJobStatus(ngValueService.createValue("Job Status", "Active"));
+            } else {
+                job.setJobStatus(ngValueService.createValue("Job Status", "Building"));
             }
             jobLogRepo.save(job);
         } catch (Exception e) {

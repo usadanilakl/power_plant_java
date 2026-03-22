@@ -17,6 +17,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import jakarta.persistence.EntityManager;
@@ -1767,8 +1768,8 @@ public class FullResyncService {
      * Returns true if successful, false otherwise.
      */
     private boolean downloadSingleFile(FileManifestEntry entry, Path uploadsPath) {
+        String url = null;
         try {
-            String url;
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Machine-Id", syncConfig.getMachineId());
             headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
@@ -1806,10 +1807,26 @@ public class FullResyncService {
 
             return true;
 
+        } catch (RestClientResponseException e) {
+            log.warn("Failed to download file {} from {}: HTTP {} {}",
+                entry.getRelativePath(),
+                url,
+                e.getStatusCode().value(),
+                abbreviateResponseBody(e.getResponseBodyAsString()));
+            return false;
         } catch (Exception e) {
-            log.warn("Failed to download file {}: {}", entry.getRelativePath(), e.getMessage());
+            log.warn("Failed to download file {} from {}: {}",
+                entry.getRelativePath(), url, e.getMessage());
             return false;
         }
+    }
+
+    private String abbreviateResponseBody(String body) {
+        if (body == null || body.isBlank()) {
+            return "(empty body)";
+        }
+        String normalized = body.replaceAll("\\s+", " ").trim();
+        return normalized.length() > 180 ? normalized.substring(0, 180) + "..." : normalized;
     }
 
     /**

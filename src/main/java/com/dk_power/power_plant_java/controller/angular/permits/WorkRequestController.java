@@ -37,6 +37,11 @@ public class WorkRequestController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAllRest() {
+        return getAll();
+    }
+
     @GetMapping("/get-all-by-status/{status}")
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAllByStatus(@PathVariable String status) {
         try {
@@ -111,6 +116,11 @@ public class WorkRequestController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> getByIdRest(@PathVariable Long id) {
+        return getById(id);
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> save(@RequestBody List<NgWorkRequestDto> workRequests) {
         try {
@@ -122,6 +132,35 @@ public class WorkRequestController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to save work requests: " + e.getMessage())
+            );
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> update(@PathVariable Long id, @RequestBody NgWorkRequestDto workRequest) {
+        try {
+            workRequest.setId(id);
+            NgWorkRequestDto saved = workRequestService.updateAndPushToSharePoint(workRequest);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(saved, "Successfully updated work request.")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to update work request: " + e.getMessage())
+            );
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<String>> delete(@PathVariable Long id) {
+        try {
+            workRequestService.softDelete(id);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>("Deleted", "Successfully deleted work request.")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to delete work request: " + e.getMessage())
             );
         }
     }

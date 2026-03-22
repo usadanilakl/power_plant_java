@@ -8,6 +8,12 @@ import { Column } from '../column.model';
 import { BaseDto, BaseModel } from '../base/base.model';
 import { ZeroEnergyDto, ZeroEnergyModel } from './zero-energy.model';
 
+export interface LotoPointCharacteristic {
+  characteristicId: number;
+  name: string;
+  value: string;
+}
+
 export type LotoPointFieldName = keyof LotoPointModel;
 
 export interface LotoPointModel extends BaseModel {
@@ -23,6 +29,8 @@ export interface LotoPointModel extends BaseModel {
   equipmentIdList: number[] | null;
   normalPosition: string | null;
   isolatedPosition: string | null;
+  fluid: string | null;
+  characteristicsJson: string | null;
   equipmentList: EquipmentDto[] | null;
   oldId: string | null;
   isUpdated: number | null;
@@ -64,6 +72,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   equipmentIdList: number[] | null;
   normalPosition: string | null;
   isolatedPosition: string | null;
+  fluid: string | null;
+  characteristicsJson: string | null;
   equipmentList: EquipmentDto[] | null;
   oldId: string | null;
   isUpdated: number | null;
@@ -99,6 +109,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.equipmentIdList = data.equipmentIdList ?? null;
     this.normalPosition = data.normalPosition ?? null;
     this.isolatedPosition = data.isolatedPosition ?? null;
+    this.fluid = data.fluid ?? null;
+    this.characteristicsJson = data.characteristicsJson ?? null;
     this.equipmentList = data.equipmentList ?? null;
     this.oldId = data.oldId ?? null;
     this.isUpdated = data.isUpdated ?? null;
@@ -140,6 +152,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       equipmentIdList: this.equipmentIdList || [],
       normalPosition: this.normalPosition || '',
       isolatedPosition: this.isolatedPosition || '',
+      fluid: this.fluid || '',
+      characteristicsJson: this.characteristicsJson || null,
       equipmentList: this.equipmentList
         ? Array.from(this.equipmentList)
             .filter((equipment) => equipment != null)
@@ -189,6 +203,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         : [],
       normalPosition: json.normalPosition || '',
       isolatedPosition: json.isolatedPosition || '',
+      fluid: json.fluid || '',
+      characteristicsJson: json.characteristicsJson || null,
       equipmentList: json.equipmentList
         ? json.equipmentList
             .filter((equipment: any) => equipment != null)
@@ -351,6 +367,18 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         label: 'Isolated Position',
         type: 'text',
         initialValue: dto.isolatedPosition,
+      },
+      fluid: {
+        name: 'fluid',
+        label: 'Fluid',
+        type: 'text',
+        initialValue: dto.fluid,
+      },
+      characteristicsJson: {
+        name: 'characteristicsJson',
+        label: 'Characteristics',
+        type: 'text',
+        initialValue: dto.characteristicsJson,
       },
       oldId: {
         name: 'oldId',
@@ -554,6 +582,16 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         header: 'Isolated Position',
         accessorKey: 'isolatedPosition',
       },
+      fluid: {
+        id: 'fluid',
+        header: 'Fluid',
+        accessorKey: 'fluid',
+      },
+      characteristicsJson: {
+        id: 'characteristicsJson',
+        header: 'Characteristics',
+        accessorKey: 'characteristicsJson',
+      },
       oldId: { id: 'oldId', header: 'Old ID', accessorKey: 'oldId' },
       objectType: {
         id: 'objectType',
@@ -669,6 +707,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'equipmentIdList',
       'normalPosition',
       'isolatedPosition',
+      'fluid',
+      'characteristicsJson',
       'equipmentList',
       'oldId',
       'objectType',
@@ -708,6 +748,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       equipmentList: equipmentIds, // Both fields should have the same IDs
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
+      characteristicsJson: this.characteristicsJson,
       oldId: this.oldId,
       objectType: this.objectType,
       isUpdated: this.isUpdated,

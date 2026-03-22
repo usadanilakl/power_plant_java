@@ -1,0 +1,77 @@
+@if (isOpen) {
+  <app-rf-popup-projection
+    [title]="'Template Manager'"
+    [size]="'medium'"
+    [isOpen]="true"
+    [zIndex]="12000"
+    (close)="close()"
+  >
+    <div class="template-manager">
+      @if (!isEditing()) {
+        <!-- Template List -->
+        <div class="template-list">
+          <div class="template-list-header">
+            <h4>Templates</h4>
+            <button class="btn primary" (click)="startCreate()">+ New Template</button>
+          </div>
+          @for (tmpl of templates(); track tmpl.id) {
+            <div class="template-card">
+              <div class="template-card-info">
+                <span class="template-card-name">{{ tmpl.name }}</span>
+                <span class="template-card-meta">{{ tmpl.tagSize }} · {{ tmpl.dataStructure | titlecase }} · {{ tmpl.batchSize }} tags</span>
+                <span class="template-card-file">{{ tmpl.filename || 'No file uploaded' }}</span>
+              </div>
+              <div class="template-card-actions">
+                <button class="btn-sm" (click)="startEdit(tmpl)">Edit</button>
+                <label class="btn-sm upload-btn">
+                  Upload
+                  <input type="file" accept=".lbrn2" (change)="uploadFile(tmpl.id, $event)" hidden />
+                </label>
+                <button class="btn-sm danger" (click)="deleteTemplate(tmpl.id)">Delete</button>
+              </div>
+            </div>
+          }
+          @if (templates().length === 0) {
+            <p class="empty-msg">No templates configured. Click "New Template" to create one.</p>
+          }
+        </div>
+      } @else {
+        <!-- Edit/Create Form -->
+        <div class="template-form">
+          <h4>{{ editingTemplate()?.id ? 'Edit' : 'New' }} Template</h4>
+          <div class="form-field">
+            <label>Name</label>
+            <input type="text" [(ngModel)]="formName" />
+          </div>
+          <div class="form-field">
+            <label>Description</label>
+            <input type="text" [(ngModel)]="formDescription" />
+          </div>
+          <div class="form-field">
+            <label>Tag Size</label>
+            <input type="text" [(ngModel)]="formTagSize" placeholder="e.g. 2x3" />
+          </div>
+          <div class="form-field">
+            <label>Data Structure</label>
+            <select [(ngModel)]="formDataStructure">
+              <option value="standard">Standard</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Batch Size</label>
+            <input type="number" [(ngModel)]="formBatchSize" min="1" max="10" />
+          </div>
+          <div class="form-field checkbox-field">
+            <label>Default</label>
+            <input type="checkbox" [(ngModel)]="formIsDefault" />
+          </div>
+          <div class="form-actions">
+            <button class="btn secondary" (click)="cancel()">Cancel</button>
+            <button class="btn primary" (click)="save()">Save</button>
+          </div>
+        </div>
+      }
+    </div>
+  </app-rf-popup-projection>
+}

@@ -42,7 +42,7 @@ export class TableDataService {
   selectedItems = signal<any[]>([]);
   hoveredRow = signal<any | undefined>(undefined);
 
-  rowHeight = 50;
+  rowHeight = 48;
   totalTableWidth = computed(() =>
     this.columns().reduce((sum, col) => sum + (col.width || 120), 0)
   );

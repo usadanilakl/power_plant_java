@@ -30,6 +30,11 @@ public class NgExcavationPermitController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<ExcavationPermitDto>>> getAllRest() {
+        return getAll();
+    }
+
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<ExcavationPermitDto>> getById(@PathVariable String id) {
         try {
@@ -41,6 +46,11 @@ public class NgExcavationPermitController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<ExcavationPermitDto>> getByIdRest(@PathVariable String id) {
+        return getById(id);
     }
 
     @PostMapping
@@ -68,11 +78,11 @@ public class NgExcavationPermitController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<String>> delete(@PathVariable String id) {
         try {
-            service.hardDelete(id);
+            service.softDelete(id);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(new NgApiResponse<>(null, "Excavation permit deleted successfully", LocalDateTime.now()));
+                .body(new NgApiResponse<>("Deleted", "Excavation permit deleted successfully", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

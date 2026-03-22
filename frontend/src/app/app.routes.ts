@@ -23,6 +23,7 @@ import { FORM_DESIGNER_ROUTES } from './routes/form-designer.routes';
 import { STANDALONE_ROUTES } from './routes/standalone.routes';
 import { LOG_ROUTES } from './routes/log.routes';
 import { INSTRUMENTATION_ROUTES } from './routes/instrumentation.routes';
+import { DIAGRAM_BUILDER_ROUTES } from './routes/diagram-builder.routes';
 
 export const routes: Routes = [
   // Public routes
@@ -53,5 +54,6 @@ export const routes: Routes = [
   ...FORM_DESIGNER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...STANDALONE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...LOG_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...INSTRUMENTATION_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
+  ...INSTRUMENTATION_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...DIAGRAM_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

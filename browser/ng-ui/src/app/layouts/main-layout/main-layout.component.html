@@ -10,6 +10,11 @@
     </div>
     <div class="header-actions">
         <app-server-status></app-server-status>
+        @if (serverStatus.unreadNotificationCount() > 0) {
+          <button class="notification-badge" (click)="goToPermits()" title="Permit updates">
+            {{ serverStatus.unreadNotificationCount() }}
+          </button>
+        }
         <app-theme-toggle></app-theme-toggle>
         <app-user-icon></app-user-icon>
         

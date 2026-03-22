@@ -22,6 +22,26 @@ public class NgDailyPermitPackageController {
     private final NgDailyPermitPackageService ngDailyPermitPackageService;
     private final RedTagStepExecutionService redTagStepExecutionService;
 
+    @GetMapping("/loto-board")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getLotoBoard() {
+        try {
+            List<Map<String, Object>> lotos = ngDailyPermitPackageService.getActiveLotosForBoard();
+            return ResponseEntity.ok(new NgApiResponse<>(lotos, "Active LOTOs retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/loto-suggestions/{workAreaId}")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getLotoSuggestions(@PathVariable Long workAreaId) {
+        try {
+            Map<String, Object> suggestions = ngDailyPermitPackageService.getLotoSuggestionsForWorkArea(workAreaId);
+            return ResponseEntity.ok(new NgApiResponse<>(suggestions, "LOTO suggestions retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @GetMapping
     public ResponseEntity<NgApiResponse<List<DailyPermitPackageDto>>> getAllDailyPermitPackages() {
         try {
@@ -74,10 +94,10 @@ public class NgDailyPermitPackageController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> deleteDailyPermitPackage(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<String>> deleteDailyPermitPackage(@PathVariable String id) {
         try {
-            ngDailyPermitPackageService.hardDelete(id);
-            NgApiResponse<Void> response = new NgApiResponse<>(null, "Daily permit package deleted successfully", LocalDateTime.now());
+            ngDailyPermitPackageService.softDelete(id);
+            NgApiResponse<String> response = new NgApiResponse<>("Deleted", "Daily permit package deleted successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -112,14 +132,61 @@ public class NgDailyPermitPackageController {
     @PostMapping("/reissue-permits-from/{packageIdToReissue}/to/{targetPackageId}")
     public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> reissuePermits(
             @PathVariable String packageIdToReissue,
-            @PathVariable String targetPackageId) {
+            @PathVariable String targetPackageId,
+            @RequestBody(required = false) Map<String, String> body) {
         try {
-            DailyPermitPackageDto dailyPermitPackageDto = ngDailyPermitPackageService.reissuePermits(packageIdToReissue, targetPackageId);
+            String date = body != null ? body.get("date") : null;
+            String time = body != null ? body.get("time") : null;
+            DailyPermitPackageDto dailyPermitPackageDto = ngDailyPermitPackageService.reissuePermits(packageIdToReissue, targetPackageId, date, time);
             NgApiResponse<DailyPermitPackageDto> response = new NgApiResponse<>(dailyPermitPackageDto, "Permits reissued successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error reissuing permits: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reissue-from/{sourceId}/for-wr/{wrId}")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> reissueFromPackageForWorkRequest(
+            @PathVariable Long sourceId,
+            @PathVariable Long wrId,
+            @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String date = body != null ? body.get("date") : null;
+            String time = body != null ? body.get("time") : null;
+            DailyPermitPackageDto result = ngDailyPermitPackageService.reissueFromPackageForWorkRequest(sourceId, wrId, date, time);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Package reissued from source for work request"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{sourceId}/reissue")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> reissuePackageToNewPackage(
+            @PathVariable Long sourceId,
+            @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String date = body != null ? body.get("date") : null;
+            String time = body != null ? body.get("time") : null;
+            DailyPermitPackageDto result = ngDailyPermitPackageService.reissuePackageToNewPackage(sourceId, date, time);
+            return ResponseEntity.ok(new NgApiResponse<>(result, "Package reissued successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<NgApiResponse<List<DailyPermitPackageDto>>> searchPackages(
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String location) {
+        try {
+            List<DailyPermitPackageDto> results = ngDailyPermitPackageService.searchPackages(scope, date, location);
+            return ResponseEntity.ok(new NgApiResponse<>(results, "Search results"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
     }
 

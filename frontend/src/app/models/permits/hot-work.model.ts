@@ -6,6 +6,7 @@ import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
+import { WorkAreaDto } from './work-area.model';
 
 
 export class HotWorkMeasures {
@@ -288,14 +289,19 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     return fields.map(fieldName => allColumns[fieldName]);
   }
   
-    static generatePermitFromRequest(request: WorkRequestDto): HotWorkDto{
-      return new HotWorkDto({
+    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null): HotWorkDto{
+      const dto = new HotWorkDto({
         date: request.dateOfWorkToBePerformed?.split('T')[0],
         foreman: request.requestedBy,
         location: request.location,
         workScope: request.workScope,
         fireWatch: request.fireWatch
       });
+      // Auto-populate constant hot work measures from WorkArea
+      if (workArea?.constantHotWorkMeasures) {
+        dto.measures = new HotWorkMeasures({ ...dto.measures, ...workArea.constantHotWorkMeasures });
+      }
+      return dto;
     }
 
     static formatLabel(key: string): string {

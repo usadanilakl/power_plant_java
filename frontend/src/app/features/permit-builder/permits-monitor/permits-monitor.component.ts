@@ -14,6 +14,7 @@ import { SyncUpdateService } from '../../../services/sync/sync-update.service';
 interface WorkRequest {
   id: number;
   dateOfWorkToBePerformed: string | null;
+  timeOfWorkToBePerformed: string | null;
   requestedBy: string | null;
   company: string | null;
   location: string | null;
@@ -64,6 +65,7 @@ interface ApiResponse<T> {
           <a routerLink="/permit-builder/hot-works" routerLinkActive="nav-active">Hot Works</a>
           <a routerLink="/permit-builder/confined-spaces" routerLinkActive="nav-active">Confined Spaces</a>
           <a routerLink="/permit-builder/lotos" routerLinkActive="nav-active">LOTO</a>
+          <a routerLink="/permit-builder/loto-board" routerLinkActive="nav-active">LOTO Board</a>
         </nav>
         <button class="refresh-btn" (click)="loadData()" [disabled]="loading">
           <span class="material-icons" [class.spinning]="loading">refresh</span>
@@ -114,9 +116,13 @@ interface ApiResponse<T> {
                   <tr>
                     <th>Status</th>
                     <th>Date</th>
+                    <th>Time</th>
                     <th>Requested By</th>
                     <th>Location</th>
                     <th>Work Scope</th>
+                    <th class="icon-col" title="Hot Work">HW</th>
+                    <th class="icon-col" title="Confined Space">CS</th>
+                    <th class="icon-col" title="LOTO">LO</th>
                     <th>Responses</th>
                   </tr>
                 </thead>
@@ -127,9 +133,13 @@ interface ApiResponse<T> {
                       style="cursor: pointer">
                     <td><span class="status-chip" [class]="'status-' + (wr.status || '').toLowerCase()">{{ wr.status }}</span></td>
                     <td>{{ wr.dateOfWorkToBePerformed | date:'shortDate' }}</td>
+                    <td>{{ wr.timeOfWorkToBePerformed || '-' }}</td>
                     <td>{{ wr.requestedBy }}</td>
                     <td>{{ wr.location }}</td>
                     <td class="truncate">{{ wr.workScope }}</td>
+                    <td class="icon-col"><span class="permit-icon hw" [class.active]="wr.isHotWorkRequired" [title]="wr.isHotWorkRequired ? 'Hot Work Required' : 'No Hot Work'">HW</span></td>
+                    <td class="icon-col"><span class="permit-icon cs" [class.active]="wr.isConfinedSpaceEntryRequired" [title]="wr.isConfinedSpaceEntryRequired ? 'Confined Space Required' : 'No Confined Space'">CS</span></td>
+                    <td class="icon-col"><span class="permit-icon lo" [class.active]="wr.isLotoRequired" [title]="wr.isLotoRequired ? 'LOTO Required' : 'No LOTO'">LO</span></td>
                     <td>
                       <app-correspondence-cell
                         [entityType]="'WorkRequest'"
@@ -141,6 +151,49 @@ interface ApiResponse<T> {
               </table>
             </div>
             <div class="card-empty" *ngIf="allWorkRequests.length === 0 && !loading">No work requests</div>
+          </div>
+
+          <!-- Daily Packages -->
+          <div class="monitor-card">
+            <div class="card-header">
+              <span class="card-title">Daily Packages</span>
+              <span class="card-count">{{ activePackages.length + buildingPackages.length }}</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge badge-active">{{ activePackages.length }} Active</span>
+              <span class="badge badge-building" *ngIf="buildingPackages.length">{{ buildingPackages.length }} Building</span>
+              <span class="badge badge-closed" *ngIf="recentlyClosedPackages.length">{{ recentlyClosedPackages.length }} Recently Closed</span>
+            </div>
+            <div class="card-table" *ngIf="activePackages.length > 0 || buildingPackages.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Permit #</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let pkg of activePackages.concat(buildingPackages)"
+                      [routerLink]="['/permit-builder/daily-packages']"
+                      [queryParams]="{packageId: pkg.id}"
+                      style="cursor: pointer">
+                    <td>
+                      <span class="status-chip" [class]="'status-' + (pkg.packageStatus?.name || 'building').toLowerCase()">
+                        {{ pkg.packageStatus?.name === 'Test' ? 'Paused' : (pkg.packageStatus?.name || 'Building') }}
+                      </span>
+                    </td>
+                    <td>{{ pkg.permitNumber }}</td>
+                    <td class="truncate">{{ pkg.name }}</td>
+                    <td>{{ pkg.companyName }}</td>
+                    <td>{{ pkg.date }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-empty" *ngIf="activePackages.length === 0 && buildingPackages.length === 0 && !loading">No active packages</div>
           </div>
         </div>
       </section>
@@ -482,6 +535,38 @@ interface ApiResponse<T> {
       white-space: nowrap;
     }
 
+    .icon-col {
+      text-align: center;
+      width: 32px;
+      padding: 6px 2px !important;
+    }
+
+    .permit-icon {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.15);
+      letter-spacing: 0.5px;
+    }
+
+    .permit-icon.active.hw {
+      background: rgba(255, 87, 34, 0.2);
+      color: #ff7043;
+    }
+
+    .permit-icon.active.cs {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+    }
+
+    .permit-icon.active.lo {
+      background: rgba(156, 39, 176, 0.2);
+      color: #ce93d8;
+    }
+
     .status-chip {
       display: inline-block;
       font-size: 11px;
@@ -553,6 +638,9 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
   expiredWorkRequests: WorkRequest[] = [];
   activeHotWorks: HotWorkDto[] = [];
   activeConfinedSpaces: ConfinedSpaceDto[] = [];
+  activePackages: any[] = [];
+  buildingPackages: any[] = [];
+  recentlyClosedPackages: any[] = [];
 
   showProcessed = false;
   showExpired = false;
@@ -617,7 +705,8 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
       processedWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Processed`),
       expiredWr: this.http.get<ApiResponse<WorkRequest[]>>(`${this.apiUrl}/work-requests/get-all-by-status/Expired`),
       hotWorks: this.http.get<ApiResponse<HotWorkDto[]>>(`${this.apiUrl}/hot-works/get-all-hot-work`),
-      confinedSpaces: this.http.get<ApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/confined-spaces/get-all-confined-space`)
+      confinedSpaces: this.http.get<ApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/confined-spaces/get-all-confined-space`),
+      packages: this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/daily-permit-packages`)
     }).subscribe({
       next: (results) => {
         this.activeWorkRequests = results.activeWr.responseData || [];
@@ -634,6 +723,14 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
         this.activeConfinedSpaces = allConfinedSpaces.filter(cs =>
           cs.permitStatus?.value?.toLowerCase() === 'active'
         );
+
+        // Categorize packages
+        const allPkgs = results.packages.responseData || [];
+        this.activePackages = allPkgs.filter((p: any) => p.packageStatus?.name === 'Active' || p.packageStatus?.name === 'Test');
+        this.buildingPackages = allPkgs.filter((p: any) => p.packageStatus?.name === 'Building' || !p.packageStatus);
+        this.recentlyClosedPackages = allPkgs.filter((p: any) => p.packageStatus?.name === 'Closed')
+          .sort((a: any, b: any) => (b.modifiedDate || '').localeCompare(a.modifiedDate || ''))
+          .slice(0, 10);
 
         this.loading = false;
       },

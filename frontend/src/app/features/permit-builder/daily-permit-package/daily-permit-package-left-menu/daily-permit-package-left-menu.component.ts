@@ -73,7 +73,7 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
       parent.values = groupItems.map(item => new NestedItemImpl({
         id: item.id.toString(),
         name: this.getDisplayName(item),
-        subtitle: (item.companyName || '') + ' \u00b7 ' + (item.packageStatus?.name ?? 'Building'),
+        subtitle: this.getLeafSubtitle(item),
         color: this.getStatusColor(item),
         isExpanded: false,
         objectType: item.objectType || '',
@@ -100,6 +100,24 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
       case 'Closed': return 'rgba(244, 67, 54, 0.08)';
       default: return 'rgba(33, 150, 243, 0.08)';
     }
+  }
+
+  private getLeafSubtitle(item: DailyPermitPackageDto): string {
+    const location = this.getPackageLocation(item);
+    const scope = this.getPackageWorkScope(item);
+    const parts = [location, scope].filter(Boolean);
+    return parts.join(' · ') || (item.packageStatus?.name ?? 'Building');
+  }
+
+  private getPackageLocation(item: DailyPermitPackageDto): string {
+    const permit = item.workRequests?.[0] || item.safeWorks?.[0] || item.hotWorks?.[0] || item.confinedSpaces?.[0];
+    return ((permit as any)?.location || '').toString().trim();
+  }
+
+  private getPackageWorkScope(item: DailyPermitPackageDto): string {
+    const permit = item.workRequests?.[0] || item.safeWorks?.[0] || item.hotWorks?.[0] || item.confinedSpaces?.[0];
+    const scope = ((permit as any)?.workScope || item.name || '').toString().trim();
+    return scope.length > 60 ? `${scope.substring(0, 60)}...` : scope;
   }
 
   private normalizeCompanyName(name: string): string {

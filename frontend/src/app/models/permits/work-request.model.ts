@@ -5,6 +5,7 @@ import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { ValueDto } from '../value.model';
+import { WorkAreaDto } from './work-area.model';
 
 export type WorkRequestFieldName = keyof WorkRequestModel;
 
@@ -27,6 +28,7 @@ export interface WorkRequestModel extends BaseModel {
   hasJha: boolean | null;
   attachmentCount: number | null;
   workCategory: ValueDto | null;
+  workArea: WorkAreaDto | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -48,6 +50,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   hasJha: boolean | null;
   attachmentCount: number | null;
   workCategory: ValueDto | null;
+  workArea: WorkAreaDto | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -69,6 +72,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.hasJha = data.hasJha ?? null;
     this.attachmentCount = data.attachmentCount ?? null;
     this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
+    this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
   }
 
   // Serialization method
@@ -93,6 +97,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       hasJha: this.hasJha,
       attachmentCount: this.attachmentCount,
       workCategory: this.workCategory?.toJson() ?? null,
+      workArea: this.workArea?.toJson() ?? null,
     };
   }
 
@@ -118,6 +123,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       hasJha: json.hasJha ?? null,
       attachmentCount: json.attachmentCount ?? null,
       workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
+      workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
     });
   }
 
@@ -127,6 +133,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       'id', 'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
       'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired',
+      'workArea',
       'space', 'sharepointId', 'status', 'hasJha', 'attachmentCount', 'workCategory', 'isVerified', 'name', 'objectType'
     ].includes(key);
   }
@@ -223,6 +230,13 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         type: 'checkbox',
         initialValue: dto.isConfinedSpaceEntryRequired
       },
+      workArea: {
+        name: 'workArea',
+        label: 'Work Area',
+        type: 'text',
+        readonly: true,
+        initialValue: dto.workArea?.name ?? ''
+      },
       space: {
         name: 'space',
         label: 'Space to be entered',
@@ -241,6 +255,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         type: 'select',
         options: [
           { value: 'Active', label: 'Active' },
+          { value: 'Expired', label: 'Expired' },
           { value: 'Closed', label: 'Closed' },
           { value: 'Archived', label: 'Archived' }
         ],
@@ -299,6 +314,11 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         conditionalStyling: (item: any, column: Column) =>
             item.isConfinedSpaceEntryRequired ? { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' } : { 'background-color': '', 'color': '' }
         },
+      workArea: {
+        id: 'workArea',
+        header: 'Work Area',
+        accessorFn: (item: WorkRequestDto) => item.workArea?.name ?? '',
+      },
       space: { id: 'space', header: 'Space', accessorKey: 'space' },
       sharepointId: {
         id: 'sharepointId',
@@ -321,6 +341,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         accessorKey: 'status',
         conditionalStyling: (item: any, column: Column) => {
           if (item.status === 'Active') return { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' };
+          if (item.status === 'Expired') return { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' };
           if (item.status === 'Closed') return { 'background-color': 'var(--status-not-processed)', 'color': 'var(--primary-text)' };
           if (item.status === 'Archived') return { 'background-color': 'var(--status-incomplete)', 'color': 'var(--primary-text)' };
           return { 'background-color': '', 'color': '' };

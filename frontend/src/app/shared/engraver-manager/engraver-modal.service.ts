@@ -1,5 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { LotoPointDto } from '../../models/loto/loto-point.model';
+import { Injectable, signal, computed, effect } from '@angular/core';
+import { LotoPointDto, LotoPointCharacteristic } from '../../models/loto/loto-point.model';
+import { EngraverTemplateDto } from './models/engraver-template.model';
 
 export interface EngraverBatchItem {
   batchNumber: number;
@@ -19,11 +20,37 @@ export class EngraverModalService {
   batches = signal<EngraverBatchItem[]>([]);
   isProcessing = signal(false);
   withQr = signal(false);
+  layoutVersion = signal<'standard' | 'info'>('standard');
+  selectedCharacteristicNames = signal<string[]>([]);
+  maxEngraveCharacteristics = 4;
 
-  // Template and batch size
-  availableTemplates = signal<string[]>([]);
-  selectedTemplate = signal<string>('');
-  batchSize = signal(4);
+  // Template-based signals
+  allTemplates = signal<EngraverTemplateDto[]>([]);
+  selectedTagSize = signal<string>('2x3');
+  selectedDataStructure = signal<string>('standard');
+
+  // Resolved template: finds matching template by tagSize + dataStructure
+  resolvedTemplate = computed(() => {
+    const templates = this.allTemplates();
+    const tagSize = this.selectedTagSize();
+    const ds = this.selectedDataStructure();
+    const matches = templates.filter(t => t.tagSize === tagSize && t.dataStructure === ds);
+    if (matches.length === 0) return null;
+    return matches.find(t => t.isDefault) ?? matches[0];
+  });
+
+  // Batch size derived from resolved template
+  batchSize = computed(() => this.resolvedTemplate()?.batchSize ?? 4);
+
+  // Available tag sizes from all templates
+  availableTagSizes = computed(() => [...new Set(this.allTemplates().map(t => t.tagSize))]);
+
+  // Available data structures filtered by current tag size
+  availableDataStructures = computed(() => {
+    const tagSize = this.selectedTagSize();
+    const matching = this.allTemplates().filter(t => t.tagSize === tagSize);
+    return [...new Set(matching.map(t => t.dataStructure))];
+  });
 
   // Computed signals
   totalBatches = computed(() => this.batches().length);
@@ -52,6 +79,42 @@ export class EngraverModalService {
     this.batches().every(b => b.status === 'completed')
   );
 
+  /** All unique characteristic names across all items */
+  availableCharacteristicNames = computed(() => {
+    const names = new Set<string>();
+    for (const item of this.allItems()) {
+      const chars = this.parseCharacteristics(item.characteristicsJson);
+      for (const c of chars) {
+        if (c.name) names.add(c.name);
+      }
+    }
+    return Array.from(names);
+  });
+
+  constructor() {
+    // Re-create batches when batchSize changes (template selection change)
+    effect(() => {
+      const size = this.batchSize();
+      const items = this.allItems();
+      if (items.length > 0) {
+        this.batches.set(this.createBatches(items));
+        this.currentBatchIndex.set(0);
+      }
+    });
+  }
+
+  /**
+   * Sets data structure and syncs layoutVersion.
+   */
+  setDataStructure(ds: string): void {
+    this.selectedDataStructure.set(ds);
+    this.layoutVersion.set(ds === 'info' ? 'info' : 'standard');
+    if (ds === 'info' && this.selectedCharacteristicNames().length === 0) {
+      const available = this.availableCharacteristicNames();
+      this.selectedCharacteristicNames.set(available.slice(0, this.maxEngraveCharacteristics));
+    }
+  }
+
   /**
    * Opens the modal with a list of LOTO points.
    * Splits them into batches based on current batchSize.
@@ -78,24 +141,6 @@ export class EngraverModalService {
       });
     }
     return batches;
-  }
-
-  /**
-   * Re-splits batches when batch size changes.
-   */
-  updateBatchSize(size: number): void {
-    this.batchSize.set(size);
-    if (this.allItems().length > 0) {
-      this.batches.set(this.createBatches(this.allItems()));
-      this.currentBatchIndex.set(0);
-    }
-  }
-
-  /**
-   * Sets the selected template.
-   */
-  setTemplate(template: string): void {
-    this.selectedTemplate.set(template);
   }
 
   /**
@@ -198,6 +243,25 @@ export class EngraverModalService {
     this.withQr.set(!this.withQr());
   }
 
+  toggleCharacteristicName(name: string): void {
+    const current = this.selectedCharacteristicNames();
+    if (current.includes(name)) {
+      this.selectedCharacteristicNames.set(current.filter(n => n !== name));
+    } else if (current.length < this.maxEngraveCharacteristics) {
+      this.selectedCharacteristicNames.set([...current, name]);
+    }
+  }
+
+  parseCharacteristics(json: string | null): LotoPointCharacteristic[] {
+    if (!json || json.trim() === '') return [];
+    try {
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * Closes the modal and resets state.
    */
@@ -208,8 +272,10 @@ export class EngraverModalService {
     this.currentBatchIndex.set(0);
     this.isProcessing.set(false);
     this.withQr.set(false);
-    this.batchSize.set(4);
-    this.availableTemplates.set([]);
-    this.selectedTemplate.set('');
+    this.layoutVersion.set('standard');
+    this.selectedCharacteristicNames.set([]);
+    this.allTemplates.set([]);
+    this.selectedTagSize.set('2x3');
+    this.selectedDataStructure.set('standard');
   }
 }

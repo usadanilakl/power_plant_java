@@ -52,6 +52,7 @@ export class RfWorkRequestMapperService {
         accessorFn: (item: WorkRequestDto) => item.status || 'N/A',
         conditionalStyling: (item: any) => {
           if (item.status === 'Active') return { 'background-color': 'var(--status-complete)', 'color': 'var(--primary-text)' };
+          if (item.status === 'Expired') return { 'background-color': 'var(--status-attention)', 'color': 'var(--primary-text)' };
           if (item.status === 'Closed') return { 'background-color': 'var(--status-not-processed)', 'color': 'var(--primary-text)' };
           if (item.status === 'Archived') return { 'background-color': 'var(--status-incomplete)', 'color': 'var(--primary-text)' };
           return { 'background-color': '', 'color': '' };
@@ -250,6 +251,7 @@ export class RfWorkRequestMapperService {
         type: 'select',
         options: [
           { value: 'Active', label: 'Active' },
+          { value: 'Expired', label: 'Expired' },
           { value: 'Closed', label: 'Closed' },
           { value: 'Archived', label: 'Archived' },
         ],

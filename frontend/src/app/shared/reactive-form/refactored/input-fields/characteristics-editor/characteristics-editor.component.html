@@ -1,0 +1,19 @@
+<div class="characteristics-editor">
+  <label class="editor-label">{{ label }}</label>
+  <div class="char-list">
+    @for (char of characteristics(); track $index) {
+      <div class="char-row">
+        <app-rf-value-select
+          [categoryAlias]="categoryAlias"
+          [label]="''"
+          [canManageValues]="true"
+          [ngModel]="char.characteristicId"
+          (valueSelected)="onCharacteristicSelected($index, $event)"
+        />
+        <input type="text" [value]="char.value" (input)="onValueChanged($index, $event)" placeholder="Value..." class="char-value-input" />
+        <button type="button" class="char-remove-btn" (click)="removeCharacteristic($index)">&#x2715;</button>
+      </div>
+    }
+  </div>
+  <button type="button" class="char-add-btn" (click)="addCharacteristic()">+ Add Characteristic</button>
+</div>

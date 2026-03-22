@@ -15,6 +15,8 @@ export interface ILotoPointClipboard
     | 'standard'
     | 'normalPosition'
     | 'isolatedPosition'
+    | 'fluid'
+    | 'characteristicsJson'
     | 'fileIds'
     | 'lotos'
     | 'equipmentIdList'

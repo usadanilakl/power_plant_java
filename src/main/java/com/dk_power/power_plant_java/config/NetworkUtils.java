@@ -2,13 +2,18 @@ package com.dk_power.power_plant_java.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class NetworkUtils {
 
     private NetworkUtils() {}
 
     /**
      * Check if the request originates from an internal/private network.
-     * Covers RFC 1918 ranges, loopback, and link-local addresses.
+     * Covers RFC 1918 IPv4 ranges, loopback, IPv4 link-local,
+     * and common IPv6 LAN ranges (link-local and unique-local).
      */
     public static boolean isInternalRequest(HttpServletRequest request) {
         String ip = getClientIp(request);
@@ -25,7 +30,7 @@ public class NetworkUtils {
 
     public static boolean isLoopbackIp(String ip) {
         if (ip == null) return false;
-        ip = normalizeIp(ip);
+        ip = stripZoneId(normalizeIp(ip));
         if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) return true;
         return ip.startsWith("127.");
     }
@@ -33,32 +38,46 @@ public class NetworkUtils {
     public static boolean isInternalIp(String ip) {
         if (ip == null) return false;
 
-        // Normalize: strip IPv6-mapped IPv4 prefix (::ffff:10.x.x.x → 10.x.x.x)
-        // Java on Windows often returns these for LAN connections.
-        ip = normalizeIp(ip);
+        ip = stripZoneId(normalizeIp(ip));
 
-        // IPv6 loopback
         if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) return true;
-
-        // IPv4 loopback
         if (ip.startsWith("127.")) return true;
-
-        // RFC 1918 private ranges
         if (ip.startsWith("10.")) return true;
         if (ip.startsWith("192.168.")) return true;
 
-        // 172.16.0.0 - 172.31.255.255
         if (ip.startsWith("172.")) {
             try {
                 int secondOctet = Integer.parseInt(ip.split("\\.")[1]);
                 if (secondOctet >= 16 && secondOctet <= 31) return true;
-            } catch (NumberFormatException e) {
-                // Not a valid IP
+            } catch (NumberFormatException ignored) {
+                // Continue to other checks.
             }
         }
 
-        // Link-local
         if (ip.startsWith("169.254.")) return true;
+
+        String lowerIp = ip.toLowerCase();
+        if (lowerIp.startsWith("fe80:") || lowerIp.startsWith("fe90:")
+                || lowerIp.startsWith("fea0:") || lowerIp.startsWith("feb0:")
+                || lowerIp.startsWith("fc") || lowerIp.startsWith("fd")
+                || lowerIp.startsWith("fec") || lowerIp.startsWith("fed")
+                || lowerIp.startsWith("fee") || lowerIp.startsWith("fef")) {
+            return true;
+        }
+
+        try {
+            InetAddress address = InetAddress.getByName(ip);
+            if (address.isAnyLocalAddress() || address.isLoopbackAddress()
+                    || address.isLinkLocalAddress() || address.isSiteLocalAddress()) {
+                return true;
+            }
+            if (address instanceof Inet6Address inet6Address) {
+                byte[] bytes = inet6Address.getAddress();
+                return bytes.length > 0 && (bytes[0] & (byte) 0xFE) == (byte) 0xFC;
+            }
+        } catch (UnknownHostException ignored) {
+            return false;
+        }
 
         return false;
     }
@@ -70,11 +89,9 @@ public class NetworkUtils {
      */
     private static String normalizeIp(String ip) {
         if (ip == null) return null;
-        // "::ffff:10.10.190.123" → "10.10.190.123"
         if (ip.startsWith("::ffff:") && ip.indexOf('.') > 0) {
             return ip.substring(7);
         }
-        // "0:0:0:0:0:0:ffff:a0a:be7b" → convert hex octets to dotted decimal
         if (ip.startsWith("0:0:0:0:0:0:ffff:") || ip.startsWith("0:0:0:0:0:ffff:")) {
             String hexPart = ip.substring(ip.lastIndexOf("ffff:") + 5);
             String[] hexOctets = hexPart.split(":");
@@ -83,12 +100,18 @@ public class NetworkUtils {
                     int hi = Integer.parseInt(hexOctets[0], 16);
                     int lo = Integer.parseInt(hexOctets[1], 16);
                     return (hi >> 8) + "." + (hi & 0xFF) + "." + (lo >> 8) + "." + (lo & 0xFF);
-                } catch (NumberFormatException e) {
-                    // Not a valid mapped address
+                } catch (NumberFormatException ignored) {
+                    // Not a valid mapped address.
                 }
             }
         }
         return ip;
+    }
+
+    private static String stripZoneId(String ip) {
+        if (ip == null) return null;
+        int zoneIndex = ip.indexOf('%');
+        return zoneIndex >= 0 ? ip.substring(0, zoneIndex) : ip;
     }
 
     /**
@@ -97,8 +120,6 @@ public class NetworkUtils {
     public static String getClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            // X-Forwarded-For can contain multiple IPs: client, proxy1, proxy2
-            // The first one is the original client
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();

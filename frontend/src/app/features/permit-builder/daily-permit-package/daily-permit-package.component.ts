@@ -23,11 +23,25 @@ export class DailyPermitPackageComponent {
   private dailyPermitPackageService = inject(DailyPermitPackageService);
   private route = inject(ActivatedRoute);
   private destroyRef = inject(DestroyRef)
+  // Reissue-from-WR context
+  reissueFromWrId: number | null = null;
+  reissueScope: string = '';
+  reissueDate: string = '';
+  reissueLocation: string = '';
+
   constructor() {
     const workRequestId = this.route.snapshot.paramMap.get('workRequestId');
     const mode = this.route.snapshot.data['mode'];
     const packageId = this.route.snapshot.queryParamMap.get('packageId');
-    if (packageId) {
+    const reissueFromWr = this.route.snapshot.queryParamMap.get('reissueFromWr');
+
+    if (reissueFromWr) {
+      // Reissue from WR context menu — don't create a package yet, let user pick source
+      this.reissueFromWrId = +reissueFromWr;
+      this.reissueScope = this.route.snapshot.queryParamMap.get('scope') || '';
+      this.reissueDate = this.route.snapshot.queryParamMap.get('date') || '';
+      this.reissueLocation = this.route.snapshot.queryParamMap.get('location') || '';
+    } else if (packageId) {
       this.currendDailyPermitPackageService.setCurrentDailyPackage(+packageId);
     } else if (workRequestId) {
       if(mode === 're-issue'){

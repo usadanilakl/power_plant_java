@@ -30,6 +30,11 @@ public class NgHotWorkController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<HotWorkDto>>> getAllRest() {
+        return getAllHotWorkRequests();
+    }
+
     @GetMapping("/get-hot-work-by-id/{id}")
     public ResponseEntity<NgApiResponse<HotWorkDto>> getHotWorkRequestById(@PathVariable String id) {
         try {
@@ -43,6 +48,11 @@ public class NgHotWorkController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving hot work request: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<HotWorkDto>> getById(@PathVariable String id) {
+        return getHotWorkRequestById(id);
     }
 
     @PostMapping
@@ -71,10 +81,10 @@ public class NgHotWorkController {
 
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> deleteHotWorkRequest(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<String>> deleteHotWorkRequest(@PathVariable String id) {
         try {
-            ngHotWorkService.hardDelete(id);
-            NgApiResponse<Void> response = new NgApiResponse<>(null, "Hot work request deleted successfully", LocalDateTime.now());
+            ngHotWorkService.softDelete(id);
+            NgApiResponse<String> response = new NgApiResponse<>("Deleted", "Hot work request deleted successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

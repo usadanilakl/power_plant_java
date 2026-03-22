@@ -705,6 +705,12 @@
   background: var(--secondary-background, #2a2a2e);
 }
 
+/* ── Info layout fields ── 4 data lines below QR code */
+.tag-info-1 { top: 69.0%; font-size: 11px; font-weight: 500; transform: translate(-50%, -50%); }
+.tag-info-2 { top: 77.0%; font-size: 11px; font-weight: 500; transform: translate(-50%, -50%); }
+.tag-info-3 { top: 85.0%; font-size: 11px; font-weight: 500; transform: translate(-50%, -50%); }
+.tag-info-4 { top: 93.0%; font-size: 11px; font-weight: 500; transform: translate(-50%, -50%); }
+
 /* ── 2x1 tag overrides ── proportionally smaller (74% scale) */
 .tag-preview.tag-2x1 .tag-num-el { font-size: 23px; }
 .tag-preview.tag-2x1 .tag-qr-el { width: 79px; height: 61px; }
@@ -718,7 +724,127 @@
 .tag-preview.tag-2x1 .tag-desc-4l-2,
 .tag-preview.tag-2x1 .tag-desc-4l-3,
 .tag-preview.tag-2x1 .tag-desc-4l-4 { font-size: 10px; }
+.tag-preview.tag-2x1 .tag-info-1,
+.tag-preview.tag-2x1 .tag-info-2,
+.tag-preview.tag-2x1 .tag-info-3,
+.tag-preview.tag-2x1 .tag-info-4 { font-size: 8px; }
 .tag-preview.tag-2x1 .tag-hole-el { width: 8px; height: 8px; }
+
+/* ── Characteristic Picker ── */
+.char-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.char-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--primary-text, #e0e0e0);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.char-picker-item:hover {
+  background: var(--hover-background, rgba(255, 255, 255, 0.05));
+}
+
+.char-picker-item input[type="checkbox"] {
+  accent-color: var(--primary-accent, #4a9eff);
+}
+
+.no-chars-msg {
+  font-size: 11px;
+  color: var(--secondary-text, #888);
+  font-style: italic;
+}
+
+/* ── Selector Buttons ── */
+.selector-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.selector-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--secondary-background, #2a2a2e);
+  color: var(--primary-text, #e0e0e0);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.selector-btn:hover {
+  background: var(--hover-background, rgba(255, 255, 255, 0.08));
+}
+
+.selector-btn.active {
+  background: var(--primary-accent, #4a9eff);
+  color: #fff;
+  border-color: var(--primary-accent, #4a9eff);
+}
+
+/* ── Template Info ── */
+.template-info {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--secondary-background, #2a2a2e);
+}
+
+.template-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-text, #e0e0e0);
+  display: block;
+}
+
+.template-detail {
+  font-size: 11px;
+  color: var(--secondary-text, #888);
+}
+
+.template-warning {
+  font-size: 11px;
+  color: var(--warning-color, #ffa500);
+  font-style: italic;
+}
+
+/* ── Gear Icon Button ── */
+.batch-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary-text);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.btn-icon:hover {
+  background: var(--hover-color);
+  color: var(--primary-text);
+  border-color: var(--accent-color);
+}
 
 /* Responsive */
 @media (max-width: 768px) {

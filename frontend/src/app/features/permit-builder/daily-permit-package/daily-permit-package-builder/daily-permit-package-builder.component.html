@@ -52,17 +52,17 @@
       }
       @if(currentPackage().id){
         <div class="status-section">
-          <span class="status-badge" [attr.data-status]="packageStatus()">{{ packageStatus() }}</span>
+          <span class="status-badge" [attr.data-status]="packageStatus()">{{ packageStatus() === 'Test' ? 'Paused' : packageStatus() }}</span>
           @switch(packageStatus()) {
             @case('Building') {
               <button class="status-btn activate" (click)="openActivationDialog()">Activate</button>
             }
             @case('Active') {
-              <button class="status-btn test" (click)="currentDailyPermitPackageService.putPackageUnderTest()">Put Under Test</button>
+              <button class="status-btn test" (click)="currentDailyPermitPackageService.putPackageUnderTest()">Pause Work</button>
               <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
             }
             @case('Test') {
-              <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Reactivate</button>
+              <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume Work</button>
               <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
             }
           }
@@ -72,7 +72,7 @@
         </div>
       }
       <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Submit Permit Package</button>
-      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Get Permits From Another Package</button>
+      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Reissue</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
       <button class="delete-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
@@ -188,6 +188,33 @@
           </app-item-carousel>
         }
         @case('lotos') {
+          @if (hasLotoSuggestion()) {
+            <div class="loto-suggestion-banner">
+              <div class="suggestion-title">Work Area LOTO Requirements</div>
+              @if (lotoSuggestions()?.existingLotos?.length) {
+                <div class="suggestion-section">
+                  <span class="suggestion-label">Existing LOTOs to attach:</span>
+                  @for (loto of lotoSuggestions()!.existingLotos; track loto.id) {
+                    <div class="suggestion-item">
+                      <span>{{ loto.permitNumber }} — {{ loto.equipmentSystem || loto.matchedStandardName }}</span>
+                      <button class="btn-suggest" (click)="attachExisting(loto, 'lotos')">Attach</button>
+                    </div>
+                  }
+                </div>
+              }
+              @if (lotoSuggestions()?.suggestedStandards?.length) {
+                <div class="suggestion-section">
+                  <span class="suggestion-label">Standards without existing LOTO (create from standard):</span>
+                  @for (std of lotoSuggestions()!.suggestedStandards; track std.id) {
+                    <div class="suggestion-item">
+                      <span>{{ std.name || std.description }} ({{ std.lotoPointCount }} points)</span>
+                      <button class="btn-suggest" (click)="createLotoFromSuggestedStandard(std)">+ Create LOTO</button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
           <app-item-carousel
             [items]="lotos()"
             title="LOTO"
@@ -562,18 +589,83 @@
 </app-popup-projection>
 
 
+<!-- Reissue from Package Builder (two-step: date/time → select source) -->
 <app-popup-projection
-  [title]="'Re-Issue Permits'"
+  [title]="'Reissue Permits'"
   [isOpen]="isReusePermitsPopupVisible"
+  [size]="'large'"
   (close)="reusePermitsPopupClose()">
-
-  <app-shared-table
-    [items]="currentDailyPermitPackageService.allPackages()"
-    [columns]="reissueColumns"
-    [clickCallback]="reissuePermits.bind(this)"
-  ></app-shared-table>
-
+  <div class="reissue-dialog">
+    <div class="reissue-fields">
+      <div class="reissue-field">
+        <label>Date</label>
+        <input type="date" [(ngModel)]="reissueDate" />
+      </div>
+      <div class="reissue-field">
+        <label>Time</label>
+        <input type="time" [(ngModel)]="reissueTime" />
+      </div>
+    </div>
+    <p class="reissue-hint">This will create a new package from the package you currently have open using the date and time above.</p>
+    <div class="workflow-actions">
+      <button class="status-btn activate" (click)="confirmCurrentPackageReissue()">
+        Reissue Current Package
+      </button>
+      <button class="status-btn" style="background:#6c757d;" (click)="reusePermitsPopupClose()">
+        Cancel
+      </button>
+    </div>
+  </div>
 </app-popup-projection>
+
+<!-- Reissue from WR context menu -->
+<app-popup-projection
+  [title]="'Reissue — Select Source Package'"
+  [isOpen]="isReissueFromWrOpen"
+  [size]="'large'"
+  (close)="isReissueFromWrOpen = false">
+  <div class="reissue-dialog">
+    <div class="reissue-fields">
+      <div class="reissue-field">
+        <label>Scope (filter)</label>
+        <input type="text" [(ngModel)]="reissueWrScope" placeholder="Work scope..." />
+      </div>
+      <div class="reissue-field">
+        <label>Location (filter)</label>
+        <input type="text" [(ngModel)]="reissueWrLocation" placeholder="Location..." />
+      </div>
+      <div class="reissue-field">
+        <label>Date (filter)</label>
+        <input type="date" [(ngModel)]="reissueWrDate" />
+      </div>
+      <button class="status-btn activate" (click)="searchPackagesForReissue()" [disabled]="reissueWrSearching">
+        {{ reissueWrSearching ? 'Searching...' : 'Search' }}
+      </button>
+    </div>
+    @if (reissueWrSearchResults().length > 0) {
+      <div class="reissue-table">
+        <app-table
+          [tableId]="'permit-package-reissue-from-wr-picker'"
+          [items]="reissueWrSearchResults()"
+          [columns]="reissueColumns()"
+          [isTableIsolated]="true"
+        ></app-table>
+      </div>
+    } @else if (!reissueWrSearching) {
+      <p class="reissue-hint">No packages found. Adjust scope or date and search again.</p>
+    }
+  </div>
+</app-popup-projection>
+
+<ng-template #reissueActionCell let-item>
+  <button
+    type="button"
+    class="reissue-action-btn"
+    (mousedown)="$event.stopPropagation()"
+    (click)="selectReissueSource(item, $event)">
+    Use Package
+  </button>
+</ng-template>
 
 <app-popup-projection
   [title]="'Activation Snapshot'"
@@ -582,7 +674,7 @@
   @if(currentPackage().activationSnapshotJson){
     <div class="snapshot-viewer">
       <p><strong>Snapshot taken at activation.</strong> This is a read-only view of the package state at the time of activation.</p>
-      <pre class="snapshot-json">{{ currentPackage().activationSnapshotJson | json }}</pre>
+      <pre class="snapshot-json">{{ parsedActivationSnapshot() | json }}</pre>
     </div>
   }
 </app-popup-projection>
@@ -672,14 +764,27 @@
 </app-popup-projection>
 
 <app-popup-projection
-  [title]="'Reissue Permits?'"
+  [title]="'Continue Work?'"
   [isOpen]="isReissueAfterClosePromptOpen"
   (close)="dismissReissuePrompt()">
   <div class="workflow-dialog">
-    <p>Work is not yet completed. Would you like to reissue permits for the next day?</p>
+    @if (closureScopeChanged) {
+      <p>Scope has changed. You can reissue permits or create a new Work Request with the updated scope.</p>
+      @if (closureScopeDetails) {
+        <p class="scope-details"><strong>Scope details:</strong> {{ closureScopeDetails }}</p>
+      }
+    } @else {
+      <p>Work is not yet completed. Would you like to reissue permits for the next day?</p>
+    }
+    @if (closureContinueDate) {
+      <p class="continue-date">Continue date: {{ closureContinueDate }}</p>
+    }
     <div class="workflow-actions">
-      <button class="status-btn activate" (click)="confirmReissueAfterClose()">Yes, Reissue</button>
-      <button class="status-btn" style="background:#6c757d;" (click)="dismissReissuePrompt()">No, Close Only</button>
+      <button class="status-btn activate" (click)="confirmReissueAfterClose()">Reissue Permits</button>
+      @if (closureScopeChanged) {
+        <button class="status-btn test" (click)="createContinuationWorkRequest()">New Work Request</button>
+      }
+      <button class="status-btn" style="background:#6c757d;" (click)="dismissReissuePrompt()">Close Only</button>
     </div>
   </div>
 </app-popup-projection>

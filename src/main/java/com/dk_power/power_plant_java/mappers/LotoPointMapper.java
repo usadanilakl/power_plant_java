@@ -77,7 +77,8 @@ public class LotoPointMapper implements BaseMapper{
 //        if (entity.getSystem() != null) dto.setSystem(entity.getSystem());
         if (entity.getNormalPosition() != null) dto.setNormalPosition(entity.getNormalPosition());
         if (entity.getIsolatedPosition() != null) dto.setIsolatedPosition(entity.getIsolatedPosition());
-//        if (entity.getFluid() != null) dto.setFluid(entity.getFluid());
+        if (entity.getFluid() != null) dto.setFluid(entity.getFluid());
+        if (entity.getCharacteristicsJson() != null) dto.setCharacteristicsJson(entity.getCharacteristicsJson());
 //        if (entity.getSize() != null) dto.setSize(entity.getSize());
 //        if (entity.getElectricalCheckStatus() != null) dto.setElectricalCheckStatus(entity.getElectricalCheckStatus());
 //        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
@@ -184,7 +185,7 @@ public class LotoPointMapper implements BaseMapper{
 //        if (entity.getSystem() != null) dto.setSystem(entity.getSystem());
         if (entity.getNormalPosition() != null) dto.setNormalPosition(entity.getNormalPosition());
         if (entity.getIsolatedPosition() != null) dto.setIsolatedPosition(entity.getIsolatedPosition());
-//        if (entity.getFluid() != null) dto.setFluid(entity.getFluid());
+        if (entity.getCharacteristicsJson() != null) dto.setCharacteristicsJson(entity.getCharacteristicsJson());
 //        if (entity.getSize() != null) dto.setSize(entity.getSize());
 //        if (entity.getElectricalCheckStatus() != null) dto.setElectricalCheckStatus(entity.getElectricalCheckStatus());
 //        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
@@ -236,7 +237,8 @@ public class LotoPointMapper implements BaseMapper{
 //        if (dto.getSystem() != null) entity.setSystem(dto.getSystem());
         if (dto.getNormalPosition() != null) entity.setNormalPosition(dto.getNormalPosition());
         if (dto.getIsolatedPosition() != null) entity.setIsolatedPosition(dto.getIsolatedPosition());
-//        if (dto.getFluid() != null) entity.setFluid(dto.getFluid());
+        if (dto.getFluid() != null) entity.setFluid(dto.getFluid());
+        if (dto.getCharacteristicsJson() != null) entity.setCharacteristicsJson(dto.getCharacteristicsJson());
 //        if (dto.getSize() != null) entity.setSize(dto.getSize());
 //        if (dto.getElectricalCheckStatus() != null) entity.setElectricalCheckStatus(dto.getElectricalCheckStatus());
 //        if (dto.getRedTagId() != null) entity.setRedTagId(dto.getRedTagId());
@@ -300,6 +302,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getGeneralLocation() != null) lotoPoint.setGeneralLocation(dto.getGeneralLocation());
         if (dto.getNormalPosition() != null) lotoPoint.setNormalPosition(dto.getNormalPosition());
         if (dto.getIsolatedPosition() != null) lotoPoint.setIsolatedPosition(dto.getIsolatedPosition());
+        if (dto.getCharacteristicsJson() != null) lotoPoint.setCharacteristicsJson(dto.getCharacteristicsJson());
         if (dto.getOldId() != null) lotoPoint.setOldId(dto.getOldId());
         if (dto.getIsUpdated() != null) lotoPoint.setIsUpdated(dto.getIsUpdated());
         if (dto.getFileIds() != null) lotoPoint.setFileIds(dto.getFileIds());
@@ -358,6 +361,7 @@ public class LotoPointMapper implements BaseMapper{
         dto.setGeneralLocation(lotoPoint.getGeneralLocation());
         dto.setNormalPosition(lotoPoint.getNormalPosition());
         dto.setIsolatedPosition(lotoPoint.getIsolatedPosition());
+        dto.setCharacteristicsJson(lotoPoint.getCharacteristicsJson());
         dto.setOldId(lotoPoint.getOldId());
         dto.setIsUpdated(lotoPoint.getIsUpdated());
         dto.setFileIds(lotoPoint.getFileIds());

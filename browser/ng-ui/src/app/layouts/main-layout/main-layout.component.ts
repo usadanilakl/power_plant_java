@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { UserIconComponent } from "../../auth/user/user-icon/user-icon.component";
 import { ServerStatusComponent } from "../../shared/server-status/server-status.component";
+import { ServerStatusService } from "../../services/server-status.service";
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -21,6 +22,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
   @ViewChild('headerContent') headerContent!: ElementRef;
 
   authService = inject(AuthService);
+  serverStatus = inject(ServerStatusService);
   private router = inject(Router);
   private renderer = inject(Renderer2);
 
@@ -294,6 +296,10 @@ onOverlayClick = (event: MouseEvent) => {
   }
   login(): void {
     this.router.navigate(['/login']);
+  }
+  goToPermits(): void {
+    this.serverStatus.markNotificationsRead();
+    this.router.navigate(['/my-permits']);
   }
 }
 

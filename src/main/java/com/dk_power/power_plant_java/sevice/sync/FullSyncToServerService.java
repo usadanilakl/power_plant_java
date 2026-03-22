@@ -112,6 +112,8 @@ public class FullSyncToServerService {
     private final EqBreakerRepo eqBreakerRepo;
     private final HtPanelRepo htPanelRepo;
     private final HtBreakerRepo htBreakerRepo;
+    private final WorkAreaMapShapeRepo workAreaMapShapeRepo;
+    private final WorkAreaRepo workAreaRepo;
     private final UserRepo userRepo;
     private final EspDeviceRepo espDeviceRepo;
     private final LedStripRepo ledStripRepo;
@@ -172,6 +174,8 @@ public class FullSyncToServerService {
         new EntitySyncConfig("EqBreaker", EqBreaker.class),
         new EntitySyncConfig("HtPanel", HtPanel.class),
         new EntitySyncConfig("HtBreaker", HtBreaker.class),
+        new EntitySyncConfig("WorkAreaMapShape", WorkAreaMapShape.class),
+        new EntitySyncConfig("WorkArea", WorkArea.class),
         new EntitySyncConfig("EspDevice", EspDevice.class),
         new EntitySyncConfig("LedStrip", LedStrip.class),
         new EntitySyncConfig("SafeWork", SafeWork.class),
@@ -573,6 +577,8 @@ public class FullSyncToServerService {
         counts.put("EqBreaker", eqBreakerRepo.count());
         counts.put("HtPanel", htPanelRepo.count());
         counts.put("HtBreaker", htBreakerRepo.count());
+        counts.put("WorkAreaMapShape", workAreaMapShapeRepo.count());
+        counts.put("WorkArea", workAreaRepo.count());
         counts.put("EspDevice", espDeviceRepo.count());
         counts.put("LedStrip", ledStripRepo.count());
         counts.put("SafeWork", safeWorkRepo.count());
@@ -892,6 +898,8 @@ public class FullSyncToServerService {
             case "EqBreaker" -> eqBreakerRepo;
             case "HtPanel" -> htPanelRepo;
             case "HtBreaker" -> htBreakerRepo;
+            case "WorkAreaMapShape" -> workAreaMapShapeRepo;
+            case "WorkArea" -> workAreaRepo;
             case "EspDevice" -> espDeviceRepo;
             case "LedStrip" -> ledStripRepo;
             case "SafeWork" -> safeWorkRepo;

@@ -40,16 +40,16 @@ export class DailyPermitPackageFormComponent {
 
   @Output() formSubmit = new EventEmitter<DailyPermitPackageDto>();
 
-  safeWork: Signal<SafeWorkDto> = computed(() => 
-    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.workRequest())
+  safeWork: Signal<SafeWorkDto> = computed(() =>
+    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
   );
 
-  hotWork: Signal<HotWorkDto> = computed(() => 
-    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.workRequest())
+  hotWork: Signal<HotWorkDto> = computed(() =>
+    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
   );
 
-  confinedSpace: Signal<ConfinedSpaceDto> = computed(() => 
-    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest())
+  confinedSpace: Signal<ConfinedSpaceDto> = computed(() =>
+    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
   );
 
   isSafeWorkVisible = true;

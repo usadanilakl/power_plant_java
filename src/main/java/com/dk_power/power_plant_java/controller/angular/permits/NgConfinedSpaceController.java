@@ -30,6 +30,11 @@ public class NgConfinedSpaceController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<ConfinedSpaceDto>>> getAllRest() {
+        return getConfinedSpaceRequests();
+    }
+
     @GetMapping("/get-confined-space-by-id/{id}")
     public ResponseEntity<NgApiResponse<ConfinedSpaceDto>> getConfinedSpaceRequestById(@PathVariable String id) {
         try {
@@ -43,6 +48,11 @@ public class NgConfinedSpaceController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving confined space request: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<ConfinedSpaceDto>> getById(@PathVariable String id) {
+        return getConfinedSpaceRequestById(id);
     }
 
     @PostMapping
@@ -70,10 +80,10 @@ public class NgConfinedSpaceController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> deleteConfinedSpaceRequest(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<String>> deleteConfinedSpaceRequest(@PathVariable String id) {
         try {
-            ngConfinedSpaceService.hardDelete(id);
-            NgApiResponse<Void> response = new NgApiResponse<>(null, "Confined space request deleted successfully", LocalDateTime.now());
+            ngConfinedSpaceService.softDelete(id);
+            NgApiResponse<String> response = new NgApiResponse<>("Deleted", "Confined space request deleted successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

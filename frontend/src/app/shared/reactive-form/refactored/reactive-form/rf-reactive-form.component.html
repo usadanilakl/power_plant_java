@@ -145,6 +145,13 @@
           (workAreaSelected)="onWorkAreaSelected($event)"
         >
         </app-work-area-select>
+        } @case('characteristics-editor'){
+        <app-characteristics-editor
+          [formControl]="getFormControl(field.name)"
+          [label]="field.label"
+          [categoryAlias]="field.categoryAlias!"
+        >
+        </app-characteristics-editor>
         } @case('comment'){
         <app-comment-input
           [label]="field.label"

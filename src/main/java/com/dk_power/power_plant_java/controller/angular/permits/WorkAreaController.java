@@ -34,6 +34,11 @@ public class WorkAreaController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<WorkAreaDto>>> getAllRest() {
+        return getAll();
+    }
+
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<WorkAreaDto>> getById(@PathVariable Long id) {
         try {
@@ -51,6 +56,11 @@ public class WorkAreaController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<WorkAreaDto>> getByIdRest(@PathVariable Long id) {
+        return getById(id);
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<WorkAreaDto>> save(@RequestBody WorkAreaDto dto) {
         try {
@@ -63,6 +73,12 @@ public class WorkAreaController {
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Error saving work area: " + e.getMessage()));
         }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<WorkAreaDto>> update(@PathVariable Long id, @RequestBody WorkAreaDto dto) {
+        dto.setId(id);
+        return save(dto);
     }
 
     @DeleteMapping("/{id}")

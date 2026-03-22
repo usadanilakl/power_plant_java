@@ -223,8 +223,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         JobLog job = getEntityById(id);
         if (job == null) throw new RuntimeException("Job not found: " + id);
         job.setOriginatingWorkRequest(null);
-        jobLogRepo.save(job);
-        jobLogRepo.delete(job);
+        softDelete(jobLogRepo.save(job));
     }
 
     public List<JobLogDto> movePackageToJob(String sourceJobId, String packageId, String targetJobId) {

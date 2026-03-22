@@ -1,0 +1,84 @@
+package com.dk_power.power_plant_java.controller.angular.diagrams;
+
+import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.diagrams.DiagramDto;
+import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/ng/diagrams")
+@RequiredArgsConstructor
+public class NgDiagramController {
+
+    private final NgDiagramService service;
+
+    @GetMapping("/get-all")
+    public ResponseEntity<NgApiResponse<List<DiagramDto>>> getAll() {
+        try {
+            List<DiagramDto> items = service.getAllDtos();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(items, "Diagrams retrieved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/get-by-id/{id}")
+    public ResponseEntity<NgApiResponse<DiagramDto>> getById(@PathVariable String id) {
+        try {
+            DiagramDto dto = service.getDiagramById(id);
+            if (dto == null) {
+                return ResponseEntity.status(404).contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(null, "Diagram not found", LocalDateTime.now()));
+            }
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(dto, "Diagram retrieved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<NgApiResponse<DiagramDto>> create(@RequestBody DiagramDto dto) {
+        try {
+            DiagramDto created = service.createDiagram(dto);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(created, "Diagram created successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<DiagramDto>> update(@PathVariable String id, @RequestBody DiagramDto dto) {
+        try {
+            DiagramDto updated = service.updateDiagram(id, dto);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(updated, "Diagram updated successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
+        try {
+            service.softDelete(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(null, "Diagram deleted successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+}

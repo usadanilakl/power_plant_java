@@ -72,7 +72,7 @@
       class="viewport"
     >
       <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth()">
-        <tbody>
+        <tbody #tableBody>
           <tr
             *cdkVirtualFor="let item of dataService.filteredItems(); trackBy: utilService.trackByItemId"
             [class.drag-hover-top]="item === dataService.hoveredRow() && dragService.dragState().isDragging"
@@ -95,6 +95,7 @@
               [attr.data-column-id]="column.id"
               [style.width.px]="resizeService.getColumnWidth(column.id)"
               [ngStyle]="clickService.getCellStyleWithHover(item, column)"
+              [attr.title]="!column.template ? utilService.getCellValue(item, column) : null"
               (mousedown)="clickService.registerCellClick(item, column, $event)"
               (auxclick)="clickService.onRowMiddleClick(item, $event)"
               (mouseenter)="clickService.onCellHover(item, column)"

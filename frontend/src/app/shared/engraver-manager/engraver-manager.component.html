@@ -11,7 +11,10 @@
       <div class="batch-sidebar">
         <div class="batch-header">
           <h4>Batches</h4>
-          <span class="batch-count">{{ modalService.completedBatches() }} / {{ modalService.totalBatches() }}</span>
+          <div class="batch-header-actions">
+            <button class="btn-icon" title="Manage Templates" (click)="openTemplateManager()">&#9881;</button>
+            <span class="batch-count">{{ modalService.completedBatches() }} / {{ modalService.totalBatches() }}</span>
+          </div>
         </div>
 
         <div class="progress-bar-container">
@@ -45,33 +48,68 @@
           <p><strong>Total Tags:</strong> {{ modalService.totalItems() }}</p>
         </div>
 
-        <!-- Template Selection -->
+        <!-- Tag Size Selector -->
         <div class="config-section">
-          <label class="config-label">Template</label>
-          <select
-            class="config-select"
-            [ngModel]="modalService.selectedTemplate()"
-            (ngModelChange)="onTemplateChange($event)"
-          >
-            @for (tpl of modalService.availableTemplates(); track tpl) {
-              <option [value]="tpl">{{ tpl }}</option>
+          <label class="config-label">Tag Size</label>
+          <div class="selector-buttons">
+            @for (size of modalService.availableTagSizes(); track size) {
+              <button
+                class="btn selector-btn"
+                [class.active]="modalService.selectedTagSize() === size"
+                (click)="modalService.selectedTagSize.set(size)"
+              >{{ size }}</button>
             }
-          </select>
+          </div>
         </div>
 
-        <!-- Batch Size Selection -->
+        <!-- Data Structure Selector -->
         <div class="config-section">
-          <label class="config-label">Tags per Batch</label>
-          <select
-            class="config-select"
-            [ngModel]="modalService.batchSize()"
-            (ngModelChange)="onBatchSizeChange(+$event)"
-          >
-            @for (size of batchSizeOptions; track size) {
-              <option [value]="size">{{ size }}</option>
+          <label class="config-label">Data Structure</label>
+          <div class="selector-buttons">
+            @for (ds of modalService.availableDataStructures(); track ds) {
+              <button
+                class="btn selector-btn"
+                [class.active]="modalService.selectedDataStructure() === ds"
+                (click)="setDataStructure(ds)"
+              >{{ ds | titlecase }}</button>
             }
-          </select>
+          </div>
         </div>
+
+        <!-- Resolved Template Info -->
+        @if (modalService.resolvedTemplate(); as tmpl) {
+          <div class="config-section template-info">
+            <span class="template-name">{{ tmpl.name }}</span>
+            <span class="template-detail">{{ tmpl.batchSize }} tags/batch</span>
+          </div>
+        } @else {
+          <div class="config-section template-info">
+            <span class="template-warning">No template available for this configuration</span>
+          </div>
+        }
+
+        <!-- Characteristic Picker (info data structure only) -->
+        @if (modalService.selectedDataStructure() === 'info') {
+          <div class="config-section">
+            <label class="config-label">Engrave Fields (max {{ modalService.maxEngraveCharacteristics }})</label>
+            <div class="char-picker-list">
+              @for (name of modalService.availableCharacteristicNames(); track name) {
+                <label class="char-picker-item">
+                  <input
+                    type="checkbox"
+                    [checked]="modalService.selectedCharacteristicNames().includes(name)"
+                    (change)="modalService.toggleCharacteristicName(name)"
+                    [disabled]="!modalService.selectedCharacteristicNames().includes(name) && modalService.selectedCharacteristicNames().length >= modalService.maxEngraveCharacteristics"
+                  />
+                  {{ name }}
+                </label>
+              }
+              @if (modalService.availableCharacteristicNames().length === 0) {
+                <span class="no-chars-msg">No characteristics defined on selected items</span>
+              }
+            </div>
+          </div>
+        }
 
         <!-- QR Code Toggle -->
         <div class="qr-toggle-section">
@@ -81,9 +119,9 @@
             [class.active]="modalService.withQr()"
           >
             @if (modalService.withQr()) {
-              <span class="qr-icon">▣</span> QR On
+              <span class="qr-icon">&#9635;</span> QR On
             } @else {
-              <span class="qr-icon">▢</span> QR Off
+              <span class="qr-icon">&#9634;</span> QR Off
             }
           </button>
         </div>
@@ -110,7 +148,13 @@
                 <tr>
                   <th>#</th>
                   <th>Tag Number</th>
-                  <th>Description</th>
+                  @if (modalService.selectedDataStructure() === 'info') {
+                    @for (charName of modalService.selectedCharacteristicNames(); track charName) {
+                      <th>{{ charName }}</th>
+                    }
+                  } @else {
+                    <th>Description</th>
+                  }
                   @if (batch.status !== 'completed') {
                     <th class="remove-col"></th>
                   }
@@ -121,14 +165,20 @@
                   <tr>
                     <td class="row-number">{{ i + 1 }}</td>
                     <td class="tag-number">{{ item.tagNumber || '(no tag)' }}</td>
-                    <td class="description">{{ item.description || '(no description)' }}</td>
+                    @if (modalService.selectedDataStructure() === 'info') {
+                      @for (charName of modalService.selectedCharacteristicNames(); track charName) {
+                        <td>{{ getCharacteristicValue(item, charName) }}</td>
+                      }
+                    } @else {
+                      <td class="description">{{ item.description || '(no description)' }}</td>
+                    }
                     @if (batch.status !== 'completed') {
                       <td class="remove-col">
                         <button
                           class="btn-remove"
                           (click)="removeItem(item.id!)"
                           title="Remove from batch"
-                        >✕</button>
+                        >&#10005;</button>
                       </td>
                     }
                   </tr>
@@ -136,7 +186,7 @@
                 @for (_ of [].constructor(modalService.batchSize() - batch.items.length); track $index) {
                   <tr class="empty-row">
                     <td class="row-number">{{ batch.items.length + $index + 1 }}</td>
-                    <td [attr.colspan]="batch.status !== 'completed' ? 3 : 2" class="empty-cell">— empty slot —</td>
+                    <td [attr.colspan]="modalService.selectedDataStructure() === 'info' ? (modalService.selectedCharacteristicNames().length + 1 + (batch.status !== 'completed' ? 1 : 0)) : (batch.status !== 'completed' ? 3 : 2)" class="empty-cell">— empty slot —</td>
                   </tr>
                 }
               </tbody>
@@ -154,29 +204,38 @@
                   <!-- Tag number — top center -->
                   <span class="tag-el tag-num-el">{{ item.tagNumber || '(no tag)' }}</span>
 
-                  <!-- QR code — middle center -->
-                  @if (modalService.withQr()) {
+                  @if (modalService.selectedDataStructure() === 'info') {
+                    <!-- Info layout: QR + selected characteristics -->
                     <div class="tag-el tag-qr-el">
                       <div class="qr-pattern"></div>
                     </div>
-                  }
+                    @for (charName of modalService.selectedCharacteristicNames(); track charName; let ci = $index) {
+                      <span class="tag-el" [class]="'tag-info-' + (ci + 1)">{{ getCharacteristicValue(item, charName) }}</span>
+                    }
+                  } @else {
+                    <!-- Standard layout: QR + Description -->
+                    @if (modalService.withQr()) {
+                      <div class="tag-el tag-qr-el">
+                        <div class="qr-pattern"></div>
+                      </div>
+                    }
 
-                  <!-- Description — bottom area, positioned per line count -->
-                  @if (getDescriptionLines(item.description); as lines) {
-                    @if (lines.length <= 1) {
-                      <span class="tag-el tag-desc-1l">{{ lines[0] }}</span>
-                    } @else if (lines.length === 2) {
-                      <span class="tag-el tag-desc-2l-1">{{ lines[0] }}</span>
-                      <span class="tag-el tag-desc-2l-2">{{ lines[1] }}</span>
-                    } @else if (lines.length === 3) {
-                      <span class="tag-el tag-desc-3l-1">{{ lines[0] }}</span>
-                      <span class="tag-el tag-desc-3l-2">{{ lines[1] }}</span>
-                      <span class="tag-el tag-desc-3l-3">{{ lines[2] }}</span>
-                    } @else {
-                      <span class="tag-el tag-desc-4l-1">{{ lines[0] }}</span>
-                      <span class="tag-el tag-desc-4l-2">{{ lines[1] }}</span>
-                      <span class="tag-el tag-desc-4l-3">{{ lines[2] }}</span>
-                      <span class="tag-el tag-desc-4l-4">{{ lines[3] }}</span>
+                    @if (getDescriptionLines(item.description); as lines) {
+                      @if (lines.length <= 1) {
+                        <span class="tag-el tag-desc-1l">{{ lines[0] }}</span>
+                      } @else if (lines.length === 2) {
+                        <span class="tag-el tag-desc-2l-1">{{ lines[0] }}</span>
+                        <span class="tag-el tag-desc-2l-2">{{ lines[1] }}</span>
+                      } @else if (lines.length === 3) {
+                        <span class="tag-el tag-desc-3l-1">{{ lines[0] }}</span>
+                        <span class="tag-el tag-desc-3l-2">{{ lines[1] }}</span>
+                        <span class="tag-el tag-desc-3l-3">{{ lines[2] }}</span>
+                      } @else {
+                        <span class="tag-el tag-desc-4l-1">{{ lines[0] }}</span>
+                        <span class="tag-el tag-desc-4l-2">{{ lines[1] }}</span>
+                        <span class="tag-el tag-desc-4l-3">{{ lines[2] }}</span>
+                        <span class="tag-el tag-desc-4l-4">{{ lines[3] }}</span>
+                      }
                     }
                   }
 
@@ -271,4 +330,10 @@
       </div>
     </div>
   </app-rf-popup-projection>
+
+  <app-engraver-template-manager
+    [isOpen]="isTemplateManagerOpen()"
+    (closed)="onTemplateManagerClosed()"
+    (templatesChanged)="onTemplatesChanged()"
+  />
 }

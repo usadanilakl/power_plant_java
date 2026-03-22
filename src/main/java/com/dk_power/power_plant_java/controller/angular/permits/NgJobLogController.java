@@ -32,6 +32,11 @@ public class NgJobLogController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<JobLogDto>>> getAllRest() {
+        return getAll();
+    }
+
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<JobLogDto>> getById(@PathVariable String id) {
         try {
@@ -43,6 +48,11 @@ public class NgJobLogController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> getByIdRest(@PathVariable String id) {
+        return getById(id);
     }
 
     @PostMapping
@@ -67,6 +77,11 @@ public class NgJobLogController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<JobLogDto>> updateRest(@PathVariable String id, @RequestBody JobLogDto dto) {
+        return update(id, dto);
     }
 
     @PostMapping("/create-from-work-request/{workRequestId}")

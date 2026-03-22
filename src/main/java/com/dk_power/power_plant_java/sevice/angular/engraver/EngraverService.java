@@ -5,15 +5,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,11 +72,76 @@ public class EngraverService {
     }
 
     /**
+     * Generates CSV with characteristic columns appended after the standard 12 columns.
+     * @param characteristicNames ordered list of characteristic names to include as extra columns
+     */
+    public String generateCsvForBatch(List<LotoPoint> batch, boolean withQr, List<String> characteristicNames) throws IOException {
+        if (characteristicNames == null || characteristicNames.isEmpty()) {
+            return generateCsvForBatch(batch, withQr);
+        }
+
+        File csvFile = new File(engraverDataPath, csvFilename);
+        csvFile.getParentFile().mkdirs();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
+            if (includeHeader) {
+                String baseHeader = "tagNumber,oneLineDescription,twoLineDescription1,twoLineDescription2,threeLineDescription1,threeLineDescription2,threeLineDescription3,fourLineDescription1,fourLineDescription2,fourLineDescription3,fourLineDescription4,qrCode";
+                String extraHeader = characteristicNames.stream().map(this::escapeCsvField).collect(Collectors.joining(","));
+                writer.println(baseHeader + "," + extraHeader);
+            }
+
+            for (LotoPoint point : batch) {
+                String[] baseRow = mapLotoPointToCsvRow(point, withQr);
+                String[] charValues = getCharacteristicValues(point, characteristicNames, objectMapper);
+                String[] fullRow = new String[baseRow.length + charValues.length];
+                System.arraycopy(baseRow, 0, fullRow, 0, baseRow.length);
+                System.arraycopy(charValues, 0, fullRow, baseRow.length, charValues.length);
+                writer.println(String.join(",", fullRow));
+            }
+        }
+
+        log.info("Generated CSV at: {} with {} items, {} characteristic columns", csvFile.getAbsolutePath(), batch.size(), characteristicNames.size());
+        return csvFile.getAbsolutePath();
+    }
+
+    /**
+     * Extracts characteristic values from a LotoPoint's characteristicsJson, ordered by the given names.
+     */
+    private String[] getCharacteristicValues(LotoPoint point, List<String> characteristicNames, ObjectMapper objectMapper) {
+        String[] values = new String[characteristicNames.size()];
+        Arrays.fill(values, "");
+
+        String json = point.getCharacteristicsJson();
+        if (json == null || json.isBlank()) return values;
+
+        try {
+            List<Map<String, Object>> characteristics = objectMapper.readValue(json, new TypeReference<>() {});
+            Map<String, String> charMap = new HashMap<>();
+            for (Map<String, Object> c : characteristics) {
+                String name = (String) c.get("name");
+                String value = (String) c.get("value");
+                if (name != null && value != null) {
+                    charMap.put(name, value);
+                }
+            }
+            for (int i = 0; i < characteristicNames.size(); i++) {
+                String val = charMap.get(characteristicNames.get(i));
+                values[i] = escapeCsvField(val != null ? val : "");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse characteristicsJson for point {}: {}", point.getTagNumber(), e.getMessage());
+        }
+
+        return values;
+    }
+
+    /**
      * Maps a LotoPoint to CSV columns based on description length.
      * Automatically determines whether to use 1, 2, 3, or 4 line format.
      * QR code is the last column (column 12).
      *
-     * CSV columns: tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode
+     * CSV columns: tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode, [+ characteristic columns appended dynamically]
      */
     private String[] mapLotoPointToCsvRow(LotoPoint point, boolean withQr) {
         String tagNumber = escapeCsvField(point.getTagNumber() != null ? point.getTagNumber() : "");
@@ -116,7 +182,7 @@ public class EngraverService {
             fourLine4 = lines.length > 3 ? escapeCsvField(lines[3]) : "";
         }
 
-        // QR code is the last column - contains URL to QR traffic endpoint if withQr is true
+        // QR code column - contains URL to QR traffic endpoint if withQr is true
         String qrCode = withQr ? QR_BASE_URL + (point.getTagNumber() != null ? point.getTagNumber() : "") : "";
 
         return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode};

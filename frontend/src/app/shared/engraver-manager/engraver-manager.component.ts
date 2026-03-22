@@ -1,14 +1,15 @@
-import { Component, inject, computed, effect } from '@angular/core';
+import { Component, inject, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EngraverModalService } from './engraver-modal.service';
 import { EngraverApiService } from './engraver-api.service';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
+import { EngraverTemplateManagerComponent } from './engraver-template-manager/engraver-template-manager.component';
 
 @Component({
   selector: 'app-engraver-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, RfPopupProjectionComponent],
+  imports: [CommonModule, FormsModule, RfPopupProjectionComponent, EngraverTemplateManagerComponent],
   templateUrl: './engraver-manager.component.html',
   styleUrls: ['./engraver-manager.component.css']
 })
@@ -16,9 +17,9 @@ export class EngraverManagerComponent {
   modalService = inject(EngraverModalService);
   private engraverApi = inject(EngraverApiService);
 
+  isTemplateManagerOpen = signal(false);
   statusMessage = '';
   errorMessage = '';
-  batchSizeOptions = [1, 2, 3, 4, 5];
 
   // Computed for UI
   progressPercentage = computed(() => {
@@ -30,60 +31,37 @@ export class EngraverManagerComponent {
   constructor() {
     // Load templates when modal becomes visible
     effect(() => {
-      if (this.modalService.isVisible() && this.modalService.availableTemplates().length === 0) {
-        this.loadTemplates();
+      if (this.modalService.isVisible() && this.modalService.allTemplates().length === 0) {
+        this.loadEngraverTemplates();
       }
     });
   }
 
-  private loadTemplates(): void {
-    this.engraverApi.getTemplates().subscribe({
+  private loadEngraverTemplates(): void {
+    this.engraverApi.getEngraverTemplates().subscribe({
       next: (response) => {
         if (response.responseData) {
-          this.modalService.availableTemplates.set(response.responseData);
-          if (!this.modalService.selectedTemplate() && response.responseData.length > 0) {
-            const firstTemplate = response.responseData[0];
-            this.modalService.selectedTemplate.set(firstTemplate);
-            this.applyBatchSizeFromTemplate(firstTemplate);
-          }
+          this.modalService.allTemplates.set(response.responseData);
         }
       },
-      error: (err) => {
-        this.errorMessage = 'Failed to load templates';
+      error: () => {
+        this.errorMessage = 'Failed to load engraver templates';
       }
     });
   }
 
-  onTemplateChange(template: string): void {
-    this.modalService.setTemplate(template);
-    this.applyBatchSizeFromTemplate(template);
-  }
-
-  onBatchSizeChange(size: number): void {
-    this.modalService.updateBatchSize(size);
-  }
-
   /**
-   * Parses leading number from template filename and sets batch size.
-   * E.g., "2-tags-with-qr 2x3.lbrn2" -> batch size 2
+   * Delegates data structure change to modal service.
    */
-  private applyBatchSizeFromTemplate(template: string): void {
-    const match = template.match(/^(\d+)/);
-    if (match) {
-      const size = parseInt(match[1], 10);
-      if (size > 0 && size <= 10) {
-        this.modalService.updateBatchSize(size);
-      }
-    }
+  setDataStructure(ds: string): void {
+    this.modalService.setDataStructure(ds);
   }
 
   /**
-   * Detects tag size from template name ("2x3" or "2x1").
+   * Returns current tag size for preview rendering.
    */
   getTagSize(): '2x3' | '2x1' {
-    const template = this.modalService.selectedTemplate();
-    if (template && template.includes('2x1')) return '2x1';
-    return '2x3';
+    return this.modalService.selectedTagSize() as '2x3' | '2x1';
   }
 
   /**
@@ -141,9 +119,9 @@ export class EngraverManagerComponent {
       return;
     }
 
-    const template = this.modalService.selectedTemplate();
-    if (!template) {
-      this.errorMessage = 'Please select a template';
+    const resolved = this.modalService.resolvedTemplate();
+    if (!resolved?.filename) {
+      this.errorMessage = 'No template available for this tag size / data structure combination';
       return;
     }
 
@@ -152,7 +130,9 @@ export class EngraverManagerComponent {
     this.modalService.startProcessingCurrentBatch();
 
     const withQr = this.modalService.withQr();
-    this.engraverApi.processBatch(ids, template, true, withQr).subscribe({
+    const layoutVersion = this.modalService.layoutVersion();
+    const characteristicNames = layoutVersion === 'info' ? this.modalService.selectedCharacteristicNames() : [];
+    this.engraverApi.processBatch(ids, resolved.filename, true, withQr, layoutVersion, characteristicNames).subscribe({
       next: (response) => {
         if (response.responseData) {
           this.statusMessage = `CSV generated with ${response.responseData.itemCount} items. LightBurn opened.`;
@@ -203,14 +183,14 @@ export class EngraverManagerComponent {
    * Just open LightBurn with existing CSV (for re-processing).
    */
   reopenLightBurn(): void {
-    const template = this.modalService.selectedTemplate();
-    if (!template) {
-      this.errorMessage = 'Please select a template';
+    const resolved = this.modalService.resolvedTemplate();
+    if (!resolved?.filename) {
+      this.errorMessage = 'No template available';
       return;
     }
 
     this.statusMessage = 'Opening LightBurn...';
-    this.engraverApi.openLightBurn(template).subscribe({
+    this.engraverApi.openLightBurn(resolved.filename).subscribe({
       next: () => {
         this.statusMessage = 'LightBurn opened';
       },
@@ -225,6 +205,33 @@ export class EngraverManagerComponent {
    */
   toggleQr(): void {
     this.modalService.toggleQr();
+  }
+
+  getCharacteristicValue(item: any, name: string): string {
+    const chars = this.modalService.parseCharacteristics(item.characteristicsJson);
+    const found = chars.find(c => c.name === name);
+    return found?.value || '-';
+  }
+
+  /**
+   * Opens the template manager popup.
+   */
+  openTemplateManager(): void {
+    this.isTemplateManagerOpen.set(true);
+  }
+
+  /**
+   * Handles template manager closed event.
+   */
+  onTemplateManagerClosed(): void {
+    this.isTemplateManagerOpen.set(false);
+  }
+
+  /**
+   * Reloads templates after changes in the template manager.
+   */
+  onTemplatesChanged(): void {
+    this.loadEngraverTemplates();
   }
 
   /**

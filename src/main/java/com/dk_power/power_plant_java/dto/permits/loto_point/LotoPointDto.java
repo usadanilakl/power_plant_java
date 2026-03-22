@@ -37,7 +37,8 @@ public class LotoPointDto extends BaseDto {
     private String system;
     private String normalPosition;
     private String isolatedPosition;
-//    private String fluid;
+    private String fluid;
+    private String characteristicsJson;
 //    private String size;
 //    private String electricalCheckStatus;
 //    private String redTagId;

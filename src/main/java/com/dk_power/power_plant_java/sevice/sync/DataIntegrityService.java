@@ -46,6 +46,7 @@ public class DataIntegrityService {
         new String[]{"ht_equipment", "ht_id", "eq_id", "heat_trace", "equipment"},
         new String[]{"ht_pid", "ht_id", "pid_id", "heat_trace", "file_object"},
         new String[]{"breaker_eq", "br_id", "eq_id", "eq_breaker", "equipment"},
+        new String[]{"work_area_loto_standard", "work_area_id", "loto_standard_id", "work_area", "loto_standard"},
         new String[]{"daily_permit_package_lotos", "daily_permit_package_id", "loto_id", "daily_permit_package", "loto"},
         new String[]{"permit_equipment", "permit_id", "equipment_id", null, "equipment"} // permit_id references multiple tables
     );
@@ -86,6 +87,8 @@ public class DataIntegrityService {
         Map.entry("ZeroEnergy", "zero_energy"),
         Map.entry("LotoBox", "loto_boxes"),
         Map.entry("Lock", "lock_table"),
+        Map.entry("WorkAreaMapShape", "work_area_map_shape"),
+        Map.entry("WorkArea", "work_area"),
         Map.entry("EspDevice", "esp_devices"),
         Map.entry("LedStrip", "led_strips")
     );

@@ -78,6 +78,7 @@ public class ServiceFacade {
             @Lazy NgSafeWorkService ngSafeWorkService,
             @Lazy NgHotWorkService ngHotWorkService,
             @Lazy NgConfinedSpaceService ngConfinedSpaceService,
+            @Lazy NgWorkAreaService ngWorkAreaService,
             @Lazy NgWorkRequestService ngWorkRequestService,
             @Lazy NgJhaService ngJhaService,
             @Lazy NgDailyPermitPackageService ngDailyPermitPackageService,
@@ -85,6 +86,7 @@ public class ServiceFacade {
             @Lazy NgEnergizedWorkPermitService ngEnergizedWorkPermitService,
             @Lazy NgExcavationPermitService ngExcavationPermitService,
             @Lazy NgVentingPermitService ngVentingPermitService,
+            @Lazy WorkAreaMapShapeSyncService workAreaMapShapeSyncService,
             // Forms
             @Lazy PrintableFormService printableFormService,
             @Lazy FormContainerService formContainerService,
@@ -124,6 +126,8 @@ public class ServiceFacade {
         serviceMap.put(SafeWork.class.getSimpleName(), ngSafeWorkService);
         serviceMap.put(HotWork.class.getSimpleName(), ngHotWorkService);
         serviceMap.put(ConfinedSpace.class.getSimpleName(), ngConfinedSpaceService);
+        serviceMap.put(WorkArea.class.getSimpleName(), ngWorkAreaService);
+        serviceMap.put(WorkAreaMapShape.class.getSimpleName(), workAreaMapShapeSyncService);
         serviceMap.put(WorkRequest.class.getSimpleName(), ngWorkRequestService);
         serviceMap.put(Jha.class.getSimpleName(), ngJhaService);
         serviceMap.put(DailyPermitPackage.class.getSimpleName(), ngDailyPermitPackageService);

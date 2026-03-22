@@ -25,6 +25,7 @@ public class LotoPointIdDto extends BaseDto {
     private List<Long> equipmentIdList;
     private String normalPosition;
     private String isolatedPosition;
+    private String characteristicsJson;
     private List<Long> lotos;
     private Set<Long> equipmentList;
     private String oldId;

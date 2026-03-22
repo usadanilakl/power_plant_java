@@ -45,6 +45,11 @@ public class NgSafeWorkController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<SafeWorkDto>> getById(@PathVariable String id) {
+        return getSafeWorkRequestById(id);
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<SafeWorkDto>> createSafeWorkRequest(@RequestBody SafeWorkDto safeWorkDto) {
         try {
@@ -54,6 +59,31 @@ public class NgSafeWorkController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error creating safe work request: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<SafeWorkDto>> updateSafeWorkRequest(@PathVariable Long id, @RequestBody SafeWorkDto safeWorkDto) {
+        try {
+            safeWorkDto.setId(id);
+            SafeWorkDto updatedSafeWork = ngSafeWorkService.getMapper().convertToDto(ngSafeWorkService.save(safeWorkDto));
+            NgApiResponse<SafeWorkDto> response = new NgApiResponse<>(updatedSafeWork, "Safe work request updated successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error updating safe work request: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<String>> deleteSafeWorkRequest(@PathVariable Long id) {
+        try {
+            ngSafeWorkService.softDelete(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>("Deleted", "Safe work request deleted successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting safe work request: " + e.getMessage()));
         }
     }
 

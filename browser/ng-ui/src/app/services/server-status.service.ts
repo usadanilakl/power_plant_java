@@ -1,8 +1,9 @@
-import { Injectable, inject, DestroyRef } from '@angular/core';
+import { Injectable, inject, DestroyRef, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, interval, switchMap, distinctUntilChanged, filter, take } from 'rxjs';
+import { BehaviorSubject, interval, switchMap, distinctUntilChanged, filter, take, of, catchError } from 'rxjs';
 import { ServerApiService } from './server-api.service';
 import { UserSetupService } from './user-setup.service';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +11,7 @@ import { UserSetupService } from './user-setup.service';
 export class ServerStatusService {
   private serverApi = inject(ServerApiService);
   private userSetupService = inject(UserSetupService);
+  private authService = inject(AuthService);
   private destroyRef = inject(DestroyRef);
 
   private isOnlineSubject = new BehaviorSubject<boolean>(false);
@@ -19,6 +21,10 @@ export class ServerStatusService {
   /** Password held in memory only for same-session retry */
   private pendingPassword: string | null = null;
 
+  /** Notification badge count */
+  unreadNotificationCount = signal(0);
+  notifications = signal<any[]>([]);
+
   constructor() {
     // Initial check
     this.checkNow();
@@ -27,7 +33,13 @@ export class ServerStatusService {
     interval(30000).pipe(
       switchMap(() => this.serverApi.isAvailable()),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(online => this.isOnlineSubject.next(online));
+    ).subscribe(online => {
+      this.isOnlineSubject.next(online);
+      // Poll notifications when online and logged in
+      if (online && this.authService.isLoggedIn()) {
+        this.pollNotifications();
+      }
+    });
 
     // On offline → online transition, attempt pending registration
     this.isOnline$.pipe(
@@ -50,6 +62,26 @@ export class ServerStatusService {
 
   clearPendingPassword(): void {
     this.pendingPassword = null;
+  }
+
+  markNotificationsRead(): void {
+    this.serverApi.markNotificationsRead().subscribe({
+      next: () => {
+        this.unreadNotificationCount.set(0);
+        this.notifications.set([]);
+      }
+    });
+  }
+
+  private pollNotifications(): void {
+    this.serverApi.getNotifications().pipe(
+      catchError(() => of(null))
+    ).subscribe(result => {
+      if (result) {
+        this.unreadNotificationCount.set(result.unreadCount ?? 0);
+        this.notifications.set(result.notifications ?? []);
+      }
+    });
   }
 
   private retryPendingRegistration(): void {

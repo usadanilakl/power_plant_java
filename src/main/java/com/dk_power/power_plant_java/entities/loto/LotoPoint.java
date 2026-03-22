@@ -40,6 +40,8 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private String isolatedPosition;
     private String fluid;
     private String size;
+    @Column(columnDefinition = "TEXT")
+    private String characteristicsJson;
     private String electricalCheckStatus;
     private String redTagId;
     private Boolean inUse = false;

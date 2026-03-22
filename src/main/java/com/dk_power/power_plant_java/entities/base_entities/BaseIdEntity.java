@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.*;
+import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 @MappedSuperclass
 @Getter
 @Setter
+@Where(clause = "deleted = false")
 //@FilterDef(name = "deletedFilter", parameters = @ParamDef(name = "isDeleted", type = Boolean.class))
 //@Filter(name = "deletedFilter", condition = "deleted = :isDeleted")
 @NoArgsConstructor
@@ -24,7 +26,6 @@ public class BaseIdEntity {
     @Id
     @GeneratedValue(generator = "device-prefixed")
     @GenericGenerator(name = "device-prefixed", strategy = "com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator")
-    @Where(clause = "deleted = false")
     private Long id;
     @ColumnDefault("false")
     private Boolean deleted = false;

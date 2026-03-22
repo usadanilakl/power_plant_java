@@ -69,6 +69,18 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         icon: '👁️',
         action: (item) => this.handleViewDetails(item),
       },
+      {
+        id: 'divider2',
+        label: '',
+        divider: true,
+        action: () => {},
+      },
+      {
+        id: 'reissue',
+        label: 'Reissue',
+        icon: '🔄',
+        action: (item) => this.handleReissue(item),
+      },
     ];
   }
 
@@ -130,5 +142,57 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       this.wrDetailDialogService.open(item.id);
       this.closeContextMenu();
     }
+  }
+
+  private handleReissue(item: WorkRequestDto): void {
+    if (!item?.id) return;
+    // Calculate previous day from WR date
+    let previousDay = '';
+    if (item.dateOfWorkToBePerformed) {
+      previousDay = this.getPreviousDay(item.dateOfWorkToBePerformed);
+    }
+    const location = item.location?.trim() || item.workArea?.name?.trim() || '';
+    this.router.navigate(['/permit-builder/daily-packages'], {
+      queryParams: {
+        reissueFromWr: item.id,
+        scope: item.workScope || '',
+        date: previousDay,
+        location,
+      }
+    });
+    this.closeContextMenu();
+  }
+
+  private getPreviousDay(rawDate: string): string {
+    const trimmed = rawDate?.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return this.shiftDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+    }
+
+    const usMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (usMatch) {
+      const year = usMatch[3].length === 2 ? 2000 + Number(usMatch[3]) : Number(usMatch[3]);
+      return this.shiftDate(year, Number(usMatch[1]), Number(usMatch[2]));
+    }
+
+    return '';
+  }
+
+  private shiftDate(year: number, month: number, day: number): string {
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    date.setDate(date.getDate() - 1);
+    const adjustedYear = date.getFullYear();
+    const adjustedMonth = `${date.getMonth() + 1}`.padStart(2, '0');
+    const adjustedDay = `${date.getDate()}`.padStart(2, '0');
+    return `${adjustedYear}-${adjustedMonth}-${adjustedDay}`;
   }
 }

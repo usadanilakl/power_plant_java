@@ -19,6 +19,7 @@ import { RfValueSelectComponent } from '../../../../features/values/refactored/c
 import { RfMultiValueSelectComponent } from '../../../../features/values/refactored/components/rf-multi-value-select/rf-multi-value-select.component';
 import { FileInputComponent } from '../input-fields/file-input/file-input.component';
 import { CommentInputComponent } from '../input-fields/comment-input/comment-input.component';
+import { CharacteristicsEditorComponent } from '../input-fields/characteristics-editor/characteristics-editor.component';
 import { WorkAreaSelectComponent } from '../../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { FormBuilderService } from '../services/form-builder.service';
@@ -47,6 +48,7 @@ import { GuideDirective } from '../../../guide/guide.directive';
     RfMultiValueSelectComponent,
     FileInputComponent,
     CommentInputComponent,
+    CharacteristicsEditorComponent,
     WorkAreaSelectComponent,
     GuideDirective,
   ],

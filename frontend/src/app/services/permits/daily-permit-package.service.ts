@@ -42,6 +42,12 @@ export class DailyPermitPackageService {
   reissuePermits(packageIdToReissue: number, targetPackageId: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/reissue-permits-from/${packageIdToReissue}/to/${targetPackageId}`, null);
   }
+  reissuePermitsWithDate(packageIdToReissue: number, targetPackageId: number, date: string, time: string): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/reissue-permits-from/${packageIdToReissue}/to/${targetPackageId}`, { date, time });
+  }
+  reissueCurrentPackage(packageId: number, date: string, time: string): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${packageId}/reissue`, { date, time });
+  }
   reissuePermitsByWorkRequestId(workRequestId: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/reissue-permits-by-work-request-id/${workRequestId}`, null);
   }

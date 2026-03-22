@@ -38,7 +38,9 @@ public class EngraverController {
             @RequestBody List<Long> ids,
             @RequestParam(defaultValue = "true") boolean openLightBurn,
             @RequestParam(defaultValue = "false") boolean withQr,
-            @RequestParam(required = false) String template) {
+            @RequestParam(required = false) String template,
+            @RequestParam(defaultValue = "standard") String layoutVersion,
+            @RequestParam(required = false) List<String> characteristicNames) {
         try {
             List<LotoPoint> points = lotoPointService.getByIds(ids);
 
@@ -47,7 +49,9 @@ public class EngraverController {
                         .body(new NgApiResponse<>(null, "No LOTO points found for the provided IDs"));
             }
 
-            String csvPath = engraverService.generateCsvForBatch(points, withQr);
+            String csvPath = (characteristicNames != null && !characteristicNames.isEmpty())
+                    ? engraverService.generateCsvForBatch(points, withQr, characteristicNames)
+                    : engraverService.generateCsvForBatch(points, withQr);
 
             if (openLightBurn && template != null && !template.isBlank()) {
                 engraverService.openLightBurn(template);

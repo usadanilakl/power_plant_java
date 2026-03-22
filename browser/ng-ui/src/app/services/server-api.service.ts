@@ -366,6 +366,22 @@ export class ServerApiService {
     );
   }
 
+  // ============ Notifications ============
+
+  getNotifications(): Observable<{ unreadCount: number; notifications: any[] }> {
+    return this.http.get<{ unreadCount: number; notifications: any[] }>(`${this.baseUrl}/api/pwa/secured/notifications`).pipe(
+      timeout(5000),
+      catchError(() => of({ unreadCount: 0, notifications: [] }))
+    );
+  }
+
+  markNotificationsRead(): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/notifications/mark-read`, {}).pipe(
+      timeout(5000),
+      catchError(this.handleError)
+    );
+  }
+
   // ============ Signature (file-based) ============
 
   /** Upload signature for authenticated user */

@@ -6,6 +6,7 @@ import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
+import { WorkAreaDto } from './work-area.model';
 
 export class ConfinedSpaceHazards {
   oxygenDeficiency: boolean = false;
@@ -402,13 +403,18 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         return fields.map(fieldName => allColumns[fieldName]);
     }
       
-    static generatePermitFromRequest(request: WorkRequestDto): ConfinedSpaceDto{
-      return new ConfinedSpaceDto({
+    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null): ConfinedSpaceDto{
+      const dto = new ConfinedSpaceDto({
         date: request.dateOfWorkToBePerformed?.split('T')[0],
         issuedTo: request.requestedBy,
         space: request.space,
         workScope: request.workScope
       });
+      // Auto-populate constant confined space hazards from WorkArea
+      if (workArea?.constantConfinedSpaceHazards) {
+        dto.hazards = new ConfinedSpaceHazards({ ...dto.hazards, ...workArea.constantConfinedSpaceHazards });
+      }
+      return dto;
     }
     
     static formatLabel(key: string): string {

@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.pwa;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.enums.PermissionLevel;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.pwa.PwaNotificationService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaPermitService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ import java.util.Map;
 public class PwaSecuredController {
 
     private final PwaPermitService pwaPermitService;
+    private final PwaNotificationService pwaNotificationService;
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
 
@@ -97,11 +99,44 @@ public class PwaSecuredController {
                     "message", "Requires OPERATOR permission level"));
         }
 
-        Map<String, Object> result = pwaPermitService.signOff(id, user);
+        String comments = body != null ? body.get("comments") : null;
+        Map<String, Object> result = pwaPermitService.signOff(id, user, comments);
         if (result.containsKey("error")) {
             return ResponseEntity.badRequest().body(result);
         }
         return ResponseEntity.ok(result);
+    }
+
+    // ============ Notifications ============
+
+    @GetMapping("/notifications")
+    public ResponseEntity<?> getNotifications() {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+
+        if (!PermissionLevel.canViewPermits(user.getPermissionLevel())) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "INSUFFICIENT_PERMISSION",
+                    "message", "Requires BASIC or higher permission level"));
+        }
+
+        Map<String, Object> notifications = pwaNotificationService.getNotifications(user);
+        return ResponseEntity.ok(notifications);
+    }
+
+    @PostMapping("/notifications/mark-read")
+    public ResponseEntity<?> markNotificationsRead() {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "NOT_AUTHENTICATED"));
+
+        if (!PermissionLevel.canViewPermits(user.getPermissionLevel())) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "INSUFFICIENT_PERMISSION",
+                    "message", "Requires BASIC or higher permission level"));
+        }
+
+        pwaNotificationService.markAsRead(user);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 
     // ============ Profile ============

@@ -14,8 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Scheduled service that auto-expires Active work requests
@@ -26,6 +30,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class WorkRequestExpiryService {
+    private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        DateTimeFormatter.ofPattern("M/d/uuuu", Locale.US),
+        DateTimeFormatter.ofPattern("M/d/uu", Locale.US),
+        DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.US),
+        DateTimeFormatter.ofPattern("MM/dd/uu", Locale.US)
+    );
+
     private final WorkRequestRepo workRequestRepo;
     private final NgValueService valueService;
     private final WorkRequestSharePointAdapter wrAdapter;
@@ -35,7 +47,11 @@ public class WorkRequestExpiryService {
     @Scheduled(fixedDelay = 3600000, initialDelay = 60000) // every hour, 1 min initial delay
     @Transactional
     public void expireOverdueWorkRequests() {
-        if (!syncConfig.isHubMode()) return;
+        boolean shouldRunLocally = syncConfig.isHubMode() || !centralSyncService.isServerAvailable();
+        if (!shouldRunLocally) {
+            log.debug("[WR Expiry] Skipping local expiry because hub/server is available");
+            return;
+        }
 
         List<WorkRequest> activeWrs = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
         LocalDate today = LocalDate.now(ZoneId.of("America/Chicago"));
@@ -43,7 +59,7 @@ public class WorkRequestExpiryService {
 
         for (WorkRequest wr : activeWrs) {
             LocalDate workDate = parseDate(wr.getDateOfWorkToBePerformed());
-            if (workDate != null && workDate.plusDays(1).isBefore(today)) {
+            if (workDate != null && !workDate.plusDays(1).isAfter(today)) {
                 wr.setPermitStatus(valueService.createValue("Permit Status", "Expired"));
                 workRequestRepo.save(wr);
                 if (wr.getSharepointId() != null) {
@@ -65,11 +81,28 @@ public class WorkRequestExpiryService {
 
     private LocalDate parseDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) return null;
-        try {
-            return LocalDate.parse(dateStr); // yyyy-MM-dd ISO format
-        } catch (Exception e) {
-            log.warn("[WR Expiry] Failed to parse date '{}': {}", dateStr, e.getMessage());
-            return null;
+        String trimmed = dateStr.trim();
+
+        if (trimmed.contains("T")) {
+            try {
+                return LocalDateTime.parse(trimmed.replace("Z", "")).toLocalDate();
+            } catch (DateTimeParseException ignored) {
+                String datePart = trimmed.split("T", 2)[0];
+                if (!datePart.isBlank()) {
+                    trimmed = datePart;
+                }
+            }
         }
+
+        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
+            try {
+                return LocalDate.parse(trimmed, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next supported date format.
+            }
+        }
+
+        log.warn("[WR Expiry] Failed to parse date '{}'", dateStr);
+        return null;
     }
 }

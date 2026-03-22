@@ -46,6 +46,7 @@ public class ClientDataExportService {
         "Equipment", "LotoPoint", "Loto", "LotoStandard", "LotoSnapshot",
         "LotoBox", "Lock", "ZeroEnergy", "HeatTrace", "Highlight",
         "ElectricalPanel", "EqBreaker", "HtPanel", "HtBreaker",
+        "WorkAreaMapShape", "WorkArea",
         "EspDevice", "LedStrip",
         "SafeWork", "HotWork", "ConfinedSpace", "WorkRequest", "Jha",
         "DailyPermitPackage", "JobLog", "FireImpairment",
@@ -64,6 +65,7 @@ public class ClientDataExportService {
         new String[]{"ht_equipment", "ht_id", "eq_id"},
         new String[]{"ht_pid", "ht_id", "pid_id"},
         new String[]{"breaker_eq", "br_id", "eq_id"},
+        new String[]{"work_area_loto_standard", "work_area_id", "loto_standard_id"},
         new String[]{"daily_permit_package_lotos", "daily_permit_package_id", "loto_id"},
         new String[]{"permit_equipment", "permit_id", "equipment_id"},
         new String[]{"task_dependencies", "dependent_task_id", "prerequisite_task_id"}
@@ -594,6 +596,8 @@ public class ClientDataExportService {
             case "EqBreaker" -> "eq_breaker";
             case "HtPanel" -> "ht_panel";
             case "HtBreaker" -> "ht_breaker";
+            case "WorkAreaMapShape" -> "work_area_map_shape";
+            case "WorkArea" -> "work_area";
             case "User" -> "users";
             case "EspDevice" -> "esp_devices";
             case "LedStrip" -> "led_strips";

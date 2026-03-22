@@ -1,8 +1,9 @@
-import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, Input, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { CurrentDailyPermitPackageService } from '../../../../services/current-items-services/current-daily-permit-package.service';
-import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
-import { HotWorkDto } from '../../../../models/permits/hot-work.model';
-import { ConfinedSpaceDto } from '../../../../models/permits/confined-space.model';
+import { SafeWorkDto, SwHazards } from '../../../../models/permits/safe-work.model';
+import { HotWorkDto, HotWorkMeasures } from '../../../../models/permits/hot-work.model';
+import { ConfinedSpaceDto, ConfinedSpaceHazards } from '../../../../models/permits/confined-space.model';
 import { WorkRequestDto } from '../../../../models/permits/work-request.model';
 import { FormsModule } from '@angular/forms';
 import { ItemCarouselComponent } from "../../../../shared/item-carousel/item-carousel.component";
@@ -27,7 +28,7 @@ import { LotoDto } from '../../../../models/loto/loto.model';
 import { LotoTableComponent } from "../../../loto/loto-table/loto-table.component";
 import { LotoPaperFormComponent } from "../../../loto/loto-paper-form/loto-paper-form.component";
 import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
-import { TableComponent as SharedTableComponent } from '../../../../shared/table/table.component';
+import { TableComponent } from '../../../../shared/table/refactored/table.component';
 import { EnergizedWorkPermitDto } from '../../../../models/permits/energized-work-permit.model';
 import { ExcavationPermitDto } from '../../../../models/permits/excavation-permit.model';
 import { VentingPermitDto } from '../../../../models/permits/venting-permit.model';
@@ -43,19 +44,64 @@ import { JobLogService } from '../../../../services/permits/job-log.service';
 import { Router } from '@angular/router';
 import { JobLogDto } from '../../../../models/permits/job-log.model';
 import { RedTagProgressPanelComponent } from '../../../../shared/automation/red-tag-progress-panel/red-tag-progress-panel.component';
+import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { Column } from '../../../../models/column.model';
+import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../shared/table/refactored/services/table-drag.service';
+import { TableStateService } from '../../../../shared/table/refactored/services/table-state.service';
+import { TableSearchService } from '../../../../shared/table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../shared/table/refactored/services/table-sort.service';
+import { TableResizeService } from '../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../shared/table/refactored/services/table-sync.service';
+import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
+import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
+import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, SharedTableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent, RedTagProgressPanelComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, TableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent, RedTagProgressPanelComponent],
+  providers: [
+    TableSelectionService,
+    TableStateService,
+    TableDragService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    TableDataService,
+  ],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
-export class DailyPermitPackageBuilderComponent {
+export class DailyPermitPackageBuilderComponent implements OnInit {
   currentDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
   private jobLogService = inject(JobLogService);
   private router = inject(Router);
+  private http = inject(HttpClient);
   destroyRef = inject(DestroyRef);
+  private readonly lotoStandardApiUrl = '/ng/loto-standards';
+
+  // Reissue from WR context menu inputs
+  @Input() reissueFromWrId: number | null = null;
+  @Input() reissueInitialScope: string = '';
+  @Input() reissueInitialDate: string = '';
+  @Input() reissueInitialLocation: string = '';
+
+  // Reissue-from-WR dialog state
+  isReissueFromWrOpen = false;
+  reissueWrScope = '';
+  reissueWrDate = '';
+  reissueWrLocation = '';
+  reissueWrSearchResults = signal<any[]>([]);
+  reissueWrSearching = false;
+
+  // Reissue from package builder (two-step: date/time → select)
+  reissueDate = new Date().toISOString().split('T')[0];
+  reissueTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   currentPackage = this.currentDailyPermitPackageService.currentDailyPacksge;
   parentJob = signal<JobLogDto | null>(null);
@@ -97,6 +143,13 @@ export class DailyPermitPackageBuilderComponent {
   isEditable = this.currentDailyPermitPackageService.isEditable;
   isReadOnly = this.currentDailyPermitPackageService.isReadOnly;
 
+  // LOTO suggestions from WorkArea
+  lotoSuggestions = signal<{ existingLotos: any[]; suggestedStandards: any[] } | null>(null);
+  hasLotoSuggestion = computed(() => {
+    const s = this.lotoSuggestions();
+    return s && (s.existingLotos.length > 0 || s.suggestedStandards.length > 0);
+  });
+
 
   popupTitle: string = '';
   isPopupVisible = false;
@@ -107,7 +160,33 @@ export class DailyPermitPackageBuilderComponent {
   selectedLotosForAttach = signal<any[]>([]);
 
   isReusePermitsPopupVisible = false;
-  reissueColumns = DailyPermitPackageDto.toTableColumns(['id', 'name', 'permitNumber']);
+  reissueActionCell = viewChild.required<TemplateRef<{ $implicit: DailyPermitPackageDto; column: Column }>>('reissueActionCell');
+  reissueColumns = computed<Column[]>(() => {
+    const columns = DailyPermitPackageDto.toTableColumns([
+      'permitNumber',
+      'name',
+      'companyName',
+      'personName',
+      'date',
+    ]);
+
+    return [
+      columns[0],
+      columns[1],
+      {
+        id: 'location',
+        header: 'Location',
+        accessorFn: (item: DailyPermitPackageDto) => this.getPackageLocation(item),
+      },
+      ...columns.slice(2),
+      {
+        id: 'reissueAction',
+        header: 'Action',
+        template: this.reissueActionCell(),
+        width: 140,
+      },
+    ];
+  });
 
 
   // Tab-based layout
@@ -193,11 +272,74 @@ export class DailyPermitPackageBuilderComponent {
         this.jobLogService.getByPackageId(pkg.id.toString()).pipe(
           takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-          this.parentJob.set(response?.responseData ? JobLogDto.fromJson(response.responseData) : null);
+          const job = response?.responseData ? JobLogDto.fromJson(response.responseData) : null;
+          this.parentJob.set(job);
+          // Load LOTO suggestions if WorkArea has constant LOTOs
+          if (job?.workArea?.constantLotoIds?.length) {
+            this.http.get<any>(`/ng/daily-permit-packages/loto-suggestions/${job.workArea.id}`).pipe(
+              takeUntilDestroyed(this.destroyRef)
+            ).subscribe({
+              next: res => this.lotoSuggestions.set(res.responseData),
+              error: () => this.lotoSuggestions.set(null)
+            });
+          }
         });
       } else {
         this.parentJob.set(null);
       }
+    });
+  }
+
+  ngOnInit(): void {
+    // If navigated from WR context menu "Reissue", open the reissue dialog
+    if (this.reissueFromWrId) {
+      this.reissueWrScope = this.reissueInitialScope;
+      this.reissueWrDate = this.reissueInitialDate;
+      this.reissueWrLocation = this.reissueInitialLocation;
+      this.isReissueFromWrOpen = true;
+      this.searchPackagesForReissue();
+    }
+  }
+
+  searchPackagesForReissue(): void {
+    this.reissueWrSearching = true;
+    const params: any = {};
+    if (this.reissueWrScope) params.scope = this.reissueWrScope;
+    if (this.reissueWrDate) params.date = this.reissueWrDate;
+    if (this.reissueWrLocation) params.location = this.reissueWrLocation;
+
+    this.http.get<any>('/ng/daily-permit-packages/search', { params }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        this.reissueWrSearchResults.set(res.responseData ?? []);
+        this.reissueWrSearching = false;
+      },
+      error: () => {
+        this.reissueWrSearchResults.set([]);
+        this.reissueWrSearching = false;
+      }
+    });
+  }
+
+  confirmReissueFromWr(sourcePackage: any): void {
+    if (!this.reissueFromWrId || !sourcePackage?.id) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    this.http.post<any>(`/ng/daily-permit-packages/reissue-from/${sourcePackage.id}/for-wr/${this.reissueFromWrId}`, {
+      date: today,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        if (res?.responseData) {
+          const newPkg = new DailyPermitPackageDto(res.responseData);
+          this.currentDailyPermitPackageService.setSelectedPackage(newPkg);
+          this.isReissueFromWrOpen = false;
+        }
+      },
+      error: err => console.error('Reissue from WR failed:', err)
     });
   }
 
@@ -269,6 +411,33 @@ export class DailyPermitPackageBuilderComponent {
     }
   }
 
+  createLotoFromSuggestedStandard(standardSummary: { id: number; name?: string; description?: string }): void {
+    if (!standardSummary?.id) {
+      return;
+    }
+
+    this.http.get<any>(`${this.lotoStandardApiUrl}/${standardSummary.id}`).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        const standard = LotoStandardDto.fromJson(res?.responseData);
+        const loto = new LotoDto({
+          name: standard.name ?? '',
+          equipmentSystem: standard.name ?? standardSummary.name ?? '',
+          lotoRequestor: this.currentPackage().personName ?? '',
+          date: this.currentPackage().date ?? new Date().toISOString().split('T')[0],
+          lotoPoints: (standard.lotoPoints ?? []).map(point => new LotoPointDto(point))
+        });
+
+        this.addLoto(loto);
+      },
+      error: err => {
+        console.error('Failed to create LOTO from suggested standard:', err);
+        this.attachNew('LOTO');
+      }
+    });
+  }
+
   handlePopupStepOne(existing: boolean) {
     this.isAttachingExisting = existing;
     this.isPopupStepOne = false;
@@ -327,6 +496,33 @@ export class DailyPermitPackageBuilderComponent {
     this.reusePermitsPopupClose();
   }
 
+  reissuePermitsWithDate(pckg: DailyPermitPackageDto){
+    this.currentDailyPermitPackageService.reissuePermitsWithDate(pckg, this.reissueDate, this.reissueTime);
+    this.reusePermitsPopupClose();
+  }
+
+  getPackageLocation(pkg: DailyPermitPackageDto): string {
+    const permit = pkg.workRequests?.[0] || pkg.safeWorks?.[0] || pkg.hotWorks?.[0] || pkg.confinedSpaces?.[0];
+    return ((permit as any)?.location || '').toString();
+  }
+
+  getPackageWorkScope(pkg: DailyPermitPackageDto): string {
+    const permit = pkg.workRequests?.[0] || pkg.safeWorks?.[0] || pkg.hotWorks?.[0] || pkg.confinedSpaces?.[0];
+    const scope = ((permit as any)?.workScope || pkg.name || '').toString().trim();
+    return scope.length > 60 ? `${scope.substring(0, 60)}...` : scope;
+  }
+
+  confirmCurrentPackageReissue(): void {
+    this.currentDailyPermitPackageService.reissueCurrentPackageWithDate(this.reissueDate, this.reissueTime);
+    this.reusePermitsPopupClose();
+  }
+
+  selectReissueSource(pckg: DailyPermitPackageDto, event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.confirmReissueFromWr(pckg);
+  }
+
 
   /***************************************************************************
    * Permit Functions
@@ -336,12 +532,25 @@ export class DailyPermitPackageBuilderComponent {
     this.currentDailyPermitPackageService.createAndAttachWorkRequestsToPackage([request]);
   }
   addSafeWork($event: SafeWorkDto  = new SafeWorkDto()  ) {
+    // Pre-populate constant hazards from WorkArea if adding a new empty permit
+    const wa = this.parentJob()?.workArea;
+    if (!$event.id && wa?.constantHazards) {
+      $event.hazards = new SwHazards({ ...$event.hazards, ...wa.constantHazards });
+    }
     this.currentDailyPermitPackageService.createAndAttachSafeWorksToPackage([$event]);
   }
   addHotWork($event: HotWorkDto = new HotWorkDto()) {
+    const wa = this.parentJob()?.workArea;
+    if (!$event.id && wa?.constantHotWorkMeasures) {
+      $event.measures = new HotWorkMeasures({ ...$event.measures, ...wa.constantHotWorkMeasures });
+    }
     this.currentDailyPermitPackageService.createAndAttachHotWorksToPackage([$event]);
   }
   addConfinedSpace($event: ConfinedSpaceDto = new ConfinedSpaceDto()) {
+    const wa = this.parentJob()?.workArea;
+    if (!$event.id && wa?.constantConfinedSpaceHazards) {
+      $event.hazards = new ConfinedSpaceHazards({ ...$event.hazards, ...wa.constantConfinedSpaceHazards });
+    }
     this.currentDailyPermitPackageService.createAndAttachConfinedSpacesToPackage([$event]);
   }
 
@@ -417,6 +626,18 @@ export class DailyPermitPackageBuilderComponent {
   isSnapshotPopupOpen = false;
   isPaperFormPopupOpen = false;
   isRedTagProgressOpen = false;
+  parsedActivationSnapshot = computed(() => {
+    const raw = this.currentPackage().activationSnapshotJson;
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  });
 
   openRedTagProgress(): void {
     this.isRedTagProgressOpen = true;
@@ -497,7 +718,7 @@ export class DailyPermitPackageBuilderComponent {
       continueDate: this.closureContinueDate,
     });
     this.isClosurePopupOpen = false;
-    if (!this.closureWorkCompleted) {
+    if (!this.closureWorkCompleted || this.closureScopeChanged) {
       this.isReissueAfterClosePromptOpen = true;
     }
   }
@@ -507,6 +728,17 @@ export class DailyPermitPackageBuilderComponent {
   confirmReissueAfterClose(): void {
     this.reusePermitsPopupOpen();
     this.isReissueAfterClosePromptOpen = false;
+  }
+
+  createContinuationWorkRequest(): void {
+    this.isReissueAfterClosePromptOpen = false;
+    // Navigate to WR form with context from the current job
+    const job = this.parentJob();
+    const queryParams: any = {};
+    if (job?.workArea?.id) queryParams.workAreaId = job.workArea.id;
+    if (job?.workCategory?.name) queryParams.workCategory = job.workCategory.name;
+    if (job?.id) queryParams.jobId = job.id;
+    this.router.navigate(['/permit-builder/work-requests'], { queryParams });
   }
 
   dismissReissuePrompt(): void {

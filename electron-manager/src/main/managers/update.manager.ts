@@ -92,10 +92,8 @@ export class UpdateManager {
     const url = serverUrl || DEFAULT_SYNC_SERVER.url;
     const tmpPath = this.jarPath + '.tmp';
 
-    // Phase: checking
     onProgress?.({ phase: 'checking' });
 
-    // First check what's available
     const checkResult = await this.checkForUpdate(url);
     if (!checkResult.success) {
       const err = checkResult.error || 'Update check failed';
@@ -104,41 +102,47 @@ export class UpdateManager {
     }
     if (!checkResult.data?.isNewer) {
       onProgress?.({ phase: 'done' });
-      return { success: true }; // Already up to date
+      return { success: true };
     }
 
     const expectedChecksum = checkResult.data.checksum;
     const totalBytes = checkResult.data.fileSize;
 
-    // Phase: downloading
     onProgress?.({ phase: 'downloading', bytesDownloaded: 0, totalBytes, percent: 0 });
 
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (result: IpcResult) => {
+        if (settled) return;
+        settled = true;
+        resolve(result);
+      };
+
       try {
         const endpoint = new URL(`${url}/api/update/download`);
         const req = http.request(
           {
             hostname: endpoint.hostname,
             port: endpoint.port || 80,
-            path: endpoint.pathname,
+            path: `${endpoint.pathname}${endpoint.search}`,
             method: 'GET',
-            timeout: 600000 // 10 min timeout for large JAR
+            timeout: 1800000
           },
           (res) => {
             if (res.statusCode !== 200) {
               const err = `Download failed: HTTP ${res.statusCode}`;
               onProgress?.({ phase: 'error', error: err });
-              resolve({ success: false, error: err });
+              finish({ success: false, error: err });
               return;
             }
 
-            // Ensure managed_apps/pid directory exists
             if (!fs.existsSync(this.workingDir)) {
               fs.mkdirSync(this.workingDir, { recursive: true });
             }
 
             const writeStream = fs.createWriteStream(tmpPath);
             let bytesDownloaded = 0;
+            let streamFinished = false;
 
             res.on('data', (chunk: Buffer) => {
               bytesDownloaded += chunk.length;
@@ -146,51 +150,71 @@ export class UpdateManager {
               onProgress?.({ phase: 'downloading', bytesDownloaded, totalBytes, percent });
             });
 
+            res.on('aborted', () => {
+              try { writeStream.destroy(); } catch { /* ignore */ }
+              try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+              const err = `Download aborted after ${bytesDownloaded} of ${totalBytes} bytes`;
+              onProgress?.({ phase: 'error', error: err });
+              finish({ success: false, error: err });
+            });
+
+            res.on('error', (err) => {
+              try { writeStream.destroy(); } catch { /* ignore */ }
+              try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+              onProgress?.({ phase: 'error', error: err.message });
+              finish({ success: false, error: `Response error: ${err.message}` });
+            });
+
             res.pipe(writeStream);
 
             writeStream.on('finish', () => {
+              streamFinished = true;
               writeStream.close();
 
-              // Phase: verifying
               onProgress?.({ phase: 'verifying' });
 
               const downloadedChecksum = this.computeFileChecksum(tmpPath);
               if (downloadedChecksum !== expectedChecksum) {
-                // Checksum mismatch — delete tmp and fail
                 try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
                 const err = `Checksum mismatch: expected ${expectedChecksum.substring(0, 12)}... got ${downloadedChecksum.substring(0, 12)}...`;
                 onProgress?.({ phase: 'error', error: err });
-                resolve({ success: false, error: err });
+                finish({ success: false, error: err });
                 return;
               }
 
-              // Phase: applying (rename tmp -> jar)
               onProgress?.({ phase: 'applying' });
 
               try {
-                // On Windows, we may need to remove the old file first if rename fails
                 if (fs.existsSync(this.jarPath)) {
                   fs.unlinkSync(this.jarPath);
                 }
                 fs.renameSync(tmpPath, this.jarPath);
 
-                // Invalidate cached checksum
                 this.cachedChecksum = null;
                 this.cachedChecksumMtime = 0;
 
                 console.log(`JAR updated successfully: ${checkResult.data!.fileName}`);
                 onProgress?.({ phase: 'done' });
-                resolve({ success: true });
+                finish({ success: true });
               } catch (err: any) {
                 onProgress?.({ phase: 'error', error: err.message });
-                resolve({ success: false, error: `Failed to replace JAR: ${err.message}` });
+                finish({ success: false, error: `Failed to replace JAR: ${err.message}` });
               }
             });
 
             writeStream.on('error', (err) => {
               try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
               onProgress?.({ phase: 'error', error: err.message });
-              resolve({ success: false, error: `Write error: ${err.message}` });
+              finish({ success: false, error: `Write error: ${err.message}` });
+            });
+
+            writeStream.on('close', () => {
+              if (!streamFinished && !settled) {
+                try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+                const err = `Download stream closed early after ${bytesDownloaded} of ${totalBytes} bytes`;
+                onProgress?.({ phase: 'error', error: err });
+                finish({ success: false, error: err });
+              }
             });
           }
         );
@@ -198,7 +222,7 @@ export class UpdateManager {
         req.on('error', (err) => {
           try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
           onProgress?.({ phase: 'error', error: err.message });
-          resolve({ success: false, error: `Download error: ${err.message}` });
+          finish({ success: false, error: `Download error: ${err.message}` });
         });
 
         req.on('timeout', () => {
@@ -206,14 +230,14 @@ export class UpdateManager {
           try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
           const err = 'Download timed out';
           onProgress?.({ phase: 'error', error: err });
-          resolve({ success: false, error: err });
+          finish({ success: false, error: err });
         });
 
         req.end();
       } catch (err: any) {
         try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
         onProgress?.({ phase: 'error', error: err.message });
-        resolve({ success: false, error: err.message });
+        finish({ success: false, error: err.message });
       }
     });
   }

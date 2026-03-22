@@ -32,6 +32,31 @@ public class WorkAreaMapShapeController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<WorkAreaMapShapeDto>>> getAllRest() {
+        return getAll();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<WorkAreaMapShapeDto>> getById(@PathVariable Long id) {
+        try {
+            WorkAreaMapShapeDto shape = workAreaService.getAllShapes().stream()
+                    .filter(item -> id.equals(item.getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (shape == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(shape, "Map shape retrieved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error retrieving map shape: " + e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<WorkAreaMapShapeDto>> save(@RequestBody WorkAreaMapShapeDto dto) {
         try {
@@ -44,6 +69,12 @@ public class WorkAreaMapShapeController {
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Error saving map shape: " + e.getMessage()));
         }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NgApiResponse<WorkAreaMapShapeDto>> update(@PathVariable Long id, @RequestBody WorkAreaMapShapeDto dto) {
+        dto.setId(id);
+        return save(dto);
     }
 
     @DeleteMapping("/{id}")

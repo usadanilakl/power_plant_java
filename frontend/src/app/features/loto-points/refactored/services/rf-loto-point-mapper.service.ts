@@ -392,6 +392,7 @@ export class LotoPointMapperService {
       'generalLocation',
       'equipmentList',
       'zeroEnergy',
+      'characteristicsJson' as any,
       'isLabeled',
       'isLockable',
       'processingStatus',
@@ -665,6 +666,13 @@ export class LotoPointMapperService {
         guideId: 'create-loto-point:field-processingStatus',
         guideMessage: 'Select the processing status for this LOTO point',
       },
+      characteristicsJson: {
+        name: 'characteristicsJson',
+        label: 'Characteristics',
+        type: 'characteristics-editor',
+        categoryAlias: 'equipmentCharacteristic',
+        initialValue: lotoPoint.characteristicsJson || '[]',
+      },
 
     };
 
@@ -752,6 +760,7 @@ export class LotoPointMapperService {
       equipmentIdList: lotoPoint.equipmentList?.map((eq) => eq.id) || [],
       normalPosition: lotoPoint.normalPosition,
       isolatedPosition: lotoPoint.isolatedPosition,
+      characteristicsJson: lotoPoint.characteristicsJson,
       isoPos: lotoPoint.isoPos?.id,
       normPos: lotoPoint.normPos?.id,
       zeroEnergyMethod: lotoPoint.zeroEnergyMethod,

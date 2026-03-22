@@ -30,6 +30,11 @@ public class NgVentingPermitController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<NgApiResponse<List<VentingPermitDto>>> getAllRest() {
+        return getAll();
+    }
+
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<VentingPermitDto>> getById(@PathVariable String id) {
         try {
@@ -41,6 +46,11 @@ public class NgVentingPermitController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<VentingPermitDto>> getByIdRest(@PathVariable String id) {
+        return getById(id);
     }
 
     @PostMapping
@@ -68,11 +78,11 @@ public class NgVentingPermitController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
+    public ResponseEntity<NgApiResponse<String>> delete(@PathVariable String id) {
         try {
-            service.hardDelete(id);
+            service.softDelete(id);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(new NgApiResponse<>(null, "Venting permit deleted successfully", LocalDateTime.now()));
+                .body(new NgApiResponse<>("Deleted", "Venting permit deleted successfully", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

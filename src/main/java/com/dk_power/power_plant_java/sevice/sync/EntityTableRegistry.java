@@ -57,6 +57,8 @@ public class EntityTableRegistry {
         Map.entry("LedStrip", "led_strips"),       // @Table(name = "led_strips")
 
         // Permits
+        Map.entry("WorkAreaMapShape", "work_area_map_shape"),
+        Map.entry("WorkArea", "work_area"),
         Map.entry("SafeWork", "safe_work"),
         Map.entry("HotWork", "hot_work"),          // @Table(name = "hot_work")
         Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
@@ -117,6 +119,8 @@ public class EntityTableRegistry {
         "InstrumentLog",
         "EspDevice",
         "LedStrip",
+        "WorkAreaMapShape",
+        "WorkArea",
         // Tier 3: Permits & work management (depend on Value, Equipment)
         "SafeWork",
         "HotWork",
