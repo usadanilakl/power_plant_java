@@ -7,14 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "engraver_template")
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class EngraverTemplate extends BaseAuditEntity {
     private String name;

@@ -5,11 +5,16 @@
       <!-- Primary row: Home + Group links -->
       <ul class="primary-menu">
         <li class="home-link">
-          <a routerLink="/">Home</a>
+          <a routerLink="/"><span class="material-icons nav-icon">home</span> Home</a>
         </li>
         @for (group of filteredGroupedMenu(); track group.label) {
           <li class="menu-group-link" [class.active]="isGroupActive(group)">
-            <a [routerLink]="group.defaultRoute">{{ group.label }}</a>
+            <a [routerLink]="group.defaultRoute">
+              @if (group.icon) {
+                <span class="material-icons nav-icon">{{ group.icon }}</span>
+              }
+              {{ group.label }}
+            </a>
           </li>
         }
       </ul>

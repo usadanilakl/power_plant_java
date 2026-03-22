@@ -75,14 +75,15 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         ]
     },
     {
-        label: 'Form Designer',
-        icon: 'edit_document',
-        defaultRoute: '/form-designer',
+        label: 'Visual Plant',
+        icon: 'schema',
+        defaultRoute: '/diagram-builder',
         requiresFullAccess: true,
         items: [
-            { route: '/form-designer/forms', label: 'Existing Forms' },
-            { route: '/form-designer/design', label: 'Design' },
-            { route: '/form-designer/preview', label: 'Preview' }
+            { route: '/diagram-builder/list', label: 'Schematics' },
+            { route: '/form-designer/forms', label: 'Form Designer' },
+            { route: '/form-designer/design', label: 'Form Design' },
+            { route: '/form-designer/preview', label: 'Form Preview' }
         ]
     },
     {
@@ -125,6 +126,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/backup', label: 'Backup' },
     { route: '/scheduler', label: 'Scheduler' },
     { route: '/permit-builder', label: 'Permit Builder' },
+    { route: '/diagram-builder', label: 'Schematics' },
     { route: '/form-designer', label: 'Form Designer' },
     { route: '/sync', label: 'Sync Dashboard' }
 ];

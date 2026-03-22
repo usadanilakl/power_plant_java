@@ -9,7 +9,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.io.IOException;
 import java.util.*;
@@ -18,7 +17,6 @@ import java.util.stream.Collectors;
 @Entity
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class LotoStandard extends BaseAuditEntity {
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})

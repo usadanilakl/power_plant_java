@@ -8,7 +8,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(
@@ -21,7 +20,6 @@ import org.hibernate.envers.Audited;
 )
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class Instrument extends BaseAuditEntity {
     @Column(unique = true)

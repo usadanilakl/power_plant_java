@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.time.LocalDateTime;
 
@@ -18,7 +17,6 @@ import java.time.LocalDateTime;
  * Follows the Comment entity pattern for maximum flexibility and reusability.
  */
 @Entity
-@Audited
 @NoArgsConstructor
 @Getter
 @Setter

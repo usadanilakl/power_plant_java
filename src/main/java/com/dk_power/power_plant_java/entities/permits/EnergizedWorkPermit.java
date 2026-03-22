@@ -9,13 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "energized_work_permit")
 @Getter
 @Setter
-@Audited
 public class EnergizedWorkPermit extends BasePermitEntity {
     private String date;
     private String time;

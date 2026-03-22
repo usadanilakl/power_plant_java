@@ -18,7 +18,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +26,6 @@ import java.util.stream.Collectors;
 @Setter
 @NoArgsConstructor
 @Entity
-@Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Where(clause = "deleted IS NOT TRUE")
 public class FileObject extends BaseAuditEntity implements Referenceable {
@@ -150,7 +148,7 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
 
     /**
      * Build relative path from uploads root (without baseLink prefix).
-     * E.g., "jpg/PID/vendor/file.jpg" — use with filesRootPath to get actual filesystem path.
+     * E.g., "jpg/PID/vendor/file.jpg" â€” use with filesRootPath to get actual filesystem path.
      */
     public String buildRelativePath(String ext){
         if(fileType == null || fileType.getName()==null) return null;
@@ -160,7 +158,7 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
 
     /**
      * Build relative folder from uploads root (without baseLink prefix).
-     * E.g., "jpg/PID/vendor" — use with filesRootPath to get actual filesystem path.
+     * E.g., "jpg/PID/vendor" â€” use with filesRootPath to get actual filesystem path.
      */
     public String buildRelativeFolder(String ext){
         if(fileType == null || fileType.getName()==null) return null;

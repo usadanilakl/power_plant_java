@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -19,7 +18,6 @@ import java.util.Objects;
 @Getter
 @Setter
 //@EntityListeners(AuditingEntityListener.class)
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class BaseAuditEntity extends BaseIdEntity {
 //    @CreatedDate

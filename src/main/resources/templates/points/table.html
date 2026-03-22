@@ -21,7 +21,6 @@
             <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getDocNum}">Number</a>
         </th>
         <th>Edit</th>
-        <th>History</th>
         <th>
             <input type="text" name="boxNumber" class="filters full-width">
             <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=boxNumber}">Box</a>
@@ -37,7 +36,6 @@
         <td><a class="btn btn-warning" onclick="fillPopUpInfo(event)" th:text="${loto.status}"></a></td>
         <td th:text="${loto.docNum}"></td>
         <td><a class="btn btn-warning" th:href="@{/lotos/edit/{id}(id=${loto.id})}">Edit</a></td>
-        <td><a class="btn btn-warning" th:href="@{/lotos/history/{id}(id=${loto.id})}">Details</a></td>
         <td th:if="${loto.lotoBox}!=null" th:text="${loto.lotoBox.number}"></td>
         <td th:text="${loto.id}" style="display: none;" name="id"></td>
     </tr>

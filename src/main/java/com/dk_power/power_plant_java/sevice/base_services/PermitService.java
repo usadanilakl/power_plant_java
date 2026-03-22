@@ -2,12 +2,11 @@ package com.dk_power.power_plant_java.sevice.base_services;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.PermitRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PermitService
@@ -17,10 +16,19 @@ public interface PermitService
         R extends PermitRepo<E>,
         M extends BaseMapper
         >
-    extends CrudService<E,D,R,M>, AuditingService<E>
+    extends CrudService<E,D,R,M>
 
 {
     NgValueService getNgValueService();
+    UserDetailsServiceImpl getUserDetails();
+
+    default String getLoggedInUserName(){
+        return getUserDetails().getUsersName();
+    }
+
+    default String getCurrentUsername(){
+        return getUserDetails().getUsersName();
+    }
 
     default E createNew(D dto){
         Value permitStatus = getNgValueService().createValue("Permit Status", "Inactive");

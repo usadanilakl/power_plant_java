@@ -10,7 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +18,6 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class HeatTrace extends BaseEquipment {
     /***********************************Breaker*********************************************/

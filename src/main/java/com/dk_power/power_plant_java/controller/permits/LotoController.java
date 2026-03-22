@@ -33,12 +33,6 @@ public class LotoController {
         model.addAttribute("statuses", Status.values());
         return "loto/show-all-lotos";
     }
-    @GetMapping("/history/{id}")
-    public String showAHistory(@PathVariable("id") String id,Model model){
-        List<Loto> revision = lotoService.getRevision(Long.parseLong(id), Loto.class);
-        model.addAttribute("lotos", revision);
-        return "loto/permit-history";
-    }
     @GetMapping("/create")
     public String createNewLoto(Model model){
         Loto loto = lotoService.getTempPermit();

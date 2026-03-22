@@ -53,7 +53,6 @@ public class LotoServiceImpl implements LotoService {
         return customUserDetails;
     }
 
-    @Override
     public EntityManagerFactory getEntityManager() {
         return entityManagerFactory;
     }

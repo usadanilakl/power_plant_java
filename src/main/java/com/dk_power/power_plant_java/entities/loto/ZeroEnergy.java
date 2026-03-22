@@ -7,14 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class ZeroEnergy extends BaseAuditEntity {
 

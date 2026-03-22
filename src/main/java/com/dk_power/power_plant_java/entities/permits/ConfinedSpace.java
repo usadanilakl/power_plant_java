@@ -12,19 +12,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "confined_space")
 @Getter
 @Setter
-@Audited
 public class ConfinedSpace extends BasePermitEntity {
 
     private String date;
     private String time;
     private String space;
-    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
+    // workScope inherited from BasePermitEntity (do not re-declare â€” causes field shadowing)
     private String issuedTo;
     private String duration;
 

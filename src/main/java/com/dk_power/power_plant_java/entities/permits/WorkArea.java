@@ -13,7 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -22,7 +21,6 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-@Audited
 @Table(name = "work_area")
 @Where(clause = "deleted IS NOT TRUE")
 public class WorkArea extends BaseAuditEntity {

@@ -9,7 +9,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import java.util.List;
 @Table(name = "jha")
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class Jha extends BasePermitEntity {
 

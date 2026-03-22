@@ -67,6 +67,21 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+.nav-icon {
+  font-size: 18px;
+  vertical-align: middle;
+  margin-right: 4px;
+  position: relative;
+  top: -1px;
+}
+
+.menu-group-link a,
+.home-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .menu-group-link a {
   padding: 6px 12px;
   border-radius: 4px;

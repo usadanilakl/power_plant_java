@@ -10,19 +10,17 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Getter
 @Setter
 @Entity
-@Audited
 public class SafeWork extends BasePermitEntity {
 
     private String date;
     private String time;
     private String companyPerson;
     private String location;
-    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
+    // workScope inherited from BasePermitEntity (do not re-declare â€” causes field shadowing)
     private String specialInstructions;
     private String requestedBy;
 

@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,7 +21,6 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private String unit;

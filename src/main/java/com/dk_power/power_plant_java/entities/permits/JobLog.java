@@ -5,7 +5,6 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,7 +12,6 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
-@Audited
 public class JobLog extends BaseAuditEntity {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

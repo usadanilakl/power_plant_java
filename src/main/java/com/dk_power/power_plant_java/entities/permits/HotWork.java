@@ -9,13 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "hot_work")
 @Getter
 @Setter
-@Audited
 public class HotWork extends BasePermitEntity {
 
     private String date;

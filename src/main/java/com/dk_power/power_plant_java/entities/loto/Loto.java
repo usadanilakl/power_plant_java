@@ -9,7 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.io.IOException;
 import java.util.*;
@@ -19,7 +18,6 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @NoArgsConstructor
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class Loto extends BasePermitEntity {
 

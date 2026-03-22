@@ -8,7 +8,6 @@ import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.envers.Audited;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -19,7 +18,6 @@ import java.util.Set;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Audited
 //@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public class BasePermitEntity extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")

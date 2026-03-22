@@ -2,14 +2,12 @@ package com.dk_power.power_plant_java.entities.users;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "roles")
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 public class Role {
 
     @Id

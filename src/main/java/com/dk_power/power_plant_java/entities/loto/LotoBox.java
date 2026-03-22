@@ -6,14 +6,12 @@ import com.dk_power.power_plant_java.entities.esp.LedStrip;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.envers.Audited;
 
 @Entity
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Audited
 @Table(name = "loto_boxes")
 public class LotoBox extends BaseAuditEntity {
     private Integer number = 0;

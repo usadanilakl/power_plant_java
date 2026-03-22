@@ -6,13 +6,11 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 public class Comment extends BaseAuditEntity implements Referenceable {
 
     @Column(columnDefinition = "TEXT")

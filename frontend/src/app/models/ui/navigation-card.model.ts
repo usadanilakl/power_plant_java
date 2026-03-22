@@ -93,13 +93,14 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     ]
   },
   {
-    label: 'Form Designer',
-    description: 'Design and preview printable forms',
-    icon: 'edit_document',
-    color: '#34495e',
-    defaultRoute: '/form-designer',
+    label: 'Visual Plant',
+    description: 'Schematics, P&ID diagrams, and printable forms',
+    icon: 'schema',
+    color: '#00897b',
+    defaultRoute: '/diagram-builder',
     requiresFullAccess: true,
     items: [
+      { title: 'Schematics', description: 'Build and view P&ID diagrams and process schematics', icon: 'schema', route: '/diagram-builder/list', color: '#00897b' },
       { title: 'Form Designer', description: 'Design printable forms', icon: 'edit_document', route: '/form-designer', color: '#34495e' }
     ]
   },

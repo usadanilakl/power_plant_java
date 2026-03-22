@@ -11,13 +11,11 @@ import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 public class Lock extends BaseAuditEntity {
     private Integer number = 0;
     @ManyToOne(cascade = CascadeType.ALL)

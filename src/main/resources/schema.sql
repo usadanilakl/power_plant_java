@@ -10,11 +10,9 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
 
 -- Widen work_scope to TEXT (unlimited length)
       ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope TEXT;
-      ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope TEXT;
 
 -- Update alias column to TEXT to support longer values (e.g., JSON data)
       ALTER TABLE IF EXISTS val_table ALTER COLUMN alias TEXT;
-      ALTER TABLE IF EXISTS val_table_aud ALTER COLUMN alias TEXT;
 
 -- Migrate ZeroEnergy from single templateLotoPoint to multiple templateLotoPointIds
 -- Note: Hibernate ddl-auto=update will handle column changes automatically
@@ -38,14 +36,6 @@ ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_name VARCH
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_email VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_company VARCHAR(255);
-
--- Same for audit table
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS local_uuid VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS time_submitted VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_name VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_email VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);
-ALTER TABLE IF EXISTS work_request_aud ADD COLUMN IF NOT EXISTS submitter_company VARCHAR(255);
 
 -- Instrumentation dedup and lookup indexes
 CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);

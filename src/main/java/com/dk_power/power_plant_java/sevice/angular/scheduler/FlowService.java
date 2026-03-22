@@ -6,7 +6,9 @@ import com.dk_power.power_plant_java.mappers.scheduler.FlowMapper;
 import com.dk_power.power_plant_java.repository.scheduler.FlowRepository;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import org.hibernate.SessionFactory;
+import org.springframework.stereotype.Service;
 
+@Service
 public class FlowService implements CrudService<Flow, FlowDto, FlowRepository, FlowMapper> {
     private final FlowRepository flowRepository;
     private final FlowMapper flowMapper;

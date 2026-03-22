@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.List;
 @Table(name = "work_request")
 @Getter
 @Setter
-@Audited
 @Where(clause = "deleted IS NOT TRUE")
 public class WorkRequest extends BasePermitEntity {
 
@@ -26,7 +24,7 @@ public class WorkRequest extends BasePermitEntity {
     private String location;
     private String affectedEquipment;
 
-    // workScope inherited from BasePermitEntity (do not re-declare — causes field shadowing)
+    // workScope inherited from BasePermitEntity (do not re-declare â€” causes field shadowing)
 
     private Boolean isHotWorkRequired;
     private String foreman;

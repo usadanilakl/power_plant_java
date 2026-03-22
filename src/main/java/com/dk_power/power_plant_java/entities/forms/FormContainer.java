@@ -12,7 +12,6 @@ import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.envers.Audited;
 
 import java.util.Map;
 
@@ -20,7 +19,6 @@ import java.util.Map;
 @Getter
 @Setter
 @NoArgsConstructor
-@Audited
 public class FormContainer extends BaseAuditEntity {
     @Lob
     @Column(columnDefinition = "TEXT")

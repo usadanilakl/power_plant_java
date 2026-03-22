@@ -47,35 +47,41 @@ public class WorkAreaGitHubPublisher {
 
     private static final String PLANT_MAP_MARKER = "__PLANT_MAP__";
     private final AtomicBoolean publishInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean publishRequested = new AtomicBoolean(false);
 
     @Async
     public void publishAll() {
         if (!publishInProgress.compareAndSet(false, true)) {
-            log.info("[PWA Publisher] Publish already in progress, skipping");
+            publishRequested.set(true);
+            log.info("[PWA Publisher] Publish already in progress, queueing a follow-up run");
             return;
         }
         try {
-            // Write locally for dev builds
-            Path dataDir = Paths.get(pwaDataPath);
-            Files.createDirectories(dataDir);
+            do {
+                publishRequested.set(false);
 
-            String areasJson = buildAreasJson();
-            String shapesJson = buildShapesJson();
-            String categoriesJson = buildCategoriesJson();
-            byte[] imageBytes = readMapImage();
+                // Write locally for dev builds
+                Path dataDir = Paths.get(pwaDataPath);
+                Files.createDirectories(dataDir);
 
-            // Local writes
-            Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
-            Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
-            Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
-            if (imageBytes != null) {
-                Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
-                        dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
-            }
-            log.info("[PWA Publisher] Local files written to {}", dataDir);
+                String areasJson = buildAreasJson();
+                String shapesJson = buildShapesJson();
+                String categoriesJson = buildCategoriesJson();
+                byte[] imageBytes = readMapImage();
 
-            // Push to GitHub for live PWA
-            pushToGitHub(areasJson, shapesJson, categoriesJson, imageBytes);
+                // Local writes
+                Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
+                Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
+                Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
+                if (imageBytes != null) {
+                    Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
+                            dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
+                }
+                log.info("[PWA Publisher] Local files written to {}", dataDir);
+
+                // Push to GitHub for live PWA
+                pushToGitHub(areasJson, shapesJson, categoriesJson, imageBytes);
+            } while (publishRequested.get());
 
         } catch (Exception e) {
             log.error("[PWA Publisher] Failed: {}", e.getMessage(), e);

@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -25,7 +24,6 @@ import java.util.Set;
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Where(clause = "deleted IS NOT TRUE")
 public class Equipment extends BaseEquipment implements Referenceable {

@@ -9,13 +9,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Where;
-import org.hibernate.envers.Audited;
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
-@Audited
 @Table(name = "val_table")
 @Where(clause = "deleted IS NOT TRUE")
 @EntityListeners(FieldChangeEntityListener.class)
