@@ -65,6 +65,16 @@ export class RfLotoStandardApiService {
   }
 
   /**
+   * Get all loto standards as a flat list.
+   * Prefer this for simple dropdowns/pickers that do not need pagination.
+   */
+  getAllLotoStandards(): Observable<SpringApiResponse<LotoStandardDto[]>> {
+    return this.http.get<SpringApiResponse<LotoStandardDto[]>>(
+      `${this.apiUrl}/get-all`
+    );
+  }
+
+  /**
    * Create new loto standard
    */
   createLotoStandard(

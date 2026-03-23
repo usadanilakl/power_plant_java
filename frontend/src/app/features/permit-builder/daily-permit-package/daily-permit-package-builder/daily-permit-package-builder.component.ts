@@ -57,6 +57,7 @@ import { TableSyncService } from '../../../../shared/table/refactored/services/t
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
 import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
+import { RfWorkRequestStateService } from '../../work-request/refactored/services/rf-work-request-state.service';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
@@ -83,6 +84,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   private jobLogService = inject(JobLogService);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private workRequestStateService = inject(RfWorkRequestStateService);
   destroyRef = inject(DestroyRef);
   private readonly lotoStandardApiUrl = '/ng/loto-standards';
 
@@ -172,6 +174,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
       'companyName',
       'personName',
       'date',
+      'time',
     ]);
 
     return [
@@ -339,11 +342,8 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
 
   confirmReissueFromWr(sourcePackage: any): void {
     if (!this.reissueFromWrId || !sourcePackage?.id) return;
-    const today = new Date().toISOString().split('T')[0];
 
     this.http.post<any>(`/ng/daily-permit-packages/reissue-from/${sourcePackage.id}/for-wr/${this.reissueFromWrId}`, {
-      date: today,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
     }).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
@@ -351,6 +351,12 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
         if (res?.responseData) {
           const newPkg = new DailyPermitPackageDto(res.responseData);
           this.currentDailyPermitPackageService.setSelectedPackage(newPkg);
+          if (this.reissueFromWrId != null) {
+            this.workRequestStateService.refreshWorkRequest(
+              this.reissueFromWrId,
+              'Work request reissued and marked as Processed'
+            );
+          }
           this.isReissueFromWrOpen = false;
         }
       },

@@ -131,7 +131,7 @@ public class NgEngraverTemplateController {
                 return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Only .lbrn2 files are accepted"));
             }
 
-            Path dataDir = Paths.get(service.getEngraverDataPath());
+            Path dataDir = Paths.get(service.getEngraverDataPath()).toAbsolutePath();
             Files.createDirectories(dataDir);
             Path targetPath = dataDir.resolve(originalFilename);
             file.transferTo(targetPath.toFile());

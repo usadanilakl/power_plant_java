@@ -445,6 +445,27 @@ export class RfWorkRequestStateService {
     ).subscribe();
   }
 
+  refreshWorkRequest(id: number, successMessage?: string): void {
+    this.apiService.getWorkRequestById(id).pipe(
+      tap((response) => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.updateWorkRequestInList(updated);
+          if (successMessage) {
+            this.messageService.showSuccess(successMessage);
+          }
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Refresh failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to refresh work request';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
   markAsProcessed(id: number): void {
     this.apiService.changeStatus(id, 'Processed').pipe(
       tap((response) => {
@@ -457,6 +478,25 @@ export class RfWorkRequestStateService {
       catchError((error) => {
         console.error('[WR State] Mark as Processed failed:', error);
         const errorMsg = error?.error?.message || 'Failed to mark as processed';
+        this.messageService.showError(errorMsg);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  markAsActive(id: number): void {
+    this.apiService.changeStatus(id, 'Active').pipe(
+      tap((response) => {
+        if (response.responseData) {
+          const updated = WorkRequestDto.fromJson(response.responseData);
+          this.updateWorkRequestInList(updated);
+          this.messageService.showSuccess('Work request marked as Active');
+        }
+      }),
+      catchError((error) => {
+        console.error('[WR State] Mark as Active failed:', error);
+        const errorMsg = error?.error?.message || 'Failed to mark as active';
         this.messageService.showError(errorMsg);
         return of(null);
       }),

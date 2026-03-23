@@ -166,9 +166,9 @@ export class WorkAreaPageComponent implements OnInit {
   }
 
   private loadLotoStandards(): void {
-    this.lotoStandardApi.getLotoStandards(1, 1000).subscribe({
+    this.lotoStandardApi.getAllLotoStandards().subscribe({
       next: (response) => {
-        const options = (response.responseData?.content ?? []).map((standard) => ({
+        const options = (response.responseData ?? []).map((standard) => ({
           value: standard.id,
           label: standard.name || `Standard ${standard.id}`,
         }));

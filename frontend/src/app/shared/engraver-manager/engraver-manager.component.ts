@@ -20,6 +20,7 @@ export class EngraverManagerComponent {
   isTemplateManagerOpen = signal(false);
   statusMessage = '';
   errorMessage = '';
+  private templatesLoaded = false;
 
   // Computed for UI
   progressPercentage = computed(() => {
@@ -29,10 +30,15 @@ export class EngraverManagerComponent {
   });
 
   constructor() {
-    // Load templates when modal becomes visible
+    // Load templates once when modal becomes visible
     effect(() => {
-      if (this.modalService.isVisible() && this.modalService.allTemplates().length === 0) {
+      const visible = this.modalService.isVisible();
+      if (visible && !this.templatesLoaded) {
+        this.templatesLoaded = true;
         this.loadEngraverTemplates();
+      }
+      if (!visible) {
+        this.templatesLoaded = false;
       }
     });
   }

@@ -1,13 +1,12 @@
 import { inject, Injectable } from '@angular/core';
-import { ContextMenuService } from '../../../../../shared/menu/context-menu/context-menu.service';
+import { Router } from '@angular/router';
 import { ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
+import { ContextMenuService } from '../../../../../shared/menu/context-menu/context-menu.service';
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { RfWorkRequestStateService } from './rf-work-request-state.service';
 import { CorrespondenceDialogService } from '../../../../../shared/correspondence-dialog/correspondence-dialog.service';
 import { WrDetailDialogService } from '../../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
-import { CurrentJobLogService } from '../../../../../services/current-items-services/current-job-log.service';
 import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/process-wr-dialog.service';
-import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
@@ -16,7 +15,6 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   private stateService = inject(RfWorkRequestStateService);
   private correspondenceDialogService = inject(CorrespondenceDialogService);
   private wrDetailDialogService = inject(WrDetailDialogService);
-  private currentJobLogService = inject(CurrentJobLogService);
   private processWrDialogService = inject(ProcessWrDialogService);
   private router = inject(Router);
 
@@ -30,19 +28,25 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       {
         id: 'processed',
         label: 'Mark as Processed',
-        icon: '✅',
+        icon: '✓',
         action: (item) => this.handleMarkAsProcessed(item),
+      },
+      {
+        id: 'active',
+        label: 'Mark as Active',
+        icon: '↩',
+        action: (item) => this.handleMarkAsActive(item),
       },
       {
         id: 'request-details',
         label: 'Request More Details',
-        icon: '✉️',
+        icon: '✉',
         action: (item) => this.handleRequestMoreDetails(item),
       },
       {
         id: 'cancel',
         label: 'Cancel',
-        icon: '🚫',
+        icon: '⛔',
         action: (item) => this.handleCancel(item),
       },
       {
@@ -66,7 +70,7 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       {
         id: 'view',
         label: 'View Details',
-        icon: '👁️',
+        icon: '👁',
         action: (item) => this.handleViewDetails(item),
       },
       {
@@ -90,6 +94,15 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       return;
     }
     this.stateService.markAsProcessed(item.id);
+    this.closeContextMenu();
+  }
+
+  private handleMarkAsActive(item: WorkRequestDto): void {
+    if (!item.id) {
+      console.warn('Cannot mark as active: No ID provided');
+      return;
+    }
+    this.stateService.markAsActive(item.id);
     this.closeContextMenu();
   }
 
@@ -146,11 +159,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
   private handleReissue(item: WorkRequestDto): void {
     if (!item?.id) return;
-    // Calculate previous day from WR date
+
     let previousDay = '';
     if (item.dateOfWorkToBePerformed) {
       previousDay = this.getPreviousDay(item.dateOfWorkToBePerformed);
     }
+
     const location = item.location?.trim() || item.workArea?.name?.trim() || '';
     this.router.navigate(['/permit-builder/daily-packages'], {
       queryParams: {

@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -57,6 +58,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final com.dk_power.power_plant_java.sevice.email.EmailFacadeService emailFacadeService;
     private final com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo;
     private final com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo;
+    private final WorkRequestSharePointAdapter workRequestSharePointAdapter;
 
     @Override
     public DailyPermitPackageRepo getRepo() {
@@ -433,6 +435,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         String reissueDate = (date != null && !date.isBlank()) ? date : wr.getDateOfWorkToBePerformed();
         String reissueTime = (time != null && !time.isBlank()) ? time : wr.getTimeOfWorkToBePerformed();
 
+        wr.setPermitStatus(ngValueService.createValue("Permit Status", "Processed"));
+
         // Create new package
         DailyPermitPackage newPackage = new DailyPermitPackage();
         newPackage.setDate(reissueDate);
@@ -465,6 +469,14 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             }
         } catch (Exception e) {
             System.err.println("Warning: Could not link reissued package to job: " + e.getMessage());
+        }
+
+        try {
+            if (wr.getSharepointId() != null && !wr.getSharepointId().isBlank()) {
+                workRequestSharePointAdapter.changeStatus(wr.getSharepointId(), "Processed");
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Could not update SharePoint status for reissued work request: " + e.getMessage());
         }
 
         return dailyPermitPackageMapper.convertToDto(saved);
