@@ -105,6 +105,25 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    @DeleteMapping("/{packageId}/permits/{permitType}/{permitId}")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> removePermitFromPackage(
+            @PathVariable String packageId,
+            @PathVariable String permitType,
+            @PathVariable String permitId) {
+        try {
+            DailyPermitPackageDto updatedPackage = ngDailyPermitPackageService.removePermitFromPackage(packageId, permitType, permitId);
+            NgApiResponse<DailyPermitPackageDto> response = new NgApiResponse<>(
+                    updatedPackage,
+                    "Permit removed from package successfully",
+                    LocalDateTime.now()
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error removing permit from package: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/build-permits")
     public ResponseEntity<NgApiResponse<String>> buildPermits(@RequestBody DailyPermitPackageDto dailyPermitPackageDto) {
         try {
@@ -234,6 +253,24 @@ public class NgDailyPermitPackageController {
             DailyPermitPackageDto result = ngDailyPermitPackageService.closePackage(id, closureData);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(result, "Package closed", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/apply-date-time")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> applyDateTimeToPackagePermits(
+            @PathVariable String id,
+            @RequestBody Map<String, String> payload) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.applyDateTimeToPackagePermits(
+                    id,
+                    payload.get("date"),
+                    payload.get("time")
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Date and time applied to package permits", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

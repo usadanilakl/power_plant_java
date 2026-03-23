@@ -47,6 +47,12 @@
   color: var(--primary-text);
 }
 
+.selected-placeholder {
+  color: var(--secondary-text);
+  font-size: 0.9em;
+  padding: 5px 2px;
+}
+
 .search-input {
   width: 100%;
   padding: 0.5rem;

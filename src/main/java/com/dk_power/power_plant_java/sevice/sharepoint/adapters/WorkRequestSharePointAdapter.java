@@ -222,6 +222,8 @@ public class WorkRequestSharePointAdapter {
         dto.setSubmitterPhone(item.path("SubmitterPhone").asText(null));
         dto.setSubmitterCompany(item.path("SubmitterCompany").asText(null));
         dto.setTimeSubmitted(item.path("TimeSubmitted").asText(null));
+        dto.setWorkCategoryName(item.path("MainWorkScope").asText(null));
+        dto.setWorkAreaName(item.path("WorkAreaName").asText(null));
         dto.setSpModifiedTime(parseInstant(item.path("Modified").asText(null)));
         return dto;
     }
@@ -246,6 +248,8 @@ public class WorkRequestSharePointAdapter {
         dto.setSharepointId(str(map, "ID"));
         dto.setStatus(str(map, "Status"));
         dto.setLocalUuid(str(map, "PwaId"));
+        dto.setWorkCategoryName(str(map, "MainWorkScope"));
+        dto.setWorkAreaName(str(map, "WorkAreaName"));
         return dto;
     }
 
@@ -277,6 +281,8 @@ public class WorkRequestSharePointAdapter {
         map.put("SubmitterPhone", orEmpty(dto.getSubmitterPhone()));
         map.put("SubmitterCompany", orEmpty(dto.getSubmitterCompany()));
         map.put("TimeSubmitted", orEmpty(dto.getTimeSubmitted()));
+        map.put("MainWorkScope", orEmpty(dto.getWorkCategoryName()));
+        map.put("WorkAreaName", orEmpty(dto.getWorkAreaName()));
         return map;
     }
 

@@ -201,6 +201,8 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   }
 
   private toggleItem(item: FlatItem) {
+    const flatIndex = this.flatItems().findIndex(flatItem => flatItem.id === item.id);
+
     this.expandedItemIds.update(ids => {
       if (ids.has(item.id)) {
         ids.delete(item.id);
@@ -213,6 +215,11 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
     // Trigger a re-render of the virtual scroll
     if (this.viewport) {
       this.viewport.checkViewportSize();
+      const targetIndex = Math.max(flatIndex - 1, 0);
+      this.pendingTimeouts.push(setTimeout(() => {
+        this.viewport?.checkViewportSize();
+        this.viewport?.scrollToIndex(targetIndex, 'smooth');
+      }, 0));
     }
   }
 

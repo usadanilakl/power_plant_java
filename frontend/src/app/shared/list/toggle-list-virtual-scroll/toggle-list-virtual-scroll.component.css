@@ -3,6 +3,7 @@
   display: block;
   height: 100%;
   min-height: 300px;
+  background: var(--primary-background);
 }
 
 .toggle-list {
@@ -18,16 +19,20 @@ cdk-virtual-scroll-viewport.toggle-list {
 }
 
 .item-content {
-  padding: 8px;
+  margin: 2px 6px;
+  padding: 10px 12px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   display: flex;
   align-items: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
 }
 
 .item-content:hover {
-  background-color: #f0f0f0;
-  transform: translateX(5px);
+  background-color: var(--hover-color);
+  border-color: var(--border-color);
+  transform: translateX(2px);
 }
 
 /* .item-content.clicked {
@@ -41,17 +46,19 @@ cdk-virtual-scroll-viewport.toggle-list {
 .clicked {
   text-decoration: underline;
   text-decoration-thickness: 2px;
-  /* text-underline-offset: 4px; */
   font-weight: bold;
 }
 
 .last-clicked {
-  border-left: 3px solid #007bff;
+  border-left: 3px solid var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color-shadow) 65%, transparent);
 }
 
 .toggle-icon {
   margin-right: 8px;
   flex-shrink: 0;
+  color: var(--secondary-text);
+  font-size: 12px;
 }
 
 .item-text {
@@ -66,11 +73,12 @@ cdk-virtual-scroll-viewport.toggle-list {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--primary-text);
 }
 
 .item-subtitle {
   font-size: 0.75em;
-  color: #666;
+  color: var(--secondary-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -84,7 +92,7 @@ cdk-virtual-scroll-viewport.toggle-list {
 }
 
 .highlighted:hover {
-  background-color: #f0f0f0;
+  background-color: var(--hover-color);
 }
 
 .level-1 {
@@ -106,14 +114,14 @@ cdk-virtual-scroll-viewport.toggle-list {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--secondary-background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--secondary-text);
 }

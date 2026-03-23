@@ -55,6 +55,8 @@ public class WorkRequestDto {
     private String submitterPhone;
     private String submitterCompany;
     private String timeSubmitted;
+    private String workCategoryName;
+    private String workAreaName;
 
     /** SP item's Modified datetime — used for field-level LWW merge. */
     private java.time.Instant spModifiedTime;

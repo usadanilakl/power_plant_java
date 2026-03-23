@@ -1,17 +1,16 @@
 .checkbox-group {
-  font-family: Arial, sans-serif;
   margin-bottom: 20px;
 }
 
 .checkbox-group > label {
   display: block;
-  font-weight: bold;
+  font-weight: 700;
   margin-bottom: 10px;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .checkbox-group > div {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -20,38 +19,46 @@
 
 .checkbox-group label {
   position: relative;
-  padding-left: 30px;
+  padding: 10px 16px 10px 42px;
   cursor: pointer;
-  display: inline-block;
-  color: #666;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--primary-text);
+  background: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 
 .checkbox-group label::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 14px;
+  top: 50%;
   width: 18px;
   height: 18px;
-  border: 2px solid #ddd;
-  background-color: #fff;
-  border-radius: 3px;
-  transition: all 0.3s ease;
+  transform: translateY(-50%);
+  border: 2px solid var(--border-color);
+  background-color: var(--primary-background);
+  border-radius: 5px;
+  transition: all 0.2s ease;
 }
 
 .checkbox-group input[type="checkbox"]:checked + label::before {
-  background-color: #4CAF50;
-  border-color: #4CAF50;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 .checkbox-group label::after {
   content: '\2714';
   position: absolute;
-  top: -1px;
-  left: 4px;
-  font-size: 16px;
-  color: white;
-  transition: all 0.3s ease;
+  top: 50%;
+  left: 18px;
+  transform: translateY(-58%);
+  font-size: 13px;
+  color: var(--header-text);
+  transition: opacity 0.2s ease;
   opacity: 0;
 }
 
@@ -59,6 +66,13 @@
   opacity: 1;
 }
 
-.checkbox-group label:hover::before {
-  border-color: #4CAF50;
+.checkbox-group input[type="checkbox"]:checked + label {
+  background: color-mix(in srgb, var(--accent-color-shadow) 72%, transparent);
+  border-color: var(--accent-color);
+}
+
+.checkbox-group label:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-color);
+  transform: translateY(-1px);
 }

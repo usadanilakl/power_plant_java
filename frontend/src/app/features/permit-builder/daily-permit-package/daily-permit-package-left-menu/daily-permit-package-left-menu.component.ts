@@ -18,15 +18,17 @@ export type DppGroupBy = 'company' | 'person' | 'date' | 'status';
 export class DailyPermitPackageLeftMenuComponent implements OnInit {
   private currentService = inject(CurrentDailyPermitPackageService);
   private destroyRef = inject(DestroyRef);
+  private packages = signal<DailyPermitPackageDto[]>([]);
 
   menuItems = signal<NestedItem[]>([]);
   isLoading = signal(false);
-  groupBy = signal<DppGroupBy>('company');
+  groupBy = signal<DppGroupBy>('date');
 
   ngOnInit(): void {
     this.currentService.allActiveDailyPermitPackages$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(items => {
+      this.packages.set(items ?? []);
       this.regroup(items);
       this.isLoading.set(false);
     });
@@ -34,11 +36,7 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
 
   setGrouping(groupBy: DppGroupBy): void {
     this.groupBy.set(groupBy);
-    this.currentService.allActiveDailyPermitPackages$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(items => {
-      this.regroup(items);
-    });
+    this.regroup(this.packages());
   }
 
   private regroup(items: DailyPermitPackageDto[]): void {
@@ -63,14 +61,18 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
       return acc;
     }, {} as Record<string, DailyPermitPackageDto[]>);
 
-    const result: NestedItem[] = Object.entries(grouped).map(([groupName, groupItems]) => {
+    const result: NestedItem[] = Object.entries(grouped)
+      .sort(([left], [right]) => this.compareGroups(left, right))
+      .map(([groupName, groupItems]) => {
       const parent = new NestedItemImpl({
         id: this.groupBy() + '_' + groupName,
         name: groupName,
         isExpanded: false,
         objectType: this.groupBy(),
       });
-      parent.values = groupItems.map(item => new NestedItemImpl({
+      parent.values = [...groupItems]
+        .sort((left, right) => this.comparePackages(left, right))
+        .map(item => new NestedItemImpl({
         id: item.id.toString(),
         name: this.getDisplayName(item),
         subtitle: this.getLeafSubtitle(item),
@@ -142,11 +144,42 @@ export class DailyPermitPackageLeftMenuComponent implements OnInit {
 
   refresh(): void {
     this.isLoading.set(true);
-    this.currentService.allActiveDailyPermitPackages$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(items => {
-      this.regroup(items);
-      this.isLoading.set(false);
-    });
+    this.currentService.reloadDailyPermitPackages();
+  }
+
+  private compareGroups(left: string, right: string): number {
+    if (this.groupBy() === 'date') {
+      return this.parseDate(right) - this.parseDate(left);
+    }
+
+    if (this.groupBy() === 'status') {
+      const statusRank: Record<string, number> = {
+        Active: 4,
+        Test: 3,
+        Building: 2,
+        Closed: 1,
+      };
+      return (statusRank[right] ?? 0) - (statusRank[left] ?? 0);
+    }
+
+    return left.localeCompare(right);
+  }
+
+  private comparePackages(left: DailyPermitPackageDto, right: DailyPermitPackageDto): number {
+    const dateDiff = this.parseDate(right.date) - this.parseDate(left.date);
+    if (dateDiff !== 0) {
+      return dateDiff;
+    }
+
+    return (right.id ?? 0) - (left.id ?? 0);
+  }
+
+  private parseDate(value?: string | null): number {
+    if (!value) {
+      return 0;
+    }
+
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
 }

@@ -144,8 +144,123 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         // The daily package client sends the full package state, and removals must persist
         // even when a collection becomes empty.
         syncCollections(existing, incoming);
+        syncSafeWorkGasMonitoring(existing);
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(existing);
+        return dailyPermitPackageMapper.convertToDto(saved);
+    }
+
+    public DailyPermitPackageDto removePermitFromPackage(String packageId, String permitType, String permitId) {
+        Long pkgId = Long.parseLong(packageId);
+        Long targetPermitId = Long.parseLong(permitId);
+
+        DailyPermitPackage existing = dailyPermitPackageRepo.findById(pkgId)
+                .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found: " + packageId));
+
+        boolean removed = switch (normalizePermitType(permitType)) {
+            case "safeWorks" -> existing.getSafeWorks().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "hotWorks" -> existing.getHotWorks().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "confinedSpaces" -> existing.getConfinedSpaces().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "energizedWorkPermits" -> existing.getEnergizedWorkPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "excavationPermits" -> existing.getExcavationPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "ventingPermits" -> existing.getVentingPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "workRequests" -> existing.getWorkRequests().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "lotos" -> existing.getLotos().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            default -> throw new RuntimeException("Unsupported permit type: " + permitType);
+        };
+
+        if (!removed) {
+            throw new RuntimeException("Permit " + permitId + " not found in package " + packageId);
+        }
+
+        syncSafeWorkGasMonitoring(existing);
+        existing.addModification(buildPermitRemovalModification(permitType, targetPermitId));
+
+        dailyPermitPackageRepo.saveAndFlush(existing);
+        entityManager.flush();
+        entityManager.clear();
+
+        DailyPermitPackage refreshed = dailyPermitPackageRepo.findById(pkgId)
+                .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found after update: " + packageId));
+        return dailyPermitPackageMapper.convertToDto(refreshed);
+    }
+
+    public DailyPermitPackageDto applyDateTimeToPackagePermits(String packageId, String date, String time) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        if (pkg == null) {
+            throw new RuntimeException("DailyPermitPackage not found: " + packageId);
+        }
+        if (date == null || date.isBlank()) {
+            throw new RuntimeException("Date is required");
+        }
+
+        String previousDate = pkg.getDate();
+        String previousTime = pkg.getTime();
+
+        pkg.setDate(date);
+        if (time != null && !time.isBlank()) {
+            pkg.setTime(time);
+        }
+
+        if (pkg.getWorkRequests() != null) {
+            pkg.getWorkRequests().forEach(wr -> {
+                wr.setDateOfWorkToBePerformed(date);
+                if (time != null && !time.isBlank()) {
+                    wr.setTimeOfWorkToBePerformed(time);
+                }
+            });
+        }
+        if (pkg.getSafeWorks() != null) {
+            pkg.getSafeWorks().forEach(sw -> {
+                sw.setDate(date);
+                if (time != null && !time.isBlank()) {
+                    sw.setTime(time);
+                }
+            });
+        }
+        if (pkg.getHotWorks() != null) {
+            pkg.getHotWorks().forEach(hw -> hw.setDate(date));
+        }
+        if (pkg.getConfinedSpaces() != null) {
+            pkg.getConfinedSpaces().forEach(cs -> {
+                cs.setDate(date);
+                if (time != null && !time.isBlank()) {
+                    cs.setTime(time);
+                }
+            });
+        }
+        if (pkg.getLotos() != null) {
+            pkg.getLotos().forEach(loto -> loto.setDate(date));
+        }
+        if (pkg.getEnergizedWorkPermits() != null) {
+            pkg.getEnergizedWorkPermits().forEach(permit -> {
+                permit.setDate(date);
+                if (time != null && !time.isBlank()) {
+                    permit.setTime(time);
+                }
+            });
+        }
+        if (pkg.getExcavationPermits() != null) {
+            pkg.getExcavationPermits().forEach(permit -> {
+                permit.setDate(date);
+                if (time != null && !time.isBlank()) {
+                    permit.setTime(time);
+                }
+            });
+        }
+        if (pkg.getVentingPermits() != null) {
+            pkg.getVentingPermits().forEach(permit -> {
+                permit.setDate(date);
+                if (time != null && !time.isBlank()) {
+                    permit.setTime(time);
+                }
+            });
+        }
+
+        String effectiveTime = time != null && !time.isBlank() ? time : pkg.getTime();
+        pkg.addModification(buildBulkDateTimeModification(previousDate, previousTime, date, effectiveTime));
+
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(pkg);
         return dailyPermitPackageMapper.convertToDto(saved);
     }
 
@@ -173,6 +288,94 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
         existing.getVentingPermits().clear();
         existing.getVentingPermits().addAll(incoming.getVentingPermits());
+    }
+
+    private String normalizePermitType(String permitType) {
+        if (permitType == null) {
+            return "";
+        }
+
+        return switch (permitType) {
+            case "safeWork", "safeWorks", "SafeWork" -> "safeWorks";
+            case "hotWork", "hotWorks", "HotWork" -> "hotWorks";
+            case "confinedSpace", "confinedSpaces", "ConfinedSpace" -> "confinedSpaces";
+            case "energizedWorkPermit", "energizedWorkPermits", "EnergizedWorkPermit" -> "energizedWorkPermits";
+            case "excavationPermit", "excavationPermits", "ExcavationPermit" -> "excavationPermits";
+            case "ventingPermit", "ventingPermits", "VentingPermit" -> "ventingPermits";
+            case "workRequest", "workRequests", "WorkRequest" -> "workRequests";
+            case "loto", "lotos", "Loto" -> "lotos";
+            default -> permitType;
+        };
+    }
+
+    private PackageModification buildPermitRemovalModification(String permitType, Long permitId) {
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("PERMIT_REMOVED");
+        mod.setPermitType(normalizeModificationPermitType(permitType));
+        mod.setPermitId(permitId);
+        mod.setPerformedBy(getCurrentUsername());
+        mod.setDescription(mod.getPermitType() + " #" + permitId + " removed");
+        return mod;
+    }
+
+    private String normalizeModificationPermitType(String permitType) {
+        return switch (normalizePermitType(permitType)) {
+            case "safeWorks" -> "SafeWork";
+            case "hotWorks" -> "HotWork";
+            case "confinedSpaces" -> "ConfinedSpace";
+            case "energizedWorkPermits" -> "EnergizedWorkPermit";
+            case "excavationPermits" -> "ExcavationPermit";
+            case "ventingPermits" -> "VentingPermit";
+            case "workRequests" -> "WorkRequest";
+            case "lotos" -> "Loto";
+            default -> permitType;
+        };
+    }
+
+    private PackageModification buildBulkDateTimeModification(String oldDate, String oldTime, String newDate, String newTime) {
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("FIELD_CHANGED");
+        mod.setFieldName("packageDateTime");
+        mod.setOldValue((oldDate != null ? oldDate : "(none)") + " " + (oldTime != null ? oldTime : "(none)"));
+        mod.setNewValue((newDate != null ? newDate : "(none)") + " " + (newTime != null ? newTime : "(none)"));
+        mod.setPerformedBy(getCurrentUsername());
+        mod.setDescription("Applied package date/time to all permits");
+        return mod;
+    }
+
+    /**
+     * Auto-sync SafeWork gas monitoring checkboxes based on HW/CS presence in the package.
+     * Only updates EXISTING SafeWorks — never creates new ones (to avoid interfering with
+     * intentional permit removal).
+     */
+    private void syncSafeWorkGasMonitoring(DailyPermitPackage pkg) {
+        if (pkg.getSafeWorks() == null || pkg.getSafeWorks().isEmpty()) return;
+
+        boolean hasHotWork = pkg.getHotWorks() != null && !pkg.getHotWorks().isEmpty();
+        boolean hasConfinedSpace = pkg.getConfinedSpaces() != null && !pkg.getConfinedSpaces().isEmpty();
+
+        for (SafeWork sw : pkg.getSafeWorks()) {
+            com.dk_power.power_plant_java.entities.permits.pojo.SwPermits permits = sw.getPermits();
+            com.dk_power.power_plant_java.entities.permits.pojo.SwPpe ppe = sw.getPpe();
+            if (permits == null) permits = new com.dk_power.power_plant_java.entities.permits.pojo.SwPermits();
+            if (ppe == null) ppe = new com.dk_power.power_plant_java.entities.permits.pojo.SwPpe();
+
+            applyGasMonitoringFlags(permits, ppe, hasHotWork, hasConfinedSpace);
+            sw.setPermits(permits);
+            sw.setPpe(ppe);
+        }
+    }
+
+    private void applyGasMonitoringFlags(
+            com.dk_power.power_plant_java.entities.permits.pojo.SwPermits permits,
+            com.dk_power.power_plant_java.entities.permits.pojo.SwPpe ppe,
+            boolean hasHotWork, boolean hasConfinedSpace) {
+        permits.setHotWork(hasHotWork);
+        permits.setConfinedSpace(hasConfinedSpace);
+        permits.setGasTesting(hasHotWork || hasConfinedSpace);
+        ppe.setGasMonitor(hasHotWork || hasConfinedSpace);
     }
 
     public String buildPermits(DailyPermitPackageDto dailyPermitPackageDto) throws FindFailed, IOException, InterruptedException {

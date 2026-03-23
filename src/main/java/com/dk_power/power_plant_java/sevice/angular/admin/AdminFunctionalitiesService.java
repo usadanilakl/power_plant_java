@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
+import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
 import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class AdminFunctionalitiesService {
     private final SyncContext syncContext;
     private final FieldChangeRepository fieldChangeRepository;
     private final SyncConfig syncConfig;
+    private final WorkAreaGitHubPublisher workAreaGitHubPublisher;
 
     @Value("${files.root.path}")
     private String filesRootPath;
@@ -610,6 +612,30 @@ public class AdminFunctionalitiesService {
             result.put("success", false);
             result.put("error", e.getMessage());
         }
+        return result;
+    }
+
+    // ============================================================
+    // 6. PWA Data Publishing
+    // Manually publish work-area related static data to the PWA repo
+    // ============================================================
+
+    public Map<String, Object> publishPwaData(String target) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String normalized = target == null ? "all" : target.trim().toLowerCase(Locale.ROOT);
+
+        switch (normalized) {
+            case "areas" -> workAreaGitHubPublisher.publishAreas();
+            case "map" -> workAreaGitHubPublisher.publishMap();
+            case "categories" -> workAreaGitHubPublisher.publishCategories();
+            case "all" -> workAreaGitHubPublisher.publishAll();
+            default -> throw new IllegalArgumentException("Unsupported PWA publish target: " + target);
+        }
+
+        result.put("success", true);
+        result.put("target", normalized);
+        result.put("message", "Queued PWA publish for " + normalized);
+        logger.info("Admin: queued PWA publish for {}", normalized);
         return result;
     }
 }

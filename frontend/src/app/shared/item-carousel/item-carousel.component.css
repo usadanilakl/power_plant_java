@@ -1,207 +1,208 @@
-/* :host {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  width: 100%;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  overflow: hidden;
-}
-
-.carousel-container {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 16px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #f7f7f7;
-}
-
-.header h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.navigation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.navigation button, .add-button {
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
-.navigation button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.add-button {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.carousel-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  min-height: 0;
-}
-
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #888;
-}
-
-
-.carousel-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 1rem;
-}
-
-.carousel-actions > ::ng-deep button,
-.carousel-actions > button {
-  padding: 8px 16px;
-  font-size: 14px;
-  color: white;
-  background-color: #007bff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.carousel-actions > ::ng-deep button:hover,
-.carousel-actions > button:hover {
-  background-color: #0056b3;
-} */
 :host {
   display: flex;
   flex-direction: column;
   flex: 1;
   height: 100%;
   width: 100%;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-background) 96%, transparent), var(--primary-background));
+  box-shadow: var(--card-shadow);
   overflow: hidden;
-  padding: 1rem; /* Add some padding to the host */
 }
 
 .carousel-wrapper {
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  box-sizing: border-box;
 }
 
 .carousel-container {
   width: 100%;
-  display: flex; /* Make this a flex container */
-  flex-direction: column; /* Stack children vertically */
-  flex: 1; /* Allow it to take up available space */
-  min-height: 0; /* Flexbox fix for scrolling */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
 }
 
 .carousel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.carousel-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .carousel-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1rem;
+  color: var(--primary-text);
+}
+
+.carousel-summary {
+  font-size: 0.78rem;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .carousel-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-.carousel-controls button {
-  padding: 0.5rem 1rem;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.carousel-nav-btn,
+.carousel-actions > ::ng-deep button,
+.carousel-actions > button {
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 
-.carousel-controls button:disabled {
+.carousel-nav-btn {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.carousel-nav-btn:hover:not(:disabled),
+.carousel-actions > ::ng-deep button:hover:not(:disabled),
+.carousel-actions > button:hover:not(:disabled) {
+  background: var(--hover-color);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.carousel-nav-btn:disabled,
+.carousel-actions > ::ng-deep button:disabled,
+.carousel-actions > button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.carousel-content {
-  border: 1px solid #eee;
-  padding: 1rem;
-  border-radius: 4px;
-  overflow-y: auto; /* Allow vertical scrolling */
-  flex: 1; /* Allow content to grow and fill space */
-  min-height: 150px; /* Ensure a minimum height */
+.carousel-counter {
+  min-width: 58px;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--secondary-text);
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--secondary-background);
 }
 
-/* Default styles for when there are NO items */
+.carousel-content,
+.carousel-empty-state {
+  flex: 1;
+  min-height: 180px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--card-background);
+}
+
+.carousel-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.carousel-empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-color-shadow) 85%, transparent), transparent 70%),
+    var(--card-background);
+}
+
+.carousel-empty-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-text);
+}
+
+.carousel-empty-text {
+  max-width: 34rem;
+  font-size: 0.86rem;
+  color: var(--secondary-text);
+}
+
 .carousel-actions {
   display: flex;
   gap: 10px;
-  margin-top: 1rem;
-  justify-content: flex-start; /* Align to the left */
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-background) 20%, transparent), var(--card-background));
+  position: relative;
+  z-index: 2;
 }
 
-/* Styles for when there ARE items */
-.carousel-wrapper.has-items .carousel-actions {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  z-index: 10; /* Ensure buttons are on top of content */
-  margin-top: 0; /* Reset margin when absolutely positioned */
-}
-
-/* 
-  Apply a consistent style to the 'Add' button and any buttons 
-  projected into the component via ng-content.
-*/
 .carousel-actions > ::ng-deep button,
 .carousel-actions > button {
-  padding: 8px 16px;
-  font-size: 14px;
-  color: white;
-  background-color: #007bff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Add shadow for better visibility */
+  padding: 10px 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
-.carousel-actions > ::ng-deep button:hover,
-.carousel-actions > button:hover {
-  background-color: #0056b3;
+.carousel-primary-action {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  border-color: var(--accent-color) !important;
+}
+
+.carousel-primary-action:hover:not(:disabled) {
+  background: var(--accent-color-hover) !important;
+  border-color: var(--accent-color-hover) !important;
+}
+
+@media (max-width: 1400px) {
+  .carousel-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .carousel-controls {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  .carousel-wrapper {
+    padding: 12px;
+  }
+
+  .carousel-actions {
+    flex-direction: column;
+  }
+
+  .carousel-actions > ::ng-deep button,
+  .carousel-actions > button {
+    width: 100%;
+  }
 }

@@ -47,6 +47,7 @@ export interface PwaWorkRequestDto {
   timeSubmitted: string;
   workCategoryName?: string;
   workAreaId?: number;
+  workAreaName?: string;
   attachments: { fileName: string; contentType: string; base64Content: string }[];
 }
 
@@ -449,6 +450,7 @@ export class ServerApiService {
       timeSubmitted: ServerApiService.formatCentralTime(new Date()),
       workCategoryName: workRequest.workCategoryName || undefined,
       workAreaId: workRequest.workAreaId || undefined,
+      workAreaName: workRequest.workAreaName || undefined,
       attachments: this.convertAttachments(workRequest.attachments)
     };
   }

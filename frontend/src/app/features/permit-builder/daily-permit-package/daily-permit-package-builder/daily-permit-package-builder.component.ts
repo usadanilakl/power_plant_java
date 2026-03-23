@@ -78,6 +78,7 @@ import { TableDataService } from '../../../../shared/table/refactored/services/t
   styleUrl: './daily-permit-package-builder.component.css'
 })
 export class DailyPermitPackageBuilderComponent implements OnInit {
+  private readonly headerCollapseBreakpointPx = 1400;
   currentDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
   private jobLogService = inject(JobLogService);
   private router = inject(Router);
@@ -102,6 +103,9 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   // Reissue from package builder (two-step: date/time → select)
   reissueDate = new Date().toISOString().split('T')[0];
   reissueTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  applyAllDate = this.reissueDate;
+  applyAllTime = this.reissueTime;
+  isHeaderCollapsed = signal(false);
 
   currentPackage = this.currentDailyPermitPackageService.currentDailyPacksge;
   parentJob = signal<JobLogDto | null>(null);
@@ -236,6 +240,8 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   packageName: string = '';
   companyName: string = '';
   private fieldUpdate = new Subject<{ field: keyof DailyPermitPackageDto, value: any }>();
+  private headerMediaQuery?: MediaQueryList;
+  private headerMediaQueryListener?: (event: MediaQueryListEvent) => void;
   
   // private packageNameUpdate = new Subject<string>();
   // private packageNameSubscription: Subscription;
@@ -268,6 +274,8 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
 
     effect(() => {
       const pkg = this.currentPackage();
+      this.applyAllDate = pkg?.date || new Date().toISOString().split('T')[0];
+      this.applyAllTime = pkg?.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       if (pkg?.id) {
         this.jobLogService.getByPackageId(pkg.id.toString()).pipe(
           takeUntilDestroyed(this.destroyRef)
@@ -291,6 +299,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.initializeHeaderCollapseMode();
     // If navigated from WR context menu "Reissue", open the reissue dialog
     if (this.reissueFromWrId) {
       this.reissueWrScope = this.reissueInitialScope;
@@ -299,6 +308,12 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
       this.isReissueFromWrOpen = true;
       this.searchPackagesForReissue();
     }
+
+    this.destroyRef.onDestroy(() => {
+      if (this.headerMediaQuery && this.headerMediaQueryListener) {
+        this.headerMediaQuery.removeEventListener('change', this.headerMediaQueryListener);
+      }
+    });
   }
 
   searchPackagesForReissue(): void {
@@ -368,6 +383,21 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   }
   onDeletePackage() {
     this.currentDailyPermitPackageService.deleteCurrentDailyPacksge();
+  }
+
+  toggleHeaderCollapsed(): void {
+    this.isHeaderCollapsed.update(value => !value);
+  }
+
+  applyDateTimeToAllPermits(): void {
+    if (!this.currentPackage().id || !this.applyAllDate) {
+      return;
+    }
+
+    this.currentDailyPermitPackageService.applyDateTimeToAllPermits(
+      this.applyAllDate,
+      this.applyAllTime
+    );
   }
 
   buildInRedTag(permit: any, type: string) {
@@ -750,5 +780,21 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
     if (job?.id) {
       this.router.navigate(['/permit-builder/jobs'], { queryParams: { jobId: job.id } });
     }
+  }
+
+  private initializeHeaderCollapseMode(): void {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      this.isHeaderCollapsed.set(false);
+      return;
+    }
+
+    this.headerMediaQuery = window.matchMedia(`(max-width: ${this.headerCollapseBreakpointPx}px)`);
+    this.isHeaderCollapsed.set(this.headerMediaQuery.matches);
+
+    this.headerMediaQueryListener = (event: MediaQueryListEvent) => {
+      this.isHeaderCollapsed.set(event.matches);
+    };
+
+    this.headerMediaQuery.addEventListener('change', this.headerMediaQueryListener);
   }
 }

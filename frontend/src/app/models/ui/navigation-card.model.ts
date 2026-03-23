@@ -87,19 +87,19 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Energized Work', description: 'Energized electrical work permits', icon: 'bolt', route: '/permit-builder/energized-work-permits', color: '#f1c40f' },
       { title: 'Excavation', description: 'Excavation work permits', icon: 'construction', route: '/permit-builder/excavation-permits', color: '#795548' },
       { title: 'Venting/Purging', description: 'Venting and purging permits', icon: 'air', route: '/permit-builder/venting-permits', color: '#00bcd4' },
-      { title: 'Work Areas', description: 'Manage plant work areas and constant hazards', icon: 'map', route: '/permit-builder/work-areas', color: '#16a085' },
-      { title: 'Work Map', description: 'Interactive plant map with work area overview', icon: 'place', route: '/work-area-map', color: '#2980b9' },
       { title: 'Scheduler', description: 'Schedule tasks', icon: 'schedule', route: '/scheduler', color: '#2ecc71' }
     ]
   },
   {
     label: 'Visual Plant',
-    description: 'Schematics, P&ID diagrams, and printable forms',
+    description: 'Plant layout, work areas, schematics, and printable forms',
     icon: 'schema',
     color: '#00897b',
-    defaultRoute: '/diagram-builder',
+    defaultRoute: '/visual-plant/work-areas',
     requiresFullAccess: true,
     items: [
+      { title: 'Work Areas', description: 'Manage plant work areas, hazards, and LOTO references', icon: 'map', route: '/visual-plant/work-areas', color: '#16a085' },
+      { title: 'Work Map', description: 'Interactive plant map with work area overview', icon: 'place', route: '/visual-plant/work-area-map', color: '#2980b9' },
       { title: 'Schematics', description: 'Build and view P&ID diagrams and process schematics', icon: 'schema', route: '/diagram-builder/list', color: '#00897b' },
       { title: 'Form Designer', description: 'Design printable forms', icon: 'edit_document', route: '/form-designer', color: '#34495e' }
     ]

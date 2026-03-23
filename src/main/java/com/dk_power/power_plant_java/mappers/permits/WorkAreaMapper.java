@@ -50,6 +50,18 @@ public class WorkAreaMapper implements BaseMapper {
             // handle deserialization issue
         }
 
+        try {
+            dto.setConstantHotWorkMeasures(entity.getConstantHotWorkMeasures());
+        } catch (Exception e) {
+            // handle deserialization issue
+        }
+
+        try {
+            dto.setConstantConfinedSpaceHazards(entity.getConstantConfinedSpaceHazards());
+        } catch (Exception e) {
+            // handle deserialization issue
+        }
+
         if (entity.getConstantLotos() != null) {
             dto.setConstantLotoIds(
                     entity.getConstantLotos().stream()
@@ -81,6 +93,22 @@ public class WorkAreaMapper implements BaseMapper {
         try {
             if (dto.getConstantHazards() != null) {
                 entity.setConstantHazards(dto.getConstantHazards());
+            }
+        } catch (Exception e) {
+            // handle serialization issue
+        }
+
+        try {
+            if (dto.getConstantHotWorkMeasures() != null) {
+                entity.setConstantHotWorkMeasures(dto.getConstantHotWorkMeasures());
+            }
+        } catch (Exception e) {
+            // handle serialization issue
+        }
+
+        try {
+            if (dto.getConstantConfinedSpaceHazards() != null) {
+                entity.setConstantConfinedSpaceHazards(dto.getConstantConfinedSpaceHazards());
             }
         } catch (Exception e) {
             // handle serialization issue

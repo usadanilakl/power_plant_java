@@ -10,10 +10,12 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,20 +33,24 @@ public class NgValueService {
     private final NgEquipmentService equipmentService;
     private final NgFileService fileService;
     private final NgLotoPointService lotoPointService;
+    private final ObjectProvider<WorkAreaGitHubPublisher> workAreaGitHubPublisherProvider;
 
-    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService) {
+    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService, ObjectProvider<WorkAreaGitHubPublisher> workAreaGitHubPublisherProvider) {
         this.categoryRepo = categoryRepo;
         this.valueRepo = valueRepo;
         this.equipmentService = equipmentService;
         this.fileService = fileService;
         this.lotoPointService = lotoPointService;
+        this.workAreaGitHubPublisherProvider = workAreaGitHubPublisherProvider;
     }
 
     // Create
     public Value createValue(Long categoryId, Value value) {
         return categoryRepo.findById(categoryId).map(category -> {
             value.setCategory(category);
-            return valueRepo.save(value);
+            Value saved = valueRepo.save(value);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }).orElseThrow(() -> new RuntimeException("Category not found"));
     }
 
@@ -52,14 +58,18 @@ public class NgValueService {
         Category category = getCategoryByAliasSafe(categoryName);
         if (category == null) category = createCategory(categoryName);
         value.setCategory(category);
-        return valueRepo.save(value);
+        Value saved = valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(category);
+        return saved;
     }
 
     public Value createValue(Long categoryId, String valueName) {
         Category category = categoryRepo.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
         Value value = new Value(valueName);
         value.setCategory(category);
-        return valueRepo.save(value);
+        Value saved = valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(category);
+        return saved;
     }
 
     @Transactional
@@ -75,7 +85,9 @@ public class NgValueService {
         } else {
             Value newValue = new Value(valueName);
             newValue.setCategory(category);
-            return valueRepo.save(newValue);
+            Value saved = valueRepo.save(newValue);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }
     }
 
@@ -91,17 +103,23 @@ public class NgValueService {
         if (existingValue != null) {
             if(existingValue.getAlias()==null){
                 existingValue.setAlias(valueAlias);
-                return valueRepo.save(existingValue);
+                Value saved = valueRepo.save(existingValue);
+                publishPwaCategoriesIfRelevant(category);
+                return saved;
             }
             return existingValue;
         }else if(existingValue == null && existingValueAlias!=null){
             existingValueAlias.setName(valueName);
             existingValueAlias.setAlias(valueAlias);
-            return valueRepo.save(existingValueAlias);
+            Value saved = valueRepo.save(existingValueAlias);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }else {
             Value newValue = new Value(valueName,valueAlias);
             newValue.setCategory(category);
-            return valueRepo.save(newValue);
+            Value saved = valueRepo.save(newValue);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }
     }
 
@@ -118,7 +136,9 @@ public class NgValueService {
         } else {
             Value newValue = new Value(valueName);
             newValue.setCategory(category);
-            return valueRepo.save(newValue);
+            Value saved = valueRepo.save(newValue);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }
     }
 
@@ -136,7 +156,9 @@ public class NgValueService {
             Value newValue = new Value(valueName);
             if(valueAlias!=null && !valueAlias.isEmpty()) newValue.setAlias(valueAlias);
             newValue.setCategory(category);
-            return valueRepo.save(newValue);
+            Value saved = valueRepo.save(newValue);
+            publishPwaCategoriesIfRelevant(category);
+            return saved;
         }
     }
 
@@ -146,7 +168,9 @@ public class NgValueService {
         return valueRepo.findById(id).map(value -> {
             value.setName(valueDetails.getName());
             // Update other fields as necessary
-            return valueRepo.save(value);
+            Value saved = valueRepo.save(value);
+            publishPwaCategoriesIfRelevant(saved.getCategory());
+            return saved;
         }).orElseThrow(() -> new RuntimeException("Value not found"));
     }
 
@@ -185,6 +209,7 @@ public class NgValueService {
         List<LotoPoint> associatedLotoPoints = lotoPointService.findByValue(value);
         if (associatedLotoPoints.isEmpty() && associatedFiles.isEmpty() && associatedEq.isEmpty()) {
             valueRepo.deleteById(id);
+            publishPwaCategoriesIfRelevant(value.getCategory());
         }
 
     }
@@ -193,11 +218,15 @@ public class NgValueService {
     public Value moveValueToCategory(Long valueId, Long newCategoryId) {
         Value value = valueRepo.findById(valueId)
                 .orElseThrow(() -> new RuntimeException("Value not found"));
+        Category oldCategory = value.getCategory();
         Category newCategory = categoryRepo.findById(newCategoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         value.setCategory(newCategory);
-        return valueRepo.save(value);
+        Value saved = valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(newCategory);
+        publishPwaCategoriesIfRelevant(oldCategory);
+        return saved;
     }
 
     // Bulk operations
@@ -386,7 +415,9 @@ public class NgValueService {
             value.setName(newName);
         }
 
-        return valueRepo.save(value);
+        Value saved = valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(saved.getCategory());
+        return saved;
     }
 
     public Value updateValueName(Long valueId, String newName, String newAlias) {
@@ -412,7 +443,28 @@ public class NgValueService {
             if (newAlias != null && !newAlias.isEmpty()) value.setAlias(newAlias);
         }
 
-        return valueRepo.save(value);
+        Value saved = valueRepo.save(value);
+        publishPwaCategoriesIfRelevant(saved.getCategory());
+        return saved;
+    }
+
+    private void publishPwaCategoriesIfRelevant(Category category) {
+        if (category == null) {
+            return;
+        }
+        String name = category.getName();
+        String alias = category.getAlias();
+        boolean isWorkCategory = "Work Category".equalsIgnoreCase(name)
+                || "workCategory".equalsIgnoreCase(alias)
+                || "workcategory".equalsIgnoreCase(alias);
+        if (!isWorkCategory) {
+            return;
+        }
+
+        WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
+        if (publisher != null) {
+            publisher.publishCategories();
+        }
     }
 
     /**

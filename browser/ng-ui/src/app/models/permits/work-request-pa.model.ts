@@ -12,6 +12,8 @@ export interface IWorkRequestPa {
   ForemanName: string;
   FireWatchName: string;
   SpaceToBeEntered: string;
+  MainWorkScope: string;
+  WorkAreaName: string;
 }
 
 export class WorkRequestPa implements IWorkRequestPa {
@@ -28,6 +30,8 @@ export class WorkRequestPa implements IWorkRequestPa {
   ForemanName: string;
   FireWatchName: string;
   SpaceToBeEntered: string;
+  MainWorkScope: string;
+  WorkAreaName: string;
 
   constructor(data: Partial<IWorkRequestPa> = {}) {
     this.PwaId = data.PwaId ?? '';
@@ -43,5 +47,7 @@ export class WorkRequestPa implements IWorkRequestPa {
     this.ForemanName = data.ForemanName ?? '';
     this.FireWatchName = data.FireWatchName ?? '';
     this.SpaceToBeEntered = data.SpaceToBeEntered ?? '';
+    this.MainWorkScope = data.MainWorkScope ?? '';
+    this.WorkAreaName = data.WorkAreaName ?? '';
   }
 }

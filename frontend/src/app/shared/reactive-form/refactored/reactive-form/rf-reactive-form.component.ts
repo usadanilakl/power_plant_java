@@ -21,6 +21,7 @@ import { FileInputComponent } from '../input-fields/file-input/file-input.compon
 import { CommentInputComponent } from '../input-fields/comment-input/comment-input.component';
 import { CharacteristicsEditorComponent } from '../input-fields/characteristics-editor/characteristics-editor.component';
 import { WorkAreaSelectComponent } from '../../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
+import { LotoStandardSelectComponent } from '../input-fields/loto-standard-select/loto-standard-select.component';
 import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
@@ -50,6 +51,7 @@ import { GuideDirective } from '../../../guide/guide.directive';
     CommentInputComponent,
     CharacteristicsEditorComponent,
     WorkAreaSelectComponent,
+    LotoStandardSelectComponent,
     GuideDirective,
   ],
   templateUrl: './rf-reactive-form.component.html',

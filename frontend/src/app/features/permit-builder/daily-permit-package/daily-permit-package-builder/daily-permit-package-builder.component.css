@@ -40,6 +40,154 @@
   background-color: var(--secondary-background);
 }
 
+.package-submission-section.is-collapsed {
+  padding: 10px 14px 10px;
+}
+
+.package-section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.package-section-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.package-submission-section.is-collapsed .package-section-toolbar {
+  margin-bottom: 6px;
+}
+
+.header-toggle-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header-toggle-button:hover {
+  background: var(--hover-color);
+}
+
+.package-summary-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-background) 96%, transparent);
+}
+
+.summary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.summary-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.summary-line-primary .summary-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.summary-package-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+}
+
+.summary-value {
+  min-width: 0;
+  color: var(--primary-text);
+}
+
+.summary-divider {
+  color: var(--secondary-text);
+}
+
+.summary-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-color-shadow) 72%, transparent);
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+.summary-chip-status[data-status="Building"] {
+  border-color: color-mix(in srgb, var(--status-in-progress) 70%, transparent);
+  background: color-mix(in srgb, var(--status-in-progress) 26%, transparent);
+  color: var(--primary-text);
+}
+
+.summary-chip-status[data-status="Active"] {
+  border-color: color-mix(in srgb, var(--status-complete) 70%, transparent);
+  background: color-mix(in srgb, var(--status-complete) 22%, transparent);
+  color: var(--primary-text);
+}
+
+.summary-chip-status[data-status="Test"] {
+  border-color: color-mix(in srgb, var(--status-incomplete) 70%, transparent);
+  background: color-mix(in srgb, var(--status-incomplete) 24%, transparent);
+  color: var(--primary-text);
+}
+
+.summary-chip-status[data-status="Closed"] {
+  border-color: color-mix(in srgb, var(--status-attention) 70%, transparent);
+  background: color-mix(in srgb, var(--status-attention) 22%, transparent);
+  color: var(--primary-text);
+}
+
+.summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.package-submission-section.is-collapsed .header-toggle-button,
+.package-submission-section.is-collapsed .summary-actions .action-button,
+.package-submission-section.is-collapsed .summary-actions .status-btn {
+  min-height: 34px;
+  padding: 6px 12px;
+}
+
 .form-controls {
   display: flex;
   align-items: center;
@@ -665,4 +813,342 @@ input[type="text"] {
 
 .reissue-action-btn:hover {
   background: var(--accent-color-hover, #1565c0);
+}
+
+.package-header-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.package-details-card,
+.package-tools-card,
+.package-actions-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-background) 96%, transparent), var(--secondary-background));
+  box-shadow: var(--card-shadow);
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  letter-spacing: 0.02em;
+}
+
+.section-description {
+  font-size: 0.76rem;
+  color: var(--secondary-text);
+  max-width: 26ch;
+}
+
+.form-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.package-details-card input,
+.bulk-field input,
+.reissue-field input,
+.closure-field select,
+.closure-field input,
+.closure-field textarea,
+.mod-filters select {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
+}
+
+.bulk-date-time-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.bulk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-field label,
+.reissue-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--secondary-text);
+}
+
+.package-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-button {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.action-button:hover:not(:disabled),
+.status-btn:hover:not(:disabled),
+.attach-selected-btn:hover:not(:disabled),
+.btn-suggest:hover:not(:disabled),
+.remove-permit-btn:hover:not(:disabled),
+.reissue-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.action-button:disabled,
+.status-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action-button-primary,
+.status-btn.activate,
+.attach-selected-btn,
+.reissue-action-btn {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.action-button-primary:hover:not(:disabled),
+.status-btn.activate:hover:not(:disabled),
+.attach-selected-btn:hover:not(:disabled),
+.reissue-action-btn:hover:not(:disabled) {
+  background: var(--accent-color-hover);
+  border-color: var(--accent-color-hover);
+}
+
+.action-button-danger,
+.status-btn.close,
+.remove-permit-btn {
+  background: var(--status-attention);
+  border-color: var(--status-attention);
+  color: var(--primary-text);
+}
+
+.action-button-danger:hover:not(:disabled),
+.status-btn.close:hover:not(:disabled),
+.remove-permit-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-attention) 85%, black);
+  border-color: color-mix(in srgb, var(--status-attention) 85%, black);
+}
+
+.status-btn.test {
+  background: var(--status-incomplete);
+  border-color: var(--status-incomplete);
+  color: var(--primary-text);
+}
+
+.status-btn.test:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-incomplete) 88%, black);
+  border-color: color-mix(in srgb, var(--status-incomplete) 88%, black);
+}
+
+.status-btn {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.tab-bar {
+  gap: 8px;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.tab {
+  border-radius: 999px;
+  background: var(--card-background);
+  border: 1px solid transparent;
+}
+
+.tab:hover {
+  background: var(--hover-color);
+}
+
+.tab.active,
+.tab.pinned {
+  background: color-mix(in srgb, var(--accent-color-shadow) 80%, transparent);
+  border-color: var(--accent-color);
+}
+
+.tab.pinned,
+.tab.pinned .tab-badge,
+.tab-pin-btn.pinned .pin-icon {
+  color: var(--accent-color);
+}
+
+.tab-wrapper {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.paper-tab {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--card-background);
+  color: var(--primary-text);
+}
+
+.mod-values {
+  color: var(--primary-text);
+}
+
+.validation-errors {
+  background: color-mix(in srgb, var(--status-incomplete) 28%, transparent);
+  border-color: color-mix(in srgb, var(--status-incomplete) 75%, transparent);
+}
+
+.validation-errors h4,
+.validation-error {
+  color: var(--primary-text);
+}
+
+.snapshot-json {
+  background: color-mix(in srgb, var(--card-background) 88%, black);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+}
+
+.loto-suggestion-banner {
+  background: color-mix(in srgb, var(--status-incomplete) 22%, transparent);
+  border-color: color-mix(in srgb, var(--status-incomplete) 58%, transparent);
+  color: var(--primary-text);
+}
+
+.suggestion-label,
+.reissue-hint {
+  color: var(--secondary-text);
+}
+
+.suggestion-item {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+}
+
+.btn-suggest {
+  background: var(--status-incomplete);
+  color: var(--primary-text);
+}
+
+.btn-suggest:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-incomplete) 88%, black);
+}
+
+.reissue-field input {
+  border-color: var(--border-color);
+  background: var(--card-background);
+  color: var(--primary-text);
+}
+
+@media (max-width: 1500px) {
+  .package-header-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr) minmax(260px, 0.9fr);
+  }
+
+  .form-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1280px) {
+  .package-header-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "details workflow"
+      "batch batch";
+  }
+
+  .package-details-card {
+    grid-area: details;
+  }
+
+  .package-tools-card {
+    grid-area: batch;
+  }
+
+  .package-actions-card {
+    grid-area: workflow;
+  }
+
+  .package-submission-section {
+    padding: 12px;
+  }
+
+  .bulk-date-time-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 1024px) {
+  .package-section-toolbar,
+  .package-summary-strip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-toggle-button,
+  .summary-actions .action-button,
+  .summary-actions .status-btn {
+    width: 100%;
+  }
+
+  .summary-actions {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .package-header-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "details"
+      "batch"
+      "workflow";
+  }
+
+  .form-group,
+  .bulk-date-time-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-date-time-controls .action-button {
+    width: 100%;
+  }
+
+  .package-action-list {
+    flex-direction: column;
+  }
+
+  .package-action-list .action-button {
+    width: 100%;
+  }
 }

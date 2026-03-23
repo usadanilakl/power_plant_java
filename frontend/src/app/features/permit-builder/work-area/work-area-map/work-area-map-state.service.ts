@@ -4,6 +4,7 @@ import { forkJoin } from 'rxjs';
 import { WorkAreaDto, WorkAreaMapShapeDto, WorkAreaPermitCounts } from '../../../../models/permits/work-area.model';
 import { WorkAreaApiService } from '../services/work-area-api.service';
 import { RfRectangleShape, RfShape } from '../../../../shared/image/refactored/models/fr-shape.model';
+import { SyncUpdateService } from '../../../../services/sync/sync-update.service';
 
 export type WorkAreaMapMode = 'dev' | 'operator' | 'overview';
 
@@ -11,6 +12,7 @@ export type WorkAreaMapMode = 'dev' | 'operator' | 'overview';
 export class WorkAreaMapStateService {
   private api = inject(WorkAreaApiService);
   private destroyRef = inject(DestroyRef);
+  private syncUpdateService = inject(SyncUpdateService);
 
   // --- Core state ---
   mode = signal<WorkAreaMapMode>('operator');
@@ -34,6 +36,16 @@ export class WorkAreaMapStateService {
   // --- Info Window ---
   showInfoWindow = signal(false);
   infoWindowWorkAreas = signal<WorkAreaDto[]>([]);
+
+  constructor() {
+    this.syncUpdateService.getEntityTypeUpdates$('WorkArea')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadDataPreservingSelection());
+
+    this.syncUpdateService.getEntityTypeUpdates$('WorkAreaMapShape')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadDataPreservingSelection());
+  }
 
   // --- Computed ---
 
@@ -93,6 +105,31 @@ export class WorkAreaMapStateService {
       error: () => this.isLoading.set(false),
     });
     this.loadMapImage();
+  }
+
+  private reloadDataPreservingSelection(): void {
+    const selectedShapeId = this.selectedShapeId();
+    const selectedWorkAreaId = this.selectedWorkArea()?.id ?? null;
+
+    forkJoin({
+      workAreas: this.api.getAll(),
+      shapes: this.api.getAllShapes(),
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ workAreas, shapes }) => {
+        this.workAreas.set(workAreas);
+        this.shapes.set(shapes);
+
+        if (selectedShapeId && shapes.some(shape => shape.id === selectedShapeId)) {
+          this.selectedShapeId.set(selectedShapeId);
+        } else if (selectedShapeId) {
+          this.selectedShapeId.set(null);
+        }
+
+        if (selectedWorkAreaId) {
+          this.selectedWorkArea.set(workAreas.find(area => area.id === selectedWorkAreaId) ?? null);
+        }
+      },
+    });
   }
 
   loadMapImage(): void {
@@ -220,17 +257,7 @@ export class WorkAreaMapStateService {
     this.api.saveShape(updatedDto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (saved) => {
         this.shapes.update(shapes => shapes.map(s => s.id === saved.id ? saved : s));
-
-        // Also update the work area's shapeId
-        const wa = this.workAreas().find(w => w.id === workAreaId);
-        if (wa) {
-          const updatedWa = new WorkAreaDto({ ...wa, shapeId: saved.id });
-          this.api.save(updatedWa).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (savedWa) => {
-              this.workAreas.update(areas => areas.map(a => a.id === savedWa.id ? savedWa : a));
-            },
-          });
-        }
+        this.reloadDataPreservingSelection();
       },
     });
   }
@@ -247,6 +274,7 @@ export class WorkAreaMapStateService {
     this.api.saveShape(updatedDto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (saved) => {
         this.shapes.update(shapes => shapes.map(s => s.id === saved.id ? saved : s));
+        this.reloadDataPreservingSelection();
       },
     });
   }
@@ -277,9 +305,47 @@ export class WorkAreaMapStateService {
           }
           return [...areas, saved];
         });
+        this.selectedWorkArea.set(saved);
         this.closeWorkAreaForm();
       },
     });
+  }
+
+  openCounterpartForm(source?: WorkAreaDto): void {
+    const base = source ?? this.selectedWorkArea() ?? this.editingWorkArea();
+    if (!base) return;
+
+    this.editingWorkArea.set(new WorkAreaDto({
+      ...base,
+      id: 0,
+      name: this.transformCounterpartText(base.name),
+      description: this.transformCounterpartText(base.description ?? ''),
+      shapeId: null,
+    }));
+    this.formOpen.set(true);
+  }
+
+  private transformCounterpartText(value: string): string {
+    if (!value) return value;
+
+    const replacements: Array<[RegExp, string]> = [
+      [/\bU1\b/g, '__UNIT_A__'],
+      [/\bU2\b/g, 'U1'],
+      [/__UNIT_A__/g, 'U2'],
+      [/\bUnit 1\b/g, '__UNIT_ONE__'],
+      [/\bUnit 2\b/g, 'Unit 1'],
+      [/__UNIT_ONE__/g, 'Unit 2'],
+      [/\bunit 1\b/g, '__unit_one__'],
+      [/\bunit 2\b/g, 'unit 1'],
+      [/__unit_one__/g, 'unit 2'],
+    ];
+
+    let transformed = value;
+    for (const [pattern, replacement] of replacements) {
+      transformed = transformed.replace(pattern, replacement);
+    }
+
+    return transformed === value ? `${value} Copy` : transformed;
   }
 
   deleteWorkArea(id: number): void {
@@ -394,6 +460,7 @@ export class WorkAreaMapStateService {
 
   private rfShapeToDto(shape: RfShape): WorkAreaMapShapeDto {
     const rect = shape as RfRectangleShape;
+    const existing = shape.id > 0 ? this.shapes().find(item => item.id === shape.id) : null;
     return {
       id: shape.id > 0 ? shape.id : 0, // 0 for new shapes (server generates ID)
       coordinates: JSON.stringify({
@@ -407,7 +474,7 @@ export class WorkAreaMapStateService {
       }).replace(/^"|"$/g, '').replace(/\\/g, '').replace(/"(\w+)":/g, '$1:'),
       originalPictureSize: `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`,
       label: '',
-      workAreaIds: [],
+      workAreaIds: existing?.workAreaIds ?? [],
     };
   }
 }

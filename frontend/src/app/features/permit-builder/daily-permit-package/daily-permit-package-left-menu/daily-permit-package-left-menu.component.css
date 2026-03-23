@@ -13,6 +13,11 @@
   height: 100%;
   min-height: 0;
   flex: 1;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 
 .menu-header {
@@ -63,6 +68,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .controls-label {
@@ -75,6 +81,7 @@
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+  flex: 1;
 }
 
 .group-button {
@@ -95,9 +102,15 @@
 }
 
 .group-button.active {
-  background: var(--primary-color, #2196F3);
+  background: var(--accent-color, #2196F3);
   color: white;
-  border-color: var(--primary-color, #2196F3);
+  border-color: var(--accent-color, #2196F3);
+}
+
+.controls-hint {
+  font-size: 11px;
+  color: var(--secondary-text, #666);
+  margin-left: auto;
 }
 
 .loading-state {

@@ -7,12 +7,15 @@
       <button type="button" (click)="removeOption(value)">X</button>
     </div>
     }
+    @if (selectedValues().length === 0) {
+    <div class="selected-placeholder">No items selected</div>
+    }
   </div>
   <app-searchable-select-input
     [label]="''"
     [options]="availableOptions()"
     [categoryName]="categoryName()"
-    [closeOnSelect]="false"
+    [closeOnSelect]="true"
     (editOption)="onEditOption()"
     (addNewOption)="onAddNewOption()"
     (valueChange)="onSelect($event)"

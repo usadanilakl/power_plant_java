@@ -7,75 +7,182 @@
     </div>
   }
 
-  <div class="package-submission-section">
-    <div class="form-controls">
-      <div class="form-group">
-        <div class="package-name-container">
-            <label for="packageName">Package Name:</label>
-            <input
-                type="text"
-                id="packageName"
-                class="package-name-input"
-                [ngModel]="currentPackage().name"
-                (ngModelChange)="onFieldChange('name', $event)"
-                [disabled]="isReadOnly()"
-                placeholder="Enter package name">
+  <div class="package-submission-section" [class.is-collapsed]="isHeaderCollapsed()">
+    <div class="package-section-toolbar">
+      <div class="package-section-title">
+        <span class="section-title">Package Overview</span>
+        @if(!isHeaderCollapsed()) {
+          <span class="section-description">Keep details handy without letting the header take over the page.</span>
+        }
+      </div>
+      <button
+        type="button"
+        class="header-toggle-button"
+        (click)="toggleHeaderCollapsed()"
+        [attr.aria-expanded]="!isHeaderCollapsed()">
+        {{ isHeaderCollapsed() ? 'Show Details' : 'Hide Details' }}
+      </button>
+    </div>
+
+    @if(isHeaderCollapsed()) {
+      <div class="package-summary-strip">
+        <div class="summary-main">
+          <div class="summary-line summary-line-primary">
+            <span class="summary-value summary-package-name">{{ currentPackage().name || 'Untitled package' }}</span>
+            @if(currentPackage().permitNumber) {
+              <span class="summary-chip">#{{ currentPackage().permitNumber }}</span>
+            }
+            <span class="summary-chip summary-chip-status" [attr.data-status]="packageStatus()">
+              {{ packageStatus() === 'Test' ? 'Paused' : packageStatus() }}
+            </span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">Company</span>
+            <span class="summary-value">{{ currentPackage().companyName || 'Not set' }}</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-label">Person</span>
+            <span class="summary-value">{{ currentPackage().personName || 'Not set' }}</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-label">Date</span>
+            <span class="summary-value">{{ currentPackage().date || applyAllDate || 'Not set' }}</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-label">Time</span>
+            <span class="summary-value">{{ currentPackage().time || applyAllTime || 'Not set' }}</span>
+          </div>
         </div>
-        <div class="company-name-container">
-            <label for="companyName">Company Name:</label>
-            <input
-                type="text"
-                id="companyName"
-                class="company-name-input"
-                [ngModel]="currentPackage().companyName"
-                (ngModelChange)="onFieldChange('companyName', $event)"
-                [disabled]="isReadOnly()"
-                placeholder="Enter company name">
-        </div>
-        <div class="person-name-container">
-            <label for="personName">Person Name:</label>
-            <input
-                type="text"
-                id="personName"
-                class="person-name-input"
-                [ngModel]="currentPackage().personName"
-                (ngModelChange)="onFieldChange('personName', $event)"
-                [disabled]="isReadOnly()"
-                placeholder="Enter person's name">
+        <div class="summary-actions">
+          <button class="action-button action-button-primary" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">
+            Save
+          </button>
+          @if(currentPackage().id){
+            @switch(packageStatus()) {
+              @case('Building') {
+                <button class="status-btn activate" (click)="openActivationDialog()">Activate</button>
+              }
+              @case('Active') {
+                <button class="status-btn close" (click)="openClosureDialog()">Close</button>
+              }
+              @case('Test') {
+                <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume</button>
+              }
+            }
+          }
         </div>
       </div>
-      @if(currentPackage().permitNumber){
-        <div class="permit-number-display">
-          <label>Permit #:</label>
-          <span>{{ currentPackage().permitNumber }}</span>
-        </div>
-      }
-      @if(currentPackage().id){
-        <div class="status-section">
-          <span class="status-badge" [attr.data-status]="packageStatus()">{{ packageStatus() === 'Test' ? 'Paused' : packageStatus() }}</span>
-          @switch(packageStatus()) {
-            @case('Building') {
-              <button class="status-btn activate" (click)="openActivationDialog()">Activate</button>
-            }
-            @case('Active') {
-              <button class="status-btn test" (click)="currentDailyPermitPackageService.putPackageUnderTest()">Pause Work</button>
-              <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
-            }
-            @case('Test') {
-              <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume Work</button>
-              <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
-            }
+    } @else {
+    <div class="package-header-grid">
+      <div class="package-details-card">
+        <div class="section-heading">
+          <span class="section-title">Package Details</span>
+          @if(currentPackage().permitNumber){
+            <div class="permit-number-display">
+              <label>Permit #</label>
+              <span>{{ currentPackage().permitNumber }}</span>
+            </div>
           }
+        </div>
+        <div class="form-group">
+          <div class="package-name-container">
+              <label for="packageName">Package Name</label>
+              <input
+                  type="text"
+                  id="packageName"
+                  class="package-name-input"
+                  [ngModel]="currentPackage().name"
+                  (ngModelChange)="onFieldChange('name', $event)"
+                  [disabled]="isReadOnly()"
+                  placeholder="Enter package name">
+          </div>
+          <div class="company-name-container">
+              <label for="companyName">Company Name</label>
+              <input
+                  type="text"
+                  id="companyName"
+                  class="company-name-input"
+                  [ngModel]="currentPackage().companyName"
+                  (ngModelChange)="onFieldChange('companyName', $event)"
+                  [disabled]="isReadOnly()"
+                  placeholder="Enter company name">
+          </div>
+          <div class="person-name-container">
+              <label for="personName">Person Name</label>
+              <input
+                  type="text"
+                  id="personName"
+                  class="person-name-input"
+                  [ngModel]="currentPackage().personName"
+                  (ngModelChange)="onFieldChange('personName', $event)"
+                  [disabled]="isReadOnly()"
+                  placeholder="Enter person's name">
+          </div>
+        </div>
+      </div>
+
+      <div class="package-tools-card">
+        <div class="section-heading">
+          <span class="section-title">Batch Update</span>
+          <span class="section-description">Apply one date and time to every permit in this package.</span>
+        </div>
+        <div class="bulk-date-time-controls">
+          <div class="bulk-field">
+            <label for="applyAllDate">Date</label>
+            <input
+              id="applyAllDate"
+              type="date"
+              [(ngModel)]="applyAllDate"
+              [disabled]="!currentPackage().id || isReadOnly()">
+          </div>
+          <div class="bulk-field">
+            <label for="applyAllTime">Time</label>
+            <input
+              id="applyAllTime"
+              type="time"
+              [(ngModel)]="applyAllTime"
+              [disabled]="!currentPackage().id || isReadOnly()">
+          </div>
+          <button
+            class="action-button action-button-primary"
+            (click)="applyDateTimeToAllPermits()"
+            [disabled]="!currentPackage().id || !applyAllDate || isReadOnly()">
+            Apply to All Permits
+          </button>
+        </div>
+      </div>
+
+      <div class="package-actions-card">
+        <div class="section-heading">
+          <span class="section-title">Workflow</span>
+          @if(currentPackage().id){
+            <div class="status-section">
+              <span class="status-badge" [attr.data-status]="packageStatus()">{{ packageStatus() === 'Test' ? 'Paused' : packageStatus() }}</span>
+              @switch(packageStatus()) {
+                @case('Building') {
+                  <button class="status-btn activate" (click)="openActivationDialog()">Activate</button>
+                }
+                @case('Active') {
+                  <button class="status-btn test" (click)="currentDailyPermitPackageService.putPackageUnderTest()">Pause Work</button>
+                  <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
+                }
+                @case('Test') {
+                  <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume Work</button>
+                  <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
+                }
+              }
+            </div>
+          }
+        </div>
+        <div class="package-action-list">
+          <button class="action-button action-button-primary" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Save Package</button>
+          <button class="action-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Reissue Package</button>
+          <button class="action-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build in Red Tag</button>
           @if(currentPackage().activationSnapshotJson){
-            <button class="status-btn" style="background:#607d8b;" (click)="isSnapshotPopupOpen = true">View Snapshot</button>
+            <button class="action-button" (click)="isSnapshotPopupOpen = true">View Snapshot</button>
           }
+          <button class="action-button action-button-danger" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Package</button>
         </div>
-      }
-      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Submit Permit Package</button>
-      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Reissue</button>
-      <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
-      <button class="delete-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build Package</button>
+      </div>
     </div>
+    }
   </div>
     
     <!-- Tab bar -->
@@ -125,9 +232,9 @@
             (addItemEvent)="attachNew('Work Request')">
             <ng-template let-wr>
               <app-work-request-display [workRequest]="wr"></app-work-request-display>
-              <button class="remove-permit-btn" (click)="currentDailyPermitPackageService.removeAttachment(wr.id, 'workRequests')">Remove WR</button>
+              <button class="remove-permit-btn" (click)="currentDailyPermitPackageService.removePermitFromPackageItem(wr(), 'workRequests')">Remove WR</button>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate from WR</button>
           </app-item-carousel>
         }
         @case('safeWorks') {
@@ -142,11 +249,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
                 (formSubmit)="buildInRedTag($event, 'safeWork')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment(sw.id, 'safeWorks')">
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(sw(), 'safeWorks')">
               </app-safe-work-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addSafeWork()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addSafeWork()">Create Blank</button>
           </app-item-carousel>
         }
         @case('hotWorks') {
@@ -161,11 +268,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
                 (formSubmit)="buildInRedTag($event, 'hotWork')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment(hw.id, 'hotWorks')"
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(hw(), 'hotWorks')"
               ></app-hot-work-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addHotWork()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addHotWork()">Create Blank</button>
           </app-item-carousel>
         }
         @case('confinedSpaces') {
@@ -180,11 +287,11 @@
                 [submitButtonText]="'Build In Red Tag'"
                 (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
                 (formSubmit)="buildInRedTag($event, 'confinedSpace')"
-                (formDelete)="currentDailyPermitPackageService.removeAttachment(cs.id, 'confinedSpaces')"
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(cs(), 'confinedSpaces')"
               ></app-confined-space-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addConfinedSpace()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addConfinedSpace()">Create Blank</button>
           </app-item-carousel>
         }
         @case('lotos') {
@@ -196,7 +303,7 @@
                   <span class="suggestion-label">Existing LOTOs to attach:</span>
                   @for (loto of lotoSuggestions()!.existingLotos; track loto.id) {
                     <div class="suggestion-item">
-                      <span>{{ loto.permitNumber }} — {{ loto.equipmentSystem || loto.matchedStandardName }}</span>
+                      <span>{{ loto.permitNumber }} - {{ loto.equipmentSystem || loto.matchedStandardName }}</span>
                       <button class="btn-suggest" (click)="attachExisting(loto, 'lotos')">Attach</button>
                     </div>
                   }
@@ -225,7 +332,7 @@
                 [values]="loto"
                 [withLotoPointDataBase]="false"
                 (formSubmitEvent)="buildInRedTag($event, 'loto')"
-                (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment(loto.id, 'lotos')"
+                (formDeleteEvent)="currentDailyPermitPackageService.removePermitFromPackageItem(loto(), 'lotos')"
               ></app-loto-detail-form>
             </ng-template>
           </app-item-carousel>
@@ -239,17 +346,17 @@
             <ng-template let-ep>
               <app-rf-reactive-form
                 [fields]="energizedWorkPermitFields"
-                [entity]="ep"
+                [entity]="ep()"
                 [title]="'Energized Work Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="ep.id ? 'Remove' : ''"
+                [deleteButtonText]="ep().id ? 'Remove' : ''"
                 (formValueChange)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
                 (formSubmit)="buildInRedTag($event, 'energizedWorkPermit')"
-                (formDelete)="removeCurrentEnergizedWorkPermit()"
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(ep(), 'energizedWorkPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addEnergizedWorkPermit()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addEnergizedWorkPermit()">Create Blank</button>
           </app-item-carousel>
         }
         @case('excavation') {
@@ -261,17 +368,17 @@
             <ng-template let-xp>
               <app-rf-reactive-form
                 [fields]="excavationPermitFields"
-                [entity]="xp"
+                [entity]="xp()"
                 [title]="'Excavation Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="xp.id ? 'Remove' : ''"
+                [deleteButtonText]="xp().id ? 'Remove' : ''"
                 (formValueChange)="currentDailyPermitPackageService.submitExcavationPermit($event)"
                 (formSubmit)="buildInRedTag($event, 'excavationPermit')"
-                (formDelete)="removeCurrentExcavationPermit()"
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(xp(), 'excavationPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addExcavationPermit()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addExcavationPermit()">Create Blank</button>
           </app-item-carousel>
         }
         @case('venting') {
@@ -283,17 +390,17 @@
             <ng-template let-vp>
               <app-rf-reactive-form
                 [fields]="ventingPermitFields"
-                [entity]="vp"
+                [entity]="vp()"
                 [title]="'Venting Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="vp.id ? 'Remove' : ''"
+                [deleteButtonText]="vp().id ? 'Remove' : ''"
                 (formValueChange)="currentDailyPermitPackageService.submitVentingPermit($event)"
                 (formSubmit)="buildInRedTag($event, 'ventingPermit')"
-                (formDelete)="removeCurrentVentingPermit()"
+                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(vp(), 'ventingPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate</button>
-            <button [disabled]="isReadOnly()" (click)="addVentingPermit()">Add Empty</button>
+            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="isReadOnly()" (click)="addVentingPermit()">Create Blank</button>
           </app-item-carousel>
         }
       }
@@ -335,7 +442,7 @@
               }
               <span class="mod-description">{{ mod.description }}</span>
               @if(mod.oldValue || mod.newValue){
-                <span class="mod-values">{{ mod.oldValue ?? '(empty)' }} → {{ mod.newValue ?? '(empty)' }}</span>
+                <span class="mod-values">{{ mod.oldValue ?? '(empty)' }} -> {{ mod.newValue ?? '(empty)' }}</span>
               }
               @if(mod.performedBy){
                 <span class="mod-user">by {{ mod.performedBy }}</span>
@@ -589,7 +696,7 @@
 </app-popup-projection>
 
 
-<!-- Reissue from Package Builder (two-step: date/time → select source) -->
+<!-- Reissue from Package Builder -->
 <app-popup-projection
   [title]="'Reissue Permits'"
   [isOpen]="isReusePermitsPopupVisible"
@@ -620,7 +727,7 @@
 
 <!-- Reissue from WR context menu -->
 <app-popup-projection
-  [title]="'Reissue — Select Source Package'"
+  [title]="'Reissue - Select Source Package'"
   [isOpen]="isReissueFromWrOpen"
   [size]="'large'"
   (close)="isReissueFromWrOpen = false">

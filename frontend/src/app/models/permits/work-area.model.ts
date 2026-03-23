@@ -5,6 +5,7 @@ import { Column } from '../column.model';
 import { SwHazards } from './safe-work.model';
 import { HotWorkMeasures } from './hot-work.model';
 import { ConfinedSpaceHazards } from './confined-space.model';
+import { Option } from '../option.model';
 
 export interface WorkAreaModel extends BaseModel {
   description: string | null;
@@ -64,7 +65,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
     });
   }
 
-  static toFormFields(entity: WorkAreaDto): RfFormField[] {
+  static toFormFields(entity: WorkAreaDto, lotoStandardOptions: Option[] = []): RfFormField[] {
     return [
       {
         name: 'name',
@@ -86,6 +87,13 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
         categoryAlias: 'workAreaType',
         canManageValues: true,
         initialValue: entity.areaType?.id ?? null,
+      },
+      {
+        name: 'constantLotoIds',
+        label: 'LOTO Standards',
+        type: 'loto-standard-select',
+        options: lotoStandardOptions,
+        initialValue: entity.constantLotoIds ?? [],
       },
       ...WorkAreaDto.getHazardFields(entity.constantHazards),
       ...WorkAreaDto.getHotWorkMeasureFields(entity.constantHotWorkMeasures),

@@ -1,10 +1,12 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { RfPopupProjectionComponent } from '../../../shared/popup-projection/rf-popup-projection.component';
 import { WorkAreaStateService } from './services/work-area-state.service';
 import { WorkAreaMapperService } from './services/work-area-mapper.service';
 import { WorkAreaDto } from '../../../models/permits/work-area.model';
+import { Option } from '../../../models/option.model';
+import { RfLotoStandardApiService } from '../../loto-standard/refactored/services/rf-loto-standard-api.service';
 
 @Component({
   selector: 'app-work-area-page',
@@ -18,6 +20,9 @@ import { WorkAreaDto } from '../../../models/permits/work-area.model';
     <div class="work-area-page">
       <div class="page-toolbar">
         <button class="action-btn new-btn" (click)="onNew()">+ New Work Area</button>
+        <button class="action-btn secondary-btn" [disabled]="!stateService.selectedItem()" (click)="onCreateCounterpart()">
+          Create Counterpart
+        </button>
       </div>
 
       <div class="work-area-table">
@@ -93,6 +98,17 @@ import { WorkAreaDto } from '../../../models/permits/work-area.model';
       background: #1d4ed8;
     }
 
+    .secondary-btn {
+      background: #eef2ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+    }
+
+    .secondary-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .work-area-table {
       flex: 1;
       overflow: auto;
@@ -131,10 +147,12 @@ import { WorkAreaDto } from '../../../models/permits/work-area.model';
 export class WorkAreaPageComponent implements OnInit {
   stateService = inject(WorkAreaStateService);
   private mapperService = inject(WorkAreaMapperService);
+  private lotoStandardApi = inject(RfLotoStandardApiService);
+  lotoStandardOptions = signal<Option[]>([]);
 
   formFields = computed(() => {
     const item = this.stateService.selectedItem();
-    return this.mapperService.toFormFields(item ?? new WorkAreaDto());
+    return this.mapperService.toFormFields(item ?? new WorkAreaDto(), this.lotoStandardOptions());
   });
 
   formTitle = computed(() => {
@@ -144,10 +162,30 @@ export class WorkAreaPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.stateService.loadAll();
+    this.loadLotoStandards();
+  }
+
+  private loadLotoStandards(): void {
+    this.lotoStandardApi.getLotoStandards(1, 1000).subscribe({
+      next: (response) => {
+        const options = (response.responseData?.content ?? []).map((standard) => ({
+          value: standard.id,
+          label: standard.name || `Standard ${standard.id}`,
+        }));
+        this.lotoStandardOptions.set(options);
+      },
+      error: () => {
+        this.lotoStandardOptions.set([]);
+      }
+    });
   }
 
   onNew(): void {
     this.stateService.openNewForm();
+  }
+
+  onCreateCounterpart(): void {
+    this.stateService.openCounterpartForm();
   }
 
   onRowClick(item: WorkAreaDto): void {
@@ -170,6 +208,10 @@ export class WorkAreaPageComponent implements OnInit {
     if (formData.areaType && typeof formData.areaType === 'number') {
       dto.areaType = { id: formData.areaType, name: '' };
     }
+
+    dto.constantLotoIds = Array.isArray(formData.constantLotoIds)
+      ? formData.constantLotoIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
+      : [];
 
     this.stateService.submitForm(dto);
   }

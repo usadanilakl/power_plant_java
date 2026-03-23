@@ -279,6 +279,8 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       WorkRequestedBy: this.workRequestedBy,
       AffectedEquipment: this.affectedEquipment,
       WorkScope: this.workScope,
+      MainWorkScope: this.workCategoryName,
+      WorkAreaName: this.workAreaName,
       IsLOTORequired: this.isLOTORequired === 'Yes',
       IsHotWorkRequired: this.isHotWorkRequired === 'Yes',
       IsConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired === 'Yes',

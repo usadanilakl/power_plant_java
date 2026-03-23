@@ -31,6 +31,7 @@ export class AdminFunctionalitiesComponent {
     splitEquipment: false,
     assignAttributes: false,
     counterparts: false,
+    pwaSync: false,
     syncQueue: false,
     syncAction: false,
     spProvision: false
@@ -44,6 +45,7 @@ export class AdminFunctionalitiesComponent {
   counterpartResult: CounterpartAssociationResult | null = null;
   syncQueueStatus: SyncQueueStatus | null = null;
   syncActionMessage: string = '';
+  pwaSyncMessage: string = '';
   spListStatuses: SpListStatus[] = [];
   spProvisioningList: string = ''; // currently provisioning this list title
 
@@ -58,6 +60,7 @@ export class AdminFunctionalitiesComponent {
     splitEquipment: '',
     assignAttributes: '',
     counterparts: '',
+    pwaSync: '',
     syncQueue: '',
     spProvision: ''
   };
@@ -286,6 +289,34 @@ export class AdminFunctionalitiesComponent {
       error: (error) => {
         this.errors.syncQueue = error.error?.message || error.message || 'Failed';
         this.loading.syncAction = false;
+      }
+    });
+  }
+
+  // ==================== PWA Sync ====================
+
+  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories') {
+    const labels: Record<'all' | 'areas' | 'map' | 'categories', string> = {
+      all: 'all PWA work-request data',
+      areas: 'PWA work areas and shape links',
+      map: 'the PWA work-area map image',
+      categories: 'PWA work categories'
+    };
+
+    if (!confirm(`Queue a publish for ${labels[target]}?`)) return;
+
+    this.loading.pwaSync = true;
+    this.errors.pwaSync = '';
+    this.pwaSyncMessage = '';
+
+    this.adminService.publishPwaData(target).subscribe({
+      next: (response) => {
+        this.pwaSyncMessage = response.message || `Queued PWA sync for ${target}`;
+        this.loading.pwaSync = false;
+      },
+      error: (error) => {
+        this.errors.pwaSync = error.error?.message || error.message || 'Failed to queue PWA sync';
+        this.loading.pwaSync = false;
       }
     });
   }

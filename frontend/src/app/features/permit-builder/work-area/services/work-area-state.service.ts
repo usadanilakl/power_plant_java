@@ -62,6 +62,20 @@ export class WorkAreaStateService {
     this.formOpen.set(true);
   }
 
+  openCounterpartForm(): void {
+    const source = this.selectedItem();
+    if (!source) return;
+
+    this.selectedItem.set(new WorkAreaDto({
+      ...source,
+      id: 0,
+      name: this.transformCounterpartText(source.name),
+      description: this.transformCounterpartText(source.description ?? ''),
+      shapeId: null,
+    }));
+    this.formOpen.set(true);
+  }
+
   // --- Actions ---
 
   submitForm(dto: WorkAreaDto): void {
@@ -91,5 +105,28 @@ export class WorkAreaStateService {
         this.closeForm();
       },
     });
+  }
+
+  private transformCounterpartText(value: string): string {
+    if (!value) return value;
+
+    const replacements: Array<[RegExp, string]> = [
+      [/\bU1\b/g, '__UNIT_A__'],
+      [/\bU2\b/g, 'U1'],
+      [/__UNIT_A__/g, 'U2'],
+      [/\bUnit 1\b/g, '__UNIT_ONE__'],
+      [/\bUnit 2\b/g, 'Unit 1'],
+      [/__UNIT_ONE__/g, 'Unit 2'],
+      [/\bunit 1\b/g, '__unit_one__'],
+      [/\bunit 2\b/g, 'unit 1'],
+      [/__unit_one__/g, 'unit 2'],
+    ];
+
+    let transformed = value;
+    for (const [pattern, replacement] of replacements) {
+      transformed = transformed.replace(pattern, replacement);
+    }
+
+    return transformed === value ? `${value} Copy` : transformed;
   }
 }

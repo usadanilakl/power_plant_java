@@ -339,9 +339,30 @@
           </div>
         </div>
       </div>
-      <!-- 5. Sync Queue Monitoring & Control -->
+
+      <!-- 5. Sync Data to PWA -->
+      <div class="admin-section">
+        <h3>5. Sync Data to PWA</h3>
+        <p class="description">
+          Publish work-request static files to the GitHub-hosted PWA when Management-side changes are correct but the PWA is still showing stale work areas, map data, or work categories.
+        </p>
+
+        <div class="button-group">
+          <button class="action-btn" (click)="syncPwaData('all')" [disabled]="loading.pwaSync">
+            {{ loading.pwaSync ? 'Queueing...' : 'Sync All PWA Data' }}
+          </button>
+          <button (click)="syncPwaData('areas')" [disabled]="loading.pwaSync">Sync Work Areas</button>
+          <button (click)="syncPwaData('map')" [disabled]="loading.pwaSync">Sync Work Map</button>
+          <button (click)="syncPwaData('categories')" [disabled]="loading.pwaSync">Sync Work Categories</button>
+        </div>
+
+        <div class="error" *ngIf="errors.pwaSync">{{ errors.pwaSync }}</div>
+        <div class="success-msg" *ngIf="pwaSyncMessage">{{ pwaSyncMessage }}</div>
+      </div>
+
+      <!-- 6. Sync Queue Monitoring & Control -->
       <div class="admin-section sync-section">
-        <h3>5. Sync Queue Monitoring & Control</h3>
+        <h3>6. Sync Queue Monitoring & Control</h3>
         <p class="description">
           Monitor and manage the FieldChange sync queue. Changes are tracked here and pushed to other machines during sync.
         </p>
@@ -444,9 +465,9 @@
         </div>
       </div>
 
-      <!-- 6. SharePoint List Provisioning -->
+      <!-- 7. SharePoint List Provisioning -->
       <div class="admin-section">
-        <h3>6. SharePoint List Provisioning</h3>
+        <h3>7. SharePoint List Provisioning</h3>
         <p class="description">
           Manage SharePoint lists for all permit types. Each list shows its current status.
         </p>

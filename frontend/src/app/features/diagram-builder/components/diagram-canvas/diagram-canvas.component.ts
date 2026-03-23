@@ -17,7 +17,7 @@ import { DiagramPropertiesComponent } from '../diagram-properties/diagram-proper
 import { ZoomPanService } from '../../../../shared/image/refactored/services/zoom-pan.service';
 import { PIDSymbolsService, PIDSymbol } from '../../../../shared/image/refactored/services/pid-symbols.service';
 import { SymbolPaletteComponent } from '../../../../shared/image/refactored/symbol-palette/symbol-palette.component';
-import { AlignmentType, AnchorPoint, DiagramElement, DistributeType } from '../../models/diagram-shape.model';
+import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, DistributeType } from '../../models/diagram-shape.model';
 
 @Component({
   selector: 'app-diagram-canvas',
@@ -63,11 +63,9 @@ import { AlignmentType, AnchorPoint, DiagramElement, DistributeType } from '../.
           (wheel)="onWheel($event)"
           (contextmenu)="$event.preventDefault()">
 
-          <div class="canvas-transform" #canvasTransform>
-            <canvas #gridCanvas class="layer-canvas grid-canvas"></canvas>
-            <canvas #shapeCanvas class="layer-canvas shape-canvas"></canvas>
-            <canvas #tempCanvas class="layer-canvas temp-canvas"></canvas>
-          </div>
+          <canvas #gridCanvas class="layer-canvas grid-canvas"></canvas>
+          <canvas #shapeCanvas class="layer-canvas shape-canvas"></canvas>
+          <canvas #tempCanvas class="layer-canvas temp-canvas"></canvas>
         </div>
 
         @if (config.showProperties) {
@@ -116,10 +114,6 @@ import { AlignmentType, AnchorPoint, DiagramElement, DistributeType } from '../.
       position: relative;
       cursor: default;
     }
-    .canvas-transform {
-      position: relative;
-      transform-origin: 0 0;
-    }
     .layer-canvas {
       position: absolute;
       top: 0;
@@ -143,7 +137,6 @@ import { AlignmentType, AnchorPoint, DiagramElement, DistributeType } from '../.
 })
 export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('canvasContainer') canvasContainerRef!: ElementRef<HTMLDivElement>;
-  @ViewChild('canvasTransform') canvasTransformRef!: ElementRef<HTMLDivElement>;
   @ViewChild('gridCanvas') gridCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('shapeCanvas') shapeCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('tempCanvas') tempCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -172,7 +165,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   private isPanning = false;
   private isResizing = false;
   private resizeHandle: string | null = null;
-  private dragStartPositions = new Map<number, { x: number; y: number }>();
+  private dragStartShapes = new Map<number, DiagramElement>();
   private dragStartCanvas = { x: 0, y: 0 };
   private panStart = { x: 0, y: 0 };
   private resizeStartShape: DiagramElement | null = null;
@@ -244,6 +237,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!container) return;
 
     const { clientWidth, clientHeight } = container;
+    if (clientWidth === 0 || clientHeight === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
     const canvases = [
       this.gridCanvasRef?.nativeElement,
       this.shapeCanvasRef?.nativeElement,
@@ -252,10 +248,10 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     for (const canvas of canvases) {
       if (canvas) {
-        canvas.width = this.canvasWidth;
-        canvas.height = this.canvasHeight;
-        canvas.style.width = `${this.canvasWidth}px`;
-        canvas.style.height = `${this.canvasHeight}px`;
+        canvas.width = clientWidth * dpr;
+        canvas.height = clientHeight * dpr;
+        canvas.style.width = `${clientWidth}px`;
+        canvas.style.height = `${clientHeight}px`;
       }
     }
 
@@ -271,29 +267,35 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private render(): void {
-    // Apply transform
-    const transformEl = this.canvasTransformRef?.nativeElement;
-    if (transformEl) {
-      transformEl.style.transform =
-        `translate(${this.transform.pointX}px, ${this.transform.pointY}px) scale(${this.transform.scale})`;
-    }
+    const dpr = window.devicePixelRatio || 1;
+    const { scale, pointX, pointY } = this.transform;
+
+    // Helper: apply diagram-space transform to a canvas context
+    const applyTransform = (ctx: CanvasRenderingContext2D) => {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);          // reset to identity
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * pointX, dpr * pointY);
+    };
 
     // Grid
     const gridCtx = this.gridCanvasRef?.nativeElement?.getContext('2d');
     if (gridCtx) {
-      this.gridService.drawGrid(gridCtx, this.canvasWidth, this.canvasHeight, this.transform.scale);
+      applyTransform(gridCtx);
+      this.gridService.drawGrid(gridCtx, this.canvasWidth, this.canvasHeight, scale);
+      gridCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     // Shapes + connections
     const shapeCtx = this.shapeCanvasRef?.nativeElement?.getContext('2d');
     if (shapeCtx) {
+      applyTransform(shapeCtx);
       this.renderService.drawAll(
         shapeCtx,
         this.shapeManager.shapes(),
         this.shapeManager.connections(),
         this.shapeManager.selectedShapeIds(),
         this.hoveredShapeId,
-        this.transform.scale
+        scale
       );
 
       // Draw anchor points in connection mode
@@ -302,18 +304,20 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
           this.renderService.drawAnchorPoints(shapeCtx, shape, this.hoveredAnchor);
         }
       }
+      shapeCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     // Temp canvas (drawing preview)
     const tempCtx = this.tempCanvasRef?.nativeElement?.getContext('2d');
     if (tempCtx) {
-      tempCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+      applyTransform(tempCtx);
       if (this.drawingService.isDrawing()) {
         this.drawingService.drawPreview(tempCtx, this.canvasWidth, this.canvasHeight);
       }
       if (this.connectionService.isDrawingConnection()) {
         this.connectionService.drawPreview(tempCtx, this.canvasWidth, this.canvasHeight);
       }
+      tempCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }
 
@@ -328,8 +332,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   onMouseDown(event: MouseEvent): void {
-    if (event.button === 1 || (event.button === 0 && event.altKey)) {
-      // Middle click or Alt+click = pan
+    // Middle click, right click, or Alt+click = pan
+    if (event.button === 1 || event.button === 2 || (event.button === 0 && event.altKey)) {
+      event.preventDefault();
       this.isPanning = true;
       this.panStart = { x: event.clientX - this.transform.pointX, y: event.clientY - this.transform.pointY };
       return;
@@ -394,19 +399,22 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         if (this.config.canDragShapes) {
           this.isDragging = true;
           this.dragStartCanvas = coords;
-          this.dragStartPositions.clear();
+          this.dragStartShapes.clear();
           for (const s of this.shapeManager.selectedShapes()) {
-            this.dragStartPositions.set(s.id, { x: s.x, y: s.y });
+            this.dragStartShapes.set(s.id, { ...s } as DiagramElement);
           }
         }
       } else {
-        this.shapeManager.clearSelection();
+        // Click on empty area — start panning
+        this.isPanning = true;
+        this.panStart = { x: event.clientX - this.transform.pointX, y: event.clientY - this.transform.pointY };
       }
     }
   }
 
   onMouseMove(event: MouseEvent): void {
     if (this.isPanning) {
+      this.canvasContainerRef.nativeElement.style.cursor = 'grabbing';
       this.transform = {
         ...this.transform,
         pointX: event.clientX - this.panStart.x,
@@ -460,9 +468,22 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       const dx = coords.x - this.dragStartCanvas.x;
       const dy = coords.y - this.dragStartCanvas.y;
 
-      for (const [id, startPos] of this.dragStartPositions) {
-        const snapped = this.gridService.snapPosition(startPos.x + dx, startPos.y + dy);
-        this.shapeManager.updateShape(id, { x: snapped.x, y: snapped.y });
+      for (const [id, startShape] of this.dragStartShapes) {
+        const snapped = this.gridService.snapPosition(startShape.x + dx, startShape.y + dy);
+        const updates: Partial<DiagramElement> = { x: snapped.x, y: snapped.y };
+
+        // Lines need their endpoint coordinates moved too
+        if (startShape.type === 'line') {
+          const line = startShape as DiagramLineShape;
+          const snapDx = snapped.x - startShape.x;
+          const snapDy = snapped.y - startShape.y;
+          (updates as any).startX = line.startX + snapDx;
+          (updates as any).startY = line.startY + snapDy;
+          (updates as any).endX = line.endX + snapDx;
+          (updates as any).endY = line.endY + snapDy;
+        }
+
+        this.shapeManager.updateShape(id, updates);
       }
       this.requestRender();
       return;
@@ -516,7 +537,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     this.isResizing = false;
     this.resizeHandle = null;
     this.resizeStartShape = null;
-    this.dragStartPositions.clear();
+    this.dragStartShapes.clear();
   }
 
   onWheel(event: WheelEvent): void {
@@ -524,13 +545,20 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     event.preventDefault();
 
     const container = this.canvasContainerRef.nativeElement;
-    const containerRect = container.getBoundingClientRect();
-    // Use the canvas transform element's rect for zoom calculation
-    const transformRect = this.canvasTransformRef.nativeElement.getBoundingClientRect();
+    const rect = container.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
 
-    this.transform = this.zoomPanService.calculateZoom(
-      event, this.transform, containerRect, transformRect
-    );
+    const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(10, Math.max(0.1, this.transform.scale * zoomFactor));
+
+    // Zoom towards mouse position
+    const scaleChange = newScale / this.transform.scale;
+    this.transform = {
+      scale: newScale,
+      pointX: mouseX - scaleChange * (mouseX - this.transform.pointX),
+      pointY: mouseY - scaleChange * (mouseY - this.transform.pointY),
+    };
     this.requestRender();
   }
 
@@ -641,6 +669,6 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     const hit = this.renderService.hitTestShape(this.shapeManager.shapes(), coords.x, coords.y);
-    container.style.cursor = hit ? 'move' : 'default';
+    container.style.cursor = hit ? 'move' : 'grab';
   }
 }

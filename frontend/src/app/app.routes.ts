@@ -24,6 +24,7 @@ import { STANDALONE_ROUTES } from './routes/standalone.routes';
 import { LOG_ROUTES } from './routes/log.routes';
 import { INSTRUMENTATION_ROUTES } from './routes/instrumentation.routes';
 import { DIAGRAM_BUILDER_ROUTES } from './routes/diagram-builder.routes';
+import { VISUAL_PLANT_ROUTES } from './routes/visual-plant.routes';
 
 export const routes: Routes = [
   // Public routes
@@ -55,5 +56,6 @@ export const routes: Routes = [
   ...STANDALONE_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...LOG_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...INSTRUMENTATION_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
-  ...DIAGRAM_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
+  ...DIAGRAM_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...VISUAL_PLANT_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))
 ];

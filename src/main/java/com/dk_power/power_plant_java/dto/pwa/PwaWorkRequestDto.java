@@ -36,6 +36,7 @@ public class PwaWorkRequestDto {
     // Job auto-linking fields
     private String workCategoryName;    // Resolved to Value entity on backend
     private Long workAreaId;            // WorkArea entity ID
+    private String workAreaName;        // Denormalized area name for downstream integrations
 
     // Attachments (photos, signatures, documents)
     private List<PaAttachmentDto> attachments;

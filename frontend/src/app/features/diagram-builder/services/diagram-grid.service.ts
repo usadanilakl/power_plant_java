@@ -15,7 +15,6 @@ export class DiagramGridService {
     if (!this.gridVisible()) return;
 
     const size = this.gridSize();
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
 
     const dotRadius = Math.max(0.5, 1 / scale);

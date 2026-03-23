@@ -22,7 +22,6 @@ export class DiagramRenderService {
     hoveredId: number | null,
     scale: number
   ): void {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
 
     // Draw connections first (underneath shapes)

@@ -6,9 +6,9 @@
 .group-label {
   display: block;
   margin-bottom: 10px;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 1.1em;
-  color: #333;
+  color: var(--primary-text);
 }
 
 .options-container {
@@ -28,23 +28,25 @@
 .radio-group label {
   display: inline-block;
   padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9em;
+  color: var(--primary-text);
+  background: var(--card-background);
 }
 
 .radio-group input[type="radio"]:checked + label {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border-color: var(--accent-color);
 }
 
 .radio-group label:hover {
-  background-color: #e9ecef;
+  background-color: var(--hover-color);
 }
 
 .radio-group input[type="radio"]:checked + label:hover {
-  background-color: #0056b3;
+  background-color: var(--accent-color-hover);
 }

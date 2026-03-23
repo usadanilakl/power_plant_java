@@ -27,6 +27,7 @@ export interface FormField {
     | 'equipment-list-manager'
     | 'value-select'
     | 'multi-value-select'
+    | 'loto-standard-select'
     | 'work-area-select'
     | 'zero-energy-phrase-builder';
   validators?: ValidatorFn[];
@@ -128,6 +129,7 @@ export interface RfFormField {
     | 'equipment-shape-drawer'
     | 'equipment-list-manager'
     | 'zero-energy-phrase-builder'
+    | 'loto-standard-select'
     | 'work-area-select'
     | 'comment'
     | 'characteristics-editor'

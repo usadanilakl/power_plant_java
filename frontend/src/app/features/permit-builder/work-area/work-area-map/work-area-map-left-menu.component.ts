@@ -35,7 +35,15 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
         <div class="panel-section">
           <div class="section-header">
             <h3>Work Areas</h3>
-            <button class="icon-btn" title="New Work Area" (click)="state.openWorkAreaForm()">+</button>
+            <div class="header-actions">
+              <button
+                class="icon-btn"
+                title="Create counterpart from selected area"
+                [disabled]="!state.selectedWorkArea()"
+                (click)="state.openCounterpartForm()"
+              >⇄</button>
+              <button class="icon-btn" title="New Work Area" (click)="state.openWorkAreaForm()">+</button>
+            </div>
           </div>
           <div class="area-list">
             @for (area of state.workAreas(); track area.id) {
@@ -235,6 +243,8 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
     }
 
     .icon-btn:hover { background: #f3f4f6; }
+    .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .header-actions { display: flex; gap: 6px; }
 
     .helper-text { padding: 0 16px; font-size: 12px; color: #9ca3af; margin: 0 0 8px; }
 

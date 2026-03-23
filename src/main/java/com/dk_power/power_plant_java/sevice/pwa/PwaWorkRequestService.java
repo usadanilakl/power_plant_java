@@ -175,6 +175,12 @@ public class PwaWorkRequestService {
         spDto.setSubmitterPhone(dto.getSubmitterPhone());
         spDto.setSubmitterCompany(dto.getSubmitterCompany());
         spDto.setTimeSubmitted(dto.getTimeSubmitted());
+        spDto.setWorkCategoryName(dto.getWorkCategoryName());
+        if (dto.getWorkAreaId() != null) {
+            workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(workArea -> spDto.setWorkAreaName(workArea.getName()));
+        } else if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+            spDto.setWorkAreaName(dto.getWorkAreaName());
+        }
         return spDto;
     }
 
@@ -197,6 +203,8 @@ public class PwaWorkRequestService {
         // Resolve workArea from ID
         if (dto.getWorkAreaId() != null) {
             workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(entity::setWorkArea);
+        } else if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresent(entity::setWorkArea);
         }
 
         // Resolve workCategory from name
@@ -334,6 +342,21 @@ public class PwaWorkRequestService {
         entity.setIsLotoRequired(dto.getIsLotoRequired());
         entity.setIsHotWorkRequired(dto.getIsHotWorkRequired());
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
+        if (dto.getWorkAreaId() != null) {
+            workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(entity::setWorkArea);
+        } else if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresentOrElse(
+                    entity::setWorkArea,
+                    () -> entity.setWorkArea(null)
+            );
+        } else {
+            entity.setWorkArea(null);
+        }
+        if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
+            entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+        } else {
+            entity.setWorkCategory(null);
+        }
     }
 
     private PwaStatusResult toStatusResult(WorkRequest entity) {

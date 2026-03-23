@@ -187,4 +187,18 @@ public class NgAdminFunctionalitiesController {
                 .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/pwa-sync")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> publishPwaData(
+            @RequestParam(defaultValue = "all") String target) {
+        try {
+            Map<String, Object> result = adminFunctionalitiesService.publishPwaData(target);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "PWA sync queued"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error queuing PWA sync: " + e.getMessage()));
+        }
+    }
 }

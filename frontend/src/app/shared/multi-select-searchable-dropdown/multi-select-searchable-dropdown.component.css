@@ -1,28 +1,36 @@
 .multi-select-container {
-  font-family: Arial, sans-serif;
   width: 100%;
   margin-bottom: 20px;
 }
 
 .multi-select-container > label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--primary-text);
 }
 
 .selected-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
   margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--primary-background);
+  min-height: 44px;
 }
 
 .selected-option {
-  background-color: #e0e0e0;
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
   padding: 5px 10px;
-  border-radius: 15px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
+  font-size: 0.9em;
+  border: 1px solid var(--border-color);
 }
 
 .selected-option button {
@@ -30,4 +38,9 @@
   border: none;
   cursor: pointer;
   margin-left: 5px;
+  color: var(--secondary-text);
+}
+
+.selected-option button:hover {
+  color: var(--primary-text);
 }

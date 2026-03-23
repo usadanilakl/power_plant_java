@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
+import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointFieldMergeService;
@@ -27,6 +28,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     private final WorkRequestSharePointAdapter wrAdapter;
     private final WorkRequestRepo workRequestRepo;
     private final WorkRequestMapper workRequestMapper;
+    private final WorkAreaRepo workAreaRepo;
     private final NgValueService valueService;
     private final WorkRequestMergeService workRequestMergeService;
     private final PermitAttachmentSyncService permitAttachmentSyncService;
@@ -56,6 +58,8 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         Map.entry("submitterPhone", "SubmitterPhone"),
         Map.entry("submitterCompany", "SubmitterCompany"),
         Map.entry("timeSubmitted", "TimeSubmitted"),
+        Map.entry("workCategory", "MainWorkScope"),
+        Map.entry("workArea", "WorkAreaName"),
         Map.entry("localUuid", "PwaId")
     );
 
@@ -204,6 +208,8 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         values.put("SubmitterPhone", dto.getSubmitterPhone());
         values.put("SubmitterCompany", dto.getSubmitterCompany());
         values.put("TimeSubmitted", dto.getTimeSubmitted());
+        values.put("MainWorkScope", dto.getWorkCategoryName());
+        values.put("WorkAreaName", dto.getWorkAreaName());
         values.put("PwaId", dto.getLocalUuid());
         return values;
     }
@@ -235,6 +241,23 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         if (fields.contains("submitterCompany")) entity.setSubmitterCompany(dto.getSubmitterCompany());
         if (fields.contains("localUuid")) entity.setLocalUuid(dto.getLocalUuid());
         if (fields.contains("timeSubmitted")) entity.setTimeSubmitted(dto.getTimeSubmitted());
+        if (fields.contains("workCategory")) {
+            if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
+                entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+            } else {
+                entity.setWorkCategory(null);
+            }
+        }
+        if (fields.contains("workArea")) {
+            if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+                workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresentOrElse(
+                    entity::setWorkArea,
+                    () -> entity.setWorkArea(null)
+                );
+            } else {
+                entity.setWorkArea(null);
+            }
+        }
     }
 
     @Override

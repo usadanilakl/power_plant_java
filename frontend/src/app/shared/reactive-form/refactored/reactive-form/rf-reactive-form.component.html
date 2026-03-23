@@ -63,7 +63,7 @@
           [options]="getFieldOptions(field.options)"
           [label]="field.label"
           [formControl]="getFormControl(field.name)"
-          [categoryName]="field.name"
+          [categoryName]="field.categoryAlias ?? ''"
         ></app-searchable-multi-select-input>
         } @case('file'){
         <app-file-input
@@ -137,6 +137,13 @@
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-multi-value-select>
+        } @case('loto-standard-select'){
+        <app-loto-standard-select
+          [label]="field.label"
+          [options]="getFieldOptions(field.options)"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-loto-standard-select>
         } @case('work-area-select'){
         <app-work-area-select
           [label]="field.label"

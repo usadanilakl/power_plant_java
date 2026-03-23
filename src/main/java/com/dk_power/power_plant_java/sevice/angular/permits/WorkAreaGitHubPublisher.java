@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
+import org.kohsuke.github.HttpException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class WorkAreaGitHubPublisher {
+    public enum PublishTarget {
+        NONE,
+        AREAS,
+        MAP,
+        CATEGORIES,
+        ALL
+    }
+
     private final WorkAreaRepo workAreaRepo;
     private final WorkAreaMapShapeRepo shapeRepo;
     private final WorkAreaMapper workAreaMapper;
@@ -48,39 +57,64 @@ public class WorkAreaGitHubPublisher {
     private static final String PLANT_MAP_MARKER = "__PLANT_MAP__";
     private final AtomicBoolean publishInProgress = new AtomicBoolean(false);
     private final AtomicBoolean publishRequested = new AtomicBoolean(false);
+    private volatile PublishTarget pendingTarget = PublishTarget.NONE;
 
     @Async
     public void publishAll() {
+        requestPublish(PublishTarget.ALL);
+    }
+
+    @Async
+    public void publishAreas() {
+        requestPublish(PublishTarget.AREAS);
+    }
+
+    @Async
+    public void publishMap() {
+        requestPublish(PublishTarget.MAP);
+    }
+
+    @Async
+    public void publishCategories() {
+        requestPublish(PublishTarget.CATEGORIES);
+    }
+
+    private void requestPublish(PublishTarget target) {
+        mergePendingTarget(target);
         if (!publishInProgress.compareAndSet(false, true)) {
-            publishRequested.set(true);
-            log.info("[PWA Publisher] Publish already in progress, queueing a follow-up run");
+            log.info("[PWA Publisher] Publish already in progress, queueing a follow-up run for {}", pendingTarget);
             return;
         }
         try {
             do {
+                PublishTarget targetToPublish = pendingTarget;
+                pendingTarget = PublishTarget.NONE;
                 publishRequested.set(false);
 
                 // Write locally for dev builds
                 Path dataDir = Paths.get(pwaDataPath);
                 Files.createDirectories(dataDir);
 
-                String areasJson = buildAreasJson();
-                String shapesJson = buildShapesJson();
-                String categoriesJson = buildCategoriesJson();
-                byte[] imageBytes = readMapImage();
-
-                // Local writes
-                Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
-                Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
-                Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
-                if (imageBytes != null) {
-                    Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
-                            dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
+                if (shouldPublishAreas(targetToPublish)) {
+                    String areasJson = buildAreasJson();
+                    String shapesJson = buildShapesJson();
+                    writeAreasLocally(dataDir, areasJson, shapesJson);
+                    pushAreasToGitHub(areasJson, shapesJson);
                 }
-                log.info("[PWA Publisher] Local files written to {}", dataDir);
 
-                // Push to GitHub for live PWA
-                pushToGitHub(areasJson, shapesJson, categoriesJson, imageBytes);
+                if (shouldPublishCategories(targetToPublish)) {
+                    String categoriesJson = buildCategoriesJson();
+                    writeCategoriesLocally(dataDir, categoriesJson);
+                    pushCategoriesToGitHub(categoriesJson);
+                }
+
+                if (shouldPublishMap(targetToPublish)) {
+                    byte[] imageBytes = readMapImage();
+                    writeMapLocally(dataDir, imageBytes);
+                    pushMapToGitHub(imageBytes);
+                }
+
+                log.info("[PWA Publisher] Publish complete for {} to {}", targetToPublish, dataDir);
             } while (publishRequested.get());
 
         } catch (Exception e) {
@@ -88,6 +122,43 @@ public class WorkAreaGitHubPublisher {
         } finally {
             publishInProgress.set(false);
         }
+    }
+
+    private synchronized void mergePendingTarget(PublishTarget target) {
+        pendingTarget = combineTargets(pendingTarget, target);
+        publishRequested.set(true);
+    }
+
+    private PublishTarget combineTargets(PublishTarget current, PublishTarget requested) {
+        if (current == PublishTarget.NONE) {
+            return requested;
+        }
+        if (requested == PublishTarget.NONE) {
+            return current;
+        }
+        if (current == PublishTarget.ALL || requested == PublishTarget.ALL) {
+            return PublishTarget.ALL;
+        }
+        if (current == requested) {
+            return current;
+        }
+        if ((current == PublishTarget.AREAS && requested == PublishTarget.MAP) ||
+            (current == PublishTarget.MAP && requested == PublishTarget.AREAS)) {
+            return PublishTarget.AREAS;
+        }
+        return PublishTarget.ALL;
+    }
+
+    private boolean shouldPublishAreas(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.AREAS;
+    }
+
+    private boolean shouldPublishMap(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.MAP;
+    }
+
+    private boolean shouldPublishCategories(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.CATEGORIES;
     }
 
     private String buildAreasJson() throws IOException {
@@ -125,20 +196,55 @@ public class WorkAreaGitHubPublisher {
         return null;
     }
 
-    private void pushToGitHub(String areasJson, String shapesJson, String categoriesJson, byte[] imageBytes) {
+    private void writeAreasLocally(Path dataDir, String areasJson, String shapesJson) throws IOException {
+        Files.writeString(dataDir.resolve("work-areas.json"), areasJson);
+        Files.writeString(dataDir.resolve("work-area-shapes.json"), shapesJson);
+    }
+
+    private void writeCategoriesLocally(Path dataDir, String categoriesJson) throws IOException {
+        Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
+    }
+
+    private void writeMapLocally(Path dataDir, byte[] imageBytes) throws IOException {
+        if (imageBytes == null) {
+            return;
+        }
+        Files.copy(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg"),
+                dataDir.resolve("work-area-map-image.jpg"), StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    private void pushAreasToGitHub(String areasJson, String shapesJson) {
         try {
             GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
-
             pushTextFile(repo, "data/work-areas.json", areasJson);
             pushTextFile(repo, "data/work-area-shapes.json", shapesJson);
-            pushTextFile(repo, "data/work-categories.json", categoriesJson);
-            if (imageBytes != null) {
-                pushBinaryFile(repo, "data/work-area-map-image.jpg", imageBytes);
-            }
-
-            log.info("[PWA Publisher] GitHub repo {} updated", pwaGitHubRepo);
+            log.info("[PWA Publisher] GitHub repo {} updated for work areas", pwaGitHubRepo);
         } catch (Exception e) {
-            log.error("[PWA Publisher] GitHub push failed (local files still written): {}", e.getMessage());
+            log.error("[PWA Publisher] GitHub push failed for work areas (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushCategoriesToGitHub(String categoriesJson) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/work-categories.json", categoriesJson);
+            log.info("[PWA Publisher] GitHub repo {} updated for work categories", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for work categories (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushMapToGitHub(byte[] imageBytes) {
+        if (imageBytes == null) {
+            log.info("[PWA Publisher] No map image found, skipping GitHub map publish");
+            return;
+        }
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushBinaryFile(repo, "data/work-area-map-image.jpg", imageBytes);
+            log.info("[PWA Publisher] GitHub repo {} updated for work-area map", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for work-area map (local files still written): {}", e.getMessage(), e);
         }
     }
 
@@ -152,7 +258,10 @@ public class WorkAreaGitHubPublisher {
             GHContent existing = repo.getFileContent(path);
             existing.update(content, "Update " + path);
             log.info("[PWA Publisher] Updated {} on GitHub", path);
-        } catch (Exception e) {
+        } catch (HttpException e) {
+            if (e.getResponseCode() != 404) {
+                throw e;
+            }
             repo.createContent(content, "Create " + path, path);
             log.info("[PWA Publisher] Created {} on GitHub", path);
         }

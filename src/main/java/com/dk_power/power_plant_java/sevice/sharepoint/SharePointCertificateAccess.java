@@ -186,6 +186,24 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    public boolean fieldExists(String listTitle, String fieldName) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/fields/getbyinternalnameortitle('" + fieldName + "')";
+        try {
+            sendGetRequest(endpoint);
+            return true;
+        } catch (HttpClientErrorException.NotFound e) {
+            return false;
+        } catch (HttpClientErrorException.Unauthorized e) {
+            tokenExpirationTime = null;
+            try {
+                sendGetRequest(endpoint);
+                return true;
+            } catch (HttpClientErrorException.NotFound e2) {
+                return false;
+            }
+        }
+    }
+
     // ====================== Generic list methods (used by adapters) ======================
 
     public List<JsonNode> getListItems(String listTitle) {

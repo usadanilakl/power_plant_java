@@ -56,26 +56,19 @@ public class SharePointListProvisioner {
         }
 
         try {
-            if (spAccess.listExists(def.title)) {
-                result.put("success", true);
-                result.put("alreadyExisted", true);
-                result.put("message", "List already exists");
-                return result;
+            boolean alreadyExisted = spAccess.listExists(def.title);
+            if (!alreadyExisted) {
+                spAccess.createList(def.title);
             }
 
-            spAccess.createList(def.title);
-            List<String> addedFields = new ArrayList<>();
-            for (FieldDef field : def.fields) {
-                addField(def.title, field);
-                spAccess.addFieldToDefaultView(def.title, field.name);
-                addedFields.add(field.name);
-            }
+            List<String> addedFields = ensureFields(def);
 
-            log.info("[SP-Provision] Created list '{}' with {} fields (added to default view)", def.title, addedFields.size());
+            log.info("[SP-Provision] {} list '{}' with {} ensured fields",
+                    alreadyExisted ? "Updated" : "Created", def.title, addedFields.size());
             result.put("success", true);
-            result.put("alreadyExisted", false);
+            result.put("alreadyExisted", alreadyExisted);
             result.put("fieldsAdded", addedFields);
-            result.put("message", "Created with " + addedFields.size() + " fields");
+            result.put("message", (alreadyExisted ? "Updated" : "Created") + " with " + addedFields.size() + " new fields");
         } catch (Exception e) {
             log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
             result.put("success", false);
@@ -88,21 +81,19 @@ public class SharePointListProvisioner {
 
     public Map<String, Object> provisionAll() {
         List<String> created = new ArrayList<>();
-        List<String> skipped = new ArrayList<>();
+        List<String> updated = new ArrayList<>();
         Map<String, String> errors = new LinkedHashMap<>();
 
         for (ListDefinition def : getAllListDefinitions()) {
             try {
                 if (spAccess.listExists(def.title)) {
-                    log.info("[SP-Provision] List '{}' already exists, skipping", def.title);
-                    skipped.add(def.title);
+                    List<String> addedFields = ensureFields(def);
+                    log.info("[SP-Provision] Updated list '{}' with {} new fields", def.title, addedFields.size());
+                    updated.add(def.title);
                 } else {
                     spAccess.createList(def.title);
-                    for (FieldDef field : def.fields) {
-                        addField(def.title, field);
-                        spAccess.addFieldToDefaultView(def.title, field.name);
-                    }
-                    log.info("[SP-Provision] Created list '{}' with {} fields (added to default view)", def.title, def.fields.size());
+                    ensureFields(def);
+                    log.info("[SP-Provision] Created list '{}' with {} fields", def.title, def.fields.size());
                     created.add(def.title);
                 }
             } catch (Exception e) {
@@ -113,10 +104,10 @@ public class SharePointListProvisioner {
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("created", created);
-        summary.put("skipped", skipped);
+        summary.put("updated", updated);
         summary.put("errors", errors);
         summary.put("totalCreated", created.size());
-        summary.put("totalSkipped", skipped.size());
+        summary.put("totalUpdated", updated.size());
         summary.put("totalErrors", errors.size());
         return summary;
     }
@@ -149,6 +140,7 @@ public class SharePointListProvisioner {
                         bool("IsLOTORequired"), bool("IsHotWorkRequired"), bool("IsConfinedSpaceEntryRequired"),
                         text("ForemanName"), text("FireWatchName"), text("SpaceToBeEntered"),
                         text("Status"), text("SubmitterName"), text("SubmitterEmail"),
+                        text("MainWorkScope"), text("WorkAreaName"),
                         text("SubmitterPhone"), text("SubmitterCompany"), text("TimeSubmitted")),
 
                 list("JHA",
@@ -215,6 +207,19 @@ public class SharePointListProvisioner {
         } else {
             spAccess.addFieldToList(listTitle, field.name, field.typeKind);
         }
+    }
+
+    private List<String> ensureFields(ListDefinition def) {
+        List<String> addedFields = new ArrayList<>();
+        for (FieldDef field : def.fields) {
+            if (spAccess.fieldExists(def.title, field.name)) {
+                continue;
+            }
+            addField(def.title, field);
+            spAccess.addFieldToDefaultView(def.title, field.name);
+            addedFields.add(field.name);
+        }
+        return addedFields;
     }
 
     private static ListDefinition list(String title, FieldDef... fields) {

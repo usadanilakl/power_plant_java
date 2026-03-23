@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.repository.permits.JhaRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ public class WorkRequestMapper implements BaseMapper {
     private final PermitAttachmentRepo permitAttachmentRepo;
     private final WorkAreaMapper workAreaMapper;
     private final WorkAreaRepo workAreaRepo;
+    private final NgValueService valueService;
 
     public WorkRequestDto convertToDto(WorkRequest entity) {
         if (entity == null) return null;
@@ -43,6 +45,8 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setSpace(entity.getSpace());
         dto.setSharepointId(entity.getSharepointId());
         dto.setLocalUuid(entity.getLocalUuid());
+        dto.setWorkCategoryName(entity.getWorkCategory() != null ? entity.getWorkCategory().getName() : null);
+        dto.setWorkAreaName(entity.getWorkArea() != null ? entity.getWorkArea().getName() : null);
 
         return dto;
     }
@@ -66,6 +70,12 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
         entity.setSharepointId(dto.getSharepointId());
+        if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
+            entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+        }
+        if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresent(entity::setWorkArea);
+        }
 
         return entity;
     }
@@ -90,6 +100,13 @@ public class WorkRequestMapper implements BaseMapper {
         ngWorkRequestDto.setIsConfinedSpaceEntryRequired(workRequestDto.getIsConfinedSpaceEntryRequired());
         ngWorkRequestDto.setSpace(workRequestDto.getSpace());
         ngWorkRequestDto.setSharepointId(workRequestDto.getSharepointId());
+        if (workRequestDto.getWorkCategoryName() != null && !workRequestDto.getWorkCategoryName().isBlank()) {
+            ngWorkRequestDto.setWorkCategory(valueService.valueToDto(valueService.createValue("Work Category", workRequestDto.getWorkCategoryName())));
+        }
+        if (workRequestDto.getWorkAreaName() != null && !workRequestDto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(workRequestDto.getWorkAreaName())
+                .ifPresent(wa -> ngWorkRequestDto.setWorkArea(workAreaMapper.convertToDto(wa)));
+        }
 
         return ngWorkRequestDto;
     }
@@ -114,6 +131,8 @@ public class WorkRequestMapper implements BaseMapper {
         workRequestDto.setIsConfinedSpaceEntryRequired(ngWorkRequestDto.getIsConfinedSpaceEntryRequired()?"Yes":"No");
         workRequestDto.setSpace(ngWorkRequestDto.getSpace());
         workRequestDto.setSharepointId(ngWorkRequestDto.getSharepointId());
+        workRequestDto.setWorkCategoryName(ngWorkRequestDto.getWorkCategory() != null ? ngWorkRequestDto.getWorkCategory().getName() : null);
+        workRequestDto.setWorkAreaName(ngWorkRequestDto.getWorkArea() != null ? ngWorkRequestDto.getWorkArea().getName() : null);
 
         return workRequestDto;
     }
@@ -149,6 +168,9 @@ public class WorkRequestMapper implements BaseMapper {
         } else if (entity.getLocation() != null && !entity.getLocation().isEmpty()) {
             workAreaRepo.findFirstByNameIgnoreCase(entity.getLocation())
                 .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
+        }
+        if (entity.getWorkCategory() != null) {
+            dto.setWorkCategory(valueService.valueToDto(entity.getWorkCategory()));
         }
 
         return dto;
@@ -187,6 +209,11 @@ public class WorkRequestMapper implements BaseMapper {
         } else {
             entity.setWorkArea(null);
         }
+        if (dto.getWorkCategory() != null && dto.getWorkCategory().getName() != null) {
+            entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategory().getName()));
+        } else {
+            entity.setWorkCategory(null);
+        }
 
         return entity;
     }
@@ -219,6 +246,14 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setSubmitterEmail(spDto.getSubmitterEmail());
         entity.setSubmitterPhone(spDto.getSubmitterPhone());
         entity.setSubmitterCompany(spDto.getSubmitterCompany());
+        if (spDto.getWorkCategoryName() != null && !spDto.getWorkCategoryName().isBlank()) {
+            entity.setWorkCategory(valueService.createValue("Work Category", spDto.getWorkCategoryName()));
+        }
+        if (spDto.getWorkAreaName() != null && !spDto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(spDto.getWorkAreaName()).ifPresent(entity::setWorkArea);
+        } else if (spDto.getLocation() != null && !spDto.getLocation().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(spDto.getLocation()).ifPresent(entity::setWorkArea);
+        }
 
         return entity;
     }
@@ -261,6 +296,14 @@ public class WorkRequestMapper implements BaseMapper {
         }
         if (entity.getTimeSubmitted() == null && spDto.getTimeSubmitted() != null) {
             entity.setTimeSubmitted(spDto.getTimeSubmitted());
+        }
+        if (spDto.getWorkCategoryName() != null && !spDto.getWorkCategoryName().isBlank()) {
+            entity.setWorkCategory(valueService.createValue("Work Category", spDto.getWorkCategoryName()));
+        }
+        if (spDto.getWorkAreaName() != null && !spDto.getWorkAreaName().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(spDto.getWorkAreaName()).ifPresent(entity::setWorkArea);
+        } else if (spDto.getLocation() != null && !spDto.getLocation().isBlank()) {
+            workAreaRepo.findFirstByNameIgnoreCase(spDto.getLocation()).ifPresent(entity::setWorkArea);
         }
     }
 

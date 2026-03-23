@@ -69,17 +69,17 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/permit-builder/excavation-permits', label: 'Excavation' },
             { route: '/permit-builder/venting-permits', label: 'Venting/Purging' },
             { route: '/permit-builder/lotos', label: 'LOTO' },
-            { route: '/permit-builder/work-areas', label: 'Work Areas' },
-            { route: '/work-area-map', label: 'Work Map' },
             { route: '/scheduler', label: 'Scheduler' }
         ]
     },
     {
         label: 'Visual Plant',
         icon: 'schema',
-        defaultRoute: '/diagram-builder',
+        defaultRoute: '/visual-plant/work-areas',
         requiresFullAccess: true,
         items: [
+            { route: '/visual-plant/work-areas', label: 'Work Areas' },
+            { route: '/visual-plant/work-area-map', label: 'Work Map' },
             { route: '/diagram-builder/list', label: 'Schematics' },
             { route: '/form-designer/forms', label: 'Form Designer' },
             { route: '/form-designer/design', label: 'Form Design' },
@@ -164,9 +164,16 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Excavation', route: './excavation-permits' },
     { label: 'Venting/Purging', route: './venting-permits' },
     { label: 'LOTO', route: './lotos' },
-    { label: 'Work Areas', route: './work-areas' },
-    { label: 'Work Map', route: './work-area-map' },
+    { label: 'Scheduler', route: '/scheduler' },
+]
 
+export const VISUAL_PLANT_NAV_MENU_ITEMS = [
+    { label: 'Work Areas', route: '/visual-plant/work-areas' },
+    { label: 'Work Map', route: '/visual-plant/work-area-map' },
+    { label: 'Schematics', route: '/diagram-builder/list' },
+    { label: 'Form Designer', route: '/form-designer/forms' },
+    { label: 'Form Design', route: '/form-designer/design' },
+    { label: 'Form Preview', route: '/form-designer/preview' },
 ]
 
 export const FORM_DESIGNER_NAV_MENU_ITEMS = [

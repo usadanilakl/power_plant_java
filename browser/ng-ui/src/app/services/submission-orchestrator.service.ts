@@ -694,6 +694,7 @@ export class SubmissionOrchestratorService {
       timeSubmitted: ServerApiService.formatCentralTime(new Date()),
       workCategoryName: workRequest.workCategoryName || undefined,
       workAreaId: workRequest.workAreaId || undefined,
+      workAreaName: workRequest.workAreaName || undefined,
       attachments: []
     };
     const encoded = btoa(JSON.stringify(dto));

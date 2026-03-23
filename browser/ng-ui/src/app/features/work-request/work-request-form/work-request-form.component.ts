@@ -9,6 +9,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/reactive-form.component";
 import { UserSetupService } from '../../../services/user-setup.service';
 import { environment } from '../../../../environments/environment';
+import { ServerApiService } from '../../../services/server-api.service';
 
 @Component({
   selector: 'app-work-request-form',
@@ -22,6 +23,7 @@ export class WorkRequestFormComponent implements OnInit {
   workRequestStateService = inject(WorkRequestStateService);
   orchestrator = inject(SubmissionOrchestratorService);
   userSetupService = inject(UserSetupService);
+  serverApi = inject(ServerApiService);
   http = inject(HttpClient);
   destroyRef = inject(DestroyRef);
 
@@ -65,15 +67,27 @@ export class WorkRequestFormComponent implements OnInit {
       this.workCategoryOptions.set(JSON.parse(cachedCategories));
     }
 
-    // Load categories from static file (published via GitHub)
-    this.http.get<{ id: number; name: string }[]>('data/work-categories.json').subscribe({
+    this.serverApi.getWorkCategories().subscribe({
       next: categories => {
-        const options: Option[] = categories.map(c => ({ value: c.name, label: c.name }));
+        const options = this.toWorkCategoryOptions(categories);
         this.workCategoryOptions.set(options);
         localStorage.setItem('pwa_work_categories', JSON.stringify(options));
       },
-      error: () => console.warn('[PWA] Failed to load work-categories.json, using cached values')
+      error: () => {
+        this.http.get<{ id: number; name: string }[]>('data/work-categories.json').subscribe({
+          next: categories => {
+            const options = this.toWorkCategoryOptions(categories);
+            this.workCategoryOptions.set(options);
+            localStorage.setItem('pwa_work_categories', JSON.stringify(options));
+          },
+          error: () => console.warn('[PWA] Failed to load work categories from server and static json, using cached values')
+        });
+      }
     });
+  }
+
+  private toWorkCategoryOptions(categories: { id: number; name: string }[]): Option[] {
+    return categories.map(c => ({ value: c.name, label: c.name }));
   }
 
   emailFallbackData = this.workRequestStateService.emailFallbackData;

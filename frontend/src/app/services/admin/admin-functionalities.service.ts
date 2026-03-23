@@ -114,6 +114,12 @@ export interface SyncQueueActionResult {
   affected: number;
 }
 
+export interface PwaSyncActionResult {
+  success: boolean;
+  message: string;
+  target: string;
+}
+
 export interface SharePointProvisionResult {
   created: string[];
   skipped: string[];
@@ -243,6 +249,15 @@ export class AdminFunctionalitiesService {
     return this.http.post<SpringApiResponse<SyncQueueActionResult>>(
       `${this.apiUrl}/sync-queue/clear-all`,
       {}
+    );
+  }
+
+  publishPwaData(target: 'all' | 'areas' | 'map' | 'categories'): Observable<SpringApiResponse<PwaSyncActionResult>> {
+    const params = new HttpParams().set('target', target);
+    return this.http.post<SpringApiResponse<PwaSyncActionResult>>(
+      `${this.apiUrl}/pwa-sync`,
+      {},
+      { params }
     );
   }
 

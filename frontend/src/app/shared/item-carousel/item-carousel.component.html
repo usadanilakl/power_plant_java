@@ -26,13 +26,16 @@
   @if (items().length > 0) {
     <div class="carousel-container">
       <div class="carousel-header">
-        @if(title()){
-          <h3 class="carousel-title">{{ title() }}</h3>
-        }
-        <div class="carousel-controls">
-          <button (click)="previous()" [disabled]="items().length <= 1">Previous</button>
+        <div class="carousel-title-block">
+          @if(title()){
+            <h3 class="carousel-title">{{ title() }}</h3>
+          }
+          <span class="carousel-summary">{{ items().length }} total</span>
+        </div>
+        <div class="carousel-controls" aria-label="Carousel navigation">
+          <button class="carousel-nav-btn" (click)="previous()" [disabled]="items().length <= 1">Back</button>
           <span class="carousel-counter">{{ currentIndex() + 1 }} / {{ items().length }}</span>
-          <button (click)="next()" [disabled]="items().length <= 1">Next</button>
+          <button class="carousel-nav-btn" (click)="next()" [disabled]="items().length <= 1">Next</button>
         </div>
       </div>
       <div class="carousel-content">
@@ -41,9 +44,14 @@
         }
       </div>
     </div>
+  } @else {
+    <div class="carousel-empty-state">
+      <div class="carousel-empty-title">No {{ title() || 'items' }} yet</div>
+      <div class="carousel-empty-text">Create a blank permit or attach an existing one to get started.</div>
+    </div>
   }
   <div class="carousel-actions">
-    <button (click)="addItem()">{{'Add '+title()}}</button>
+    <button class="carousel-primary-action" (click)="addItem()">{{ items().length > 0 ? 'Attach or Create' : 'Create or Attach' }}</button>
     <ng-content></ng-content>
   </div>
 </div>

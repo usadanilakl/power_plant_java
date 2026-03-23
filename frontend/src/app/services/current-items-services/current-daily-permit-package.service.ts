@@ -89,6 +89,10 @@ export class CurrentDailyPermitPackageService {
         this.loadDailyPermitPackages();
     }
 
+    reloadDailyPermitPackages() {
+        this.loadDailyPermitPackages();
+    }
+
     private loadDailyPermitPackages() {
         this.dailyPermitPackageService.getDailyPermitPackages().pipe(
             takeUntilDestroyed(this.destroyRef)
@@ -265,9 +269,30 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
+    applyDateTimeToAllPermits(date: string, time: string) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+
+      this.dailyPermitPackageService.applyDateTimeToPackagePermits(pkg.id, date, time).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error applying package date/time:', err)
+      });
+    }
+
     private updatePackageInList(pkg: DailyPermitPackageDto) {
       const current = this.allActiveDailyPermitPackagesSubject.value;
-      const updated = current.map(p => p.id === pkg.id ? pkg : p);
+      const exists = current.some(p => p.id === pkg.id);
+      const updated = exists
+        ? current.map(p => p.id === pkg.id ? pkg : p)
+        : [pkg, ...current];
       this.allActiveDailyPermitPackagesSubject.next(updated);
     }
 
@@ -379,6 +404,89 @@ export class CurrentDailyPermitPackageService {
                 console.error('Failed to remove attachment from package:', err);
             }
         });
+    }
+
+    removePermitFromPackage(id: number, permitType: string) {
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+        if (!currentPackage?.id) {
+            console.error('No package selected.');
+            return;
+        }
+
+        if (typeof id !== 'number' || Number.isNaN(id)) {
+            console.warn(`Permit id is not available yet for ${permitType}; removing local unsaved item instead.`);
+            return;
+        }
+
+        this.dailyPermitPackageService.removePermitFromPackage(currentPackage.id, permitType, id).pipe(
+            takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+            next: response => {
+                const updatedPackage = new DailyPermitPackageDto(response.responseData);
+                this.updateDailyPermitPackageInList(updatedPackage);
+                this.setSelectedPackage(updatedPackage);
+            },
+            error: err => {
+                console.error('Failed to delete permit from package:', err);
+            }
+        });
+    }
+
+    removePermitFromPackageItem(item: any, permitType: string) {
+        const id = item?.id;
+        if (typeof id === 'number' && !Number.isNaN(id)) {
+            this.removePermitFromPackage(id, permitType);
+            return;
+        }
+
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+        if (!currentPackage) {
+            console.error('No package selected.');
+            return;
+        }
+
+        const updatedPackage = new DailyPermitPackageDto(currentPackage);
+
+        switch (permitType) {
+            case 'workRequests':
+                updatedPackage.workRequests = updatedPackage.workRequests.filter(entry => entry !== item);
+                updatedPackage.workRequestIds = updatedPackage.workRequests.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'safeWorks':
+                updatedPackage.safeWorks = updatedPackage.safeWorks.filter(entry => entry !== item);
+                updatedPackage.safeWorkIds = updatedPackage.safeWorks.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'hotWorks':
+                updatedPackage.hotWorks = updatedPackage.hotWorks.filter(entry => entry !== item);
+                updatedPackage.hotWorkIds = updatedPackage.hotWorks.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'confinedSpaces':
+                updatedPackage.confinedSpaces = updatedPackage.confinedSpaces.filter(entry => entry !== item);
+                updatedPackage.confinedSpaceIds = updatedPackage.confinedSpaces.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'lotos':
+                updatedPackage.lotos = updatedPackage.lotos.filter(entry => entry !== item);
+                updatedPackage.lotoIds = updatedPackage.lotos.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'energizedWorkPermits':
+                updatedPackage.energizedWorkPermits = updatedPackage.energizedWorkPermits.filter(entry => entry !== item);
+                updatedPackage.energizedWorkPermitIds = updatedPackage.energizedWorkPermits.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'excavationPermits':
+                updatedPackage.excavationPermits = updatedPackage.excavationPermits.filter(entry => entry !== item);
+                updatedPackage.excavationPermitIds = updatedPackage.excavationPermits.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            case 'ventingPermits':
+                updatedPackage.ventingPermits = updatedPackage.ventingPermits.filter(entry => entry !== item);
+                updatedPackage.ventingPermitIds = updatedPackage.ventingPermits.map(entry => entry.id).filter((entryId): entryId is number => typeof entryId === 'number');
+                break;
+            default:
+                console.error('Invalid permit type:', permitType);
+                return;
+        }
+
+        this.updateDailyPermitPackageInList(updatedPackage);
+        this.setSelectedPackage(updatedPackage);
     }
 
 

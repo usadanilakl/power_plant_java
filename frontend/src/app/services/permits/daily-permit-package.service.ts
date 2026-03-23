@@ -33,6 +33,13 @@ export class DailyPermitPackageService {
   deleteDailyPermitPackage(id: number): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
+
+  removePermitFromPackage(packageId: number, permitType: string, permitId: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.delete<SpringApiResponse<DailyPermitPackageDto>>(
+      `${this.apiUrl}/${packageId}/permits/${permitType}/${permitId}`
+    );
+  }
+
   buildPermits(dailtyPermitPackage: DailyPermitPackageDto): Observable<SpringApiResponse<String>> {
     return this.http.post<SpringApiResponse<String>>(`${this.apiUrl}/build-permits`, dailtyPermitPackage);
   }
@@ -62,5 +69,16 @@ export class DailyPermitPackageService {
 
   closePackage(id: number, closureData?: Record<string, any>): Observable<SpringApiResponse<DailyPermitPackageDto>> {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/close`, closureData ?? {});
+  }
+
+  applyDateTimeToPackagePermits(
+    id: number,
+    date: string,
+    time: string
+  ): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(
+      `${this.apiUrl}/${id}/apply-date-time`,
+      { date, time }
+    );
   }
 }

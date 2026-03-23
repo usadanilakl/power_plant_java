@@ -1,0 +1,72 @@
+<div class="loto-standard-select">
+  <label class="field-label">{{ label() }}</label>
+
+  <button
+    type="button"
+    class="trigger"
+    [disabled]="isDisabled()"
+    (click)="toggleOpen()"
+  >
+    <span class="trigger-text">{{ triggerText() }}</span>
+    <span class="trigger-caret">{{ isOpen() ? '▲' : '▼' }}</span>
+  </button>
+
+  @if (selectedOptions().length) {
+    <div class="selected-list">
+      @for (option of selectedOptions(); track option.value) {
+        <button type="button" class="selected-chip" (click)="removeOption(+option.value)">
+          <span>{{ option.label }}</span>
+          <span class="chip-close">x</span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (isOpen()) {
+    <div class="panel">
+      <div class="panel-header">
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Search standards..."
+          [value]="searchTerm()"
+          (input)="onSearch($any($event.target).value)"
+        />
+        <button type="button" class="done-btn" (click)="closePanel()">Done</button>
+      </div>
+
+      @if (selectedOptions().length) {
+        <div class="section-title">Selected</div>
+        <div class="selected-panel-list">
+          @for (option of selectedOptions(); track option.value) {
+            <button type="button" class="selected-row" (click)="removeOption(+option.value)">
+              <span>{{ option.label }}</span>
+              <span class="selected-row-action">Remove</span>
+            </button>
+          }
+        </div>
+      }
+
+      <div class="section-title">Available Standards</div>
+      <div class="options-list">
+        @if (options().length === 0) {
+          <div class="empty-state">No LOTO standards are available yet</div>
+        } @else if (filteredOptions().length === 0) {
+          <div class="empty-state">No matching standards</div>
+        } @else {
+          @for (option of filteredOptions(); track option.value) {
+            <button
+              type="button"
+              class="option-item"
+              [class.option-item-selected]="isSelected(option.value)"
+              (click)="toggleOption(option)"
+            >
+              <span class="option-check">{{ isSelected(option.value) ? '✓' : '' }}</span>
+              <span class="option-label">{{ option.label }}</span>
+            </button>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

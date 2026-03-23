@@ -22,8 +22,6 @@ import { LotoPermitComponent } from '../features/permit-builder/loto/loto-permit
 import { LotoPermitSideMenuComponent } from '../features/permit-builder/loto/loto-side-menu/loto-permit-side-menu.component';
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
-import { WorkAreaPageComponent } from '../features/permit-builder/work-area/work-area-page.component';
-import { WorkAreaMapPageComponent } from '../pages/work-area-map-page/work-area-map-page.component';
 import { LotoBoardComponent } from '../features/permit-builder/loto-board/loto-board.component';
 
 export const PERMIT_BUILDER_ROUTES: Routes = [
@@ -93,12 +91,7 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         component: LotoPermitComponent,
         data: { leftMenu: LotoPermitSideMenuComponent }
       },
-      { path: 'work-areas', component: WorkAreaPageComponent },
       { path: 'loto-board', component: LotoBoardComponent },
     ]
-  },
-  {
-    path: 'work-area-map',
-    component: WorkAreaMapPageComponent
   }
 ];
