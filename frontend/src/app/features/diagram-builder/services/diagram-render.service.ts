@@ -119,6 +119,10 @@ export class DiagramRenderService {
     ctx.strokeStyle = shape.color || '#ffffff';
     ctx.lineWidth = shape.lineWidth || 2;
     ctx.beginPath();
+    // Use startX/startY/endX/endY directly — rotation is already applied
+    // via ctx.rotate() in the parent drawShape() method, which rotates around
+    // the bounding box center. Since the line endpoints are absolute coords
+    // within that bounding box, they rotate correctly.
     ctx.moveTo(shape.startX, shape.startY);
     ctx.lineTo(shape.endX, shape.endY);
     ctx.stroke();

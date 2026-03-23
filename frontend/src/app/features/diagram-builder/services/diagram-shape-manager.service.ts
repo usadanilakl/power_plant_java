@@ -1,6 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { DiagramConnection, DiagramElement } from '../models/diagram-shape.model';
 
+let groupCounter = 0;
+
 @Injectable()
 export class DiagramShapeManagerService {
   private _shapes = signal<DiagramElement[]>([]);
@@ -24,6 +26,8 @@ export class DiagramShapeManagerService {
   });
 
   readonly hasSelection = computed(() => this._selectedShapeIds().size > 0);
+
+  readonly selectionCount = computed(() => this._selectedShapeIds().size);
 
   // --- Shape CRUD ---
 
@@ -67,6 +71,7 @@ export class DiagramShapeManagerService {
 
   deleteSelectedShapes(): void {
     const ids = this._selectedShapeIds();
+    if (ids.size === 0) return;
     this._shapes.update(shapes => shapes.filter(s => !ids.has(s.id)));
     this._connections.update(conns =>
       conns.filter(c => !ids.has(c.sourceShapeId) && !ids.has(c.targetShapeId))
@@ -99,36 +104,71 @@ export class DiagramShapeManagerService {
   // --- Selection ---
 
   selectShape(id: number, exclusive = true): void {
+    const shape = this.getShapeById(id);
+    if (!shape) return;
+
+    // If shape is in a group, select all group members
+    const groupIds = shape.groupId
+      ? this._shapes().filter(s => s.groupId === shape.groupId).map(s => s.id)
+      : [id];
+
     if (exclusive) {
-      this._selectedShapeIds.set(new Set([id]));
+      this._selectedShapeIds.set(new Set(groupIds));
     } else {
       this._selectedShapeIds.update(ids => {
         const next = new Set(ids);
-        next.add(id);
+        for (const gid of groupIds) next.add(gid);
         return next;
       });
     }
   }
 
   deselectShape(id: number): void {
+    const shape = this.getShapeById(id);
+    const groupIds = shape?.groupId
+      ? this._shapes().filter(s => s.groupId === shape.groupId).map(s => s.id)
+      : [id];
+
     this._selectedShapeIds.update(ids => {
       const next = new Set(ids);
-      next.delete(id);
+      for (const gid of groupIds) next.delete(gid);
       return next;
     });
   }
 
   toggleShapeSelection(id: number): void {
-    this._selectedShapeIds.update(ids => {
-      const next = new Set(ids);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    if (this.isSelected(id)) {
+      this.deselectShape(id);
+    } else {
+      this.selectShape(id, false);
+    }
   }
 
   selectMultiple(ids: number[]): void {
     this._selectedShapeIds.set(new Set(ids));
+  }
+
+  selectShapesInRect(x1: number, y1: number, x2: number, y2: number): void {
+    const left = Math.min(x1, x2);
+    const top = Math.min(y1, y2);
+    const right = Math.max(x1, x2);
+    const bottom = Math.max(y1, y2);
+
+    const hitIds = new Set<number>();
+    for (const s of this._shapes()) {
+      // Shape intersects rect if any part overlaps
+      if (s.x + s.width >= left && s.x <= right &&
+          s.y + s.height >= top && s.y <= bottom) {
+        hitIds.add(s.id);
+        // Also select group members
+        if (s.groupId) {
+          for (const gs of this._shapes()) {
+            if (gs.groupId === s.groupId) hitIds.add(gs.id);
+          }
+        }
+      }
+    }
+    this._selectedShapeIds.set(hitIds);
   }
 
   clearSelection(): void {
@@ -137,5 +177,34 @@ export class DiagramShapeManagerService {
 
   isSelected(id: number): boolean {
     return this._selectedShapeIds().has(id);
+  }
+
+  // --- Grouping ---
+
+  groupSelected(): string | null {
+    const selected = this.selectedShapes();
+    if (selected.length < 2) return null;
+
+    const groupId = `group-${++groupCounter}-${Date.now()}`;
+    this._shapes.update(shapes =>
+      shapes.map(s => this._selectedShapeIds().has(s.id)
+        ? { ...s, groupId } as DiagramElement
+        : s
+      )
+    );
+    return groupId;
+  }
+
+  ungroupSelected(): void {
+    this._shapes.update(shapes =>
+      shapes.map(s => this._selectedShapeIds().has(s.id)
+        ? { ...s, groupId: undefined } as DiagramElement
+        : s
+      )
+    );
+  }
+
+  hasGroupInSelection(): boolean {
+    return this.selectedShapes().some(s => !!s.groupId);
   }
 }

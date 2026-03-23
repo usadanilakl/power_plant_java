@@ -1,16 +1,31 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { WorkAreaMapStateService } from './work-area-map-state.service';
 import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/work-area.model';
+import { LotoStandardService } from '../../../../services/loto/loto-standard.service';
+import { Option } from '../../../../models/option.model';
+import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
+import { NestedItem } from '../../../../models/ui/nested-item.model';
+import { WorkAreaNavTableComponent } from './work-area-nav-table.component';
+import { WorkAreaContextMenuService } from '../services/work-area-context-menu.service';
+import { WorkAreaGroupingCriteria, WorkAreaLeftMenuService } from '../services/work-area-left-menu.service';
 
 @Component({
   selector: 'app-work-area-map-left-menu',
   standalone: true,
-  imports: [CommonModule, RfPopupProjectionComponent, RfReactiveFormComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    RfPopupProjectionComponent,
+    RfReactiveFormComponent,
+    RfToggleMenuComponent,
+    WorkAreaNavTableComponent
+  ],
+  providers: [WorkAreaContextMenuService],
   template: `
-    <!-- Mode Tabs -->
     <div class="mode-tabs">
       <button
         class="mode-tab"
@@ -29,7 +44,42 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
       >Overview</button>
     </div>
 
-    <!-- Left Panel Content -->
+    <div class="display-mode-bar">
+      <div class="display-mode-toggle">
+        <button
+          class="display-mode-btn"
+          [class.active]="currentDisplayMode() === 'toggle-menu'"
+          (click)="setDisplayMode('toggle-menu')"
+          title="Grouped menu view"
+        >
+          <mat-icon>account_tree</mat-icon>
+        </button>
+        <button
+          class="display-mode-btn"
+          [class.active]="currentDisplayMode() === 'table'"
+          (click)="setDisplayMode('table')"
+          title="Table view"
+        >
+          <mat-icon>view_list</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="grouping-bar">
+      <span class="grouping-label">Group by</span>
+      <div class="grouping-buttons">
+        @for (option of groupingOptions; track option.value) {
+          <button
+            class="grouping-btn"
+            [class.active]="selectedGrouping() === option.value"
+            (click)="onGroupingChange(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </div>
+
     @switch (state.mode()) {
       @case ('dev') {
         <div class="panel-section">
@@ -41,28 +91,30 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
                 title="Create counterpart from selected area"
                 [disabled]="!state.selectedWorkArea()"
                 (click)="state.openCounterpartForm()"
-              >⇄</button>
+              >
+                <mat-icon>swap_horiz</mat-icon>
+              </button>
               <button class="icon-btn" title="New Work Area" (click)="state.openWorkAreaForm()">+</button>
             </div>
           </div>
-          <div class="area-list">
-            @for (area of state.workAreas(); track area.id) {
-              <div
-                class="area-item"
-                [class.selected]="state.selectedWorkArea()?.id === area.id"
-                (click)="onWorkAreaClick(area)"
-                (dblclick)="state.openWorkAreaForm(area)"
-              >
-                <div class="area-info">
-                  <span class="area-name">{{ area.name }}</span>
-                  <span class="area-type">{{ area.areaType?.name }}</span>
-                </div>
-                @if (area.shapeId) {
-                  <span class="shape-badge" title="Has map shape">&#9632;</span>
-                }
-              </div>
-            }
-          </div>
+
+          @if (currentDisplayMode() === 'toggle-menu') {
+            <app-rf-toggle-menu
+              [menuItems]="groupedWorkAreaItems()"
+              [searchPlaceholder]="'Search work areas...'"
+              (itemClick)="onMenuItemClick($event)"
+              (itemDblClick)="onMenuItemDoubleClick($event)"
+              (itemRightClick)="onMenuItemRightClick($event)"
+            ></app-rf-toggle-menu>
+          } @else {
+            <app-work-area-nav-table
+              [tableId]="'work-area-dev-table'"
+              [items]="tableItems()"
+              [columns]="devTableColumns()"
+              (itemSelected)="onTableSelection($event)"
+              (itemDoubleClicked)="onTableDoubleClick($event)"
+            ></app-work-area-nav-table>
+          }
         </div>
 
         @if (state.selectedShapeId()) {
@@ -104,18 +156,24 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
             <h3>Select Work Area</h3>
           </div>
           <p class="helper-text">Click a shape on the map to select a work area.</p>
-          <div class="area-list">
-            @for (area of state.workAreas(); track area.id) {
-              <div
-                class="area-item"
-                [class.selected]="state.selectedWorkArea()?.id === area.id"
-                (click)="onWorkAreaClick(area)"
-              >
-                <span class="area-name">{{ area.name }}</span>
-                <span class="area-type">{{ area.areaType?.name }}</span>
-              </div>
-            }
-          </div>
+
+          @if (currentDisplayMode() === 'toggle-menu') {
+            <app-rf-toggle-menu
+              [menuItems]="groupedWorkAreaItems()"
+              [searchPlaceholder]="'Search work areas...'"
+              (itemClick)="onMenuItemClick($event)"
+              (itemDblClick)="onMenuItemDoubleClick($event)"
+              (itemRightClick)="onMenuItemRightClick($event)"
+            ></app-rf-toggle-menu>
+          } @else {
+            <app-work-area-nav-table
+              [tableId]="'work-area-operator-table'"
+              [items]="tableItems()"
+              [columns]="devTableColumns()"
+              (itemSelected)="onTableSelection($event)"
+              (itemDoubleClicked)="onTableDoubleClick($event)"
+            ></app-work-area-nav-table>
+          }
         </div>
       }
 
@@ -127,39 +185,26 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
           @if (state.isLoading()) {
             <p class="helper-text">Loading permit counts...</p>
           } @else {
-            <div class="area-list">
-              @for (pc of state.permitCounts(); track pc.workArea?.id) {
-                <div
-                  class="area-item overview-item"
-                  [class.selected]="state.selectedWorkArea()?.id === pc.workArea?.id"
-                  (click)="onPermitCountClick(pc)"
-                >
-                  <div class="area-info">
-                    <span class="area-name">{{ pc.workArea?.name }}</span>
-                  </div>
-                  <div class="permit-counts">
-                    @if (pc.safeWorkCount > 0) {
-                      <span class="count-badge sw" title="Safe Work permits">SW: {{ pc.safeWorkCount }}</span>
-                    }
-                    @if (pc.hotWorkCount > 0) {
-                      <span class="count-badge hw" title="Hot Work permits">HW: {{ pc.hotWorkCount }}</span>
-                    }
-                    @if (pc.confinedSpaceCount > 0) {
-                      <span class="count-badge cs" title="Confined Space permits">CS: {{ pc.confinedSpaceCount }}</span>
-                    }
-                    @if (pc.safeWorkCount === 0 && pc.hotWorkCount === 0 && pc.confinedSpaceCount === 0) {
-                      <span class="count-badge none">None</span>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
+            @if (currentDisplayMode() === 'toggle-menu') {
+              <app-rf-toggle-menu
+                [menuItems]="overviewMenuItems()"
+                [searchPlaceholder]="'Search permit activity...'"
+                (itemClick)="onMenuItemClick($event)"
+                (itemRightClick)="onMenuItemRightClick($event)"
+              ></app-rf-toggle-menu>
+            } @else {
+              <app-work-area-nav-table
+                [tableId]="'work-area-overview-table'"
+                [items]="overviewTableItems()"
+                [columns]="overviewTableColumns()"
+                (itemSelected)="onOverviewTableSelection($event)"
+              ></app-work-area-nav-table>
+            }
           }
         </div>
       }
     }
 
-    <!-- Work Area Form Popup -->
     <app-rf-popup-projection
       [isOpen]="state.formOpen()"
       [fullHeight]="true"
@@ -210,6 +255,87 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
       margin-bottom: -2px;
     }
 
+    .display-mode-bar {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+      flex-shrink: 0;
+    }
+
+    .grouping-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+      flex-shrink: 0;
+    }
+
+    .grouping-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--secondary-text, #6b7280);
+    }
+
+    .grouping-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .grouping-btn {
+      padding: 6px 10px;
+      border: 1px solid var(--border-color, #d1d5db);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--primary-text, #374151);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+
+    .grouping-btn.active {
+      background: var(--primary-color, #2196F3);
+      border-color: var(--primary-color, #2196F3);
+      color: white;
+    }
+
+    .display-mode-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--secondary-background, #f5f5f5);
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    .display-mode-btn {
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-text, #333);
+    }
+
+    .display-mode-btn.active {
+      background: var(--primary-color, #2196F3);
+      color: white;
+    }
+
+    .display-mode-btn mat-icon,
+    .icon-btn mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
     .panel-section {
       display: flex;
       flex-direction: column;
@@ -235,10 +361,15 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
     .section-header h3 { margin: 0; font-size: 14px; font-weight: 600; color: #1f2937; }
 
     .icon-btn {
-      width: 28px; height: 28px;
-      border: 1px solid #d1d5db; border-radius: 4px;
-      background: white; cursor: pointer;
-      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: #374151;
     }
 
@@ -248,57 +379,101 @@ import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/wo
 
     .helper-text { padding: 0 16px; font-size: 12px; color: #9ca3af; margin: 0 0 8px; }
 
-    .area-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
-
-    .area-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; margin-bottom: 2px; border-radius: 6px;
-      cursor: pointer; transition: background 0.15s; font-size: 13px;
-    }
-
-    .area-item:hover { background: rgba(0, 0, 0, 0.04); }
-    .area-item.selected { background: #dbeafe; }
-
-    .area-info { display: flex; flex-direction: column; gap: 2px; }
-    .area-name { font-weight: 500; color: #1f2937; }
-    .area-type { font-size: 11px; color: #9ca3af; }
-    .shape-badge { color: #3b82f6; font-size: 10px; }
-
     .assignment-info { padding: 0 16px 16px; }
     .assignment-label { font-size: 12px; color: #6b7280; margin: 0 0 8px; }
 
     .assigned-area {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 10px; background: #eff6ff; border-radius: 4px;
-      margin-bottom: 4px; font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: #eff6ff;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
     }
 
     .remove-btn {
-      background: none; border: none; cursor: pointer;
-      color: #ef4444; font-size: 16px; padding: 0 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #ef4444;
+      font-size: 16px;
+      padding: 0 4px;
     }
 
     .assign-select {
-      width: 100%; padding: 6px 8px;
-      border: 1px solid #d1d5db; border-radius: 4px;
-      font-size: 13px; margin-top: 8px;
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-top: 8px;
     }
 
-    .overview-item { flex-direction: column; align-items: flex-start; gap: 4px; }
-    .permit-counts { display: flex; gap: 6px; flex-wrap: wrap; }
-    .count-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
-    .count-badge.sw { background: #dbeafe; color: #1d4ed8; }
-    .count-badge.hw { background: #fee2e2; color: #b91c1c; }
-    .count-badge.cs { background: #fef3c7; color: #92400e; }
-    .count-badge.none { background: #f3f4f6; color: #9ca3af; }
+    app-rf-toggle-menu,
+    app-work-area-nav-table {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
   `],
 })
-export class WorkAreaMapLeftMenuComponent {
+export class WorkAreaMapLeftMenuComponent implements OnInit {
+  initialDisplayMode = input<'table' | 'toggle-menu'>('toggle-menu');
   state = inject(WorkAreaMapStateService);
+  private lotoStandardService = inject(LotoStandardService);
+  private contextMenuService = inject(WorkAreaContextMenuService);
+  private leftMenuService = inject(WorkAreaLeftMenuService);
+  lotoStandardOptions = signal<Option[]>([]);
+  currentDisplayMode = signal<'table' | 'toggle-menu'>('toggle-menu');
+  selectedGrouping = signal<WorkAreaGroupingCriteria>('areaType');
+  groupingOptions = this.leftMenuService.groupingOptions;
+
+  ngOnInit(): void {
+    this.currentDisplayMode.set(this.initialDisplayMode());
+    this.loadLotoStandards();
+  }
+
+  devTableColumns = computed(() => WorkAreaDto.toTableColumns());
+  tableItems = computed(() =>
+    this.leftMenuService.sortWorkAreasForTable(
+      this.state.workAreas(),
+      this.selectedGrouping(),
+      this.state.permitCounts()
+    )
+  );
+  overviewItems = computed(() =>
+    this.leftMenuService.sortOverviewItems(this.state.permitCounts(), this.selectedGrouping())
+  );
+  overviewTableItems = computed(() => this.overviewItems());
+  overviewTableColumns = computed(() => [
+    ...WorkAreaDto.toTableColumns(),
+    {
+      id: 'safeWorkCount',
+      header: 'SW',
+      accessorFn: (item: WorkAreaDto) => this.getPermitCountForArea(item.id).safeWorkCount.toString(),
+    },
+    {
+      id: 'hotWorkCount',
+      header: 'HW',
+      accessorFn: (item: WorkAreaDto) => this.getPermitCountForArea(item.id).hotWorkCount.toString(),
+    },
+    {
+      id: 'confinedSpaceCount',
+      header: 'CS',
+      accessorFn: (item: WorkAreaDto) => this.getPermitCountForArea(item.id).confinedSpaceCount.toString(),
+    }
+  ]);
+  groupedWorkAreaItems = computed(() => this.buildGroupedWorkAreaItems());
+  overviewMenuItems = computed(() => this.buildOverviewMenuItems());
 
   workAreaFormFields = computed(() => {
     const editing = this.state.editingWorkArea();
-    return WorkAreaDto.toFormFields(editing ?? new WorkAreaDto());
+    return WorkAreaDto.toFormFields(editing ?? new WorkAreaDto(), this.lotoStandardOptions());
   });
 
   workAreaFormTitle = computed(() => {
@@ -316,6 +491,69 @@ export class WorkAreaMapLeftMenuComponent {
   onPermitCountClick(pc: WorkAreaPermitCounts): void {
     if (pc.workArea) {
       this.onWorkAreaClick(pc.workArea as WorkAreaDto);
+    }
+  }
+
+  onTableSelection(area: WorkAreaDto | null): void {
+    if (area) {
+      this.onWorkAreaClick(area);
+    }
+  }
+
+  onTableDoubleClick(area: WorkAreaDto): void {
+    this.onWorkAreaClick(area);
+    if (this.state.mode() === 'dev') {
+      this.state.openWorkAreaForm(area);
+    }
+  }
+
+  onOverviewTableSelection(area: WorkAreaDto | null): void {
+    if (area) {
+      this.onWorkAreaClick(area);
+    }
+  }
+
+  onMenuItemClick(item: NestedItem): void {
+    if (item.objectType !== 'WorkArea') {
+      return;
+    }
+    const area = this.state.workAreas().find(workArea => workArea.id === Number(item.id));
+    if (area) {
+      this.onWorkAreaClick(area);
+    }
+  }
+
+  onMenuItemDoubleClick(item: NestedItem): void {
+    if (item.objectType !== 'WorkArea') {
+      return;
+    }
+    const area = this.state.workAreas().find(workArea => workArea.id === Number(item.id));
+    if (area) {
+      this.onWorkAreaClick(area);
+      if (this.state.mode() === 'dev') {
+        this.state.openWorkAreaForm(area);
+      }
+    }
+  }
+
+  onMenuItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+    if (event.item.objectType !== 'WorkArea') {
+      return;
+    }
+
+    const area = this.state.workAreas().find(workArea => workArea.id === Number(event.item.id));
+    if (!area) {
+      return;
+    }
+
+    this.contextMenuService.showContextMenu(area, event.event);
+    this.contextMenuService.positionContextMenu(event.event, 220, 220);
+  }
+
+  onGroupingChange(groupBy: WorkAreaGroupingCriteria): void {
+    this.selectedGrouping.set(groupBy);
+    if (groupBy === 'permitActivity' && this.state.permitCounts().length === 0) {
+      this.state.loadPermitCounts();
     }
   }
 
@@ -342,15 +580,85 @@ export class WorkAreaMapLeftMenuComponent {
     if (formData.areaType && typeof formData.areaType === 'number') {
       dto.areaType = { id: formData.areaType, name: '' };
     }
+    dto.constantLotoIds = Array.isArray(formData.constantLotoIds)
+      ? formData.constantLotoIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
+      : [];
     this.state.saveWorkArea(dto);
   }
 
   onWorkAreaFormDelete(): void {
     const editing = this.state.editingWorkArea();
-    if (editing?.id) {
-      if (confirm('Delete this work area?')) {
-        this.state.deleteWorkArea(editing.id);
-      }
+    if (editing?.id && confirm('Delete this work area?')) {
+      this.state.deleteWorkArea(editing.id);
     }
+  }
+
+  setDisplayMode(mode: 'table' | 'toggle-menu'): void {
+    this.currentDisplayMode.set(mode);
+  }
+
+  private loadLotoStandards(): void {
+    this.lotoStandardService.getAllLotoStandards().subscribe({
+      next: (response) => {
+        const options = (response.responseData ?? []).map((standard) => ({
+          value: standard.id,
+          label: standard.name || `Standard ${standard.id}`,
+        }));
+        this.lotoStandardOptions.set(options);
+      },
+      error: () => {
+        this.lotoStandardOptions.set([]);
+      }
+    });
+  }
+
+  private buildGroupedWorkAreaItems(): NestedItem[] {
+    return this.leftMenuService.buildGroupedWorkAreaItems(
+      this.state.workAreas(),
+      this.state.mode(),
+      this.selectedGrouping(),
+      this.state.permitCounts()
+    );
+  }
+
+  private buildOverviewMenuItems(): NestedItem[] {
+    return this.leftMenuService.buildOverviewMenuItems(
+      this.state.permitCounts(),
+      this.selectedGrouping()
+    );
+  }
+
+  private getWorkAreaSubtitle(area: WorkAreaDto): string {
+    const parts: string[] = [];
+    if (area.areaType?.name) {
+      parts.push(area.areaType.name);
+    }
+    parts.push(area.shapeId ? 'Mapped' : 'Unmapped');
+    return parts.join(' • ');
+  }
+
+  private getOverviewSubtitle(pc: WorkAreaPermitCounts): string {
+    const parts: string[] = [];
+    if (pc.safeWorkCount > 0) parts.push(`SW ${pc.safeWorkCount}`);
+    if (pc.hotWorkCount > 0) parts.push(`HW ${pc.hotWorkCount}`);
+    if (pc.confinedSpaceCount > 0) parts.push(`CS ${pc.confinedSpaceCount}`);
+    return parts.length > 0 ? parts.join(' • ') : 'No active permits';
+  }
+
+  private getOverviewColor(pc: WorkAreaPermitCounts): string {
+    const total = pc.safeWorkCount + pc.hotWorkCount + pc.confinedSpaceCount;
+    if (total > 5) return '#ef4444';
+    if (total > 2) return '#f59e0b';
+    if (total > 0) return '#22c55e';
+    return '#94a3b8';
+  }
+
+  private getPermitCountForArea(workAreaId: number): { safeWorkCount: number; hotWorkCount: number; confinedSpaceCount: number } {
+    const found = this.state.permitCounts().find(pc => pc.workArea?.id === workAreaId);
+    return {
+      safeWorkCount: found?.safeWorkCount ?? 0,
+      hotWorkCount: found?.hotWorkCount ?? 0,
+      confinedSpaceCount: found?.confinedSpaceCount ?? 0,
+    };
   }
 }

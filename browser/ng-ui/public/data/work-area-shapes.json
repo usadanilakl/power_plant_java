@@ -1,1 +1,17 @@
-[ ]
+[ {
+  "id" : 2000023255,
+  "deleted" : false,
+  "isVerified" : false,
+  "name" : null,
+  "note" : null,
+  "createdBy" : null,
+  "objectType" : null,
+  "dataServiceItemId" : null,
+  "refactorNotes" : null,
+  "dateCreated" : [ 2026, 3, 23, 6, 58, 27, 762609000 ],
+  "dateModified" : [ 2026, 3, 23, 6, 58, 27, 762609000 ],
+  "coordinates" : "{startX:3755.3077567256814,startY:4058.714199077505,endX:3978.7471384659448,endY:4345.174944898355,width:223.43938174026334,height:286.46074582084975,rotation:0}",
+  "originalPictureSize" : "width:12813,height:9213",
+  "label" : "",
+  "workAreaIds" : [ ]
+} ]

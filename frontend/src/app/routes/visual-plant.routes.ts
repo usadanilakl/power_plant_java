@@ -1,15 +1,16 @@
 import { Routes } from '@angular/router';
-import { WorkAreaPageComponent } from '../features/permit-builder/work-area/work-area-page.component';
 import { WorkAreaMapPageComponent } from '../pages/work-area-map-page/work-area-map-page.component';
 
 export const VISUAL_PLANT_ROUTES: Routes = [
   {
     path: 'visual-plant/work-areas',
-    component: WorkAreaPageComponent
+    component: WorkAreaMapPageComponent,
+    data: { leftPanelMode: 'table' }
   },
   {
     path: 'visual-plant/work-area-map',
-    component: WorkAreaMapPageComponent
+    component: WorkAreaMapPageComponent,
+    data: { leftPanelMode: 'toggle-menu' }
   },
   {
     path: 'permit-builder/work-areas',

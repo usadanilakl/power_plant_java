@@ -41,6 +41,8 @@ import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, Distribut
           (onAlign)="onAlign($event)"
           (onDistribute)="onDistribute($event)"
           (onDelete)="deleteSelected()"
+          (onGroup)="groupSelected()"
+          (onUngroup)="ungroupSelected()"
           (onZoomIn)="zoomIn()"
           (onZoomOut)="zoomOut()"
           (onZoomFit)="zoomFit()"
@@ -164,12 +166,18 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   private isDragging = false;
   private isPanning = false;
   private isResizing = false;
+  private isRotating = false;
+  private isMarqueeSelecting = false;
   private resizeHandle: string | null = null;
+  private rotateStartAngle = 0;
+  private rotateStartRotation = 0;
   private dragStartShapes = new Map<number, DiagramElement>();
   private dragStartCanvas = { x: 0, y: 0 };
   private panStart = { x: 0, y: 0 };
   private resizeStartShape: DiagramElement | null = null;
   private resizeStartCanvas = { x: 0, y: 0 };
+  private marqueeStart = { x: 0, y: 0 };
+  private marqueeEnd = { x: 0, y: 0 };
   private animFrameId = 0;
   protected Math = Math;
 
@@ -307,7 +315,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       shapeCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    // Temp canvas (drawing preview)
+    // Temp canvas (drawing preview + marquee)
     const tempCtx = this.tempCanvasRef?.nativeElement?.getContext('2d');
     if (tempCtx) {
       applyTransform(tempCtx);
@@ -316,6 +324,19 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       }
       if (this.connectionService.isDrawingConnection()) {
         this.connectionService.drawPreview(tempCtx, this.canvasWidth, this.canvasHeight);
+      }
+      if (this.isMarqueeSelecting) {
+        const x = Math.min(this.marqueeStart.x, this.marqueeEnd.x);
+        const y = Math.min(this.marqueeStart.y, this.marqueeEnd.y);
+        const w = Math.abs(this.marqueeEnd.x - this.marqueeStart.x);
+        const h = Math.abs(this.marqueeEnd.y - this.marqueeStart.y);
+        tempCtx.strokeStyle = 'rgba(33, 150, 243, 0.8)';
+        tempCtx.fillStyle = 'rgba(33, 150, 243, 0.08)';
+        tempCtx.lineWidth = 1 / scale;
+        tempCtx.setLineDash([4 / scale, 4 / scale]);
+        tempCtx.fillRect(x, y, w, h);
+        tempCtx.strokeRect(x, y, w, h);
+        tempCtx.setLineDash([]);
       }
       tempCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
@@ -358,6 +379,10 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         } else {
           this.connectionService.startConnection(anchor);
         }
+      } else {
+        // Clicked empty area — cancel any in-progress connection
+        this.connectionService.cancelConnection();
+        this.requestRender();
       }
       return;
     }
@@ -370,13 +395,18 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     // Select mode
     if (tool === 'select' && this.config.canSelectShapes) {
-      // Check resize handles on selected shape
+      // Check resize/rotate handles on selected shape
       const singleSelected = this.shapeManager.singleSelectedShape();
       if (singleSelected && this.config.canResizeShapes) {
         const handle = this.renderService.hitTestHandle(singleSelected, coords.x, coords.y, this.transform.scale);
         if (handle) {
           if (handle === 'rotate') {
-            // TODO: rotation drag
+            this.isRotating = true;
+            this.resizeStartShape = { ...singleSelected };
+            const cx = singleSelected.x + singleSelected.width / 2;
+            const cy = singleSelected.y + singleSelected.height / 2;
+            this.rotateStartAngle = Math.atan2(coords.y - cy, coords.x - cx);
+            this.rotateStartRotation = singleSelected.rotation || 0;
           } else {
             this.isResizing = true;
             this.resizeHandle = handle;
@@ -395,7 +425,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         } else if (!this.shapeManager.isSelected(hitShape.id)) {
           this.shapeManager.selectShape(hitShape.id);
         }
-
+        // Always allow drag after selection (supports Ctrl multi-select then drag)
         if (this.config.canDragShapes) {
           this.isDragging = true;
           this.dragStartCanvas = coords;
@@ -405,9 +435,15 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
           }
         }
       } else {
-        // Click on empty area — start panning
-        this.isPanning = true;
-        this.panStart = { x: event.clientX - this.transform.pointX, y: event.clientY - this.transform.pointY };
+        // Empty area — start marquee selection (or pan if Space is held)
+        {
+          if (!event.ctrlKey) {
+            this.shapeManager.clearSelection();
+          }
+          this.isMarqueeSelecting = true;
+          this.marqueeStart = coords;
+          this.marqueeEnd = coords;
+        }
       }
     }
   }
@@ -441,24 +477,74 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
+    // Rotating
+    if (this.isRotating && this.resizeStartShape) {
+      const s = this.resizeStartShape;
+      const cx = s.x + s.width / 2;
+      const cy = s.y + s.height / 2;
+      const currentAngle = Math.atan2(coords.y - cy, coords.x - cx);
+      const deltaAngle = (currentAngle - this.rotateStartAngle) * (180 / Math.PI);
+      let newRotation = this.rotateStartRotation + deltaAngle;
+      // Snap to 15-degree increments when shift is held
+      if (event.shiftKey) {
+        newRotation = Math.round(newRotation / 15) * 15;
+      }
+      this.shapeManager.updateShape(s.id, { rotation: newRotation });
+      this.requestRender();
+      return;
+    }
+
     // Resizing
     if (this.isResizing && this.resizeStartShape) {
       const dx = coords.x - this.resizeStartCanvas.x;
       const dy = coords.y - this.resizeStartCanvas.y;
       const s = this.resizeStartShape;
-      let newX = s.x, newY = s.y, newW = s.width, newH = s.height;
 
-      if (this.resizeHandle?.includes('e')) { newW = Math.max(10, s.width + dx); }
-      if (this.resizeHandle?.includes('w')) { newX = s.x + dx; newW = Math.max(10, s.width - dx); }
-      if (this.resizeHandle?.includes('s')) { newH = Math.max(10, s.height + dy); }
-      if (this.resizeHandle?.includes('n')) { newY = s.y + dy; newH = Math.max(10, s.height - dy); }
+      // For lines, directly move the endpoint the handle is closest to
+      if (s.type === 'line') {
+        const line = s as DiagramLineShape;
+        const updates: any = {};
 
-      const snapped = this.gridService.snapPosition(newX, newY);
-      this.shapeManager.updateShape(s.id, {
-        x: snapped.x, y: snapped.y,
-        width: this.gridService.snapDimension(newW),
-        height: this.gridService.snapDimension(newH),
-      });
+        // Determine which endpoint to move based on which handle was grabbed
+        const handle = this.resizeHandle || '';
+        // nw/n/ne handles → move start point; sw/s/se handles → move end point
+        // w handle → move start; e handle → move end
+        const movingStart = handle.includes('nw') || handle === 'n-resize' || handle === 'w-resize' || handle === 'ne-resize';
+
+        if (movingStart) {
+          updates.startX = line.startX + dx;
+          updates.startY = line.startY + dy;
+        } else {
+          updates.endX = line.endX + dx;
+          updates.endY = line.endY + dy;
+        }
+
+        // Recompute bounding box from endpoints
+        const sx = updates.startX ?? line.startX;
+        const sy = updates.startY ?? line.startY;
+        const ex = updates.endX ?? line.endX;
+        const ey = updates.endY ?? line.endY;
+        updates.x = Math.min(sx, ex);
+        updates.y = Math.min(sy, ey);
+        updates.width = Math.max(1, Math.abs(ex - sx));
+        updates.height = Math.max(1, Math.abs(ey - sy));
+
+        this.shapeManager.updateShape(s.id, updates);
+      } else {
+        let newX = s.x, newY = s.y, newW = s.width, newH = s.height;
+
+        if (this.resizeHandle?.includes('e')) { newW = Math.max(10, s.width + dx); }
+        if (this.resizeHandle?.includes('w')) { newX = s.x + dx; newW = Math.max(10, s.width - dx); }
+        if (this.resizeHandle?.includes('s')) { newH = Math.max(10, s.height + dy); }
+        if (this.resizeHandle?.includes('n')) { newY = s.y + dy; newH = Math.max(10, s.height - dy); }
+
+        const snapped = this.gridService.snapPosition(newX, newY);
+        this.shapeManager.updateShape(s.id, {
+          x: snapped.x, y: snapped.y,
+          width: this.gridService.snapDimension(newW),
+          height: this.gridService.snapDimension(newH),
+        });
+      }
       this.requestRender();
       return;
     }
@@ -485,6 +571,17 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
         this.shapeManager.updateShape(id, updates);
       }
+      this.requestRender();
+      return;
+    }
+
+    // Marquee selection
+    if (this.isMarqueeSelecting) {
+      this.marqueeEnd = coords;
+      this.shapeManager.selectShapesInRect(
+        this.marqueeStart.x, this.marqueeStart.y,
+        this.marqueeEnd.x, this.marqueeEnd.y
+      );
       this.requestRender();
       return;
     }
@@ -517,6 +614,13 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
+    // Finish marquee selection
+    if (this.isMarqueeSelecting) {
+      this.isMarqueeSelecting = false;
+      this.requestRender();
+      return;
+    }
+
     // Finish drawing
     if (this.drawingService.isDrawing()) {
       const shape = this.drawingService.finishDrawing();
@@ -529,12 +633,13 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
-    if (this.isDragging || this.isResizing) {
+    if (this.isDragging || this.isResizing || this.isRotating) {
       this.stateService.markDirty();
     }
 
     this.isDragging = false;
     this.isResizing = false;
+    this.isRotating = false;
     this.resizeHandle = null;
     this.resizeStartShape = null;
     this.dragStartShapes.clear();
@@ -564,14 +669,38 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Delete' && this.config.canDeleteShapes) {
+    // Delete selected
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.config.canDeleteShapes) {
       this.deleteSelected();
     }
+
+    // Escape — cancel operations
     if (event.key === 'Escape') {
       this.drawingService.cancelDrawing();
       this.connectionService.cancelConnection();
+      this.isMarqueeSelecting = false;
       this.drawingService.setTool('select');
+      this.shapeManager.clearSelection();
       this.requestRender();
+    }
+
+    // Ctrl+A — select all
+    if (event.ctrlKey && event.key === 'a') {
+      event.preventDefault();
+      this.shapeManager.selectMultiple(this.shapeManager.shapes().map(s => s.id));
+      this.requestRender();
+    }
+
+    // Ctrl+G — group selected
+    if (event.ctrlKey && !event.shiftKey && event.key === 'g') {
+      event.preventDefault();
+      this.groupSelected();
+    }
+
+    // Ctrl+Shift+G — ungroup selected
+    if (event.ctrlKey && event.shiftKey && event.key === 'G') {
+      event.preventDefault();
+      this.ungroupSelected();
     }
 
     // Arrow key movement
@@ -587,7 +716,15 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       if (dx || dy) {
         event.preventDefault();
         for (const shape of this.shapeManager.selectedShapes()) {
-          this.shapeManager.updateShape(shape.id, { x: shape.x + dx, y: shape.y + dy });
+          const updates: Partial<DiagramElement> = { x: shape.x + dx, y: shape.y + dy };
+          if (shape.type === 'line') {
+            const line = shape as DiagramLineShape;
+            (updates as any).startX = line.startX + dx;
+            (updates as any).startY = line.startY + dy;
+            (updates as any).endX = line.endX + dx;
+            (updates as any).endY = line.endY + dy;
+          }
+          this.shapeManager.updateShape(shape.id, updates);
         }
         this.stateService.markDirty();
         this.requestRender();
@@ -613,6 +750,20 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
   deleteSelected(): void {
     this.shapeManager.deleteSelectedShapes();
+    this.stateService.markDirty();
+    this.requestRender();
+  }
+
+  groupSelected(): void {
+    const groupId = this.shapeManager.groupSelected();
+    if (groupId) {
+      this.stateService.markDirty();
+      this.requestRender();
+    }
+  }
+
+  ungroupSelected(): void {
+    this.shapeManager.ungroupSelected();
     this.stateService.markDirty();
     this.requestRender();
   }

@@ -12,6 +12,7 @@ export interface DiagramBaseShape {
   zIndex?: number;
   locked?: boolean;
   label?: string;
+  groupId?: string;
 }
 
 export interface DiagramRectangleShape extends DiagramBaseShape {

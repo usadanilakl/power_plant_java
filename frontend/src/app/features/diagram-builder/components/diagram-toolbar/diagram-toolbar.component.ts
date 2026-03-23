@@ -74,11 +74,24 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
         </div>
       </div>
 
+      <!-- Group -->
+      <div class="tool-group">
+        <span class="group-label">Group</span>
+        <div class="tool-buttons">
+          <button class="tool-btn" title="Group (Ctrl+G)"
+            [disabled]="shapeManager.selectionCount() < 2"
+            (click)="onGroup.emit()">⊞</button>
+          <button class="tool-btn" title="Ungroup (Ctrl+Shift+G)"
+            [disabled]="!shapeManager.hasGroupInSelection()"
+            (click)="onUngroup.emit()">⊟</button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="tool-group">
         <span class="group-label">Actions</span>
         <div class="tool-buttons">
-          <button class="tool-btn danger" title="Delete Selected"
+          <button class="tool-btn danger" title="Delete Selected (Del)"
             [disabled]="!shapeManager.hasSelection()"
             (click)="onDelete.emit()">✕</button>
         </div>
@@ -150,6 +163,8 @@ export class DiagramToolbarComponent {
   onAlign = output<AlignmentType>();
   onDistribute = output<DistributeType>();
   onDelete = output<void>();
+  onGroup = output<void>();
+  onUngroup = output<void>();
   onZoomIn = output<void>();
   onZoomOut = output<void>();
   onZoomFit = output<void>();

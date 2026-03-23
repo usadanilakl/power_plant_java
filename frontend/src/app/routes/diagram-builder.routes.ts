@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
+import { DiagramBuilderPageComponent } from '../features/diagram-builder/diagram-builder-page.component';
 
 export const DIAGRAM_BUILDER_ROUTES: Routes = [
   {
     path: 'diagram-builder',
+    component: DiagramBuilderPageComponent,
     children: [
       { path: '', redirectTo: 'list', pathMatch: 'full' },
       {

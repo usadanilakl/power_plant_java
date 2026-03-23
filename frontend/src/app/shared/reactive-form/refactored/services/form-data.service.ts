@@ -70,8 +70,8 @@ export class FormDataService {
   isSignal(item: any): boolean {
     return (
       item &&
-      typeof item.asReadonly === 'function' &&
-      typeof item() === 'function'
+      typeof item === 'function' &&
+      typeof item.asReadonly === 'function'
     );
   }
 
