@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Service for distributing resource packs (engraver_data, qa-data, etc.)
+ * Service for distributing legacy resource packs such as qa-data
  * to field devices. Admin places directories under the configured base path;
  * clients fetch manifests and download individual files.
  * Only active when sync.role=hub.
@@ -27,6 +27,8 @@ import java.util.stream.Stream;
 @ConditionalOnProperty(name = "sync.role", havingValue = "hub")
 @Slf4j
 public class HubResourcePackService {
+
+    private static final Set<String> EXCLUDED_PACKS = Set.of("engraver_data");
 
     @Value("${resource-packs.base-path:${user.dir}/resource-packs}")
     private String basePath;
@@ -53,6 +55,7 @@ public class HubResourcePackService {
             return dirs
                 .filter(Files::isDirectory)
                 .map(p -> p.getFileName().toString())
+                .filter(name -> !EXCLUDED_PACKS.contains(name))
                 .sorted()
                 .toList();
         } catch (IOException e) {
@@ -62,6 +65,10 @@ public class HubResourcePackService {
     }
 
     public Optional<List<PackFileEntry>> getManifest(String packName) {
+        if (EXCLUDED_PACKS.contains(packName)) {
+            return Optional.empty();
+        }
+
         Path packDir = baseDir.resolve(packName).normalize();
         if (!packDir.startsWith(baseDir) || !Files.isDirectory(packDir)) {
             return Optional.empty();
@@ -97,6 +104,10 @@ public class HubResourcePackService {
     }
 
     public Optional<Path> getFilePath(String packName, String relativePath) {
+        if (EXCLUDED_PACKS.contains(packName)) {
+            return Optional.empty();
+        }
+
         Path packDir = baseDir.resolve(packName).normalize();
         if (!packDir.startsWith(baseDir)) return Optional.empty();
 

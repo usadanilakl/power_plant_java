@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
-import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.permits.WorkAreaDto;
 import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
@@ -11,23 +10,14 @@ import com.dk_power.power_plant_java.mappers.permits.WorkAreaMapper;
 import com.dk_power.power_plant_java.repository.permits.*;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.hub.HubFileService;
+import com.dk_power.power_plant_java.sevice.sync.ManagedEntityFileSyncService;
 import com.dk_power.power_plant_java.util.PdfConverter;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,16 +41,12 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
     private final HotWorkRepo hotWorkRepo;
     private final ConfinedSpaceRepo confinedSpaceRepo;
     private final WorkAreaGitHubPublisher gitHubPublisher;
-    private final SyncConfig syncConfig;
-    private final RestTemplate restTemplate;
+    private final ManagedEntityFileSyncService managedEntityFileSyncService;
 
     @org.springframework.beans.factory.annotation.Value("${files.root.path}")
     private String filesRootPath;
     @org.springframework.beans.factory.annotation.Value("${files.relative.path}")
     private String filesRelativePath;
-
-    @Autowired(required = false)
-    private HubFileService hubFileService;
 
     private static final String PLANT_MAP_MARKER = "__PLANT_MAP__";
     private static final String WORK_AREA_MAP_ENTITY_TYPE = "WorkAreaMap";
@@ -294,6 +280,25 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
         if (Files.exists(jpgPath)) {
             return filesRelativePath + "/jpg/work-area-map/plant-map.jpg";
         }
+
+        WorkAreaMapShape marker = shapeRepo.findByName(PLANT_MAP_MARKER);
+        if (marker == null || marker.getId() == null) {
+            return null;
+        }
+
+        try {
+            managedEntityFileSyncService.downloadEntityFiles(
+                    WORK_AREA_MAP_ENTITY_TYPE,
+                    marker.getId(),
+                    this::resolveMapFileDestination);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to hydrate work-area map files locally: {}", e.getMessage());
+        }
+
+        if (Files.exists(jpgPath)) {
+            return filesRelativePath + "/jpg/work-area-map/plant-map.jpg";
+        }
         return null;
     }
 
@@ -301,17 +306,10 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
         Path pdfPath = Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.pdf");
         Path jpgPath = Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg");
         try {
-            if (syncConfig.isHubMode()) {
-                registerMapFilesOnHub(markerId, pdfPath, jpgPath);
-                return;
-            }
-
-            if (!syncConfig.isServerSyncEnabled()) {
-                return;
-            }
-
-            uploadMapFileToServer(pdfPath, markerId);
-            uploadMapFileToServer(jpgPath, markerId);
+            managedEntityFileSyncService.replaceTrackedFiles(
+                    WORK_AREA_MAP_ENTITY_TYPE,
+                    markerId,
+                    List.of(pdfPath, jpgPath));
         } catch (Exception e) {
             // Keep local map upload successful even if sync transport is temporarily unavailable.
             org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
@@ -319,52 +317,14 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
         }
     }
 
-    private void registerMapFilesOnHub(Long markerId, Path... filePaths) {
-        if (hubFileService == null) {
-            return;
+    private Path resolveMapFileDestination(ManagedEntityFileSyncService.RemoteFileDescriptor remoteFile) {
+        String fileName = remoteFile.fileName() == null ? "" : remoteFile.fileName().toLowerCase();
+        if (fileName.endsWith(".pdf")) {
+            return Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.pdf");
         }
-
-        for (Path filePath : filePaths) {
-            if (!Files.exists(filePath)) {
-                continue;
-            }
-            try {
-                hubFileService.registerLocalFile(
-                        filePath.toFile(),
-                        WORK_AREA_MAP_ENTITY_TYPE,
-                        markerId,
-                        filePath.toString(),
-                        syncConfig.getMachineId());
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to register work-area map file on hub: " + filePath.getFileName(), e);
-            }
+        if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
+            return Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg");
         }
-    }
-
-    private void uploadMapFileToServer(Path filePath, Long markerId) {
-        if (!Files.exists(filePath)) {
-            return;
-        }
-
-        String uploadUrl = syncConfig.getSyncServerUrl() + "/api/files/upload";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        headers.set("X-Machine-Id", syncConfig.getMachineId());
-        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
-
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new FileSystemResource(filePath));
-        body.add("entityType", WORK_AREA_MAP_ENTITY_TYPE);
-        body.add("entityId", markerId.toString());
-        body.add("originalPath", filePath.toString());
-
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(uploadUrl, requestEntity, Map.class);
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Map file upload failed for " + filePath.getFileName() +
-                    ": " + response.getStatusCode());
-        }
+        return null;
     }
 }

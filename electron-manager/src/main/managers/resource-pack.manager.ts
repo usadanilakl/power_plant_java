@@ -1,5 +1,6 @@
 /**
- * ResourcePackManager - Syncs resource pack directories (engraver_data, qa-data, etc.)
+ * ResourcePackManager - Syncs resource pack directories that are still distributed
+ * outside the managed file-sync pipeline, such as qa-data.
  * from the sync server. Uses manifest-based comparison to download only missing/changed files.
  *
  * Server endpoints (implemented in sync-server):
@@ -216,9 +217,11 @@ export class ResourcePackManager {
 
   /**
    * Quick local-only status check (no server contact).
+   * Engraver templates are no longer synced as a resource pack; they now flow
+   * through UI-managed metadata + managed file sync.
    */
   public getLocalStatus(): ResourcePackStatus[] {
-    const knownPacks = ['engraver_data', 'qa-data'];
+    const knownPacks = ['qa-data'];
     return knownPacks.map(name => {
       const packDir = path.join(this.workingDir, name);
       const localPresent = fs.existsSync(packDir);

@@ -95,7 +95,7 @@
         <div class="dual-form-wrapper">
           <app-loto-point-dual-form
             [primaryLotoPoint]="effectiveLotoPoint()!"
-            [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'equipmentList', 'isLabeled', 'isLockable', 'processingStatus']"
+            [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'characteristicsJson', 'equipmentList', 'isLabeled', 'isLockable', 'processingStatus']"
             (primarySaved)="onPrimarySaved($event)"
             (counterpartSaved)="onCounterpartSaved($event)"
             (bothSaved)="onBothSaved($event)"

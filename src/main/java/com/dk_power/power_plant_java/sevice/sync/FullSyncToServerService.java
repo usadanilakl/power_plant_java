@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.esp.EspDevice;
 import com.dk_power.power_plant_java.entities.esp.LedStrip;
+import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
@@ -26,6 +27,7 @@ import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.equipment.*;
 import com.dk_power.power_plant_java.repository.esp.EspDeviceRepo;
 import com.dk_power.power_plant_java.repository.esp.LedStripRepo;
+import com.dk_power.power_plant_java.repository.engraver.EngraverTemplateRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.*;
 import com.dk_power.power_plant_java.repository.permits.*;
@@ -102,6 +104,7 @@ public class FullSyncToServerService {
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
     private final FileRepo fileRepo;
+    private final EngraverTemplateRepo engraverTemplateRepo;
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
     private final LotoRepo lotoRepo;
@@ -166,6 +169,7 @@ public class FullSyncToServerService {
         new EntitySyncConfig("EmailCorrespondence", EmailCorrespondence.class),
         new EntitySyncConfig("User", User.class),
         new EntitySyncConfig("FileObject", FileObject.class),
+        new EntitySyncConfig("EngraverTemplate", EngraverTemplate.class),
         new EntitySyncConfig("Equipment", Equipment.class),
         new EntitySyncConfig("LotoPoint", LotoPoint.class),
         new EntitySyncConfig("Loto", Loto.class),
@@ -571,6 +575,7 @@ public class FullSyncToServerService {
         counts.put("EmailCorrespondence", emailCorrespondenceRepo.count());
         counts.put("User", userRepo.count());
         counts.put("FileObject", fileRepo.count());
+        counts.put("EngraverTemplate", engraverTemplateRepo.count());
         counts.put("Equipment", equipmentRepo.count());
         counts.put("LotoPoint", lotoPointRepo.count());
         counts.put("Loto", lotoRepo.count());
@@ -894,6 +899,7 @@ public class FullSyncToServerService {
             case "Value" -> valueRepo;
             case "User" -> userRepo;
             case "FileObject" -> fileRepo;
+            case "EngraverTemplate" -> engraverTemplateRepo;
             case "Equipment" -> equipmentRepo;
             case "LotoPoint" -> lotoPointRepo;
             case "Loto" -> lotoRepo;

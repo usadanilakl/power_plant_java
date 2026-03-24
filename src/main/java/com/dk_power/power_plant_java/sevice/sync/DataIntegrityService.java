@@ -74,6 +74,7 @@ public class DataIntegrityService {
     private static final Map<String, String> SOFT_DELETE_ENTITIES = Map.ofEntries(
         Map.entry("Equipment", "equipment"),
         Map.entry("FileObject", "file_object"),
+        Map.entry("EngraverTemplate", "engraver_template"),
         Map.entry("LotoPoint", "loto_point"),
         Map.entry("Loto", "loto"),
         Map.entry("LotoStandard", "loto_standard"),

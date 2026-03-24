@@ -509,7 +509,7 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
             </p>
             <app-loto-point-dual-form
               [primaryLotoPoint]="primaryLotoPointForDualForm()!"
-              [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location']"
+              [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'characteristicsJson']"
               (counterpartSaved)="onCounterpartSaved($event)"
               (bothSaved)="onBothSavedFromDualForm($event)"
               (formClosed)="closeDialog()"

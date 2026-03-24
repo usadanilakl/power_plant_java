@@ -126,8 +126,9 @@ public class EngraverService {
                 }
             }
             for (int i = 0; i < characteristicNames.size(); i++) {
-                String val = charMap.get(characteristicNames.get(i));
-                values[i] = escapeCsvField(val != null ? val : "");
+                String name = characteristicNames.get(i);
+                String val = charMap.get(name);
+                values[i] = escapeCsvField(val != null ? name + ": " + val : "");
             }
         } catch (Exception e) {
             log.warn("Failed to parse characteristicsJson for point {}: {}", point.getTagNumber(), e.getMessage());

@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular.engraver;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.engraver.EngraverService;
+import com.dk_power.power_plant_java.sevice.angular.engraver.NgEngraverTemplateService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.util.List;
 public class EngraverController {
 
     private final EngraverService engraverService;
+    private final NgEngraverTemplateService templateService;
     private final NgLotoPointService lotoPointService;
 
     /**
@@ -25,7 +27,7 @@ public class EngraverController {
      */
     @GetMapping("/templates")
     public ResponseEntity<NgApiResponse<List<String>>> listTemplates() {
-        List<String> templates = engraverService.listTemplateFiles();
+        List<String> templates = templateService.getAvailableTemplateFilenames();
         return ResponseEntity.ok(new NgApiResponse<>(templates, "Success"));
     }
 
@@ -54,6 +56,7 @@ public class EngraverController {
                     : engraverService.generateCsvForBatch(points, withQr);
 
             if (openLightBurn && template != null && !template.isBlank()) {
+                templateService.ensureTemplateFileAvailable(template);
                 engraverService.openLightBurn(template);
             }
 
@@ -91,6 +94,7 @@ public class EngraverController {
     public ResponseEntity<NgApiResponse<String>> openLightBurn(
             @RequestParam String template) {
         try {
+            templateService.ensureTemplateFileAvailable(template);
             engraverService.openLightBurn(template);
             return ResponseEntity.ok(new NgApiResponse<>("LightBurn opened", "Success"));
         } catch (Exception e) {

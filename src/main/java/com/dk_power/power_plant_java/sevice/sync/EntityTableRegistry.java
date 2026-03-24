@@ -27,6 +27,7 @@ public class EntityTableRegistry {
 
         // Files
         Map.entry("FileObject", "file_object"),
+        Map.entry("EngraverTemplate", "engraver_template"),
 
         // Equipment
         Map.entry("Equipment", "equipment"),
@@ -104,6 +105,7 @@ public class EntityTableRegistry {
         "Value",
         "User",
         "FileObject",
+        "EngraverTemplate",
         // Tier 2: Equipment & spatial (depend on Value/Category)
         "Equipment",
         "LotoPoint",

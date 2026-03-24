@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.*;
+import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
 import com.dk_power.power_plant_java.entities.instrumentation.Instrument;
@@ -19,6 +20,7 @@ import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
+import com.dk_power.power_plant_java.sevice.angular.engraver.NgEngraverTemplateService;
 import com.dk_power.power_plant_java.sevice.angular.messaging.NgConversationService;
 import com.dk_power.power_plant_java.sevice.angular.messaging.NgMessageService;
 import com.dk_power.power_plant_java.sevice.angular.loto.*;
@@ -55,6 +57,7 @@ public class ServiceFacade {
             @Lazy ValueService valueService,
             // Files
             @Lazy FileService fileService,
+            @Lazy NgEngraverTemplateService ngEngraverTemplateService,
             // Equipment
             @Lazy EquipmentService equipmentService,
             @Lazy HeatTraceService heatTraceService,
@@ -106,6 +109,7 @@ public class ServiceFacade {
         serviceMap.put(Value.class.getSimpleName(), valueService);
         // Files
         serviceMap.put(FileObject.class.getSimpleName(), fileService);
+        serviceMap.put(EngraverTemplate.class.getSimpleName(), ngEngraverTemplateService);
         // Equipment
         serviceMap.put(Equipment.class.getSimpleName(), equipmentService);
         serviceMap.put(HeatTrace.class.getSimpleName(), heatTraceService);

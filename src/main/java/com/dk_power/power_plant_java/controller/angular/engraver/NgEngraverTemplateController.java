@@ -13,10 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -82,7 +79,7 @@ public class NgEngraverTemplateController {
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> delete(@PathVariable String id) {
         try {
-            service.softDelete(id);
+            service.deleteTemplate(id);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(null, "Engraver template deleted successfully", LocalDateTime.now()));
         } catch (Exception e) {
@@ -131,13 +128,12 @@ public class NgEngraverTemplateController {
                 return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Only .lbrn2 files are accepted"));
             }
 
-            Path dataDir = Paths.get(service.getEngraverDataPath()).toAbsolutePath();
-            Files.createDirectories(dataDir);
-            Path targetPath = dataDir.resolve(originalFilename);
+            Path targetPath = service.resolveTemplatePath(originalFilename);
             file.transferTo(targetPath.toFile());
 
             existing.setFilename(originalFilename);
             EngraverTemplateDto updated = service.updateTemplate(id, existing);
+            service.syncTemplateFile(updated.getId(), targetPath);
 
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(updated, "File uploaded successfully", LocalDateTime.now()));
@@ -160,7 +156,7 @@ public class NgEngraverTemplateController {
                     .body(new NgApiResponse<>(null, "No file associated with this template", LocalDateTime.now()));
             }
 
-            File file = new File(service.getEngraverDataPath(), dto.getFilename());
+            File file = service.ensureTemplateFileAvailable(dto.getFilename()).toFile();
             if (!file.exists()) {
                 return ResponseEntity.status(404).contentType(MediaType.APPLICATION_JSON)
                     .body(new NgApiResponse<>(null, "File not found on disk: " + dto.getFilename(), LocalDateTime.now()));

@@ -267,7 +267,10 @@ export class RfLotoPointStateService {
           // Clear the draft after successful save
           this.clearDraftForItem(lotoPointId);
           // Update the selected item with the saved data
-          this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
+          const savedItem = LotoPointDto.fromJson(response.responseData);
+          this.setSelectedItem(savedItem);
+          // Update the item in the table list so it's not stale
+          this.updateLotoPointInList(savedItem);
           // Show success message
           const action = isNew ? 'created' : 'updated';
           this.messageService.showSuccess(`LOTO Point ${action} successfully`);

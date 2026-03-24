@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.mappers.engraver.EngraverTemplateMapper;
 import com.dk_power.power_plant_java.repository.engraver.EngraverTemplateRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.sync.ManagedEntityFileSyncService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +32,9 @@ public class NgEngraverTemplateService implements NgCrudService<EngraverTemplate
     private final EngraverTemplateMapper mapper;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final ManagedEntityFileSyncService managedEntityFileSyncService;
+
+    public static final String ENGRAVER_TEMPLATE_ENTITY_TYPE = "EngraverTemplate";
 
     @Value("${engraver.data.path:engraver_data}")
     private String engraverDataPath;
@@ -135,5 +143,59 @@ public class NgEngraverTemplateService implements NgCrudService<EngraverTemplate
 
     public String getEngraverDataPath() {
         return engraverDataPath;
+    }
+
+    public List<String> getAvailableTemplateFilenames() {
+        return repo.findAll().stream()
+                .map(EngraverTemplate::getFilename)
+                .filter(filename -> filename != null && !filename.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    public Path resolveTemplatePath(String filename) throws IOException {
+        Path dataDir = Paths.get(engraverDataPath).toAbsolutePath();
+        Files.createDirectories(dataDir);
+        return dataDir.resolve(filename);
+    }
+
+    public void syncTemplateFile(Long templateId, Path templatePath) throws IOException {
+        managedEntityFileSyncService.replaceTrackedFiles(
+                ENGRAVER_TEMPLATE_ENTITY_TYPE,
+                templateId,
+                List.of(templatePath));
+    }
+
+    public Path ensureTemplateFileAvailable(String filename) throws IOException {
+        Path localPath = resolveTemplatePath(filename);
+        if (Files.exists(localPath)) {
+            return localPath;
+        }
+
+        EngraverTemplate template = repo.findFirstByFilename(filename).orElse(null);
+        if (template == null || template.getId() == null) {
+            throw new IOException("Template metadata not found for file: " + filename);
+        }
+
+        managedEntityFileSyncService.downloadEntityFiles(
+                ENGRAVER_TEMPLATE_ENTITY_TYPE,
+                template.getId(),
+                remoteFile -> filename.equals(remoteFile.fileName()) ? localPath : null);
+
+        if (!Files.exists(localPath)) {
+            throw new IOException("Template file not available locally or via sync: " + filename);
+        }
+
+        return localPath;
+    }
+
+    public void deleteTemplate(String id) {
+        EngraverTemplate entity = getEntityById(id);
+        if (entity == null) {
+            return;
+        }
+        managedEntityFileSyncService.deleteTrackedFiles(ENGRAVER_TEMPLATE_ENTITY_TYPE, entity.getId());
+        softDelete(entity);
     }
 }
