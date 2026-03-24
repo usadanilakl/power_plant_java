@@ -34,6 +34,11 @@ export class DiagramRenderService {
     for (const shape of sorted) {
       this.drawShape(ctx, shape, scale);
 
+      // Linked entity indicator
+      if (shape.linkedEntityId) {
+        this.drawLinkedIndicator(ctx, shape, scale);
+      }
+
       if (hoveredId === shape.id && !selectedIds.has(shape.id)) {
         this.drawHoverHighlight(ctx, shape);
       }
@@ -288,6 +293,21 @@ export class DiagramRenderService {
       ctx.lineWidth = 1;
       ctx.stroke();
     }
+  }
+
+  private drawLinkedIndicator(ctx: CanvasRenderingContext2D, shape: DiagramElement, scale: number): void {
+    const r = 4 / scale;
+    const x = shape.x + shape.width - r;
+    const y = shape.y + r;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#4caf50';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1 / scale;
+    ctx.stroke();
+    ctx.restore();
   }
 
   private drawHoverHighlight(ctx: CanvasRenderingContext2D, shape: DiagramElement): void {

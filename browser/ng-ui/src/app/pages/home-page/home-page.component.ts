@@ -161,13 +161,21 @@ export class HomePageComponent {
 
   get allCards(): HomeCard[] {
     const extra: HomeCard[] = [];
-    if (this.authService.isLoggedIn() && this.authService.hasPermission('BASIC')) {
+    if (this.authService.isLoggedIn()) {
       extra.push({
-        title: 'My Permits',
-        description: 'View permit status and packages',
-        icon: '🛡️',
-        route: '/my-permits'
+        title: 'Messages',
+        description: 'Conversations with operators',
+        icon: '💬',
+        route: '/messages'
       });
+      if (this.authService.hasPermission('BASIC')) {
+        extra.push({
+          title: 'My Permits',
+          description: 'View permit status and packages',
+          icon: '🛡️',
+          route: '/my-permits'
+        });
+      }
     }
     return [...this.cards, ...extra];
   }

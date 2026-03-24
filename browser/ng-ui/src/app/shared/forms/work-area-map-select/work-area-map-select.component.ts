@@ -1,11 +1,10 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, inject, NgZone, OnDestroy, signal, ViewChild, OnInit
+  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, forwardRef, HostListener, inject, NgZone, OnDestroy, signal, ViewChild, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
 import { ServerApiService } from '../../../services/server-api.service';
 
 interface WorkAreaEntry {
@@ -73,6 +72,20 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   loading = signal(true);
   errorMessage = signal<string | null>(null);
 
+  // Responsive
+  isMobile = signal(false);
+  overlayOpen = signal(false);
+  hoveredShape = signal<ParsedShape | null>(null);
+  private mediaQuery = window.matchMedia('(max-width: 768px)');
+  private mediaHandler = (e: MediaQueryListEvent) => {
+    this.ngZone.run(() => {
+      this.isMobile.set(e.matches);
+      if (!e.matches && this.overlayOpen()) {
+        this.closeOverlay();
+      }
+    });
+  };
+
   // Transform state
   private scale = 1;
   private translateX = 0;
@@ -100,6 +113,8 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   private onTouched: () => void = () => {};
 
   ngOnInit(): void {
+    this.isMobile.set(this.mediaQuery.matches);
+    this.mediaQuery.addEventListener('change', this.mediaHandler);
     this.loadData();
   }
 
@@ -107,8 +122,14 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   constructor() {
     effect(() => {
-      if (!this.loading() && !this.listenersAttached) {
-        // Defer to next microtask so the template has rendered the map container
+      const loading = this.loading();
+      const mobile = this.isMobile();
+      const overlay = this.overlayOpen();
+
+      // Map DOM is present when: not loading AND (desktop OR overlay open)
+      const mapVisible = !loading && (!mobile || overlay);
+
+      if (mapVisible && !this.listenersAttached) {
         Promise.resolve().then(() => this.attachListeners());
       }
     });
@@ -137,15 +158,45 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     });
   }
 
-  ngOnDestroy(): void {
+  private detachListeners(): void {
     this.cleanupListeners.forEach(fn => fn());
+    this.cleanupListeners = [];
+    this.listenersAttached = false;
+  }
+
+  ngOnDestroy(): void {
+    this.detachListeners();
+    this.mediaQuery.removeEventListener('change', this.mediaHandler);
+    if (this.overlayOpen()) {
+      document.body.style.overflow = '';
+    }
+  }
+
+  // --- Overlay ---
+
+  openOverlay(): void {
+    this.overlayOpen.set(true);
+    document.body.style.overflow = 'hidden';
+    this.resetZoom();
+  }
+
+  closeOverlay(): void {
+    this.detachListeners();
+    this.overlayOpen.set(false);
+    document.body.style.overflow = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.overlayOpen()) {
+      this.closeOverlay();
+    }
   }
 
   // --- ControlValueAccessor ---
 
   writeValue(value: AreaRef | string | null): void {
     if (typeof value === 'string') {
-      // Backward compat for old drafts that stored just the name
       this.selectedAreaName.set(value);
     } else if (value && typeof value === 'object') {
       this.selectedAreaName.set(value.name);
@@ -296,7 +347,8 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   selectShape(shape: ParsedShape): void {
     this.ngZone.run(() => {
       this.selectedShape.set(shape);
-      if (shape.areas.length === 1) {
+      // On mobile overlay: don't auto-select — let user see details first
+      if (shape.areas.length === 1 && !(this.isMobile() && this.overlayOpen())) {
         this.setArea(shape.areas[0]);
       }
     });
@@ -306,6 +358,22 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.selectedAreaName.set(area.name);
     this.onChange(area);
     this.onTouched();
+  }
+
+  /** Called from overlay confirm button */
+  confirmAndClose(): void {
+    const shape = this.selectedShape();
+    if (shape) {
+      // If single-area shape was tapped but not yet committed to form, do it now
+      if (shape.areas.length === 1 && !this.selectedAreaName()) {
+        this.setArea(shape.areas[0]);
+      } else if (shape.areas.length === 1) {
+        // Already set from a previous interaction — just ensure it's set
+        this.setArea(shape.areas[0]);
+      }
+      // Multi-area: selectedAreaName should already be set via area button tap
+    }
+    this.closeOverlay();
   }
 
   // --- Mouse Events ---

@@ -13,3 +13,31 @@
 >
     <app-buttons [buttons]="actionButtons" [layout]="'column'"></app-buttons>
 </app-popup>
+
+<app-popup
+    [title]="'Message Operator'"
+    [size]="'medium'"
+    [isOpen]="isMessageComposeOpen()"
+    (close)="closeMessageCompose()"
+>
+    <div class="message-compose">
+        <p class="compose-hint">Send a message about this work request to the operator.</p>
+        <textarea
+            class="compose-input"
+            [(ngModel)]="messageText"
+            placeholder="Type your message..."
+            rows="4"
+        ></textarea>
+        @if (messageResult()) {
+            <div class="compose-result" [class.success]="messageResult()!.includes('success')">
+                {{ messageResult() }}
+            </div>
+        }
+        <div class="compose-actions">
+            <button class="compose-cancel" (click)="closeMessageCompose()">Cancel</button>
+            <button class="compose-send" (click)="sendMessageToOperator()" [disabled]="messageSending() || !messageText.trim()">
+                {{ messageSending() ? 'Sending...' : 'Send' }}
+            </button>
+        </div>
+    </div>
+</app-popup>

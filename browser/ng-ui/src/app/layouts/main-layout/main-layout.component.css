@@ -90,6 +90,22 @@
   background-color: var(--accent-color-hover);
 }
 
+.message-badge {
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  animation: pulse-badge 2s infinite;
+  font-family: inherit;
+}
+
 .notification-badge {
   background: #f44336;
   color: white;

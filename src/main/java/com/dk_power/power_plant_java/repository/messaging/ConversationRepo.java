@@ -10,11 +10,28 @@ import java.util.Optional;
 
 public interface ConversationRepo extends BaseRepository<Conversation> {
 
+    /**
+     * All conversations for an entity — visible to any operator.
+     */
     @Query("""
         SELECT c FROM Conversation c
         WHERE c.entityType = :entityType
           AND c.entityId = :entityId
-          AND (c.initiatorId = :userId OR c.responderId = :userId)
+        ORDER BY c.lastMessageAt DESC, c.id DESC
+        """)
+    List<Conversation> findByEntityOrderByLastMessageAtDesc(
+        @Param("entityType") String entityType,
+        @Param("entityId") Long entityId);
+
+    /**
+     * Conversations for an entity visible to a specific user
+     * (user is initiator, or responderId is null meaning open to all operators, or user is responder).
+     */
+    @Query("""
+        SELECT c FROM Conversation c
+        WHERE c.entityType = :entityType
+          AND c.entityId = :entityId
+          AND (c.initiatorId = :userId OR c.responderId = :userId OR c.responderId IS NULL)
         ORDER BY c.lastMessageAt DESC, c.id DESC
         """)
     List<Conversation> findVisibleByEntityAndUserOrderByLastMessageAtDesc(
@@ -22,6 +39,10 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         @Param("entityId") Long entityId,
         @Param("userId") Long userId);
 
+    /**
+     * All conversations where user is a participant (initiator or responder or open conversations).
+     * For PWA contractors: filters by initiatorId only.
+     */
     @Query("""
         SELECT c FROM Conversation c
         WHERE c.initiatorId = :userId OR c.responderId = :userId
@@ -29,37 +50,39 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         """)
     List<Conversation> findVisibleByUserOrderByLastMessageAtDesc(@Param("userId") Long userId);
 
+    /**
+     * Access check: user can access if they are initiator, responder, or conversation is open (null responderId).
+     */
     @Query("""
         SELECT c FROM Conversation c
         WHERE c.id = :conversationId
-          AND (c.initiatorId = :userId OR c.responderId = :userId)
+          AND (c.initiatorId = :userId OR c.responderId = :userId OR c.responderId IS NULL)
         """)
     Optional<Conversation> findVisibleByIdAndUser(
         @Param("conversationId") Long conversationId,
         @Param("userId") Long userId);
 
     /**
-     * Find duplicate conversation groups: same (entityType, entityId, initiatorId, responderId).
-     * Returns rows of [entityType, entityId, initiatorId, responderId, count].
+     * Find duplicate conversation groups: same (entityType, entityId, initiatorId, subject).
      */
     @Query("""
-        SELECT c.entityType, c.entityId, c.initiatorId, c.responderId, COUNT(c)
+        SELECT c.entityType, c.entityId, c.initiatorId, c.subject, COUNT(c)
         FROM Conversation c
         WHERE c.deleted = false
-        GROUP BY c.entityType, c.entityId, c.initiatorId, c.responderId
+        GROUP BY c.entityType, c.entityId, c.initiatorId, c.subject
         HAVING COUNT(c) > 1
         """)
     List<Object[]> findDuplicateConversationGroups();
 
     /**
-     * Find all conversations matching a specific dedup key, ordered by ID ascending.
+     * Find all conversations matching dedup key, ordered by ID ascending.
      */
     @Query("""
         SELECT c FROM Conversation c
         WHERE c.entityType = :entityType
           AND c.entityId = :entityId
           AND c.initiatorId = :initiatorId
-          AND c.responderId = :responderId
+          AND c.subject = :subject
           AND c.deleted = false
         ORDER BY c.id ASC
         """)
@@ -67,8 +90,13 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         @Param("entityType") String entityType,
         @Param("entityId") Long entityId,
         @Param("initiatorId") Long initiatorId,
-        @Param("responderId") Long responderId);
+        @Param("subject") String subject);
 
+    /**
+     * Sum unread count for current user across conversations for an entity.
+     * For initiator: use initiatorUnreadCount.
+     * For others (operators): use responderUnreadCount.
+     */
     @Query("""
         SELECT COALESCE(SUM(
             CASE WHEN c.initiatorId = :userId THEN c.initiatorUnreadCount ELSE c.responderUnreadCount END
@@ -76,7 +104,7 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         FROM Conversation c
         WHERE c.entityType = :entityType
           AND c.entityId = :entityId
-          AND (c.initiatorId = :userId OR c.responderId = :userId)
+          AND (c.initiatorId = :userId OR c.responderId = :userId OR c.responderId IS NULL)
         """)
     long sumUnreadForEntityAndUser(
         @Param("entityType") String entityType,

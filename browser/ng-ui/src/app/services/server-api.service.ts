@@ -90,6 +90,32 @@ export interface PwaServerProfile {
   hasSignature?: boolean;
 }
 
+export interface PwaConversationDto {
+  id: number;
+  entityType: string;
+  entityId: number;
+  initiatorId: number;
+  responderId: number | null;
+  initiatorName: string;
+  responderName: string | null;
+  subject: string;
+  status: string;
+  lastMessageAt: string;
+  initiatorUnreadCount: number;
+  responderUnreadCount: number;
+  currentUserUnreadCount: number;
+}
+
+export interface PwaMessageDto {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  senderName: string;
+  content: string;
+  sentAt: string;
+  isRead: boolean;
+}
+
 export interface PwaInstrumentLogDto {
   localUuid: string;
   instrumentTagNumber: string;
@@ -364,6 +390,73 @@ export class ServerApiService {
     return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/permits/${id}/sign-off`, { comments }).pipe(
       timeout(10000),
       catchError(this.handleError)
+    );
+  }
+
+  // ============ Conversations / Messaging ============
+
+  getMyConversations(): Observable<PwaConversationDto[]> {
+    return this.http.get<{ responseData: PwaConversationDto[] }>(`${this.baseUrl}/api/pwa/secured/conversations/my`).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getConversationMessages(conversationId: number): Observable<PwaMessageDto[]> {
+    return this.http.get<{ responseData: PwaMessageDto[] }>(`${this.baseUrl}/api/pwa/secured/conversations/${conversationId}/messages`).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getConversationsForEntity(entityType: string, entityId: number): Observable<PwaConversationDto[]> {
+    return this.http.get<{ responseData: PwaConversationDto[] }>(`${this.baseUrl}/api/pwa/secured/conversations/for-entity/${entityType}/${entityId}`).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  startConversation(body: { entityType: string; entityId: number; responderId?: number; subject: string; initialMessageContent: string }): Observable<PwaConversationDto> {
+    return this.http.post<{ responseData: PwaConversationDto }>(`${this.baseUrl}/api/pwa/secured/conversations/start`, body).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  sendMessage(conversationId: number, content: string): Observable<PwaMessageDto> {
+    return this.http.post<{ responseData: PwaMessageDto }>(`${this.baseUrl}/api/pwa/secured/conversations/${conversationId}/send`, { content }).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  markConversationRead(conversationId: number): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/api/pwa/secured/conversations/${conversationId}/mark-read`, {}).pipe(
+      timeout(5000),
+      catchError(this.handleError)
+    );
+  }
+
+  startConversationFromWr(sharepointId: string, message: string, subject?: string): Observable<PwaConversationDto> {
+    return this.http.post<{ responseData: PwaConversationDto }>(`${this.baseUrl}/api/pwa/secured/conversations/start-from-wr`, {
+      sharepointId, message, subject
+    }).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getUnreadMessageCount(): Observable<number> {
+    return this.http.get<{ responseData: number }>(`${this.baseUrl}/api/pwa/secured/conversations/unread-count`).pipe(
+      timeout(5000),
+      map(response => response.responseData),
+      catchError(() => of(0))
     );
   }
 

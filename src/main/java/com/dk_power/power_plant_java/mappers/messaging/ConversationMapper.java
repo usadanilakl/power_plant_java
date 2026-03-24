@@ -91,10 +91,8 @@ public class ConversationMapper implements BaseMapper {
         if (currentUserId.equals(entity.getInitiatorId())) {
             return entity.getInitiatorUnreadCount();
         }
-        if (currentUserId.equals(entity.getResponderId())) {
-            return entity.getResponderUnreadCount();
-        }
-        return 0;
+        // For any non-initiator (operators viewing open conversations), use responderUnreadCount
+        return entity.getResponderUnreadCount() != null ? entity.getResponderUnreadCount() : 0;
     }
 
     @Override

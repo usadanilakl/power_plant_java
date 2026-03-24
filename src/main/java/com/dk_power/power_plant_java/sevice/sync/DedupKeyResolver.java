@@ -62,7 +62,7 @@ public class DedupKeyResolver {
         Map.entry("Conversation",        List.of(new NaturalKeyField("entityType", "entity_type", false, true),
                                                   new NaturalKeyField("entityId", "entity_id", false, true),
                                                   new NaturalKeyField("initiatorId", "initiator_id", false, true),
-                                                  new NaturalKeyField("responderId", "responder_id", false, true)))
+                                                  new NaturalKeyField("subject", "subject", false, true)))
     );
 
     /**

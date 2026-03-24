@@ -11,3 +11,79 @@ app-table {
   flex: 1 1 auto;
   min-height: 0;
 }
+
+.message-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.compose-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #888);
+}
+
+.compose-input {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--card-bg, #fff);
+  color: var(--primary-text);
+  box-sizing: border-box;
+}
+
+.compose-input:focus {
+  outline: none;
+  border-color: var(--accent-color, #007bff);
+}
+
+.compose-result {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: #ffebee;
+  color: #c62828;
+}
+
+.compose-result.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.compose-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.compose-cancel, .compose-send {
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.compose-cancel {
+  background: var(--card-bg, #f0f0f0);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color, #ccc);
+}
+
+.compose-send {
+  background: var(--accent-color, #007bff);
+  color: #fff;
+  font-weight: 500;
+}
+
+.compose-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

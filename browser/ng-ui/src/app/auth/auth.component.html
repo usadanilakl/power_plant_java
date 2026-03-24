@@ -1,31 +1,84 @@
 <div class="login-container">
   <div class="login-card">
-    <h2>Login</h2>
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label for="username">Email</label>
-        <input id="username" type="email" formControlName="username" placeholder="Enter your email">
-        <div *ngIf="loginForm.get('username')?.invalid && loginForm.get('username')?.touched" class="error-text">
-          Please enter a valid email.
+    <!-- Tab toggle -->
+    <div class="auth-tabs">
+      <button class="tab" [class.active]="mode === 'signin'" (click)="switchMode('signin')">Sign In</button>
+      <button class="tab" [class.active]="mode === 'signup'" (click)="switchMode('signup')">Sign Up</button>
+    </div>
+
+    <!-- Success message -->
+    <div *ngIf="successMessage" class="success-message">{{ successMessage }}</div>
+
+    <!-- Error message -->
+    <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+    <!-- Server offline warning -->
+    @if (!serverStatus.isOnline()) {
+      <div class="offline-warning">Server is offline. Sign in/up requires server connection.</div>
+    }
+
+    <!-- Sign In Form -->
+    @if (mode === 'signin') {
+      <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" formControlName="email" placeholder="Enter your email">
+          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="error-text">
+            Please enter a valid email.
+          </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input id="password" type="password" formControlName="password" placeholder="Enter your password">
-        <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error-text">
-          Password is required.
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" formControlName="password" placeholder="Enter your password">
+          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error-text">
+            Password is required.
+          </div>
         </div>
-      </div>
 
-      <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
-      </div>
+        <button type="submit" [disabled]="loginForm.invalid || isLoading || !serverStatus.isOnline()">
+          <span *ngIf="!isLoading">Sign In</span>
+          <span *ngIf="isLoading" class="spinner"></span>
+        </button>
+      </form>
+    }
 
-      <button type="submit" [disabled]="loginForm.invalid || isLoading">
-        <span *ngIf="!isLoading">Login</span>
-        <span *ngIf="isLoading" class="spinner"></span>
-      </button>
-    </form>
+    <!-- Sign Up Form -->
+    @if (mode === 'signup') {
+      <form [formGroup]="signupForm" (ngSubmit)="onSignUp()">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input id="signup-name" type="text" formControlName="name" placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input id="signup-email" type="email" formControlName="email" placeholder="john@company.com">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-phone">Phone</label>
+          <input id="signup-phone" type="tel" formControlName="phone" placeholder="+1 (555) 123-4567">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-company">Company</label>
+          <input id="signup-company" type="text" formControlName="company" placeholder="Your Company">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input id="signup-password" type="password" formControlName="password" placeholder="Min 8 characters">
+          <div *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched" class="error-text">
+            Password must be at least 8 characters.
+          </div>
+        </div>
+
+        <button type="submit" [disabled]="signupForm.invalid || isLoading || !serverStatus.isOnline()">
+          <span *ngIf="!isLoading">Create Account</span>
+          <span *ngIf="isLoading" class="spinner"></span>
+        </button>
+      </form>
+    }
   </div>
 </div>

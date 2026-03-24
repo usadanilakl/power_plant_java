@@ -10,6 +10,11 @@
     </div>
     <div class="header-actions">
         <app-server-status></app-server-status>
+        @if (serverStatus.unreadMessageCount() > 0) {
+          <button class="message-badge" (click)="goToMessages()" title="Unread messages">
+            ✉ {{ serverStatus.unreadMessageCount() }}
+          </button>
+        }
         @if (serverStatus.unreadNotificationCount() > 0) {
           <button class="notification-badge" (click)="goToPermits()" title="Permit updates">
             {{ serverStatus.unreadNotificationCount() }}
@@ -17,11 +22,13 @@
         }
         <app-theme-toggle></app-theme-toggle>
         <app-user-icon></app-user-icon>
-        
-        @if (authService.isLoggedIn()) {
-          <button class="auth-btn" (click)="logout()">Logout</button>
-        } @else {
-          <button class="auth-btn" (click)="login()">Login</button>
+
+        @if (serverStatus.isOnline()) {
+          @if (authService.isLoggedIn()) {
+            <button class="auth-btn" (click)="logout()">Logout</button>
+          } @else {
+            <button class="auth-btn" (click)="login()">Sign In</button>
+          }
         }
     </div>
   </header>

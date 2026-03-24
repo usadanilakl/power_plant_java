@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ServerApiService, PwaRegistrationStatus } from '../services/server-api.service';
+import { UserSetupService } from '../services/user-setup.service';
 
 export interface PwaAuthUser {
   id: number;
@@ -22,6 +23,7 @@ export interface PwaAuthData {
 })
 export class AuthService {
   private serverApi = inject(ServerApiService);
+  private userSetupService = inject(UserSetupService);
   private readonly AUTH_STORAGE_KEY = 'pwaAuthData';
 
   private authDataSubject = new BehaviorSubject<PwaAuthData | null>(this.getAuthDataFromStorage());
@@ -101,6 +103,42 @@ export class AuthService {
     if (requiredLevel === 'BASIC') return level === 'BASIC' || level === 'OPERATOR';
     if (requiredLevel === 'OPERATOR') return level === 'OPERATOR';
     return false;
+  }
+
+  /**
+   * After login, sync local PwaUserData with the server profile.
+   * Updates localStorage if server data differs from local data.
+   */
+  syncLocalUserData(): void {
+    if (!this.isLoggedIn()) return;
+
+    this.serverApi.getProfile().subscribe({
+      next: (profile) => {
+        if (!profile) return;
+        const local = this.userSetupService.getUserData();
+
+        const needsUpdate = !local ||
+          local.name !== profile.name ||
+          local.email !== profile.email ||
+          local.phone !== (profile.phone ?? '') ||
+          local.company !== (profile.company ?? '');
+
+        if (needsUpdate) {
+          this.userSetupService.saveUserData({
+            name: profile.name ?? local?.name ?? '',
+            email: profile.email ?? local?.email ?? '',
+            phone: profile.phone ?? local?.phone ?? '',
+            company: profile.company ?? local?.company ?? '',
+            signature: local?.signature,
+            registeredOnServer: true
+          });
+          console.log('[Auth] Local user data synced with server profile');
+        } else if (local && !local.registeredOnServer) {
+          this.userSetupService.markRegistered();
+        }
+      },
+      error: (err) => console.warn('[Auth] Could not sync local user data:', err)
+    });
   }
 
   private storeAuth(authData: PwaAuthData): void {

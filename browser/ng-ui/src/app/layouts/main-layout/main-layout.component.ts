@@ -297,6 +297,9 @@ onOverlayClick = (event: MouseEvent) => {
   login(): void {
     this.router.navigate(['/login']);
   }
+  goToMessages(): void {
+    this.router.navigate(['/messages']);
+  }
   goToPermits(): void {
     this.serverStatus.markNotificationsRead();
     this.router.navigate(['/my-permits']);

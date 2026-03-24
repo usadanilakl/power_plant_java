@@ -1,5 +1,7 @@
-import { Component, computed, DestroyRef, inject, input, output } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { SubmissionOrchestratorService } from '../../../services/submission-orchestrator.service';
 import { JhaStateService } from '../../jha/jha-state.service';
@@ -8,11 +10,13 @@ import { WorkRequest } from '../../../models/permits/work-request.model';
 import { TableComponent } from "../../../shared/table/table.component";
 import { PopupComponent } from "../../../shared/menus/popup/popup.component";
 import { ButtonConfig, ButtonsComponent } from '../../../shared/menus/buttons/buttons.component';
+import { ServerApiService } from '../../../services/server-api.service';
+import { AuthService } from '../../../auth/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-work-request-table',
-  imports: [TableComponent, PopupComponent, ButtonsComponent],
+  imports: [TableComponent, PopupComponent, ButtonsComponent, FormsModule],
   templateUrl: './work-request-table.component.html',
   styleUrl: './work-request-table.component.css'
 })
@@ -21,6 +25,8 @@ export class WorkRequestTableComponent {
   workRequestStateService = inject(WorkRequestStateService);
   orchestrator = inject(SubmissionOrchestratorService);
   jhaStateService = inject(JhaStateService);
+  serverApi = inject(ServerApiService);
+  authService = inject(AuthService);
   router = inject(Router);
   destroyRef = inject(DestroyRef);
 
@@ -41,6 +47,9 @@ export class WorkRequestTableComponent {
     const buttons: ButtonConfig[] = [];
     if (item.sharepointId) {
       buttons.push({ name: 'Edit', action: () => this.editSelected(), color: 'primary' });
+      if (this.authService.isLoggedIn()) {
+        buttons.push({ name: 'Message Operator', action: () => this.openMessageCompose(), color: 'primary' });
+      }
     }
     if (item.jhaStatus !== 'Completed') {
       buttons.push({ name: 'Fill Out JHA', action: () => this.fillOutJha(), color: 'primary' });
@@ -88,6 +97,49 @@ export class WorkRequestTableComponent {
   editSelected(): void {
     this.workRequestStateService.editSelected();
     this.closeActionMenu();
+  }
+
+  // --- Message Compose ---
+  isMessageComposeOpen = signal(false);
+  messageText = '';
+  messageSending = signal(false);
+  messageResult = signal<string | null>(null);
+
+  openMessageCompose(): void {
+    this.closeActionMenu();
+    this.messageText = '';
+    this.messageResult.set(null);
+    this.isMessageComposeOpen.set(true);
+  }
+
+  closeMessageCompose(): void {
+    this.isMessageComposeOpen.set(false);
+    this.messageText = '';
+    this.messageResult.set(null);
+  }
+
+  sendMessageToOperator(): void {
+    const wr = this.selectedItem();
+    if (!wr?.sharepointId || !this.messageText.trim()) return;
+
+    this.messageSending.set(true);
+    this.messageResult.set(null);
+
+    this.serverApi.startConversationFromWr(
+      wr.sharepointId,
+      this.messageText.trim()
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.messageSending.set(false);
+        this.messageResult.set('Message sent successfully!');
+        this.messageText = '';
+        setTimeout(() => this.closeMessageCompose(), 1500);
+      },
+      error: (err) => {
+        this.messageSending.set(false);
+        this.messageResult.set(err.message || 'Failed to send message');
+      }
+    });
   }
 
   submitViaEmail(): void {

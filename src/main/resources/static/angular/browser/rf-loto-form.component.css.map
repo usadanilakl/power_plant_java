@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;1355b56e0514cb170eba7a63fd54d58169d285822c0ba9cb95a92e60923da025;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/permit-builder/loto/rf-loto-form.component.ts"],
+  "sourcesContent": ["\n    :host { display: block; height: 100%; overflow: auto; }\n    .loto-form-container { display: flex; flex-direction: column; gap: 16px; padding-bottom: 16px; }\n  "],
+  "mappings": ";AACI;AAAQ,WAAS;AAAO,UAAQ;AAAM,YAAU;AAAM;AACtD,CAAC;AAAsB,WAAS;AAAM,kBAAgB;AAAQ,OAAK;AAAM,kBAAgB;AAAM;",
+  "names": []
+}

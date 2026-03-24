@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;6cdd8722d0dd3220d740fe66e88cbed368f4e8c037be1fd1bca1efcf9ec30c42;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/steps/wizard-form-section-step.component.ts"],
+  "sourcesContent": ["\n    .form-section-container {\n      display: flex;\n      flex-direction: column;\n      gap: 16px;\n      padding: 10px 0;\n    }\n\n    .form-section-container.horizontal {\n      flex-direction: row;\n      flex-wrap: wrap;\n    }\n\n    .form-section-container.grid {\n      display: grid;\n      grid-template-columns: repeat(2, 1fr);\n      gap: 16px;\n    }\n\n    .form-field {\n      display: flex;\n      align-items: flex-start;\n      gap: 8px;\n    }\n\n    .full-width {\n      flex: 1;\n      width: 100%;\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,OAAK;AACL,WAAS,KAAK;AAChB;AAEA,CAPC,sBAOsB,CAAC;AACtB,kBAAgB;AAChB,aAAW;AACb;AAEA,CAZC,sBAYsB,CAAC;AACtB,WAAS;AACT,yBAAuB,OAAO,CAAC,EAAE;AACjC,OAAK;AACP;AAEA,CAAC;AACC,WAAS;AACT,eAAa;AACb,OAAK;AACP;AAEA,CAAC;AACC,QAAM;AACN,SAAO;AACT;",
+  "names": []
+}

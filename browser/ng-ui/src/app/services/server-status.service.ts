@@ -25,6 +25,9 @@ export class ServerStatusService {
   unreadNotificationCount = signal(0);
   notifications = signal<any[]>([]);
 
+  /** Message unread count */
+  unreadMessageCount = signal(0);
+
   constructor() {
     // Initial check
     this.checkNow();
@@ -38,6 +41,7 @@ export class ServerStatusService {
       // Poll notifications when online and logged in
       if (online && this.authService.isLoggedIn()) {
         this.pollNotifications();
+        this.pollUnreadMessages();
       }
     });
 
@@ -81,6 +85,14 @@ export class ServerStatusService {
         this.unreadNotificationCount.set(result.unreadCount ?? 0);
         this.notifications.set(result.notifications ?? []);
       }
+    });
+  }
+
+  private pollUnreadMessages(): void {
+    this.serverApi.getUnreadMessageCount().pipe(
+      catchError(() => of(0))
+    ).subscribe(count => {
+      this.unreadMessageCount.set(count ?? 0);
     });
   }
 

@@ -67,6 +67,11 @@ export const routes: Routes = [
       canActivate: [standaloneGuard, userSetupGuard]
     },
     {
+      path: 'messages',
+      loadComponent: () => import('./pages/messages-page/messages-page.component').then(m => m.MessagesPageComponent),
+      canActivate: [standaloneGuard, userSetupGuard, authGuard]
+    },
+    {
       path: 'instruments',
       component: InstrumentPageComponent,
       canActivate: [standaloneGuard, userSetupGuard],

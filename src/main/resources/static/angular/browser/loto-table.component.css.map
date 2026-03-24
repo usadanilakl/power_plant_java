@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/loto/loto-table/loto-table.component.css"],
+  "sourcesContent": [" :host {\r\n  display: flex;\r\n  flex:1;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  min-height: 100%;\r\n  width: 100%;\r\n  overflow: visible;\r\n}\r\n\r\n"],
+  "mappings": ";AAAC;AACC,WAAS;AACT,QAAK;AACL,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACZ;",
+  "names": []
+}

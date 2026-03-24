@@ -13,6 +13,8 @@ export interface DiagramBaseShape {
   locked?: boolean;
   label?: string;
   groupId?: string;
+  linkedEntityId?: number;
+  linkedEntityType?: 'loto-point';
 }
 
 export interface DiagramRectangleShape extends DiagramBaseShape {

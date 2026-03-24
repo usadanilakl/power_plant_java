@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;549ad2b4931acba1b6dd6a02c5572ea011c48c3862f72ddf23a479ac18165f78;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/pages/print/print.component.ts"],
+  "sourcesContent": ["\n    .print-container {\n      display: flex;\n      flex-direction: column;\n      gap: 10px;\n      padding: 20px;\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,OAAK;AACL,WAAS;AACX;",
+  "names": []
+}

@@ -31,10 +31,10 @@
     {
       "name": "app-data",
       "urls": [
-        "/data/work-areas.json",
-        "/data/work-area-shapes.json",
-        "/data/work-categories.json",
-        "/data/default-instruments.json"
+        "/permits/data/work-areas.json",
+        "/permits/data/work-area-shapes.json",
+        "/permits/data/work-categories.json",
+        "/permits/data/default-instruments.json"
       ],
       "cacheConfig": {
         "maxSize": 20,

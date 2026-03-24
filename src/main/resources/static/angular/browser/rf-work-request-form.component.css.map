@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/permit-builder/work-request/refactored/rf-work-request-form/rf-work-request-form.component.css"],
+  "sourcesContent": [".form-container {\r\n  width: 100%;\r\n  height: 100%;\r\n  display: flex;\r\n  flex-direction: column;\r\n}\r\n\r\n.delete-button {\r\n  background-color: #dc3545;\r\n  color: white;\r\n  border: none;\r\n  padding: 6px 16px;\r\n  border-radius: 4px;\r\n  cursor: pointer;\r\n  font-size: 0.85em;\r\n}\r\n\r\n.delete-button:hover {\r\n  background-color: #c82333;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACT,kBAAgB;AAClB;AAEA,CAAC;AACC,oBAAkB;AAClB,SAAO;AACP,UAAQ;AACR,WAAS,IAAI;AACb,iBAAe;AACf,UAAQ;AACR,aAAW;AACb;AAEA,CAVC,aAUa;AACZ,oBAAkB;AACpB;",
+  "names": []
+}

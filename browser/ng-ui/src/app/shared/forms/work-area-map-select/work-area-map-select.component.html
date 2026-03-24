@@ -4,57 +4,146 @@
   } @else if (errorMessage()) {
     <div class="error-state">{{ errorMessage() }}</div>
   } @else {
-    @if (selectedShape()) {
-      <div class="selected-panel">
-        @if (selectedShape()!.areas.length > 1) {
-          <div class="selected-panel-multi">
-            <span class="selected-panel-prompt">Select work area:</span>
-            @for (area of selectedShape()!.areas; track area.id) {
-              <button type="button"
-                class="area-option-btn"
-                [class.active]="selectedAreaName() === area.name"
-                (click)="setArea(area)">
-                {{ area.name }}
-              </button>
+
+    <!-- Mobile: trigger button -->
+    @if (isMobile() && !overlayOpen()) {
+      <button type="button" class="map-trigger-btn" [class.has-value]="selectedAreaName()" (click)="openOverlay()">
+        @if (selectedAreaName()) {
+          <span class="trigger-selected-name">{{ selectedAreaName() }}</span>
+        } @else {
+          <span class="trigger-placeholder">Select Work Area</span>
+        }
+        <span class="trigger-arrow">&#9662;</span>
+      </button>
+    }
+
+    <!-- Mobile: full-screen overlay -->
+    @if (isMobile() && overlayOpen()) {
+      <div class="map-overlay">
+        <div class="overlay-header">
+          <span class="overlay-title">Select Work Area</span>
+          <button type="button" class="overlay-close-btn" aria-label="Close map" (click)="closeOverlay()">&times;</button>
+        </div>
+
+        @if (selectedShape()) {
+          <div class="selected-panel">
+            @if (selectedShape()!.areas.length > 1) {
+              <div class="selected-panel-multi">
+                <span class="selected-panel-prompt">This area contains multiple zones:</span>
+                @for (area of selectedShape()!.areas; track area.id) {
+                  <button type="button"
+                    class="area-option-btn"
+                    [class.active]="selectedAreaName() === area.name"
+                    (click)="setArea(area)">
+                    {{ area.name }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
+            }
+            @if (selectedShape()!.entry.label) {
+              <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
             }
           </div>
-        } @else {
-          <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
         }
-        @if (selectedShape()!.entry.label) {
-          <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
-        }
+
+        <div
+          #mapContainer
+          class="map-container overlay-map">
+
+          <div #zoomElement class="zoom-element">
+            <img
+              #mapImage
+              [src]="imageUrl()"
+              alt="Plant Map"
+              class="map-image"
+              draggable="false" />
+
+            @for (shape of shapes(); track shape.entry.id) {
+              <div
+                class="shape-overlay"
+                [class.selected]="selectedShape() === shape"
+                [ngStyle]="shape.style"
+                (click)="selectShape(shape); $event.stopPropagation()">
+                <span class="shape-tooltip">{{ getDisplayName(shape) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="overlay-footer">
+          <button type="button" class="reset-btn" (click)="resetZoom()">Reset View</button>
+          @if (selectedShape()) {
+            <button type="button"
+              class="confirm-btn"
+              [disabled]="selectedShape()!.areas.length > 1 && !selectedAreaName()"
+              (click)="confirmAndClose()">
+              @if (selectedShape()!.areas.length === 1) {
+                Select {{ selectedShape()!.areaNames[0] }}
+              } @else if (selectedAreaName()) {
+                Select {{ selectedAreaName() }}
+              } @else {
+                Pick a zone above
+              }
+            </button>
+          }
+        </div>
       </div>
     }
 
-    <div
-      #mapContainer
-      class="map-container">
+    <!-- Desktop: inline map -->
+    @if (!isMobile()) {
+      @if (selectedShape()) {
+        <div class="selected-panel">
+          @if (selectedShape()!.areas.length > 1) {
+            <div class="selected-panel-multi">
+              <span class="selected-panel-prompt">Select work area:</span>
+              @for (area of selectedShape()!.areas; track area.id) {
+                <button type="button"
+                  class="area-option-btn"
+                  [class.active]="selectedAreaName() === area.name"
+                  (click)="setArea(area)">
+                  {{ area.name }}
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
+          }
+          @if (selectedShape()!.entry.label) {
+            <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
+          }
+        </div>
+      }
 
-      <div #zoomElement class="zoom-element">
-        <img
-          #mapImage
-          [src]="imageUrl()"
-          alt="Plant Map"
-          class="map-image"
-          draggable="false" />
+      <div
+        #mapContainer
+        class="map-container">
 
-        @for (shape of shapes(); track shape.entry.id) {
-          <div
-            class="shape-overlay"
-            [class.selected]="isSelected(shape)"
-            [ngStyle]="shape.style"
-            (click)="selectShape(shape); $event.stopPropagation()">
-          </div>
-          <div
-            class="shape-label-anchor"
-            [ngStyle]="shape.labelStyle">
-            <span class="shape-label" [class.selected]="isSelected(shape)">{{ getDisplayName(shape) }}</span>
-          </div>
-        }
+        <div #zoomElement class="zoom-element">
+          <img
+            #mapImage
+            [src]="imageUrl()"
+            alt="Plant Map"
+            class="map-image"
+            draggable="false" />
+
+          @for (shape of shapes(); track shape.entry.id) {
+            <div
+              class="shape-overlay"
+              [class.selected]="isSelected(shape)"
+              [ngStyle]="shape.style"
+              (click)="selectShape(shape); $event.stopPropagation()"
+              (mouseenter)="hoveredShape.set(shape)"
+              (mouseleave)="hoveredShape.set(null)">
+              <span class="shape-tooltip">{{ getDisplayName(shape) }}</span>
+            </div>
+          }
+        </div>
       </div>
-    </div>
 
-    <button type="button" class="reset-btn" (click)="resetZoom()">Reset View</button>
+      <button type="button" class="reset-btn" (click)="resetZoom()">Reset View</button>
+    }
   }
 </div>

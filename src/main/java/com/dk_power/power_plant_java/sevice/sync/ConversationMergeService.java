@@ -28,10 +28,10 @@ public class ConversationMergeService {
 
     /**
      * Detect and merge duplicate Conversation records that share the same
-     * (entityType, entityId, initiatorId, responderId) dedup key.
+     * (entityType, entityId, initiatorId, subject) dedup key.
      *
      * Duplicates occur when two clients independently create a conversation
-     * for the same entity between the same users before sync.
+     * for the same entity with the same subject before sync.
      *
      * Keeps lowest-ID record (deterministic). Reassigns messages from
      * duplicate conversations to the canonical one, then soft-deletes duplicates.
@@ -69,15 +69,15 @@ public class ConversationMergeService {
             String entityType = (String) row[0];
             Long entityId = (Long) row[1];
             Long initiatorId = (Long) row[2];
-            Long responderId = (Long) row[3];
-            merged += mergeByDedupKey(entityType, entityId, initiatorId, responderId);
+            String subject = (String) row[3];
+            merged += mergeByDedupKey(entityType, entityId, initiatorId, subject);
         }
         return merged;
     }
 
-    private int mergeByDedupKey(String entityType, Long entityId, Long initiatorId, Long responderId) {
+    private int mergeByDedupKey(String entityType, Long entityId, Long initiatorId, String subject) {
         List<Conversation> records = conversationRepo.findByDedupKeyOrderByIdAsc(
-            entityType, entityId, initiatorId, responderId);
+            entityType, entityId, initiatorId, subject);
 
         if (records.size() <= 1) return 0;
 

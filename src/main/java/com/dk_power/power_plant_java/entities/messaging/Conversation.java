@@ -29,7 +29,7 @@ public class Conversation extends BaseAuditEntity {
     @Column(name = "initiator_id", nullable = false)
     private Long initiatorId;
 
-    @Column(name = "responder_id", nullable = false)
+    @Column(name = "responder_id")
     private Long responderId;
 
     @Column(length = 500, nullable = false)

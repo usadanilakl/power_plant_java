@@ -8,7 +8,6 @@ import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.mappers.messaging.ConversationMapper;
 import com.dk_power.power_plant_java.repository.messaging.ConversationRepo;
 import com.dk_power.power_plant_java.repository.messaging.MessageRepo;
-import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.messaging.MessagingUserContextService;
 import jakarta.persistence.EntityManager;
@@ -30,7 +29,6 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
 
     private final ConversationRepo repo;
     private final MessageRepo messageRepo;
-    private final UserRepo userRepo;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final ConversationMapper mapper;
@@ -104,10 +102,7 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
 
     public ConversationDto startConversation(ConversationDto dto) {
         User initiator = messagingUserContextService.getCurrentUserRequired();
-        validateStartConversation(dto, initiator.getId());
-
-        User responder = userRepo.findById(dto.getResponderId())
-            .orElseThrow(() -> new IllegalArgumentException("Responder not found"));
+        validateStartConversation(dto);
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -115,12 +110,12 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
         conversation.setEntityType(dto.getEntityType().trim());
         conversation.setEntityId(dto.getEntityId());
         conversation.setInitiatorId(initiator.getId());
-        conversation.setResponderId(responder.getId());
+        conversation.setResponderId(dto.getResponderId()); // nullable — open conversation
         conversation.setSubject(dto.getSubject().trim());
         conversation.setStatus(Conversation.Status.OPEN);
         conversation.setLastMessageAt(now);
         conversation.setInitiatorUnreadCount(0);
-        conversation.setResponderUnreadCount(1);
+        conversation.setResponderUnreadCount(dto.getResponderId() == null ? 0 : 1);
         Conversation savedConversation = repo.save(conversation);
 
         Message firstMessage = new Message();
@@ -197,18 +192,12 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
             .orElseThrow(() -> new IllegalArgumentException("Conversation not found or not accessible"));
     }
 
-    private void validateStartConversation(ConversationDto dto, Long currentUserId) {
+    private void validateStartConversation(ConversationDto dto) {
         if (dto.getEntityType() == null || dto.getEntityType().isBlank()) {
             throw new IllegalArgumentException("entityType is required");
         }
         if (dto.getEntityId() == null) {
             throw new IllegalArgumentException("entityId is required");
-        }
-        if (dto.getResponderId() == null) {
-            throw new IllegalArgumentException("responderId is required");
-        }
-        if (dto.getResponderId().equals(currentUserId)) {
-            throw new IllegalArgumentException("Responder must be a different user");
         }
         if (dto.getSubject() == null || dto.getSubject().isBlank()) {
             throw new IllegalArgumentException("subject is required");
