@@ -18,11 +18,17 @@ import { ZoomPanService } from '../../../../shared/image/refactored/services/zoo
 import { PIDSymbolsService, PIDSymbol } from '../../../../shared/image/refactored/services/pid-symbols.service';
 import { SymbolPaletteComponent } from '../../../../shared/image/refactored/symbol-palette/symbol-palette.component';
 import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, DistributeType } from '../../models/diagram-shape.model';
+import { SimulationGraphService } from '../../simulation/services/simulation-graph.service';
+import { SimulationEngineService } from '../../simulation/services/simulation-engine.service';
+import { SimulationStateService } from '../../simulation/services/simulation-state.service';
+import { SimulationRenderService } from '../../simulation/services/simulation-render.service';
+import { SimulationToolbarComponent } from '../../simulation/components/simulation-toolbar.component';
+import { SimulationInspectorComponent } from '../../simulation/components/simulation-inspector.component';
 
 @Component({
   selector: 'app-diagram-canvas',
   standalone: true,
-  imports: [CommonModule, DiagramToolbarComponent, DiagramPropertiesComponent, SymbolPaletteComponent],
+  imports: [CommonModule, DiagramToolbarComponent, DiagramPropertiesComponent, SymbolPaletteComponent, SimulationToolbarComponent, SimulationInspectorComponent],
   providers: [
     DiagramShapeManagerService,
     DiagramRenderService,
@@ -32,21 +38,31 @@ import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, Distribut
     DiagramAlignmentService,
     DiagramStateService,
     ZoomPanService,
+    SimulationGraphService,
+    SimulationEngineService,
+    SimulationStateService,
+    SimulationRenderService,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="diagram-page">
       @if (config.showToolbar) {
-        <app-diagram-toolbar
-          (onAlign)="onAlign($event)"
-          (onDistribute)="onDistribute($event)"
-          (onDelete)="deleteSelected()"
-          (onGroup)="groupSelected()"
-          (onUngroup)="ungroupSelected()"
-          (onZoomIn)="zoomIn()"
-          (onZoomOut)="zoomOut()"
-          (onZoomFit)="zoomFit()"
-        />
+        <div class="toolbar-row">
+          <app-diagram-toolbar
+            (onAlign)="onAlign($event)"
+            (onDistribute)="onDistribute($event)"
+            (onDelete)="deleteSelected()"
+            (onGroup)="groupSelected()"
+            (onUngroup)="ungroupSelected()"
+            (onZoomIn)="zoomIn()"
+            (onZoomOut)="zoomOut()"
+            (onZoomFit)="zoomFit()"
+          />
+          <app-simulation-toolbar
+            (onToggle)="toggleSimulation()"
+            (onReset)="resetSimulation()"
+          />
+        </div>
       }
 
       <div class="diagram-workspace">
@@ -63,6 +79,7 @@ import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, Distribut
           (mousemove)="onMouseMove($event)"
           (mouseup)="onMouseUp($event)"
           (wheel)="onWheel($event)"
+          (dblclick)="onDoubleClick($event)"
           (contextmenu)="$event.preventDefault()">
 
           <canvas #gridCanvas class="layer-canvas grid-canvas"></canvas>
@@ -70,7 +87,9 @@ import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, Distribut
           <canvas #tempCanvas class="layer-canvas temp-canvas"></canvas>
         </div>
 
-        @if (config.showProperties) {
+        @if (simState.isSimulating()) {
+          <app-simulation-inspector />
+        } @else if (config.showProperties) {
           <app-diagram-properties />
         }
       </div>
@@ -133,6 +152,13 @@ import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, Distribut
       font-size: 12px;
       color: #888;
     }
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #1e1e1e;
+      border-bottom: 1px solid #333;
+    }
     .dirty-indicator { color: #ff9800; }
     .saving-indicator { color: #4caf50; }
   `],
@@ -152,6 +178,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   stateService = inject(DiagramStateService);
   zoomPanService = inject(ZoomPanService);
   pidSymbols = inject(PIDSymbolsService);
+  simState = inject(SimulationStateService);
+  private simRender = inject(SimulationRenderService);
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -238,6 +266,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnDestroy(): void {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    this.simRender.stopAnimation();
+    if (this.simState.isSimulating()) this.simState.deactivate();
   }
 
   private setupCanvases(): void {
@@ -311,6 +341,18 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         for (const shape of this.shapeManager.shapes()) {
           this.renderService.drawAnchorPoints(shapeCtx, shape, this.hoveredAnchor);
         }
+      }
+
+      // Simulation overlays
+      if (this.simState.isSimulating()) {
+        this.simRender.drawOverlays(
+          shapeCtx,
+          this.shapeManager.shapes(),
+          this.shapeManager.connections(),
+          this.simState.getAllNodeStates(),
+          this.simState.getAllEdgeStates(),
+          scale
+        );
       }
       shapeCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
@@ -667,6 +709,30 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     this.requestRender();
   }
 
+  onDoubleClick(event: MouseEvent): void {
+    if (!this.simState.isSimulating()) return;
+
+    const coords = this.getCanvasCoords(event);
+    const hit = this.renderService.hitTestShape(this.shapeManager.shapes(), coords.x, coords.y);
+    if (!hit) return;
+
+    const state = this.simState.getNodeState(hit.id);
+    if (!state) return;
+
+    // Toggle valve
+    if (state.role === 'valve') {
+      const newPos = state.params.valvePosition === 'open' ? 'closed' : 'open';
+      this.simState.updateNodeParams(hit.id, { valvePosition: newPos });
+      this.requestRender();
+    }
+
+    // Toggle pump
+    if (state.role === 'pump') {
+      this.simState.updateNodeParams(hit.id, { pumpRunning: !state.params.pumpRunning });
+      this.requestRender();
+    }
+  }
+
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Delete selected
@@ -766,6 +832,28 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     this.shapeManager.ungroupSelected();
     this.stateService.markDirty();
     this.requestRender();
+  }
+
+  // --- Simulation ---
+
+  toggleSimulation(): void {
+    if (this.simState.isSimulating()) {
+      this.simRender.stopAnimation();
+      this.simState.deactivate();
+      this.requestRender();
+    } else {
+      this.simState.activate(this.shapeManager.shapes(), this.shapeManager.connections());
+      this.simRender.startAnimation(() => this.requestRender());
+    }
+  }
+
+  resetSimulation(): void {
+    if (this.simState.isSimulating()) {
+      this.simRender.stopAnimation();
+      this.simState.deactivate();
+      this.simState.activate(this.shapeManager.shapes(), this.shapeManager.connections());
+      this.simRender.startAnimation(() => this.requestRender());
+    }
   }
 
   zoomIn(): void {
