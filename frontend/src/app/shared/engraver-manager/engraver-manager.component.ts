@@ -135,7 +135,7 @@ export class EngraverManagerComponent {
     this.errorMessage = '';
     this.modalService.startProcessingCurrentBatch();
 
-    const withQr = this.modalService.withQr();
+    const withQr = this.modalService.resolvedTemplate()?.withQr ?? false;
     const layoutVersion = this.modalService.layoutVersion();
     const characteristicNames = layoutVersion === 'info' ? this.modalService.selectedCharacteristicNames() : [];
     this.engraverApi.processBatch(ids, resolved.filename, true, withQr, layoutVersion, characteristicNames).subscribe({
@@ -204,13 +204,6 @@ export class EngraverManagerComponent {
         this.errorMessage = err.message || 'Failed to open LightBurn';
       }
     });
-  }
-
-  /**
-   * Toggle QR code setting.
-   */
-  toggleQr(): void {
-    this.modalService.toggleQr();
   }
 
   getCharacteristicValue(item: any, name: string): string {

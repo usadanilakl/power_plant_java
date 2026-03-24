@@ -18,7 +18,7 @@
             <div class="template-card">
               <div class="template-card-info">
                 <span class="template-card-name">{{ tmpl.name }}</span>
-                <span class="template-card-meta">{{ tmpl.tagSize }} · {{ tmpl.dataStructure | titlecase }} · {{ tmpl.batchSize }} tags</span>
+                <span class="template-card-meta">{{ tmpl.tagSize }} · {{ tmpl.dataStructure | titlecase }} · {{ tmpl.batchSize }} tags {{ tmpl.withQr ? '· QR' : '' }}</span>
                 <span class="template-card-file">{{ tmpl.filename || 'No file uploaded' }}</span>
               </div>
               <div class="template-card-actions">
@@ -65,6 +65,10 @@
           <div class="form-field checkbox-field">
             <label>Default</label>
             <input type="checkbox" [(ngModel)]="formIsDefault" />
+          </div>
+          <div class="form-field checkbox-field">
+            <label>Includes QR Code</label>
+            <input type="checkbox" [(ngModel)]="formWithQr" />
           </div>
           <div class="form-actions">
             <button class="btn secondary" (click)="cancel()">Cancel</button>

@@ -80,7 +80,7 @@
         @if (modalService.resolvedTemplate(); as tmpl) {
           <div class="config-section template-info">
             <span class="template-name">{{ tmpl.name }}</span>
-            <span class="template-detail">{{ tmpl.batchSize }} tags/batch</span>
+            <span class="template-detail">{{ tmpl.batchSize }} tags/batch · QR: {{ tmpl.withQr ? 'Yes' : 'No' }}</span>
           </div>
         } @else {
           <div class="config-section template-info">
@@ -111,20 +111,6 @@
           </div>
         }
 
-        <!-- QR Code Toggle -->
-        <div class="qr-toggle-section">
-          <button
-            (click)="toggleQr()"
-            class="btn qr-toggle"
-            [class.active]="modalService.withQr()"
-          >
-            @if (modalService.withQr()) {
-              <span class="qr-icon">&#9635;</span> QR On
-            } @else {
-              <span class="qr-icon">&#9634;</span> QR Off
-            }
-          </button>
-        </div>
       </div>
 
       <!-- Main content area -->
@@ -214,7 +200,7 @@
                     }
                   } @else {
                     <!-- Standard layout: QR + Description -->
-                    @if (modalService.withQr()) {
+                    @if (modalService.resolvedTemplate()?.withQr) {
                       <div class="tag-el tag-qr-el">
                         <div class="qr-pattern"></div>
                       </div>

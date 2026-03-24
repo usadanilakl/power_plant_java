@@ -6,6 +6,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
+import { ServerApiService } from '../../../services/server-api.service';
 
 interface WorkAreaEntry {
   id: number;
@@ -60,6 +61,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   @ViewChild('mapImage') mapImage!: ElementRef<HTMLImageElement>;
 
   private http = inject(HttpClient);
+  private serverApi = inject(ServerApiService);
   private destroyRef = inject(DestroyRef);
   private ngZone = inject(NgZone);
   private cleanupListeners: (() => void)[] = [];
@@ -163,32 +165,60 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   // --- Data Loading ---
 
   private loadData(): void {
-    forkJoin({
-      areas: this.http.get<WorkAreaEntry[]>('data/work-areas.json'),
-      shapes: this.http.get<ShapeEntry[]>('data/work-area-shapes.json'),
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: ({ areas, shapes }) => {
-        const areaMap = new Map(areas.map(a => [a.id, a.name]));
-        const parsed = shapes.map(s => this.parseShape(s, areaMap));
-        this.shapes.set(parsed);
-        this.imageUrl.set('data/work-area-map-image.jpg');
-        this.loading.set(false);
-
-        // Restore selectedShape if writeValue was called before data loaded
-        const pendingName = this.selectedAreaName();
-        if (pendingName) {
-          const match = parsed.find(s => s.areaNames.includes(pendingName));
-          if (match) {
-            this.selectedShape.set(match);
-          }
-        }
-      },
-      error: (err) => {
-        console.error('Failed to load work area map data', err);
+    this.loadAreasWithFallback((areas) => {
+      this.loadShapesFromStatic((shapes) => {
+        this.handleLoadedData(areas, shapes);
+      }, () => {
+        console.warn('[PWA] Failed to load static work-area shapes');
         this.errorMessage.set('Map data not available');
         this.loading.set(false);
-      },
+      });
+    }, () => {
+      console.warn('[PWA] Failed to load work areas from server and static json');
+      this.errorMessage.set('Map data not available');
+      this.loading.set(false);
     });
+  }
+
+  private loadAreasWithFallback(next: (areas: WorkAreaEntry[]) => void, fail: () => void): void {
+    this.serverApi.getWorkAreas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (areas) => {
+        next(areas);
+      },
+      error: () => {
+        this.http.get<WorkAreaEntry[]>('data/work-areas.json')
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next,
+            error: fail,
+          });
+      }
+    });
+  }
+
+  private loadShapesFromStatic(next: (shapes: ShapeEntry[]) => void, fail: () => void): void {
+    this.http.get<ShapeEntry[]>('data/work-area-shapes.json')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next,
+        error: fail,
+      });
+  }
+
+  private handleLoadedData(areas: WorkAreaEntry[], shapes: ShapeEntry[]): void {
+    const areaMap = new Map(areas.map(a => [a.id, a.name]));
+    const parsed = shapes.map(s => this.parseShape(s, areaMap));
+    this.shapes.set(parsed);
+    this.imageUrl.set('data/work-area-map-image.jpg');
+    this.loading.set(false);
+
+    const pendingName = this.selectedAreaName();
+    if (pendingName) {
+      const match = parsed.find(s => s.areaNames.includes(pendingName));
+      if (match) {
+        this.selectedShape.set(match);
+      }
+    }
   }
 
   private parseShape(entry: ShapeEntry, areaMap: Map<number, string>): ParsedShape {

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.new_version;
 
+import com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -21,7 +22,7 @@ public class NewBaseEntity  {
 
     @Id
     @GeneratedValue(generator = "device-prefixed")
-    @GenericGenerator(name = "device-prefixed", strategy = "com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator")
+    @GenericGenerator(name = "device-prefixed", type = DevicePrefixedIdGenerator.class)
     @Where(clause = "deleted IS NOT TRUE")
     private Long id;
     private Boolean deleted = false;

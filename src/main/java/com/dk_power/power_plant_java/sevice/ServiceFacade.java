@@ -11,12 +11,16 @@ import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.base_entities.Comment;
 import com.dk_power.power_plant_java.entities.base_entities.EmailCorrespondence;
+import com.dk_power.power_plant_java.entities.messaging.Conversation;
+import com.dk_power.power_plant_java.entities.messaging.Message;
 import com.dk_power.power_plant_java.entities.scheduler.Flow;
 import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
 import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
+import com.dk_power.power_plant_java.sevice.angular.messaging.NgConversationService;
+import com.dk_power.power_plant_java.sevice.angular.messaging.NgMessageService;
 import com.dk_power.power_plant_java.sevice.angular.loto.*;
 import com.dk_power.power_plant_java.sevice.angular.permits.*;
 import com.dk_power.power_plant_java.sevice.angular.scheduler.FlowService;
@@ -72,6 +76,9 @@ public class ServiceFacade {
             @Lazy NgCommentService ngCommentService,
             // Email Correspondence
             @Lazy NgEmailCorrespondenceService ngEmailCorrespondenceService,
+            // Messaging
+            @Lazy NgConversationService ngConversationService,
+            @Lazy NgMessageService ngMessageService,
             // Users
             @Lazy NgUserService ngUserService,
             // Permits
@@ -120,6 +127,9 @@ public class ServiceFacade {
         serviceMap.put(Comment.class.getSimpleName(), ngCommentService);
         // Email Correspondence
         serviceMap.put(EmailCorrespondence.class.getSimpleName(), ngEmailCorrespondenceService);
+        // Messaging
+        serviceMap.put(Conversation.class.getSimpleName(), ngConversationService);
+        serviceMap.put(Message.class.getSimpleName(), ngMessageService);
         // Users
         serviceMap.put(User.class.getSimpleName(), ngUserService);
         // Permits

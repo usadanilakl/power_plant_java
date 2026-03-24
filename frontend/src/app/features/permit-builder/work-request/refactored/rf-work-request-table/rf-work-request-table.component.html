@@ -37,3 +37,10 @@
     [entityId]="item.id">
   </app-correspondence-cell>
 </ng-template>
+
+<ng-template #messageCellTemplate let-item>
+  <app-message-cell
+    [entityType]="'WorkRequest'"
+    [entityId]="item.id">
+  </app-message-cell>
+</ng-template>

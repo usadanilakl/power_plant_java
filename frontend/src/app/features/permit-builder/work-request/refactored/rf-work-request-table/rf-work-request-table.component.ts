@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CorrespondenceCellComponent } from '../../../../../shared/correspondence-dialog/correspondence-cell.component';
+import { MessageCellComponent } from '../../../../../shared/messaging/message-cell.component';
 import { RfWorkRequestApiService } from '../services/rf-work-request-api.service';
 import { RfWorkRequestStateService } from '../services/rf-work-request-state.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -40,7 +41,7 @@ import { WorkRequestContextMenuService } from '../services/work-request-context-
 @Component({
   selector: 'app-rf-work-request-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, CorrespondenceCellComponent],
+  imports: [CommonModule, TableComponent, CorrespondenceCellComponent, MessageCellComponent],
   templateUrl: './rf-work-request-table.component.html',
   styleUrl: './rf-work-request-table.component.css',
   providers: [
@@ -75,6 +76,7 @@ export class RfWorkRequestTableComponent implements OnInit {
   rowDoubleClickedEvent = output<WorkRequestDto>();
 
   correspondenceCellTemplate = viewChild<TemplateRef<any>>('correspondenceCellTemplate');
+  messageCellTemplate = viewChild<TemplateRef<any>>('messageCellTemplate');
 
   // State
   items$ = toSignal(this.stateService.allLoadedWorkRequests$, { initialValue: [] });
@@ -97,6 +99,10 @@ export class RfWorkRequestTableComponent implements OnInit {
       const tmpl = this.correspondenceCellTemplate();
       if (tmpl) {
         cols.push({ id: 'correspondence', header: 'Responses', width: 110, template: tmpl });
+      }
+      const msgTmpl = this.messageCellTemplate();
+      if (msgTmpl) {
+        cols.push({ id: 'messages', header: 'Messages', width: 100, template: msgTmpl });
       }
       this.columns.set(cols);
     });

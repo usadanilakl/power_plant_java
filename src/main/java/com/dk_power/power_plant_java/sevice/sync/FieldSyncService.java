@@ -63,6 +63,8 @@ public class FieldSyncService {
     private final UserMergeService userMergeService;
     private final InstrumentMergeService instrumentMergeService;
     private final InstrumentLogMergeService instrumentLogMergeService;
+    private final ConversationMergeService conversationMergeService;
+    private final MessageMergeService messageMergeService;
     private final DedupKeyResolver dedupKeyResolver;
     @PersistenceContext
     private EntityManager entityManager;
@@ -113,6 +115,8 @@ public class FieldSyncService {
             UserMergeService userMergeService,
             InstrumentMergeService instrumentMergeService,
             InstrumentLogMergeService instrumentLogMergeService,
+            ConversationMergeService conversationMergeService,
+            MessageMergeService messageMergeService,
             DedupKeyResolver dedupKeyResolver) {
         this.fieldChangeRepository = fieldChangeRepository;
         this.peerDiscoveryService = peerDiscoveryService;
@@ -140,6 +144,8 @@ public class FieldSyncService {
         this.userMergeService = userMergeService;
         this.instrumentMergeService = instrumentMergeService;
         this.instrumentLogMergeService = instrumentLogMergeService;
+        this.conversationMergeService = conversationMergeService;
+        this.messageMergeService = messageMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
     }
 
@@ -739,6 +745,8 @@ public class FieldSyncService {
                             userMergeService.mergeIfDuplicatesExist();
                             instrumentMergeService.mergeIfDuplicatesExist();
                             instrumentLogMergeService.mergeIfDuplicatesExist();
+                            conversationMergeService.mergeIfDuplicatesExist();
+                            messageMergeService.mergeIfDuplicatesExist();
                         } catch (Exception e) {
                             log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                         } finally {
@@ -774,6 +782,8 @@ public class FieldSyncService {
                     userMergeService.mergeIfDuplicatesExist();
                     instrumentMergeService.mergeIfDuplicatesExist();
                     instrumentLogMergeService.mergeIfDuplicatesExist();
+                    conversationMergeService.mergeIfDuplicatesExist();
+                    messageMergeService.mergeIfDuplicatesExist();
                 } catch (Exception e) {
                     log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                 } finally {

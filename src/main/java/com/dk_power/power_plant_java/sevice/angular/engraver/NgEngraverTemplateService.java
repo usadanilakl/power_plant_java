@@ -112,6 +112,7 @@ public class NgEngraverTemplateService implements NgCrudService<EngraverTemplate
             template.setName(nameWithoutExt);
             template.setDataStructure("standard");
             template.setIsDefault(false);
+            template.setWithQr(filename.toLowerCase().contains("with-qr"));
 
             // Parse batch size from leading number
             Matcher batchMatcher = batchPattern.matcher(filename);

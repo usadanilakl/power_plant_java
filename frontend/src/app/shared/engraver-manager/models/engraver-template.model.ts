@@ -7,4 +7,5 @@ export interface EngraverTemplateDto {
   batchSize: number;
   filename: string;
   isDefault: boolean;
+  withQr: boolean;
 }

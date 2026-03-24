@@ -27,6 +27,8 @@ public class StartupMergeRunner {
     private final JhaMergeService jhaMergeService;
     private final EmailCorrespondenceMergeService emailCorrespondenceMergeService;
     private final UserMergeService userMergeService;
+    private final ConversationMergeService conversationMergeService;
+    private final MessageMergeService messageMergeService;
 
     @EventListener(ApplicationReadyEvent.class)
     public void runStartupMerge() {
@@ -37,6 +39,8 @@ public class StartupMergeRunner {
             jhaMergeService.mergeIfDuplicatesExist();
             emailCorrespondenceMergeService.mergeIfDuplicatesExist();
             userMergeService.mergeIfDuplicatesExist();
+            conversationMergeService.mergeIfDuplicatesExist();
+            messageMergeService.mergeIfDuplicatesExist();
             log.info("Startup merge complete");
         } catch (Exception e) {
             log.error("Startup merge failed (non-fatal): {}", e.getMessage());

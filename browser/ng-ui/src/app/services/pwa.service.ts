@@ -1,10 +1,14 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { DOCUMENT } from '@angular/common';
+import { inject, Injectable } from '@angular/core';
+import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
+import { BehaviorSubject, filter } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PwaService {
+  private document = inject(DOCUMENT);
+  private swUpdate = inject(SwUpdate, { optional: true });
   private promptEventSource = new BehaviorSubject<any>(null);
   /**
    * Observable that emits the 'beforeinstallprompt' event.
@@ -15,6 +19,8 @@ export class PwaService {
   standaloneBypass: boolean = true;
 
   constructor() {
+    this.initializeServiceWorkerUpdates();
+
     window.addEventListener('beforeinstallprompt', (event: any) => {
       // Prevent the default mini-infobar from appearing on mobile
       event.preventDefault();
@@ -28,6 +34,42 @@ export class PwaService {
       this.promptEventSource.next(null);
       console.log('PWA was installed');
     });
+  }
+
+  private initializeServiceWorkerUpdates(): void {
+    if (!this.swUpdate || !this.swUpdate.isEnabled) {
+      console.log('[PWA] Service worker updates are disabled');
+      return;
+    }
+
+    this.swUpdate.versionUpdates
+      .pipe(
+        filter((event): event is VersionReadyEvent => event.type === 'VERSION_READY')
+      )
+      .subscribe({
+        next: (event) => {
+          console.log('[PWA] New app version ready', event);
+          this.swUpdate!.activateUpdate()
+            .then(() => {
+              console.log('[PWA] Update activated, reloading application');
+              this.document.location.reload();
+            })
+            .catch((error) => {
+              console.error('[PWA] Failed to activate update', error);
+            });
+        },
+        error: (error) => {
+          console.error('[PWA] Service worker version update stream failed', error);
+        }
+      });
+
+    this.swUpdate.checkForUpdate()
+      .then((hasUpdate) => {
+        console.log('[PWA] Initial update check complete', { hasUpdate });
+      })
+      .catch((error) => {
+        console.error('[PWA] Initial update check failed', error);
+      });
   }
 
   /**

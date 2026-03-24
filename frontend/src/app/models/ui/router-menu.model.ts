@@ -94,6 +94,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         items: [
             { route: '/log/table', label: 'System Log' },
             { route: '/log/correspondence', label: 'Correspondence' },
+            { route: '/log/messaging', label: 'Messages' },
             { route: '/instrumentation', label: 'Instruments' }
         ]
     },

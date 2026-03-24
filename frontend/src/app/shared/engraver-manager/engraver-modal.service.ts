@@ -19,7 +19,6 @@ export class EngraverModalService {
   currentBatchIndex = signal(0);
   batches = signal<EngraverBatchItem[]>([]);
   isProcessing = signal(false);
-  withQr = signal(false);
   layoutVersion = signal<'standard' | 'info'>('standard');
   selectedCharacteristicNames = signal<string[]>([]);
   maxEngraveCharacteristics = 4;
@@ -236,13 +235,6 @@ export class EngraverModalService {
     }
   }
 
-  /**
-   * Toggles QR code setting.
-   */
-  toggleQr(): void {
-    this.withQr.set(!this.withQr());
-  }
-
   toggleCharacteristicName(name: string): void {
     const current = this.selectedCharacteristicNames();
     if (current.includes(name)) {
@@ -271,7 +263,6 @@ export class EngraverModalService {
     this.batches.set([]);
     this.currentBatchIndex.set(0);
     this.isProcessing.set(false);
-    this.withQr.set(false);
     this.layoutVersion.set('standard');
     this.selectedCharacteristicNames.set([]);
     this.allTemplates.set([]);

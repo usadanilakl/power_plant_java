@@ -17,6 +17,8 @@ import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
+import com.dk_power.power_plant_java.entities.messaging.Conversation;
+import com.dk_power.power_plant_java.entities.messaging.Message;
 import com.dk_power.power_plant_java.entities.scheduler.Flow;
 import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
@@ -33,6 +35,8 @@ import com.dk_power.power_plant_java.repository.fire_impairment.FireImpairmentRe
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
 import com.dk_power.power_plant_java.repository.forms.FormContainerRepo;
+import com.dk_power.power_plant_java.repository.messaging.ConversationRepo;
+import com.dk_power.power_plant_java.repository.messaging.MessageRepo;
 import com.dk_power.power_plant_java.repository.scheduler.FlowRepository;
 import com.dk_power.power_plant_java.repository.scheduler.TaskRepository;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -129,6 +133,8 @@ public class FullSyncToServerService {
     private final PrintableFormRepo printableFormRepo;
     private final FormContainerRepo formContainerRepo;
     private final JobLogRepo jobLogRepo;
+    private final ConversationRepo conversationRepo;
+    private final MessageRepo messageRepo;
     private final FlowRepository flowRepository;
     private final TaskRepository taskRepository;
 
@@ -189,7 +195,9 @@ public class FullSyncToServerService {
         new EntitySyncConfig("PrintableForm", PrintableForm.class),
         new EntitySyncConfig("FormContainer", FormContainer.class),
         new EntitySyncConfig("Flow", Flow.class),
-        new EntitySyncConfig("Task", Task.class)
+        new EntitySyncConfig("Task", Task.class),
+        new EntitySyncConfig("Conversation", Conversation.class),
+        new EntitySyncConfig("Message", Message.class)
     );
 
     /**
@@ -592,6 +600,8 @@ public class FullSyncToServerService {
         counts.put("FormContainer", formContainerRepo.count());
         counts.put("Flow", flowRepository.count());
         counts.put("Task", taskRepository.count());
+        counts.put("Conversation", conversationRepo.count());
+        counts.put("Message", messageRepo.count());
         return counts;
     }
 
@@ -916,6 +926,8 @@ public class FullSyncToServerService {
             case "FormContainer" -> formContainerRepo;
             case "Flow" -> flowRepository;
             case "Task" -> taskRepository;
+            case "Conversation" -> conversationRepo;
+            case "Message" -> messageRepo;
             default -> null;
         };
     }

@@ -29,6 +29,7 @@ public class EngraverTemplateMapper implements BaseMapper {
         if (entity.getBatchSize() != null) dto.setBatchSize(entity.getBatchSize());
         if (entity.getFilename() != null) dto.setFilename(entity.getFilename());
         if (entity.getIsDefault() != null) dto.setIsDefault(entity.getIsDefault());
+        if (entity.getWithQr() != null) dto.setWithQr(entity.getWithQr());
         if (entity.getDateCreated() != null) dto.setDateCreated(entity.getDateCreated());
         if (entity.getDateModified() != null) dto.setDateModified(entity.getDateModified());
         if (entity.getCreatedBy() != null) dto.setCreatedBy(entity.getCreatedBy());
@@ -51,6 +52,7 @@ public class EngraverTemplateMapper implements BaseMapper {
         if (dto.getBatchSize() != null) entity.setBatchSize(dto.getBatchSize());
         if (dto.getFilename() != null) entity.setFilename(dto.getFilename());
         if (dto.getIsDefault() != null) entity.setIsDefault(dto.getIsDefault());
+        if (dto.getWithQr() != null) entity.setWithQr(dto.getWithQr());
         return entity;
     }
 }

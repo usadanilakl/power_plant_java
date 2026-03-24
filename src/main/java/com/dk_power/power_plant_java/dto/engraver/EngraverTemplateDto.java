@@ -20,4 +20,5 @@ public class EngraverTemplateDto extends BaseDto {
     private Integer batchSize;
     private String filename;
     private Boolean isDefault;
+    private Boolean withQr = false;
 }

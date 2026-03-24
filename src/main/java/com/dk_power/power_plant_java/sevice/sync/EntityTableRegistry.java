@@ -72,6 +72,10 @@ public class EntityTableRegistry {
         // Email Correspondence
         Map.entry("EmailCorrespondence", "email_correspondence"),
 
+        // Messaging
+        Map.entry("Conversation", "conversation"),
+        Map.entry("Message", "conversation_message"),
+
         // Fire Impairment
         Map.entry("FireImpairment", "fire_impairment"),
 
@@ -140,7 +144,9 @@ public class EntityTableRegistry {
         // Tier 4: Polymorphic entities (entityType + entityId → reference ANY entity above)
         // MUST be last so dedup remaps for referenced entities exist before entityId is applied.
         "Comment",
-        "EmailCorrespondence"
+        "EmailCorrespondence",
+        "Conversation",
+        "Message"
     );
 
     /**

@@ -22,4 +22,5 @@ public class EngraverTemplate extends BaseAuditEntity {
     private Integer batchSize;
     private String filename;
     private Boolean isDefault = false;
+    private Boolean withQr = false;
 }

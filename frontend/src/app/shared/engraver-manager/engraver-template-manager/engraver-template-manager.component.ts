@@ -31,6 +31,7 @@ export class EngraverTemplateManagerComponent {
   formDataStructure = 'standard';
   formBatchSize = 4;
   formIsDefault = false;
+  formWithQr = false;
 
   ngOnChanges(): void {
     if (this.isOpen) {
@@ -55,6 +56,7 @@ export class EngraverTemplateManagerComponent {
     this.formDataStructure = 'standard';
     this.formBatchSize = 4;
     this.formIsDefault = false;
+    this.formWithQr = false;
     this.editingTemplate.set(null);
     this.isEditing.set(true);
   }
@@ -66,6 +68,7 @@ export class EngraverTemplateManagerComponent {
     this.formDataStructure = template.dataStructure;
     this.formBatchSize = template.batchSize;
     this.formIsDefault = template.isDefault;
+    this.formWithQr = template.withQr;
     this.editingTemplate.set(template);
     this.isEditing.set(true);
   }
@@ -77,7 +80,8 @@ export class EngraverTemplateManagerComponent {
       tagSize: this.formTagSize,
       dataStructure: this.formDataStructure,
       batchSize: this.formBatchSize,
-      isDefault: this.formIsDefault
+      isDefault: this.formIsDefault,
+      withQr: this.formWithQr
     };
 
     const existing = this.editingTemplate();

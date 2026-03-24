@@ -9,6 +9,7 @@ import { EngraverManagerComponent } from "./shared/engraver-manager/engraver-man
 import { WizardDialogComponent } from "./shared/guide/guide-form";
 import { CommentsDialogComponent } from "./shared/comments-dialog/comments-dialog.component";
 import { CorrespondenceDialogComponent } from "./shared/correspondence-dialog/correspondence-dialog.component";
+import { ConversationDialogComponent } from "./shared/messaging/conversation-dialog.component";
 import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
 import { WrDetailDialogComponent } from "./shared/wr-detail-dialog/wr-detail-dialog.component";
 import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment-dialog.component";
@@ -28,6 +29,7 @@ import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-
     WizardDialogComponent,
     CommentsDialogComponent,
     CorrespondenceDialogComponent,
+    ConversationDialogComponent,
     QaDialogComponent,
     WrDetailDialogComponent,
     AttachmentDialogComponent,
