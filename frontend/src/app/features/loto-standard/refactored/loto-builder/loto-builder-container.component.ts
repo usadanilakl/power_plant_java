@@ -15,6 +15,7 @@ import { RfMultiUploadComponent } from '../../../files/refactored/rf-multi-uploa
 import { RfFileStateService } from '../../../files/refactored/services/rf-file-state.service';
 import { MainLayoutComponent } from '../../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-menu.component';
+import { LotoBuilderDiagramOverlayComponent } from './loto-builder-diagram-overlay/loto-builder-diagram-overlay.component';
 
 @Component({
   selector: 'app-loto-builder-container',
@@ -32,6 +33,7 @@ import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-
     RfMultiUploadComponent,
     MainLayoutComponent,
     RouterMenuComponent,
+    LotoBuilderDiagramOverlayComponent,
   ],
   templateUrl: './loto-builder-container.component.html',
   styleUrl: './loto-builder-container.component.css',

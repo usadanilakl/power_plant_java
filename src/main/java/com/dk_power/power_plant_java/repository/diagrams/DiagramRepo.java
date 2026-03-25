@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface DiagramRepo extends BaseRepository<Diagram> {
     List<Diagram> findByNameContainingIgnoreCase(String name);
+    List<Diagram> findByContextFileIdOrderByDateModifiedDesc(Long contextFileId);
 }

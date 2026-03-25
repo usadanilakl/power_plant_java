@@ -23,7 +23,11 @@ export class PrintService {
     setTimeout(() => {
       this.isPreparing.set(false);
       const electronAPI = (window as any).electronAPI;
-      if (electronAPI?.printCurrentPage) {
+      if (electronAPI?.printWithPreview) {
+        electronAPI.printWithPreview()
+          .then(() => this.printableForm.set(null))
+          .catch(() => this.printableForm.set(null));
+      } else if (electronAPI?.printCurrentPage) {
         electronAPI.printCurrentPage({ silent: false })
           .then(() => this.printableForm.set(null))
           .catch(() => this.printableForm.set(null));

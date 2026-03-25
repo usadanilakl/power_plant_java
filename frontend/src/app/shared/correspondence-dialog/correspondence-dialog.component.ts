@@ -290,6 +290,7 @@ export class CorrespondenceDialogComponent {
   });
 
   private loadEffect = this.dialogService.onOpen$.subscribe(() => {
+    console.log('[Correspondence] onOpen$ fired, isVisible:', this.dialogService.isVisible());
     this.searchQuery = '';
     this.filterDirection = '';
     this.loadCorrespondence();

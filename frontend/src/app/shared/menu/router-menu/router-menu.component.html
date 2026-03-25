@@ -7,13 +7,14 @@
         <li class="home-link">
           <a routerLink="/"><span class="material-icons nav-icon">home</span> Home</a>
         </li>
-        @for (group of filteredGroupedMenu(); track group.label) {
-          <li class="menu-group-link" [class.active]="isGroupActive(group)">
+        @for (group of filteredGroupedMenu(); track group.label; let i = $index) {
+          <li class="menu-group-link" [class.active]="isGroupActive(group)" [style.--group-color]="group.color">
             <a [routerLink]="group.defaultRoute">
               @if (group.icon) {
                 <span class="material-icons nav-icon">{{ group.icon }}</span>
               }
               {{ group.label }}
+              <kbd class="shortcut-badge">Alt+{{ i + 1 }}</kbd>
             </a>
           </li>
         }
@@ -21,11 +22,17 @@
 
       <!-- Secondary row: Items for active group -->
       @if (showSecondaryMenu() && activeGroup()) {
-        <ul class="secondary-menu">
+        <ul class="secondary-menu" [style.--group-color]="activeGroup()!.color">
           @for (item of activeGroup()!.items; track item.route) {
             <li [appGuide]="item.guideId || ''"
-                [guideMessage]="item.guideMessage || ''">
-              <a [routerLink]="item.route" routerLinkActive="active-link">{{ item.label }}</a>
+                [guideMessage]="item.guideMessage || ''"
+                [class.separator]="item.separator">
+              <a [routerLink]="item.route" routerLinkActive="active-link">
+                @if (item.icon) {
+                  <span class="material-icons sub-icon">{{ item.icon }}</span>
+                }
+                {{ item.label }}
+              </a>
             </li>
           }
         </ul>

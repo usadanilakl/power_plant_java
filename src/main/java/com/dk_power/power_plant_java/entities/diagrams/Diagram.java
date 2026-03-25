@@ -31,4 +31,8 @@ public class Diagram extends BaseAuditEntity {
     private String connectionsJson;
 
     private Integer gridSize = 20;
+
+    private Long contextFileId;
+
+    private String contextFileName;
 }

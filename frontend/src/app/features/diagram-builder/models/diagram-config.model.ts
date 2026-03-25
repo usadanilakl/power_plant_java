@@ -1,4 +1,4 @@
-import { DiagramToolType } from './diagram-shape.model';
+import { DiagramToolType } from './diagram-placement.model';
 
 export interface DiagramCanvasConfig {
   canPan: boolean;

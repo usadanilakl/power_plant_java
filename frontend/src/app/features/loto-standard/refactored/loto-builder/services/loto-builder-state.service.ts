@@ -58,6 +58,12 @@ export class LotoBuilderStateService {
   /** Whether the builder popup is open */
   isBuilderOpen = signal<boolean>(false);
 
+  /** Whether the embedded diagram builder is open */
+  isDiagramBuilderOpen = signal<boolean>(false);
+
+  /** Current diagram id opened from the builder context */
+  currentDiagramId = signal<number | null>(null);
+
   /** Hovered shape ID (for highlighting) */
   hoveredShapeId = signal<number | null>(null);
 
@@ -414,6 +420,16 @@ export class LotoBuilderStateService {
     this.isLotoPointFormOpen.set(true);
   }
 
+  openDiagramBuilder(diagramId?: number | null): void {
+    this.currentDiagramId.set(diagramId ?? null);
+    this.isDiagramBuilderOpen.set(true);
+  }
+
+  closeDiagramBuilder(): void {
+    this.isDiagramBuilderOpen.set(false);
+    this.currentDiagramId.set(null);
+  }
+
   /**
    * Add LOTO standard to the list
    */
@@ -565,6 +581,8 @@ export class LotoBuilderStateService {
     this.tableSearchTerm.set(null);
     this.lotoPointPopupView.set('form');
     this.isEditMode.set(false);
+    this.isDiagramBuilderOpen.set(false);
+    this.currentDiagramId.set(null);
     // Reset counterpart state
     this.resetCounterpartState();
   }

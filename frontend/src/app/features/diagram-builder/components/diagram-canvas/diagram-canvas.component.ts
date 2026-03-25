@@ -1,6 +1,6 @@
 import {
   Component, ElementRef, ViewChild, AfterViewInit, OnInit, OnDestroy,
-  inject, input, effect, HostListener, ChangeDetectionStrategy,
+  inject, input, output, effect, HostListener, ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -16,19 +16,22 @@ import { DiagramToolbarComponent } from '../diagram-toolbar/diagram-toolbar.comp
 import { DiagramPropertiesComponent } from '../diagram-properties/diagram-properties.component';
 import { ZoomPanService } from '../../../../shared/image/refactored/services/zoom-pan.service';
 import { PIDSymbolsService, PIDSymbol } from '../../../../shared/image/refactored/services/pid-symbols.service';
-import { SymbolPaletteComponent } from '../../../../shared/image/refactored/symbol-palette/symbol-palette.component';
-import { AlignmentType, AnchorPoint, DiagramElement, DiagramLineShape, DistributeType } from '../../models/diagram-shape.model';
+import { AlignmentType, AnchorPoint, DiagramPlacement, DistributeType } from '../../models/diagram-placement.model';
 import { SimulationGraphService } from '../../simulation/services/simulation-graph.service';
 import { SimulationEngineService } from '../../simulation/services/simulation-engine.service';
 import { SimulationStateService } from '../../simulation/services/simulation-state.service';
 import { SimulationRenderService } from '../../simulation/services/simulation-render.service';
+import { SimNodeState } from '../../simulation/models/simulation.model';
 import { SimulationToolbarComponent } from '../../simulation/components/simulation-toolbar.component';
 import { SimulationInspectorComponent } from '../../simulation/components/simulation-inspector.component';
+import { EquipmentLibraryComponent } from '../equipment-library/equipment-library.component';
+import { SimEquipmentDto, normalizeSimRole } from '../../models/sim-equipment.model';
+import { SimEquipmentApiService } from '../../services/sim-equipment-api.service';
 
 @Component({
   selector: 'app-diagram-canvas',
   standalone: true,
-  imports: [CommonModule, DiagramToolbarComponent, DiagramPropertiesComponent, SymbolPaletteComponent, SimulationToolbarComponent, SimulationInspectorComponent],
+  imports: [CommonModule, DiagramToolbarComponent, DiagramPropertiesComponent, SimulationToolbarComponent, SimulationInspectorComponent, EquipmentLibraryComponent],
   providers: [
     DiagramShapeManagerService,
     DiagramRenderService,
@@ -52,6 +55,7 @@ import { SimulationInspectorComponent } from '../../simulation/components/simula
             (onAlign)="onAlign($event)"
             (onDistribute)="onDistribute($event)"
             (onDelete)="deleteSelected()"
+            (onSave)="saveDiagram()"
             (onGroup)="groupSelected()"
             (onUngroup)="ungroupSelected()"
             (onZoomIn)="zoomIn()"
@@ -66,15 +70,15 @@ import { SimulationInspectorComponent } from '../../simulation/components/simula
       }
 
       <div class="diagram-workspace">
-        @if (config.showSymbolPalette && drawingService.activeTool() === 'place-symbol') {
-          <div class="symbol-palette-panel">
-            <app-symbol-palette
-              (symbolSelected)="onSymbolSelected($event)"
-            />
-          </div>
+        @if (!simState.isSimulating()) {
+          <app-equipment-library
+            (onEquipmentDrag)="onEquipmentDragStart($event)"
+          />
         }
 
         <div class="canvas-container" #canvasContainer
+          (drop)="onDrop($event)"
+          (dragover)="$event.preventDefault()"
           (mousedown)="onMouseDown($event)"
           (mousemove)="onMouseMove($event)"
           (mouseup)="onMouseUp($event)"
@@ -123,12 +127,6 @@ import { SimulationInspectorComponent } from '../../simulation/components/simula
       overflow: hidden;
       position: relative;
     }
-    .symbol-palette-panel {
-      width: 200px;
-      border-right: 1px solid #333;
-      overflow-y: auto;
-      background: #1a1a1a;
-    }
     .canvas-container {
       flex: 1;
       overflow: hidden;
@@ -164,6 +162,20 @@ import { SimulationInspectorComponent } from '../../simulation/components/simula
   `],
 })
 export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
+  embeddedDiagramId = input<number | null>(null);
+  embeddedMode = input<'builder' | 'renderer' | null>(null);
+  initialDiagramName = input<string | null>(null);
+  initialContextFileId = input<number | null>(null);
+  initialContextFileName = input<string | null>(null);
+  backgroundImageUrl = input<string | null>(null);
+  focusSourceEntityType = input<string | null>(null);
+  focusSourceEntityId = input<number | null>(null);
+  focusConnectionId = input<number | null>(null);
+  selectedSourceChange = output<{ sourceEntityType: string | null; sourceEntityId: number | null }>();
+  selectedConnectionChange = output<number | null>();
+  simulationRunningChange = output<boolean>();
+  selectedNodeStateChange = output<SimNodeState | null>();
+
   @ViewChild('canvasContainer') canvasContainerRef!: ElementRef<HTMLDivElement>;
   @ViewChild('gridCanvas') gridCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('shapeCanvas') shapeCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -179,6 +191,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   zoomPanService = inject(ZoomPanService);
   pidSymbols = inject(PIDSymbolsService);
   simState = inject(SimulationStateService);
+  simEquipmentApi = inject(SimEquipmentApiService);
   private simRender = inject(SimulationRenderService);
 
   private route = inject(ActivatedRoute);
@@ -199,14 +212,19 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   private resizeHandle: string | null = null;
   private rotateStartAngle = 0;
   private rotateStartRotation = 0;
-  private dragStartShapes = new Map<number, DiagramElement>();
+  private dragStartShapes = new Map<number, DiagramPlacement>();
   private dragStartCanvas = { x: 0, y: 0 };
   private panStart = { x: 0, y: 0 };
-  private resizeStartShape: DiagramElement | null = null;
+  private resizeStartShape: DiagramPlacement | null = null;
   private resizeStartCanvas = { x: 0, y: 0 };
   private marqueeStart = { x: 0, y: 0 };
   private marqueeEnd = { x: 0, y: 0 };
   private animFrameId = 0;
+  private backgroundImage: HTMLImageElement | null = null;
+  private backgroundImageUrlLoaded: string | null = null;
+  private lastEmbeddedDiagramId: number | null = null;
+  private lastFocusedSourceKey: string | null = null;
+  private lastFocusedConnectionKey: string | null = null;
   protected Math = Math;
 
   constructor() {
@@ -219,6 +237,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       this.shapeManager.selectedShapeIds();
       this.gridService.gridVisible();
       this.gridService.gridSize();
+      this.backgroundImageUrl();
       this.requestRender();
     });
 
@@ -241,17 +260,127 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.requestRender();
       }
     });
+
+    effect(() => {
+      const embeddedId = this.embeddedDiagramId();
+      if (embeddedId == null || embeddedId === this.lastEmbeddedDiagramId) {
+        return;
+      }
+      this.lastEmbeddedDiagramId = embeddedId;
+      this.stateService.loadDiagram(embeddedId);
+    });
+
+    effect(() => {
+      const sourceType = this.focusSourceEntityType();
+      const sourceId = this.focusSourceEntityId();
+      const shapes = this.shapeManager.shapes();
+      const diagramId = this.stateService.currentDiagram()?.id ?? this.embeddedDiagramId() ?? null;
+
+      if (!sourceType || sourceId == null || shapes.length === 0) {
+        return;
+      }
+
+      const focusKey = `${diagramId}:${sourceType}:${sourceId}:${shapes.length}`;
+      if (focusKey === this.lastFocusedSourceKey) {
+        return;
+      }
+
+      const match = shapes.find(shape =>
+        shape.sourceEntityType === sourceType && shape.sourceEntityId === sourceId
+      );
+      if (!match) {
+        return;
+      }
+
+      this.lastFocusedSourceKey = focusKey;
+      this.drawingService.setTool('select');
+      this.shapeManager.selectShape(match.id);
+      this.centerOnPlacement(match);
+      this.requestRender();
+    });
+
+    effect(() => {
+      const connectionId = this.focusConnectionId();
+      const connections = this.shapeManager.connections();
+      const shapes = this.shapeManager.shapes();
+      const diagramId = this.stateService.currentDiagram()?.id ?? this.embeddedDiagramId() ?? null;
+
+      if (connectionId == null || connections.length === 0 || shapes.length === 0) {
+        return;
+      }
+
+      const focusKey = `${diagramId}:connection:${connectionId}:${connections.length}`;
+      if (focusKey === this.lastFocusedConnectionKey) {
+        return;
+      }
+
+      const match = connections.find(connection => connection.id === connectionId);
+      if (!match) {
+        return;
+      }
+
+      this.lastFocusedConnectionKey = focusKey;
+      this.drawingService.setTool('select');
+      this.shapeManager.selectConnection(match.id);
+      this.centerOnConnection(match);
+      this.requestRender();
+    });
+
+    effect(() => {
+      const selectedShape = this.shapeManager.singleSelectedShape();
+      const selectedConnection = this.shapeManager.selectedConnectionId();
+
+      if (!selectedShape || selectedConnection != null) {
+        this.selectedSourceChange.emit({ sourceEntityType: null, sourceEntityId: null });
+        return;
+      }
+
+      this.selectedSourceChange.emit({
+        sourceEntityType: selectedShape.sourceEntityType || null,
+        sourceEntityId: selectedShape.sourceEntityId ?? null,
+      });
+    });
+
+    effect(() => {
+      this.selectedConnectionChange.emit(this.shapeManager.selectedConnectionId());
+    });
+
+    effect(() => {
+      this.simulationRunningChange.emit(this.simState.isSimulating());
+    });
+
+    effect(() => {
+      const selectedShape = this.shapeManager.singleSelectedShape();
+      const selectedConnection = this.shapeManager.selectedConnectionId();
+      if (!selectedShape || selectedConnection != null || !this.simState.isSimulating()) {
+        this.selectedNodeStateChange.emit(null);
+        return;
+      }
+
+      this.selectedNodeStateChange.emit(this.simState.getNodeState(selectedShape.id) ?? null);
+    });
   }
 
   ngOnInit(): void {
-    const mode = this.route.snapshot.data['mode'];
+    this.simEquipmentApi.loadAllIntoCache();
+    const mode = this.embeddedMode() ?? this.route.snapshot.data['mode'];
     this.config = mode === 'renderer' ? DIAGRAM_RENDERER_CONFIG : DIAGRAM_BUILDER_CONFIG;
 
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.stateService.loadDiagram(Number(id));
+    const embeddedId = this.embeddedDiagramId();
+    const routeId = this.route.snapshot.paramMap.get('id');
+    if (embeddedId != null) {
+      this.lastEmbeddedDiagramId = embeddedId;
+      this.stateService.loadDiagram(embeddedId);
+    } else if (routeId) {
+      this.stateService.loadDiagram(Number(routeId));
     } else {
-      this.stateService.createNewDiagram();
+      this.stateService.createNewDiagram(
+        this.initialDiagramName() ?? 'Untitled Diagram',
+        {
+          contextFileId: this.initialContextFileId() ?? undefined,
+          contextFileName: this.initialContextFileName() ?? undefined,
+        }
+      );
     }
   }
 
@@ -265,6 +394,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    if (this.stateService.isDirty()) {
+      this.stateService.saveNow();
+    }
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     this.simRender.stopAnimation();
     if (this.simState.isSimulating()) this.simState.deactivate();
@@ -319,6 +451,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     const gridCtx = this.gridCanvasRef?.nativeElement?.getContext('2d');
     if (gridCtx) {
       applyTransform(gridCtx);
+      this.ensureBackgroundImageLoaded();
+      this.drawBackgroundImage(gridCtx);
       this.gridService.drawGrid(gridCtx, this.canvasWidth, this.canvasHeight, scale);
       gridCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
@@ -332,6 +466,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.shapeManager.shapes(),
         this.shapeManager.connections(),
         this.shapeManager.selectedShapeIds(),
+        this.shapeManager.selectedConnectionId(),
         this.hoveredShapeId,
         scale
       );
@@ -384,6 +519,40 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
+  private ensureBackgroundImageLoaded(): void {
+    const url = this.backgroundImageUrl();
+    if (!url) {
+      this.backgroundImage = null;
+      this.backgroundImageUrlLoaded = null;
+      return;
+    }
+    if (this.backgroundImageUrlLoaded === url && this.backgroundImage) {
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      this.backgroundImage = img;
+      this.backgroundImageUrlLoaded = url;
+      this.requestRender();
+    };
+    img.onerror = () => {
+      this.backgroundImage = null;
+      this.backgroundImageUrlLoaded = null;
+      this.requestRender();
+    };
+    img.src = url;
+  }
+
+  private drawBackgroundImage(ctx: CanvasRenderingContext2D): void {
+    if (!this.backgroundImage) return;
+
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(this.backgroundImage, 0, 0, this.canvasWidth, this.canvasHeight);
+    ctx.restore();
+  }
+
   // --- Mouse handlers ---
 
   private getCanvasCoords(event: MouseEvent): { x: number; y: number } {
@@ -415,7 +584,10 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         if (this.connectionService.isDrawingConnection()) {
           const conn = this.connectionService.finishConnection(anchor);
           if (conn) {
-            this.shapeManager.addConnection(conn);
+            this.shapeManager.addConnection({
+              ...conn,
+              pipeTemplateId: conn.pipeTemplateId ?? this.getDefaultPipeTemplateId(),
+            });
             this.stateService.markDirty();
           }
         } else {
@@ -473,10 +645,20 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
           this.dragStartCanvas = coords;
           this.dragStartShapes.clear();
           for (const s of this.shapeManager.selectedShapes()) {
-            this.dragStartShapes.set(s.id, { ...s } as DiagramElement);
+            this.dragStartShapes.set(s.id, { ...s } as DiagramPlacement);
           }
         }
       } else {
+        const hitConnection = this.renderService.hitTestConnection(
+          this.shapeManager.connections(),
+          this.shapeManager.shapes(),
+          coords.x,
+          coords.y
+        );
+        if (hitConnection) {
+          this.shapeManager.selectConnection(hitConnection.id);
+          return;
+        }
         // Empty area — start marquee selection (or pan if Space is held)
         {
           if (!event.ctrlKey) {
@@ -543,8 +725,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       const s = this.resizeStartShape;
 
       // For lines, directly move the endpoint the handle is closest to
-      if (s.type === 'line') {
-        const line = s as DiagramLineShape;
+      if (s.type === 'line' && s.startX !== undefined) {
         const updates: any = {};
 
         // Determine which endpoint to move based on which handle was grabbed
@@ -554,18 +735,18 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         const movingStart = handle.includes('nw') || handle === 'n-resize' || handle === 'w-resize' || handle === 'ne-resize';
 
         if (movingStart) {
-          updates.startX = line.startX + dx;
-          updates.startY = line.startY + dy;
+          updates.startX = s.startX + dx;
+          updates.startY = s.startY! + dy;
         } else {
-          updates.endX = line.endX + dx;
-          updates.endY = line.endY + dy;
+          updates.endX = s.endX! + dx;
+          updates.endY = s.endY! + dy;
         }
 
         // Recompute bounding box from endpoints
-        const sx = updates.startX ?? line.startX;
-        const sy = updates.startY ?? line.startY;
-        const ex = updates.endX ?? line.endX;
-        const ey = updates.endY ?? line.endY;
+        const sx = updates.startX ?? s.startX;
+        const sy = updates.startY ?? s.startY!;
+        const ex = updates.endX ?? s.endX!;
+        const ey = updates.endY ?? s.endY!;
         updates.x = Math.min(sx, ex);
         updates.y = Math.min(sy, ey);
         updates.width = Math.max(1, Math.abs(ex - sx));
@@ -598,17 +779,16 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
       for (const [id, startShape] of this.dragStartShapes) {
         const snapped = this.gridService.snapPosition(startShape.x + dx, startShape.y + dy);
-        const updates: Partial<DiagramElement> = { x: snapped.x, y: snapped.y };
+        const updates: Partial<DiagramPlacement> = { x: snapped.x, y: snapped.y };
 
         // Lines need their endpoint coordinates moved too
-        if (startShape.type === 'line') {
-          const line = startShape as DiagramLineShape;
+        if (startShape.type === 'line' && startShape.startX !== undefined) {
           const snapDx = snapped.x - startShape.x;
           const snapDy = snapped.y - startShape.y;
-          (updates as any).startX = line.startX + snapDx;
-          (updates as any).startY = line.startY + snapDy;
-          (updates as any).endX = line.endX + snapDx;
-          (updates as any).endY = line.endY + snapDy;
+          (updates as any).startX = startShape.startX + snapDx;
+          (updates as any).startY = startShape.startY! + snapDy;
+          (updates as any).endX = startShape.endX! + snapDx;
+          (updates as any).endY = startShape.endY! + snapDy;
         }
 
         this.shapeManager.updateShape(id, updates);
@@ -632,7 +812,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.drawingService.activeTool() === 'draw-connection') {
       const nextHoveredAnchor = this.renderService.hitTestAnchor(this.shapeManager.shapes(), coords.x, coords.y);
       const anchorChanged =
-        nextHoveredAnchor?.shapeId !== this.hoveredAnchor?.shapeId ||
+        nextHoveredAnchor?.placementId !== this.hoveredAnchor?.placementId ||
         nextHoveredAnchor?.position !== this.hoveredAnchor?.position;
       this.hoveredAnchor = nextHoveredAnchor;
       if (anchorChanged) {
@@ -735,6 +915,12 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
+    if (event.ctrlKey && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      this.saveDiagram();
+      return;
+    }
+
     // Delete selected
     if ((event.key === 'Delete' || event.key === 'Backspace') && this.config.canDeleteShapes) {
       this.deleteSelected();
@@ -771,6 +957,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     // Arrow key movement
     if (this.config.canDragShapes && this.shapeManager.hasSelection()) {
+      if (this.shapeManager.selectedConnectionId() != null) {
+        return;
+      }
       const step = event.shiftKey ? 10 : 1;
       let dx = 0, dy = 0;
       switch (event.key) {
@@ -782,13 +971,12 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       if (dx || dy) {
         event.preventDefault();
         for (const shape of this.shapeManager.selectedShapes()) {
-          const updates: Partial<DiagramElement> = { x: shape.x + dx, y: shape.y + dy };
-          if (shape.type === 'line') {
-            const line = shape as DiagramLineShape;
-            (updates as any).startX = line.startX + dx;
-            (updates as any).startY = line.startY + dy;
-            (updates as any).endX = line.endX + dx;
-            (updates as any).endY = line.endY + dy;
+          const updates: Partial<DiagramPlacement> = { x: shape.x + dx, y: shape.y + dy };
+          if (shape.type === 'line' && shape.startX !== undefined) {
+            (updates as any).startX = shape.startX + dx;
+            (updates as any).startY = shape.startY! + dy;
+            (updates as any).endX = shape.endX! + dx;
+            (updates as any).endY = shape.endY! + dy;
           }
           this.shapeManager.updateShape(shape.id, updates);
         }
@@ -796,6 +984,59 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.requestRender();
       }
     }
+  }
+
+  @HostListener('window:beforeunload')
+  onBeforeUnload(): void {
+    if (this.stateService.isDirty()) {
+      this.stateService.saveNow();
+    }
+  }
+
+  // --- Equipment Library drag/drop ---
+
+  private draggedEquipment: SimEquipmentDto | null = null;
+
+  onEquipmentDragStart(eq: SimEquipmentDto): void {
+    this.draggedEquipment = eq;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    const json = event.dataTransfer?.getData('application/sim-equipment');
+    const eq: SimEquipmentDto | null = json ? JSON.parse(json) : this.draggedEquipment;
+    if (!eq || !eq.id) return;
+
+    const coords = this.getCanvasCoords(event as any);
+    const w = eq.defaultWidth || 60;
+    const h = eq.defaultHeight || 60;
+
+    const placement: Omit<DiagramPlacement, 'id'> = {
+      simEquipmentId: eq.id,
+      name: eq.name || 'New Equipment',
+      description: eq.description || undefined,
+      simRole: eq.simRole || 'junction',
+      simParamsJson: eq.simParamsJson || '{"schemaVersion":1}',
+      sourceEntityType: eq.sourceEntityType || undefined,
+      sourceEntityId: eq.sourceEntityId || undefined,
+      x: coords.x - w / 2,
+      y: coords.y - h / 2,
+      width: w,
+      height: h,
+      type: eq.symbolId ? 'symbol' : 'rectangle',
+      symbolId: eq.symbolId || undefined,
+      svgPath: eq.svgPath || undefined,
+      originalWidth: eq.defaultWidth || undefined,
+      originalHeight: eq.defaultHeight || undefined,
+      color: eq.defaultColor || '#ffffff',
+      label: eq.name || undefined,
+    };
+
+    const added = this.shapeManager.addShape(placement);
+    this.shapeManager.selectShape(added.id);
+    this.stateService.markDirty();
+    this.draggedEquipment = null;
+    this.requestRender();
   }
 
   // --- Toolbar actions ---
@@ -820,6 +1061,10 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     this.requestRender();
   }
 
+  saveDiagram(): void {
+    this.stateService.saveNow();
+  }
+
   groupSelected(): void {
     const groupId = this.shapeManager.groupSelected();
     if (groupId) {
@@ -842,16 +1087,47 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       this.simState.deactivate();
       this.requestRender();
     } else {
-      this.simState.activate(this.shapeManager.shapes(), this.shapeManager.connections());
+      this.simState.activate(
+        this.shapeManager.shapes(),
+        this.shapeManager.connections()
+      );
       this.simRender.startAnimation(() => this.requestRender());
     }
+  }
+
+  operateSelectedEquipment(): boolean {
+    if (!this.simState.isSimulating()) return false;
+
+    const selected = this.shapeManager.singleSelectedShape();
+    if (!selected) return false;
+
+    const state = this.simState.getNodeState(selected.id);
+    if (!state) return false;
+
+    if (state.role === 'valve') {
+      const newPos = state.params.valvePosition === 'open' ? 'closed' : 'open';
+      this.simState.updateNodeParams(selected.id, { valvePosition: newPos });
+      this.requestRender();
+      return true;
+    }
+
+    if (state.role === 'pump') {
+      this.simState.updateNodeParams(selected.id, { pumpRunning: !state.params.pumpRunning });
+      this.requestRender();
+      return true;
+    }
+
+    return false;
   }
 
   resetSimulation(): void {
     if (this.simState.isSimulating()) {
       this.simRender.stopAnimation();
       this.simState.deactivate();
-      this.simState.activate(this.shapeManager.shapes(), this.shapeManager.connections());
+      this.simState.activate(
+        this.shapeManager.shapes(),
+        this.shapeManager.connections()
+      );
       this.simRender.startAnimation(() => this.requestRender());
     }
   }
@@ -909,5 +1185,39 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     const hit = this.renderService.hitTestShape(this.shapeManager.shapes(), coords.x, coords.y);
     container.style.cursor = hit ? 'move' : 'grab';
+  }
+
+  private getDefaultPipeTemplateId(): number | undefined {
+    return this.simEquipmentApi.equipmentList()
+      .find(eq => eq.id != null && normalizeSimRole(eq.simRole) === 'pipe')
+      ?.id;
+  }
+
+  private centerOnPlacement(shape: DiagramPlacement): void {
+    const container = this.canvasContainerRef?.nativeElement;
+    if (!container) return;
+
+    const shapeCenterX = shape.x + shape.width / 2;
+    const shapeCenterY = shape.y + shape.height / 2;
+    this.transform = {
+      ...this.transform,
+      pointX: container.clientWidth / 2 - shapeCenterX * this.transform.scale,
+      pointY: container.clientHeight / 2 - shapeCenterY * this.transform.scale,
+    };
+  }
+
+  private centerOnConnection(connection: { sourcePlacementId: number; targetPlacementId: number }): void {
+    const source = this.shapeManager.getShapeById(connection.sourcePlacementId);
+    const target = this.shapeManager.getShapeById(connection.targetPlacementId);
+    const container = this.canvasContainerRef?.nativeElement;
+    if (!source || !target || !container) return;
+
+    const midpointX = (source.x + source.width / 2 + target.x + target.width / 2) / 2;
+    const midpointY = (source.y + source.height / 2 + target.y + target.height / 2) / 2;
+    this.transform = {
+      ...this.transform,
+      pointX: container.clientWidth / 2 - midpointX * this.transform.scale,
+      pointY: container.clientHeight / 2 - midpointY * this.transform.scale,
+    };
   }
 }

@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { DiagramElement, DiagramSymbolShape, DiagramToolType } from '../models/diagram-shape.model';
+import { DiagramPlacement, DiagramToolType } from '../models/diagram-placement.model';
 import { PIDSymbol } from '../../../shared/image/refactored/services/pid-symbols.service';
 
 export interface TransformState {
@@ -67,7 +67,7 @@ export class DiagramDrawingService {
     }
   }
 
-  finishDrawing(): DiagramElement | null {
+  finishDrawing(): DiagramPlacement | null {
     if (!this.drawingState) return null;
 
     const { startX, startY, currentX, currentY } = this.drawingState;
@@ -121,7 +121,7 @@ export class DiagramDrawingService {
           svgPath: symbol.svgPath,
           originalWidth: symbol.originalWidth,
           originalHeight: symbol.originalHeight,
-        } as DiagramSymbolShape;
+        };
       case 'draw-text':
         return {
           id: 0, type: 'text',

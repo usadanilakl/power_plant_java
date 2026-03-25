@@ -62,6 +62,7 @@ export class RfPopupProjectionComponent implements OnChanges, OnDestroy, AfterVi
     if (!this.isBrowser) return;
 
     const overlay = this.elementRef.nativeElement.querySelector('.popup-overlay');
+    console.log('[PopupProjection] moveToBody called, title:', this.title, 'overlay found:', !!overlay, 'already moved:', !!this.overlayElement);
     if (overlay && !this.overlayElement) {
       this.overlayElement = overlay;
       this.document.body.appendChild(overlay);

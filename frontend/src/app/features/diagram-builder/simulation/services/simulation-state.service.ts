@@ -1,9 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { DiagramConnection, DiagramElement } from '../../models/diagram-shape.model';
+import { DiagramPlacement, DiagramConnection } from '../../models/diagram-placement.model';
 import {
-  SimEdgeState, SimGraphNode, SimNodeParams, SimNodeState, defaultNodeState,
+  SimEdgeState, SimGraphNode, SimNodeState, defaultNodeState,
 } from '../models/simulation.model';
+import { SimParams, SimRole } from '../../models/sim-equipment.model';
 import { SimulationGraphService } from './simulation-graph.service';
 import { SimulationEngineService } from './simulation-engine.service';
 
@@ -11,8 +12,11 @@ import { SimulationEngineService } from './simulation-engine.service';
 export class SimulationStateService {
   private graphService = inject(SimulationGraphService);
   private engine = inject(SimulationEngineService);
+  private readonly tickMs = 500;
+  private readonly dtSeconds = 1;
 
   readonly isSimulating = signal(false);
+  readonly simTimeSeconds = signal(0);
 
   private graph = new Map<number, SimGraphNode>();
   private connections: DiagramConnection[] = [];
@@ -20,10 +24,13 @@ export class SimulationStateService {
   private edgeSubjects = new Map<number, BehaviorSubject<SimEdgeState>>();
   private _nodeStates = new Map<number, SimNodeState>();
   private _edgeStates = new Map<number, SimEdgeState>();
+  private tickHandle: ReturnType<typeof setInterval> | null = null;
 
-  activate(shapes: DiagramElement[], connections: DiagramConnection[]): void {
+  activate(shapes: DiagramPlacement[], connections: DiagramConnection[]): void {
+    this.stopTicking();
     this.connections = connections;
     this.graph = this.graphService.buildGraph(shapes, connections);
+    this.simTimeSeconds.set(0);
 
     // Initialize node states with defaults
     this._nodeStates.clear();
@@ -47,11 +54,14 @@ export class SimulationStateService {
     }
 
     this.isSimulating.set(true);
-    this.runSolver();
+    this.runStep();
+    this.startTicking();
   }
 
   deactivate(): void {
+    this.stopTicking();
     this.isSimulating.set(false);
+    this.simTimeSeconds.set(0);
     for (const sub of this.nodeSubjects.values()) sub.complete();
     for (const sub of this.edgeSubjects.values()) sub.complete();
     this.nodeSubjects.clear();
@@ -61,18 +71,27 @@ export class SimulationStateService {
     this.graph.clear();
   }
 
-  updateNodeParams(shapeId: number, updates: Partial<SimNodeParams>): void {
+  updateNodeParams(shapeId: number, updates: Partial<SimParams>): void {
     const state = this._nodeStates.get(shapeId);
     if (!state) return;
 
     state.params = { ...state.params, ...updates };
-    if (updates.role) state.role = updates.role;
-
-    // Update graph node role if changed
     const graphNode = this.graph.get(shapeId);
-    if (graphNode && updates.role) graphNode.role = updates.role;
+    if (graphNode) {
+      graphNode.params = { ...graphNode.params, ...updates };
+    }
+    this.runStep();
+  }
 
-    this.runSolver();
+  updateNodeRole(shapeId: number, role: SimRole): void {
+    const state = this._nodeStates.get(shapeId);
+    if (!state) return;
+
+    state.role = role;
+    const graphNode = this.graph.get(shapeId);
+    if (graphNode) graphNode.role = role;
+
+    this.runStep();
   }
 
   getNodeState$(shapeId: number): Observable<SimNodeState> | undefined {
@@ -95,8 +114,8 @@ export class SimulationStateService {
     return [...this._edgeStates.values()];
   }
 
-  private runSolver(): void {
-    const result = this.engine.solve(this.graph, this.connections, this._nodeStates);
+  private runStep(): void {
+    const result = this.engine.step(this.graph, this.connections, this._nodeStates, this.dtSeconds);
 
     // Update node states and notify subscribers
     for (const [id, state] of result.nodes) {
@@ -108,6 +127,21 @@ export class SimulationStateService {
     for (const [id, edge] of result.edges) {
       this._edgeStates.set(id, edge);
       this.edgeSubjects.get(id)?.next(edge);
+    }
+  }
+
+  private startTicking(): void {
+    this.tickHandle = setInterval(() => {
+      if (!this.isSimulating()) return;
+      this.runStep();
+      this.simTimeSeconds.update(value => value + this.dtSeconds);
+    }, this.tickMs);
+  }
+
+  private stopTicking(): void {
+    if (this.tickHandle) {
+      clearInterval(this.tickHandle);
+      this.tickHandle = null;
     }
   }
 }

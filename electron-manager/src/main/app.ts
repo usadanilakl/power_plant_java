@@ -66,6 +66,31 @@ export default class App {
     // Load the renderer
     App.mainWindowManager.load();
 
+    // Enable WebBluetooth for Brady printer SDK
+    App.mainWindow.webContents.on('select-bluetooth-device', (event, devices, callback) => {
+      event.preventDefault();
+      if (devices.length > 0) {
+        callback(devices[0].deviceId);
+      } else {
+        callback('');
+      }
+    });
+
+    // Allow Bluetooth permission requests from the renderer (for Brady printer WebBluetooth)
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+      // 'bluetooth' is a valid Chromium permission but not in Electron's type definitions
+      if ((permission as string) === 'bluetooth') {
+        callback(true);
+        return;
+      }
+      callback(true);
+    });
+
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+      if ((permission as string) === 'bluetooth') return true;
+      return true;
+    });
+
     // Handle window close - single cleanup path
     App.mainWindow.on('close', async (event) => {
       if (App.isQuitting) return; // Already quitting, let it proceed

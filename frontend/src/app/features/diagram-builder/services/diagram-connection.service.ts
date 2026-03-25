@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { AnchorPoint, DiagramConnection, DiagramElement } from '../models/diagram-shape.model';
+import { AnchorPoint, DiagramConnection, DiagramPlacement } from '../models/diagram-placement.model';
 import { DiagramRenderService } from './diagram-render.service';
 
 export interface ConnectionDrawState {
@@ -37,7 +37,7 @@ export class DiagramConnectionService {
     const { sourceAnchor } = this.drawState;
 
     // Don't connect shape to itself
-    if (sourceAnchor.shapeId === targetAnchor.shapeId) {
+    if (sourceAnchor.placementId === targetAnchor.placementId) {
       this.cancelConnection();
       return null;
     }
@@ -47,8 +47,8 @@ export class DiagramConnectionService {
 
     return {
       id: 0,
-      sourceShapeId: sourceAnchor.shapeId,
-      targetShapeId: targetAnchor.shapeId,
+      sourcePlacementId: sourceAnchor.placementId,
+      targetPlacementId: targetAnchor.placementId,
       sourceAnchor: sourceAnchor.position,
       targetAnchor: targetAnchor.position,
       lineStyle: 'solid',

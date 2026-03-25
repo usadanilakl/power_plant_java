@@ -46,12 +46,36 @@ public class NgDiagramController {
         }
     }
 
+    @GetMapping("/by-context-file/{fileId}")
+    public ResponseEntity<NgApiResponse<List<DiagramDto>>> getByContextFile(@PathVariable Long fileId) {
+        try {
+            List<DiagramDto> items = service.getByContextFileId(fileId);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(items, "Context diagrams retrieved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<NgApiResponse<DiagramDto>> create(@RequestBody DiagramDto dto) {
         try {
             DiagramDto created = service.createDiagram(dto);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(created, "Diagram created successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/seed/feedwater-control-test")
+    public ResponseEntity<NgApiResponse<DiagramDto>> seedFeedwaterControlTest() {
+        try {
+            DiagramDto seeded = service.seedFeedwaterControlScenario();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(seeded, "Feedwater control test diagram seeded successfully", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

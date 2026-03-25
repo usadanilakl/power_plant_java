@@ -18,8 +18,16 @@ export class DiagramApiService {
     return this.http.get<SpringApiResponse<DiagramDto>>(`${this.baseUrl}/get-by-id/${id}`);
   }
 
+  getByContextFile(fileId: number): Observable<SpringApiResponse<DiagramDto[]>> {
+    return this.http.get<SpringApiResponse<DiagramDto[]>>(`${this.baseUrl}/by-context-file/${fileId}`);
+  }
+
   create(dto: DiagramDto): Observable<SpringApiResponse<DiagramDto>> {
     return this.http.post<SpringApiResponse<DiagramDto>>(this.baseUrl, dto);
+  }
+
+  seedFeedwaterControlTest(): Observable<SpringApiResponse<DiagramDto>> {
+    return this.http.post<SpringApiResponse<DiagramDto>>(`${this.baseUrl}/seed/feedwater-control-test`, {});
   }
 
   update(id: number, dto: DiagramDto): Observable<SpringApiResponse<DiagramDto>> {

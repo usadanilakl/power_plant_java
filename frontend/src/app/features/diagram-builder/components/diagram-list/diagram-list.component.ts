@@ -12,7 +12,10 @@ import { DiagramDto } from '../../models/diagram.model';
     <div class="diagram-list-page">
       <div class="header">
         <h2>Diagrams</h2>
-        <button class="btn-primary" (click)="createNew()">+ New Diagram</button>
+        <div class="header-actions">
+          <button class="btn-secondary" (click)="seedFeedwaterTest()">Seed Feedwater Test</button>
+          <button class="btn-primary" (click)="createNew()">+ New Diagram</button>
+        </div>
       </div>
 
       @if (loading()) {
@@ -59,6 +62,11 @@ import { DiagramDto } from '../../models/diagram.model';
       align-items: center;
       margin-bottom: 24px;
     }
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
     h2 { margin: 0; }
     .btn-primary {
       padding: 8px 16px;
@@ -70,6 +78,16 @@ import { DiagramDto } from '../../models/diagram.model';
       font-size: 14px;
     }
     .btn-primary:hover { background: #1976d2; }
+    .btn-secondary {
+      padding: 8px 16px;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-secondary:hover { background: #388e3c; }
     .diagram-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -132,6 +150,18 @@ export class DiagramListComponent implements OnInit {
 
   createNew(): void {
     this.router.navigate(['/diagram-builder', 'new']);
+  }
+
+  seedFeedwaterTest(): void {
+    this.api.seedFeedwaterControlTest().subscribe({
+      next: (res) => {
+        const diagram = res.responseData;
+        this.loadDiagrams();
+        if (diagram?.id) {
+          this.router.navigate(['/diagram-builder', 'build', diagram.id]);
+        }
+      },
+    });
   }
 
   openBuilder(id: number): void {

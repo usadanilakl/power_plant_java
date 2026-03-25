@@ -135,6 +135,14 @@
       Select Standards
     </button>
     <button
+      class="toolbar-button"
+      title="Open simulation diagram builder for this P&ID"
+      [disabled]="!builderState.currentFile()"
+      (click)="onBuildDiagram()"
+    >
+      Build Diagram
+    </button>
+    <button
       class="toolbar-button primary"
       title="Save Changes"
       [disabled]="!builderState.hasUnsavedChanges()"

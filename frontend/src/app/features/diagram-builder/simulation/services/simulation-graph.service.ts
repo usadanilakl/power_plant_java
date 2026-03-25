@@ -1,25 +1,33 @@
 import { Injectable } from '@angular/core';
-import { DiagramConnection, DiagramElement, DiagramSymbolShape } from '../../models/diagram-shape.model';
+import { DiagramPlacement, DiagramConnection } from '../../models/diagram-placement.model';
 import {
-  SimGraphNode, SimNodeRole, SYMBOL_ROLE_MAP, roleFromShapeType, defaultParams,
-} from '../models/simulation.model';
+  SimRole,
+  SYMBOL_ROLE_MAP,
+  defaultSimParams,
+  normalizeSimRole,
+  parseSimParams,
+} from '../../models/sim-equipment.model';
+import { SimGraphNode } from '../models/simulation.model';
 
 @Injectable()
 export class SimulationGraphService {
 
   buildGraph(
-    shapes: DiagramElement[],
+    placements: DiagramPlacement[],
     connections: DiagramConnection[]
   ): Map<number, SimGraphNode> {
     const graph = new Map<number, SimGraphNode>();
 
-    // Create nodes from shapes
-    for (const shape of shapes) {
-      const role = this.determineRole(shape);
-      graph.set(shape.id, {
-        shapeId: shape.id,
+    // Create nodes from placements
+    for (const placement of placements) {
+      const role = this.determineRole(placement);
+      graph.set(placement.id, {
+        shapeId: placement.id,
         role,
-        params: defaultParams(role),
+        params: placement.simParamsJson
+          ? { ...defaultSimParams(role), ...parseSimParams(placement.simParamsJson) }
+          : defaultSimParams(role),
+        simEquipmentId: placement.simEquipmentId,
         upstreamEdges: [],
         downstreamEdges: [],
       });
@@ -27,8 +35,8 @@ export class SimulationGraphService {
 
     // Wire edges from connections
     for (const conn of connections) {
-      const sourceNode = graph.get(conn.sourceShapeId);
-      const targetNode = graph.get(conn.targetShapeId);
+      const sourceNode = graph.get(conn.sourcePlacementId);
+      const targetNode = graph.get(conn.targetPlacementId);
       if (sourceNode) sourceNode.downstreamEdges.push(conn.id);
       if (targetNode) targetNode.upstreamEdges.push(conn.id);
     }
@@ -36,12 +44,15 @@ export class SimulationGraphService {
     return graph;
   }
 
-  private determineRole(shape: DiagramElement): SimNodeRole {
-    if (shape.type === 'symbol') {
-      const sym = shape as DiagramSymbolShape;
-      return SYMBOL_ROLE_MAP[sym.symbolId] ?? 'junction';
+  private determineRole(placement: DiagramPlacement): SimRole {
+    if (placement.simRole) {
+      return normalizeSimRole(placement.simRole);
     }
-    return roleFromShapeType(shape.type);
+    if (placement.type === 'symbol' && placement.symbolId) {
+      return SYMBOL_ROLE_MAP[placement.symbolId] ?? 'junction';
+    }
+    if (placement.type === 'line') return 'pipe';
+    return 'junction';
   }
 
   /**
@@ -69,7 +80,7 @@ export class SimulationGraphService {
       const node = graph.get(id)!;
       const allUpstreamReady = node.upstreamEdges.every(edgeId => {
         const conn = connMap.get(edgeId);
-        return !conn || visited.has(conn.sourceShapeId);
+        return !conn || visited.has(conn.sourcePlacementId);
       });
 
       if (!allUpstreamReady && !sources.includes(id)) {
@@ -84,8 +95,8 @@ export class SimulationGraphService {
       // Enqueue downstream nodes
       for (const edgeId of node.downstreamEdges) {
         const conn = connMap.get(edgeId);
-        if (conn && !visited.has(conn.targetShapeId)) {
-          queue.push(conn.targetShapeId);
+        if (conn && !visited.has(conn.targetPlacementId)) {
+          queue.push(conn.targetPlacementId);
         }
       }
     }

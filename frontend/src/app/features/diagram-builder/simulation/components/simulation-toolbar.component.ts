@@ -15,6 +15,7 @@ import { SimulationStateService } from '../services/simulation-state.service';
       </button>
       @if (simState.isSimulating()) {
         <span class="sim-badge">SIMULATION ACTIVE</span>
+        <span class="sim-time">t={{ simState.simTimeSeconds() }}s</span>
         <button class="sim-btn" (click)="onReset.emit()">Reset</button>
       }
     </div>
@@ -47,6 +48,11 @@ import { SimulationStateService } from '../services/simulation-state.service';
       font-weight: 700;
       letter-spacing: 1px;
       animation: pulse 1.5s ease-in-out infinite;
+    }
+    .sim-time {
+      font-size: 11px;
+      color: #aaa;
+      font-family: monospace;
     }
     @keyframes pulse { 50% { opacity: 0.5; } }
     .sim-btn {

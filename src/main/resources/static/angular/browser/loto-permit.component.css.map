@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;ab1a4b10ed82f50656f818834665f7cb6e4f24c63a47cfa9aa8a148094444d9a;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/permit-builder/loto/loto-permit.component.ts"],
-  "sourcesContent": [":host { display: block; height: 100%; overflow: hidden; }"],
-  "mappings": ";AAAA;AAAQ,WAAS;AAAO,UAAQ;AAAM,YAAU;AAAQ;",
-  "names": []
-}

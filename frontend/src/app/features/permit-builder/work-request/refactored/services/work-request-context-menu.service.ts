@@ -138,8 +138,10 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   }
 
   private handleViewCorrespondence(item: WorkRequestDto): void {
+    console.log('[Correspondence] handleViewCorrespondence called, item.id:', item?.id);
     if (item?.id) {
       this.correspondenceDialogService.open('WorkRequest', item.id);
+      console.log('[Correspondence] dialogService.open() called, isVisible:', this.correspondenceDialogService.isVisible());
       this.closeContextMenu();
     }
   }

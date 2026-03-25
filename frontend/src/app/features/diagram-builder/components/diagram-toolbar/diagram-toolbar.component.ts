@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DiagramDrawingService } from '../../services/diagram-drawing.service';
 import { DiagramGridService } from '../../services/diagram-grid.service';
 import { DiagramShapeManagerService } from '../../services/diagram-shape-manager.service';
-import { AlignmentType, DiagramToolType, DistributeType } from '../../models/diagram-shape.model';
+import { AlignmentType, DiagramToolType, DistributeType } from '../../models/diagram-placement.model';
 
 @Component({
   selector: 'app-diagram-toolbar',
@@ -11,7 +11,6 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
   imports: [CommonModule],
   template: `
     <div class="diagram-toolbar">
-      <!-- Drawing tools -->
       <div class="tool-group">
         <span class="group-label">Tools</span>
         <div class="tool-buttons">
@@ -27,7 +26,6 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
         </div>
       </div>
 
-      <!-- Alignment tools -->
       <div class="tool-group">
         <span class="group-label">Align</span>
         <div class="tool-buttons">
@@ -43,57 +41,54 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
         </div>
       </div>
 
-      <!-- Distribute tools -->
       <div class="tool-group">
         <span class="group-label">Distribute</span>
         <div class="tool-buttons">
           <button class="tool-btn" title="Distribute Horizontally"
             [disabled]="shapeManager.selectedShapes().length < 3"
-            (click)="onDistribute.emit('horizontal')">⟺</button>
+            (click)="onDistribute.emit('horizontal')">DH</button>
           <button class="tool-btn" title="Distribute Vertically"
             [disabled]="shapeManager.selectedShapes().length < 3"
-            (click)="onDistribute.emit('vertical')">⟺̃</button>
+            (click)="onDistribute.emit('vertical')">DV</button>
         </div>
       </div>
 
-      <!-- Canvas tools -->
       <div class="tool-group">
         <span class="group-label">Canvas</span>
         <div class="tool-buttons">
           <button class="tool-btn"
             [class.active]="gridService.gridVisible()"
             title="Toggle Grid"
-            (click)="gridService.toggleGrid()">⊞</button>
+            (click)="gridService.toggleGrid()">G</button>
           <button class="tool-btn"
             [class.active]="gridService.snapEnabled()"
             title="Snap to Grid"
-            (click)="gridService.toggleSnap()">⊡</button>
+            (click)="gridService.toggleSnap()">SN</button>
           <button class="tool-btn" title="Zoom In" (click)="onZoomIn.emit()">+</button>
-          <button class="tool-btn" title="Zoom Out" (click)="onZoomOut.emit()">−</button>
-          <button class="tool-btn" title="Fit to View" (click)="onZoomFit.emit()">⊟</button>
+          <button class="tool-btn" title="Zoom Out" (click)="onZoomOut.emit()">-</button>
+          <button class="tool-btn" title="Fit to View" (click)="onZoomFit.emit()">FIT</button>
         </div>
       </div>
 
-      <!-- Group -->
       <div class="tool-group">
         <span class="group-label">Group</span>
         <div class="tool-buttons">
           <button class="tool-btn" title="Group (Ctrl+G)"
             [disabled]="shapeManager.selectionCount() < 2"
-            (click)="onGroup.emit()">⊞</button>
+            (click)="onGroup.emit()">GR</button>
           <button class="tool-btn" title="Ungroup (Ctrl+Shift+G)"
             [disabled]="!shapeManager.hasGroupInSelection()"
-            (click)="onUngroup.emit()">⊟</button>
+            (click)="onUngroup.emit()">UG</button>
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="tool-group">
         <span class="group-label">Actions</span>
         <div class="tool-buttons">
+          <button class="tool-btn" title="Save" (click)="onSave.emit()">S</button>
           <button class="tool-btn danger" title="Delete Selected (Del)"
             [disabled]="!shapeManager.hasSelection()"
-            (click)="onDelete.emit()">✕</button>
+            (click)="onDelete.emit()">X</button>
         </div>
       </div>
     </div>
@@ -123,14 +118,15 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
       gap: 2px;
     }
     .tool-btn {
-      width: 32px;
+      min-width: 32px;
       height: 32px;
       border: 1px solid #444;
       background: #2a2a2a;
       color: #ccc;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 11px;
+      padding: 0 6px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -153,7 +149,7 @@ import { AlignmentType, DiagramToolType, DistributeType } from '../../models/dia
       background: #c62828;
       border-color: #f44336;
     }
-  `]
+  `],
 })
 export class DiagramToolbarComponent {
   drawingService = inject(DiagramDrawingService);
@@ -163,6 +159,7 @@ export class DiagramToolbarComponent {
   onAlign = output<AlignmentType>();
   onDistribute = output<DistributeType>();
   onDelete = output<void>();
+  onSave = output<void>();
   onGroup = output<void>();
   onUngroup = output<void>();
   onZoomIn = output<void>();
@@ -170,21 +167,21 @@ export class DiagramToolbarComponent {
   onZoomFit = output<void>();
 
   drawingTools: { id: DiagramToolType; icon: string; label: string }[] = [
-    { id: 'select', icon: '⇱', label: 'Select' },
-    { id: 'draw-rectangle', icon: '▭', label: 'Rectangle' },
-    { id: 'draw-circle', icon: '○', label: 'Circle' },
-    { id: 'draw-line', icon: '╱', label: 'Line' },
-    { id: 'draw-text', icon: 'T', label: 'Text' },
-    { id: 'place-symbol', icon: '⚙', label: 'P&ID Symbol' },
-    { id: 'draw-connection', icon: '⟶', label: 'Connection' },
+    { id: 'select', icon: 'SEL', label: 'Select' },
+    { id: 'draw-rectangle', icon: 'REC', label: 'Rectangle' },
+    { id: 'draw-circle', icon: 'CIR', label: 'Circle' },
+    { id: 'draw-line', icon: 'LIN', label: 'Line' },
+    { id: 'draw-text', icon: 'TXT', label: 'Text' },
+    { id: 'place-symbol', icon: 'SYM', label: 'P&ID Symbol' },
+    { id: 'draw-connection', icon: 'CON', label: 'Connection' },
   ];
 
   alignmentTools: { type: AlignmentType; icon: string; label: string }[] = [
-    { type: 'left', icon: '⫍', label: 'Align Left' },
-    { type: 'right', icon: '⫎', label: 'Align Right' },
-    { type: 'top', icon: '⫠', label: 'Align Top' },
-    { type: 'bottom', icon: '⫡', label: 'Align Bottom' },
-    { type: 'h-center', icon: '⫰', label: 'Center Horizontal' },
-    { type: 'v-center', icon: '⫯', label: 'Center Vertical' },
+    { type: 'left', icon: 'L', label: 'Align Left' },
+    { type: 'right', icon: 'R', label: 'Align Right' },
+    { type: 'top', icon: 'T', label: 'Align Top' },
+    { type: 'bottom', icon: 'B', label: 'Align Bottom' },
+    { type: 'h-center', icon: 'HC', label: 'Center Horizontal' },
+    { type: 'v-center', icon: 'VC', label: 'Center Vertical' },
   ];
 }

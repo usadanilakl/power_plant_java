@@ -331,6 +331,11 @@ export class LotoBuilderRightPanelComponent {
     console.log('Shape double clicked - editing enabled by interactive-image', shape);
   }
 
+  onBuildDiagram(): void {
+    if (!this.builderState.currentFile()) return;
+    this.builderState.openDiagramBuilder();
+  }
+
   /**
    * Handle shape right click - context menu is now handled by interactive-image
    * This output is no longer needed but kept for backwards compatibility

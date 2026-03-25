@@ -1,5 +1,5 @@
 
-import { Component, input, computed, inject } from '@angular/core';
+import { Component, input, computed, inject, HostListener } from '@angular/core';
 import { MAIN_MENU_ITEMS, GROUPED_MAIN_MENU, RouterMenuItems, GroupedRouterMenu, RouterMenuGroup } from '../../../models/ui/router-menu.model';
 import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
@@ -68,5 +68,23 @@ export class RouterMenuComponent {
 
   isGroupActive(group: RouterMenuGroup): boolean {
     return this.activeGroup()?.label === group.label;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardShortcut(event: KeyboardEvent): void {
+    if (!event.altKey || !this.useGrouped()) return;
+
+    const num = parseInt(event.key, 10);
+    if (isNaN(num) || num < 1) return;
+
+    // Skip if user is typing in an input
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    const groups = this.filteredGroupedMenu();
+    if (num > groups.length) return;
+
+    event.preventDefault();
+    this.router.navigate([groups[num - 1].defaultRoute]);
   }
 }

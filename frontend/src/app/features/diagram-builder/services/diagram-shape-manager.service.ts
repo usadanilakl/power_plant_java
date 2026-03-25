@@ -1,19 +1,21 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { DiagramConnection, DiagramElement } from '../models/diagram-shape.model';
+import { DiagramConnection, DiagramPlacement } from '../models/diagram-placement.model';
 
 let groupCounter = 0;
 
 @Injectable()
 export class DiagramShapeManagerService {
-  private _shapes = signal<DiagramElement[]>([]);
+  private _shapes = signal<DiagramPlacement[]>([]);
   private _connections = signal<DiagramConnection[]>([]);
   private _selectedShapeIds = signal<Set<number>>(new Set());
+  private _selectedConnectionId = signal<number | null>(null);
   private _nextShapeId = 1;
   private _nextConnectionId = 1;
 
   readonly shapes = this._shapes.asReadonly();
   readonly connections = this._connections.asReadonly();
   readonly selectedShapeIds = this._selectedShapeIds.asReadonly();
+  readonly selectedConnectionId = this._selectedConnectionId.asReadonly();
 
   readonly selectedShapes = computed(() => {
     const ids = this._selectedShapeIds();
@@ -25,13 +27,18 @@ export class DiagramShapeManagerService {
     return selected.length === 1 ? selected[0] : null;
   });
 
-  readonly hasSelection = computed(() => this._selectedShapeIds().size > 0);
+  readonly singleSelectedConnection = computed(() => {
+    const id = this._selectedConnectionId();
+    return id == null ? null : this._connections().find(c => c.id === id) ?? null;
+  });
+
+  readonly hasSelection = computed(() => this._selectedShapeIds().size > 0 || this._selectedConnectionId() != null);
 
   readonly selectionCount = computed(() => this._selectedShapeIds().size);
 
   // --- Shape CRUD ---
 
-  setShapes(shapes: DiagramElement[]): void {
+  setShapes(shapes: DiagramPlacement[]): void {
     this._shapes.set([...shapes]);
     this._nextShapeId = shapes.length > 0
       ? Math.max(...shapes.map(s => s.id)) + 1
@@ -40,27 +47,28 @@ export class DiagramShapeManagerService {
 
   setConnections(connections: DiagramConnection[]): void {
     this._connections.set([...connections]);
+    this._selectedConnectionId.set(null);
     this._nextConnectionId = connections.length > 0
       ? Math.max(...connections.map(c => c.id)) + 1
       : 1;
   }
 
-  addShape(shape: Omit<DiagramElement, 'id'>): DiagramElement {
-    const newShape = { ...shape, id: this._nextShapeId++ } as DiagramElement;
+  addShape(shape: Omit<DiagramPlacement, 'id'>): DiagramPlacement {
+    const newShape = { ...shape, id: this._nextShapeId++ } as DiagramPlacement;
     this._shapes.update(shapes => [...shapes, newShape]);
     return newShape;
   }
 
-  updateShape(id: number, updates: Partial<DiagramElement>): void {
+  updateShape(id: number, updates: Partial<DiagramPlacement>): void {
     this._shapes.update(shapes =>
-      shapes.map(s => s.id === id ? { ...s, ...updates } as DiagramElement : s)
+      shapes.map(s => s.id === id ? { ...s, ...updates } as DiagramPlacement : s)
     );
   }
 
   deleteShape(id: number): void {
     this._shapes.update(shapes => shapes.filter(s => s.id !== id));
     this._connections.update(conns =>
-      conns.filter(c => c.sourceShapeId !== id && c.targetShapeId !== id)
+      conns.filter(c => c.sourcePlacementId !== id && c.targetPlacementId !== id)
     );
     this._selectedShapeIds.update(ids => {
       const next = new Set(ids);
@@ -71,15 +79,24 @@ export class DiagramShapeManagerService {
 
   deleteSelectedShapes(): void {
     const ids = this._selectedShapeIds();
-    if (ids.size === 0) return;
-    this._shapes.update(shapes => shapes.filter(s => !ids.has(s.id)));
-    this._connections.update(conns =>
-      conns.filter(c => !ids.has(c.sourceShapeId) && !ids.has(c.targetShapeId))
-    );
-    this._selectedShapeIds.set(new Set());
+    const selectedConnectionId = this._selectedConnectionId();
+    if (ids.size === 0 && selectedConnectionId == null) return;
+
+    if (ids.size > 0) {
+      this._shapes.update(shapes => shapes.filter(s => !ids.has(s.id)));
+      this._connections.update(conns =>
+        conns.filter(c => !ids.has(c.sourcePlacementId) && !ids.has(c.targetPlacementId))
+      );
+      this._selectedShapeIds.set(new Set());
+    }
+
+    if (selectedConnectionId != null) {
+      this._connections.update(conns => conns.filter(c => c.id !== selectedConnectionId));
+      this._selectedConnectionId.set(null);
+    }
   }
 
-  getShapeById(id: number): DiagramElement | undefined {
+  getShapeById(id: number): DiagramPlacement | undefined {
     return this._shapes().find(s => s.id === id);
   }
 
@@ -99,6 +116,9 @@ export class DiagramShapeManagerService {
 
   deleteConnection(id: number): void {
     this._connections.update(conns => conns.filter(c => c.id !== id));
+    if (this._selectedConnectionId() === id) {
+      this._selectedConnectionId.set(null);
+    }
   }
 
   // --- Selection ---
@@ -114,6 +134,7 @@ export class DiagramShapeManagerService {
 
     if (exclusive) {
       this._selectedShapeIds.set(new Set(groupIds));
+      this._selectedConnectionId.set(null);
     } else {
       this._selectedShapeIds.update(ids => {
         const next = new Set(ids);
@@ -146,6 +167,14 @@ export class DiagramShapeManagerService {
 
   selectMultiple(ids: number[]): void {
     this._selectedShapeIds.set(new Set(ids));
+    this._selectedConnectionId.set(null);
+  }
+
+  selectConnection(id: number): void {
+    const connection = this._connections().find(c => c.id === id);
+    if (!connection) return;
+    this._selectedShapeIds.set(new Set());
+    this._selectedConnectionId.set(id);
   }
 
   selectShapesInRect(x1: number, y1: number, x2: number, y2: number): void {
@@ -169,10 +198,12 @@ export class DiagramShapeManagerService {
       }
     }
     this._selectedShapeIds.set(hitIds);
+    this._selectedConnectionId.set(null);
   }
 
   clearSelection(): void {
     this._selectedShapeIds.set(new Set());
+    this._selectedConnectionId.set(null);
   }
 
   isSelected(id: number): boolean {
@@ -188,7 +219,7 @@ export class DiagramShapeManagerService {
     const groupId = `group-${++groupCounter}-${Date.now()}`;
     this._shapes.update(shapes =>
       shapes.map(s => this._selectedShapeIds().has(s.id)
-        ? { ...s, groupId } as DiagramElement
+        ? { ...s, groupId } as DiagramPlacement
         : s
       )
     );
@@ -198,7 +229,7 @@ export class DiagramShapeManagerService {
   ungroupSelected(): void {
     this._shapes.update(shapes =>
       shapes.map(s => this._selectedShapeIds().has(s.id)
-        ? { ...s, groupId: undefined } as DiagramElement
+        ? { ...s, groupId: undefined } as DiagramPlacement
         : s
       )
     );

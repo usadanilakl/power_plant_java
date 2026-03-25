@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;a3ad2738f493b1b0d3bcd9d35afe23b832c83d93602190f4286917fc86610a0d;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/permit-builder/jha/refactored/rf-jha-paper-form/rf-jha-paper-form.component.ts"],
-  "sourcesContent": [":host { display: block; height: 100%; overflow: auto; }"],
-  "mappings": ";AAAA;AAAQ,WAAS;AAAO,UAAQ;AAAM,YAAU;AAAM;",
-  "names": []
-}

@@ -186,24 +186,11 @@ export class EngraverManagerComponent {
   }
 
   /**
-   * Just open LightBurn with existing CSV (for re-processing).
+   * Reprocess batch with current settings and reopen LightBurn.
+   * Regenerates CSV (important when switching data structure for double-sided tags).
    */
   reopenLightBurn(): void {
-    const resolved = this.modalService.resolvedTemplate();
-    if (!resolved?.filename) {
-      this.errorMessage = 'No template available';
-      return;
-    }
-
-    this.statusMessage = 'Opening LightBurn...';
-    this.engraverApi.openLightBurn(resolved.filename).subscribe({
-      next: () => {
-        this.statusMessage = 'LightBurn opened';
-      },
-      error: (err) => {
-        this.errorMessage = err.message || 'Failed to open LightBurn';
-      }
-    });
+    this.processBatch();
   }
 
   getCharacteristicValue(item: any, name: string): string {

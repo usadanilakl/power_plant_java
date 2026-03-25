@@ -56,12 +56,14 @@ export class CorrespondenceDialogService {
   }
 
   open(entityType: string, entityId: number): void {
+    console.log('[Correspondence] open() called:', entityType, entityId);
     this._entityType.set(entityType);
     this._entityId.set(entityId);
     this._preloadedItems.set(null);
     this._dialogTitle.set('');
     this._isVisible.set(true);
     this._onOpen.next();
+    console.log('[Correspondence] isVisible after open:', this._isVisible());
   }
 
   openWithItems(title: string, items: EmailCorrespondenceDto[]): void {

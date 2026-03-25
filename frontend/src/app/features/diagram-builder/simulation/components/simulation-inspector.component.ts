@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimulationStateService } from '../services/simulation-state.service';
 import { DiagramShapeManagerService } from '../../services/diagram-shape-manager.service';
-import { SimNodeState, SimNodeRole } from '../models/simulation.model';
+import { SimNodeState } from '../models/simulation.model';
+import { SimRole } from '../../models/sim-equipment.model';
 
 @Component({
   selector: 'app-simulation-inspector',
@@ -24,7 +25,6 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
           </label>
         </div>
 
-        <!-- Readout -->
         <div class="readout">
           <div class="readout-row">
             <span class="readout-label">Pressure</span>
@@ -35,40 +35,54 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
           <div class="readout-row">
             <span class="readout-label">Temperature</span>
             <span class="readout-value" [class.flowing]="state.isFlowing">
-              {{ state.temperature | number:'1.0-0' }} °F
+              {{ state.temperature | number:'1.0-0' }} F
             </span>
           </div>
           <div class="readout-row">
             <span class="readout-label">Flow Rate</span>
             <span class="readout-value" [class.flowing]="state.isFlowing">
-              {{ state.flowRate | number:'1.0-0' }} lb/hr
+              {{ state.flowRate | number:'1.0-0' }} u/hr
             </span>
           </div>
+          @if (state.role === 'vessel') {
+            <div class="readout-row">
+              <span class="readout-label">Level</span>
+              <span class="readout-value" [class.flowing]="state.isFlowing">
+                {{ state.params.currentLevel ?? 0 | number:'1.0-0' }}%
+              </span>
+            </div>
+          }
         </div>
 
-        <!-- Source controls -->
+        @if (state.warnings?.length) {
+          <div class="warning-box">
+            @for (warning of state.warnings; track warning) {
+              <div class="warning-item">{{ warning }}</div>
+            }
+          </div>
+        }
+
         @if (state.role === 'source') {
           <div class="param-section">
-            <h4>Source Parameters</h4>
-            <label>Pressure (psi)
+            <h4>Source</h4>
+            <label>Pressure
               <input type="number" [ngModel]="state.params.sourcePressure"
                 (ngModelChange)="updateParam('sourcePressure', $event)" />
             </label>
-            <label>Temperature (°F)
+            <label>Temperature
               <input type="number" [ngModel]="state.params.sourceTemperature"
                 (ngModelChange)="updateParam('sourceTemperature', $event)" />
             </label>
-            <label>Flow Rate (lb/hr)
+            <label>Flow Rate
               <input type="number" [ngModel]="state.params.sourceFlowRate"
                 (ngModelChange)="updateParam('sourceFlowRate', $event)" />
             </label>
           </div>
         }
 
-        <!-- Valve controls -->
         @if (state.role === 'valve') {
           <div class="param-section">
-            <h4>Valve Position</h4>
+            <h4>Valve</h4>
             <div class="valve-buttons">
               <button [class.active]="state.params.valvePosition === 'open'"
                 [class.green]="state.params.valvePosition === 'open'"
@@ -81,7 +95,7 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
                 (click)="updateParam('valvePosition', 'closed')">Closed</button>
             </div>
             @if (state.params.valvePosition === 'throttled') {
-              <label>Throttle: {{ state.params.throttlePercent ?? 50 }}%
+              <label>Throttle %
                 <input type="range" min="0" max="100" step="5"
                   [ngModel]="state.params.throttlePercent ?? 50"
                   (ngModelChange)="updateParam('throttlePercent', $event)" />
@@ -90,29 +104,85 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
           </div>
         }
 
-        <!-- Pump controls -->
         @if (state.role === 'pump') {
           <div class="param-section">
             <h4>Pump</h4>
             <button class="pump-toggle"
               [class.running]="state.params.pumpRunning"
               (click)="updateParam('pumpRunning', !state.params.pumpRunning)">
-              {{ state.params.pumpRunning ? '⏹ Stop Pump' : '▶ Start Pump' }}
+              {{ state.params.pumpRunning ? 'Stop Pump' : 'Start Pump' }}
             </button>
-            <label>Delta-P (psi)
+            <label>Delta P
               <input type="number" [ngModel]="state.params.pumpDeltaP"
                 (ngModelChange)="updateParam('pumpDeltaP', $event)" />
+            </label>
+            <label>Max Flow
+              <input type="number" [ngModel]="state.params.maxFlow"
+                (ngModelChange)="updateParam('maxFlow', $event)" />
+            </label>
+            <label>Min Inlet P
+              <input type="number" [ngModel]="state.params.minInletPressure"
+                (ngModelChange)="updateParam('minInletPressure', $event)" />
             </label>
           </div>
         }
 
-        <!-- Pipe controls -->
+        @if (state.role === 'vessel') {
+          <div class="param-section">
+            <h4>Vessel</h4>
+            <label>Volume
+              <input type="number" [ngModel]="state.params.volume"
+                (ngModelChange)="updateParam('volume', $event)" />
+            </label>
+            <label>Current Level %
+              <input type="number" [ngModel]="state.params.currentLevel" min="0" max="100"
+                (ngModelChange)="updateParam('currentLevel', $event)" />
+            </label>
+            <label>Min Level %
+              <input type="number" [ngModel]="state.params.minLevel" min="0" max="100"
+                (ngModelChange)="updateParam('minLevel', $event)" />
+            </label>
+            <label>Head Pressure
+              <input type="number" [ngModel]="state.params.sourcePressure"
+                (ngModelChange)="updateParam('sourcePressure', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'instrument') {
+          <div class="param-section">
+            <h4>Instrument</h4>
+            <label>Property
+              <select [ngModel]="state.params.measuredProperty"
+                (ngModelChange)="updateParam('measuredProperty', $event)">
+                <option value="pressure">pressure</option>
+                <option value="temperature">temperature</option>
+                <option value="flow">flow</option>
+              </select>
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'motor') {
+          <div class="param-section">
+            <h4>Motor</h4>
+            <label>Running
+              <input type="checkbox" [ngModel]="state.params.running"
+                (ngModelChange)="updateParam('running', $event)" />
+            </label>
+            <label>Power
+              <input type="number" [ngModel]="state.params.power"
+                (ngModelChange)="updateParam('power', $event)" />
+            </label>
+          </div>
+        }
+
         @if (state.role === 'pipe') {
           <div class="param-section">
             <h4>Pipe</h4>
-            <label>Friction Drop (psi)
-              <input type="number" [ngModel]="state.params.pipeFrictionDrop" step="0.1"
-                (ngModelChange)="updateParam('pipeFrictionDrop', $event)" />
+            <label>Friction
+              <input type="number" [ngModel]="state.params.frictionFactor" step="0.1"
+                (ngModelChange)="updateParam('frictionFactor', $event)" />
             </label>
           </div>
         }
@@ -152,6 +222,7 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
       font-size: 12px;
     }
     input[type="range"] { width: 100px; }
+    input[type="checkbox"] { width: auto; }
     .readout {
       background: #111;
       border: 1px solid #333;
@@ -199,6 +270,18 @@ import { SimNodeState, SimNodeRole } from '../models/simulation.model';
       margin-bottom: 8px;
     }
     .pump-toggle.running { background: #2e7d32; border-color: #4caf50; color: #fff; }
+    .warning-box {
+      margin-bottom: 12px;
+      padding: 8px;
+      border: 1px solid #5d1f1f;
+      border-radius: 4px;
+      background: rgba(244, 67, 54, 0.1);
+    }
+    .warning-item {
+      color: #ff8a80;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
     .info { font-size: 12px; color: #666; }
   `],
 })
@@ -208,24 +291,20 @@ export class SimulationInspectorComponent {
 
   nodeState = signal<SimNodeState | null>(null);
 
-  roles: SimNodeRole[] = ['source', 'sink', 'valve', 'pump', 'instrument', 'motor', 'junction', 'pipe'];
+  roles: SimRole[] = ['source', 'sink', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe'];
 
   constructor() {
-    effect(() => {
+    effect((onCleanup) => {
       const shape = this.shapeManager.singleSelectedShape();
-      if (shape) {
-        this.nodeState.set(this.simState.getNodeState(shape.id) ?? null);
-      } else {
+      if (!shape) {
         this.nodeState.set(null);
+        return;
       }
-    });
 
-    // Subscribe to state changes for selected node
-    effect(() => {
-      const shape = this.shapeManager.singleSelectedShape();
-      if (!shape) return;
+      this.nodeState.set(this.simState.getNodeState(shape.id) ?? null);
       const obs = this.simState.getNodeState$(shape.id);
-      obs?.subscribe(state => this.nodeState.set(state));
+      const sub = obs?.subscribe(state => this.nodeState.set(state));
+      onCleanup(() => sub?.unsubscribe());
     });
   }
 
@@ -235,9 +314,9 @@ export class SimulationInspectorComponent {
     this.simState.updateNodeParams(state.shapeId, { [key]: value });
   }
 
-  changeRole(role: SimNodeRole): void {
+  changeRole(role: SimRole): void {
     const state = this.nodeState();
     if (!state) return;
-    this.simState.updateNodeParams(state.shapeId, { role });
+    this.simState.updateNodeRole(state.shapeId, role);
   }
 }

@@ -242,6 +242,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(events.IPC_PRINT_CURRENT_PAGE, options),
   printHtml: (html: string, options?: { silent?: boolean }): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_PRINT_HTML, html, options),
+  printWithPreview: (options?: { landscape?: boolean }): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_PRINT_WITH_PREVIEW, options),
 
   // Vosk STT
   voskStart: (): Promise<any> => ipcRenderer.invoke(events.IPC_VOSK_START),

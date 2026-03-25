@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AlignmentType, DiagramElement, DistributeType } from '../models/diagram-shape.model';
+import { AlignmentType, DiagramPlacement, DistributeType } from '../models/diagram-placement.model';
 
 export interface ShapeUpdate {
   id: number;
@@ -12,7 +12,7 @@ export interface ShapeUpdate {
 @Injectable()
 export class DiagramAlignmentService {
 
-  alignShapes(shapes: DiagramElement[], alignment: AlignmentType): ShapeUpdate[] {
+  alignShapes(shapes: DiagramPlacement[], alignment: AlignmentType): ShapeUpdate[] {
     if (shapes.length < 2) return [];
 
     const reference = shapes[0];
@@ -49,7 +49,7 @@ export class DiagramAlignmentService {
     return updates;
   }
 
-  distributeShapes(shapes: DiagramElement[], direction: DistributeType): ShapeUpdate[] {
+  distributeShapes(shapes: DiagramPlacement[], direction: DistributeType): ShapeUpdate[] {
     if (shapes.length < 3) return [];
 
     const sorted = [...shapes].sort((a, b) =>
@@ -85,7 +85,7 @@ export class DiagramAlignmentService {
     return updates;
   }
 
-  matchSize(shapes: DiagramElement[], dimension: 'width' | 'height' | 'both'): ShapeUpdate[] {
+  matchSize(shapes: DiagramPlacement[], dimension: 'width' | 'height' | 'both'): ShapeUpdate[] {
     if (shapes.length < 2) return [];
 
     const reference = shapes[0];

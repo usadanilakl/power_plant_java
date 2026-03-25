@@ -20,4 +20,6 @@ public class DiagramDto extends BaseDto {
     private String shapesJson;
     private String connectionsJson;
     private Integer gridSize;
+    private Long contextFileId;
+    private String contextFileName;
 }

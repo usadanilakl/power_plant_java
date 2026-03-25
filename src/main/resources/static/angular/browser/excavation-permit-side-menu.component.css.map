@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/excavation-permit/excavation-permit-side-menu/excavation-permit-side-menu.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  overflow: hidden;\n}\napp-permit-left-panel {\n  flex: 1;\n  min-height: 0;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,YAAU;AACZ;AACA;AACE,QAAM;AACN,cAAY;AACd;",
-  "names": []
-}

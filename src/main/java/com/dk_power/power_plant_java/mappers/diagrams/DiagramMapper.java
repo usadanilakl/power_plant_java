@@ -29,6 +29,8 @@ public class DiagramMapper implements BaseMapper {
         if (entity.getShapesJson() != null) dto.setShapesJson(entity.getShapesJson());
         if (entity.getConnectionsJson() != null) dto.setConnectionsJson(entity.getConnectionsJson());
         if (entity.getGridSize() != null) dto.setGridSize(entity.getGridSize());
+        if (entity.getContextFileId() != null) dto.setContextFileId(entity.getContextFileId());
+        if (entity.getContextFileName() != null) dto.setContextFileName(entity.getContextFileName());
         if (entity.getDateCreated() != null) dto.setDateCreated(entity.getDateCreated());
         if (entity.getDateModified() != null) dto.setDateModified(entity.getDateModified());
         if (entity.getCreatedBy() != null) dto.setCreatedBy(entity.getCreatedBy());
@@ -51,6 +53,8 @@ public class DiagramMapper implements BaseMapper {
         if (dto.getShapesJson() != null) entity.setShapesJson(dto.getShapesJson());
         if (dto.getConnectionsJson() != null) entity.setConnectionsJson(dto.getConnectionsJson());
         if (dto.getGridSize() != null) entity.setGridSize(dto.getGridSize());
+        entity.setContextFileId(dto.getContextFileId());
+        entity.setContextFileName(dto.getContextFileName());
         return entity;
     }
 }

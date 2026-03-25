@@ -20,6 +20,7 @@ export class SymbolPaletteComponent {
   categories = [
     { id: 'valve', label: 'Valves' },
     { id: 'pump', label: 'Pumps' },
+    { id: 'vessel', label: 'Vessels' },
     { id: 'instrument', label: 'Instruments' },
     { id: 'electrical', label: 'Electrical' }
   ];

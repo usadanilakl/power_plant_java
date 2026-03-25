@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;254c232ca94581272f530efdb8f705cd51f6e75bb721cccc6ec8cdad3fbdd553;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/left-menu-outlet/left-menu-outlet.component.ts"],
-  "sourcesContent": [":host { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; width: 100%; }"],
-  "mappings": ";AAAA;AAAQ,WAAS;AAAM,kBAAgB;AAAQ,QAAM;AAAG,cAAY;AAAG,UAAQ;AAAM,SAAO;AAAM;",
-  "names": []
-}

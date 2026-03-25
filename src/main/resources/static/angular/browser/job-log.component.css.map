@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/job-log/job-log.component.css"],
-  "sourcesContent": [":host {\n  display: block;\n  height: 100%;\n  width: 100%;\n  overflow: hidden;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,UAAQ;AACR,SAAO;AACP,YAAU;AACZ;",
-  "names": []
-}

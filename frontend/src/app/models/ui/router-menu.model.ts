@@ -1,14 +1,17 @@
 export interface RouterMenuItem {
     route: string;
     label: string;
+    icon?: string;
     guideId?: string;
     guideMessage?: string;
     requiresFullAccess?: boolean;
+    separator?: boolean;
 }
 
 export interface RouterMenuGroup {
     label: string;
     icon?: string;
+    color?: string;
     defaultRoute: string;
     items: RouterMenuItem[];
     requiresFullAccess?: boolean;
@@ -22,94 +25,101 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
     {
         label: 'My Account',
         icon: 'account_circle',
+        color: '#5C6BC0',
         defaultRoute: '/profile',
         items: [
-            { route: '/profile', label: 'My Profile' },
-            { route: '/access-request', label: 'Access Request' }
+            { route: '/profile', label: 'My Profile', icon: 'person' },
+            { route: '/access-request', label: 'Access Request', icon: 'key' }
         ]
     },
     {
         label: 'Files',
         icon: 'folder',
+        color: '#26A69A',
         defaultRoute: '/file',
         requiresFullAccess: true,
         items: [
-            { route: '/file', label: 'View Files' },
-            { route: '/tag-number', label: 'Create New Tag' },
-            { route: '/print', label: 'Print' }
+            { route: '/file', label: 'View Files', icon: 'description' },
+            { route: '/tag-number', label: 'Create New Tag', icon: 'new_label' },
+            { route: '/print', label: 'Print', icon: 'print' }
         ]
     },
     {
         label: 'LOTO',
         icon: 'lock',
+        color: '#FFA726',
         defaultRoute: '/loto',
         requiresFullAccess: true,
         items: [
-            { route: '/loto', label: 'LOTO' },
-            { route: '/loto-points', label: 'Loto Points', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
-            { route: '/loto-standard', label: 'LOTO Standards' },
-            { route: '/loto-builder', label: 'Loto Builder' }
+            { route: '/loto', label: 'LOTO', icon: 'lock' },
+            { route: '/loto-points', label: 'Loto Points', icon: 'place', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
+            { route: '/loto-standard', label: 'LOTO Standards', icon: 'checklist' },
+            { route: '/loto-builder', label: 'Loto Builder', icon: 'construction' }
         ]
     },
     {
         label: 'Permits',
         icon: 'assignment',
+        color: '#EF5350',
         defaultRoute: '/permit-builder',
         requiresFullAccess: true,
         items: [
-            { route: '/permits-monitor', label: 'Permits Monitor' },
-            { route: '/permit-builder/daily-packages', label: 'Daily Packages' },
-            { route: '/permit-builder/work-requests', label: 'Work Requests' },
-            { route: '/permit-builder/jobs', label: 'Job Logs' },
-            { route: '/permit-builder/safe-works', label: 'Safe Works' },
-            { route: '/permit-builder/hot-works', label: 'Hot Works' },
-            { route: '/permit-builder/confined-spaces', label: 'Confined Spaces' },
-            { route: '/permit-builder/jhas', label: 'JHAs' },
-            { route: '/permit-builder/energized-work-permits', label: 'Energized Work' },
-            { route: '/permit-builder/excavation-permits', label: 'Excavation' },
-            { route: '/permit-builder/venting-permits', label: 'Venting/Purging' },
-            { route: '/permit-builder/lotos', label: 'LOTO' },
-            { route: '/scheduler', label: 'Scheduler' }
+            { route: '/permits-monitor', label: 'Permits Monitor', icon: 'monitor_heart' },
+            { route: '/permit-builder/daily-packages', label: 'Daily Packages', icon: 'inventory_2', separator: true },
+            { route: '/permit-builder/work-requests', label: 'Work Requests', icon: 'request_page' },
+            { route: '/permit-builder/jobs', label: 'Job Logs', icon: 'work_history' },
+            { route: '/permit-builder/safe-works', label: 'Safe Works', icon: 'verified_user', separator: true },
+            { route: '/permit-builder/hot-works', label: 'Hot Works', icon: 'local_fire_department' },
+            { route: '/permit-builder/confined-spaces', label: 'Confined Spaces', icon: 'sensor_door' },
+            { route: '/permit-builder/jhas', label: 'JHAs', icon: 'health_and_safety' },
+            { route: '/permit-builder/energized-work-permits', label: 'Energized Work', icon: 'bolt' },
+            { route: '/permit-builder/excavation-permits', label: 'Excavation', icon: 'landscape' },
+            { route: '/permit-builder/venting-permits', label: 'Venting/Purging', icon: 'air' },
+            { route: '/permit-builder/lotos', label: 'LOTO', icon: 'lock', separator: true },
+            { route: '/scheduler', label: 'Scheduler', icon: 'calendar_month' }
         ]
     },
     {
         label: 'Visual Plant',
         icon: 'schema',
+        color: '#66BB6A',
         defaultRoute: '/visual-plant/work-areas',
         requiresFullAccess: true,
         items: [
-            { route: '/visual-plant/work-areas', label: 'Work Areas' },
-            { route: '/visual-plant/work-area-map', label: 'Work Map' },
-            { route: '/diagram-builder/list', label: 'Schematics' },
-            { route: '/form-designer/forms', label: 'Form Designer' },
-            { route: '/form-designer/design', label: 'Form Design' },
-            { route: '/form-designer/preview', label: 'Form Preview' }
+            { route: '/visual-plant/work-areas', label: 'Work Areas', icon: 'location_city' },
+            { route: '/visual-plant/work-area-map', label: 'Work Map', icon: 'map' },
+            { route: '/diagram-builder/list', label: 'Schematics', icon: 'account_tree', separator: true },
+            { route: '/form-designer/forms', label: 'Form Designer', icon: 'dynamic_form', separator: true },
+            { route: '/form-designer/design', label: 'Form Design', icon: 'edit_note' },
+            { route: '/form-designer/preview', label: 'Form Preview', icon: 'preview' }
         ]
     },
     {
         label: 'Log',
         icon: 'forum',
+        color: '#42A5F5',
         defaultRoute: '/log',
         requiresFullAccess: true,
         items: [
-            { route: '/log/table', label: 'System Log' },
-            { route: '/log/correspondence', label: 'Correspondence' },
-            { route: '/log/messaging', label: 'Messages' },
-            { route: '/instrumentation', label: 'Instruments' }
+            { route: '/log/table', label: 'System Log', icon: 'list_alt' },
+            { route: '/log/correspondence', label: 'Correspondence', icon: 'mail' },
+            { route: '/log/messaging', label: 'Messages', icon: 'chat' },
+            { route: '/instrumentation', label: 'Instruments', icon: 'speed' }
         ]
     },
     {
         label: 'Admin',
         icon: 'admin_panel_settings',
+        color: '#AB47BC',
         defaultRoute: '/admin/users',
         requiresFullAccess: true,
         items: [
-            { route: '/admin/users', label: 'User Management' },
-            { route: '/admin/access-management', label: 'Access Management' },
-            { route: '/backup', label: 'Backup' },
-            { route: '/sync', label: 'Sync Dashboard' },
-            { route: '/full-sync-to-server', label: 'Full Sync to Server' },
-            { route: '/admin', label: 'Admin' }
+            { route: '/admin/users', label: 'User Management', icon: 'group' },
+            { route: '/admin/access-management', label: 'Access Management', icon: 'security' },
+            { route: '/backup', label: 'Backup', icon: 'backup', separator: true },
+            { route: '/sync', label: 'Sync Dashboard', icon: 'sync' },
+            { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload' },
+            { route: '/admin', label: 'Admin', icon: 'settings', separator: true }
         ]
     }
 ];

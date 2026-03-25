@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;b8ef35e3a4b4acb0c79475266138ffdf373d4c9ecd05205ca3343d790adcf750;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/guide/guide-form/steps/wizard-text-input-step.component.ts"],
-  "sourcesContent": ["\n    .text-input-container {\n      padding: 10px 0;\n    }\n\n    .full-width {\n      width: 100%;\n    }\n\n    textarea {\n      resize: vertical;\n      min-height: 100px;\n    }\n  "],
-  "mappings": ";AACI,CAAC;AACC,WAAS,KAAK;AAChB;AAEA,CAAC;AACC,SAAO;AACT;AAEA;AACE,UAAQ;AACR,cAAY;AACd;",
-  "names": []
-}

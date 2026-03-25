@@ -128,6 +128,7 @@ export const IPC_MENU_NAVIGATE = 'menu:navigate';   // send/on (main -> renderer
 // Print (invoke/handle)
 export const IPC_PRINT_CURRENT_PAGE = 'print:current-page';
 export const IPC_PRINT_HTML = 'print:html';
+export const IPC_PRINT_WITH_PREVIEW = 'print:with-preview';
 
 // Vosk STT (invoke/handle + send/on)
 export const IPC_VOSK_START = 'vosk:start';

@@ -4,6 +4,8 @@
 
 import { app, ipcMain, shell, dialog, BrowserWindow, session, Menu, MenuItemConstructorOptions } from 'electron';
 import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as events from './events';
 import { SpringBootManager } from '../managers/spring-boot.manager';
 import { WebViewManager } from '../managers/webview.manager';
@@ -1273,6 +1275,47 @@ export class IpcHandlers {
 
         win.setMenuBarVisibility(false);
         await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Print with preview — generate PDF from current page and show in a preview window
+    ipcMain.handle(events.IPC_PRINT_WITH_PREVIEW, async (_event, options?: { landscape?: boolean }) => {
+      try {
+        const win = this.mainWindow;
+        if (!win || win.isDestroyed()) {
+          return { success: false, error: 'Main window not available' };
+        }
+
+        const pdfBuffer = await win.webContents.printToPDF({
+          printBackground: true,
+          landscape: options?.landscape ?? false,
+          margins: { marginType: 'none' },
+        });
+
+        const tempPath = path.join(app.getPath('temp'), `print-preview-${Date.now()}.pdf`);
+        fs.writeFileSync(tempPath, pdfBuffer);
+
+        const previewWin = new BrowserWindow({
+          width: 900,
+          height: 700,
+          title: 'Print Preview',
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            plugins: true,
+          },
+        });
+        previewWin.setMenuBarVisibility(false);
+
+        await previewWin.loadFile(tempPath);
+
+        previewWin.on('closed', () => {
+          try { fs.unlinkSync(tempPath); } catch { /* ignore cleanup errors */ }
+        });
 
         return { success: true };
       } catch (error: any) {

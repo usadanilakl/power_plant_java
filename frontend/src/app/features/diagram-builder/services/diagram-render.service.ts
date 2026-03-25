@@ -2,11 +2,8 @@ import { Injectable } from '@angular/core';
 import {
   AnchorPoint,
   DiagramConnection,
-  DiagramElement,
-  DiagramLineShape,
-  DiagramSymbolShape,
-  DiagramTextShape,
-} from '../models/diagram-shape.model';
+  DiagramPlacement,
+} from '../models/diagram-placement.model';
 
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 20;
@@ -16,9 +13,10 @@ export class DiagramRenderService {
 
   drawAll(
     ctx: CanvasRenderingContext2D,
-    shapes: DiagramElement[],
+    shapes: DiagramPlacement[],
     connections: DiagramConnection[],
     selectedIds: Set<number>,
+    selectedConnectionId: number | null,
     hoveredId: number | null,
     scale: number
   ): void {
@@ -27,6 +25,9 @@ export class DiagramRenderService {
     // Draw connections first (underneath shapes)
     for (const conn of connections) {
       this.drawConnection(ctx, conn, shapes, scale);
+      if (selectedConnectionId === conn.id) {
+        this.drawSelectedConnection(ctx, conn, shapes, scale);
+      }
     }
 
     // Draw shapes sorted by zIndex
@@ -35,7 +36,7 @@ export class DiagramRenderService {
       this.drawShape(ctx, shape, scale);
 
       // Linked entity indicator
-      if (shape.linkedEntityId) {
+      if (shape.simEquipmentId) {
         this.drawLinkedIndicator(ctx, shape, scale);
       }
 
@@ -54,7 +55,7 @@ export class DiagramRenderService {
     ctx.restore();
   }
 
-  drawShape(ctx: CanvasRenderingContext2D, shape: DiagramElement, scale: number): void {
+  drawShape(ctx: CanvasRenderingContext2D, shape: DiagramPlacement, scale: number): void {
     ctx.save();
 
     if (shape.rotation) {
@@ -73,20 +74,20 @@ export class DiagramRenderService {
         this.drawCircle(ctx, shape);
         break;
       case 'line':
-        this.drawLine(ctx, shape as DiagramLineShape);
+        this.drawLine(ctx, shape);
         break;
       case 'text':
-        this.drawText(ctx, shape as DiagramTextShape, scale);
+        this.drawText(ctx, shape, scale);
         break;
       case 'symbol':
-        this.drawSymbol(ctx, shape as DiagramSymbolShape);
+        this.drawSymbol(ctx, shape);
         break;
     }
 
     ctx.restore();
   }
 
-  private drawRectangle(ctx: CanvasRenderingContext2D, shape: DiagramElement): void {
+  private drawRectangle(ctx: CanvasRenderingContext2D, shape: DiagramPlacement): void {
     ctx.strokeStyle = shape.color || '#ffffff';
     ctx.lineWidth = shape.lineWidth || 2;
     if (shape.fillColor) {
@@ -103,7 +104,7 @@ export class DiagramRenderService {
     }
   }
 
-  private drawCircle(ctx: CanvasRenderingContext2D, shape: DiagramElement): void {
+  private drawCircle(ctx: CanvasRenderingContext2D, shape: DiagramPlacement): void {
     const cx = shape.x + shape.width / 2;
     const cy = shape.y + shape.height / 2;
     const rx = shape.width / 2;
@@ -120,7 +121,7 @@ export class DiagramRenderService {
     ctx.stroke();
   }
 
-  private drawLine(ctx: CanvasRenderingContext2D, shape: DiagramLineShape): void {
+  private drawLine(ctx: CanvasRenderingContext2D, shape: DiagramPlacement): void {
     ctx.strokeStyle = shape.color || '#ffffff';
     ctx.lineWidth = shape.lineWidth || 2;
     ctx.beginPath();
@@ -128,20 +129,20 @@ export class DiagramRenderService {
     // via ctx.rotate() in the parent drawShape() method, which rotates around
     // the bounding box center. Since the line endpoints are absolute coords
     // within that bounding box, they rotate correctly.
-    ctx.moveTo(shape.startX, shape.startY);
-    ctx.lineTo(shape.endX, shape.endY);
+    ctx.moveTo(shape.startX!, shape.startY!);
+    ctx.lineTo(shape.endX!, shape.endY!);
     ctx.stroke();
   }
 
-  private drawText(ctx: CanvasRenderingContext2D, shape: DiagramTextShape, scale: number): void {
+  private drawText(ctx: CanvasRenderingContext2D, shape: DiagramPlacement, scale: number): void {
     ctx.fillStyle = shape.color || '#ffffff';
     const fontSize = shape.fontSize || 14;
     ctx.font = `${fontSize}px ${shape.fontFamily || 'Arial'}`;
     ctx.textBaseline = 'top';
-    ctx.fillText(shape.text, shape.x, shape.y);
+    ctx.fillText(shape.text!, shape.x, shape.y);
   }
 
-  private drawSymbol(ctx: CanvasRenderingContext2D, shape: DiagramSymbolShape): void {
+  private drawSymbol(ctx: CanvasRenderingContext2D, shape: DiagramPlacement): void {
     if (!shape.svgPath) return;
 
     ctx.save();
@@ -173,7 +174,7 @@ export class DiagramRenderService {
     }
   }
 
-  private getSymbolBounds(shape: DiagramSymbolShape): { width: number; height: number } {
+  private getSymbolBounds(shape: DiagramPlacement): { width: number; height: number } {
     return {
       width: shape.originalWidth || shape.width || 1,
       height: shape.originalHeight || shape.height || 1,
@@ -183,11 +184,11 @@ export class DiagramRenderService {
   drawConnection(
     ctx: CanvasRenderingContext2D,
     conn: DiagramConnection,
-    shapes: DiagramElement[],
+    shapes: DiagramPlacement[],
     scale: number
   ): void {
-    const source = shapes.find(s => s.id === conn.sourceShapeId);
-    const target = shapes.find(s => s.id === conn.targetShapeId);
+    const source = shapes.find(s => s.id === conn.sourcePlacementId);
+    const target = shapes.find(s => s.id === conn.targetPlacementId);
     if (!source || !target) return;
 
     const sourcePoint = this.getAnchorPoint(source, conn.sourceAnchor);
@@ -230,6 +231,44 @@ export class DiagramRenderService {
     ctx.restore();
   }
 
+  private drawSelectedConnection(
+    ctx: CanvasRenderingContext2D,
+    conn: DiagramConnection,
+    shapes: DiagramPlacement[],
+    scale: number
+  ): void {
+    const source = shapes.find(s => s.id === conn.sourcePlacementId);
+    const target = shapes.find(s => s.id === conn.targetPlacementId);
+    if (!source || !target) return;
+
+    const sourcePoint = this.getAnchorPoint(source, conn.sourceAnchor);
+    const targetPoint = this.getAnchorPoint(target, conn.targetAnchor);
+
+    ctx.save();
+    ctx.strokeStyle = '#4fc3f7';
+    ctx.lineWidth = 4 / scale;
+    ctx.setLineDash([8 / scale, 4 / scale]);
+    ctx.beginPath();
+
+    if (conn.waypoints && conn.waypoints.length > 0) {
+      ctx.moveTo(sourcePoint.x, sourcePoint.y);
+      for (const wp of conn.waypoints) ctx.lineTo(wp.x, wp.y);
+      ctx.lineTo(targetPoint.x, targetPoint.y);
+    } else {
+      ctx.moveTo(sourcePoint.x, sourcePoint.y);
+      if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+        ctx.lineTo(targetPoint.x, sourcePoint.y);
+        ctx.lineTo(targetPoint.x, targetPoint.y);
+      } else {
+        ctx.lineTo(sourcePoint.x, targetPoint.y);
+        ctx.lineTo(targetPoint.x, targetPoint.y);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
   private drawArrowhead(
     ctx: CanvasRenderingContext2D,
     point: { x: number; y: number },
@@ -256,7 +295,7 @@ export class DiagramRenderService {
     ctx.restore();
   }
 
-  getAnchorPoint(shape: DiagramElement, anchor: string): { x: number; y: number } {
+  getAnchorPoint(shape: DiagramPlacement, anchor: string): { x: number; y: number } {
     switch (anchor) {
       case 'top':    return { x: shape.x + shape.width / 2, y: shape.y };
       case 'bottom': return { x: shape.x + shape.width / 2, y: shape.y + shape.height };
@@ -266,23 +305,23 @@ export class DiagramRenderService {
     }
   }
 
-  getAllAnchors(shape: DiagramElement): AnchorPoint[] {
+  getAllAnchors(shape: DiagramPlacement): AnchorPoint[] {
     return (['top', 'right', 'bottom', 'left'] as const).map(position => ({
       ...this.getAnchorPoint(shape, position),
       position,
-      shapeId: shape.id,
+      placementId: shape.id,
     }));
   }
 
   drawAnchorPoints(
     ctx: CanvasRenderingContext2D,
-    shape: DiagramElement,
+    shape: DiagramPlacement,
     hoveredAnchor: AnchorPoint | null
   ): void {
     const anchors = this.getAllAnchors(shape);
     for (const anchor of anchors) {
       const isHovered = hoveredAnchor
-        && hoveredAnchor.shapeId === anchor.shapeId
+        && hoveredAnchor.placementId === anchor.placementId
         && hoveredAnchor.position === anchor.position;
 
       ctx.beginPath();
@@ -295,7 +334,7 @@ export class DiagramRenderService {
     }
   }
 
-  private drawLinkedIndicator(ctx: CanvasRenderingContext2D, shape: DiagramElement, scale: number): void {
+  private drawLinkedIndicator(ctx: CanvasRenderingContext2D, shape: DiagramPlacement, scale: number): void {
     const r = 4 / scale;
     const x = shape.x + shape.width - r;
     const y = shape.y + r;
@@ -310,7 +349,7 @@ export class DiagramRenderService {
     ctx.restore();
   }
 
-  private drawHoverHighlight(ctx: CanvasRenderingContext2D, shape: DiagramElement): void {
+  private drawHoverHighlight(ctx: CanvasRenderingContext2D, shape: DiagramPlacement): void {
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 165, 0, 0.6)';
     ctx.lineWidth = 2;
@@ -322,7 +361,7 @@ export class DiagramRenderService {
 
   drawSelectionHandles(
     ctx: CanvasRenderingContext2D,
-    shape: DiagramElement,
+    shape: DiagramPlacement,
     scale: number
   ): void {
     const handleSize = HANDLE_SIZE / scale;
@@ -369,7 +408,7 @@ export class DiagramRenderService {
     ctx.restore();
   }
 
-  getResizeHandlePositions(shape: DiagramElement): { x: number; y: number; cursor: string }[] {
+  getResizeHandlePositions(shape: DiagramPlacement): { x: number; y: number; cursor: string }[] {
     const { x, y, width: w, height: h } = shape;
     return [
       { x: x,         y: y,         cursor: 'nw-resize' },
@@ -384,7 +423,7 @@ export class DiagramRenderService {
   }
 
   hitTestHandle(
-    shape: DiagramElement,
+    shape: DiagramPlacement,
     canvasX: number,
     canvasY: number,
     scale: number
@@ -409,13 +448,15 @@ export class DiagramRenderService {
     return null;
   }
 
-  hitTestShape(shapes: DiagramElement[], canvasX: number, canvasY: number): DiagramElement | null {
-    // Iterate in reverse (top shapes first)
-    for (let i = shapes.length - 1; i >= 0; i--) {
-      const s = shapes[i];
+  hitTestShape(shapes: DiagramPlacement[], canvasX: number, canvasY: number): DiagramPlacement | null {
+    const sorted = [...shapes].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const s = sorted[i];
+      const bounds = this.getInteractiveBounds(s);
       if (
-        canvasX >= s.x && canvasX <= s.x + s.width &&
-        canvasY >= s.y && canvasY <= s.y + s.height
+        canvasX >= bounds.left && canvasX <= bounds.right &&
+        canvasY >= bounds.top && canvasY <= bounds.bottom
       ) {
         return s;
       }
@@ -423,8 +464,21 @@ export class DiagramRenderService {
     return null;
   }
 
+  private getInteractiveBounds(shape: DiagramPlacement): { left: number; right: number; top: number; bottom: number } {
+    const margin = 8;
+    const hasLabel = !!shape.label;
+    const labelHeight = hasLabel ? 20 : 0;
+
+    return {
+      left: shape.x - margin,
+      right: shape.x + shape.width + margin,
+      top: shape.y - margin,
+      bottom: shape.y + shape.height + margin + labelHeight,
+    };
+  }
+
   hitTestAnchor(
-    shapes: DiagramElement[],
+    shapes: DiagramPlacement[],
     canvasX: number,
     canvasY: number,
     threshold = 10
@@ -436,5 +490,58 @@ export class DiagramRenderService {
       }
     }
     return null;
+  }
+
+  hitTestConnection(
+    connections: DiagramConnection[],
+    shapes: DiagramPlacement[],
+    canvasX: number,
+    canvasY: number,
+    threshold = 8
+  ): DiagramConnection | null {
+    for (let i = connections.length - 1; i >= 0; i--) {
+      const conn = connections[i];
+      const source = shapes.find(s => s.id === conn.sourcePlacementId);
+      const target = shapes.find(s => s.id === conn.targetPlacementId);
+      if (!source || !target) continue;
+
+      const points = [this.getAnchorPoint(source, conn.sourceAnchor)];
+      if (conn.waypoints?.length) {
+        points.push(...conn.waypoints);
+      } else if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+        const targetPoint = this.getAnchorPoint(target, conn.targetAnchor);
+        points.push({ x: targetPoint.x, y: points[0].y });
+      } else {
+        const targetPoint = this.getAnchorPoint(target, conn.targetAnchor);
+        points.push({ x: points[0].x, y: targetPoint.y });
+      }
+      points.push(this.getAnchorPoint(target, conn.targetAnchor));
+
+      for (let p = 0; p < points.length - 1; p++) {
+        if (this.distanceToSegment(canvasX, canvasY, points[p], points[p + 1]) <= threshold) {
+          return conn;
+        }
+      }
+    }
+    return null;
+  }
+
+  private distanceToSegment(
+    px: number,
+    py: number,
+    a: { x: number; y: number },
+    b: { x: number; y: number }
+  ): number {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq === 0) {
+      return Math.sqrt((px - a.x) ** 2 + (py - a.y) ** 2);
+    }
+
+    const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / lengthSq));
+    const projX = a.x + t * dx;
+    const projY = a.y + t * dy;
+    return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
   }
 }

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  width: 100%;\n  flex: 1;\n  min-height: 0;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,SAAO;AACP,QAAM;AACN,cAAY;AACd;",
-  "names": []
-}

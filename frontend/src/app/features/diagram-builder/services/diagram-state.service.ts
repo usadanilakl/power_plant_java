@@ -1,12 +1,15 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
+import { Router } from '@angular/router';
 import { DiagramApiService } from './diagram-api.service';
-import { DiagramDto, DiagramData, parseDiagramData, serializeDiagramData } from '../models/diagram.model';
+import { DiagramDto, normalizeDiagramData, serializeDiagramData } from '../models/diagram.model';
+import { DiagramData } from '../models/diagram-placement.model';
 import { DiagramShapeManagerService } from './diagram-shape-manager.service';
 import { Subject, debounceTime } from 'rxjs';
 
 @Injectable()
 export class DiagramStateService {
   private api = inject(DiagramApiService);
+  private router = inject(Router);
 
   readonly currentDiagram = signal<DiagramDto | null>(null);
   readonly isDirty = signal(false);
@@ -20,7 +23,7 @@ export class DiagramStateService {
 
   constructor() {
     this.saveSubject.pipe(debounceTime(2000)).subscribe(() => {
-      this.save();
+      this.saveNow();
     });
   }
 
@@ -34,9 +37,9 @@ export class DiagramStateService {
       next: (res) => {
         if (res.responseData) {
           this.currentDiagram.set(res.responseData);
-          const data = parseDiagramData(res.responseData);
+          const data = normalizeDiagramData(res.responseData);
           if (this.shapeManager) {
-            this.shapeManager.setShapes(data.shapes);
+            this.shapeManager.setShapes(data.placements);
             this.shapeManager.setConnections(data.connections);
           }
           this.isDirty.set(false);
@@ -47,14 +50,19 @@ export class DiagramStateService {
     });
   }
 
-  createNewDiagram(name = 'Untitled Diagram'): void {
+  createNewDiagram(
+    name = 'Untitled Diagram',
+    context?: { contextFileId?: number; contextFileName?: string }
+  ): void {
     const dto: DiagramDto = {
       name,
       canvasWidth: 1920,
       canvasHeight: 1080,
       gridSize: 20,
-      shapesJson: '[]',
-      connectionsJson: '[]',
+      shapesJson: JSON.stringify({ schemaVersion: 1, placements: [], connections: [] }),
+      connectionsJson: '',
+      contextFileId: context?.contextFileId,
+      contextFileName: context?.contextFileName,
     };
     this.api.create(dto).subscribe({
       next: (res) => {
@@ -65,6 +73,9 @@ export class DiagramStateService {
             this.shapeManager.setConnections([]);
           }
           this.isDirty.set(false);
+          if (res.responseData.id != null) {
+            this.router.navigate(['diagram-builder', 'build', res.responseData.id], { replaceUrl: true });
+          }
         }
       },
     });
@@ -75,13 +86,14 @@ export class DiagramStateService {
     this.saveSubject.next();
   }
 
-  save(): void {
+  saveNow(): void {
     const diagram = this.currentDiagram();
     if (!diagram || !diagram.id || !this.shapeManager) return;
 
     this.isSaving.set(true);
     const data: DiagramData = {
-      shapes: this.shapeManager.shapes(),
+      schemaVersion: 1,
+      placements: this.shapeManager.shapes(),
       connections: this.shapeManager.connections(),
     };
     const serialized = serializeDiagramData(data);
