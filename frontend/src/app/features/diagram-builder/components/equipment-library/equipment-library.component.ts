@@ -1,80 +1,73 @@
-import { Component, inject, signal, OnInit, output } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimEquipmentApiService } from '../../services/sim-equipment-api.service';
 import { SimEquipmentDto, SimRole, SYMBOL_ROLE_MAP, defaultSimParams, serializeSimParams } from '../../models/sim-equipment.model';
 import { PIDSymbolsService, PIDSymbol } from '../../../../shared/image/refactored/services/pid-symbols.service';
 import { Subject, debounceTime, switchMap, of } from 'rxjs';
+import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
+import { NestedItem, NestedItemImpl } from '../../../../models/ui/nested-item.model';
+import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu/context-menu/context-menu.component';
 
 @Component({
   selector: 'app-equipment-library',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RfToggleMenuComponent, ContextMenuComponent],
   template: `
     <div class="library-panel">
       <h3>Equipment Library</h3>
-      <p class="library-note">Drag a template onto the canvas to create an independent equipment instance.</p>
+      <p class="library-note">Click to select. Right-click for actions.</p>
 
-      <!-- Search -->
-      <input type="text" class="search-input" placeholder="Search equipment..."
-        [ngModel]="searchQuery()"
-        (ngModelChange)="onSearch($event)" />
-
-      <!-- Equipment list grouped by role -->
       @if (isLoading()) {
         <p class="info">Loading...</p>
       } @else {
-        @for (group of groupedEquipment(); track group.role) {
-          <div class="group">
-            <div class="group-header">{{ group.role | titlecase }}</div>
-            @for (eq of group.items; track eq.id) {
-              <div class="eq-item"
-                draggable="true"
-                (dragstart)="onDragStart($event, eq)"
-                (click)="onEquipmentClick.emit(eq)">
-                <span class="eq-icon" [style.color]="roleColor(eq.simRole)">●</span>
-                <div class="eq-info">
-                  <span class="eq-name">{{ eq.name || 'Unnamed' }}</span>
-                  @if (eq.sourceEntityType) {
-                    <span class="eq-source">{{ eq.sourceEntityType }}:{{ eq.sourceEntityId }}</span>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        }
-
-        @if (groupedEquipment().length === 0 && !isLoading()) {
-          <p class="info">No equipment yet</p>
-        }
+        <div class="menu-container">
+          <app-rf-toggle-menu
+            [menuItems]="menuItems()"
+            [enableSearch]="true"
+            [searchPlaceholder]="'Search equipment...'"
+            (itemClick)="onMenuItemClick($event)"
+            (itemDblClick)="onMenuItemDblClick($event)"
+            (itemRightClick)="onMenuItemRightClick($event)"
+          />
+        </div>
       }
 
       <!-- Create actions -->
-      <div class="create-actions">
-        <div class="create-header">Create Template</div>
+      <details class="create-section">
+        <summary class="create-header">Create Template</summary>
+        <div class="create-body">
+          @if (showSymbolPicker()) {
+            <div class="symbol-picker">
+              @for (sym of allSymbols; track sym.id) {
+                <div class="symbol-item" (click)="createFromSymbol(sym)">
+                  <span class="sym-name">{{ sym.name }}</span>
+                  <span class="sym-category">{{ sym.category }}</span>
+                </div>
+              }
+              <button class="btn-sm" (click)="showSymbolPicker.set(false)">Cancel</button>
+            </div>
+          } @else {
+            <button class="btn-create" (click)="showSymbolPicker.set(true)">
+              + New Symbol Template
+            </button>
+          }
 
-        @if (showSymbolPicker()) {
-          <div class="symbol-picker">
-            @for (sym of allSymbols; track sym.id) {
-              <div class="symbol-item" (click)="createFromSymbol(sym)">
-                <span class="sym-name">{{ sym.name }}</span>
-                <span class="sym-category">{{ sym.category }}</span>
-              </div>
-            }
-            <button class="btn-sm" (click)="showSymbolPicker.set(false)">Cancel</button>
-          </div>
-        } @else {
-          <button class="btn-create" (click)="showSymbolPicker.set(true)">
-            + New Symbol Template
-          </button>
-        }
-
-        <button class="btn-create" (click)="createBlank('source')">+ Source Template</button>
-        <button class="btn-create" (click)="createBlank('sink')">+ Sink Template</button>
-        <button class="btn-create" (click)="createBlank('junction')">+ Junction Template</button>
-        <button class="btn-create" (click)="createBlank('pipe')">+ Pipe Template</button>
-      </div>
+          <button class="btn-create" (click)="createBlank('source')">+ Source</button>
+          <button class="btn-create" (click)="createBlank('sink')">+ Sink</button>
+          <button class="btn-create" (click)="createBlank('junction')">+ Junction</button>
+          <button class="btn-create" (click)="createBlank('pipe')">+ Pipe</button>
+        </div>
+      </details>
     </div>
+
+    <app-context-menu
+      [isVisible]="ctxMenuVisible()"
+      [position]="ctxMenuPosition()"
+      [selectedItem]="ctxMenuItem()"
+      [actions]="ctxMenuActions"
+      (closeMenu)="ctxMenuVisible.set(false)"
+    />
   `,
   styles: [`
     .library-panel {
@@ -87,59 +80,51 @@ import { Subject, debounceTime, switchMap, of } from 'rxjs';
       flex-direction: column;
       gap: 4px;
     }
-    h3 { margin: 0 0 8px; font-size: 13px; color: #aaa; }
+    h3 { margin: 0 0 4px; font-size: 13px; color: #aaa; }
     .library-note {
-      margin: 0 0 8px;
+      margin: 0 0 4px;
       color: #777;
       font-size: 10px;
       line-height: 1.3;
     }
-    .search-input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 6px 8px;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      color: #ddd;
-      border-radius: 3px;
-      font-size: 12px;
-      margin-bottom: 8px;
+    .menu-container {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
-    .group { margin-bottom: 8px; }
-    .group-header {
-      font-size: 10px;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 4px 0;
-      border-bottom: 1px solid #333;
-      margin-bottom: 4px;
+    .menu-container app-rf-toggle-menu {
+      display: block;
+      height: 100%;
     }
-    .eq-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 6px;
-      border-radius: 3px;
-      cursor: grab;
-      transition: background 0.15s;
-    }
-    .eq-item:hover { background: #2a3a4a; }
-    .eq-item:active { cursor: grabbing; }
-    .eq-icon { font-size: 10px; }
-    .eq-info { display: flex; flex-direction: column; overflow: hidden; }
-    .eq-name { font-size: 12px; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .eq-source { font-size: 9px; color: #666; }
-    .create-actions {
-      margin-top: 8px;
-      padding-top: 8px;
+    .create-section {
       border-top: 1px solid #333;
+      padding-top: 4px;
     }
     .create-header {
       font-size: 10px;
       color: #888;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      cursor: pointer;
+      padding: 4px 0;
+      list-style: none;
+      user-select: none;
+    }
+    .create-header::-webkit-details-marker { display: none; }
+    .create-header::before {
+      content: '\\25B6';
+      display: inline-block;
+      font-size: 8px;
+      margin-right: 6px;
+      transition: transform 0.15s ease;
+    }
+    details[open] > .create-header::before {
+      transform: rotate(90deg);
+    }
+    .create-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-top: 6px;
     }
     .btn-create {
       display: block;
@@ -152,7 +137,6 @@ import { Subject, debounceTime, switchMap, of } from 'rxjs';
       cursor: pointer;
       font-size: 11px;
       text-align: left;
-      margin-bottom: 4px;
     }
     .btn-create:hover { background: #3a3a3a; border-color: #666; }
     .symbol-picker {
@@ -160,7 +144,6 @@ import { Subject, debounceTime, switchMap, of } from 'rxjs';
       border: 1px solid #444;
       border-radius: 4px;
       padding: 6px;
-      margin-bottom: 6px;
       max-height: 200px;
       overflow-y: auto;
     }
@@ -192,18 +175,61 @@ export class EquipmentLibraryComponent implements OnInit {
   private pidSymbols = inject(PIDSymbolsService);
 
   onEquipmentClick = output<SimEquipmentDto>();
-  onEquipmentDrag = output<SimEquipmentDto>();
+  onEquipmentAddToCanvas = output<SimEquipmentDto>();
 
   allEquipment = signal<SimEquipmentDto[]>([]);
   isLoading = signal(true);
-  searchQuery = signal('');
   showSymbolPicker = signal(false);
 
+  // Context menu state
+  ctxMenuVisible = signal(false);
+  ctxMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+  ctxMenuItem = signal<SimEquipmentDto | null>(null);
+  ctxMenuActions: ContextMenuAction[] = [];
+
   private searchSubject = new Subject<string>();
+  private equipmentMap = new Map<string | number, SimEquipmentDto>();
 
   allSymbols = this.pidSymbols.getAllSymbols();
 
-  groupedEquipment = signal<{ role: string; items: SimEquipmentDto[] }[]>([]);
+  private static readonly ROLE_COLORS: Record<string, string> = {
+    source: '#2196f3', sink: '#9c27b0', valve: '#4caf50', pump: '#ff9800',
+    pipe: '#795548', vessel: '#00bcd4', instrument: '#cddc39', motor: '#ff5722',
+  };
+
+  private static readonly ROLE_ORDER = ['source', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe', 'sink'];
+
+  menuItems = computed((): NestedItem[] => {
+    const equipment = this.allEquipment();
+    const grouped = new Map<string, SimEquipmentDto[]>();
+    for (const eq of equipment) {
+      const role = eq.simRole || 'junction';
+      if (!grouped.has(role)) grouped.set(role, []);
+      grouped.get(role)!.push(eq);
+    }
+
+    this.equipmentMap.clear();
+    for (const eq of equipment) {
+      if (eq.id != null) this.equipmentMap.set(eq.id, eq);
+    }
+
+    return EquipmentLibraryComponent.ROLE_ORDER
+      .filter(role => grouped.has(role))
+      .map(role => new NestedItemImpl({
+        id: `role-${role}`,
+        name: `${role.charAt(0).toUpperCase() + role.slice(1)} (${grouped.get(role)!.length})`,
+        objectType: 'Group',
+        color: EquipmentLibraryComponent.ROLE_COLORS[role] || '#888',
+        isExpanded: true,
+        values: grouped.get(role)!.map(eq => new NestedItemImpl({
+          id: eq.id!,
+          name: eq.name || 'Unnamed',
+          subtitle: eq.sourceEntityType ? `${eq.sourceEntityType}:${eq.sourceEntityId}` : undefined,
+          objectType: 'SimEquipment',
+          color: EquipmentLibraryComponent.ROLE_COLORS[role] || '#888',
+        })),
+      }));
+  });
 
   ngOnInit(): void {
     this.loadAll();
@@ -215,9 +241,58 @@ export class EquipmentLibraryComponent implements OnInit {
       if (res?.responseData) {
         this.allEquipment.set(res.responseData);
         for (const eq of res.responseData) this.api.upsertCached(eq);
-        this.rebuildGroups();
       }
     });
+  }
+
+  onMenuItemClick(item: NestedItem): void {
+    if (item.objectType !== 'SimEquipment') return;
+    const eq = this.equipmentMap.get(item.id);
+    if (eq) this.onEquipmentClick.emit(eq);
+  }
+
+  onMenuItemDblClick(item: NestedItem): void {
+    if (item.objectType !== 'SimEquipment') return;
+    const eq = this.equipmentMap.get(item.id);
+    if (eq) this.onEquipmentAddToCanvas.emit(eq);
+  }
+
+  onMenuItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+    event.event.preventDefault();
+    event.event.stopPropagation();
+
+    const item = event.item;
+    if (item.objectType === 'Group') return;
+
+    const eq = this.equipmentMap.get(item.id);
+    if (!eq) return;
+
+    this.ctxMenuItem.set(eq);
+    this.ctxMenuPosition.set({ x: event.event.clientX, y: event.event.clientY });
+
+    this.ctxMenuActions = [
+      {
+        id: 'add-to-canvas',
+        label: 'Add to Diagram',
+        icon: '',
+        action: () => this.onEquipmentAddToCanvas.emit(eq),
+      },
+      { id: 'div1', label: '', divider: true, action: () => {} },
+      {
+        id: 'rename',
+        label: 'Rename',
+        icon: '',
+        action: (item: any) => this.renameEquipment(item as SimEquipmentDto),
+      },
+      {
+        id: 'delete',
+        label: 'Delete Template',
+        icon: '',
+        action: (item: any) => this.deleteEquipment(item as SimEquipmentDto),
+      },
+    ];
+
+    this.ctxMenuVisible.set(true);
   }
 
   loadAll(): void {
@@ -227,25 +302,10 @@ export class EquipmentLibraryComponent implements OnInit {
         const items = res.responseData || [];
         this.allEquipment.set(items);
         for (const eq of items) this.api.upsertCached(eq);
-        this.rebuildGroups();
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),
     });
-  }
-
-  onSearch(query: string): void {
-    this.searchQuery.set(query);
-    if (query.length < 2) {
-      this.loadAll();
-    } else {
-      this.searchSubject.next(query);
-    }
-  }
-
-  onDragStart(event: DragEvent, eq: SimEquipmentDto): void {
-    event.dataTransfer?.setData('application/sim-equipment', JSON.stringify(eq));
-    this.onEquipmentDrag.emit(eq);
   }
 
   createFromSymbol(symbol: PIDSymbol): void {
@@ -289,30 +349,25 @@ export class EquipmentLibraryComponent implements OnInit {
     });
   }
 
-  roleColor(role?: string): string {
-    switch (role) {
-      case 'source': return '#2196f3';
-      case 'sink': return '#9c27b0';
-      case 'valve': return '#4caf50';
-      case 'pump': return '#ff9800';
-      case 'pipe': return '#795548';
-      case 'vessel': return '#00bcd4';
-      case 'instrument': return '#cddc39';
-      case 'motor': return '#ff5722';
-      default: return '#888';
-    }
+  private renameEquipment(eq: SimEquipmentDto): void {
+    const newName = prompt('Rename equipment template:', eq.name || '');
+    if (newName == null || newName.trim() === '' || newName === eq.name) return;
+    if (eq.id == null) return;
+
+    this.api.update(eq.id, { ...eq, name: newName.trim() }).subscribe({
+      next: (res) => {
+        if (res.responseData) this.api.upsertCached(res.responseData);
+        this.loadAll();
+      },
+    });
   }
 
-  private rebuildGroups(): void {
-    const map = new Map<string, SimEquipmentDto[]>();
-    for (const eq of this.allEquipment()) {
-      const role = eq.simRole || 'junction';
-      if (!map.has(role)) map.set(role, []);
-      map.get(role)!.push(eq);
-    }
-    const order = ['source', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe', 'sink'];
-    this.groupedEquipment.set(
-      order.filter(r => map.has(r)).map(r => ({ role: r, items: map.get(r)! }))
-    );
+  private deleteEquipment(eq: SimEquipmentDto): void {
+    if (eq.id == null) return;
+    if (!confirm(`Delete template "${eq.name || 'Unnamed'}"?`)) return;
+
+    this.api.delete(eq.id).subscribe({
+      next: () => this.loadAll(),
+    });
   }
 }

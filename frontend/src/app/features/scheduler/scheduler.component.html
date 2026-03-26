@@ -1,4 +1,71 @@
-<div style="width: 100%; height: 800px;">
-  <!-- <app-pyramid [rootBlock]="diagramData"></app-pyramid> -->
-  <app-pyramid-graph [rootBlock]="diagramData"></app-pyramid-graph>
+<div class="scheduler-container">
+  <!-- Top bar -->
+  <div class="scheduler-toolbar">
+    <app-flow-selector
+      [flows]="(state.flows$ | async) ?? []"
+      [selectedFlow]="state.activeFlow()"
+      (flowSelected)="onFlowSelected($event)"
+      (createFlow)="onCreateFlow()"
+      (deleteFlow)="onDeleteFlow($event)">
+    </app-flow-selector>
+
+    <div class="toolbar-actions" *ngIf="state.activeFlow()">
+      <button class="btn-add-task" (click)="onAddTask()">
+        {{ state.drilledTask() ? '+ Add Step' : '+ Add Task' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb" *ngIf="state.drilledTask()">
+    <span class="crumb clickable" (click)="onDrillOut()">
+      {{ state.activeFlow()?.name || 'Flow' }}
+    </span>
+    <span class="crumb-sep">/</span>
+    <span class="crumb active">{{ state.drilledTask()?.name || 'Task' }} (Steps)</span>
+  </div>
+
+  <!-- Main content -->
+  <div class="scheduler-content">
+    <!-- DAG canvas -->
+    <div class="dag-panel" [class.with-sidebar]="state.selectedTask()">
+      <app-dag-renderer
+        *ngIf="state.activeFlow()"
+        [tasks]="state.visibleTasks()"
+        [selectedTaskId]="state.selectedTask()?.id ?? null"
+        (taskClicked)="onTaskClicked($event)"
+        (taskDoubleClicked)="onTaskDoubleClicked($event)"
+        (canvasClicked)="onCanvasClicked()"
+        (linkCreated)="onLinkCreated($event)"
+        (contextAction)="onContextAction($event)">
+      </app-dag-renderer>
+
+      <div class="empty-state" *ngIf="!state.activeFlow()">
+        <p>Select or create a flow to get started</p>
+      </div>
+
+      <div class="empty-state" *ngIf="state.activeFlow() && state.visibleTasks().length === 0 && !state.drilledTask()">
+        <p>No tasks yet. Click "+ Add Task" to create one.</p>
+      </div>
+
+      <div class="empty-state" *ngIf="state.drilledTask() && state.visibleTasks().length === 0">
+        <p>No steps yet. Click "+ Add Step" to create one, or double-click to go back.</p>
+      </div>
+    </div>
+
+    <!-- Detail sidebar -->
+    <app-task-detail-sidebar
+      *ngIf="state.selectedTask()"
+      [task]="state.selectedTask()"
+      [allTasks]="state.visibleTasks()"
+      [isDrilledView]="!!state.drilledTask()"
+      (closed)="onSidebarClosed()"
+      (taskUpdated)="onTaskUpdated($event)"
+      (taskDeleted)="onTaskDeleted($event)"
+      (statusChanged)="onStatusChanged($event)"
+      (prerequisitesChanged)="onPrerequisitesChanged($event)"
+      (addStep)="onAddStepFromSidebar($event)"
+      (drillInto)="onDrillInto($event)">
+    </app-task-detail-sidebar>
+  </div>
 </div>

@@ -1,4 +1,3 @@
-
 package com.dk_power.power_plant_java.dto.scheduler;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
@@ -14,5 +13,6 @@ import java.util.Set;
 public class FlowDto extends BaseDto {
     private String description;
     private ValueDto status;
+    private FlowTemplateDto template;
     private Set<TaskDto> tasks = new HashSet<>();
 }

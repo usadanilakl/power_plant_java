@@ -1,0 +1,89 @@
+.scheduler-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #11111b;
+  color: #cdd6f4;
+}
+
+.scheduler-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #1e1e2e;
+  border-bottom: 1px solid #333;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-add-task {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.btn-add-task:hover {
+  background: #16a34a;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #181825;
+  border-bottom: 1px solid #333;
+  font-size: 12px;
+  color: #888;
+}
+
+.crumb.clickable {
+  color: #3b82f6;
+  cursor: pointer;
+}
+
+.crumb.clickable:hover {
+  text-decoration: underline;
+}
+
+.crumb.active {
+  color: #cdd6f4;
+}
+
+.crumb-sep {
+  color: #555;
+}
+
+.scheduler-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.dag-panel {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.dag-panel.with-sidebar {
+  flex: 1;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  font-size: 14px;
+}

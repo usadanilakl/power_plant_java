@@ -72,7 +72,8 @@ import { SimEquipmentApiService } from '../../services/sim-equipment-api.service
       <div class="diagram-workspace">
         @if (!simState.isSimulating()) {
           <app-equipment-library
-            (onEquipmentDrag)="onEquipmentDragStart($event)"
+            (onEquipmentClick)="onEquipmentDragStart($event)"
+            (onEquipmentAddToCanvas)="addEquipmentToCanvas($event)"
           />
         }
 
@@ -222,6 +223,7 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   private animFrameId = 0;
   private backgroundImage: HTMLImageElement | null = null;
   private backgroundImageUrlLoaded: string | null = null;
+  private backgroundImageUrlPending: string | null = null;
   private lastEmbeddedDiagramId: number | null = null;
   private lastFocusedSourceKey: string | null = null;
   private lastFocusedConnectionKey: string | null = null;
@@ -524,21 +526,28 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!url) {
       this.backgroundImage = null;
       this.backgroundImageUrlLoaded = null;
+      this.backgroundImageUrlPending = null;
       return;
     }
     if (this.backgroundImageUrlLoaded === url && this.backgroundImage) {
       return;
     }
+    if (this.backgroundImageUrlPending === url) {
+      return;
+    }
 
     const img = new Image();
+    this.backgroundImageUrlPending = url;
     img.onload = () => {
       this.backgroundImage = img;
       this.backgroundImageUrlLoaded = url;
+      this.backgroundImageUrlPending = null;
       this.requestRender();
     };
     img.onerror = () => {
       this.backgroundImage = null;
       this.backgroundImageUrlLoaded = null;
+      this.backgroundImageUrlPending = null;
       this.requestRender();
     };
     img.src = url;
@@ -1008,6 +1017,25 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!eq || !eq.id) return;
 
     const coords = this.getCanvasCoords(event as any);
+    this.placeEquipment(eq, coords.x, coords.y);
+    this.draggedEquipment = null;
+  }
+
+  /** Add equipment at the visible center of the canvas. Called from equipment library context menu. */
+  addEquipmentToCanvas(eq: SimEquipmentDto): void {
+    if (!eq.id) return;
+    const container = this.canvasContainerRef?.nativeElement;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const centerClient = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+    const coords = this.drawingService.clientToCanvasCoords(
+      centerClient.clientX, centerClient.clientY, rect, this.transform
+    );
+    this.placeEquipment(eq, coords.x, coords.y);
+  }
+
+  private placeEquipment(eq: SimEquipmentDto, cx: number, cy: number): void {
     const w = eq.defaultWidth || 60;
     const h = eq.defaultHeight || 60;
 
@@ -1019,8 +1047,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       simParamsJson: eq.simParamsJson || '{"schemaVersion":1}',
       sourceEntityType: eq.sourceEntityType || undefined,
       sourceEntityId: eq.sourceEntityId || undefined,
-      x: coords.x - w / 2,
-      y: coords.y - h / 2,
+      x: cx - w / 2,
+      y: cy - h / 2,
       width: w,
       height: h,
       type: eq.symbolId ? 'symbol' : 'rectangle',
@@ -1035,7 +1063,6 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     const added = this.shapeManager.addShape(placement);
     this.shapeManager.selectShape(added.id);
     this.stateService.markDirty();
-    this.draggedEquipment = null;
     this.requestRender();
   }
 

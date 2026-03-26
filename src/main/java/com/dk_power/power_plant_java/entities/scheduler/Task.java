@@ -2,13 +2,15 @@ package com.dk_power.power_plant_java.entities.scheduler;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.enums.TaskLevel;
+import com.dk_power.power_plant_java.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,7 +19,15 @@ import java.util.Set;
 @Setter
 public class Task extends BaseAuditEntity {
     private String description;
-    private String completionLog;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Enumerated(EnumType.STRING)
+    private TaskLevel taskLevel = TaskLevel.TASK;
+
+    @Enumerated(EnumType.STRING)
+    private TaskType taskType = TaskType.ONE_TIME;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id")
@@ -48,15 +58,28 @@ public class Task extends BaseAuditEntity {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TaskReference> references = new HashSet<>();
 
-    @Transient
-    private Set<FileObject> fileReferences = new HashSet<>();
-    @Transient
-    private Set<Equipment> equipmentReferences = new HashSet<>();
-    @Transient
-    private Set<LotoPoint> lotoPointReferences = new HashSet<>();
-    @Transient
-    private Set<Value> locationReferences = new HashSet<>();
+    @ManyToMany
+    @JoinTable(
+            name = "task_attachments",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "file_object_id")
+    )
+    private Set<FileObject> attachments = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_id")
+    private User assignee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "priority_id")
+    private Value priority;
+
+    private LocalDate dueDate;
+    private Integer sortOrder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id")
+    private TaskTemplate template;
 
     public void addSubTask(Task subTask) {
         subTasks.add(subTask);
@@ -79,12 +102,9 @@ public class Task extends BaseAuditEntity {
     }
 
     public boolean isReadyToExecute() {
-        if (prerequisites.isEmpty()) {
-            return true; // No prerequisites, so it's ready to execute
-        }
-
-        // Check if all prerequisites are in a completed status
-        return prerequisites.stream().allMatch(prerequisite -> prerequisite.getStatus().getName().equals("Completed"));
+        if (prerequisites.isEmpty()) return true;
+        return prerequisites.stream()
+                .allMatch(p -> p.getStatus() != null && "Completed".equals(p.getStatus().getName()));
     }
 
     public boolean isLeafTask() {

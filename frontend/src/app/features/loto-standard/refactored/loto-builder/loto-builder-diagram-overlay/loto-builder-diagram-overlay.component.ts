@@ -11,6 +11,9 @@ import { AnchorPosition, DiagramConnection, DiagramPlacement } from '../../../..
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { normalizeSimRole, SimEquipmentDto } from '../../../../diagram-builder/models/sim-equipment.model';
 import { SimNodeState } from '../../../../diagram-builder/simulation/models/simulation.model';
+import { RfToggleMenuComponent } from '../../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
+import { NestedItem, NestedItemImpl } from '../../../../../models/ui/nested-item.model';
+import { ContextMenuComponent, ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
 
 interface ConnectionSummary {
   id: number;
@@ -34,7 +37,7 @@ interface ReadinessSummary {
 @Component({
   selector: 'app-loto-builder-diagram-overlay',
   standalone: true,
-  imports: [CommonModule, FormsModule, DiagramCanvasComponent],
+  imports: [CommonModule, FormsModule, DiagramCanvasComponent, RfToggleMenuComponent, ContextMenuComponent],
   template: `
     @if (builderState.isDiagramBuilderOpen()) {
       <div class="overlay" (click)="close()">
@@ -57,6 +60,7 @@ interface ReadinessSummary {
 
           <div class="body">
             <aside class="sidebar">
+              <!-- Diagrams -->
               <section class="sidebar-section">
                 <div class="section-header">
                   <h3>Diagrams</h3>
@@ -76,7 +80,7 @@ interface ReadinessSummary {
                         <span class="diagram-name">{{ diagram.name || 'Untitled Diagram' }}</span>
                         <span class="diagram-meta">
                           @if (diagram.dateModified) {
-                            {{ diagram.dateModified | date:'short' }}
+                            {{ formatDiagramDate(diagram.dateModified) }}
                           } @else {
                             New
                           }
@@ -87,72 +91,41 @@ interface ReadinessSummary {
                 }
               </section>
 
-              <section class="sidebar-section">
-                <div class="section-header">
+              <!-- Source Objects (collapsible) -->
+              <details class="sidebar-section" open>
+                <summary class="section-header clickable">
                   <h3>Source Objects</h3>
-                </div>
-                <p class="section-copy">
-                  Use the visible P&ID context to seed reusable simulator definitions, then place or sync them into the active diagram.
-                </p>
-                <div class="metrics">
-                  <span>{{ equipmentCount() }} visible equipment</span>
-                  <span>{{ lotoPointCount() }} LOTO points</span>
-                </div>
-                <div class="action-stack">
-                  <button class="btn" [disabled]="syncingSources() || equipmentCount() === 0" (click)="generateFromEquipment()">
-                    Generate Equipment Templates
-                  </button>
-                  <button class="btn" [disabled]="syncingSources() || lotoPointCount() === 0" (click)="generateFromLotoPoints()">
-                    Generate LOTO Templates
-                  </button>
-                  <button class="btn btn-accent" [disabled]="syncingSources() || activeDiagramId() == null || equipmentCount() === 0" (click)="placeEquipmentFromPid()">
-                    Place Visible Equipment
-                  </button>
-                </div>
-              </section>
-
-              <section class="sidebar-section source-list-section">
-                <div class="section-header">
-                  <h3>Visible Equipment</h3>
-                  <span class="section-hint">{{ placedEquipmentCount() }} placed</span>
-                </div>
-                @if (visibleEquipment().length === 0) {
-                  <p class="section-empty">This file does not have positioned equipment to place yet.</p>
-                } @else {
-                  <div class="source-list">
-                    @for (equipment of visibleEquipment(); track equipment.id) {
-                      <div
-                        class="source-item"
-                        [class.highlighted]="builderState.hoveredShapeId() === equipment.id"
-                        [class.placed]="isEquipmentPlaced(equipment.id)"
-                        (mouseenter)="highlightSource(equipment.id)"
-                        (mouseleave)="clearSourceHighlight(equipment.id)">
-                        <div class="source-main" (click)="selectSource(equipment.id)">
-                          <div class="source-title-row">
-                            <span class="source-title">{{ equipment.tagNumber || equipment.name || 'Untitled Equipment' }}</span>
-                            <span class="source-state">{{ isEquipmentPlaced(equipment.id) ? 'Placed' : 'Not Placed' }}</span>
-                          </div>
-                          <p class="source-description">{{ equipment.description || 'No description' }}</p>
-                        </div>
-                        <div class="source-actions">
-                          <button class="btn btn-small" [disabled]="syncingSources()" (click)="generateOneEquipment(equipment); $event.stopPropagation()">
-                            Generate
-                          </button>
-                          <button class="btn btn-small btn-accent" [disabled]="syncingSources() || activeDiagramId() == null" (click)="placeOneEquipment(equipment); $event.stopPropagation()">
-                            {{ isEquipmentPlaced(equipment.id) ? 'Sync' : 'Place' }}
-                          </button>
-                          <button class="btn btn-small btn-danger" [disabled]="syncingSources() || !isEquipmentPlaced(equipment.id)" (click)="removeOneEquipment(equipment); $event.stopPropagation()">
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    }
+                  <span class="section-hint">{{ equipmentCount() }} equip / {{ lotoPointCount() }} LOTO</span>
+                </summary>
+                <div class="section-body">
+                  <div class="action-stack">
+                    <button class="btn" [disabled]="syncingSources() || equipmentCount() === 0" (click)="generateFromEquipment()">
+                      Generate Equipment Templates
+                    </button>
+                    <button class="btn" [disabled]="syncingSources() || lotoPointCount() === 0" (click)="generateFromLotoPoints()">
+                      Generate LOTO Templates
+                    </button>
+                    <button class="btn btn-accent" [disabled]="syncingSources() || activeDiagramId() == null || equipmentCount() === 0" (click)="placeEquipmentFromPid()">
+                      Place Visible Equipment
+                    </button>
                   </div>
-                }
+                </div>
+              </details>
+
+              <!-- Equipment & Connections toggle menu -->
+              <section class="sidebar-section menu-section">
+                <app-rf-toggle-menu
+                  [menuItems]="sidebarMenuItems()"
+                  [enableSearch]="true"
+                  [searchPlaceholder]="'Search equipment, connections...'"
+                  (itemClick)="onMenuItemClick($event)"
+                  (itemRightClick)="onMenuItemRightClick($event)"
+                />
               </section>
 
-              <section class="sidebar-section">
-                <div class="section-header">
+              <!-- Selected Equipment (collapsible) -->
+              <details class="sidebar-section" [open]="selectedEquipment() != null">
+                <summary class="section-header clickable">
                   <h3>Selected Equipment</h3>
                   <span class="section-hint">
                     @if (selectedEquipment()) {
@@ -161,206 +134,135 @@ interface ReadinessSummary {
                       None
                     }
                   </span>
-                </div>
-                @if (selectedEquipment(); as equipment) {
-                  <div class="selected-card">
-                    <div class="selected-title-row">
-                      <span class="selected-title">{{ equipment.tagNumber || equipment.name || 'Untitled Equipment' }}</span>
-                    </div>
-                    <p class="selected-description">{{ equipment.description || 'No description' }}</p>
-                    @if (simulationRunning() && selectedNodeState(); as nodeState) {
-                      <div class="live-state-grid">
-                        <span>P {{ nodeState.pressure | number:'1.0-1' }}</span>
-                        <span>F {{ nodeState.flowRate | number:'1.0-1' }}</span>
-                        <span>T {{ nodeState.temperature | number:'1.0-1' }}</span>
-                        <span>{{ nodeState.isFlowing ? 'Flowing' : 'Stopped' }}</span>
+                </summary>
+                <div class="section-body">
+                  @if (selectedEquipment(); as equipment) {
+                    <div class="selected-card">
+                      <div class="selected-title-row">
+                        <span class="selected-title">{{ equipment.tagNumber || equipment.name || 'Untitled Equipment' }}</span>
                       </div>
-                      @if (nodeState.warnings?.length) {
-                        <div class="readiness-list">
-                          @for (warning of nodeState.warnings!; track warning) {
-                            <div class="readiness-item">{{ warning }}</div>
-                          }
+                      <p class="selected-description">{{ equipment.description || 'No description' }}</p>
+                      @if (simulationRunning() && selectedNodeState(); as nodeState) {
+                        <div class="live-state-grid">
+                          <span>P {{ nodeState.pressure | number:'1.0-1' }}</span>
+                          <span>F {{ nodeState.flowRate | number:'1.0-1' }}</span>
+                          <span>T {{ nodeState.temperature | number:'1.0-1' }}</span>
+                          <span>{{ nodeState.isFlowing ? 'Flowing' : 'Stopped' }}</span>
                         </div>
-                      }
-                    }
-                    <div class="selected-actions">
-                      <button class="btn btn-small" [disabled]="syncingSources()" (click)="generateOneEquipment(equipment)">
-                        Generate
-                      </button>
-                      <button class="btn btn-small btn-accent" [disabled]="syncingSources() || activeDiagramId() == null" (click)="placeOneEquipment(equipment)">
-                        {{ isEquipmentPlaced(equipment.id) ? 'Sync Placement' : 'Place In Diagram' }}
-                      </button>
-                      <button class="btn btn-small btn-danger" [disabled]="syncingSources() || !isEquipmentPlaced(equipment.id)" (click)="removeOneEquipment(equipment)">
-                        Remove From Diagram
-                      </button>
-                    </div>
-                    <div class="selected-actions">
-                      <button class="btn btn-small" [disabled]="!isEquipmentPlaced(equipment.id)" (click)="useSelectedAsFrom()">
-                        Use As From
-                      </button>
-                      <button class="btn btn-small" [disabled]="!isEquipmentPlaced(equipment.id)" (click)="useSelectedAsTo()">
-                        Use As To
-                      </button>
-                      <button class="btn btn-small" [disabled]="!simulationRunning() || !isEquipmentPlaced(equipment.id)" (click)="operateSelectedEquipment()">
-                        Operate
-                      </button>
-                    </div>
-                  </div>
-                } @else {
-                  <p class="section-empty">Select a source item from the P&ID list or the embedded diagram to work with it here.</p>
-                }
-              </section>
-
-              <section class="sidebar-section">
-                <div class="section-header">
-                  <h3>Simulation Controls</h3>
-                  <span class="section-hint">{{ simulationRunning() ? 'Running' : 'Stopped' }}</span>
-                </div>
-                <p class="section-copy">
-                  Start the simulation for the active embedded diagram, then operate the selected valve or pump from the card above.
-                </p>
-                <div class="selected-actions">
-                  <button class="btn btn-accent" [disabled]="activeDiagramId() == null" (click)="toggleEmbeddedSimulation()">
-                    {{ simulationRunning() ? 'Stop Simulation' : 'Start Simulation' }}
-                  </button>
-                  <button class="btn btn-small" [disabled]="!simulationRunning()" (click)="resetEmbeddedSimulation()">
-                    Reset
-                  </button>
-                </div>
-              </section>
-
-              <section class="sidebar-section">
-                <div class="section-header">
-                  <h3>Diagram Health</h3>
-                  <span class="section-hint">{{ disconnectedEquipment().length }} disconnected</span>
-                </div>
-                <div class="metrics">
-                  <span>{{ placedEquipmentCount() }} placed equipment</span>
-                  <span>{{ connectionCount() }} process connections</span>
-                  <span>{{ disconnectedEquipment().length }} placed items without a connection</span>
-                </div>
-                @if (disconnectedEquipment().length > 0) {
-                  <div class="action-stack">
-                    <button class="btn btn-small" (click)="selectDisconnectedEquipment(disconnectedEquipment()[0].id)">
-                      Focus First Disconnected
-                    </button>
-                  </div>
-                  <div class="health-list">
-                    @for (equipment of disconnectedEquipment(); track equipment.id) {
-                      <button class="health-item" (click)="selectDisconnectedEquipment(equipment.id)">
-                        {{ equipment.tagNumber || equipment.name || ('Equipment #' + equipment.id) }}
-                      </button>
-                    }
-                  </div>
-                } @else {
-                  <p class="section-empty">All placed equipment currently has at least one connection.</p>
-                }
-              </section>
-
-              <section class="sidebar-section">
-                <div class="section-header">
-                  <h3>Simulation Readiness</h3>
-                  <span class="section-hint">
-                    @if (readinessSummary().warnings.length === 0) {
-                      Ready
-                    } @else {
-                      {{ readinessSummary().warnings.length }} issues
-                    }
-                  </span>
-                </div>
-                <div class="metrics">
-                  <span>{{ readinessSummary().sources }} sources</span>
-                  <span>{{ readinessSummary().sinks }} sinks</span>
-                  <span>{{ readinessSummary().valves }} valves</span>
-                  <span>{{ readinessSummary().pumps }} pumps</span>
-                  <span>{{ readinessSummary().vessels }} vessels</span>
-                  <span>{{ readinessSummary().connectedPlacements }} connected placements</span>
-                </div>
-                @if (readinessSummary().warnings.length > 0) {
-                  <div class="readiness-list">
-                    @for (warning of readinessSummary().warnings; track warning) {
-                      <div class="readiness-item">{{ warning }}</div>
-                    }
-                  </div>
-                } @else {
-                  <p class="section-empty">This diagram has the minimum structure to start a simulation run.</p>
-                }
-              </section>
-
-              <section class="sidebar-section">
-                <div class="section-header">
-                  <h3>Quick Connect</h3>
-                  <span class="section-hint">{{ connectionCount() }} connections</span>
-                </div>
-                <p class="section-copy">
-                  Pick two already placed items and create a process link with automatic anchors.
-                </p>
-                <label class="stacked-label">From
-                  <select [ngModel]="connectFromEquipmentId() ?? ''" (ngModelChange)="connectFromEquipmentId.set(toNumberOrUndefined($event) ?? null)">
-                    <option value="">Select source</option>
-                    @for (equipment of placedEquipmentOptions(); track equipment.id) {
-                      <option [value]="equipment.id">{{ equipment.tagNumber || equipment.name || ('Equipment #' + equipment.id) }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="stacked-label">To
-                  <select [ngModel]="connectToEquipmentId() ?? ''" (ngModelChange)="connectToEquipmentId.set(toNumberOrUndefined($event) ?? null)">
-                    <option value="">Select target</option>
-                    @for (equipment of placedEquipmentOptions(); track equipment.id) {
-                      <option [value]="equipment.id">{{ equipment.tagNumber || equipment.name || ('Equipment #' + equipment.id) }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="stacked-label">Pipe Template
-                  <select [ngModel]="connectPipeTemplateId() ?? ''" (ngModelChange)="connectPipeTemplateId.set(toNumberOrUndefined($event) ?? null)">
-                    <option value="">None</option>
-                    @for (pipe of pipeTemplates(); track pipe.id) {
-                      <option [value]="pipe.id">{{ pipe.name || ('Pipe #' + pipe.id) }}</option>
-                    }
-                  </select>
-                </label>
-                <div class="action-stack">
-                  <button class="btn btn-accent"
-                    [disabled]="syncingSources() || activeDiagramId() == null || connectFromEquipmentId() == null || connectToEquipmentId() == null || connectFromEquipmentId() === connectToEquipmentId()"
-                    (click)="quickConnectSelected()">
-                    Create Connection
-                  </button>
-                  @if (connectMessage()) {
-                    <p class="inline-message">{{ connectMessage() }}</p>
-                  }
-                </div>
-              </section>
-
-              <section class="sidebar-section">
-                <div class="section-header">
-                  <h3>Connections</h3>
-                  <span class="section-hint">{{ connectionCount() }}</span>
-                </div>
-                @if (currentConnections().length === 0) {
-                  <p class="section-empty">No process connections have been created on this diagram yet.</p>
-                } @else {
-                    <div class="connection-list">
-                      @for (connection of currentConnections(); track connection.id) {
-                        <div class="connection-item" [class.active]="selectedConnectionId() === connection.id">
-                          <div class="connection-main">
-                            <button class="connection-focus" (click)="focusConnection(connection.id)">
-                              <span class="connection-title">{{ connection.sourceLabel }} -> {{ connection.targetLabel }}</span>
-                            </button>
-                            @if (connection.pipeLabel) {
-                              <span class="connection-meta">{{ connection.pipeLabel }}</span>
+                        @if (nodeState.warnings?.length) {
+                          <div class="readiness-list">
+                            @for (warning of nodeState.warnings!; track warning) {
+                              <div class="readiness-item">{{ warning }}</div>
                             }
                           </div>
-                        <button class="btn btn-small btn-danger" [disabled]="syncingSources()" (click)="removeConnection(connection.id)">
-                          Remove
+                        }
+                      }
+                      <div class="selected-actions">
+                        <button class="btn btn-small" [disabled]="syncingSources()" (click)="generateOneEquipment(equipment)">
+                          Generate
+                        </button>
+                        <button class="btn btn-small btn-accent" [disabled]="syncingSources() || activeDiagramId() == null" (click)="placeOneEquipment(equipment)">
+                          {{ isEquipmentPlaced(equipment.id) ? 'Sync Placement' : 'Place In Diagram' }}
+                        </button>
+                        <button class="btn btn-small btn-danger" [disabled]="syncingSources() || !isEquipmentPlaced(equipment.id)" (click)="removeOneEquipment(equipment)">
+                          Remove From Diagram
                         </button>
                       </div>
+                      <div class="selected-actions">
+                        <button class="btn btn-small" [disabled]="!isEquipmentPlaced(equipment.id)" (click)="useSelectedAsFrom()">
+                          Use As From
+                        </button>
+                        <button class="btn btn-small" [disabled]="!isEquipmentPlaced(equipment.id)" (click)="useSelectedAsTo()">
+                          Use As To
+                        </button>
+                        <button class="btn btn-small" [disabled]="!simulationRunning() || !isEquipmentPlaced(equipment.id)" (click)="operateSelectedEquipment()">
+                          Operate
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="section-empty">Select an item from the list or diagram.</p>
+                  }
+                </div>
+              </details>
+
+              <!-- Simulation Controls (collapsible) -->
+              <details class="sidebar-section" open>
+                <summary class="section-header clickable">
+                  <h3>Simulation</h3>
+                  <span class="section-hint">{{ simulationRunning() ? 'Running' : 'Stopped' }}</span>
+                </summary>
+                <div class="section-body">
+                  <div class="selected-actions">
+                    <button class="btn btn-accent" [disabled]="activeDiagramId() == null" (click)="toggleEmbeddedSimulation()">
+                      {{ simulationRunning() ? 'Stop Simulation' : 'Start Simulation' }}
+                    </button>
+                    <button class="btn btn-small" [disabled]="!simulationRunning()" (click)="resetEmbeddedSimulation()">
+                      Reset
+                    </button>
+                  </div>
+                  <div class="metrics">
+                    <span>{{ readinessSummary().sources }} sources</span>
+                    <span>{{ readinessSummary().sinks }} sinks</span>
+                    <span>{{ readinessSummary().valves }} valves / {{ readinessSummary().pumps }} pumps / {{ readinessSummary().vessels }} vessels</span>
+                  </div>
+                  @if (readinessSummary().warnings.length > 0) {
+                    <div class="readiness-list">
+                      @for (warning of readinessSummary().warnings; track warning) {
+                        <div class="readiness-item">{{ warning }}</div>
+                      }
+                    </div>
+                  }
+                </div>
+              </details>
+
+              <!-- Quick Connect (collapsible) -->
+              <details class="sidebar-section">
+                <summary class="section-header clickable">
+                  <h3>Quick Connect</h3>
+                  <span class="section-hint">{{ connectionCount() }} connections</span>
+                </summary>
+                <div class="section-body">
+                  <label class="stacked-label">From
+                    <select [ngModel]="connectFromEquipmentId() ?? ''" (ngModelChange)="connectFromEquipmentId.set(toNumberOrUndefined($event) ?? null)">
+                      <option value="">Select source</option>
+                      @for (equipment of placedEquipmentOptions(); track equipment.id) {
+                        <option [value]="equipment.id">{{ equipment.tagNumber || equipment.name || ('Equipment #' + equipment.id) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="stacked-label">To
+                    <select [ngModel]="connectToEquipmentId() ?? ''" (ngModelChange)="connectToEquipmentId.set(toNumberOrUndefined($event) ?? null)">
+                      <option value="">Select target</option>
+                      @for (equipment of placedEquipmentOptions(); track equipment.id) {
+                        <option [value]="equipment.id">{{ equipment.tagNumber || equipment.name || ('Equipment #' + equipment.id) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="stacked-label">Pipe Template
+                    <select [ngModel]="connectPipeTemplateId() ?? ''" (ngModelChange)="connectPipeTemplateId.set(toNumberOrUndefined($event) ?? null)">
+                      <option value="">None</option>
+                      @for (pipe of pipeTemplates(); track pipe.id) {
+                        <option [value]="pipe.id">{{ pipe.name || ('Pipe #' + pipe.id) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <div class="action-stack">
+                    <button class="btn btn-accent"
+                      [disabled]="syncingSources() || activeDiagramId() == null || connectFromEquipmentId() == null || connectToEquipmentId() == null || connectFromEquipmentId() === connectToEquipmentId()"
+                      (click)="quickConnectSelected()">
+                      Create Connection
+                    </button>
+                    @if (connectMessage()) {
+                      <p class="inline-message">{{ connectMessage() }}</p>
                     }
                   </div>
-                }
-              </section>
+                </div>
+              </details>
 
-              <section class="sidebar-section">
-                <div class="section-header">
+              <!-- Selected Connection (collapsible) -->
+              <details class="sidebar-section" [open]="selectedConnection() != null">
+                <summary class="section-header clickable">
                   <h3>Selected Connection</h3>
                   <span class="section-hint">
                     @if (selectedConnection()) {
@@ -369,30 +271,41 @@ interface ReadinessSummary {
                       None
                     }
                   </span>
+                </summary>
+                <div class="section-body">
+                  @if (selectedConnection(); as connection) {
+                    <div class="selected-card">
+                      <div class="selected-title-row">
+                        <span class="selected-title">{{ connection.sourceLabel }} -> {{ connection.targetLabel }}</span>
+                      </div>
+                      <p class="selected-description">{{ connection.pipeLabel || 'No pipe template assigned' }}</p>
+                      <div class="selected-actions">
+                        <button class="btn btn-small" [disabled]="connection.sourceEquipmentId == null" (click)="useConnectionSourceAsFrom()">
+                          Use Source As From
+                        </button>
+                        <button class="btn btn-small" [disabled]="connection.targetEquipmentId == null" (click)="useConnectionTargetAsTo()">
+                          Use Target As To
+                        </button>
+                        <button class="btn btn-small btn-danger" [disabled]="syncingSources()" (click)="removeConnection(connection.id)">
+                          Remove Connection
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="section-empty">Select a connection from the list or canvas.</p>
+                  }
                 </div>
-                @if (selectedConnection(); as connection) {
-                  <div class="selected-card">
-                    <div class="selected-title-row">
-                      <span class="selected-title">{{ connection.sourceLabel }} -> {{ connection.targetLabel }}</span>
-                    </div>
-                    <p class="selected-description">{{ connection.pipeLabel || 'No pipe template assigned' }}</p>
-                    <div class="selected-actions">
-                      <button class="btn btn-small" [disabled]="connection.sourceEquipmentId == null" (click)="useConnectionSourceAsFrom()">
-                        Use Source As From
-                      </button>
-                      <button class="btn btn-small" [disabled]="connection.targetEquipmentId == null" (click)="useConnectionTargetAsTo()">
-                        Use Target As To
-                      </button>
-                      <button class="btn btn-small btn-danger" [disabled]="syncingSources()" (click)="removeConnection(connection.id)">
-                        Remove Connection
-                      </button>
-                    </div>
-                  </div>
-                } @else {
-                  <p class="section-empty">Select a connection from the list or canvas to work with it here.</p>
-                }
-              </section>
+              </details>
             </aside>
+
+            <!-- Context menu for right-click actions -->
+            <app-context-menu
+              [isVisible]="ctxMenuVisible()"
+              [position]="ctxMenuPosition()"
+              [selectedItem]="ctxMenuItem()"
+              [actions]="ctxMenuActions()"
+              (closeMenu)="ctxMenuVisible.set(false)"
+            />
 
             <div class="canvas-shell">
               @if (activeDiagramId() != null) {
@@ -492,6 +405,7 @@ interface ReadinessSummary {
       background: linear-gradient(180deg, #151515 0%, #0f0f0f 100%);
       padding: 14px;
       overflow: auto;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -576,59 +490,40 @@ interface ReadinessSummary {
       font-size: 11px;
       color: #8f8f8f;
     }
-    .source-list-section {
-      min-height: 0;
-    }
-    .source-list {
+    .section-body {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      overflow: auto;
-      max-height: 420px;
+      gap: 10px;
+      padding-top: 10px;
     }
-    .source-item {
-      border: 1px solid #343434;
-      border-radius: 8px;
-      padding: 10px;
-      background: #151515;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    details.sidebar-section > summary {
+      list-style: none;
+      user-select: none;
     }
-    .source-item.highlighted {
-      border-color: #b98f38;
-      background: rgba(185, 143, 56, 0.1);
+    details.sidebar-section > summary::-webkit-details-marker {
+      display: none;
     }
-    .source-item.placed {
-      border-color: #2e7d32;
-    }
-    .source-main {
+    .section-header.clickable {
       cursor: pointer;
     }
-    .source-title-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: baseline;
+    .section-header.clickable h3::before {
+      content: '\\25B6';
+      display: inline-block;
+      font-size: 9px;
+      margin-right: 6px;
+      transition: transform 0.15s ease;
     }
-    .source-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #ededed;
+    details[open] > .section-header.clickable h3::before {
+      transform: rotate(90deg);
     }
-    .source-state {
-      font-size: 11px;
-      color: #8f8f8f;
+    .menu-section {
+      flex: 1;
+      min-height: 180px;
+      overflow: hidden;
     }
-    .source-description {
-      margin: 4px 0 0;
-      color: #999;
-      font-size: 11px;
-      line-height: 1.35;
-    }
-    .source-actions {
-      display: flex;
-      gap: 8px;
+    .menu-section app-rf-toggle-menu {
+      display: block;
+      height: 100%;
     }
     .selected-card {
       display: flex;
@@ -696,71 +591,6 @@ interface ReadinessSummary {
       font-size: 11px;
       color: #8f8f8f;
       line-height: 1.4;
-    }
-    .connection-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 240px;
-      overflow: auto;
-    }
-    .connection-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px;
-      border: 1px solid #343434;
-      border-radius: 8px;
-      background: #151515;
-    }
-    .connection-item.active {
-      border-color: #2e7dd1;
-      background: rgba(46, 125, 209, 0.12);
-    }
-    .connection-main {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-    .connection-focus {
-      padding: 0;
-      background: transparent;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      text-align: left;
-    }
-    .connection-title {
-      font-size: 12px;
-      color: #ededed;
-      font-weight: 600;
-    }
-    .connection-meta {
-      font-size: 11px;
-      color: #8f8f8f;
-    }
-    .health-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 180px;
-      overflow: auto;
-    }
-    .health-item {
-      width: 100%;
-      text-align: left;
-      padding: 8px 10px;
-      border: 1px solid #4f3a1b;
-      border-radius: 8px;
-      background: rgba(185, 143, 56, 0.1);
-      color: #edd7a4;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .health-item:hover {
-      background: rgba(185, 143, 56, 0.18);
     }
     .readiness-list {
       display: flex;
@@ -846,6 +676,12 @@ export class LotoBuilderDiagramOverlayComponent {
   connectToEquipmentId = signal<number | null>(null);
   connectPipeTemplateId = signal<number | null>(null);
   connectMessage = signal<string | null>(null);
+
+  // Context menu state
+  ctxMenuVisible = signal(false);
+  ctxMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+  ctxMenuItem = signal<NestedItem | null>(null);
+  ctxMenuActions = signal<ContextMenuAction[]>([]);
   equipmentCount = computed(() => this.builderState.currentEquipment().length);
   lotoPointCount = computed(() => this.builderState.allLotoPointsInFile().length);
   visibleEquipment = computed(() =>
@@ -871,6 +707,73 @@ export class LotoBuilderDiagramOverlayComponent {
   pipeTemplates = computed(() =>
     this.simEquipmentApi.equipmentList().filter(eq => normalizeSimRole(eq.simRole) === 'pipe')
   );
+
+  sidebarMenuItems = computed((): NestedItem[] => {
+    const equipment = this.visibleEquipment();
+    const placed = this.placedEquipmentIds();
+    const disconnected = this.disconnectedEquipmentIds();
+    const connections = this.currentConnections();
+
+    const equipmentChildren: NestedItem[] = equipment.map(eq => new NestedItemImpl({
+      id: eq.id!,
+      name: eq.tagNumber || eq.name || 'Untitled Equipment',
+      subtitle: eq.description || undefined,
+      objectType: 'Equipment',
+      color: placed.has(eq.id!)
+        ? (disconnected.has(eq.id!) ? '#e65100' : '#2e7d32')
+        : '#9e9e9e',
+    }));
+
+    const connectionChildren: NestedItem[] = connections.map(conn => new NestedItemImpl({
+      id: conn.id,
+      name: `${conn.sourceLabel} \u2192 ${conn.targetLabel}`,
+      subtitle: conn.pipeLabel || undefined,
+      objectType: 'Connection',
+      color: '#2e7dd1',
+    }));
+
+    const items: NestedItem[] = [];
+
+    items.push(new NestedItemImpl({
+      id: 'group-equipment',
+      name: `Equipment (${equipment.length})`,
+      objectType: 'Group',
+      color: '#4CAF50',
+      isExpanded: true,
+      values: equipmentChildren,
+    }));
+
+    if (connections.length > 0) {
+      items.push(new NestedItemImpl({
+        id: 'group-connections',
+        name: `Connections (${connections.length})`,
+        objectType: 'Group',
+        color: '#2196F3',
+        isExpanded: false,
+        values: connectionChildren,
+      }));
+    }
+
+    const disconnectedItems = equipment.filter(eq => eq.id != null && disconnected.has(eq.id!));
+    if (disconnectedItems.length > 0) {
+      items.push(new NestedItemImpl({
+        id: 'group-disconnected',
+        name: `Disconnected (${disconnectedItems.length})`,
+        objectType: 'Group',
+        color: '#e65100',
+        isExpanded: true,
+        values: disconnectedItems.map(eq => new NestedItemImpl({
+          id: eq.id!,
+          name: eq.tagNumber || eq.name || 'Untitled Equipment',
+          subtitle: eq.description || undefined,
+          objectType: 'Equipment',
+          color: '#e65100',
+        })),
+      }));
+    }
+
+    return items;
+  });
 
   subtitle = computed(() => {
     const file = this.builderState.currentFile();
@@ -1143,6 +1046,120 @@ export class LotoBuilderDiagramOverlayComponent {
     if (!operated) {
       this.connectMessage.set('Select a placed pump or valve and start the simulation before operating it.');
     }
+  }
+
+  onMenuItemClick(item: NestedItem): void {
+    if (item.objectType === 'Equipment') {
+      const id = typeof item.id === 'number' ? item.id : parseInt(item.id as string, 10);
+      if (!isNaN(id)) {
+        this.selectSource(id);
+      }
+    } else if (item.objectType === 'Connection') {
+      const id = typeof item.id === 'number' ? item.id : parseInt(item.id as string, 10);
+      if (!isNaN(id)) {
+        this.focusConnection(id);
+      }
+    }
+  }
+
+  onMenuItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+    event.event.preventDefault();
+    event.event.stopPropagation();
+
+    const item = event.item;
+    if (item.objectType === 'Group') return;
+
+    this.ctxMenuItem.set(item);
+    this.ctxMenuPosition.set({ x: event.event.clientX, y: event.event.clientY });
+
+    if (item.objectType === 'Equipment') {
+      const id = typeof item.id === 'number' ? item.id : parseInt(item.id as string, 10);
+      const equipment = this.visibleEquipment().find(eq => eq.id === id);
+      if (!equipment) return;
+
+      const placed = this.isEquipmentPlaced(id);
+      this.ctxMenuActions.set([
+        {
+          id: 'generate',
+          label: 'Generate Template',
+          icon: '',
+          disabled: this.syncingSources(),
+          action: () => this.generateOneEquipment(equipment),
+        },
+        {
+          id: 'place',
+          label: placed ? 'Sync Placement' : 'Place In Diagram',
+          icon: '',
+          disabled: this.syncingSources() || this.activeDiagramId() == null,
+          action: () => this.placeOneEquipment(equipment),
+        },
+        {
+          id: 'remove',
+          label: 'Remove From Diagram',
+          icon: '',
+          disabled: this.syncingSources() || !placed,
+          action: () => this.removeOneEquipment(equipment),
+        },
+        { id: 'div1', label: '', divider: true, action: () => {} },
+        {
+          id: 'connect-from',
+          label: 'Use As From',
+          icon: '',
+          disabled: !placed,
+          action: () => { this.selectSource(id); this.useSelectedAsFrom(); },
+        },
+        {
+          id: 'connect-to',
+          label: 'Use As To',
+          icon: '',
+          disabled: !placed,
+          action: () => { this.selectSource(id); this.useSelectedAsTo(); },
+        },
+      ]);
+    } else if (item.objectType === 'Connection') {
+      const connId = typeof item.id === 'number' ? item.id : parseInt(item.id as string, 10);
+      const connection = this.currentConnections().find(c => c.id === connId);
+      if (!connection) return;
+
+      this.ctxMenuActions.set([
+        {
+          id: 'focus',
+          label: 'Focus Connection',
+          icon: '',
+          action: () => this.focusConnection(connId),
+        },
+        {
+          id: 'use-source-from',
+          label: 'Use Source As From',
+          icon: '',
+          disabled: connection.sourceEquipmentId == null,
+          action: () => {
+            this.focusConnection(connId);
+            this.useConnectionSourceAsFrom();
+          },
+        },
+        {
+          id: 'use-target-to',
+          label: 'Use Target As To',
+          icon: '',
+          disabled: connection.targetEquipmentId == null,
+          action: () => {
+            this.focusConnection(connId);
+            this.useConnectionTargetAsTo();
+          },
+        },
+        { id: 'div1', label: '', divider: true, action: () => {} },
+        {
+          id: 'remove-conn',
+          label: 'Remove Connection',
+          icon: '',
+          disabled: this.syncingSources(),
+          action: () => this.removeConnection(connId),
+        },
+      ]);
+    }
+
+    this.ctxMenuVisible.set(true);
   }
 
   useConnectionSourceAsFrom(): void {
@@ -1600,6 +1617,15 @@ export class LotoBuilderDiagramOverlayComponent {
     if (value == null || value === '') return undefined;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  formatDiagramDate(value: string | null | undefined): string {
+    if (!value) return 'Unknown';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toLocaleString();
   }
 
   openDiagram(id: number): void {

@@ -1,13 +1,10 @@
 package com.dk_power.power_plant_java.dto.scheduler;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,20 +12,21 @@ import java.util.Set;
 @Setter
 public class TaskIdDto extends BaseDto {
     private String description;
-    private String completionLog;
+    private String notes;
+    private String taskLevel;
+    private String taskType;
 
-    private ValueDto status;
-    private Long flow;
-    private Long parentTask;
+    private Long statusId;
+    private Long flowId;
+    private Long parentTaskId;
+    private Long assigneeId;
+    private Long priorityId;
+    private LocalDate dueDate;
+    private Integer sortOrder;
+    private Long templateId;
 
-    private Set<Long> subTasks = new HashSet<>();
-    private Set<Long> prerequisites = new HashSet<>();
-    private Set<Long> dependents = new HashSet<>();
-
-    private Set<Long> references = new HashSet<>();
-
-    private Set<FileDto> fileReferences = new HashSet<>();
-    private Set<EquipmentDto> equipmentReferences = new HashSet<>();
-    private Set<LotoPointDto> lotoPointReferences = new HashSet<>();
-    private Set<ValueDto> locationReferences = new HashSet<>();
+    private Set<Long> subTaskIds = new HashSet<>();
+    private Set<Long> prerequisiteIds = new HashSet<>();
+    private Set<Long> referenceIds = new HashSet<>();
+    private Set<Long> attachmentIds = new HashSet<>();
 }

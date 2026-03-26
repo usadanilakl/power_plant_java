@@ -19,6 +19,10 @@ public class Flow extends BaseAuditEntity {
     @JoinColumn(name = "status_id")
     private Value status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id")
+    private FlowTemplate template;
+
     @OneToMany(mappedBy = "flow", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Task> tasks = new HashSet<>();
 
