@@ -16,7 +16,7 @@ public class TaskIdDto extends BaseDto {
     private String taskLevel;
     private String taskType;
 
-    private Long statusId;
+    private String statusName;
     private Long flowId;
     private Long parentTaskId;
     private Long assigneeId;

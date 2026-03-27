@@ -2,11 +2,12 @@ import {Component, Input, Output, EventEmitter} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.model';
+import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/entity-picker/entity-picker-dialog.component';
 
 @Component({
   selector: 'app-task-detail-sidebar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, EntityPickerDialogComponent],
   template: `
     <div class="sidebar" [class.open]="task">
       <div class="sidebar-header" *ngIf="task">
@@ -119,9 +120,15 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
               <option value="" disabled>Type...</option>
               <option *ngFor="let t of referenceTypes" [value]="t">{{ t }}</option>
             </select>
-            <input type="number" [(ngModel)]="newRefId" placeholder="ID" class="ref-id-input" />
-            <button class="add-btn" [disabled]="!newRefType || !newRefId" (click)="onAddReference()">+</button>
+            <button class="add-btn" [disabled]="!newRefType" (click)="openEntityPicker()">Browse</button>
           </div>
+
+          <app-entity-picker-dialog
+            *ngIf="showEntityPicker && newRefType"
+            [referenceType]="newRefType"
+            (picked)="onEntityPicked($event)"
+            (closed)="showEntityPicker = false">
+          </app-entity-picker-dialog>
         </section>
 
         <!-- Notes -->
@@ -270,8 +277,8 @@ export class TaskDetailSidebarComponent {
 
   newPrereqId: number | null = null;
   newRefType = '';
-  newRefId: number | null = null;
-  referenceTypes = ['Equipment', 'User', 'DailyPermitPackage', 'SafeWork', 'HotWork', 'ConfinedSpace', 'LotoPoint', 'Value'];
+  showEntityPicker = false;
+  referenceTypes = ['Equipment', 'User', 'DailyPermitPackage', 'SafeWork', 'HotWork', 'ConfinedSpace', 'LotoPoint'];
 
   get computedStatus(): string {
     if (!this.task) return 'not started';
@@ -324,11 +331,15 @@ export class TaskDetailSidebarComponent {
     this.attachmentRemoved.emit({taskId: this.task.id, fileId});
   }
 
-  onAddReference(): void {
-    if (!this.task || !this.newRefType || !this.newRefId) return;
-    this.referenceAdded.emit({taskId: this.task.id, referenceType: this.newRefType, referenceId: this.newRefId});
+  openEntityPicker(): void {
+    this.showEntityPicker = true;
+  }
+
+  onEntityPicked(picked: PickedEntity): void {
+    if (!this.task || !this.newRefType) return;
+    this.referenceAdded.emit({taskId: this.task.id, referenceType: this.newRefType, referenceId: picked.id});
+    this.showEntityPicker = false;
     this.newRefType = '';
-    this.newRefId = null;
   }
 
   onRemoveReference(refId: number): void {

@@ -16,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,6 +31,9 @@ public class NgTaskController {
     private final NgTaskService taskService;
     private final TaskMapper taskMapper;
     private final FileRepo fileRepo;
+
+    @Value("${files.relative.path}")
+    private String filesRelativePath;
 
     @GetMapping("/by-flow/{flowId}")
     public ResponseEntity<NgApiResponse<List<TaskDto>>> getByFlow(@PathVariable Long flowId) {
@@ -145,20 +150,20 @@ public class NgTaskController {
                 ext = originalName.substring(originalName.lastIndexOf(".") + 1);
             }
 
-            // Store file on disk
+            // Store file on disk (use profile-specific folder)
             String folder = "scheduler/task-" + id;
-            String baseDir = System.getProperty("user.dir") + "/uploads/" + folder + "/";
+            String baseDir = System.getProperty("user.dir") + "/" + filesRelativePath + "/" + folder + "/";
             Path dir = Paths.get(baseDir);
             Files.createDirectories(dir);
             Path filePath = dir.resolve(originalName != null ? originalName : "file");
             file.transferTo(filePath.toFile());
 
-            // Create FileObject record
+            // Create FileObject record (URL uses /uploads/ which resource handler maps to profile folder)
             FileObject fileObj = new FileObject();
             fileObj.setName(originalName);
             fileObj.setExtension(ext);
             fileObj.setFolder(folder);
-            fileObj.setBaseLink("uploads");
+            fileObj.setBaseLink(filesRelativePath);
             fileObj.setFileLink("uploads/" + folder + "/" + originalName);
             fileRepo.save(fileObj);
 

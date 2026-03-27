@@ -236,6 +236,22 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         Instant spModified
     ) {
         WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(spId).orElse(null);
+        WorkRequest localUuidMatch = findByLocalUuid(remote.getLocalUuid());
+
+        if (existing == null && localUuidMatch != null) {
+            existing = localUuidMatch;
+            if (!Objects.equals(existing.getSharepointId(), spId)) {
+                existing.setSharepointId(spId);
+            }
+            log.info("[WR Syncable] Bound orphan/local WR id={} localUuid={} to SharePoint ID={}",
+                existing.getId(), remote.getLocalUuid(), spId);
+        } else if (existing != null && localUuidMatch != null
+                && !existing.getId().equals(localUuidMatch.getId())) {
+            workRequestMergeService.mergeDuplicateIntoCanonical(
+                localUuidMatch.getId(), existing.getId(), spId);
+            log.info("[WR Syncable] Reconciled duplicate WR localUuid={} duplicateId={} canonicalId={} spId={}",
+                remote.getLocalUuid(), localUuidMatch.getId(), existing.getId(), spId);
+        }
 
         if (existing == null) {
             WorkRequest entity = workRequestMapper.fromSharePointDto(remote);
@@ -279,6 +295,13 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true);
+    }
+
+    private WorkRequest findByLocalUuid(String localUuid) {
+        if (localUuid == null || localUuid.isBlank()) {
+            return null;
+        }
+        return workRequestRepo.findFirstByLocalUuidOrderByIdAsc(localUuid).orElse(null);
     }
 
     private record WorkRequestSyncDecision(EntitySyncOutcome outcome, Long entityId, boolean shouldSyncAttachments) {

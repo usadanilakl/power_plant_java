@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     private final WorkRequestMapper workRequestMapper;
     private final WorkRequestSharePointAdapter wrAdapter;
     private final NgValueService valueService;
+    private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
     private final com.dk_power.power_plant_java.sevice.email.EmailFacadeService emailFacadeService;
     private final com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService emailCorrespondenceService;
 
@@ -133,6 +135,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to update SharePoint status for id={}: {}", id, e.getMessage());
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(entity, status);
         WorkRequest saved = save(entity);
         return workRequestMapper.convertToNgDto(saved);
     }
@@ -147,6 +150,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to archive in SharePoint for id={}: {}", id, e.getMessage());
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(entity, "Closed");
         WorkRequest saved = save(entity);
         return workRequestMapper.convertToNgDto(saved);
     }
@@ -279,6 +283,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                 // Don't fail the operation - H2 is source of truth, sync will retry later
             }
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(entity, "Cancelled");
 
         WorkRequest saved = save(entity);
         return workRequestMapper.convertToNgDto(saved);
@@ -306,6 +311,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                 log.warn("[WorkRequest] Failed to revoke in SharePoint for id={}: {}", id, e.getMessage());
             }
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(entity, "Revoked");
 
         WorkRequest saved = save(entity);
         return workRequestMapper.convertToNgDto(saved);
@@ -366,6 +372,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         } catch (Exception e) {
             log.warn("[WorkRequest] Failed to archive in SharePoint: {}", e.getMessage());
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(entity, "Closed");
         return toDto(save(entity));
     }
 

@@ -43,6 +43,30 @@ public class WorkRequestMergeService extends SharePointMergeTemplate<WorkRequest
     }
 
     /**
+     * Merge a specific duplicate into a canonical WR.
+     * Used when we can identify an orphan/local duplicate outside the normal
+     * sharepoint_id-based dedup flow (for example via localUuid).
+     */
+    public void mergeDuplicateIntoCanonical(Long duplicateId, Long canonicalId, String sharepointId) {
+        if (duplicateId == null || canonicalId == null || duplicateId.equals(canonicalId)) {
+            return;
+        }
+
+        WorkRequest duplicate = entityManager.find(WorkRequest.class, duplicateId);
+        if (duplicate == null || Boolean.TRUE.equals(duplicate.getDeleted())) {
+            return;
+        }
+
+        transferRelationships(duplicateId, canonicalId, sharepointId);
+        markDeleted(duplicate);
+        entityManager.merge(duplicate);
+        entityManager.flush();
+
+        log.info("[WorkRequest Merge] Manually merged duplicate WR ID={} into ID={} (SP:{})",
+            duplicateId, canonicalId, sharepointId);
+    }
+
+    /**
      * Transfer the daily_permit_package_id FK from a duplicate WorkRequest to
      * the canonical one (if the canonical doesn't already have one).
      */

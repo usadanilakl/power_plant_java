@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
@@ -39,6 +40,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final PermitNumberGenerator permitNumberGenerator;
     private final NgValueService ngValueService;
     private final WorkRequestSharePointAdapter wrAdapter;
+    private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
 
     @Override
     public JobLogRepo getRepo() {
@@ -336,6 +338,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
             log.warn("[ProcessWR] Failed to update SharePoint status for WR id={}, spId={}: {}",
                     workRequestId, wr.getSharepointId(), e.getMessage());
         }
+        oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(wr, "Processed");
 
         return jobLogMapper.convertToDto(saved);
     }

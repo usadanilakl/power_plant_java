@@ -55,7 +55,7 @@ public class TaskMapper implements BaseMapper {
         dto.setDateCreated(task.getDateCreated());
         dto.setDateModified(task.getDateModified());
 
-        if (task.getStatus() != null) dto.setStatus(valueService.convertToDto(task.getStatus()));
+        dto.setStatusName(task.getStatusName());
         if (task.getFlow() != null) dto.setFlowId(task.getFlow().getId());
         if (task.getParentTask() != null) dto.setParentTaskId(task.getParentTask().getId());
         if (task.getAssignee() != null) dto.setAssignee(userService.toDto(task.getAssignee()));
@@ -76,7 +76,7 @@ public class TaskMapper implements BaseMapper {
         dto.setId(task.getId());
         dto.setName(task.getName());
         dto.setTaskLevel(task.getTaskLevel() != null ? task.getTaskLevel().name() : null);
-        if (task.getStatus() != null) dto.setStatus(valueService.convertToDto(task.getStatus()));
+        dto.setStatusName(task.getStatusName());
         return dto;
     }
 
@@ -107,7 +107,7 @@ public class TaskMapper implements BaseMapper {
         if (idDto.getDueDate() != null) task.setDueDate(idDto.getDueDate());
         if (idDto.getSortOrder() != null) task.setSortOrder(idDto.getSortOrder());
 
-        if (idDto.getStatusId() != null) task.setStatus(valueService.getEntityById(idDto.getStatusId()));
+        if (idDto.getStatusName() != null) task.setStatusName(idDto.getStatusName());
         if (idDto.getFlowId() != null) task.setFlow(flowService.getEntityById(idDto.getFlowId()));
         if (idDto.getParentTaskId() != null) task.setParentTask(taskService.getEntityById(idDto.getParentTaskId()));
         if (idDto.getAssigneeId() != null) task.setAssignee(userService.getEntityById(idDto.getAssigneeId()));

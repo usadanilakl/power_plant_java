@@ -315,12 +315,19 @@ import { SimEquipmentApiService } from '../../services/sim-equipment-api.service
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
     .properties-panel {
       width: 260px;
+      height: 100%;
       background: #1a1a1a;
       border-left: 1px solid #333;
       padding: 12px;
       overflow-y: auto;
+      box-sizing: border-box;
     }
     h3 { margin: 0 0 12px; font-size: 14px; color: #aaa; }
     h4 { margin: 0 0 8px; font-size: 13px; color: #ddd; text-transform: capitalize; }

@@ -31,9 +31,7 @@ public class Task extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     private TaskType taskType = TaskType.ONE_TIME;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "status_id")
-    private Value status;
+    private String statusName;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "flow_id")
@@ -106,7 +104,7 @@ public class Task extends BaseAuditEntity {
     public boolean isReadyToExecute() {
         if (prerequisites.isEmpty()) return true;
         return prerequisites.stream()
-                .allMatch(p -> p.getStatus() != null && "Completed".equals(p.getStatus().getName()));
+                .allMatch(p -> "Completed".equals(p.getStatusName()) || "Skipped".equals(p.getStatusName()));
     }
 
     public boolean isLeafTask() {

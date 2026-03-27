@@ -1,10 +1,8 @@
 import { Component, inject, signal, computed, OnInit, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { SimEquipmentApiService } from '../../services/sim-equipment-api.service';
 import { SimEquipmentDto, SimRole, SYMBOL_ROLE_MAP, defaultSimParams, serializeSimParams } from '../../models/sim-equipment.model';
 import { PIDSymbolsService, PIDSymbol } from '../../../../shared/image/refactored/services/pid-symbols.service';
-import { Subject, debounceTime, switchMap, of } from 'rxjs';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem, NestedItemImpl } from '../../../../models/ui/nested-item.model';
 import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu/context-menu/context-menu.component';
@@ -12,51 +10,46 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
 @Component({
   selector: 'app-equipment-library',
   standalone: true,
-  imports: [CommonModule, FormsModule, RfToggleMenuComponent, ContextMenuComponent],
+  imports: [CommonModule, RfToggleMenuComponent, ContextMenuComponent],
   template: `
     <div class="library-panel">
       <h3>Equipment Library</h3>
-      <p class="library-note">Click to select. Right-click for actions.</p>
 
-      @if (isLoading()) {
-        <p class="info">Loading...</p>
-      } @else {
-        <div class="menu-container">
+      <!-- Section A: P&ID Symbols -->
+      <details class="section" open>
+        <summary class="section-header">
+          P&ID Symbols
+          <span class="section-count">{{ allSymbols.length }}</span>
+        </summary>
+        <div class="section-body symbols-body">
           <app-rf-toggle-menu
-            [menuItems]="menuItems()"
+            [menuItems]="symbolMenuItems()"
             [enableSearch]="true"
-            [searchPlaceholder]="'Search equipment...'"
-            (itemClick)="onMenuItemClick($event)"
-            (itemDblClick)="onMenuItemDblClick($event)"
-            (itemRightClick)="onMenuItemRightClick($event)"
+            [searchPlaceholder]="'Search symbols...'"
+            (itemDblClick)="onSymbolDblClick($event)"
+            (itemRightClick)="onSymbolRightClick($event)"
           />
         </div>
-      }
+      </details>
 
-      <!-- Create actions -->
-      <details class="create-section">
-        <summary class="create-header">Create Template</summary>
-        <div class="create-body">
-          @if (showSymbolPicker()) {
-            <div class="symbol-picker">
-              @for (sym of allSymbols; track sym.id) {
-                <div class="symbol-item" (click)="createFromSymbol(sym)">
-                  <span class="sym-name">{{ sym.name }}</span>
-                  <span class="sym-category">{{ sym.category }}</span>
-                </div>
-              }
-              <button class="btn-sm" (click)="showSymbolPicker.set(false)">Cancel</button>
-            </div>
-          } @else {
-            <button class="btn-create" (click)="showSymbolPicker.set(true)">
-              + New Symbol Template
-            </button>
+      <!-- Section B: Saved Templates -->
+      <details class="section">
+        <summary class="section-header">
+          Saved Templates
+          <span class="section-count">{{ allEquipment().length }}</span>
+          @if (isLoading()) {
+            <span class="loading-dot"></span>
           }
-
-          <button class="btn-create" (click)="createBlank('source')">+ Source</button>
-          <button class="btn-create" (click)="createBlank('sink')">+ Sink</button>
-          <button class="btn-create" (click)="createBlank('junction')">+ Junction</button>
-          <button class="btn-create" (click)="createBlank('pipe')">+ Pipe</button>
+        </summary>
+        <div class="section-body templates-body">
+          <app-rf-toggle-menu
+            [menuItems]="templateMenuItems()"
+            [enableSearch]="true"
+            [searchPlaceholder]="'Search templates...'"
+            (itemClick)="onTemplateClick($event)"
+            (itemDblClick)="onTemplateDblClick($event)"
+            (itemRightClick)="onTemplateRightClick($event)"
+          />
         </div>
       </details>
     </div>
@@ -70,104 +63,77 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
     />
   `,
   styles: [`
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
     .library-panel {
       width: 220px;
+      height: 100%;
       background: #1a1a1a;
       border-right: 1px solid #333;
       padding: 8px;
-      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
+      overflow: hidden;
+      box-sizing: border-box;
     }
     h3 { margin: 0 0 4px; font-size: 13px; color: #aaa; }
-    .library-note {
-      margin: 0 0 4px;
-      color: #777;
-      font-size: 10px;
-      line-height: 1.3;
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-top: 1px solid #333;
     }
-    .menu-container {
+    .section[open] { flex: 1; }
+    .section-header {
+      font-size: 11px;
+      color: #999;
+      cursor: pointer;
+      padding: 6px 2px;
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-header::-webkit-details-marker { display: none; }
+    .section-header::before {
+      content: '\\25B6';
+      display: inline-block;
+      font-size: 7px;
+      transition: transform 0.15s ease;
+    }
+    details[open] > .section-header::before {
+      transform: rotate(90deg);
+    }
+    .section-count {
+      font-size: 10px;
+      color: #666;
+      margin-left: auto;
+    }
+    .loading-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4caf50;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    .section-body {
       flex: 1;
       min-height: 0;
       overflow: hidden;
     }
-    .menu-container app-rf-toggle-menu {
+    .section-body app-rf-toggle-menu {
       display: block;
       height: 100%;
     }
-    .create-section {
-      border-top: 1px solid #333;
-      padding-top: 4px;
-    }
-    .create-header {
-      font-size: 10px;
-      color: #888;
-      text-transform: uppercase;
-      cursor: pointer;
-      padding: 4px 0;
-      list-style: none;
-      user-select: none;
-    }
-    .create-header::-webkit-details-marker { display: none; }
-    .create-header::before {
-      content: '\\25B6';
-      display: inline-block;
-      font-size: 8px;
-      margin-right: 6px;
-      transition: transform 0.15s ease;
-    }
-    details[open] > .create-header::before {
-      transform: rotate(90deg);
-    }
-    .create-body {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 6px;
-    }
-    .btn-create {
-      display: block;
-      width: 100%;
-      padding: 6px 8px;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      color: #ccc;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-      text-align: left;
-    }
-    .btn-create:hover { background: #3a3a3a; border-color: #666; }
-    .symbol-picker {
-      background: #222;
-      border: 1px solid #444;
-      border-radius: 4px;
-      padding: 6px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .symbol-item {
-      padding: 4px 6px;
-      cursor: pointer;
-      border-radius: 3px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .symbol-item:hover { background: #2a3a4a; }
-    .sym-name { font-size: 11px; color: #ddd; }
-    .sym-category { font-size: 9px; color: #666; }
-    .btn-sm {
-      padding: 4px 8px;
-      background: #333;
-      border: 1px solid #555;
-      color: #aaa;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 10px;
-      margin-top: 4px;
-    }
-    .info { font-size: 11px; color: #666; text-align: center; padding: 12px 0; }
   `],
 })
 export class EquipmentLibraryComponent implements OnInit {
@@ -179,18 +145,23 @@ export class EquipmentLibraryComponent implements OnInit {
 
   allEquipment = signal<SimEquipmentDto[]>([]);
   isLoading = signal(true);
-  showSymbolPicker = signal(false);
 
-  // Context menu state
   ctxMenuVisible = signal(false);
   ctxMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
-  ctxMenuItem = signal<SimEquipmentDto | null>(null);
+  ctxMenuItem = signal<any>(null);
   ctxMenuActions: ContextMenuAction[] = [];
 
-  private searchSubject = new Subject<string>();
-  private equipmentMap = new Map<string | number, SimEquipmentDto>();
+  private templateMap = new Map<number, SimEquipmentDto>();
 
   allSymbols = this.pidSymbols.getAllSymbols();
+
+  private static readonly CATEGORY_META: { id: string; label: string; color: string }[] = [
+    { id: 'valve', label: 'Valves', color: '#4caf50' },
+    { id: 'pump', label: 'Pumps', color: '#ff9800' },
+    { id: 'vessel', label: 'Vessels', color: '#00bcd4' },
+    { id: 'instrument', label: 'Instruments', color: '#cddc39' },
+    { id: 'electrical', label: 'Electrical', color: '#ff5722' },
+  ];
 
   private static readonly ROLE_COLORS: Record<string, string> = {
     source: '#2196f3', sink: '#9c27b0', valve: '#4caf50', pump: '#ff9800',
@@ -199,7 +170,31 @@ export class EquipmentLibraryComponent implements OnInit {
 
   private static readonly ROLE_ORDER = ['source', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe', 'sink'];
 
-  menuItems = computed((): NestedItem[] => {
+  // --- P&ID Symbols menu (grouped by category) ---
+
+  symbolMenuItems = computed((): NestedItem[] => {
+    return EquipmentLibraryComponent.CATEGORY_META.map(cat => {
+      const symbols = this.pidSymbols.getSymbolsByCategory(cat.id);
+      if (symbols.length === 0) return null;
+      return new NestedItemImpl({
+        id: `cat-${cat.id}`,
+        name: `${cat.label} (${symbols.length})`,
+        objectType: 'Group',
+        color: cat.color,
+        isExpanded: false,
+        values: symbols.map(sym => new NestedItemImpl({
+          id: sym.id,
+          name: sym.name,
+          objectType: 'PIDSymbol',
+          color: cat.color,
+        })),
+      });
+    }).filter((item): item is NestedItemImpl => item != null);
+  });
+
+  // --- Saved Templates menu (grouped by role) ---
+
+  templateMenuItems = computed((): NestedItem[] => {
     const equipment = this.allEquipment();
     const grouped = new Map<string, SimEquipmentDto[]>();
     for (const eq of equipment) {
@@ -208,9 +203,9 @@ export class EquipmentLibraryComponent implements OnInit {
       grouped.get(role)!.push(eq);
     }
 
-    this.equipmentMap.clear();
+    this.templateMap.clear();
     for (const eq of equipment) {
-      if (eq.id != null) this.equipmentMap.set(eq.id, eq);
+      if (eq.id != null) this.templateMap.set(eq.id, eq);
     }
 
     return EquipmentLibraryComponent.ROLE_ORDER
@@ -233,82 +228,84 @@ export class EquipmentLibraryComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAll();
-
-    this.searchSubject.pipe(
-      debounceTime(300),
-      switchMap(q => q.length >= 2 ? this.api.search(q) : of(null))
-    ).subscribe(res => {
-      if (res?.responseData) {
-        this.allEquipment.set(res.responseData);
-        for (const eq of res.responseData) this.api.upsertCached(eq);
-      }
-    });
   }
 
-  onMenuItemClick(item: NestedItem): void {
+  // --- Symbol events ---
+
+  onSymbolDblClick(item: NestedItem): void {
+    if (item.objectType !== 'PIDSymbol') return;
+    this.placeSymbolOnCanvas(item.id as string);
+  }
+
+  onSymbolRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+    event.event.preventDefault();
+    event.event.stopPropagation();
+    if (event.item.objectType !== 'PIDSymbol') return;
+
+    const symbolId = event.item.id as string;
+    this.ctxMenuItem.set(symbolId);
+    this.ctxMenuPosition.set({ x: event.event.clientX, y: event.event.clientY });
+    this.ctxMenuActions = [
+      {
+        id: 'add-to-diagram',
+        label: 'Add to Diagram',
+        action: () => this.placeSymbolOnCanvas(symbolId),
+      },
+    ];
+    this.ctxMenuVisible.set(true);
+  }
+
+  // --- Template events ---
+
+  onTemplateClick(item: NestedItem): void {
     if (item.objectType !== 'SimEquipment') return;
-    const eq = this.equipmentMap.get(item.id);
+    const eq = this.templateMap.get(item.id as number);
     if (eq) this.onEquipmentClick.emit(eq);
   }
 
-  onMenuItemDblClick(item: NestedItem): void {
+  onTemplateDblClick(item: NestedItem): void {
     if (item.objectType !== 'SimEquipment') return;
-    const eq = this.equipmentMap.get(item.id);
+    const eq = this.templateMap.get(item.id as number);
     if (eq) this.onEquipmentAddToCanvas.emit(eq);
   }
 
-  onMenuItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+  onTemplateRightClick(event: { event: MouseEvent; item: NestedItem }): void {
     event.event.preventDefault();
     event.event.stopPropagation();
+    if (event.item.objectType !== 'SimEquipment') return;
 
-    const item = event.item;
-    if (item.objectType === 'Group') return;
-
-    const eq = this.equipmentMap.get(item.id);
+    const eq = this.templateMap.get(event.item.id as number);
     if (!eq) return;
 
     this.ctxMenuItem.set(eq);
     this.ctxMenuPosition.set({ x: event.event.clientX, y: event.event.clientY });
-
     this.ctxMenuActions = [
       {
-        id: 'add-to-canvas',
+        id: 'add-to-diagram',
         label: 'Add to Diagram',
-        icon: '',
         action: () => this.onEquipmentAddToCanvas.emit(eq),
       },
       { id: 'div1', label: '', divider: true, action: () => {} },
       {
         id: 'rename',
         label: 'Rename',
-        icon: '',
-        action: (item: any) => this.renameEquipment(item as SimEquipmentDto),
+        action: () => this.renameEquipment(eq),
       },
       {
         id: 'delete',
         label: 'Delete Template',
-        icon: '',
-        action: (item: any) => this.deleteEquipment(item as SimEquipmentDto),
+        action: () => this.deleteEquipment(eq),
       },
     ];
-
     this.ctxMenuVisible.set(true);
   }
 
-  loadAll(): void {
-    this.isLoading.set(true);
-    this.api.getAll().subscribe({
-      next: (res) => {
-        const items = res.responseData || [];
-        this.allEquipment.set(items);
-        for (const eq of items) this.api.upsertCached(eq);
-        this.isLoading.set(false);
-      },
-      error: () => this.isLoading.set(false),
-    });
-  }
+  // --- Actions ---
 
-  createFromSymbol(symbol: PIDSymbol): void {
+  private placeSymbolOnCanvas(symbolId: string): void {
+    const symbol = this.pidSymbols.getSymbolById(symbolId);
+    if (!symbol) return;
+
     const role: SimRole = SYMBOL_ROLE_MAP[symbol.id] ?? 'junction';
     const dto: SimEquipmentDto = {
       name: symbol.name,
@@ -323,29 +320,23 @@ export class EquipmentLibraryComponent implements OnInit {
       next: (res) => {
         if (res.responseData) {
           this.api.upsertCached(res.responseData);
-          this.showSymbolPicker.set(false);
+          this.onEquipmentAddToCanvas.emit(res.responseData);
           this.loadAll();
         }
       },
     });
   }
 
-  createBlank(role: SimRole): void {
-    const names: Record<string, string> = {
-      source: 'New Source', sink: 'New Sink', junction: 'New Junction', pipe: 'New Pipe',
-    };
-    const dto: SimEquipmentDto = {
-      name: names[role] || 'New Equipment',
-      simRole: role,
-      simParamsJson: serializeSimParams(defaultSimParams(role)),
-      defaultWidth: role === 'pipe' ? 100 : 60,
-      defaultHeight: role === 'pipe' ? 4 : 60,
-    };
-    this.api.create(dto).subscribe({
+  loadAll(): void {
+    this.isLoading.set(true);
+    this.api.getAll().subscribe({
       next: (res) => {
-        if (res.responseData) this.api.upsertCached(res.responseData);
-        this.loadAll();
+        const items = res.responseData || [];
+        this.allEquipment.set(items);
+        for (const eq of items) this.api.upsertCached(eq);
+        this.isLoading.set(false);
       },
+      error: () => this.isLoading.set(false),
     });
   }
 

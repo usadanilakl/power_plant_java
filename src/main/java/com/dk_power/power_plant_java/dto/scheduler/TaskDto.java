@@ -19,7 +19,7 @@ public class TaskDto extends BaseDto {
     private String taskLevel;
     private String taskType;
 
-    private ValueDto status;
+    private String statusName;
     private Long flowId;
     private Long parentTaskId;
     private UserDto assignee;

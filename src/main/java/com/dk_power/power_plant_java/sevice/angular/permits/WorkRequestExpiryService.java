@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
+import com.dk_power.power_plant_java.sevice.sync.OldWorkRequestExcelStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -42,6 +43,7 @@ public class WorkRequestExpiryService {
     private final NgValueService valueService;
     private final WorkRequestSharePointAdapter wrAdapter;
     private final SyncConfig syncConfig;
+    private final OldWorkRequestExcelStatusService oldWorkRequestExcelStatusService;
     @Lazy private final CentralSyncService centralSyncService;
 
     @Scheduled(fixedDelay = 3600000, initialDelay = 60000) // every hour, 1 min initial delay
@@ -69,6 +71,7 @@ public class WorkRequestExpiryService {
                         log.warn("[WR Expiry] Failed to update SharePoint for id={}: {}", wr.getId(), e.getMessage());
                     }
                 }
+                oldWorkRequestExcelStatusService.updateStatusIfBackedByOldExcel(wr, "Expired");
                 expired++;
                 log.debug("[WR Expiry] Expired WR id={}, workDate={}", wr.getId(), wr.getDateOfWorkToBePerformed());
             }
