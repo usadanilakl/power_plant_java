@@ -102,23 +102,23 @@ public class HotWorkSharePointSyncable implements SharePointSyncable<HotWorkDto>
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[HW Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[HW Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[HW Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[HW Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[HW Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[HW Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         hotWorkRepo.save(existing);
         result.incrementUpdated();
-        log.info("[HW Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[HW Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

@@ -5,10 +5,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 
 @Entity
 @Getter
 @Setter
+@Where(clause = "deleted IS NOT TRUE")
 public class FlowTemplate extends BaseAuditEntity {
     private String description;
 

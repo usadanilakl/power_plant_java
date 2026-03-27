@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.config.security;
 
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
@@ -72,6 +73,7 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             var userDetails = new CustomUserDetails(user, authorities);
             var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authToken);
+            LoggingContext.setUserId(user.getEmail());
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {

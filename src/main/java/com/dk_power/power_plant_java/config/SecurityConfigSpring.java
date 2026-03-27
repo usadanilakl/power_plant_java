@@ -137,6 +137,9 @@ public class SecurityConfigSpring {
                 // Auth endpoints (must be logged in)
                 .requestMatchers("/api/auth/**").authenticated()
 
+                // App shutdown — localhost only, no auth (allows Electron to stop another user's instance)
+                .requestMatchers(localhostMatcher("/server/stop")).permitAll()
+
                 // Everything else requires authentication
                 // (AccessGrantFilter handles full-access check for external requests)
                 .anyRequest().authenticated()

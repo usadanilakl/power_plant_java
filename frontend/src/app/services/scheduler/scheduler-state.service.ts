@@ -2,8 +2,10 @@ import {Injectable, signal, computed} from '@angular/core';
 import {BehaviorSubject} from 'rxjs';
 import {FlowDto} from '../../models/scheduler/flow.model';
 import {SchedulerTaskDto} from '../../models/scheduler/scheduler-task.model';
+import {TaskTemplateDto} from '../../models/scheduler/task-template.model';
 import {FlowApiService} from './flow-api.service';
 import {TaskApiService} from './task-api.service';
+import {TaskTemplateApiService} from './task-template-api.service';
 
 @Injectable({providedIn: 'root'})
 export class SchedulerStateService {
@@ -39,9 +41,13 @@ export class SchedulerStateService {
   // Linking mode
   linkSource = signal<SchedulerTaskDto | null>(null);
 
+  // Templates
+  templates = signal<TaskTemplateDto[]>([]);
+
   constructor(
     private flowApi: FlowApiService,
     private taskApi: TaskApiService,
+    private templateApi: TaskTemplateApiService,
   ) {}
 
   loadFlows(): void {
@@ -180,6 +186,86 @@ export class SchedulerStateService {
       if (res.responseData) {
         this.reloadCurrentFlow();
       }
+    });
+  }
+
+  uploadAttachment(taskId: number, file: File): void {
+    this.taskApi.uploadAttachment(taskId, file).subscribe(res => {
+      if (res.responseData) {
+        this.reloadCurrentFlow();
+      }
+    });
+  }
+
+  removeAttachment(taskId: number, fileId: number): void {
+    this.taskApi.removeAttachment(taskId, fileId).subscribe(res => {
+      if (res.responseData) {
+        this.reloadCurrentFlow();
+      }
+    });
+  }
+
+  addReference(taskId: number, referenceType: string, referenceId: number): void {
+    this.taskApi.addReference(taskId, referenceType, referenceId).subscribe(res => {
+      if (res.responseData) this.reloadCurrentFlow();
+    });
+  }
+
+  removeReference(taskId: number, refId: number): void {
+    this.taskApi.removeReference(taskId, refId).subscribe(res => {
+      if (res.responseData) this.reloadCurrentFlow();
+    });
+  }
+
+  // Template operations
+  loadTemplates(): void {
+    this.templateApi.getAll().subscribe(res => {
+      if (res.responseData) {
+        this.templates.set(res.responseData.map(TaskTemplateDto.fromJson));
+      }
+    });
+  }
+
+  createTemplate(template: TaskTemplateDto): void {
+    this.templateApi.create(template.toJson()).subscribe(res => {
+      if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  updateTemplate(template: TaskTemplateDto): void {
+    this.templateApi.update(template.id, template.toJson()).subscribe(res => {
+      if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  deleteTemplate(id: number): void {
+    this.templateApi.delete(id).subscribe(res => {
+      this.loadTemplates();
+    });
+  }
+
+  saveTaskAsTemplate(task: SchedulerTaskDto, templateName: string): void {
+    const stepDefs = task.subTasks.map((s, i) => ({
+      name: s.name,
+      description: s.description,
+      sortOrder: s.sortOrder ?? i,
+    }));
+    const template = new TaskTemplateDto({
+      name: templateName,
+      description: task.description,
+      taskType: task.taskType,
+      stepTemplatesJson: JSON.stringify(stepDefs),
+    });
+    this.templateApi.create(template.toJson()).subscribe(res => {
+      if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  instantiateTemplate(templateId: number): void {
+    const flow = this.activeFlow();
+    if (!flow) return;
+    this.templateApi.instantiate(templateId, flow.id).subscribe(res => {
+      if (res.responseData) this.reloadCurrentFlow();
     });
   }
 

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import lombok.Data;
@@ -89,7 +90,9 @@ public class SyncHealthChecker {
             return;
         }
 
-        try {
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("sync.healthCheck")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             SyncHealthResult result = new SyncHealthResult();
             result.setCheckTime(Instant.now());
             result.setMachineId(syncConfig.getMachineId());
@@ -136,6 +139,9 @@ public class SyncHealthChecker {
             } else if (result.getSyncStatus() == SyncStatus.POSSIBLY_OUT_OF_SYNC) {
                 log.info("Sync health check: Possibly out of sync - {}", result.getMessage());
             }
+
+            log.info("sync.health.complete status={} serverReachable={} durationMs={}",
+                result.getSyncStatus(), result.isServerReachable(), System.currentTimeMillis() - start);
 
         } catch (Exception e) {
             log.debug("Sync health check failed: {}", e.getMessage());
@@ -420,7 +426,7 @@ public class SyncHealthChecker {
     public void recordSuccessfulSync() {
         lastSuccessfulSyncTime.set(Instant.now());
         consecutiveOutOfSyncCount = 0;
-        log.info("Recorded successful sync at {}", lastSuccessfulSyncTime.get());
+        log.debug("Recorded successful sync at {}", lastSuccessfulSyncTime.get());
     }
 
     /**

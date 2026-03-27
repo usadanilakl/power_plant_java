@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,45 +36,53 @@ public class AttachmentSyncHandler {
     public void uploadPendingAttachments() {
         if (!syncConfig.isServerSyncEnabled()) return;
 
-        List<PermitAttachment> unsynced = attachmentRepo.findBySyncedToServerFalseOrSyncedToServerIsNull();
-        if (unsynced.isEmpty()) return;
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("attachment.uploadPendingAttachments")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            List<PermitAttachment> unsynced = attachmentRepo.findBySyncedToServerFalseOrSyncedToServerIsNull();
+            if (unsynced.isEmpty()) return;
 
-        String baseUrl = syncConfig.getSyncServerUrl();
-        if (baseUrl == null || baseUrl.isEmpty()) return;
+            String baseUrl = syncConfig.getSyncServerUrl();
+            if (baseUrl == null || baseUrl.isEmpty()) return;
 
-        log.debug("[Attachment Sync] Uploading {} pending attachments to sync server", unsynced.size());
+            int uploaded = 0;
+            log.debug("[Attachment Sync] Uploading {} pending attachments to sync server", unsynced.size());
 
-        for (PermitAttachment att : unsynced) {
-            try {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("entityType", att.getEntityType());
-                body.put("entityId", att.getEntityId());
-                body.put("fileName", att.getFileName());
-                body.put("contentType", att.getContentType());
-                body.put("attachmentType", att.getAttachmentType());
-                body.put("base64Content", att.getBase64Content());
-                body.put("originMachineId", att.getOriginMachineId());
-                body.put("contentHash", att.getContentHash() != null
-                    ? att.getContentHash()
-                    : computeContentHash(att.getBase64Content()));
+            for (PermitAttachment att : unsynced) {
+                try {
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("entityType", att.getEntityType());
+                    body.put("entityId", att.getEntityId());
+                    body.put("fileName", att.getFileName());
+                    body.put("contentType", att.getContentType());
+                    body.put("attachmentType", att.getAttachmentType());
+                    body.put("base64Content", att.getBase64Content());
+                    body.put("originMachineId", att.getOriginMachineId());
+                    body.put("contentHash", att.getContentHash() != null
+                        ? att.getContentHash()
+                        : computeContentHash(att.getBase64Content()));
 
-                HttpHeaders headers = createHeaders();
-                HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
+                    HttpHeaders headers = createHeaders();
+                    HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
 
-                ResponseEntity<String> response = restTemplate.exchange(
-                        baseUrl + "/api/attachments/upload",
-                        HttpMethod.POST, entity, String.class);
+                    ResponseEntity<String> response = restTemplate.exchange(
+                            baseUrl + "/api/attachments/upload",
+                            HttpMethod.POST, entity, String.class);
 
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    att.setSyncedToServer(true);
-                    attachmentRepo.save(att);
-                    log.debug("[Attachment Sync] Uploaded attachment: {} for {}#{}",
-                            att.getFileName(), att.getEntityType(), att.getEntityId());
+                    if (response.getStatusCode().is2xxSuccessful()) {
+                        att.setSyncedToServer(true);
+                        attachmentRepo.save(att);
+                        uploaded++;
+                        log.debug("[Attachment Sync] Uploaded attachment: {} for {}#{}",
+                                att.getFileName(), att.getEntityType(), att.getEntityId());
+                    }
+                } catch (Exception e) {
+                    log.warn("[Attachment Sync] Failed to upload attachment {}: {}",
+                            att.getFileName(), e.getMessage());
                 }
-            } catch (Exception e) {
-                log.warn("[Attachment Sync] Failed to upload attachment {}: {}",
-                        att.getFileName(), e.getMessage());
             }
+            log.info("attachment.upload.complete pending={} uploaded={} durationMs={}",
+                unsynced.size(), uploaded, System.currentTimeMillis() - start);
         }
     }
 
@@ -87,7 +96,9 @@ public class AttachmentSyncHandler {
         String baseUrl = syncConfig.getSyncServerUrl();
         if (baseUrl == null || baseUrl.isEmpty()) return;
 
-        try {
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("attachment.downloadPendingAttachments")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             HttpHeaders headers = createHeaders();
             HttpEntity<?> entity = new HttpEntity<>(headers);
 
@@ -103,6 +114,7 @@ public class AttachmentSyncHandler {
 
             if (pending.isEmpty()) return;
 
+            int downloaded = 0;
             log.info("[Attachment Sync] {} pending attachments from sync server", pending.size());
 
             for (Map<String, Object> meta : pending) {
@@ -150,6 +162,7 @@ public class AttachmentSyncHandler {
                     att.setOriginMachineId((String) attData.get("originMachineId"));
                     att.setSyncedToServer(true);
                     attachmentRepo.save(att);
+                    downloaded++;
 
                     log.debug("[Attachment Sync] Downloaded attachment: {} for {}#{}",
                             fileName, entityType, entityId);
@@ -157,6 +170,8 @@ public class AttachmentSyncHandler {
                     log.warn("[Attachment Sync] Failed to download attachment: {}", e.getMessage());
                 }
             }
+            log.info("attachment.download.complete pending={} downloaded={} durationMs={}",
+                pending.size(), downloaded, System.currentTimeMillis() - start);
         } catch (Exception e) {
             log.debug("[Attachment Sync] Failed to check pending attachments: {}", e.getMessage());
         }

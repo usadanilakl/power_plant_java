@@ -33,4 +33,22 @@ export class TaskApiService {
   updatePrerequisites(taskId: number, prerequisiteIds: number[]): Observable<SpringApiResponse<any>> {
     return this.http.put<SpringApiResponse<any>>(`${this.apiUrl}/${taskId}/prerequisites`, prerequisiteIds);
   }
+
+  uploadAttachment(taskId: number, file: File): Observable<SpringApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/${taskId}/attachments`, formData);
+  }
+
+  removeAttachment(taskId: number, fileId: number): Observable<SpringApiResponse<any>> {
+    return this.http.delete<SpringApiResponse<any>>(`${this.apiUrl}/${taskId}/attachments/${fileId}`);
+  }
+
+  addReference(taskId: number, referenceType: string, referenceId: number): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/${taskId}/references`, {referenceType, referenceId});
+  }
+
+  removeReference(taskId: number, refId: number): Observable<SpringApiResponse<any>> {
+    return this.http.delete<SpringApiResponse<any>>(`${this.apiUrl}/${taskId}/references/${refId}`);
+  }
 }

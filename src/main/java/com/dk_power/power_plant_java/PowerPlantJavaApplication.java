@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.config.TestCleanupConfig;
+import lombok.extern.slf4j.Slf4j;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
@@ -35,6 +36,7 @@ import java.util.List;
 @EntityScan(basePackages = "com.dk_power.power_plant_java.entities")
 @EnableScheduling
 @EnableAsync
+@Slf4j
 public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
@@ -74,7 +76,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        lotoBoxInitializationService.initializeLotoBoxesWithEspDevices();
 
         String currentUser = System.getProperty("user.name");
-        System.out.println("Current User: " + currentUser);
+        log.info("startup.user.current username={}", currentUser);
 
 //        List<FileObject> all = fileService.getFilesWithNoExtension();
 //        System.out.println(all.size() + " files found with no extension"  );
@@ -121,8 +123,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        fileService.cleanUpFileTypeValueDuplicates();
 
 
-        System.err.println("=====================================================");
-        System.out.println("App is Ready: open browser and type: http://localhost:" + syncConfig.getSyncPort());
+        log.info("startup.ready url=http://localhost:{}", syncConfig.getSyncPort());
 
 //        equipmentRefactorService.splitAllEquipmentWithMultipleLotoPoints();
 

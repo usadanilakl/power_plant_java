@@ -1,9 +1,12 @@
 import { Injectable, signal } from '@angular/core';
+import { LotoPointDto } from '../../models/loto/loto-point.model';
 
 export interface PrintLabelData {
   line1: string;
   line2: string;
   withQr?: boolean;
+  sourceLotoPointId?: number;
+  sourceLotoPoint?: LotoPointDto;
 }
 
 export interface PrintQueueItem extends PrintLabelData {

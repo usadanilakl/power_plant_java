@@ -69,7 +69,9 @@ export class LotoPointTableControlService extends TableControlsService  {
               const printQueue = selectedItems.map(item => ({
                 line1: item.tagNumber || '',
                 line2: item.description || '',
-                withQr: true
+                withQr: true,
+                sourceLotoPointId: item.id,
+                sourceLotoPoint: item,
               }));
               this.bradyModalService.openWithQueue(printQueue);
             },

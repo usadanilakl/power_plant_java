@@ -100,23 +100,23 @@ public class SafeWorkSharePointSyncable implements SharePointSyncable<SafeWorkDt
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[SW Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[SW Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[SW Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[SW Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[SW Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[SW Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         safeWorkRepo.save(existing);
         result.incrementUpdated();
-        log.info("[SW Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[SW Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

@@ -119,11 +119,19 @@
           <h3>
             Batch {{ modalService.currentBatchIndex() + 1 }} of {{ modalService.totalBatches() }}
           </h3>
-          @if (modalService.currentBatch(); as batch) {
-            <span class="batch-status-badge" [class]="batch.status">
-              {{ batch.status | titlecase }}
-            </span>
-          }
+          <div class="batch-header-right">
+            @if (modalService.currentBatch(); as batch) {
+              <span class="batch-status-badge" [class]="batch.status">
+                {{ batch.status | titlecase }}
+              </span>
+            }
+            @if (anyItemHasCounterpart()) {
+              <label class="counterpart-toggle">
+                <input type="checkbox" [checked]="syncCounterpart()" (change)="syncCounterpart.set(!syncCounterpart())" />
+                Sync Counterpart
+              </label>
+            }
+          </div>
         </div>
 
         <!-- Current batch items table -->
@@ -134,45 +142,123 @@
                 <tr>
                   <th>#</th>
                   <th>Tag Number</th>
+                  <th>Description</th>
                   @if (modalService.selectedDataStructure() === 'info') {
-                    @for (charName of modalService.selectedCharacteristicNames(); track charName) {
-                      <th>{{ charName }}</th>
+                    @for (charName of modalService.availableCharacteristicNames(); track charName) {
+                      <th [class.engraved-col]="modalService.selectedCharacteristicNames().includes(charName)">
+                        {{ charName }}
+                        @if (modalService.selectedCharacteristicNames().includes(charName)) {
+                          <span class="engrave-marker" title="Selected for engraving">*</span>
+                        }
+                      </th>
                     }
-                  } @else {
-                    <th>Description</th>
                   }
                   @if (batch.status !== 'completed') {
-                    <th class="remove-col"></th>
+                    <th class="actions-col"></th>
                   }
                 </tr>
               </thead>
               <tbody>
                 @for (item of batch.items; track item.id; let i = $index) {
-                  <tr>
+                  <tr [class.item-saving]="savingItems().has(item.id!)" [class.item-saved]="savedItems().has(item.id!)">
                     <td class="row-number">{{ i + 1 }}</td>
-                    <td class="tag-number">{{ item.tagNumber || '(no tag)' }}</td>
-                    @if (modalService.selectedDataStructure() === 'info') {
-                      @for (charName of modalService.selectedCharacteristicNames(); track charName) {
-                        <td>{{ getCharacteristicValue(item, charName) }}</td>
+
+                    <!-- Editable Tag Number -->
+                    <td class="tag-number editable-cell" (click)="startEdit(item.id!, 'tagNumber')">
+                      @if (editingCell()?.itemId === item.id && editingCell()?.field === 'tagNumber') {
+                        <input
+                          type="text"
+                          class="inline-edit-input"
+                          [value]="item.tagNumber || ''"
+                          (blur)="onCellBlur(item, 'tagNumber', $any($event.target).value)"
+                          (keydown)="onCellKeydown($event, item, 'tagNumber')"
+                          autofocus
+                        />
+                      } @else {
+                        <span>{{ item.tagNumber || '(no tag)' }}</span>
                       }
-                    } @else {
-                      <td class="description">{{ item.description || '(no description)' }}</td>
+                    </td>
+
+                    <!-- Editable Description (always shown) -->
+                    <td class="description editable-cell" (click)="startEdit(item.id!, 'description')">
+                      @if (editingCell()?.itemId === item.id && editingCell()?.field === 'description') {
+                        <input
+                          type="text"
+                          class="inline-edit-input"
+                          [value]="item.description || ''"
+                          (blur)="onCellBlur(item, 'description', $any($event.target).value)"
+                          (keydown)="onCellKeydown($event, item, 'description')"
+                          autofocus
+                        />
+                      } @else {
+                        <span>{{ item.description || '(no description)' }}</span>
+                      }
+                    </td>
+
+                    @if (modalService.selectedDataStructure() === 'info') {
+                      <!-- Editable Characteristic Values (all available, not just selected) -->
+                      @for (charName of modalService.availableCharacteristicNames(); track charName) {
+                        <td class="editable-cell" [class.engraved-col]="modalService.selectedCharacteristicNames().includes(charName)" (click)="startEdit(item.id!, 'char:' + charName)">
+                          @if (editingCell()?.itemId === item.id && editingCell()?.field === 'char:' + charName) {
+                            <input
+                              type="text"
+                              class="inline-edit-input"
+                              [value]="getCharacteristicValue(item, charName)"
+                              (blur)="onCharacteristicCellBlur(item, charName, $any($event.target).value)"
+                              (keydown)="onCellKeydown($event, item, 'char:' + charName)"
+                              autofocus
+                            />
+                          } @else {
+                            <span [class.empty-char]="getCharacteristicValue(item, charName) === '-'">{{ getCharacteristicValue(item, charName) }}</span>
+                          }
+                        </td>
+                      }
                     }
+
                     @if (batch.status !== 'completed') {
-                      <td class="remove-col">
-                        <button
-                          class="btn-remove"
-                          (click)="removeItem(item.id!)"
-                          title="Remove from batch"
-                        >&#10005;</button>
+                      <td class="actions-col">
+                        <div class="item-actions">
+                          <button
+                            class="btn-icon-sm"
+                            (click)="toggleCharacteristicsEditor(item.id!); $event.stopPropagation()"
+                            title="Edit Characteristics"
+                            [class.active]="editingCharacteristicsItemId() === item.id"
+                          >&#9998;</button>
+                          <button
+                            class="btn-remove"
+                            (click)="removeItem(item.id!)"
+                            title="Remove from batch"
+                          >&#10005;</button>
+                          @if (savingItems().has(item.id!)) {
+                            <span class="saving-dot" title="Saving..."></span>
+                          }
+                          @if (savedItems().has(item.id!)) {
+                            <span class="saved-check" title="Saved">&#10003;</span>
+                          }
+                        </div>
                       </td>
                     }
                   </tr>
+
+                  <!-- Expandable Characteristics Editor Row -->
+                  @if (editingCharacteristicsItemId() === item.id && batch.status !== 'completed') {
+                    <tr class="characteristics-editor-row">
+                      <td [attr.colspan]="getTableColspan()">
+                        <div class="characteristics-editor-panel">
+                          <app-characteristics-editor
+                            [label]="'Characteristics for ' + (item.tagNumber || 'item')"
+                            [ngModel]="item.characteristicsJson || '[]'"
+                            (ngModelChange)="onCharacteristicsChanged(item, $event)"
+                          ></app-characteristics-editor>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
                 @for (_ of [].constructor(modalService.batchSize() - batch.items.length); track $index) {
                   <tr class="empty-row">
                     <td class="row-number">{{ batch.items.length + $index + 1 }}</td>
-                    <td [attr.colspan]="modalService.selectedDataStructure() === 'info' ? (modalService.selectedCharacteristicNames().length + 1 + (batch.status !== 'completed' ? 1 : 0)) : (batch.status !== 'completed' ? 3 : 2)" class="empty-cell">— empty slot —</td>
+                    <td [attr.colspan]="getTableColspan() - 1" class="empty-cell">— empty slot —</td>
                   </tr>
                 }
               </tbody>

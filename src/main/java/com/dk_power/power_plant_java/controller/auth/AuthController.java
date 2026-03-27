@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.auth;
 
 import com.dk_power.power_plant_java.config.NetworkUtils;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.config.security.RestrictedAllowed;
 import com.dk_power.power_plant_java.dto.email.EmailRequest;
 import com.dk_power.power_plant_java.entities.users.AccessGrant;
@@ -67,14 +68,17 @@ public class AuthController {
             // Lightweight native SQL update — avoids full entity save, entity listeners,
             // and lock contention with sync transactions on the USERS table
             userRepo.updateLastLoginById(LocalDateTime.now(), userDetails.getId());
+            LoggingContext.setUserId(userDetails.getUsername());
 
-            log.info("Login successful: {} from {}", loginRequest.credential(), NetworkUtils.getClientIp(request));
+            log.info("security.login.success credential={} remoteIp={}",
+                loginRequest.credential(), NetworkUtils.getClientIp(request));
 
             Map<String, Object> resp = buildUserResponse(userDetails, user);
             resp.put("accessLevel", computeAccessLevel(user, request));
             return ResponseEntity.ok(resp);
         } catch (AuthenticationException e) {
-            log.warn("Login failed for {}: {}", loginRequest.credential(), e.getMessage());
+            log.warn("security.login.failed credential={} reason={}",
+                loginRequest.credential(), e.getMessage());
             return ResponseEntity.status(401).body(Map.of(
                 "error", "INVALID_CREDENTIALS",
                 "message", "Invalid email or password"
@@ -139,7 +143,8 @@ public class AuthController {
             .build();
 
         accessGrantRepository.save(grant);
-        log.info("Access request created: user={}, ip={}", user.getEmail(), grant.getRequestIp());
+        log.info("security.access.request.created user={} ip={} grantId={}",
+            user.getEmail(), grant.getRequestIp(), grant.getId());
 
         return ResponseEntity.ok(Map.of(
             "status", "PENDING",
@@ -248,7 +253,7 @@ public class AuthController {
 
         user.setPassword(passwordEncoder.encode(req.newPassword()));
         userRepo.save(user);
-        log.info("Password changed by user: {}", user.getEmail());
+        log.info("security.password.changed user={}", user.getEmail());
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
     }
@@ -271,7 +276,7 @@ public class AuthController {
         }
 
         userRepo.save(user);
-        log.info("Profile updated by user: {}", user.getEmail());
+        log.info("security.profile.updated user={}", user.getEmail());
 
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
     }
@@ -283,7 +288,7 @@ public class AuthController {
 
         User user = userRepo.findFirstByEmailOrderByIdAsc(req.email());
         if (user == null) {
-            log.info("Password reset requested for unknown email: {}", req.email());
+            log.info("security.password.reset.requested_unknown email={}", req.email());
             return ResponseEntity.ok(Map.of("message", genericMessage));
         }
 
@@ -319,9 +324,9 @@ public class AuthController {
                     + "This link expires in 1 hour.\n\n"
                     + "If you did not request this, please ignore this email.\n")
                 .build());
-            log.info("Password reset email sent to {}", user.getEmail());
+            log.info("security.password.reset.email_sent user={}", user.getEmail());
         } catch (Exception e) {
-            log.error("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage());
+            log.error("security.password.reset.email_failed user={} error={}", user.getEmail(), e.getMessage());
         }
 
         return ResponseEntity.ok(Map.of("message", genericMessage));
@@ -367,7 +372,7 @@ public class AuthController {
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);
 
-        log.info("Password reset completed for user: {}", user.getEmail());
+        log.info("security.password.reset.completed user={}", user.getEmail());
         return ResponseEntity.ok(Map.of("message", "Password has been reset successfully. You can now sign in."));
     }
 

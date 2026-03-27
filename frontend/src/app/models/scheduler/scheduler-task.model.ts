@@ -1,5 +1,17 @@
 import {BaseDto, BaseModel} from '../base/base.model';
 
+export interface AttachmentInfo {
+  id: number;
+  name: string;
+  fileLink: string;
+}
+
+export interface ReferenceInfo {
+  id: number;           // TaskReference id (for removal)
+  referenceType: string; // Equipment, User, DailyPermitPackage, etc.
+  referenceId: number;   // ID of the referenced entity
+}
+
 export interface SchedulerTaskModel extends BaseModel {
   description: string;
   notes: string;
@@ -18,7 +30,8 @@ export interface SchedulerTaskModel extends BaseModel {
   prerequisiteIds: number[];
   subTasks: SchedulerTaskModel[];
   dependentIds: number[];
-  attachmentIds: number[];
+  attachments: AttachmentInfo[];
+  references: ReferenceInfo[];
 }
 
 export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
@@ -39,7 +52,8 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
   prerequisiteIds: number[];
   subTasks: SchedulerTaskDto[];
   dependentIds: number[];
-  attachmentIds: number[];
+  attachments: AttachmentInfo[];
+  references: ReferenceInfo[];
 
   constructor(data: Partial<SchedulerTaskModel> = {}) {
     super(data);
@@ -60,7 +74,8 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
     this.prerequisiteIds = data.prerequisiteIds ?? [];
     this.subTasks = (data.subTasks ?? []).map(s => new SchedulerTaskDto(s));
     this.dependentIds = data.dependentIds ?? [];
-    this.attachmentIds = data.attachmentIds ?? [];
+    this.attachments = data.attachments ?? [];
+    this.references = data.references ?? [];
   }
 
   override toJson(): any {
@@ -80,7 +95,7 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
       templateId: this.templateId,
       prerequisiteIds: this.prerequisiteIds,
       subTaskIds: this.subTasks.map(s => s.id),
-      attachmentIds: this.attachmentIds,
+      attachmentIds: this.attachments.map(a => a.id),
     };
   }
 
@@ -106,7 +121,8 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
       prerequisiteIds: json.prerequisites?.map((p: any) => p.id) ?? json.prerequisiteIds ?? [],
       subTasks: json.subTasks?.map((s: any) => SchedulerTaskDto.fromJson(s)) ?? [],
       dependentIds: json.dependents?.map((d: any) => d.id) ?? json.dependentIds ?? [],
-      attachmentIds: json.attachments?.map((a: any) => a.id) ?? json.attachmentIds ?? [],
+      attachments: json.attachments?.map((a: any) => ({id: a.id, name: a.name, fileLink: a.fileLink})) ?? [],
+      references: json.references?.map((r: any) => ({id: r.id, referenceType: r.referenceType, referenceId: r.referenceId})) ?? [],
     });
   }
 

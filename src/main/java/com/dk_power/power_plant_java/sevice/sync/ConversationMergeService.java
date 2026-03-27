@@ -62,7 +62,7 @@ public class ConversationMergeService {
             return 0;
         }
 
-        log.info("[Conversation Merge] Found {} dedup groups with duplicates", duplicates.size());
+        log.debug("[Conversation Merge] Found {} dedup groups with duplicates", duplicates.size());
 
         int merged = 0;
         for (Object[] row : duplicates) {
@@ -119,7 +119,7 @@ public class ConversationMergeService {
             entityManager.flush();
             merged++;
 
-            log.info("[Conversation Merge] entityType='{}' entityId={} ID={} merged into ID={}",
+            log.debug("[Conversation Merge] entityType='{}' entityId={} ID={} merged into ID={}",
                 entityType, entityId, duplicate.getId(), canonical.getId());
         }
 

@@ -223,6 +223,69 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
             </a>
           </div>
         </div>
+
+        <div class="feature-card info-card">
+          <div class="feature-icon"><span class="material-icons" style="color: #10b981">contacts</span></div>
+          <div class="feature-info">
+            <h3>Contacts</h3>
+            <p class="feature-desc">Plant contact information</p>
+          </div>
+          <div class="info-items">
+            <div class="info-row">
+              <span class="material-icons info-icon">location_on</span>
+              <span>2465 South Brandon Road, Elwood, IL 60421</span>
+            </div>
+            <div class="info-row">
+              <span class="material-icons info-icon">phone</span>
+              <span class="info-label">Control Room:</span>
+              <span>(779) 242-6148, (779) 242-6151</span>
+            </div>
+            <div class="info-row">
+              <span class="material-icons info-icon">smartphone</span>
+              <span class="info-label">Cell:</span>
+              <span>(815) 839-3330</span>
+            </div>
+            <div class="info-row">
+              <span class="material-icons info-icon">settings_input_antenna</span>
+              <span class="info-label">Radio:</span>
+              <span>Channel 1 (JPWR-1)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card info-card">
+          <div class="feature-icon"><span class="material-icons" style="color: #f97316">campaign</span></div>
+          <div class="feature-info">
+            <h3>Paging System</h3>
+            <p class="feature-desc">PA system extension numbers</p>
+          </div>
+          <div class="info-items">
+            <div class="info-row paging-row">
+              <span>Admin Building</span>
+              <span class="paging-ext">6165</span>
+            </div>
+            <div class="info-row paging-row">
+              <span>Plant Only</span>
+              <span class="paging-ext">6162</span>
+            </div>
+            <div class="info-row paging-row">
+              <span>Admin and Plant</span>
+              <span class="paging-ext">6170</span>
+            </div>
+            <div class="info-row paging-row">
+              <span>North Gate</span>
+              <span class="paging-ext">6166</span>
+            </div>
+            <div class="info-row paging-row">
+              <span>South Gate</span>
+              <span class="paging-ext">6164</span>
+            </div>
+            <div class="info-row paging-row">
+              <span>To Open Gate/Door</span>
+              <span class="paging-ext">#9</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `,
@@ -654,6 +717,59 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
 
     .ext-link:hover .ext-arrow {
       opacity: 1;
+    }
+
+    .info-card {
+      cursor: default;
+    }
+
+    .info-card:hover {
+      transform: none;
+    }
+
+    .info-items {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 0;
+    }
+
+    .info-icon {
+      font-size: 16px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .paging-row {
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .paging-row:hover {
+      background-color: var(--bg-secondary);
+    }
+
+    .paging-ext {
+      font-weight: 700;
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--text-primary);
     }
 
     @keyframes pulse {

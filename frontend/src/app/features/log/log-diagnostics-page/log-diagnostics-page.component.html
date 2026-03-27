@@ -1,0 +1,316 @@
+<section class="diagnostics-page">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Log Diagnostics</p>
+      <h1>Operational findings from live application logs</h1>
+      <p class="subtitle">
+        Grouped incidents and timeline evidence from retained logs. Built for triage first:
+        what broke, where it broke, and what to inspect next.
+      </p>
+    </div>
+    <button class="refresh-button" (click)="refreshAll()">Refresh</button>
+  </header>
+
+  <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+
+  <section class="toolbar">
+    <label>
+      Window
+      <select [(ngModel)]="windowMinutes" (change)="refreshAll()">
+        <option *ngFor="let option of windowOptions" [ngValue]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </label>
+
+    <label>
+      Incident Status
+      <select [(ngModel)]="incidentStatus" (change)="loadIncidents()">
+        <option value="ALL">All</option>
+        <option value="open">Open</option>
+        <option value="acknowledged">Acknowledged</option>
+        <option value="resolved">Resolved</option>
+      </select>
+    </label>
+
+    <label>
+      Level
+      <select [(ngModel)]="level" (change)="applyFilters()">
+        <option value="ALL">All</option>
+        <option value="INFO">Info</option>
+        <option value="WARN">Warn</option>
+        <option value="ERROR">Error</option>
+      </select>
+    </label>
+
+    <label>
+      Source
+      <select [(ngModel)]="sourceFile" (change)="applyFilters()">
+        <option value="">All files</option>
+        <option *ngFor="let file of sourceFiles" [value]="file">{{ file }}</option>
+      </select>
+    </label>
+
+    <label>
+      Search
+      <input [(ngModel)]="text" (keyup.enter)="applyFilters()" placeholder="event, message, path" />
+    </label>
+
+    <label>
+      Request ID
+      <input [(ngModel)]="requestId" (keyup.enter)="applyFilters()" placeholder="req-..." />
+    </label>
+
+    <label>
+      Sync Run
+      <input [(ngModel)]="syncRunId" (keyup.enter)="applyFilters()" placeholder="sync-..." />
+    </label>
+
+    <label>
+      Machine
+      <input [(ngModel)]="machineId" (keyup.enter)="applyFilters()" placeholder="machine id" />
+    </label>
+
+    <div class="toolbar-actions">
+      <button class="secondary-button" (click)="applyFilters()">Apply</button>
+      <button class="ghost-button" (click)="clearFilters()">Clear</button>
+    </div>
+  </section>
+
+  <section class="summary-grid" *ngIf="overview as data">
+    <article class="summary-card">
+      <span class="metric-label">Incidents</span>
+      <strong>{{ totalIncidents }}</strong>
+      <small>Open: {{ incidents.length }}</small>
+    </article>
+    <article class="summary-card">
+      <span class="metric-label">Events</span>
+      <strong>{{ data.summary.totalEvents }}</strong>
+      <small>Window: {{ data.windowMinutes }} min</small>
+    </article>
+    <article class="summary-card">
+      <span class="metric-label">Warnings</span>
+      <strong>{{ data.summary.warnEvents }}</strong>
+      <small>Errors: {{ data.summary.errorEvents }}</small>
+    </article>
+    <article class="summary-card">
+      <span class="metric-label">Generated</span>
+      <strong>{{ data.generatedAt | date: 'MMM d, HH:mm:ss' }}</strong>
+      <small>{{ data.sourceFiles.length }} log files scanned</small>
+    </article>
+  </section>
+
+  <section class="content-grid">
+    <article class="incidents-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Incidents</p>
+          <h2>Grouped issues worth attention</h2>
+        </div>
+        <span *ngIf="loadingIncidents">Grouping...</span>
+      </div>
+
+      <div *ngIf="!loadingIncidents && incidents.length === 0" class="empty-state">
+        No incidents matched the selected window and status.
+      </div>
+
+      <button
+        *ngFor="let incident of incidents; trackBy: trackIncident"
+        type="button"
+        class="incident-card"
+        [class.incident-selected]="incident.incidentId === selectedIncidentId"
+        (click)="selectIncident(incident)"
+      >
+        <div class="finding-head">
+          <span class="severity-pill" [class]="severityClass(incident.severity)">
+            {{ incident.severity }}
+          </span>
+          <span class="status-pill" [class]="statusClass(incident.status)">
+            {{ incident.status }}
+          </span>
+        </div>
+        <h3>{{ incident.title }}</h3>
+        <p class="finding-summary">{{ incident.summary }}</p>
+        <div class="event-context">
+          <span>{{ incident.subsystem }}</span>
+          <span *ngIf="incident.machineId">machine={{ incident.machineId }}</span>
+          <span *ngIf="incident.path">path={{ incident.path }}</span>
+          <span>{{ incident.count }} hits</span>
+        </div>
+        <small class="incident-last-seen">
+          Last seen {{ incident.lastSeen | date: 'MMM d, HH:mm:ss' }}
+        </small>
+      </button>
+    </article>
+
+    <div class="detail-column">
+      <article class="detail-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Incident Detail</p>
+            <h2>{{ incidentDetail?.incident?.title || 'Select an incident' }}</h2>
+          </div>
+          <span *ngIf="loadingIncidentDetail">Loading...</span>
+        </div>
+
+        <div *ngIf="incidentDetail as detail; else noIncidentSelected">
+          <div class="detail-summary">
+            <div class="finding-head">
+              <span class="severity-pill" [class]="severityClass(detail.incident.severity)">
+                {{ detail.incident.severity }}
+              </span>
+              <span class="status-pill" [class]="statusClass(detail.incident.status)">
+                {{ detail.incident.status }}
+              </span>
+            </div>
+            <p class="detail-copy">{{ detail.incident.summary }}</p>
+            <p class="detail-copy detail-cause">
+              Likely cause: {{ detail.incident.suspectedCause }}
+            </p>
+            <p class="detail-copy detail-recommendation">
+              Next check: {{ detail.incident.recommendation }}
+            </p>
+            <div class="detail-meta event-context">
+              <span>{{ detail.incident.subsystem }}</span>
+              <span *ngIf="detail.incident.machineId">machine={{ detail.incident.machineId }}</span>
+              <span *ngIf="detail.incident.path">path={{ detail.incident.path }}</span>
+              <span *ngIf="detail.incident.requestId">req={{ detail.incident.requestId }}</span>
+              <span *ngIf="detail.incident.syncRunId">sync={{ detail.incident.syncRunId }}</span>
+              <span>{{ detail.incident.count }} hits</span>
+            </div>
+            <div class="status-actions">
+              <button class="ghost-button" (click)="useIncident(detail.incident)">Use As Filter</button>
+              <button
+                class="secondary-button"
+                *ngIf="detail.incident.status !== 'acknowledged'"
+                (click)="setIncidentStatus(detail.incident, 'acknowledged')"
+              >
+                Acknowledge
+              </button>
+              <button
+                class="secondary-button"
+                *ngIf="detail.incident.status !== 'resolved'"
+                (click)="setIncidentStatus(detail.incident, 'resolved')"
+              >
+                Resolve
+              </button>
+              <button
+                class="ghost-button"
+                *ngIf="detail.incident.status !== 'open'"
+                (click)="setIncidentStatus(detail.incident, 'open')"
+              >
+                Reopen
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <section class="supporting-panel">
+              <div class="section-head">
+                <h3>Supporting Findings</h3>
+                <span>{{ detail.findings.length }}</span>
+              </div>
+              <div *ngIf="detail.findings.length === 0" class="empty-state">
+                No grouped findings were captured for this incident.
+              </div>
+              <button
+                *ngFor="let finding of detail.findings"
+                type="button"
+                class="finding-card mini-card"
+                (click)="useFinding(finding)"
+              >
+                <div class="finding-head">
+                  <span class="severity-pill" [class]="severityClass(finding.severity)">
+                    {{ finding.severity }}
+                  </span>
+                  <span class="count-pill">{{ finding.count }} hits</span>
+                </div>
+                <h3>{{ finding.title }}</h3>
+                <p class="finding-summary">{{ finding.summary }}</p>
+              </button>
+            </section>
+
+            <section class="supporting-panel">
+              <div class="section-head">
+                <h3>Timeline</h3>
+                <span>{{ detail.timeline.length }} events</span>
+              </div>
+              <div *ngIf="detail.timeline.length === 0" class="empty-state">
+                No timeline events matched this incident.
+              </div>
+              <div class="event-list">
+                <article class="event-card" *ngFor="let event of detail.timeline; trackBy: trackEvent">
+                  <div class="event-topline">
+                    <span class="level-pill" [class]="severityClass(event.level.toLowerCase())">
+                      {{ event.level }}
+                    </span>
+                    <span>{{ event.timestamp | date: 'MMM d, HH:mm:ss' }}</span>
+                    <span>{{ event.subsystem }}</span>
+                    <span *ngIf="event.eventCode">{{ event.eventCode }}</span>
+                  </div>
+                  <div class="event-message">{{ event.message }}</div>
+                  <div class="event-context">
+                    <span *ngIf="event.requestId">req={{ event.requestId }}</span>
+                    <span *ngIf="event.syncRunId">sync={{ event.syncRunId }}</span>
+                    <span *ngIf="event.machineId">machine={{ event.machineId }}</span>
+                    <span *ngIf="event.path">path={{ event.path }}</span>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <ng-template #noIncidentSelected>
+          <div class="empty-state">
+            Select an incident to inspect its grouped findings and event timeline.
+          </div>
+        </ng-template>
+      </article>
+
+      <article class="events-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Events</p>
+            <h2>Recent log evidence</h2>
+          </div>
+          <span *ngIf="loadingEvents">Loading...</span>
+        </div>
+
+        <p class="events-meta">Showing {{ events.length }} of {{ totalMatched }} matched events</p>
+
+        <div *ngIf="!loadingEvents && events.length === 0" class="empty-state">
+          No events matched the active filters.
+        </div>
+
+        <div class="event-list">
+          <article class="event-card" *ngFor="let event of events; trackBy: trackEvent">
+            <div class="event-topline">
+              <span class="level-pill" [class]="severityClass(event.level.toLowerCase())">{{ event.level }}</span>
+              <span>{{ event.timestamp | date: 'MMM d, HH:mm:ss' }}</span>
+              <span>{{ event.subsystem }}</span>
+              <span *ngIf="event.eventCode">{{ event.eventCode }}</span>
+              <span class="source">{{ event.sourceFile }}</span>
+            </div>
+
+            <div class="event-message">{{ event.message }}</div>
+
+            <div class="event-context">
+              <span *ngIf="event.requestId">req={{ event.requestId }}</span>
+              <span *ngIf="event.syncRunId">sync={{ event.syncRunId }}</span>
+              <span *ngIf="event.jobRunId">job={{ event.jobRunId }}</span>
+              <span *ngIf="event.machineId">machine={{ event.machineId }}</span>
+              <span *ngIf="event.path">path={{ event.path }}</span>
+              <span *ngIf="event.durationMs">duration={{ event.durationMs }}ms</span>
+            </div>
+
+            <details *ngIf="event.details" class="event-details">
+              <summary>Details</summary>
+              <pre>{{ event.details }}</pre>
+            </details>
+          </article>
+        </div>
+      </article>
+    </div>
+  </section>
+</section>

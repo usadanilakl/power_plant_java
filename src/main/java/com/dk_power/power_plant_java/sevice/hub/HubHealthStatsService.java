@@ -12,8 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,7 +53,6 @@ public class HubHealthStatsService {
         this.hubSyncConfig = hubSyncConfig;
     }
 
-    @Transactional(readOnly = true)
     public Map<String, Long> getEntityCounts() {
         Map<String, Long> counts = new LinkedHashMap<>();
 
@@ -86,7 +83,6 @@ public class HubHealthStatsService {
         return counts;
     }
 
-    @Transactional(readOnly = true)
     public HealthStats getHealthStats() {
         Map<String, Long> entityCounts = getEntityCounts();
         long totalEntities = entityCounts.values().stream().mapToLong(Long::longValue).sum();
@@ -104,7 +100,6 @@ public class HubHealthStatsService {
             .build();
     }
 
-    @Transactional(readOnly = true)
     public PartialSyncDatesResponse getAvailableSyncDates() {
         List<java.sql.Date> dates = fieldChangeQueryService.findDistinctChangeDates();
 

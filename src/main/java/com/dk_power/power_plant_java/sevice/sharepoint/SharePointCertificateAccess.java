@@ -43,7 +43,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SharePointCertificateAccess() {
-        log.info("[SharePoint] SharePointCertificateAccess created (no credential bean)");
+        log.debug("[SharePoint] SharePointCertificateAccess created (no credential bean)");
     }
 
     @Autowired(required = false)
@@ -52,7 +52,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
             @Qualifier("sharepointRestTemplate") RestTemplate restTemplate) {
         this.credential = credential;
         this.restTemplate = restTemplate;
-        log.info("[SharePoint] SharePointCertificateAccess created with credential + RestTemplate");
+        log.debug("[SharePoint] SharePointCertificateAccess created with credential + RestTemplate");
     }
 
     @PostConstruct
@@ -62,15 +62,14 @@ public class SharePointCertificateAccess implements SharePointAccess {
             return;
         }
         this.siteUrl = "https://" + siteHostname + sitePath;
-        log.info("[SharePoint] Site URL: {}", siteUrl);
+        log.debug("[SharePoint] Site URL: {}", siteUrl);
 
         try {
             authenticate();
             ResponseEntity<String> response = sendGetRequest("/_api/web/title");
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("[SharePoint] Connection verified. Response: {}", response.getBody());
                 this.available = true;
-                log.info("[SharePoint] SharePointCertificateAccess initialized successfully");
+                log.info("[SharePoint] sharepoint.access.ready siteUrl={}", siteUrl);
             } else {
                 log.warn("[SharePoint] Connection test failed with status: {}", response.getStatusCode());
             }
@@ -110,7 +109,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new RuntimeException("SharePoint create list failed: " + response.getStatusCode());
             }
-            log.info("[SharePoint] Created list '{}'", listTitle);
+            log.debug("[SharePoint] Created list '{}'", listTitle);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create list '" + listTitle + "': " + e.getMessage(), e);
         }
@@ -243,13 +242,13 @@ public class SharePointCertificateAccess implements SharePointAccess {
         String endpoint = "/_api/web/lists/getbytitle('" + listTitle + "')/items";
         try {
             String jsonBody = objectMapper.writeValueAsString(body);
-            log.info("[SharePoint] Creating item in '{}': {}", listTitle, jsonBody);
+            log.debug("[SharePoint] Creating item in '{}': {}", listTitle, jsonBody);
 
             ResponseEntity<String> response = sendPostRequest(endpoint, jsonBody);
             if (response.getStatusCode().is2xxSuccessful()) {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 String id = root.has("ID") ? root.path("ID").asText(null) : root.path("d").path("ID").asText(null);
-                log.info("[SharePoint] Created item in '{}' with ID: {}", listTitle, id);
+                log.debug("[SharePoint] Created item in '{}' with ID: {}", listTitle, id);
                 return id;
             } else {
                 throw new RuntimeException("SharePoint create failed: " + response.getStatusCode());
@@ -303,7 +302,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
 
         if (response.getStatusCode().is2xxSuccessful()) {
-            log.info("[SharePoint] Attachment '{}' uploaded to {} in '{}'", fileName, itemId, listTitle);
+            log.debug("[SharePoint] Attachment '{}' uploaded to {} in '{}'", fileName, itemId, listTitle);
         } else {
             throw new RuntimeException("Failed to upload attachment: " + response.getStatusCode());
         }
@@ -375,7 +374,7 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
 
         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            log.info("[SharePoint] Downloaded file by GUID '{}' ({} bytes)", uniqueId, response.getBody().length);
+            log.debug("[SharePoint] Downloaded file by GUID '{}' ({} bytes)", uniqueId, response.getBody().length);
             return response.getBody();
         }
         throw new RuntimeException("Failed to download file by GUID '" + uniqueId + "': " + response.getStatusCode());

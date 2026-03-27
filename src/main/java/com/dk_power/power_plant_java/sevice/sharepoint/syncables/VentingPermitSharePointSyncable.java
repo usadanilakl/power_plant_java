@@ -124,23 +124,23 @@ public class VentingPermitSharePointSyncable implements SharePointSyncable<Venti
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[VENT Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[VENT Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[VENT Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[VENT Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[VENT Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[VENT Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         ventRepo.save(existing);
         result.incrementUpdated();
-        log.info("[VENT Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[VENT Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

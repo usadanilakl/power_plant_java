@@ -3,36 +3,50 @@
   <div class="scheduler-toolbar">
     <app-flow-selector
       [flows]="(state.flows$ | async) ?? []"
-      [selectedFlow]="state.activeFlow()"
+      [selectedFlow]="activeFlow"
       (flowSelected)="onFlowSelected($event)"
       (createFlow)="onCreateFlow()"
       (deleteFlow)="onDeleteFlow($event)">
     </app-flow-selector>
 
-    <div class="toolbar-actions" *ngIf="state.activeFlow()">
+    <div class="toolbar-actions" *ngIf="activeFlow">
       <button class="btn-add-task" (click)="onAddTask()">
-        {{ state.drilledTask() ? '+ Add Step' : '+ Add Task' }}
+        {{ drilledTask ? '+ Add Step' : '+ Add Task' }}
       </button>
+
+      <!-- From Template dropdown -->
+      <div class="template-dropdown" *ngIf="!drilledTask && templates.length > 0">
+        <button class="btn-template" (click)="toggleTemplateMenu()">From Template</button>
+        <div class="template-menu" *ngIf="showTemplateMenu">
+          <button *ngFor="let t of templates" (click)="onInstantiateTemplate(t)">
+            {{ t.name }}
+            <span class="tmpl-meta">{{ t.taskType }}</span>
+          </button>
+        </div>
+      </div>
+
+      <a class="btn-nav" routerLink="/scheduler/templates">Templates</a>
+      <a class="btn-nav" routerLink="/scheduler/table">Table</a>
     </div>
   </div>
 
   <!-- Breadcrumb -->
-  <div class="breadcrumb" *ngIf="state.drilledTask()">
+  <div class="breadcrumb" *ngIf="drilledTask">
     <span class="crumb clickable" (click)="onDrillOut()">
-      {{ state.activeFlow()?.name || 'Flow' }}
+      {{ activeFlow?.name || 'Flow' }}
     </span>
     <span class="crumb-sep">/</span>
-    <span class="crumb active">{{ state.drilledTask()?.name || 'Task' }} (Steps)</span>
+    <span class="crumb active">{{ drilledTask?.name || 'Task' }} (Steps)</span>
   </div>
 
   <!-- Main content -->
   <div class="scheduler-content">
     <!-- DAG canvas -->
-    <div class="dag-panel" [class.with-sidebar]="state.selectedTask()">
+    <div class="dag-panel">
       <app-dag-renderer
-        *ngIf="state.activeFlow()"
-        [tasks]="state.visibleTasks()"
-        [selectedTaskId]="state.selectedTask()?.id ?? null"
+        *ngIf="activeFlow"
+        [tasks]="visibleTasks"
+        [selectedTaskId]="selectedTask?.id ?? null"
         (taskClicked)="onTaskClicked($event)"
         (taskDoubleClicked)="onTaskDoubleClicked($event)"
         (canvasClicked)="onCanvasClicked()"
@@ -40,32 +54,36 @@
         (contextAction)="onContextAction($event)">
       </app-dag-renderer>
 
-      <div class="empty-state" *ngIf="!state.activeFlow()">
+      <div class="empty-state" *ngIf="!activeFlow">
         <p>Select or create a flow to get started</p>
       </div>
 
-      <div class="empty-state" *ngIf="state.activeFlow() && state.visibleTasks().length === 0 && !state.drilledTask()">
+      <div class="empty-state" *ngIf="activeFlow && visibleTasks.length === 0 && !drilledTask">
         <p>No tasks yet. Click "+ Add Task" to create one.</p>
       </div>
 
-      <div class="empty-state" *ngIf="state.drilledTask() && state.visibleTasks().length === 0">
-        <p>No steps yet. Click "+ Add Step" to create one, or double-click to go back.</p>
+      <div class="empty-state" *ngIf="drilledTask && visibleTasks.length === 0">
+        <p>No steps yet. Click "+ Add Step" to create one.</p>
       </div>
     </div>
 
-    <!-- Detail sidebar -->
+    <!-- Detail sidebar (always in DOM, CSS-toggled) -->
     <app-task-detail-sidebar
-      *ngIf="state.selectedTask()"
-      [task]="state.selectedTask()"
-      [allTasks]="state.visibleTasks()"
-      [isDrilledView]="!!state.drilledTask()"
+      [task]="selectedTask"
+      [allTasks]="visibleTasks"
+      [isDrilledView]="!!drilledTask"
       (closed)="onSidebarClosed()"
       (taskUpdated)="onTaskUpdated($event)"
       (taskDeleted)="onTaskDeleted($event)"
       (statusChanged)="onStatusChanged($event)"
       (prerequisitesChanged)="onPrerequisitesChanged($event)"
       (addStep)="onAddStepFromSidebar($event)"
-      (drillInto)="onDrillInto($event)">
+      (drillInto)="onDrillInto($event)"
+      (fileUploaded)="onFileUploaded($event)"
+      (attachmentRemoved)="onAttachmentRemoved($event)"
+      (referenceAdded)="onReferenceAdded($event)"
+      (referenceRemoved)="onReferenceRemoved($event)"
+      (saveAsTemplate)="onSaveAsTemplate($event)">
     </app-task-detail-sidebar>
   </div>
 </div>

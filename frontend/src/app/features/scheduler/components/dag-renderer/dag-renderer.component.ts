@@ -1,6 +1,6 @@
 import {
   Component, ElementRef, ViewChild, Input, Output, EventEmitter,
-  OnChanges, SimpleChanges, AfterViewInit, OnDestroy
+  OnChanges, SimpleChanges, AfterViewInit, OnDestroy, NgZone
 } from '@angular/core';
 import {CommonModule} from '@angular/common';
 import cytoscape from 'cytoscape';
@@ -18,6 +18,12 @@ export interface ContextMenuAction {
   task: SchedulerTaskDto;
   action: 'delete' | 'link-from' | 'unlink' | 'add-step';
   targetId?: number;
+}
+
+interface CtxConnection {
+  label: string;
+  prereqId: number;
+  dependentId: number;
 }
 
 @Component({
@@ -38,13 +44,26 @@ export interface ContextMenuAction {
       <div class="context-menu" *ngIf="contextMenu"
            [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y">
         <button (click)="onCtxAction('link-from')">Link from here...</button>
-        <button (click)="onCtxAction('delete')">Delete task</button>
+
+        <!-- Show existing connections to remove -->
+        <ng-container *ngIf="contextMenu.connections.length > 0">
+          <div class="ctx-separator"></div>
+          <div class="ctx-label">Remove connection:</div>
+          <button *ngFor="let conn of contextMenu.connections"
+                  class="ctx-unlink"
+                  (click)="onCtxUnlink(conn)">
+            {{ conn.label }}
+          </button>
+        </ng-container>
+
+        <div class="ctx-separator"></div>
+        <button class="ctx-danger" (click)="onCtxAction('delete')">Delete</button>
       </div>
     </div>
   `,
   styles: [`
-    :host { display: block; width: 100%; height: 100%; }
-    .dag-wrapper { position: relative; width: 100%; height: 100%; }
+    :host { display: block; flex: 1; min-width: 0; min-height: 0; height: 100%; }
+    .dag-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; }
     .dag-container { width: 100%; height: 100%; }
     .link-banner {
       position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
@@ -57,13 +76,19 @@ export interface ContextMenuAction {
     }
     .context-menu {
       position: absolute; z-index: 20; background: #1e1e2e; border: 1px solid #444;
-      border-radius: 6px; padding: 4px 0; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      border-radius: 6px; padding: 4px 0; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .context-menu button {
       display: block; width: 100%; text-align: left; background: none; border: none;
       color: #cdd6f4; padding: 6px 14px; font-size: 12px; cursor: pointer;
     }
     .context-menu button:hover { background: #313244; }
+    .ctx-separator { height: 1px; background: #333; margin: 4px 0; }
+    .ctx-label { padding: 4px 14px; font-size: 10px; color: #888; text-transform: uppercase; }
+    .ctx-unlink { color: #f59e0b !important; }
+    .ctx-unlink:hover { background: #332b00 !important; }
+    .ctx-danger { color: #ef4444 !important; }
+    .ctx-danger:hover { background: #330000 !important; }
   `]
 })
 export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy {
@@ -79,21 +104,27 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private cy: cytoscape.Core | null = null;
 
-  // Link mode state
   linkMode = false;
   linkSourceId: number | null = null;
   linkSourceName = '';
 
-  // Context menu state
-  contextMenu: {x: number, y: number, task: SchedulerTaskDto} | null = null;
+  contextMenu: {x: number, y: number, task: SchedulerTaskDto, connections: CtxConnection[]} | null = null;
+  private nodeJustClicked = false;
+
+  constructor(private ngZone: NgZone) {}
 
   ngAfterViewInit(): void {
     this.initCytoscape();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (this.cy && (changes['tasks'] || changes['selectedTaskId'])) {
+    if (!this.cy) return;
+    if (changes['tasks']) {
       this.updateGraph();
+    } else if (changes['selectedTaskId']) {
+      this.updateSelection();
+      // Sidebar opening/closing changes container size — tell Cytoscape
+      setTimeout(() => this.cy?.resize(), 200);
     }
   }
 
@@ -112,14 +143,13 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
     });
 
     // Left click on node
-    this.cy.on('tap', 'node', (evt) => {
+    this.cy.on('tap', 'node', (evt) => this.ngZone.run(() => {
+      this.nodeJustClicked = true;
       this.closeContextMenu();
-      const nodeData = evt.target.data();
-      const task = this.tasks.find(t => t.id === nodeData.taskId);
+      const task = this.findTaskFromEvent(evt);
       if (!task) return;
 
       if (this.linkMode) {
-        // Complete the link
         if (this.linkSourceId !== null && this.linkSourceId !== task.id) {
           this.linkCreated.emit({sourceId: this.linkSourceId, targetId: task.id});
         }
@@ -127,58 +157,95 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
       } else {
         this.taskClicked.emit(task);
       }
-    });
+    }));
 
-    // Double click on node — drill into steps
-    this.cy.on('dbltap', 'node', (evt) => {
-      const nodeData = evt.target.data();
-      const task = this.tasks.find(t => t.id === nodeData.taskId);
+    // Double click on node
+    this.cy.on('dbltap', 'node', (evt) => this.ngZone.run(() => {
+      const task = this.findTaskFromEvent(evt);
       if (task) this.taskDoubleClicked.emit(task);
-    });
+    }));
 
-    // Left click on canvas
-    this.cy.on('tap', (evt) => {
-      if (evt.target === this.cy) {
-        this.closeContextMenu();
-        if (this.linkMode) {
-          this.cancelLink();
-        } else {
-          this.canvasClicked.emit();
-        }
+    // Left click on canvas (background only)
+    this.cy.on('tap', (evt) => this.ngZone.run(() => {
+      // Skip if a node handler already ran for this tap
+      if (this.nodeJustClicked) {
+        this.nodeJustClicked = false;
+        return;
       }
-    });
+      this.closeContextMenu();
+      if (this.linkMode) {
+        this.cancelLink();
+      } else {
+        this.canvasClicked.emit();
+      }
+    }));
 
-    // Right click on node
-    this.cy.on('cxttap', 'node', (evt) => {
-      const nodeData = evt.target.data();
-      const task = this.tasks.find(t => t.id === nodeData.taskId);
+    // Right click on node — context menu with connections
+    this.cy.on('cxttap', 'node', (evt) => this.ngZone.run(() => {
+      const task = this.findTaskFromEvent(evt);
       if (!task) return;
 
+      const connections = this.getConnectionsForTask(task);
       const pos = evt.renderedPosition;
-      this.contextMenu = {x: pos.x, y: pos.y, task};
-    });
+      this.contextMenu = {x: pos.x, y: pos.y, task, connections};
+    }));
 
-    // Right click on canvas closes menu
-    this.cy.on('cxttap', (evt) => {
+    // Right click on canvas
+    this.cy.on('cxttap', (evt) => this.ngZone.run(() => {
       if (evt.target === this.cy) this.closeContextMenu();
-    });
+    }));
 
-    // Right click on edge to unlink
-    this.cy.on('cxttap', 'edge', (evt) => {
+    // Right click on edge — quick unlink
+    this.cy.on('cxttap', 'edge', (evt) => this.ngZone.run(() => {
       const edgeData = evt.target.data();
       const sourceTaskId = Number(edgeData.source.replace('task-', ''));
       const targetTaskId = Number(edgeData.target.replace('task-', ''));
       const targetTask = this.tasks.find(t => t.id === targetTaskId);
-      if (targetTask && confirm(`Remove dependency: "${this.getTaskName(sourceTaskId)}" → "${targetTask.name}"?`)) {
+      if (targetTask) {
         this.contextAction.emit({task: targetTask, action: 'unlink', targetId: sourceTaskId});
       }
-    });
+    }));
 
     this.updateGraph();
   }
 
+  private findTaskFromEvent(evt: any): SchedulerTaskDto | undefined {
+    const nodeData = evt.target.data();
+    const taskId = Number(nodeData.taskId);
+    return this.tasks.find(t => t.id === taskId);
+  }
+
+  private getConnectionsForTask(task: SchedulerTaskDto): CtxConnection[] {
+    const connections: CtxConnection[] = [];
+
+    // Prerequisites: this task depends on...
+    for (const pid of task.prerequisiteIds) {
+      const prereq = this.tasks.find(t => t.id === pid);
+      if (prereq) {
+        connections.push({
+          label: `${prereq.name || '#' + pid} → this`,
+          prereqId: pid,
+          dependentId: task.id,
+        });
+      }
+    }
+
+    // Dependents: ... depends on this task
+    for (const other of this.tasks) {
+      if (other.prerequisiteIds.includes(task.id)) {
+        connections.push({
+          label: `this → ${other.name || '#' + other.id}`,
+          prereqId: task.id,
+          dependentId: other.id,
+        });
+      }
+    }
+
+    return connections;
+  }
+
   private getTaskName(id: number): string {
-    return this.tasks.find(t => t.id === id)?.name || `Task #${id}`;
+    return this.tasks.find(t => t.id === id)?.name || `#${id}`;
   }
 
   onCtxAction(action: 'delete' | 'link-from' | 'add-step'): void {
@@ -193,6 +260,13 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
     } else {
       this.contextAction.emit({task, action});
     }
+  }
+
+  onCtxUnlink(conn: CtxConnection): void {
+    const dependent = this.tasks.find(t => t.id === conn.dependentId);
+    if (!dependent) return;
+    this.closeContextMenu();
+    this.contextAction.emit({task: dependent, action: 'unlink', targetId: conn.prereqId});
   }
 
   cancelLink(): void {
@@ -250,6 +324,19 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
     } as any).run();
 
     this.cy.fit(undefined, 30);
+  }
+
+  private updateSelection(): void {
+    if (!this.cy) return;
+    // Just update the isSelected data on each node — no layout/fit
+    this.cy.nodes().forEach(node => {
+      const taskId = Number(node.data('taskId'));
+      if (taskId === this.selectedTaskId) {
+        node.data('isSelected', 'true');
+      } else {
+        node.removeData('isSelected');
+      }
+    });
   }
 
   private getComputedStatus(task: SchedulerTaskDto): string {
@@ -316,12 +403,21 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
       {
         selector: 'edge',
         style: {
-          'width': 2,
-          'line-color': '#6b7280',
-          'target-arrow-color': '#6b7280',
+          'width': 3,
+          'line-color': '#555',
+          'target-arrow-color': '#555',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
-          'arrow-scale': 1.2,
+          'arrow-scale': 1.3,
+        }
+      },
+      {
+        selector: 'edge:active',
+        style: {
+          'width': 5,
+          'line-color': '#f59e0b',
+          'target-arrow-color': '#f59e0b',
+          'overlay-opacity': 0.1,
         }
       },
     ];

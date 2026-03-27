@@ -403,6 +403,53 @@ h3 {
   text-align: center;
 }
 
+/* Save Options Row */
+.save-options-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.save-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+}
+
+.save-status.saving {
+  color: var(--accent-color);
+  background: var(--menu-item-hover-bg-color);
+}
+
+.save-status.saved {
+  color: #27ae60;
+  background: var(--success-background);
+}
+
+.save-status.error {
+  color: #e74c3c;
+  background: var(--error-background);
+}
+
+.counterpart-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.counterpart-toggle input[type="checkbox"] {
+  accent-color: var(--accent-color);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .printer-manager-container.queue-mode {

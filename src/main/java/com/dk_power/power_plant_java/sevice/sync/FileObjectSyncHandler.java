@@ -183,7 +183,7 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        log.info("Local FileObject {} #{} - queueing file upload",
+        log.debug("Local FileObject {} #{} - queueing file upload",
             isCreate ? "created" : "modified", fileObject.getId());
 
         // Queue upload for all file versions
@@ -225,7 +225,7 @@ public class FileObjectSyncHandler {
         }
 
         if (registered > 0) {
-            log.info("Registered {} local files on hub for FileObject #{}", registered, fileObject.getId());
+            log.debug("Registered {} local files on hub for FileObject #{}", registered, fileObject.getId());
         }
     }
 
@@ -241,7 +241,7 @@ public class FileObjectSyncHandler {
     @EventListener
     public void onSyncChangesApplied(FileObjectSyncEvent event) {
         boolean serverSyncEnabled = syncConfig.isServerSyncEnabled();
-        log.info("Processing {} FileObject sync changes (serverSync={})",
+        log.debug("Processing {} FileObject sync changes (serverSync={})",
             event.getChanges().size(), serverSyncEnabled);
 
         // Group changes by entity ID to handle all path changes together
@@ -285,7 +285,7 @@ public class FileObjectSyncHandler {
                     }
                 }
             } else if (entityChange.getChangeType() == FieldChange.ChangeType.DELETE) {
-                log.info("FileObject #{} was deleted, local files retained", entityId);
+                log.debug("FileObject #{} was deleted, local files retained", entityId);
             }
             return;
         }
@@ -350,7 +350,7 @@ public class FileObjectSyncHandler {
                 newEntity.getVendor() != null ? newEntity.getVendor().getName() : null);
 
         if (pathChanged) {
-            log.info("FileObject #{} path changed from {} to {}",
+            log.debug("FileObject #{} path changed from {} to {}",
                 newEntity.getId(), oldSnapshot.oldFileLink, newEntity.getFileLink());
             // File move is already handled by NgFileService.updateFileObject()
             // Here we just need to ensure the new files are uploaded to sync server
@@ -365,7 +365,7 @@ public class FileObjectSyncHandler {
      * @return true if files were successfully moved locally
      */
     private boolean handleIncomingPathChanges(FileObject fileObject, Map<String, FieldChange> pathChanges) {
-        log.info("Path change for FileObject #{}: fields={}", fileObject.getId(), pathChanges.keySet());
+        log.debug("Path change for FileObject #{}: fields={}", fileObject.getId(), pathChanges.keySet());
 
         // Move files from old path to new path
         return moveFilesAfterPathChanges(fileObject, pathChanges);
@@ -404,12 +404,12 @@ public class FileObjectSyncHandler {
             if (pathChanges.containsKey("fileType")) {
                 String oldFileTypeId = pathChanges.get("fileType").getOldValue();
                 oldFileType = resolveValueNameById(oldFileTypeId);
-                log.info("FileType change: oldId={} resolved to '{}'", oldFileTypeId, oldFileType);
+                log.debug("FileType change: oldId={} resolved to '{}'", oldFileTypeId, oldFileType);
             }
             if (pathChanges.containsKey("vendor")) {
                 String oldVendorId = pathChanges.get("vendor").getOldValue();
                 oldVendor = resolveValueNameById(oldVendorId);
-                log.info("Vendor change: oldId={} resolved to '{}'", oldVendorId, oldVendor);
+                log.debug("Vendor change: oldId={} resolved to '{}'", oldVendorId, oldVendor);
             }
             if (pathChanges.containsKey("extensions")) {
                 String oldExtValue = stripJsonQuotes(pathChanges.get("extensions").getOldValue());
@@ -423,7 +423,7 @@ public class FileObjectSyncHandler {
                 }
             }
 
-            log.info("Moving files: old=[number={}, type={}, vendor={}, ext={}] -> new=[number={}, type={}, vendor={}]",
+            log.debug("Moving files: old=[number={}, type={}, vendor={}, ext={}] -> new=[number={}, type={}, vendor={}]",
                 oldFileNumber, oldFileType, oldVendor, oldExtensions,
                 currentFileNumber, currentFileType, currentVendor);
 
@@ -455,7 +455,7 @@ public class FileObjectSyncHandler {
                 if (Files.exists(oldFolderPath)) {
                     List<File> oldFiles = FileUtil.getRevisionsByFileNumber(oldFileNumber, oldFolderPath.toString());
 
-                    log.info("Found {} files to move in {} for fileNumber {}",
+                    log.debug("Found {} files to move in {} for fileNumber {}",
                         oldFiles.size(), oldFolderPath, oldFileNumber);
 
                     if (oldFiles.isEmpty()) continue;
@@ -482,7 +482,7 @@ public class FileObjectSyncHandler {
                             }
                             Path targetPath = newFolderPath.resolve(newFileName);
                             Files.move(oldFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-                            log.info("Moved file: {} -> {}", oldFile.toPath(), targetPath);
+                            log.debug("Moved file: {} -> {}", oldFile.toPath(), targetPath);
                             anyMoved = true;
                         } catch (IOException e) {
                             log.warn("Failed to move file {}: {}", oldFile.getAbsolutePath(), e.getMessage());
@@ -555,7 +555,7 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        log.info("Deleting old folders after successful download for FileObject #{}: {}",
+        log.debug("Deleting old folders after successful download for FileObject #{}: {}",
             task.getEntityId(), oldFolders);
 
         // Folders can be semicolon-separated if multiple renames happened
@@ -593,7 +593,7 @@ public class FileObjectSyncHandler {
                             skippedAny = true;
                         } else {
                             Files.deleteIfExists(file);
-                            log.info("Deleted old file after download: {}", file);
+                            log.debug("Deleted old file after download: {}", file);
                         }
                     }
                 }
@@ -717,7 +717,7 @@ public class FileObjectSyncHandler {
         task.setTargetPath(getFullPath(fileObject));
 
         pendingFileSyncRepository.save(task);
-        log.info("Queued upload for FileObject #{} (persisted to database)", fileObject.getId());
+        log.debug("Queued upload for FileObject #{} (persisted to database)", fileObject.getId());
     }
 
     /**
@@ -765,7 +765,7 @@ public class FileObjectSyncHandler {
         );
 
         pendingFileSyncRepository.save(task);
-        log.info("Queued download for FileObject #{} (persisted to database)", fileObject.getId());
+        log.debug("Queued download for FileObject #{} (persisted to database)", fileObject.getId());
     }
 
     /**
@@ -831,7 +831,7 @@ public class FileObjectSyncHandler {
         task.setOldFolderToDelete(oldFolderToDelete);
 
         PendingFileSync savedTask = pendingFileSyncRepository.save(task);
-        log.info("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database, taskId={})",
+        log.debug("Queued download for FileObject #{} with cleanup of old folder: {} (persisted to database, taskId={})",
             fileObject.getId(), oldFolderToDelete, savedTask.getId());
     }
 
@@ -878,7 +878,7 @@ public class FileObjectSyncHandler {
                 task.markCompleted();
                 pendingFileSyncRepository.save(task);
                 processed++;
-                log.info("Successfully uploaded files for FileObject #{}", task.getEntityId());
+                log.debug("Successfully uploaded files for FileObject #{}", task.getEntityId());
 
             } catch (Exception e) {
                 log.error("Failed to upload files for FileObject #{}: {}",
@@ -892,7 +892,7 @@ public class FileObjectSyncHandler {
                     task.scheduleRetry(delay);
                     task.setLastError(e.getMessage());
                     pendingFileSyncRepository.save(task);
-                    log.info("Scheduled retry {} for FileObject #{} upload in {}ms",
+                    log.debug("Scheduled retry {} for FileObject #{} upload in {}ms",
                         task.getRetryCount(), task.getEntityId(), delay);
                 } else {
                     task.markFailed("Max retries exceeded: " + e.getMessage());
@@ -952,7 +952,7 @@ public class FileObjectSyncHandler {
                 task.markCompleted();
                 pendingFileSyncRepository.save(task);
                 processed++;
-                log.info("Successfully downloaded files for FileObject #{}", task.getEntityId());
+                log.debug("Successfully downloaded files for FileObject #{}", task.getEntityId());
 
             } catch (Exception e) {
                 log.error("Failed to download files for FileObject #{}: {}",
@@ -966,7 +966,7 @@ public class FileObjectSyncHandler {
                     task.scheduleRetry(delay);
                     task.setLastError(e.getMessage());
                     pendingFileSyncRepository.save(task);
-                    log.info("Scheduled retry {} for FileObject #{} download in {}ms",
+                    log.debug("Scheduled retry {} for FileObject #{} download in {}ms",
                         task.getRetryCount(), task.getEntityId(), delay);
                 } else {
                     task.markFailed("Max retries exceeded: " + e.getMessage());
@@ -1016,7 +1016,7 @@ public class FileObjectSyncHandler {
         }
 
         if (recovered > 0) {
-            log.info("Recovered {} failed file upload tasks for retry", recovered);
+            log.info("file_sync.recovered_uploads count={}", recovered);
         }
     }
 
@@ -1036,7 +1036,7 @@ public class FileObjectSyncHandler {
             return;
         }
 
-        log.info("Uploading {} files for FileObject #{}", filesToUpload.size(), task.getEntityId());
+        log.debug("Uploading {} files for FileObject #{}", filesToUpload.size(), task.getEntityId());
 
         for (File file : filesToUpload) {
             try {
@@ -1126,7 +1126,7 @@ public class FileObjectSyncHandler {
                 return; // No files is OK
             }
 
-            log.info("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
+            log.debug("Downloading {} files for FileObject #{}", files.size(), task.getEntityId());
 
             int successCount = 0;
             int failCount = 0;
@@ -1215,7 +1215,7 @@ public class FileObjectSyncHandler {
 
         // Write file
         Files.write(targetPath, content);
-        log.info("Downloaded file {} to {} ({} bytes)", fileName, targetPath, content.length);
+        log.debug("Downloaded file {} to {} ({} bytes)", fileName, targetPath, content.length);
     }
 
     /**

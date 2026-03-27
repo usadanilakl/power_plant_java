@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,9 +13,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.time.Instant;
-import java.util.*;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,29 +55,25 @@ public class PeerDiscoveryService {
             return;
         }
 
-        try {
-            // Create broadcast socket
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.init")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             broadcastSocket = new DatagramSocket();
             broadcastSocket.setBroadcast(true);
 
-            // Create listen socket
             listenSocket = new DatagramSocket(syncConfig.getDiscoveryPort());
             listenSocket.setBroadcast(true);
-            listenSocket.setSoTimeout(5000); // 5 second timeout for graceful shutdown
+            listenSocket.setSoTimeout(5000);
 
             running = true;
             listenerExecutor = Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, "peer-discovery-listener");
-                t.setDaemon(true); // Daemon thread won't block JVM shutdown
+                t.setDaemon(true);
                 return t;
             });
             listenerExecutor.submit(this::listenForPeers);
 
             log.info("Peer discovery initialized on port {}", syncConfig.getDiscoveryPort());
-
-            // Announce ourselves immediately
             broadcastPresence();
-
         } catch (SocketException e) {
             log.error("Failed to initialize peer discovery: {}. Peer discovery will be disabled.", e.getMessage());
         }
@@ -74,49 +81,48 @@ public class PeerDiscoveryService {
 
     @PreDestroy
     public void shutdown() {
-        log.info("Shutting down peer discovery service...");
-        running = false;
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.shutdown")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            log.info("Shutting down peer discovery service...");
+            running = false;
 
-        // Close sockets first to unblock any waiting receive() calls
-        if (listenSocket != null && !listenSocket.isClosed()) {
-            listenSocket.close();
-        }
-        if (broadcastSocket != null && !broadcastSocket.isClosed()) {
-            broadcastSocket.close();
-        }
-        if (listenerExecutor != null) {
-            listenerExecutor.shutdownNow();
-            try {
-                if (!listenerExecutor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
-                    log.debug("Peer discovery executor did not terminate in time");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (listenSocket != null && !listenSocket.isClosed()) {
+                listenSocket.close();
             }
+            if (broadcastSocket != null && !broadcastSocket.isClosed()) {
+                broadcastSocket.close();
+            }
+            if (listenerExecutor != null) {
+                listenerExecutor.shutdownNow();
+                try {
+                    if (!listenerExecutor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                        log.debug("Peer discovery executor did not terminate in time");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            log.info("Peer discovery service shutdown complete");
         }
-        log.info("Peer discovery service shutdown complete");
     }
 
-    /**
-     * Scheduled wrapper: polls every 15s, only broadcasts when the configured interval has elapsed.
-     */
     @Scheduled(fixedDelay = 15000, initialDelay = 5000)
     public void scheduledBroadcast() {
         if (!syncConfig.isDiscoveryEnabled() || !syncIntervals.isPeerBroadcastDue()) return;
-        syncIntervals.markPeerBroadcast();
-        broadcastPresence();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.scheduledBroadcast")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            syncIntervals.markPeerBroadcast();
+            broadcastPresence();
+        }
     }
 
-    /**
-     * Broadcast presence to all machines on the network.
-     * Called by scheduler and also directly from init() / REST API.
-     */
     public void broadcastPresence() {
         if (!syncConfig.isDiscoveryEnabled() || broadcastSocket == null || broadcastSocket.isClosed()) {
             return;
         }
 
-        try {
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.broadcastPresence")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             Map<String, Object> announcement = new HashMap<>();
             announcement.put("type", "ANNOUNCE");
             announcement.put("machineId", syncConfig.getMachineId());
@@ -125,12 +131,8 @@ public class PeerDiscoveryService {
             announcement.put("timestamp", Instant.now().toString());
 
             byte[] data = objectMapper.writeValueAsBytes(announcement);
-
-            // Broadcast to all network interfaces
             broadcastToAllInterfaces(data);
-
             log.debug("Broadcasted presence: {} ({})", syncConfig.getMachineName(), syncConfig.getMachineId());
-
         } catch (Exception e) {
             log.error("Failed to broadcast presence: {}", e.getMessage());
         }
@@ -138,7 +140,6 @@ public class PeerDiscoveryService {
 
     private void broadcastToAllInterfaces(byte[] data) {
         try {
-            // Try broadcast address first
             DatagramPacket packet = new DatagramPacket(
                 data, data.length,
                 InetAddress.getByName(BROADCAST_ADDRESS),
@@ -146,7 +147,6 @@ public class PeerDiscoveryService {
             );
             broadcastSocket.send(packet);
 
-            // Also try subnet broadcasts for each interface
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
                 NetworkInterface ni = interfaces.nextElement();
@@ -162,8 +162,7 @@ public class PeerDiscoveryService {
                                 syncConfig.getDiscoveryPort()
                             );
                             broadcastSocket.send(packet);
-                        } catch (Exception e) {
-                            // Ignore individual broadcast failures
+                        } catch (Exception ignored) {
                         }
                     }
                 }
@@ -173,48 +172,48 @@ public class PeerDiscoveryService {
         }
     }
 
-    /**
-     * Listen for peer announcements
-     */
     private void listenForPeers() {
         byte[] buffer = new byte[BUFFER_SIZE];
-        log.info("Started listening for peer announcements on port {}", syncConfig.getDiscoveryPort());
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.listen")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            log.info("Started listening for peer announcements on port {}", syncConfig.getDiscoveryPort());
 
-        while (running) {
-            try {
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                listenSocket.receive(packet);
+            while (running) {
+                try {
+                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                    listenSocket.receive(packet);
 
-                String message = new String(packet.getData(), 0, packet.getLength());
-                processAnnouncement(message, packet.getAddress().getHostAddress());
-
-            } catch (SocketTimeoutException e) {
-                // Expected - allows checking running flag
-            } catch (SocketException e) {
-                if (running) {
-                    log.error("Socket error in peer listener: {}", e.getMessage());
-                }
-            } catch (Exception e) {
-                if (running) {
-                    log.error("Error processing peer announcement: {}", e.getMessage());
+                    String message = new String(packet.getData(), 0, packet.getLength());
+                    processAnnouncement(message, packet.getAddress().getHostAddress());
+                } catch (SocketTimeoutException e) {
+                    // expected
+                } catch (SocketException e) {
+                    if (running) {
+                        log.error("Socket error in peer listener: {}", e.getMessage());
+                    }
+                } catch (Exception e) {
+                    if (running) {
+                        log.error("Error processing peer announcement: {}", e.getMessage());
+                    }
                 }
             }
-        }
 
-        log.info("Peer listener stopped");
+            log.info("Peer listener stopped");
+        }
     }
 
     @SuppressWarnings("unchecked")
     private void processAnnouncement(String message, String senderIp) {
-        try {
+        try (LoggingContext.Scope ignored = LoggingContext.openScope(Map.of(
+            LoggingContext.MACHINE_ID, syncConfig.getMachineId(),
+            LoggingContext.REMOTE_IP, senderIp == null ? "" : senderIp
+        ))) {
             Map<String, Object> announcement = objectMapper.readValue(message, Map.class);
 
             String type = (String) announcement.get("type");
             if (!"ANNOUNCE".equals(type)) return;
 
             String machineId = (String) announcement.get("machineId");
-
-            // Ignore our own broadcasts
             if (machineId.equals(syncConfig.getMachineId())) {
                 return;
             }
@@ -222,7 +221,6 @@ public class PeerDiscoveryService {
             String machineName = (String) announcement.get("machineName");
             int port = (Integer) announcement.get("port");
 
-            // Update or create peer
             Peer peer = peerRepository.findById(machineId)
                 .orElse(new Peer(machineId, machineName, senderIp, port));
 
@@ -246,30 +244,20 @@ public class PeerDiscoveryService {
             } else {
                 log.debug("Updated peer: {} ({}) at {}:{}", machineName, machineId, senderIp, port);
             }
-
         } catch (Exception e) {
             log.warn("Failed to process announcement from {}: {}", senderIp, e.getMessage());
         }
     }
 
-    /**
-     * Get all active peers (seen recently)
-     */
     public List<Peer> getActivePeers() {
         Instant cutoff = Instant.now().minusSeconds(syncConfig.getSyncIntervalSeconds() * 3L);
         return peerRepository.findActivePeers(cutoff, syncConfig.getMachineId());
     }
 
-    /**
-     * Get all known peers (regardless of status)
-     */
     public List<Peer> getAllPeers() {
         return peerRepository.findByMachineIdNot(syncConfig.getMachineId());
     }
 
-    /**
-     * Mark a peer as offline
-     */
     public void markPeerOffline(String machineId) {
         peerRepository.findById(machineId).ifPresent(peer -> {
             peer.setStatus(Peer.PeerStatus.OFFLINE);
@@ -278,9 +266,6 @@ public class PeerDiscoveryService {
         });
     }
 
-    /**
-     * Mark a peer as having an error
-     */
     public void markPeerError(String machineId) {
         peerRepository.findById(machineId).ifPresent(peer -> {
             peer.setStatus(Peer.PeerStatus.ERROR);
@@ -288,9 +273,6 @@ public class PeerDiscoveryService {
         });
     }
 
-    /**
-     * Update peer status to syncing
-     */
     public void markPeerSyncing(String machineId) {
         peerRepository.findById(machineId).ifPresent(peer -> {
             peer.setStatus(Peer.PeerStatus.SYNCING);
@@ -298,9 +280,6 @@ public class PeerDiscoveryService {
         });
     }
 
-    /**
-     * Update peer last sync time
-     */
     public void updatePeerSyncTime(String machineId) {
         peerRepository.findById(machineId).ifPresent(peer -> {
             peer.setLastSyncTime(Instant.now());
@@ -309,9 +288,6 @@ public class PeerDiscoveryService {
         });
     }
 
-    /**
-     * Get the local IP address
-     */
     public String getLocalIpAddress() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
@@ -333,20 +309,26 @@ public class PeerDiscoveryService {
         return "127.0.0.1";
     }
 
-    /**
-     * Cleanup stale peers
-     */
-    @Scheduled(fixedDelay = 300000) // Every 5 minutes
+    @Scheduled(fixedDelay = 300000)
     public void cleanupStalePeers() {
-        Instant cutoff = Instant.now().minusSeconds(300); // 5 minutes
-        List<Peer> stalePeers = peerRepository.findStalePeers(cutoff);
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("peer.cleanupStalePeers")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            Instant cutoff = Instant.now().minusSeconds(300);
+            List<Peer> stalePeers = peerRepository.findStalePeers(cutoff);
 
-        for (Peer peer : stalePeers) {
-            if (peer.getStatus() != Peer.PeerStatus.OFFLINE) {
-                peer.setStatus(Peer.PeerStatus.OFFLINE);
-                peerRepository.save(peer);
-                log.info("Marked stale peer {} as offline", peer.getMachineId());
+            int markedOffline = 0;
+            for (Peer peer : stalePeers) {
+                if (peer.getStatus() != Peer.PeerStatus.OFFLINE) {
+                    peer.setStatus(Peer.PeerStatus.OFFLINE);
+                    peerRepository.save(peer);
+                    markedOffline++;
+                    log.info("Marked stale peer {} as offline", peer.getMachineId());
+                }
             }
+
+            log.info("peer.cleanup.complete stalePeers={} markedOffline={} durationMs={}",
+                stalePeers.size(), markedOffline, System.currentTimeMillis() - start);
         }
     }
 }

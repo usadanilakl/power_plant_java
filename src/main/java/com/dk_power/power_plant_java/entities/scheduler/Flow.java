@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -12,6 +13,7 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
+@Where(clause = "deleted IS NOT TRUE")
 public class Flow extends BaseAuditEntity {
     private String description;
 

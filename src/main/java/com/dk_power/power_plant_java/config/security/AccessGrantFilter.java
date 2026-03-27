@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.config.security;
 
 import com.dk_power.power_plant_java.config.NetworkUtils;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.users.AccessGrant;
 import com.dk_power.power_plant_java.entities.users.AccessGrant.GrantStatus;
 import com.dk_power.power_plant_java.repository.users.AccessGrantRepository;
@@ -132,8 +133,10 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         }
 
         AccessGrant grant = grantOpt.get();
+        LoggingContext.setUserId(grant.getUser() != null ? grant.getUser().getEmail() : null);
 
         if (grant.getStatus() != GrantStatus.APPROVED) {
+            log.info("security.access.denied status={} path={}", grant.getStatus(), path);
             sendFullAccessRequired(request, response, "Access grant is " + grant.getStatus().name().toLowerCase() + ".");
             return;
         }
@@ -143,6 +146,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         if (grant.getExpiresAt() != null && now.isAfter(grant.getExpiresAt())) {
             grant.setStatus(GrantStatus.EXPIRED);
             accessGrantRepository.save(grant);
+            log.info("security.access.denied status=expired path={}", path);
             sendFullAccessRequired(request, response, "Access grant has expired (24h maximum).");
             return;
         }
@@ -150,6 +154,7 @@ public class AccessGrantFilter extends OncePerRequestFilter {
         if (grant.getLastActiveAt() != null && now.isAfter(grant.getLastActiveAt().plusHours(1))) {
             grant.setStatus(GrantStatus.EXPIRED);
             accessGrantRepository.save(grant);
+            log.info("security.access.denied status=inactive_timeout path={}", path);
             sendFullAccessRequired(request, response, "Access grant expired due to inactivity (1 hour).");
             return;
         }
@@ -159,6 +164,8 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             grant.setLastActiveAt(now);
             accessGrantRepository.save(grant);
         }
+
+        log.debug("security.access.allowed path={} grantId={}", path, grant.getId());
 
         filterChain.doFilter(request, response);
     }

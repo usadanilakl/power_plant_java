@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sharepoint;
 
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.sharepoint.SharePointSyncStatus;
@@ -64,17 +65,28 @@ public class SharePointSyncOrchestrator {
         if (!syncConfig.isHubMode()) return;
         if (!syncSettings.isEnabled()) return;
 
-        for (SharePointSyncable<?> syncable : syncables) {
-            String type = syncable.getEntityTypeName();
-            if (isSyncDue(type)) {
-                markSynced(type);
-                try {
-                    SyncResult result = executeSyncForType(syncable);
-                    lastResults.put(type, result);
-                } catch (Exception e) {
-                    log.error("[SP Orchestrator] {} sync failed: {}", type, e.getMessage(), e);
+        long start = System.currentTimeMillis();
+        int dueTypes = 0;
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("sharepoint.scheduledSync")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            log.info("sharepoint.sync.scheduler.start registeredTypes={}", syncables.size());
+
+            for (SharePointSyncable<?> syncable : syncables) {
+                String type = syncable.getEntityTypeName();
+                if (isSyncDue(type)) {
+                    dueTypes++;
+                    markSynced(type);
+                    try {
+                        SyncResult result = executeSyncForType(syncable);
+                        lastResults.put(type, result);
+                    } catch (Exception e) {
+                        log.error("[SP Orchestrator] {} sync failed: {}", type, e.getMessage(), e);
+                    }
                 }
             }
+
+            log.info("sharepoint.sync.scheduler.complete dueTypes={} durationMs={}",
+                dueTypes, System.currentTimeMillis() - start);
         }
     }
 
@@ -98,47 +110,50 @@ public class SharePointSyncOrchestrator {
     private <D> SyncResult executeSyncForType(SharePointSyncable<D> syncable) {
         String type = syncable.getEntityTypeName();
         SyncResult result = new SyncResult();
+        long start = System.currentTimeMillis();
 
         // Wrap in SyncContext so FieldChangeEntityListener doesn't create
         // false FieldChange records during SP sync saves
-        syncContext.startSync();
-        try {
-            List<D> remoteDtos = syncable.fetchAllFromSharePoint();
-            if (remoteDtos == null || remoteDtos.isEmpty()) {
-                log.debug("[SP Orchestrator] No {} items from SharePoint", type);
-                return result;
-            }
-            log.info("[SP Orchestrator] Fetched {} {} items from SharePoint", remoteDtos.size(), type);
-
-            Set<String> remoteIds = new HashSet<>();
-            for (D dto : remoteDtos) {
-                String spId = syncable.getSharepointId(dto);
-                if (spId != null) remoteIds.add(spId.toLowerCase());
-                try {
-                    syncable.processRemoteItem(dto, result);
-                } catch (Exception e) {
-                    result.incrementFailed();
-                    log.error("[SP Orchestrator] {} processRemoteItem failed for spId={}: {}",
-                        type, spId, e.getMessage(), e);
+        try (LoggingContext.Scope ignored = LoggingContext.openSyncScope("sharepoint." + type, syncConfig.getMachineId())) {
+            syncContext.startSync();
+            try {
+                List<D> remoteDtos = syncable.fetchAllFromSharePoint();
+                if (remoteDtos == null || remoteDtos.isEmpty()) {
+                    log.debug("[SP Orchestrator] No {} items from SharePoint", type);
+                    return result;
                 }
-            }
+                log.debug("[SP Orchestrator] Fetched {} {} items from SharePoint", remoteDtos.size(), type);
 
-            if (syncable.supportsAutoClose()) {
-                syncable.autoCloseAbsentRecords(remoteIds, result);
-            }
+                Set<String> remoteIds = new HashSet<>();
+                for (D dto : remoteDtos) {
+                    String spId = syncable.getSharepointId(dto);
+                    if (spId != null) remoteIds.add(spId.toLowerCase());
+                    try (LoggingContext.Scope entityScope =
+                             LoggingContext.openEntityScope(type, null, spId)) {
+                        syncable.processRemoteItem(dto, result);
+                    } catch (Exception e) {
+                        result.incrementFailed();
+                        log.error("[SP Orchestrator] {} processRemoteItem failed for spId={}: {}",
+                            type, spId, e.getMessage(), e);
+                    }
+                }
 
-            syncable.afterSync(result);
+                if (syncable.supportsAutoClose()) {
+                    syncable.autoCloseAbsentRecords(remoteIds, result);
+                }
 
-            if (result.getTotalChanges() > 0) {
-                log.info("[SP Orchestrator] {} sync: created={}, updated={}, autoClosed={}, skipped={}, failed={}",
+                syncable.afterSync(result);
+
+                log.info("[SP Orchestrator] {} sync: created={}, updated={}, autoClosed={}, skipped={}, failed={}, durationMs={}",
                     type, result.getCreated(), result.getUpdated(),
-                    result.getAutoClosed(), result.getSkipped(), result.getFailed());
+                    result.getAutoClosed(), result.getSkipped(), result.getFailed(),
+                    System.currentTimeMillis() - start);
+            } catch (Exception e) {
+                log.error("[SP Orchestrator] {} fetch failed: {}", type, e.getMessage(), e);
+                result.setErrorMessage(e.getMessage());
+            } finally {
+                syncContext.endSync();
             }
-        } catch (Exception e) {
-            log.error("[SP Orchestrator] {} fetch failed: {}", type, e.getMessage(), e);
-            result.setErrorMessage(e.getMessage());
-        } finally {
-            syncContext.endSync();
         }
 
         // Dedup after sync (outside sync context — dedup saves may need tracking)

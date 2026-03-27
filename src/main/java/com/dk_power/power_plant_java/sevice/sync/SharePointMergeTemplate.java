@@ -95,13 +95,13 @@ public abstract class SharePointMergeTemplate<E> {
             log.debug("{} No duplicates found", logPrefix());
             return 0;
         }
-        log.info("{} Found {} groups with duplicates", logPrefix(), duplicates.size());
+        log.debug("{} Found {} groups with duplicates", logPrefix(), duplicates.size());
 
         int merged = 0;
         for (Object[] row : duplicates) {
             String keyValue = (String) row[0];
             int count = ((Number) row[1]).intValue();
-            log.info("{} key='{}' has {} copies", logPrefix(), keyValue, count);
+            log.debug("{} key='{}' has {} copies", logPrefix(), keyValue, count);
             merged += mergeByKey(keyValue);
         }
         return merged;
@@ -131,7 +131,7 @@ public abstract class SharePointMergeTemplate<E> {
             entityManager.flush();
             merged++;
 
-            log.info("{} key='{}' ID={} merged into ID={}",
+            log.debug("{} key='{}' ID={} merged into ID={}",
                 logPrefix(), keyValue, duplicateId, canonicalId);
         }
         return merged;

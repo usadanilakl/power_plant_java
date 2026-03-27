@@ -5,22 +5,37 @@ import { EngraverModalService } from './engraver-modal.service';
 import { EngraverApiService } from './engraver-api.service';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
 import { EngraverTemplateManagerComponent } from './engraver-template-manager/engraver-template-manager.component';
+import { CharacteristicsEditorComponent } from '../reactive-form/refactored/input-fields/characteristics-editor/characteristics-editor.component';
+import { RfLotoPointApiService } from '../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { LotoPointCounterpartService, SyncableField } from '../../features/loto-points/refactored/services/loto-point-counterpart.service';
+import { LotoPointDto } from '../../models/loto/loto-point.model';
+import { RfValueService } from '../../features/values/refactored/services/rf-value.service';
 
 @Component({
   selector: 'app-engraver-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, RfPopupProjectionComponent, EngraverTemplateManagerComponent],
+  imports: [CommonModule, FormsModule, RfPopupProjectionComponent, EngraverTemplateManagerComponent, CharacteristicsEditorComponent],
   templateUrl: './engraver-manager.component.html',
   styleUrls: ['./engraver-manager.component.css']
 })
 export class EngraverManagerComponent {
   modalService = inject(EngraverModalService);
   private engraverApi = inject(EngraverApiService);
+  private lotoPointApi = inject(RfLotoPointApiService);
+  private counterpartService = inject(LotoPointCounterpartService);
+  private valueService = inject(RfValueService);
 
   isTemplateManagerOpen = signal(false);
   statusMessage = '';
   errorMessage = '';
   private templatesLoaded = false;
+
+  // Click-to-edit state
+  editingCell = signal<{ itemId: number; field: string } | null>(null);
+  syncCounterpart = signal(false);
+  savingItems = signal<Set<number>>(new Set());
+  savedItems = signal<Set<number>>(new Set());
+  editingCharacteristicsItemId = signal<number | null>(null);
 
   // Computed for UI
   progressPercentage = computed(() => {
@@ -54,6 +69,19 @@ export class EngraverManagerComponent {
         this.errorMessage = 'Failed to load engraver templates';
       }
     });
+  }
+
+  /**
+   * Total column count for the batch items table (used for colspan).
+   * Columns: # + Tag Number + Description + (characteristics if info) + actions
+   */
+  getTableColspan(): number {
+    const base = 3; // #, Tag Number, Description
+    const charCols = this.modalService.selectedDataStructure() === 'info'
+      ? this.modalService.availableCharacteristicNames().length
+      : 0;
+    const actionCol = this.modalService.currentBatch()?.status !== 'completed' ? 1 : 0;
+    return base + charCols + actionCol;
   }
 
   /**
@@ -197,6 +225,133 @@ export class EngraverManagerComponent {
     const chars = this.modalService.parseCharacteristics(item.characteristicsJson);
     const found = chars.find(c => c.name === name);
     return found?.value || '-';
+  }
+
+  // ========== Click-to-Edit Methods ==========
+
+  startEdit(itemId: number, field: string): void {
+    // Don't allow editing on completed batches
+    if (this.modalService.currentBatch()?.status === 'completed') return;
+    this.editingCell.set({ itemId, field });
+  }
+
+  onCellBlur(item: LotoPointDto, field: string, newValue: string): void {
+    this.editingCell.set(null);
+    const oldValue = (item as any)[field] || '';
+    if (newValue === oldValue) return;
+
+    this.modalService.updateItemField(item.id!, field, newValue);
+    this.saveItem(new LotoPointDto({ ...item, [field]: newValue }), [field as SyncableField]);
+  }
+
+  onCharacteristicCellBlur(item: LotoPointDto, charName: string, newValue: string): void {
+    this.editingCell.set(null);
+    const chars = this.modalService.parseCharacteristics(item.characteristicsJson);
+    const existing = chars.find(c => c.name === charName);
+
+    // No change
+    if (existing && existing.value === newValue) return;
+    // Empty value on non-existing characteristic — nothing to do
+    if (!existing && (!newValue || newValue === '-')) return;
+
+    let updatedChars;
+    if (existing) {
+      // Update existing characteristic value
+      updatedChars = chars.map(c =>
+        c.name === charName ? { ...c, value: newValue } : c
+      );
+    } else {
+      // Add new characteristic entry for this item
+      updatedChars = [...chars, { characteristicId: 0, name: charName, value: newValue }];
+    }
+    const newJson = JSON.stringify(updatedChars);
+    this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
+    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), []);
+  }
+
+  onCellKeydown(event: KeyboardEvent, item: LotoPointDto, field: string): void {
+    if (event.key === 'Enter') {
+      (event.target as HTMLInputElement).blur();
+    } else if (event.key === 'Escape') {
+      this.editingCell.set(null);
+    }
+  }
+
+  toggleCharacteristicsEditor(itemId: number): void {
+    if (this.editingCharacteristicsItemId() === itemId) {
+      this.editingCharacteristicsItemId.set(null);
+    } else {
+      // Preload equipmentCharacteristic values so the dropdown has options
+      this.valueService.refreshCategory('equipmentCharacteristic');
+      this.editingCharacteristicsItemId.set(itemId);
+    }
+  }
+
+  onCharacteristicsChanged(item: LotoPointDto, newJson: string): void {
+    this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
+    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), []);
+  }
+
+  /**
+   * Checks if any item in the current batch has a counterpart.
+   */
+  anyItemHasCounterpart(): boolean {
+    const batch = this.modalService.currentBatch();
+    if (!batch) return false;
+    return batch.items.some(item => !!item.counterpartId);
+  }
+
+  private saveItem(updatedDto: LotoPointDto, changedFields: SyncableField[]): void {
+    const itemId = updatedDto.id!;
+    const saving = new Set(this.savingItems());
+    saving.add(itemId);
+    this.savingItems.set(saving);
+
+    this.lotoPointApi.saveLotoPoint(updatedDto).subscribe({
+      next: () => {
+        const s = new Set(this.savingItems());
+        s.delete(itemId);
+        this.savingItems.set(s);
+
+        const saved = new Set(this.savedItems());
+        saved.add(itemId);
+        this.savedItems.set(saved);
+        setTimeout(() => {
+          const current = new Set(this.savedItems());
+          current.delete(itemId);
+          this.savedItems.set(current);
+        }, 2000);
+
+        // Sync counterpart if enabled
+        if (this.syncCounterpart() && updatedDto.counterpartId && changedFields.length > 0) {
+          this.saveCounterpart(updatedDto, changedFields);
+        }
+      },
+      error: () => {
+        const s = new Set(this.savingItems());
+        s.delete(itemId);
+        this.savingItems.set(s);
+        this.errorMessage = 'Failed to save changes';
+      }
+    });
+  }
+
+  private saveCounterpart(source: LotoPointDto, changedFields: SyncableField[]): void {
+    if (!source.counterpartId) return;
+
+    this.lotoPointApi.getCounterpartById(source.counterpartId).subscribe({
+      next: (response) => {
+        if (!response.responseData) return;
+        let counterpart = LotoPointDto.fromJson(response.responseData);
+        const sourceUnit = this.counterpartService.getSourceUnit(source);
+        const targetUnit = this.counterpartService.getTargetUnit(sourceUnit);
+
+        for (const field of changedFields) {
+          counterpart = this.counterpartService.syncField(source, counterpart, field, sourceUnit, targetUnit);
+        }
+        this.lotoPointApi.saveLotoPoint(counterpart).subscribe();
+      }
+    });
   }
 
   /**

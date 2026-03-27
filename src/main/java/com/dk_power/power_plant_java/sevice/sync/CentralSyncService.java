@@ -89,15 +89,15 @@ public class CentralSyncService {
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         if (syncConfig.isHubMode()) {
-            log.info("Hub mode - CentralSyncService client sync disabled (hub IS the server)");
+            log.info("server_sync.startup.skipped reason=hub_mode");
             return;
         }
         if (!syncConfig.isServerSyncEnabled()) {
-            log.info("Central server sync is disabled");
+            log.info("server_sync.startup.skipped reason=disabled");
             return;
         }
 
-        log.info("Application ready - syncing with central server: {}", syncConfig.getSyncServerUrl());
+        log.info("server_sync.startup.begin url={}", syncConfig.getSyncServerUrl());
 
         // Small delay to ensure all services are initialized
         try {
@@ -125,7 +125,7 @@ public class CentralSyncService {
             return;
         }
 
-        log.info("Changes detected ({} changes), scheduling sync with central server", event.getChanges().size());
+        log.debug("Changes detected ({} changes), scheduling sync with central server", event.getChanges().size());
 
         // Small delay to ensure the transaction that created the FieldChange records has committed
         // This prevents race condition where we query for changes before they're visible
@@ -183,7 +183,7 @@ public class CentralSyncService {
             int failures = consecutiveFailures.incrementAndGet();
             // Self-healing: after enough blocked attempts, reset and retry
             if (failures > MAX_CONSECUTIVE_FAILURES * 2) {
-                log.info("Circuit breaker self-healing after {} failures, retrying sync", failures);
+                log.info("server_sync.circuit_breaker.self_heal failures={}", failures);
                 consecutiveFailures.set(0);
                 // Fall through to attempt sync
             } else {
@@ -215,7 +215,7 @@ public class CentralSyncService {
             totalChangesSent.addAndGet(totalSent);
             totalChangesReceived.addAndGet(receiveResult.totalReceived);
 
-            log.info("Server sync complete: sent={}, received={}, applied={}",
+            log.info("server_sync.run.complete sent={} received={} applied={}",
                 result.getChangesSent(), result.getChangesReceived(), result.getChangesApplied());
 
             // After all batches applied, run WorkRequest dedup as a final pass.
@@ -246,7 +246,7 @@ public class CentralSyncService {
 
             // If another sync was requested while we were syncing, trigger it now
             if (pendingSyncRequest.compareAndSet(true, false)) {
-                log.info("Processing pending sync request");
+                log.debug("Processing pending sync request");
                 // Use async to avoid stack overflow with recursive calls
                 Thread pendingSyncThread = new Thread(() -> {
                     try {
@@ -281,7 +281,7 @@ public class CentralSyncService {
             return 0;
         }
 
-        log.info("Sending {} pending changes to server in batches of {}", totalPending, batchSize);
+        log.info("server_sync.send.start pending={} batchSize={}", totalPending, batchSize);
 
         // Process in batches until no more changes
         while (true) {
@@ -325,7 +325,7 @@ public class CentralSyncService {
             }
         }
 
-        log.info("Finished sending {} changes in {} batches", totalSent, batchNumber);
+        log.info("server_sync.send.complete sent={} batches={}", totalSent, batchNumber);
         return totalSent;
     }
 
@@ -378,7 +378,7 @@ public class CentralSyncService {
             return result;
         }
 
-        log.info("Receiving approximately {} pending changes from server in batches of {}", pendingCount, batchSize);
+        log.info("server_sync.receive.start pending={} batchSize={}", pendingCount, batchSize);
 
         // Request changes in batches using the paginated endpoint
         int page = 0;
@@ -417,7 +417,7 @@ public class CentralSyncService {
             }
         }
 
-        log.info("Finished receiving {} changes ({} applied) in {} batches",
+        log.info("server_sync.receive.complete received={} applied={} batches={}",
             result.totalReceived, result.totalApplied, batchNumber);
         return result;
     }
@@ -560,7 +560,7 @@ public class CentralSyncService {
     public void resetCircuitBreaker() {
         consecutiveFailures.set(0);
         serverAvailable = true;
-        log.info("Circuit breaker reset - server marked as available");
+        log.info("server_sync.circuit_breaker.reset");
     }
 
     // DTOs

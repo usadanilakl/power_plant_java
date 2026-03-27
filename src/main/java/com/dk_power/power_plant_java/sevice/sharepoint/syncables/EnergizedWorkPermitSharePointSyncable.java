@@ -118,23 +118,23 @@ public class EnergizedWorkPermitSharePointSyncable implements SharePointSyncable
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[EWP Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[EWP Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[EWP Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[EWP Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[EWP Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[EWP Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         ewpRepo.save(existing);
         result.incrementUpdated();
-        log.info("[EWP Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[EWP Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

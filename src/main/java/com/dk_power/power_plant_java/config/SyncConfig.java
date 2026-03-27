@@ -139,25 +139,23 @@ public class SyncConfig {
         if (!isHubMode()) {
             loadSyncServerConfigFromFile();
         } else {
-            log.info("Hub mode: skipping sync-config.properties file (using profile config)");
+            log.debug("Hub mode: skipping sync-config.properties file (using profile config)");
         }
 
-        log.info("===========================================");
-        log.info("DEVICE IDENTITY");
-        log.info("  Device Number: {}", deviceNumber >= 0 ? deviceNumber : "NOT CONFIGURED");
-        log.info("  Device Name: {}", deviceName != null && !deviceName.isEmpty() ? deviceName : "NOT CONFIGURED");
-        log.info("  Machine ID: {}", machineId);
-        log.info("  Source: {}", deviceNumber >= 0 ? "device config" : "auto-generated (CONFIGURE DEVICE!)");
-        log.info("-------------------------------------------");
-        log.info("SYNC CONFIG");
-        log.info("  Machine Name: {}", machineName);
-        log.info("  Sync Port: {}", syncPort);
-        log.info("  Discovery Port: {}", discoveryPort);
-        log.info("  Discovery Enabled: {}", discoveryEnabled);
-        log.info("  Sync Interval: {} seconds", syncIntervalSeconds);
-        log.info("  Server Sync Enabled: {}", syncServerEnabled);
-        log.info("  Sync Server URL: {}", syncServerUrl);
-        log.info("===========================================");
+        log.info(
+            "sync.config.ready role={} machineId={} machineName={} deviceNumber={} deviceName={} discoveryEnabled={} syncPort={} discoveryPort={} intervalSeconds={} serverSyncEnabled={} syncServerUrl={}",
+            syncRole,
+            machineId,
+            machineName,
+            deviceNumber >= 0 ? deviceNumber : "unconfigured",
+            deviceName != null && !deviceName.isEmpty() ? deviceName : "unconfigured",
+            discoveryEnabled,
+            syncPort,
+            discoveryPort,
+            syncIntervalSeconds,
+            syncServerEnabled,
+            syncServerUrl
+        );
 
         if (deviceNumber < 0) {
             log.warn("!!! DEVICE NUMBER NOT CONFIGURED - IDs will use fallback device 99. " +
@@ -189,7 +187,7 @@ public class SyncConfig {
             int udpResult = udpProcess.waitFor();
 
             if (tcpResult == 0 || udpResult == 0) {
-                log.info("Firewall rules configured for sync ports (TCP:{}, UDP:{})", syncPort, discoveryPort);
+                log.debug("Firewall rules configured for sync ports (TCP:{}, UDP:{})", syncPort, discoveryPort);
             } else {
                 log.debug("Firewall rules may already exist or require admin privileges");
             }
@@ -207,7 +205,7 @@ public class SyncConfig {
                 props.load(fis);
                 String id = props.getProperty("machine.id");
                 if (id != null && !id.isEmpty()) {
-                    log.info("Loaded existing machine ID: {}", id);
+                    log.debug("Loaded existing machine ID: {}", id);
                     return id;
                 }
             } catch (Exception e) {
@@ -220,7 +218,7 @@ public class SyncConfig {
         props.setProperty("machine.id", newId);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             props.store(fos, "Machine identification for field-based sync");
-            log.info("Generated new machine ID: {}", newId);
+            log.info("sync.machine_id.generated machineId={}", newId);
         } catch (Exception e) {
             log.error("Error saving machine ID: {}", e.getMessage());
         }
@@ -280,7 +278,7 @@ public class SyncConfig {
                 this.machineId = idFromFile;
             }
 
-            log.info("Loaded device identity from {} (standalone={}): device.number={}, device.name={}, machine.id={}",
+            log.debug("Loaded device identity from {} (standalone={}): device.number={}, device.name={}, machine.id={}",
                 MACHINE_ID_FILE, !deviceConfigExplicitlySet, deviceNumber, deviceName, machineId);
         } catch (Exception e) {
             log.warn("Could not load device identity from {}: {}", MACHINE_ID_FILE, e.getMessage());
@@ -308,7 +306,7 @@ public class SyncConfig {
 
         try (FileOutputStream fos = new FileOutputStream(file)) {
             props.store(fos, "Device identity for sync and ID generation — managed by Electron");
-            log.info("Saved device identity: machine.id={}, device.number={}, device.name={}",
+            log.debug("Saved device identity: machine.id={}, device.number={}, device.name={}",
                 machineId, deviceNumber, deviceName);
         } catch (Exception e) {
             log.error("Failed to save device identity to {}: {}", MACHINE_ID_FILE, e.getMessage());
@@ -351,13 +349,13 @@ public class SyncConfig {
             String urlFromFile = props.getProperty("sync.server.url");
             if (urlFromFile != null && !urlFromFile.isEmpty()) {
                 this.syncServerUrl = urlFromFile;
-                log.info("Loaded sync server URL from file: {}", syncServerUrl);
+                log.debug("Loaded sync server URL from file: {}", syncServerUrl);
             }
 
             String enabledFromFile = props.getProperty("sync.server.enabled");
             if (enabledFromFile != null) {
                 this.syncServerEnabled = Boolean.parseBoolean(enabledFromFile);
-                log.info("Loaded sync server enabled from file: {}", syncServerEnabled);
+                log.debug("Loaded sync server enabled from file: {}", syncServerEnabled);
             }
         } catch (Exception e) {
             log.warn("Could not load sync config from file: {}", e.getMessage());
@@ -385,7 +383,7 @@ public class SyncConfig {
 
         try (FileOutputStream fos = new FileOutputStream(SYNC_CONFIG_FILE)) {
             props.store(fos, "Sync server configuration - managed by application");
-            log.info("Saved sync server config to file: url={}, enabled={}", url, enabled);
+            log.info("sync.server.config.saved url={} enabled={}", url, enabled);
         } catch (Exception e) {
             log.error("Failed to persist sync configuration: {}", e.getMessage());
             throw new RuntimeException("Failed to persist sync configuration", e);

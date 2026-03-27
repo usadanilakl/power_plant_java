@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.hub;
 
 import com.dk_power.power_plant_java.config.HubSyncConfig;
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.entities.hub.HubClientInfo;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.hub.HubClientInfoRepository;
@@ -20,7 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -43,82 +49,60 @@ public class HubSyncService {
 
     private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
 
-    // -------------------------------------------------------------------
-    // Main sync exchange
-    // -------------------------------------------------------------------
-
-    /**
-     * Process incoming changes from a client and return sync response.
-     * This is the hub equivalent of sync-server's SyncService.syncExchange().
-     */
     @Transactional
     public SyncResponse syncExchange(String machineId, String machineName,
-                                      String ipAddress, Integer deviceNumber,
-                                      List<FieldChange> incomingChanges) {
-        log.info("Hub sync exchange from {} ({}): {} incoming changes",
-            machineName, machineId, incomingChanges != null ? incomingChanges.size() : 0);
+                                     String ipAddress, Integer deviceNumber,
+                                     List<FieldChange> incomingChanges) {
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openSyncScope("hub.syncExchange", syncConfig.getMachineId())) {
+            LoggingContext.setMachineId(machineId);
+            log.info("Hub sync exchange from {} ({}): {} incoming changes",
+                machineName, machineId, incomingChanges != null ? incomingChanges.size() : 0);
 
-        // Register/update client (captures device number from X-Device-Number header)
-        HubClientInfo client = registerClient(machineId, machineName, ipAddress, deviceNumber);
-        client.setStatus(HubClientInfo.ClientStatus.SYNCING);
-        hubClientInfoRepository.save(client);
+            HubClientInfo client = registerClient(machineId, machineName, ipAddress, deviceNumber);
+            client.setStatus(HubClientInfo.ClientStatus.SYNCING);
+            hubClientInfoRepository.save(client);
 
-        // Process incoming changes (dedup + LWW)
-        ProcessingResult result = processIncomingChangesBatched(incomingChanges, machineId);
+            ProcessingResult result = processIncomingChangesBatched(incomingChanges, machineId);
+            long pendingForClient = fieldChangeRepository.countPendingChangesFor(machineId);
 
-        // Count pending changes for this client
-        long pendingForClient = fieldChangeRepository.countPendingChangesFor(machineId);
+            client.recordSync(result.changesReceived, 0);
+            client.setStatus(HubClientInfo.ClientStatus.ONLINE);
+            hubClientInfoRepository.save(client);
 
-        // Update client stats
-        client.recordSync(result.changesReceived, 0);
-        client.setStatus(HubClientInfo.ClientStatus.ONLINE);
-        hubClientInfoRepository.save(client);
+            log.info("Hub sync complete for {}: received={}, skipped={}, pending={}, durationMs={}",
+                machineName, result.changesReceived, result.duplicatesSkipped, pendingForClient,
+                System.currentTimeMillis() - start);
 
-        log.info("Hub sync complete for {}: received={}, skipped={}, pending={}",
-            machineName, result.changesReceived, result.duplicatesSkipped, pendingForClient);
-
-        // Post-processing: apply to entities, broadcast, and dedup
-        if (!result.savedChanges.isEmpty()) {
-            // Apply to hub's own real entities
-            try {
-                int applied = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
-                log.debug("Applied {} changes to hub entities", applied);
-            } catch (Exception e) {
-                log.error("Failed to apply changes to hub entities, retrying: {}", e.getMessage());
+            if (!result.savedChanges.isEmpty()) {
                 try {
-                    int retried = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
-                    log.info("Retry succeeded: applied {} changes to hub entities", retried);
-                } catch (Exception retry) {
-                    log.error("Retry also failed — scheduling for periodic retry: {}", retry.getMessage());
-                    pendingEntityRetry.set(true);
+                    int applied = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
+                    log.debug("Applied {} changes to hub entities", applied);
+                } catch (Exception e) {
+                    log.error("Failed to apply changes to hub entities, retrying: {}", e.getMessage());
+                    try {
+                        int retried = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
+                        log.info("Retry succeeded: applied {} changes to hub entities", retried);
+                    } catch (Exception retry) {
+                        log.error("Retry also failed - scheduling for periodic retry: {}", retry.getMessage());
+                        pendingEntityRetry.set(true);
+                    }
                 }
+
+                broadcastChangesInBatches(result.savedChanges, machineId);
             }
 
-            // Broadcast to other connected clients via SSE (batched)
-            broadcastChangesInBatches(result.savedChanges, machineId);
-
-            // Dedup is handled by FieldSyncService afterCommit callback —
-            // no need to run again here (double-execution was causing excessive
-            // FieldChange generation and broadcaster spam).
+            return SyncResponse.builder()
+                .success(true)
+                .changesReceived(result.changesReceived)
+                .duplicatesSkipped(result.duplicatesSkipped)
+                .changesSent(0)
+                .changes(List.of())
+                .totalPending(pendingForClient)
+                .build();
         }
-
-        return SyncResponse.builder()
-            .success(true)
-            .changesReceived(result.changesReceived)
-            .duplicatesSkipped(result.duplicatesSkipped)
-            .changesSent(0)
-            .changes(List.of())
-            .totalPending(pendingForClient)
-            .build();
     }
 
-    // -------------------------------------------------------------------
-    // Pending changes for clients
-    // -------------------------------------------------------------------
-
-    /**
-     * Get paginated pending changes for a client and mark them as synced.
-     */
     @Transactional
     public Page<FieldChange> getPendingChangesPaginated(String machineId, Pageable pageable) {
         Page<FieldChange> page = fieldChangeRepository.findChangesNotSyncedTo(machineId, pageable);
@@ -134,16 +118,9 @@ public class HubSyncService {
         return page;
     }
 
-    /**
-     * Get count of pending changes for a client.
-     */
     public long getPendingChangeCount(String machineId) {
         return fieldChangeRepository.countPendingChangesFor(machineId);
     }
-
-    // -------------------------------------------------------------------
-    // Client management
-    // -------------------------------------------------------------------
 
     @Transactional
     public HubClientInfo registerClient(String machineId, String machineName, String ipAddress) {
@@ -152,7 +129,7 @@ public class HubSyncService {
 
     @Transactional
     public HubClientInfo registerClient(String machineId, String machineName,
-                                         String ipAddress, Integer deviceNumber) {
+                                        String ipAddress, Integer deviceNumber) {
         HubClientInfo client = hubClientInfoRepository.findById(machineId)
             .orElse(new HubClientInfo(machineId, machineName, ipAddress));
 
@@ -175,27 +152,35 @@ public class HubSyncService {
         return hubClientInfoRepository.findByLastSeenAfter(cutoff);
     }
 
-    // -------------------------------------------------------------------
-    // Scheduled tasks
-    // -------------------------------------------------------------------
-
     @Scheduled(fixedDelay = 30000)
     public void sendSseHeartbeat() {
-        hubSseService.sendHeartbeat();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.sendSseHeartbeat")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            hubSseService.sendHeartbeat();
+        }
     }
 
     @Scheduled(fixedDelay = 300000)
     public void markInactiveClients() {
-        Instant cutoff = Instant.now().minus(5, ChronoUnit.MINUTES);
-        List<HubClientInfo> onlineClients = hubClientInfoRepository
-            .findByStatus(HubClientInfo.ClientStatus.ONLINE);
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.markInactiveClients")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            Instant cutoff = Instant.now().minus(5, ChronoUnit.MINUTES);
+            List<HubClientInfo> onlineClients = hubClientInfoRepository
+                .findByStatus(HubClientInfo.ClientStatus.ONLINE);
 
-        for (HubClientInfo client : onlineClients) {
-            if (client.getLastSeen() != null && client.getLastSeen().isBefore(cutoff)) {
-                client.setStatus(HubClientInfo.ClientStatus.OFFLINE);
-                hubClientInfoRepository.save(client);
-                log.debug("Marked client {} as offline", client.getMachineName());
+            int markedOffline = 0;
+            for (HubClientInfo client : onlineClients) {
+                if (client.getLastSeen() != null && client.getLastSeen().isBefore(cutoff)) {
+                    client.setStatus(HubClientInfo.ClientStatus.OFFLINE);
+                    hubClientInfoRepository.save(client);
+                    markedOffline++;
+                    log.debug("Marked client {} as offline", client.getMachineName());
+                }
             }
+
+            log.info("hub.markInactiveClients.complete onlineChecked={} markedOffline={} durationMs={}",
+                onlineClients.size(), markedOffline, System.currentTimeMillis() - start);
         }
     }
 
@@ -203,37 +188,41 @@ public class HubSyncService {
     public void retryPendingEntityApplication() {
         if (!pendingEntityRetry.compareAndSet(true, false)) return;
 
-        log.info("Retrying pending hub entity application...");
-        List<FieldChange> unapplied = fieldChangeRepository.findRecentIncomingChanges(
-            syncConfig.getMachineId(), Instant.now().minus(1, ChronoUnit.HOURS));
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.retryPendingEntityApplication")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            log.info("Retrying pending hub entity application...");
+            List<FieldChange> unapplied = fieldChangeRepository.findRecentIncomingChanges(
+                syncConfig.getMachineId(), Instant.now().minus(1, ChronoUnit.HOURS));
 
-        if (unapplied.isEmpty()) {
-            log.info("No unapplied changes found for retry");
-            return;
-        }
+            if (unapplied.isEmpty()) {
+                log.info("No unapplied changes found for retry");
+                return;
+            }
 
-        try {
-            int applied = fieldSyncService.applyIncomingChanges(unapplied, true);
-            log.info("Periodic retry: applied {} changes to hub entities", applied);
-        } catch (Exception e) {
-            log.error("Periodic retry failed — will retry next cycle: {}", e.getMessage());
-            pendingEntityRetry.set(true);
+            try {
+                int applied = fieldSyncService.applyIncomingChanges(unapplied, true);
+                log.info("Periodic retry: applied {} changes to hub entities in {} ms",
+                    applied, System.currentTimeMillis() - start);
+            } catch (Exception e) {
+                log.error("Periodic retry failed - will retry next cycle: {}", e.getMessage());
+                pendingEntityRetry.set(true);
+            }
         }
     }
 
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void cleanupOldChanges() {
-        Instant cutoff = Instant.now().minus(hubSyncConfig.getRetentionDays(), ChronoUnit.DAYS);
-        int deleted = fieldChangeRepository.deleteChangesBefore(cutoff);
-        if (deleted > 0) {
-            log.info("Cleaned up {} field changes older than {} days", deleted, hubSyncConfig.getRetentionDays());
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.cleanupOldChanges")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            Instant cutoff = Instant.now().minus(hubSyncConfig.getRetentionDays(), ChronoUnit.DAYS);
+            int deleted = fieldChangeRepository.deleteChangesBefore(cutoff);
+            log.info("hub.cleanupOldChanges.complete deleted={} retentionDays={} durationMs={}",
+                deleted, hubSyncConfig.getRetentionDays(), System.currentTimeMillis() - start);
         }
     }
-
-    // -------------------------------------------------------------------
-    // Internal processing
-    // -------------------------------------------------------------------
 
     private ProcessingResult processIncomingChangesBatched(List<FieldChange> incomingChanges, String machineId) {
         ProcessingResult result = new ProcessingResult();
@@ -242,14 +231,11 @@ public class HubSyncService {
             return result;
         }
 
-        // Optional compaction
         List<FieldChange> changesToProcess = hubSyncConfig.isCompactionEnabled()
             ? compactChanges(incomingChanges)
             : incomingChanges;
 
         String hubMachineId = syncConfig.getMachineId();
-
-        // Group by entity type for batch processing
         Map<String, List<FieldChange>> changesByType = changesToProcess.stream()
             .collect(Collectors.groupingBy(FieldChange::getEntityType));
 
@@ -262,18 +248,17 @@ public class HubSyncService {
                 .distinct()
                 .collect(Collectors.toList());
 
-            // Batch dedup check
             Set<String> existingKeys = new HashSet<>(
                 fieldChangeRepository.findExistingChangeKeys(entityType, entityIds));
 
-            // Batch LWW check
             Map<String, FieldChange> latestChanges = fieldChangeRepository
                 .findLatestChangesForEntities(entityType, entityIds)
                 .stream()
                 .collect(Collectors.toMap(
                     fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
                     fc -> fc,
-                    (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b
+                    (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b,
+                    LinkedHashMap::new
                 ));
 
             for (FieldChange change : typeChanges) {
@@ -285,10 +270,6 @@ public class HubSyncService {
                 }
 
                 if (shouldAcceptChange(change, latestChanges)) {
-                    // Create a NEW entity to avoid Hibernate persistence context conflicts.
-                    // The incoming 'change' may share a UUID with a managed entity loaded by
-                    // findLatestChangesForEntities(), and mutating its ID (setId(null)) would
-                    // cause "identifier was altered" errors at commit time.
                     FieldChange newChange = new FieldChange();
                     newChange.setEntityType(change.getEntityType());
                     newChange.setEntityId(change.getEntityId());
@@ -301,8 +282,8 @@ public class HubSyncService {
                     newChange.setChangeType(change.getChangeType());
                     newChange.setRelationshipType(change.getRelationshipType());
                     newChange.setReceivedAt(Instant.now());
-                    newChange.addSyncedMachine(machineId);    // Mark as synced to origin client
-                    newChange.addSyncedMachine(hubMachineId);  // Mark as synced to hub itself
+                    newChange.addSyncedMachine(machineId);
+                    newChange.addSyncedMachine(hubMachineId);
                     FieldChange saved = fieldChangeRepository.save(newChange);
                     result.savedChanges.add(saved);
                     result.changesReceived++;
@@ -319,7 +300,7 @@ public class HubSyncService {
 
     private String buildChangeKey(FieldChange change) {
         return change.getEntityType() + ":" + change.getEntityId() + ":" +
-               change.getFieldName() + ":" + change.getTimestamp() + ":" + change.getOriginMachineId();
+            change.getFieldName() + ":" + change.getTimestamp() + ":" + change.getOriginMachineId();
     }
 
     private boolean shouldAcceptChange(FieldChange incoming, Map<String, FieldChange> latestChanges) {
@@ -334,7 +315,6 @@ public class HubSyncService {
             return true;
         }
 
-        // Same timestamp — machine ID tiebreaker
         if (incoming.getTimestamp().equals(latest.getTimestamp())) {
             return incoming.getOriginMachineId().compareTo(latest.getOriginMachineId()) > 0;
         }
@@ -371,10 +351,6 @@ public class HubSyncService {
             hubSseService.broadcastChanges(batch, originMachineId);
         }
     }
-
-    // -------------------------------------------------------------------
-    // DTOs
-    // -------------------------------------------------------------------
 
     private static class ProcessingResult {
         int changesReceived = 0;

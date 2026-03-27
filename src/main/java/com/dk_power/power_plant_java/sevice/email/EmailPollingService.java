@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.email;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.dto.email.GraphEmailMessage;
 import com.dk_power.power_plant_java.dto.pwa.PwaJhaDto;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
@@ -65,7 +66,9 @@ public class EmailPollingService {
     @Scheduled(fixedDelayString = "${email.poll.interval:600000}") // 10 minutes default
     public void pollForNewResponses() {
         if (!syncConfig.isHubMode()) return;
-        try {
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("email.pollForNewResponses")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             log.info("[EmailPoll] Checking for emails since {}", lastPollTime);
 
             List<GraphEmailMessage> newMessages =
@@ -78,6 +81,8 @@ public class EmailPollingService {
             }
 
             lastPollTime = LocalDateTime.now();
+            log.info("email.poll.complete messageCount={} durationMs={}",
+                newMessages.size(), System.currentTimeMillis() - start);
 
         } catch (Exception e) {
             log.error("[EmailPoll] Error during polling", e);
@@ -304,39 +309,41 @@ public class EmailPollingService {
      */
     @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)  // every 5 min
     public void retryUnlinkedEmails() {
-        List<EmailCorrespondence> unlinked = correspondenceRepo.findByEntityIdIsNull();
-        if (unlinked.isEmpty()) return;
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("email.retryUnlinkedEmails")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            List<EmailCorrespondence> unlinked = correspondenceRepo.findByEntityIdIsNull();
+            if (unlinked.isEmpty()) return;
 
-        log.info("[EmailPoll] Retrying {} unlinked emails", unlinked.size());
-        int matched = 0;
+            log.info("[EmailPoll] Retrying {} unlinked emails", unlinked.size());
+            int matched = 0;
 
-        for (EmailCorrespondence email : unlinked) {
-            // Build a lightweight GraphEmailMessage for the matcher
-            GraphEmailMessage msg = new GraphEmailMessage();
-            msg.setSubject(email.getSubject());
-            msg.setInternetMessageId(email.getInternetMessageId());
-            msg.setConversationId(email.getConversationId());
-            msg.setId(email.getGraphMessageId());
-            msg.setSenderEmail(email.getSender());
+            for (EmailCorrespondence email : unlinked) {
+                GraphEmailMessage msg = new GraphEmailMessage();
+                msg.setSubject(email.getSubject());
+                msg.setInternetMessageId(email.getInternetMessageId());
+                msg.setConversationId(email.getConversationId());
+                msg.setId(email.getGraphMessageId());
+                msg.setSenderEmail(email.getSender());
 
-            Optional<EmailResponseMatcherService.CorrespondenceMatch> matchResult =
-                matcherService.matchEmailToEntity(msg);
+                Optional<EmailResponseMatcherService.CorrespondenceMatch> matchResult =
+                    matcherService.matchEmailToEntity(msg);
 
-            if (matchResult.isPresent()) {
-                EmailResponseMatcherService.CorrespondenceMatch match = matchResult.get();
-                email.setEntityType(match.getEntityType());
-                email.setEntityId(match.getEntityId());
-                email.setLinkedSharepointId(match.getSharepointId());
-                email.setNeedsAttention(false);
-                correspondenceRepo.save(email);
-                matched++;
-                log.info("[EmailPoll] Retry matched email to {} #{} (SP:{}) - Subject: {}",
-                    match.getEntityType(), match.getEntityId(), match.getSharepointId(), email.getSubject());
+                if (matchResult.isPresent()) {
+                    EmailResponseMatcherService.CorrespondenceMatch match = matchResult.get();
+                    email.setEntityType(match.getEntityType());
+                    email.setEntityId(match.getEntityId());
+                    email.setLinkedSharepointId(match.getSharepointId());
+                    email.setNeedsAttention(false);
+                    correspondenceRepo.save(email);
+                    matched++;
+                    log.info("[EmailPoll] Retry matched email to {} #{} (SP:{}) - Subject: {}",
+                        match.getEntityType(), match.getEntityId(), match.getSharepointId(), email.getSubject());
+                }
             }
-        }
 
-        if (matched > 0) {
-            log.info("[EmailPoll] Retry matched {} of {} unlinked emails", matched, unlinked.size());
+            log.info("email.retry_unlinked.complete total={} matched={} durationMs={}",
+                unlinked.size(), matched, System.currentTimeMillis() - start);
         }
     }
 
@@ -348,7 +355,9 @@ public class EmailPollingService {
     @Scheduled(fixedDelay = 600_000, initialDelay = 180_000)  // every 10 min, 3 min initial delay
     @SuppressWarnings("unchecked")
     public void healOrphanedCorrespondence() {
-        try {
+        long start = System.currentTimeMillis();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("email.healOrphanedCorrespondence")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
             // Find correspondence with linkedSharepointId where entityId points to a deleted WR
             List<Object[]> orphaned = entityManager.createNativeQuery(
                 "SELECT ec.id, ec.linked_sharepoint_id FROM email_correspondence ec " +
@@ -390,6 +399,8 @@ public class EmailPollingService {
             if (healed > 0) {
                 log.info("[EmailPoll] Healed {} of {} orphaned correspondence", healed, orphaned.size());
             }
+            log.info("email.heal_orphaned.complete orphaned={} healed={} durationMs={}",
+                orphaned.size(), healed, System.currentTimeMillis() - start);
         } catch (Exception e) {
             log.warn("[EmailPoll] Error during orphaned correspondence healing: {}", e.getMessage());
         }
@@ -400,7 +411,10 @@ public class EmailPollingService {
      * Can be called via REST endpoint.
      */
     public void triggerManualPoll() {
-        log.info("[EmailPoll] Manual poll triggered");
-        pollForNewResponses();
+        try (LoggingContext.Scope ignored = LoggingContext.openJobScope("email.triggerManualPoll")) {
+            LoggingContext.setMachineId(syncConfig.getMachineId());
+            log.info("[EmailPoll] Manual poll triggered");
+            pollForNewResponses();
+        }
     }
 }

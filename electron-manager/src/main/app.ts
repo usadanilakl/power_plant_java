@@ -133,14 +133,22 @@ export default class App {
     App.ipcHandlers.getElectronUpdateManager().cleanupStaging();
 
     // Startup assessment (before Spring Boot — assess what's needed, don't auto-download)
-    await App.startupAssessment();
+    const assessment = await App.startupAssessment();
 
     // Clear Chromium HTTP cache so stale Angular assets from previous JAR aren't served
     await session.defaultSession.clearCache();
 
-    // Auto-start Spring Boot if JAR exists
+    // If a JAR update is available, prompt user before starting
     const workingDir = getWorkingDir();
     const jarPath = path.join(workingDir, DEFAULT_SPRING_BOOT_CONFIG.jar);
+    if (assessment?.jar.updateAvailable && fs.existsSync(jarPath)) {
+      const shouldUpdate = await App.promptForJarUpdate(assessment);
+      if (shouldUpdate) {
+        await App.downloadJarUpdate();
+      }
+    }
+
+    // Auto-start Spring Boot if JAR exists
     if (fs.existsSync(jarPath)) {
       await App.autoStart();
     } else {
@@ -362,6 +370,54 @@ export default class App {
     }
   }
 
+  /** Prompt user to update JAR before starting the app */
+  private static async promptForJarUpdate(assessment: StartupAssessment): Promise<boolean> {
+    const info = assessment.jar.updateInfo;
+    const detail = info
+      ? `A new version is available on the server (${(info.fileSize / 1024 / 1024).toFixed(1)} MB).`
+      : 'A new version is available on the server.';
+
+    const { response } = await dialog.showMessageBox(App.mainWindow!, {
+      type: 'info',
+      title: 'Application Update Available',
+      message: 'An update is available for the application.',
+      detail,
+      buttons: ['Update App', 'Continue Without Update'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    return response === 0;
+  }
+
+  /** Download JAR update with progress logged to console */
+  private static async downloadJarUpdate(): Promise<void> {
+    const updateMgr = App.ipcHandlers.getUpdateManager();
+    const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
+    const serverUrl = deviceMgr.getConfig()?.syncServerUrl || DEFAULT_SYNC_SERVER.url;
+
+    console.log('Downloading JAR update...');
+    App.sendToRenderer(events.IPC_UPDATE_PROGRESS, { phase: 'downloading', percent: 0 });
+
+    const result = await updateMgr.downloadUpdate(serverUrl, (progress) => {
+      if (progress.percent !== undefined) {
+        console.log(`JAR update: ${progress.phase} ${progress.percent}%`);
+      }
+      App.sendToRenderer(events.IPC_UPDATE_PROGRESS, progress);
+    });
+
+    if (result.success) {
+      console.log('JAR update downloaded and applied successfully');
+    } else {
+      console.error('JAR update failed:', result.error);
+      dialog.showMessageBox(App.mainWindow!, {
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to download the update.',
+        detail: result.error || 'Unknown error. The app will start with the current version.'
+      });
+    }
+  }
+
   private static checkDeviceSetup(): void {
     const deviceMgr = App.ipcHandlers.getSpringBootManager().getDeviceConfigManager();
     if (!deviceMgr.isConfigured()) {
@@ -381,7 +437,7 @@ export default class App {
    * Startup assessment — checks server reachability, assesses what's needed,
    * and sends findings to renderer. Does NOT auto-download anything.
    */
-  private static async startupAssessment(): Promise<void> {
+  private static async startupAssessment(): Promise<StartupAssessment | null> {
     // ensureWorkingDir + provisionDefaultConfigs already called in onReady before IpcHandlers
     ensureTessdata();
     const workingDir = getWorkingDir();
@@ -396,12 +452,14 @@ export default class App {
     // 1. Check server reachability
     const reachable = await App.checkServerReachable(serverUrl);
 
+    let assessment: StartupAssessment;
+
     if (!reachable) {
       console.log('Sync server unreachable — sending status to renderer');
       App.sendToRenderer(events.IPC_STARTUP_SERVER_STATUS, { reachable: false });
 
       // Build partial assessment (local checks only)
-      const assessment = App.buildLocalAssessment(deviceConfig, serverUrl);
+      assessment = App.buildLocalAssessment(deviceConfig, serverUrl);
       App.ipcHandlers.setLastAssessment(assessment);
       App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
 
@@ -410,12 +468,13 @@ export default class App {
     } else {
       // Server is reachable — run full assessment
       App.sendToRenderer(events.IPC_STARTUP_SERVER_STATUS, { reachable: true });
-      const assessment = await App.performFullAssessment(deviceConfig, serverUrl);
+      assessment = await App.performFullAssessment(deviceConfig, serverUrl);
       App.ipcHandlers.setLastAssessment(assessment);
       App.sendToRenderer(events.IPC_STARTUP_ASSESSMENT, assessment);
     }
 
     console.log('=== Startup assessment complete ===');
+    return assessment;
   }
 
   /** Build assessment with local checks only (server unreachable) */

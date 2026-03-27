@@ -101,6 +101,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/log',
         requiresFullAccess: true,
         items: [
+            { route: '/log/diagnostics', label: 'Diagnostics', icon: 'monitoring' },
             { route: '/log/table', label: 'System Log', icon: 'list_alt' },
             { route: '/log/correspondence', label: 'Correspondence', icon: 'mail' },
             { route: '/log/messaging', label: 'Messages', icon: 'chat' },

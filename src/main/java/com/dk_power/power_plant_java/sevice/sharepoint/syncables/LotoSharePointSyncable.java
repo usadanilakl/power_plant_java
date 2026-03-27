@@ -96,23 +96,23 @@ public class LotoSharePointSyncable implements SharePointSyncable<LotoDto> {
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[LOTO Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[LOTO Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[LOTO Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[LOTO Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[LOTO Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[LOTO Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         lotoRepo.save(existing);
         result.incrementUpdated();
-        log.info("[LOTO Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[LOTO Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

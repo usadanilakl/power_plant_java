@@ -120,23 +120,23 @@ public class ExcavationPermitSharePointSyncable implements SharePointSyncable<Ex
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[EXC Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+        log.debug("[EXC Syncable] spId={} has {} changed SP columns: {}, spModified={}",
             spId, spChangedColumns.size(), spChangedColumns, spModified);
 
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.info("[EXC Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[EXC Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[EXC Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        log.debug("[EXC Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
         applySelectiveFields(existing, remote, fieldsToApply);
 
         excRepo.save(existing);
         result.incrementUpdated();
-        log.info("[EXC Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+        log.debug("[EXC Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
         return EntitySyncOutcome.UPDATED;

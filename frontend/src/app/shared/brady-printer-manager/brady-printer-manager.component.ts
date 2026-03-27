@@ -5,6 +5,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { BradySdkService } from './brady-sdk.service';
 import { BradyPrinterModalService } from './brady-printer-modal.service';
 import { PopupProjectionComponent } from "../popup-projection/popup-projection.component";
+import { RfLotoPointApiService } from '../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { LotoPointCounterpartService, SyncableField } from '../../features/loto-points/refactored/services/loto-point-counterpart.service';
+import { LotoPointDto } from '../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-brady-printer-manager',
@@ -18,6 +21,8 @@ export class BradyPrinterManagerComponent {
 
   bradyPrinterModalService = inject(BradyPrinterModalService);
   private readonly bradySdkService = inject(BradySdkService);
+  private readonly lotoPointApi = inject(RfLotoPointApiService);
+  private readonly counterpartService = inject(LotoPointCounterpartService);
 
   state = toSignal(this.bradySdkService.state$);
   withQr = signal(false);
@@ -25,6 +30,12 @@ export class BradyPrinterManagerComponent {
   line1 = '';
   line2 = '';
   printStatus = '';
+
+  // Save-back state
+  syncCounterpart = signal(false);
+  saveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  private originalLine1 = '';
+  private originalLine2 = '';
 
   // Computed to check if we're in queue mode
   isQueueMode = computed(() => this.bradyPrinterModalService.printQueue().length > 0);
@@ -50,9 +61,12 @@ export class BradyPrinterManagerComponent {
           if (labelData) {
             this.line1 = labelData.line1;
             this.line2 = labelData.line2;
+            this.originalLine1 = labelData.line1;
+            this.originalLine2 = labelData.line2;
             if (labelData.withQr !== undefined) {
               this.withQr.set(labelData.withQr);
             }
+            this.saveStatus.set('idle');
           }
         }
 
@@ -90,7 +104,10 @@ export class BradyPrinterManagerComponent {
     if (item) {
       this.line1 = item.line1;
       this.line2 = item.line2;
+      this.originalLine1 = item.line1;
+      this.originalLine2 = item.line2;
       this.withQr.set(item.withQr ?? true);
+      this.saveStatus.set('idle');
     }
   }
 
@@ -257,5 +274,119 @@ export class BradyPrinterManagerComponent {
    */
   getTotalCount(): number {
     return this.bradyPrinterModalService.printQueue().length;
+  }
+
+  /**
+   * Gets the current source LOTO point (from queue item or single label data).
+   */
+  getCurrentSourceLotoPoint(): LotoPointDto | undefined {
+    if (this.isQueueMode()) {
+      return this.bradyPrinterModalService.getCurrentItem()?.sourceLotoPoint;
+    }
+    return this.bradyPrinterModalService.labelData()?.sourceLotoPoint;
+  }
+
+  /**
+   * Checks if the current item has a counterpart.
+   */
+  hasCounterpart(): boolean {
+    const source = this.getCurrentSourceLotoPoint();
+    return !!source?.counterpartId;
+  }
+
+  /**
+   * Saves changed fields back to the source LOTO point on blur.
+   */
+  onFieldBlur(field: 'line1' | 'line2'): void {
+    const currentValue = field === 'line1' ? this.line1 : this.line2;
+    const originalValue = field === 'line1' ? this.originalLine1 : this.originalLine2;
+
+    if (currentValue === originalValue) return;
+
+    const source = this.getCurrentSourceLotoPoint();
+    if (!source?.id) return;
+
+    // Update the in-memory DTO
+    const updatedDto = new LotoPointDto({
+      ...source,
+      tagNumber: field === 'line1' ? this.line1 : source.tagNumber,
+      description: field === 'line2' ? this.line2 : source.description,
+    });
+
+    // Update queue item's source reference in memory
+    this.updateCurrentSourceLotoPoint(updatedDto);
+
+    // Update original values
+    if (field === 'line1') this.originalLine1 = this.line1;
+    if (field === 'line2') this.originalLine2 = this.line2;
+
+    // Save to backend
+    this.saveStatus.set('saving');
+    const changedField: SyncableField = field === 'line1' ? 'tagNumber' : 'description';
+
+    this.lotoPointApi.saveLotoPoint(updatedDto).subscribe({
+      next: () => {
+        this.saveStatus.set('saved');
+        setTimeout(() => {
+          if (this.saveStatus() === 'saved') this.saveStatus.set('idle');
+        }, 2000);
+
+        // Sync counterpart if enabled
+        if (this.syncCounterpart() && source.counterpartId) {
+          this.saveCounterpart(updatedDto, [changedField]);
+        }
+      },
+      error: () => {
+        this.saveStatus.set('error');
+        setTimeout(() => {
+          if (this.saveStatus() === 'error') this.saveStatus.set('idle');
+        }, 3000);
+      }
+    });
+  }
+
+  /**
+   * Updates the source LOTO point reference on the current queue item or label data.
+   */
+  private updateCurrentSourceLotoPoint(updated: LotoPointDto): void {
+    if (this.isQueueMode()) {
+      const queue = this.bradyPrinterModalService.printQueue();
+      const index = this.bradyPrinterModalService.currentIndex();
+      const updatedQueue = queue.map((item, i) =>
+        i === index ? { ...item, line1: this.line1, line2: this.line2, sourceLotoPoint: updated } : item
+      );
+      this.bradyPrinterModalService.printQueue.set(updatedQueue);
+    } else {
+      const labelData = this.bradyPrinterModalService.labelData();
+      if (labelData) {
+        this.bradyPrinterModalService.labelData.set({
+          ...labelData,
+          line1: this.line1,
+          line2: this.line2,
+          sourceLotoPoint: updated,
+        });
+      }
+    }
+  }
+
+  /**
+   * Fetches and saves the counterpart with transformed field values.
+   */
+  private saveCounterpart(source: LotoPointDto, changedFields: SyncableField[]): void {
+    if (!source.counterpartId) return;
+
+    this.lotoPointApi.getCounterpartById(source.counterpartId).subscribe({
+      next: (response) => {
+        if (!response.responseData) return;
+        let counterpart = LotoPointDto.fromJson(response.responseData);
+        const sourceUnit = this.counterpartService.getSourceUnit(source);
+        const targetUnit = this.counterpartService.getTargetUnit(sourceUnit);
+
+        for (const field of changedFields) {
+          counterpart = this.counterpartService.syncField(source, counterpart, field, sourceUnit, targetUnit);
+        }
+        this.lotoPointApi.saveLotoPoint(counterpart).subscribe();
+      }
+    });
   }
 }

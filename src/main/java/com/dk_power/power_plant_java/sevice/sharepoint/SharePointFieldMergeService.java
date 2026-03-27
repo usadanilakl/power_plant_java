@@ -91,7 +91,7 @@ public class SharePointFieldMergeService {
                 // SP changed from snapshot diff, so applying is safe.
                 spWins.add(entityField);
                 if (spModifiedTime == null && entityId != null) {
-                    log.info("[SP Field Merge] SP wins {}.{} (spModifiedTime is null, accepting SP change)",
+                    log.debug("[SP Field Merge] SP wins {}.{} (spModifiedTime is null, accepting SP change)",
                         entityType, entityField);
                 }
                 continue;
@@ -104,7 +104,7 @@ public class SharePointFieldMergeService {
             if (latestLocal.isEmpty() || latestLocal.get().getTimestamp().isBefore(spModifiedTime)) {
                 spWins.add(entityField); // No local change or SP is newer
             } else {
-                log.info("[SP Field Merge] Local wins for {}.{} id={} (localChange={}, spModified={})",
+                log.debug("[SP Field Merge] Local wins for {}.{} id={} (localChange={}, spModified={})",
                     entityType, entityField, entityId,
                     latestLocal.get().getTimestamp(), spModifiedTime);
             }

@@ -244,6 +244,30 @@ export class EngraverModalService {
     }
   }
 
+  /**
+   * Updates a single field on an item in allItems. Batches auto-recreate via effect.
+   */
+  updateItemField(itemId: number, field: string, value: string): void {
+    const items = this.allItems();
+    const updated = items.map(item => {
+      if (item.id !== itemId) return item;
+      return new LotoPointDto({ ...item, [field]: value });
+    });
+    this.allItems.set(updated);
+  }
+
+  /**
+   * Updates characteristicsJson on an item. Batches auto-recreate via effect.
+   */
+  updateItemCharacteristicsJson(itemId: number, json: string): void {
+    const items = this.allItems();
+    const updated = items.map(item => {
+      if (item.id !== itemId) return item;
+      return new LotoPointDto({ ...item, characteristicsJson: json });
+    });
+    this.allItems.set(updated);
+  }
+
   parseCharacteristics(json: string | null): LotoPointCharacteristic[] {
     if (!json || json.trim() === '') return [];
     try {

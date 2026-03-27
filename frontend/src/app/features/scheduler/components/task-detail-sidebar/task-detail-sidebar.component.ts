@@ -8,14 +8,14 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="sidebar" *ngIf="task">
-      <div class="sidebar-header">
+    <div class="sidebar" [class.open]="task">
+      <div class="sidebar-header" *ngIf="task">
         <h3>{{ task.name || 'Unnamed' }}</h3>
         <span class="status-badge" [class]="'status-' + computedStatus">{{ computedStatus }}</span>
         <button class="close-btn" (click)="closed.emit()">x</button>
       </div>
 
-      <div class="sidebar-body">
+      <div class="sidebar-body" *ngIf="task">
         <section>
           <label>Name</label>
           <input [(ngModel)]="task.name" (blur)="taskUpdated.emit(task)" />
@@ -88,6 +88,42 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
           </ul>
         </section>
 
+        <!-- Attachments -->
+        <section>
+          <label>Attachments ({{ task.attachments.length }})</label>
+          <ul class="item-list" *ngIf="task.attachments.length > 0">
+            <li *ngFor="let att of task.attachments">
+              <span class="dot dot-file"></span>
+              <a class="file-link" [href]="'/' + att.fileLink" target="_blank">{{ att.name }}</a>
+              <button class="remove-btn" (click)="onRemoveAttachment(att.id)">x</button>
+            </li>
+          </ul>
+          <div class="file-upload">
+            <input type="file" #fileInput (change)="onFileSelected($event)" style="display:none" multiple />
+            <button class="btn btn-small btn-add" (click)="fileInput.click()">+ Attach file</button>
+          </div>
+        </section>
+
+        <!-- References -->
+        <section>
+          <label>References ({{ task.references.length }})</label>
+          <ul class="item-list" *ngIf="task.references.length > 0">
+            <li *ngFor="let ref of task.references">
+              <span class="dot" [class]="'dot-' + ref.referenceType.toLowerCase()"></span>
+              <span class="ref-label">{{ ref.referenceType }} #{{ ref.referenceId }}</span>
+              <button class="remove-btn" (click)="onRemoveReference(ref.id)">x</button>
+            </li>
+          </ul>
+          <div class="add-ref-row">
+            <select [(ngModel)]="newRefType" class="ref-select">
+              <option value="" disabled>Type...</option>
+              <option *ngFor="let t of referenceTypes" [value]="t">{{ t }}</option>
+            </select>
+            <input type="number" [(ngModel)]="newRefId" placeholder="ID" class="ref-id-input" />
+            <button class="add-btn" [disabled]="!newRefType || !newRefId" (click)="onAddReference()">+</button>
+          </div>
+        </section>
+
         <!-- Notes -->
         <section>
           <label>Notes</label>
@@ -110,14 +146,23 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
           </button>
           <button class="btn btn-delete" (click)="taskDeleted.emit(task)">Delete</button>
         </section>
+
+        <!-- Save as template (only for TASK level) -->
+        <section *ngIf="task.taskLevel === 'TASK' && !isDrilledView">
+          <button class="btn btn-template-save" (click)="onSaveAsTemplate()">Save as Template</button>
+        </section>
       </div>
     </div>
   `,
   styles: [`
+    :host { display: block; height: 100%; }
     .sidebar {
-      width: 320px; height: 100%; background: #1e1e2e;
+      width: 0; height: 100%; background: #1e1e2e;
       border-left: 1px solid #333; display: flex; flex-direction: column;
-      overflow-y: auto; color: #cdd6f4;
+      overflow: hidden; color: #cdd6f4; transition: width 0.15s ease;
+    }
+    .sidebar.open {
+      width: 320px; overflow-y: auto;
     }
     .sidebar-header {
       display: flex; align-items: center; gap: 8px;
@@ -173,6 +218,19 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
       border-radius: 4px; cursor: pointer; font-size: 14px;
     }
     .add-btn:disabled { opacity: 0.4; cursor: default; }
+    .dot-file { background: #a78bfa; }
+    .file-link { color: #93c5fd; text-decoration: none; font-size: 12px; }
+    .file-link:hover { text-decoration: underline; }
+    .file-upload { margin-top: 6px; }
+    .dot-equipment { background: #f59e0b; }
+    .dot-user { background: #8b5cf6; }
+    .dot-dailypermitpackage, .dot-safework, .dot-hotwork, .dot-confinedspace { background: #ec4899; }
+    .dot-lotopoint { background: #14b8a6; }
+    .dot-value { background: #6366f1; }
+    .ref-label { font-size: 12px; flex: 1; }
+    .add-ref-row { display: flex; gap: 4px; margin-top: 6px; }
+    .ref-select { flex: 1; min-width: 0; }
+    .ref-id-input { width: 60px; flex: 0 0 60px; }
     .step-actions { display: flex; gap: 6px; margin-top: 6px; }
     .btn-small { padding: 4px 10px; font-size: 11px; }
     .btn-add { background: #22c55e; color: #fff; }
@@ -186,6 +244,11 @@ import {SchedulerTaskDto} from '../../../../models/scheduler/scheduler-task.mode
     .btn-progress { background: #eab308; color: #000; }
     .btn-skip { background: #6b7280; color: #fff; }
     .btn-delete { background: #ef4444; color: #fff; }
+    .btn-template-save {
+      width: 100%; background: #6366f1; color: #fff; border: none;
+      padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    .btn-template-save:hover { background: #4f46e5; }
   `]
 })
 export class TaskDetailSidebarComponent {
@@ -199,8 +262,16 @@ export class TaskDetailSidebarComponent {
   @Output() prerequisitesChanged = new EventEmitter<{taskId: number, prerequisiteIds: number[]}>();
   @Output() addStep = new EventEmitter<SchedulerTaskDto>();
   @Output() drillInto = new EventEmitter<SchedulerTaskDto>();
+  @Output() fileUploaded = new EventEmitter<{taskId: number, file: File}>();
+  @Output() attachmentRemoved = new EventEmitter<{taskId: number, fileId: number}>();
+  @Output() referenceAdded = new EventEmitter<{taskId: number, referenceType: string, referenceId: number}>();
+  @Output() referenceRemoved = new EventEmitter<{taskId: number, refId: number}>();
+  @Output() saveAsTemplate = new EventEmitter<SchedulerTaskDto>();
 
   newPrereqId: number | null = null;
+  newRefType = '';
+  newRefId: number | null = null;
+  referenceTypes = ['Equipment', 'User', 'DailyPermitPackage', 'SafeWork', 'HotWork', 'ConfinedSpace', 'LotoPoint', 'Value'];
 
   get computedStatus(): string {
     if (!this.task) return 'not started';
@@ -237,5 +308,36 @@ export class TaskDetailSidebarComponent {
     if (!this.task) return;
     const updated = this.task.prerequisiteIds.filter(id => id !== prereqId);
     this.prerequisitesChanged.emit({taskId: this.task.id, prerequisiteIds: updated});
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !this.task) return;
+    for (let i = 0; i < input.files.length; i++) {
+      this.fileUploaded.emit({taskId: this.task.id, file: input.files[i]});
+    }
+    input.value = '';
+  }
+
+  onRemoveAttachment(fileId: number): void {
+    if (!this.task) return;
+    this.attachmentRemoved.emit({taskId: this.task.id, fileId});
+  }
+
+  onAddReference(): void {
+    if (!this.task || !this.newRefType || !this.newRefId) return;
+    this.referenceAdded.emit({taskId: this.task.id, referenceType: this.newRefType, referenceId: this.newRefId});
+    this.newRefType = '';
+    this.newRefId = null;
+  }
+
+  onRemoveReference(refId: number): void {
+    if (!this.task) return;
+    this.referenceRemoved.emit({taskId: this.task.id, refId});
+  }
+
+  onSaveAsTemplate(): void {
+    if (!this.task) return;
+    this.saveAsTemplate.emit(this.task);
   }
 }

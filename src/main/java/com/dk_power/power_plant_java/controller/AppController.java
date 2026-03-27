@@ -13,9 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AppController {
     private final AppControlService appControllerService;
     @GetMapping("/stop")
-    public void stopApp(){
+    public ResponseEntity<String> stopApp(){
         System.out.println("Stopping the application... \n");
-        appControllerService.stopApp();
+        new Thread(() -> {
+            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+            System.exit(1);
+        }).start();
+        return ResponseEntity.ok("stopping");
     }
     @GetMapping("/ping")
     public ResponseEntity<String> pingApp(){

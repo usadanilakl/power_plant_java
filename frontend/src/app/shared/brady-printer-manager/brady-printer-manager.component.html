@@ -100,12 +100,31 @@
 
           <div class="form-group">
             <label for="line1">Line 1 (Tag Number):</label>
-            <input id="line1" type="text" [(ngModel)]="line1" (input)="updatePreview()" placeholder="e.g., V-1234" />
+            <input id="line1" type="text" [(ngModel)]="line1" (input)="updatePreview()" (blur)="onFieldBlur('line1')" placeholder="e.g., V-1234" />
           </div>
           <div class="form-group">
             <label for="line2">Line 2 (Description):</label>
-            <input id="line2" type="text" [(ngModel)]="line2" (input)="updatePreview()" placeholder="e.g., Main Steam Valve" />
+            <input id="line2" type="text" [(ngModel)]="line2" (input)="updatePreview()" (blur)="onFieldBlur('line2')" placeholder="e.g., Main Steam Valve" />
           </div>
+
+          <!-- Save status & counterpart toggle -->
+          @if (getCurrentSourceLotoPoint()) {
+            <div class="save-options-row">
+              @if (saveStatus() === 'saving') {
+                <span class="save-status saving">Saving...</span>
+              } @else if (saveStatus() === 'saved') {
+                <span class="save-status saved">Saved</span>
+              } @else if (saveStatus() === 'error') {
+                <span class="save-status error">Save failed</span>
+              }
+              @if (hasCounterpart()) {
+                <label class="counterpart-toggle">
+                  <input type="checkbox" [checked]="syncCounterpart()" (change)="syncCounterpart.set(!syncCounterpart())" />
+                  Sync Counterpart
+                </label>
+              }
+            </div>
+          }
 
           <div class="actions-section">
             <button (click)="onPrint()" [disabled]="!state.isConnected || isAutoPrinting()" class="btn primary">

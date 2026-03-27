@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -17,6 +18,7 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
+@Where(clause = "deleted IS NOT TRUE")
 public class Task extends BaseAuditEntity {
     private String description;
 

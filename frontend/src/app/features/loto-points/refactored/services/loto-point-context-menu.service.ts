@@ -158,7 +158,9 @@ export class LotoPointContextMenuService extends ContextMenuService {
       this.bradyModalService.openWithData({
         line1: item.tagNumber || '',
         line2: item.description || '',
-        withQr: true
+        withQr: true,
+        sourceLotoPointId: item.id,
+        sourceLotoPoint: item,
       });
     }
 

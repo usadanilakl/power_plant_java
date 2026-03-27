@@ -69,6 +69,7 @@ export class SpringBootManager {
     }
 
     // Check for port conflict (e.g. previous user's session left Spring Boot running)
+    let killedPreviousInstance = false;
     const portInUse = await this.isPortInUse(config.port);
     if (portInUse) {
       console.log(`Port ${config.port} is already in use — stopping existing instance...`);
@@ -85,6 +86,7 @@ export class SpringBootManager {
         }
       }
       this.addLog('Previous instance stopped, port is now free');
+      killedPreviousInstance = true;
     }
 
     // Build environment with device config
@@ -97,84 +99,109 @@ export class SpringBootManager {
       console.log('  Device: NOT CONFIGURED — Spring Boot will use fallback device 9');
     }
 
-    console.log(`Starting Spring Boot...`);
-    console.log(`  Working dir: ${workingDir}`);
-    console.log(`  JAR: ${jarPath}`);
+    const maxAttempts = killedPreviousInstance ? 4 : 1;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`Starting Spring Boot...${attempt > 1 ? ` (attempt ${attempt}/${maxAttempts})` : ''}`);
+      console.log(`  Working dir: ${workingDir}`);
+      console.log(`  JAR: ${jarPath}`);
 
-    try {
-      // Use the centralized SPRING_PROFILE from constants.ts.
-      // This ensures the database name matches what cold resync extracts.
-      const javaArgs = ['-jar', config.jar, `--spring.profiles.active=${SPRING_PROFILE}`];
-      console.log(`  Java args: ${javaArgs.join(' ')}`);
+      try {
+        const javaArgs = ['-jar', config.jar, `--spring.profiles.active=${SPRING_PROFILE}`];
+        console.log(`  Java args: ${javaArgs.join(' ')}`);
 
-      const proc = spawn(getJavaPath(), javaArgs, {
-        cwd: workingDir,
-        env: spawnEnv,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        detached: false
-      });
+        const proc = spawn(getJavaPath(), javaArgs, {
+          cwd: workingDir,
+          env: spawnEnv,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          detached: false
+        });
 
-      this.process = proc;
-      this.pid = proc.pid;
-      this.startedAt = new Date();
+        this.process = proc;
+        this.pid = proc.pid;
+        this.startedAt = new Date();
 
-      // Capture stdout
-      proc.stdout?.on('data', (data: Buffer) => {
-        const lines = data.toString().split('\n').filter(l => l.trim());
-        for (const line of lines) {
-          this.addLog(`[OUT] ${line}`);
+        // Capture stdout
+        proc.stdout?.on('data', (data: Buffer) => {
+          const lines = data.toString().split('\n').filter(l => l.trim());
+          for (const line of lines) {
+            this.addLog(`[OUT] ${line}`);
+          }
+        });
+
+        // Capture stderr
+        proc.stderr?.on('data', (data: Buffer) => {
+          const lines = data.toString().split('\n').filter(l => l.trim());
+          for (const line of lines) {
+            this.addLog(`[ERR] ${line}`);
+          }
+        });
+
+        // If we killed a previous instance, wait to see if this attempt crashes early (e.g. H2 lock)
+        if (killedPreviousInstance && attempt < maxAttempts) {
+          const earlyCrash = await new Promise<boolean>((resolve) => {
+            const onExit = () => resolve(true);
+            proc.once('exit', onExit);
+            setTimeout(() => { proc.removeListener('exit', onExit); resolve(false); }, 15_000);
+          });
+
+          if (earlyCrash) {
+            console.log(`Spring Boot crashed on attempt ${attempt} — retrying in 15s...`);
+            this.addLog(`Start failed (attempt ${attempt}) — retrying in 15s`);
+            this.process = null;
+            this.pid = undefined;
+            this.startedAt = undefined;
+            this.updateState('starting');
+            await new Promise(resolve => setTimeout(resolve, 15_000));
+            continue;
+          }
         }
-      });
 
-      // Capture stderr
-      proc.stderr?.on('data', (data: Buffer) => {
-        const lines = data.toString().split('\n').filter(l => l.trim());
-        for (const line of lines) {
-          this.addLog(`[ERR] ${line}`);
-        }
-      });
+        // Handle process exit (for ongoing monitoring after successful start)
+        proc.on('exit', (code, signal) => {
+          console.log(`Spring Boot exited (code: ${code}, signal: ${signal})`);
+          this.addLog(`Process exited with code ${code}`);
+          this.stopHealthCheck();
+          this.process = null;
+          this.pid = undefined;
+          this.startedAt = undefined;
 
-      // Handle process exit
-      proc.on('exit', (code, signal) => {
-        console.log(`Spring Boot exited (code: ${code}, signal: ${signal})`);
-        this.addLog(`Process exited with code ${code}`);
-        this.stopHealthCheck();
-        this.process = null;
-        this.pid = undefined;
-        this.startedAt = undefined;
+          if (this.state === 'stopping') {
+            this.updateState('stopped');
+          } else if (code === 0) {
+            // Clean exit while not stopping = resync restart request
+            this.addLog('Clean exit detected (resync restart). Auto-restarting in 3s...');
+            console.log('Spring Boot exited cleanly (resync). Auto-restarting...');
+            this.updateState('stopped');
+            setTimeout(() => this.start(), 3000);
+          } else {
+            this.error = `Process exited unexpectedly (code: ${code})`;
+            this.updateState('error');
+          }
+        });
 
-        if (this.state === 'stopping') {
-          this.updateState('stopped');
-        } else if (code === 0) {
-          // Clean exit while not stopping = resync restart request
-          this.addLog('Clean exit detected (resync restart). Auto-restarting in 3s...');
-          console.log('Spring Boot exited cleanly (resync). Auto-restarting...');
-          this.updateState('stopped');
-          setTimeout(() => this.start(), 3000);
-        } else {
-          this.error = `Process exited unexpectedly (code: ${code})`;
+        proc.on('error', (err) => {
+          console.error('Error starting Spring Boot:', err);
+          this.addLog(`[ERROR] ${err.message}`);
+          this.error = err.message;
           this.updateState('error');
+        });
+
+        // Start health checks after delay
+        setTimeout(() => {
+          if (this.state === 'starting' || this.state === 'running') {
+            this.startHealthCheck();
+          }
+        }, STARTUP_HEALTH_DELAY);
+
+        return; // Successfully spawned and survived 15s — done
+
+      } catch (err: any) {
+        if (attempt === maxAttempts) {
+          this.error = err.message;
+          this.updateState('error');
+          throw err;
         }
-      });
-
-      proc.on('error', (err) => {
-        console.error('Error starting Spring Boot:', err);
-        this.addLog(`[ERROR] ${err.message}`);
-        this.error = err.message;
-        this.updateState('error');
-      });
-
-      // Start health checks after delay
-      setTimeout(() => {
-        if (this.state === 'starting' || this.state === 'running') {
-          this.startHealthCheck();
-        }
-      }, STARTUP_HEALTH_DELAY);
-
-    } catch (err: any) {
-      this.error = err.message;
-      this.updateState('error');
-      throw err;
+      }
     }
   }
 
@@ -306,18 +333,27 @@ export class SpringBootManager {
   }
 
   private async killProcessOnPort(port: number): Promise<void> {
-    // 1. Try graceful shutdown via Spring Boot actuator endpoint
-    const shutdownOk = await this.requestActuatorShutdown(port);
-    if (shutdownOk) {
-      console.log('Actuator shutdown request accepted — waiting for process to exit');
-      this.addLog('Sent shutdown request to existing instance');
-      const freed = await this.waitForPortFree(port, 8_000);
-      if (freed) return; // Graceful shutdown succeeded
-      console.log('Actuator shutdown did not free port in time — falling back to taskkill');
+    // 1. Try graceful shutdown via /server/stop (works across user sessions, no admin needed)
+    console.log(`Requesting graceful shutdown on port ${port} via /server/stop`);
+    this.addLog(`Requesting graceful shutdown on port ${port}`);
+    const stopped = await this.requestGracefulShutdown(port);
+    if (stopped) {
+      const freed = await this.waitForPortFree(port, 60_000);
+      if (freed) {
+        // Port is free (Tomcat stopped), but H2 database may still be releasing file locks.
+        // Wait for the full application context to finish destroying.
+        console.log('Port freed — waiting for database locks to release...');
+        this.addLog('Port freed — waiting for database to close');
+        await new Promise(resolve => setTimeout(resolve, 5_000));
+        console.log('Graceful shutdown succeeded');
+        this.addLog('Previous instance shut down gracefully');
+        return;
+      }
+      console.log('Graceful shutdown accepted but port not freed in time — falling back to taskkill');
       this.addLog('Graceful shutdown timed out — force stopping');
     }
 
-    // 2. Fallback: find PID via netstat and kill it
+    // 2. Fallback: taskkill (only needed if /server/stop fails)
     if (process.platform !== 'win32') return;
 
     try {
@@ -344,24 +380,29 @@ export class SpringBootManager {
     }
   }
 
-  private requestActuatorShutdown(port: number): Promise<boolean> {
+  private requestGracefulShutdown(port: number): Promise<boolean> {
     return new Promise((resolve) => {
       const req = http.request(
         {
           hostname: '127.0.0.1',
           port,
-          path: '/actuator/shutdown',
-          method: 'POST',
-          timeout: 5_000,
-          headers: { 'Content-Type': 'application/json' }
+          path: '/server/stop',
+          method: 'GET',
+          timeout: 10_000
         },
         (res) => {
           res.resume();
-          resolve(res.statusCode !== undefined && res.statusCode < 500);
+          const ok = res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300;
+          console.log(`/server/stop responded with ${res.statusCode} — ${ok ? 'accepted' : 'failed'}`);
+          resolve(ok);
         }
       );
-      req.on('error', () => resolve(false));
-      req.on('timeout', () => { req.destroy(); resolve(false); });
+      // Connection reset/error after sending = the app is shutting down (success)
+      req.on('error', (err) => {
+        console.log(`/server/stop connection error: ${err.message} — treating as shutdown in progress`);
+        resolve(true);
+      });
+      req.on('timeout', () => { console.log('/server/stop request timed out'); req.destroy(); resolve(false); });
       req.end();
     });
   }

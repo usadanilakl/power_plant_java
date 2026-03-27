@@ -29,4 +29,8 @@ export class TaskTemplateApiService {
   delete(id: number): Observable<SpringApiResponse<any>> {
     return this.http.delete<SpringApiResponse<any>>(`${this.apiUrl}/${id}`);
   }
+
+  instantiate(templateId: number, flowId: number): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/${templateId}/instantiate`, {flowId});
+  }
 }

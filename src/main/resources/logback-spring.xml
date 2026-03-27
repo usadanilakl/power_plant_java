@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <property name="LOGS" value="./logs" />
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [req=%X{requestId:-} user=%X{userId:-} machine=%X{machineId:-} job=%X{jobName:-} jobRun=%X{jobRunId:-} sync=%X{syncRunId:-} entity=%X{entityType:-}/%X{entityId:-} sp=%X{sharepointId:-}] %logger{40} - %msg%n%throwable" />
 
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <Pattern>
-                %black(%d{ISO8601}) %highlight(%-5level) [%blue(%t)] %yellow(%C{1}): %msg%n%throwable
-            </Pattern>
-        </layout>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>${LOG_PATTERN}</Pattern>
+        </encoder>
     </appender>
 
     <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOGS}/power-plant-logger.log</file>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <Pattern>%d %p %C{1} [%t] %m%n</Pattern>
+            <Pattern>${LOG_PATTERN}</Pattern>
         </encoder>
-
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOGS}/archived/power-plant-logger-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
@@ -25,27 +24,98 @@
         </rollingPolicy>
     </appender>
 
-    <!-- LOG everything at INFO level -->
+    <appender name="SyncFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/power-plant-sync.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>${LOG_PATTERN}</Pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/archived/power-plant-sync-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="SecurityFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/power-plant-security.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>${LOG_PATTERN}</Pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/archived/power-plant-security-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>250MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="WarnErrorFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/power-plant-alerts.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>${LOG_PATTERN}</Pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/archived/power-plant-alerts-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
     <root level="info">
         <appender-ref ref="RollingFile" />
+        <appender-ref ref="WarnErrorFile" />
         <appender-ref ref="Console" />
     </root>
 
-    <!-- LOG app at INFO level, sync at WARN to reduce noise -->
-    <logger name="com.dk_power.power_plant_java" level="info" additivity="false">
-        <appender-ref ref="RollingFile" />
-        <appender-ref ref="Console" />
+    <logger name="com.dk_power.power_plant_java" level="info" />
+
+    <logger name="com.dk_power.power_plant_java.config.logging.RequestCorrelationFilter" level="debug" />
+
+    <logger name="com.dk_power.power_plant_java.config.security" level="info">
+        <appender-ref ref="SecurityFile" />
     </logger>
-    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn" additivity="false">
-        <appender-ref ref="RollingFile" />
-        <appender-ref ref="Console" />
+
+    <logger name="com.dk_power.power_plant_java.controller.auth" level="info">
+        <appender-ref ref="SecurityFile" />
     </logger>
-    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn" additivity="false">
-        <appender-ref ref="RollingFile" />
-        <appender-ref ref="Console" />
+
+    <logger name="com.dk_power.power_plant_java.sevice.sharepoint" level="info">
+        <appender-ref ref="SyncFile" />
     </logger>
-    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn" additivity="false">
-        <appender-ref ref="RollingFile" />
-        <appender-ref ref="Console" />
+
+    <logger name="com.dk_power.power_plant_java.sevice.hub" level="info">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.controller.hub" level="info">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker" level="info">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService" level="info">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn">
+        <appender-ref ref="SyncFile" />
+    </logger>
+
+    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn">
+        <appender-ref ref="SyncFile" />
     </logger>
 </configuration>

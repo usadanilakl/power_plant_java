@@ -157,15 +157,15 @@ public class FieldSyncService {
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         if (syncConfig.isHubMode()) {
-            log.info("Hub mode - skipping client-side startup sync (hub receives data via bulk import and SSE)");
+            log.info("peer_sync.startup.skipped reason=hub_mode");
             return;
         }
         if (syncConfig.isServerSyncEnabled()) {
-            log.info("Server sync enabled - skipping peer-to-peer startup sync");
+            log.info("peer_sync.startup.skipped reason=server_sync_enabled");
             return;
         }
 
-        log.info("Application ready - syncing with all known peers to catch up on missed changes");
+        log.info("peer_sync.startup.begin");
         // Small delay to ensure all services are fully initialized
         try {
             Thread.sleep(5000);
@@ -187,7 +187,7 @@ public class FieldSyncService {
             return; // Hub or server sync handles this
         }
 
-        log.info("Peer online event: {} ({}) - triggering sync",
+        log.debug("Peer online event: {} ({}) - triggering sync",
             event.getPeer().getMachineName(), event.getPeer().getMachineId());
         try {
             syncWithPeer(event.getPeer());
@@ -208,15 +208,15 @@ public class FieldSyncService {
             return; // CentralSyncService handles this
         }
 
-        log.info("onChangesDetected event received with {} changes",
+        log.debug("onChangesDetected event received with {} changes",
             event.getChanges() != null ? event.getChanges().size() : 0);
 
         if (event.getChanges() == null || event.getChanges().isEmpty()) {
-            log.info("No changes in event, skipping sync");
+            log.debug("No changes in event, skipping sync");
             return;
         }
 
-        log.info("Changes detected, triggering sync with peers");
+        log.debug("Changes detected, triggering sync with peers");
         syncWithAllPeers();
     }
 
@@ -225,15 +225,15 @@ public class FieldSyncService {
      * Called on-demand when changes are detected (event-driven).
      */
     public void syncWithAllPeers() {
-        log.info("syncWithAllPeers called, syncing={}", syncing);
+        log.debug("syncWithAllPeers called, syncing={}", syncing);
 
         if (syncing) {
-            log.info("Sync already in progress, skipping");
+            log.debug("Sync already in progress, skipping");
             return;
         }
 
         List<Peer> activePeers = peerDiscoveryService.getActivePeers();
-        log.info("Found {} active peers", activePeers.size());
+        log.debug("Found {} active peers", activePeers.size());
 
         if (activePeers.isEmpty()) {
             log.debug("No active peers found for sync");
@@ -241,7 +241,7 @@ public class FieldSyncService {
         }
 
         syncing = true;
-        log.info("Starting field sync with {} active peer(s)", activePeers.size());
+        log.info("peer_sync.run.start activePeers={}", activePeers.size());
 
         int successCount = 0;
         for (Peer peer : activePeers) {
@@ -256,7 +256,7 @@ public class FieldSyncService {
         }
 
         syncing = false;
-        log.info("Field sync completed: {}/{} peers successful", successCount, activePeers.size());
+        log.info("peer_sync.run.complete successfulPeers={} totalPeers={}", successCount, activePeers.size());
     }
 
     /**
@@ -264,7 +264,7 @@ public class FieldSyncService {
      */
     @Transactional
     public SyncResult syncWithPeer(Peer peer) {
-        log.info("Syncing with peer: {} ({}) at {}",
+        log.debug("Syncing with peer: {} ({}) at {}",
             peer.getMachineName(), peer.getMachineId(), peer.getBaseUrl());
 
         peerDiscoveryService.markPeerSyncing(peer.getMachineId());
@@ -298,7 +298,7 @@ public class FieldSyncService {
             peerDiscoveryService.updatePeerSyncTime(peer.getMachineId());
             result.setSuccess(true);
 
-            log.info("Sync complete with {}: sent={}, received={}, applied={}",
+            log.info("peer_sync.peer.complete peerName={} sent={} received={} applied={}",
                 peer.getMachineName(), result.getChangesSent(),
                 result.getChangesReceived(), result.getChangesApplied());
 
@@ -551,7 +551,7 @@ public class FieldSyncService {
         // has no @ManyToOne back-reference. We must defer these FK UPDATEs until all child
         // entities have been created in the first pass.
         if (!oneToManyChanges.isEmpty()) {
-            log.info("Second pass: applying {} OneToMany changes", oneToManyChanges.size());
+            log.debug("Second pass: applying {} OneToMany changes", oneToManyChanges.size());
 
             Map<String, Map<Long, List<FieldChange>>> oneToManyByEntity = oneToManyChanges.stream()
                 .collect(Collectors.groupingBy(
@@ -584,12 +584,12 @@ public class FieldSyncService {
 
                     for (FieldChange change : changes) {
                         boolean shouldApply = shouldApplyChange(change, latestChangesMap);
-                        log.info("OneToMany {}.{} #{}: shouldApply={}, newValue={}",
+                        log.debug("OneToMany {}.{} #{}: shouldApply={}, newValue={}",
                             entityType, change.getFieldName(), resolvedId, shouldApply,
                             change.getNewValue() != null ? change.getNewValue().substring(0, Math.min(100, change.getNewValue().length())) : "null");
                         if (shouldApply) {
                             boolean applied = applyFieldChange(parentEntity, change, null, idRemapTable);
-                            log.info("OneToMany {}.{} #{}: applied={}", entityType, change.getFieldName(), resolvedId, applied);
+                            log.debug("OneToMany {}.{} #{}: applied={}", entityType, change.getFieldName(), resolvedId, applied);
                             if (applied) {
                                 saveIncomingChange(change);
                                 totalApplied++;
@@ -701,7 +701,7 @@ public class FieldSyncService {
         }
 
         // Log batch summary
-        log.info("Sync batch: applied {} of {} changes, {} ManyToOne deferred to retry",
+        log.info("peer_sync.batch.complete applied={} total={} deferredManyToOne={}",
             totalApplied, incomingChanges.size(), failedManyToOneRefs.size());
 
         // Register callback to broadcast AFTER transaction commits
@@ -834,7 +834,7 @@ public class FieldSyncService {
                         affectedFiles = fileRepo.findByFileTypeWithRelationships(value);
                     }
 
-                    log.info("{} name change '{}' -> '{}': queueing downloads for {} files",
+                    log.debug("{} name change '{}' -> '{}': queueing downloads for {} files",
                         categoryName, oldName, value.getName(), affectedFiles.size());
 
                     // Queue file downloads for each affected FileObject
@@ -1024,7 +1024,7 @@ public class FieldSyncService {
                     entityManager.flush();
                     entityManager.clear();
                     entity = (BaseIdEntity) service.getEntityById(entityId);
-                    log.info("Re-activated soft-deleted entity {}#{}", entityType, entityId);
+                    log.debug("Re-activated soft-deleted entity {}#{}", entityType, entityId);
                 } else {
                     // ===== PRE-SAVE DEDUP CHECK =====
                     // Before creating, check if an entity with the same natural key already exists.
@@ -1034,7 +1034,7 @@ public class FieldSyncService {
 
                     if (existingDupId != null) {
                         // REDIRECT: Don't create a duplicate. Apply changes to existing entity via LWW.
-                        log.info("Pre-save dedup: {}#{} matches existing #{}. Redirecting.",
+                        log.debug("Pre-save dedup: {}#{} matches existing #{}. Redirecting.",
                             entityType, entityId, existingDupId);
                         idRemapTable.computeIfAbsent(entityType, k -> new HashMap<>())
                             .put(entityId, existingDupId);
@@ -1093,7 +1093,7 @@ public class FieldSyncService {
 
                     entity = (BaseIdEntity) entityManager.merge(entity);
                     entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
-                    log.info("Created new entity {}#{} from sync", entityType, entityId);
+                    log.debug("Created new entity {}#{} from sync", entityType, entityId);
                 }
 
                 // Advance the shared id_seq if this entity's ID falls in our device's range.
@@ -1407,7 +1407,7 @@ public class FieldSyncService {
             // Without this, saveIncomingChange creates a local record that causes shouldApplyChange()
             // to skip the incoming change during periodic sync ("local change is newer or equal").
             if (existingIds.size() < newIds.size()) {
-                log.info("ManyToMany {}.{}: incomplete apply ({}/{} entities), NOT saving change record - periodic sync will retry",
+                log.debug("ManyToMany {}.{}: incomplete apply ({}/{} entities), NOT saving change record - periodic sync will retry",
                     entity.getClass().getSimpleName(), change.getFieldName(), existingIds.size(), newIds.size());
                 return false;
             }
@@ -1467,7 +1467,7 @@ public class FieldSyncService {
 
             // Check that ALL referenced children exist before applying
             List<Long> existingIds = filterExistingIds(field, childIds);
-            log.info("OneToMany {}.{}: childIds={}, existingIds={}, childTable={}, fkColumn={}",
+            log.debug("OneToMany {}.{}: childIds={}, existingIds={}, childTable={}, fkColumn={}",
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 childIds, existingIds, childTable, fkColumn);
             if (existingIds.size() < childIds.size()) {
@@ -1501,7 +1501,7 @@ public class FieldSyncService {
                 return false; // Incomplete — don't save, retry next sync
             }
 
-            log.info("Applied OneToMany {}.{}: set {}={} on {} child rows in {}",
+            log.debug("Applied OneToMany {}.{}: set {}={} on {} child rows in {}",
                 entity.getClass().getSimpleName(), change.getFieldName(),
                 fkColumn, parentId, childIds.size(), childTable);
             return true;
@@ -1803,7 +1803,7 @@ public class FieldSyncService {
                                                        List<FieldChange> incomingChanges) {
         // Apply incoming changes
         if (incomingChanges != null && !incomingChanges.isEmpty()) {
-            log.info("Received {} changes from {} ({})", incomingChanges.size(), fromMachineName, fromMachineId);
+            log.debug("Received {} changes from {} ({})", incomingChanges.size(), fromMachineName, fromMachineId);
             applyIncomingChanges(incomingChanges);
         }
 
@@ -1834,7 +1834,7 @@ public class FieldSyncService {
         Instant cutoff = Instant.now().minusSeconds(syncConfig.getRetentionDays() * 24L * 60 * 60);
         int deleted = fieldChangeRepository.deleteChangesBefore(cutoff);
         if (deleted > 0) {
-            log.info("Cleaned up {} old field changes (older than {} days)",
+            log.info("peer_sync.cleanup.complete deletedChanges={} retentionDays={}",
                 deleted, syncConfig.getRetentionDays());
         }
     }

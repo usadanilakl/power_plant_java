@@ -61,7 +61,7 @@ public class MessageMergeService {
             return 0;
         }
 
-        log.info("[Message Merge] Found {} dedup groups with duplicates", duplicates.size());
+        log.debug("[Message Merge] Found {} dedup groups with duplicates", duplicates.size());
 
         int merged = 0;
         for (Object[] row : duplicates) {
@@ -100,7 +100,7 @@ public class MessageMergeService {
                 entityManager.flush();
                 merged++;
 
-                log.info("[Message Merge] conversationId={} senderId={} ID={} merged into ID={}",
+                log.debug("[Message Merge] conversationId={} senderId={} ID={} merged into ID={}",
                     conversationId, senderId, duplicate.getId(), canonical.getId());
             }
         }

@@ -307,8 +307,8 @@
   color: var(--secondary-text);
 }
 
-.batch-items-table .remove-col {
-  width: 36px;
+.batch-items-table .actions-col {
+  width: 80px;
   text-align: center;
   padding: 0.5rem;
 }
@@ -844,6 +844,155 @@
   background: var(--hover-color);
   color: var(--primary-text);
   border-color: var(--accent-color);
+}
+
+/* ── Inline Editing ── */
+.editable-cell {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.editable-cell:hover {
+  background-color: var(--hover-color);
+}
+
+.inline-edit-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1.5px solid var(--accent-color);
+  border-radius: 4px;
+  background: var(--primary-background);
+  color: var(--primary-text);
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-color-shadow);
+  box-sizing: border-box;
+}
+
+.inline-edit-input:focus {
+  border-color: var(--accent-color);
+}
+
+/* Item row status indicators */
+tr.item-saving {
+  opacity: 0.85;
+}
+
+tr.item-saved {
+  animation: saved-flash 0.6s ease;
+}
+
+@keyframes saved-flash {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(39, 174, 96, 0.15); }
+  100% { background-color: transparent; }
+}
+
+/* Item actions column */
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.btn-icon-sm {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.btn-icon-sm:hover {
+  background: var(--hover-color);
+  color: var(--accent-color);
+}
+
+.btn-icon-sm.active {
+  color: var(--accent-color);
+  background: var(--menu-item-hover-bg-color);
+}
+
+.saving-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.saved-check {
+  color: #27ae60;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Counterpart toggle */
+.counterpart-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.counterpart-toggle input[type="checkbox"] {
+  accent-color: var(--accent-color);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.batch-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+/* Engraved column highlight — marks columns selected for engraving */
+.engraved-col {
+  background-color: rgba(var(--accent-color-rgb, 74, 158, 255), 0.08);
+}
+
+.engrave-marker {
+  color: var(--accent-color);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.empty-char {
+  opacity: 0.35;
+}
+
+/* Characteristics Editor Row */
+.characteristics-editor-row td {
+  padding: 0 !important;
+  border-bottom: 2px solid var(--accent-color) !important;
+}
+
+.characteristics-editor-panel {
+  padding: 0.75rem 1rem;
+  background: var(--primary-background);
+  border-top: 1px solid var(--border-color);
 }
 
 /* Responsive */

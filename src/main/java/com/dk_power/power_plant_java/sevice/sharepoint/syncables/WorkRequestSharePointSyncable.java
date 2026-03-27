@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.*;
@@ -33,11 +34,12 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     private final WorkRequestMergeService workRequestMergeService;
     private final PermitAttachmentSyncService permitAttachmentSyncService;
     private final SharePointFieldMergeService fieldMergeService;
+    private final TransactionTemplate transactionTemplate;
 
     private static final String ENTITY_TYPE = "WorkRequest";
     private static final String LIST_TITLE = "Work Requests";
 
-    /** Entity field name → SP column name. */
+    /** Entity field name -> SP column name. */
     private static final Map<String, String> FIELD_MAPPING = Map.ofEntries(
         Map.entry("workScope", "Title"),
         Map.entry("dateOfWorkToBePerformed", "DateOfWork"),
@@ -75,7 +77,6 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     }
 
     @Override
-    @Transactional
     public EntitySyncOutcome processRemoteItem(WorkRequestDto remote, SyncResult result) {
         if (remote.getSharepointId() == null) {
             result.incrementSkipped();
@@ -85,68 +86,19 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         String spId = remote.getSharepointId();
         Map<String, String> spValues = extractSpFieldValues(remote);
         Instant spModified = getSpModifiedTime(remote);
+        WorkRequestSyncDecision decision = transactionTemplate.execute(status ->
+            processRemoteItemInTransaction(remote, result, spId, spValues, spModified));
 
-        WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(spId).orElse(null);
-
-        if (existing == null) {
-            // New — create with all fields
-            WorkRequest entity = workRequestMapper.fromSharePointDto(remote);
-            String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
-            entity.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
-            workRequestRepo.save(entity);
-            result.incrementCreated();
-            log.debug("[WR Syncable] Created: spId={}", spId);
-
-            // Sync attachments for new entity
-            try {
-                permitAttachmentSyncService.syncAttachmentsForWorkRequest(entity.getId(), spId);
-            } catch (Exception e) {
-                log.warn("[WR Syncable] Attachment sync failed for spId={}: {}", spId, e.getMessage());
-            }
-
-            // Save initial snapshot
-            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
-            return EntitySyncOutcome.CREATED;
-        }
-
-        // Existing — field-level merge
-        Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
-        if (spChangedColumns.isEmpty()) {
-            syncAttachmentsSafely(existing.getId(), spId);
+        if (decision == null) {
+            result.incrementFailed();
             return EntitySyncOutcome.SKIPPED;
         }
 
-        log.info("[WR Syncable] spId={} has {} changed SP columns: {}, spModified={}",
-            spId, spChangedColumns.size(), spChangedColumns, spModified);
-
-        Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
-            ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
-
-        if (fieldsToApply.isEmpty()) {
-            // Don't update snapshot here — if we do, the SP change is permanently
-            // lost from diff detection. Leave snapshot stale so next sync re-evaluates.
-            log.info("[WR Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
-            syncAttachmentsSafely(existing.getId(), spId);
-            return EntitySyncOutcome.SKIPPED;
+        if (decision.shouldSyncAttachments()) {
+            syncAttachmentsSafely(decision.entityId(), spId);
         }
 
-        log.info("[WR Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
-        applySelectiveFields(existing, remote, fieldsToApply);
-
-        // Handle status change via NgValue
-        if (fieldsToApply.contains("status")) {
-            String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
-            existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
-        }
-
-        workRequestRepo.save(existing);
-        syncAttachmentsSafely(existing.getId(), spId);
-        result.incrementUpdated();
-        log.info("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
-
-        // Always update snapshot with current SP values
-        fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
-        return EntitySyncOutcome.UPDATED;
+        return decision.outcome();
     }
 
     @Override
@@ -274,6 +226,61 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             log.warn("[WR Syncable] Attachment sync failed for spId={}: {}", sharepointId, e.getMessage());
         }
     }
+
+    @Transactional
+    protected WorkRequestSyncDecision processRemoteItemInTransaction(
+        WorkRequestDto remote,
+        SyncResult result,
+        String spId,
+        Map<String, String> spValues,
+        Instant spModified
+    ) {
+        WorkRequest existing = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(spId).orElse(null);
+
+        if (existing == null) {
+            WorkRequest entity = workRequestMapper.fromSharePointDto(remote);
+            String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
+            entity.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+            workRequestRepo.save(entity);
+            result.incrementCreated();
+            log.debug("[WR Syncable] Created: spId={}", spId);
+
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+            return new WorkRequestSyncDecision(EntitySyncOutcome.CREATED, entity.getId(), true);
+        }
+
+        Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
+        if (spChangedColumns.isEmpty()) {
+            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
+        }
+
+        log.debug("[WR Syncable] spId={} has {} changed SP columns: {}, spModified={}",
+            spId, spChangedColumns.size(), spChangedColumns, spModified);
+
+        Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
+            ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
+
+        if (fieldsToApply.isEmpty()) {
+            log.debug("[WR Syncable] spId={}: local wins ALL fields, entity unchanged, will re-check next sync", spId);
+            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
+        }
+
+        log.debug("[WR Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
+        applySelectiveFields(existing, remote, fieldsToApply);
+
+        if (fieldsToApply.contains("status")) {
+            String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
+            existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+        }
+
+        workRequestRepo.save(existing);
+        result.incrementUpdated();
+        log.debug("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
+
+        fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+        return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true);
+    }
+
+    private record WorkRequestSyncDecision(EntitySyncOutcome outcome, Long entityId, boolean shouldSyncAttachments) {
+    }
 }
-
-

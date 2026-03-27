@@ -174,7 +174,7 @@ public class ServerSseClient {
 
             if (shouldReconnect.get() && !shuttingDown.get() && !isCircuitBreakerOpen()) {
                 int delay = calculateReconnectDelay();
-                log.info("Reconnecting to SSE in {} seconds...", delay);
+                log.info("sse.reconnect.scheduled delaySeconds={}", delay);
                 try {
                     Thread.sleep(delay * 1000L);
                 } catch (InterruptedException e) {
@@ -207,7 +207,7 @@ public class ServerSseClient {
     public void resetCircuitBreaker() {
         circuitBreakerOpenedAt = null;
         consecutiveFailures.set(0);
-        log.info("Circuit breaker reset");
+        log.info("sse.circuit_breaker.reset");
     }
 
     /**
@@ -215,7 +215,7 @@ public class ServerSseClient {
      */
     private void connect() throws Exception {
         String url = syncConfig.getSyncServerUrl() + "/api/sync/sse/subscribe";
-        log.info("Connecting to SSE endpoint: {}", url);
+        log.debug("Connecting to SSE endpoint: {}", url);
 
         URL sseUrl = new URL(url);
         currentConnection = (HttpURLConnection) sseUrl.openConnection();
@@ -282,7 +282,7 @@ public class ServerSseClient {
     private void processEvent(String eventType, String data) {
         try {
             if ("connected".equals(eventType)) {
-                log.info("SSE: Connected to server - {}", data);
+                log.debug("SSE: Connected to server - {}", data);
                 onSseConnected(data);
                 return;
             }
@@ -330,7 +330,7 @@ public class ServerSseClient {
                     try {
                         Thread.sleep(1000); // Brief delay to let SSE stabilize
                         if (!shuttingDown.get()) {
-                            log.info("SSE connected - triggering sync to catch up on missed changes");
+                            log.info("sse.connected.triggering_sync");
                             centralSync.syncWithServer();
                         }
                     } catch (InterruptedException e) {
@@ -383,7 +383,7 @@ public class ServerSseClient {
             List<FieldChange> changes = objectMapper.convertValue(changesObj,
                 new TypeReference<List<FieldChange>>() {});
 
-            log.info("SSE: Received {} changes from {} - buffering for batch processing",
+            log.debug("SSE: Received {} changes from {} - buffering for batch processing",
                 changes.size(), originMachineId);
 
             // Add to buffer instead of processing immediately
@@ -433,14 +433,14 @@ public class ServerSseClient {
             sseChangeBuffer.clear();
         }
 
-        log.info("SSE: Processing {} buffered changes as single batch", changes.size());
+        log.debug("SSE: Processing {} buffered changes as single batch", changes.size());
 
         // Apply all buffered changes within sync context
         syncContext.startSync();
         try {
             int applied = fieldSyncService.applyIncomingChanges(changes);
             totalChangesApplied.addAndGet(applied);
-            log.info("SSE: Applied {} of {} buffered changes", applied, changes.size());
+            log.debug("SSE: Applied {} of {} buffered changes", applied, changes.size());
         } catch (Exception e) {
             log.error("Error processing buffered SSE changes: {}", e.getMessage(), e);
         } finally {
@@ -461,7 +461,7 @@ public class ServerSseClient {
             String fileName = (String) eventData.get("fileName");
             String originMachineId = (String) eventData.get("originMachineId");
 
-            log.info("SSE: File upload notification - {} for {}/{} from {}",
+            log.debug("SSE: File upload notification - {} for {}/{} from {}",
                 fileName, entityType, entityId, originMachineId);
 
             // Only handle FileObject entities
@@ -474,7 +474,7 @@ public class ServerSseClient {
             FileObject fileObject = fileRepo.findById(entityId).orElse(null);
             if (fileObject != null) {
                 fileObjectSyncHandler.queueFileDownload(fileObject);
-                log.info("SSE: Queued download for FileObject #{} ({})", entityId, fileName);
+                log.debug("SSE: Queued download for FileObject #{} ({})", entityId, fileName);
             } else {
                 // Entity might not be synced yet - the field sync will trigger download when it arrives
                 log.debug("SSE: FileObject #{} not found locally, will download when entity syncs", entityId);

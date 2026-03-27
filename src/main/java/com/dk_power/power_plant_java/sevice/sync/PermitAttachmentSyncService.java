@@ -80,7 +80,7 @@ public class PermitAttachmentSyncService {
             }
 
             if (created > 0) {
-                log.info("[Attachment Sync] Created {} attachments for {} spId={}", created, entityType, sharepointId);
+                log.debug("[Attachment Sync] Created {} attachments for {} spId={}", created, entityType, sharepointId);
             }
             return created;
         } catch (Exception e) {
