@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.permits.pojo.PackageModification;
+import com.dk_power.power_plant_java.exception.StaleAggregateUpdateException;
 import com.dk_power.power_plant_java.mappers.permits.ConfinedSpaceMapper;
 import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
@@ -123,12 +124,13 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (existing == null) {
             throw new RuntimeException("DailyPermitPackage not found: " + id);
         }
+        requireMatchingVersion("DailyPermitPackage", packageId, permitPackageDto.getVersion(), existing.getVersion());
 
         // Build the "incoming" entity for change detection only
         DailyPermitPackage incoming = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
 
         // Detect modifications before applying changes
-        List<PackageModification> mods = detectChanges(existing, incoming);
+        List<PackageModification> mods = detectChanges(existing, incoming, permitPackageDto);
         List<PackageModification> allMods = existing.getModifications();
         allMods.addAll(mods);
         existing.setModifications(allMods);
@@ -145,7 +147,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         // Synchronize child collections with the DTO payload.
         // The daily package client sends the full package state, and removals must persist
         // even when a collection becomes empty.
-        syncCollections(existing, incoming);
+        syncCollections(existing, incoming, permitPackageDto);
         syncSafeWorkGasMonitoring(existing);
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(existing);
@@ -160,13 +162,13 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
                 .orElseThrow(() -> new RuntimeException("DailyPermitPackage not found: " + packageId));
 
         boolean removed = switch (normalizePermitType(permitType)) {
-            case "safeWorks" -> existing.getSafeWorks().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "hotWorks" -> existing.getHotWorks().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "confinedSpaces" -> existing.getConfinedSpaces().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "energizedWorkPermits" -> existing.getEnergizedWorkPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "excavationPermits" -> existing.getExcavationPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "ventingPermits" -> existing.getVentingPermits().removeIf(permit -> targetPermitId.equals(permit.getId()));
-            case "workRequests" -> existing.getWorkRequests().removeIf(permit -> targetPermitId.equals(permit.getId()));
+            case "safeWorks" -> removeMatching(existing.getSafeWorks(), targetPermitId, existing::removeSafeWork);
+            case "hotWorks" -> removeMatching(existing.getHotWorks(), targetPermitId, existing::removeHotWork);
+            case "confinedSpaces" -> removeMatching(existing.getConfinedSpaces(), targetPermitId, existing::removeConfinedSpace);
+            case "energizedWorkPermits" -> removeMatching(existing.getEnergizedWorkPermits(), targetPermitId, existing::removeEnergizedWorkPermit);
+            case "excavationPermits" -> removeMatching(existing.getExcavationPermits(), targetPermitId, existing::removeExcavationPermit);
+            case "ventingPermits" -> removeMatching(existing.getVentingPermits(), targetPermitId, existing::removeVentingPermit);
+            case "workRequests" -> removeMatching(existing.getWorkRequests(), targetPermitId, existing::removeWorkRequest);
             case "lotos" -> existing.getLotos().removeIf(permit -> targetPermitId.equals(permit.getId()));
             default -> throw new RuntimeException("Unsupported permit type: " + permitType);
         };
@@ -266,30 +268,40 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return dailyPermitPackageMapper.convertToDto(saved);
     }
 
-    private void syncCollections(DailyPermitPackage existing, DailyPermitPackage incoming) {
-        existing.getWorkRequests().clear();
-        existing.getWorkRequests().addAll(incoming.getWorkRequests());
+    private void syncCollections(DailyPermitPackage existing, DailyPermitPackage incoming,
+                                 DailyPermitPackageDto permitPackageDto) {
+        if (permitPackageDto.hasWorkRequestsPayload()) {
+            existing.setWorkRequests(new HashSet<>(incoming.getWorkRequests()));
+        }
 
-        existing.getSafeWorks().clear();
-        existing.getSafeWorks().addAll(incoming.getSafeWorks());
+        if (permitPackageDto.hasSafeWorksPayload()) {
+            existing.setSafeWorks(new HashSet<>(incoming.getSafeWorks()));
+        }
 
-        existing.getHotWorks().clear();
-        existing.getHotWorks().addAll(incoming.getHotWorks());
+        if (permitPackageDto.hasHotWorksPayload()) {
+            existing.setHotWorks(new HashSet<>(incoming.getHotWorks()));
+        }
 
-        existing.getConfinedSpaces().clear();
-        existing.getConfinedSpaces().addAll(incoming.getConfinedSpaces());
+        if (permitPackageDto.hasConfinedSpacesPayload()) {
+            existing.setConfinedSpaces(new HashSet<>(incoming.getConfinedSpaces()));
+        }
 
-        existing.getLotos().clear();
-        existing.getLotos().addAll(incoming.getLotos());
+        if (permitPackageDto.hasLotosPayload()) {
+            existing.getLotos().clear();
+            existing.getLotos().addAll(incoming.getLotos());
+        }
 
-        existing.getEnergizedWorkPermits().clear();
-        existing.getEnergizedWorkPermits().addAll(incoming.getEnergizedWorkPermits());
+        if (permitPackageDto.hasEnergizedWorkPermitsPayload()) {
+            existing.setEnergizedWorkPermits(new HashSet<>(incoming.getEnergizedWorkPermits()));
+        }
 
-        existing.getExcavationPermits().clear();
-        existing.getExcavationPermits().addAll(incoming.getExcavationPermits());
+        if (permitPackageDto.hasExcavationPermitsPayload()) {
+            existing.setExcavationPermits(new HashSet<>(incoming.getExcavationPermits()));
+        }
 
-        existing.getVentingPermits().clear();
-        existing.getVentingPermits().addAll(incoming.getVentingPermits());
+        if (permitPackageDto.hasVentingPermitsPayload()) {
+            existing.setVentingPermits(new HashSet<>(incoming.getVentingPermits()));
+        }
     }
 
     private String normalizePermitType(String permitType) {
@@ -464,7 +476,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             var jobOpt = jobLogRepo.findByPackageId(source.getId());
             if (jobOpt.isPresent()) {
                 var job = jobOpt.get();
-                job.getPackages().add(saved);
+                job.addPackage(saved);
                 jobLogRepo.save(job);
             }
         } catch (Exception e) {
@@ -509,7 +521,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             var jobOpt = jobLogRepo.findByPackageId(source.getId());
             if (jobOpt.isPresent()) {
                 var job = jobOpt.get();
-                job.getPackages().add(saved);
+                job.addPackage(saved);
                 jobLogRepo.save(job);
             }
         } catch (Exception e) {
@@ -553,12 +565,12 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         Value buildingStatus = ngValueService.createValue("Permit Status", "Building");
         String workScope = target.getName();
 
-        target.getSafeWorks().clear();
-        target.getHotWorks().clear();
-        target.getConfinedSpaces().clear();
-        target.getEnergizedWorkPermits().clear();
-        target.getExcavationPermits().clear();
-        target.getVentingPermits().clear();
+        target.setSafeWorks(new HashSet<>());
+        target.setHotWorks(new HashSet<>());
+        target.setConfinedSpaces(new HashSet<>());
+        target.setEnergizedWorkPermits(new HashSet<>());
+        target.setExcavationPermits(new HashSet<>());
+        target.setVentingPermits(new HashSet<>());
         target.getLotos().clear();
 
         // Copy SafeWorks
@@ -569,7 +581,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             SafeWork newSw = safeWorkMapper.convertToEntity(dto);
             newSw.setPermitStatus(buildingStatus);
             newSw.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getSafeWorks().add(newSw);
+            target.addSafeWork(newSw);
         });
 
         // Copy HotWorks
@@ -580,7 +592,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             HotWork newHw = hotWorkMapper.convertToEntity(dto);
             newHw.setPermitStatus(buildingStatus);
             newHw.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getHotWorks().add(newHw);
+            target.addHotWork(newHw);
         });
 
         // Copy ConfinedSpaces
@@ -591,7 +603,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             ConfinedSpace newCs = confinedSpaceMapper.convertToEntity(dto);
             newCs.setPermitStatus(buildingStatus);
             newCs.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getConfinedSpaces().add(newCs);
+            target.addConfinedSpace(newCs);
         });
 
         // Copy EnergizedWorkPermits
@@ -617,7 +629,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             newEp.setRedTagNum(null);
             newEp.setPermitStatus(buildingStatus);
             newEp.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getEnergizedWorkPermits().add(newEp);
+            target.addEnergizedWorkPermit(newEp);
         });
 
         // Copy ExcavationPermits
@@ -654,7 +666,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             newEp.setRedTagNum(null);
             newEp.setPermitStatus(buildingStatus);
             newEp.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getExcavationPermits().add(newEp);
+            target.addExcavationPermit(newEp);
         });
 
         // Copy VentingPermits
@@ -704,7 +716,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             newVp.setRedTagNum(null);
             newVp.setPermitStatus(buildingStatus);
             newVp.setPermitNumber(permitNumberGenerator.generate(date));
-            target.getVentingPermits().add(newVp);
+            target.addVentingPermit(newVp);
         });
 
         // Associate same LOTOs
@@ -1025,50 +1037,69 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         logModification(packageId, mod);
     }
 
-    private List<PackageModification> detectChanges(DailyPermitPackage old, DailyPermitPackage updated) {
+    private List<PackageModification> detectChanges(DailyPermitPackage old, DailyPermitPackage updated,
+                                                    DailyPermitPackageDto incomingDto) {
         List<PackageModification> mods = new ArrayList<>();
         String user = getCurrentUsername();
         String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
         // Field changes
-        diffField(mods, now, user, "date", old.getDate(), updated.getDate());
-        diffField(mods, now, user, "time", old.getTime(), updated.getTime());
-        diffField(mods, now, user, "companyName", old.getCompanyName(), updated.getCompanyName());
-        diffField(mods, now, user, "personName", old.getPersonName(), updated.getPersonName());
-        diffField(mods, now, user, "name", old.getName(), updated.getName());
+        if (incomingDto.getDate() != null) diffField(mods, now, user, "date", old.getDate(), updated.getDate());
+        if (incomingDto.getTime() != null) diffField(mods, now, user, "time", old.getTime(), updated.getTime());
+        if (incomingDto.getCompanyName() != null) diffField(mods, now, user, "companyName", old.getCompanyName(), updated.getCompanyName());
+        if (incomingDto.getPersonName() != null) diffField(mods, now, user, "personName", old.getPersonName(), updated.getPersonName());
+        if (incomingDto.getName() != null) diffField(mods, now, user, "name", old.getName(), updated.getName());
 
         // Status change
-        String oldStatus = old.getPackageStatus() != null ? old.getPackageStatus().getName() : null;
-        String newStatus = updated.getPackageStatus() != null ? updated.getPackageStatus().getName() : null;
-        if (!Objects.equals(oldStatus, newStatus)) {
-            PackageModification mod = new PackageModification();
-            mod.setTimestamp(now);
-            mod.setAction("STATUS_CHANGED");
-            mod.setFieldName("packageStatus");
-            mod.setOldValue(oldStatus);
-            mod.setNewValue(newStatus);
-            mod.setPerformedBy(user);
-            mod.setDescription("Package status changed from " + oldStatus + " to " + newStatus);
-            mods.add(mod);
+        if (incomingDto.getPackageStatus() != null) {
+            String oldStatus = old.getPackageStatus() != null ? old.getPackageStatus().getName() : null;
+            String newStatus = updated.getPackageStatus() != null ? updated.getPackageStatus().getName() : null;
+            if (!Objects.equals(oldStatus, newStatus)) {
+                PackageModification mod = new PackageModification();
+                mod.setTimestamp(now);
+                mod.setAction("STATUS_CHANGED");
+                mod.setFieldName("packageStatus");
+                mod.setOldValue(oldStatus);
+                mod.setNewValue(newStatus);
+                mod.setPerformedBy(user);
+                mod.setDescription("Package status changed from " + oldStatus + " to " + newStatus);
+                mods.add(mod);
+            }
         }
 
         // Permit collection changes
-        detectPermitCollectionChanges(mods, now, user, "WorkRequest",
-                getIds(old.getWorkRequests()), getIds(updated.getWorkRequests()));
-        detectPermitCollectionChanges(mods, now, user, "SafeWork",
-                getIds(old.getSafeWorks()), getIds(updated.getSafeWorks()));
-        detectPermitCollectionChanges(mods, now, user, "HotWork",
-                getIds(old.getHotWorks()), getIds(updated.getHotWorks()));
-        detectPermitCollectionChanges(mods, now, user, "ConfinedSpace",
-                getIds(old.getConfinedSpaces()), getIds(updated.getConfinedSpaces()));
-        detectPermitCollectionChanges(mods, now, user, "Loto",
-                getIds(old.getLotos()), getIds(updated.getLotos()));
-        detectPermitCollectionChanges(mods, now, user, "EnergizedWorkPermit",
-                getIds(old.getEnergizedWorkPermits()), getIds(updated.getEnergizedWorkPermits()));
-        detectPermitCollectionChanges(mods, now, user, "ExcavationPermit",
-                getIds(old.getExcavationPermits()), getIds(updated.getExcavationPermits()));
-        detectPermitCollectionChanges(mods, now, user, "VentingPermit",
-                getIds(old.getVentingPermits()), getIds(updated.getVentingPermits()));
+        if (incomingDto.hasWorkRequestsPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "WorkRequest",
+                    getIds(old.getWorkRequests()), getIds(updated.getWorkRequests()));
+        }
+        if (incomingDto.hasSafeWorksPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "SafeWork",
+                    getIds(old.getSafeWorks()), getIds(updated.getSafeWorks()));
+        }
+        if (incomingDto.hasHotWorksPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "HotWork",
+                    getIds(old.getHotWorks()), getIds(updated.getHotWorks()));
+        }
+        if (incomingDto.hasConfinedSpacesPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "ConfinedSpace",
+                    getIds(old.getConfinedSpaces()), getIds(updated.getConfinedSpaces()));
+        }
+        if (incomingDto.hasLotosPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "Loto",
+                    getIds(old.getLotos()), getIds(updated.getLotos()));
+        }
+        if (incomingDto.hasEnergizedWorkPermitsPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "EnergizedWorkPermit",
+                    getIds(old.getEnergizedWorkPermits()), getIds(updated.getEnergizedWorkPermits()));
+        }
+        if (incomingDto.hasExcavationPermitsPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "ExcavationPermit",
+                    getIds(old.getExcavationPermits()), getIds(updated.getExcavationPermits()));
+        }
+        if (incomingDto.hasVentingPermitsPayload()) {
+            detectPermitCollectionChanges(mods, now, user, "VentingPermit",
+                    getIds(old.getVentingPermits()), getIds(updated.getVentingPermits()));
+        }
 
         return mods;
     }
@@ -1148,5 +1179,26 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private String truncate(String value) {
         if (value == null) return null;
         return value.length() > 200 ? value.substring(0, 200) + "..." : value;
+    }
+
+    private <T extends com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity> boolean removeMatching(
+            Set<T> collection, Long id, java.util.function.Consumer<T> remover) {
+        T match = collection.stream()
+                .filter(item -> id.equals(item.getId()))
+                .findFirst()
+                .orElse(null);
+        if (match == null) return false;
+        remover.accept(match);
+        return true;
+    }
+
+    private void requireMatchingVersion(String entityType, Long entityId, Long expectedVersion, Long actualVersion) {
+        if (expectedVersion == null) {
+            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: missing version");
+        }
+        if (!Objects.equals(expectedVersion, actualVersion)) {
+            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: stale version "
+                + expectedVersion + " (current " + actualVersion + ")");
+        }
     }
 }

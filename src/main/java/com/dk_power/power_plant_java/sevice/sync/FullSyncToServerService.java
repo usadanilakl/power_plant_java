@@ -154,7 +154,7 @@ public class FullSyncToServerService {
 
     // Fields to exclude from sync
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
-        "id", "dateCreated", "dateModified", "objectType", "serialVersionUID",
+        "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );
 

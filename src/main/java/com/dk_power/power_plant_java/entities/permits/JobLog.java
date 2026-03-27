@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,8 +15,8 @@ import java.util.Set;
 @Setter
 public class JobLog extends BaseAuditEntity {
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "job_log_id")
+    @JsonIgnore
+    @OneToMany(mappedBy = "jobLog", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<DailyPermitPackage> packages = new HashSet<>();
 
     @Column(columnDefinition = "TEXT")
@@ -43,4 +44,25 @@ public class JobLog extends BaseAuditEntity {
     @ManyToOne
     @JoinColumn(name = "work_category_id")
     private Value workCategory;
+
+    public void setPackages(Set<DailyPermitPackage> packages) {
+        new HashSet<>(this.packages).forEach(this::removePackage);
+        if (packages != null) {
+            packages.forEach(this::addPackage);
+        }
+    }
+
+    public void addPackage(DailyPermitPackage pkg) {
+        if (pkg == null) return;
+        packages.add(pkg);
+        pkg.setJobLog(this);
+    }
+
+    public void removePackage(DailyPermitPackage pkg) {
+        if (pkg == null) return;
+        packages.remove(pkg);
+        if (pkg.getJobLog() == this) {
+            pkg.setJobLog(null);
+        }
+    }
 }

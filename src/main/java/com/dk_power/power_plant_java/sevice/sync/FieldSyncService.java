@@ -1477,11 +1477,19 @@ public class FieldSyncService {
                 return false; // Don't save change — retry on next sync
             }
 
-            // Clear old FK references (detach children that are no longer in the collection)
-            entityManager.createNativeQuery(
-                "UPDATE " + childTable + " SET " + fkColumn + " = NULL WHERE " + fkColumn + " = :parentId")
-                .setParameter("parentId", parentId)
-                .executeUpdate();
+            // Aggregate membership collections are not safe to apply destructively via generic
+            // last-writer-wins sync. A stale or partial payload can otherwise detach packages
+            // from jobs or permits from packages and orphan/remove data on the hub.
+            boolean additiveOnly = isProtectedAggregateMembershipField(entity.getClass(), change.getFieldName());
+            if (!additiveOnly) {
+                entityManager.createNativeQuery(
+                    "UPDATE " + childTable + " SET " + fkColumn + " = NULL WHERE " + fkColumn + " = :parentId")
+                    .setParameter("parentId", parentId)
+                    .executeUpdate();
+            } else {
+                log.warn("Applying additive-only OneToMany sync for protected aggregate field {}.{}",
+                    entity.getClass().getSimpleName(), change.getFieldName());
+            }
 
             // Set FK on current children and verify each UPDATE affected a row
             int totalAffected = 0;
@@ -1511,6 +1519,26 @@ public class FieldSyncService {
                 entity.getClass().getSimpleName(), change.getFieldName(), e.getMessage());
             return false;
         }
+    }
+
+    private boolean isProtectedAggregateMembershipField(Class<?> entityClass, String fieldName) {
+        String entityName = entityClass.getSimpleName();
+        if ("JobLog".equals(entityName) && "packages".equals(fieldName)) {
+            return true;
+        }
+        if ("DailyPermitPackage".equals(entityName)) {
+            return Set.of(
+                "workRequests",
+                "safeWorks",
+                "hotWorks",
+                "confinedSpaces",
+                "lotos",
+                "energizedWorkPermits",
+                "excavationPermits",
+                "ventingPermits"
+            ).contains(fieldName);
+        }
+        return false;
     }
 
     /**

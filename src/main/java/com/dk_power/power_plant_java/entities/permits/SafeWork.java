@@ -4,10 +4,14 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwPermits;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwPpe;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,6 +19,11 @@ import lombok.Setter;
 @Setter
 @Entity
 public class SafeWork extends BasePermitEntity {
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "daily_permit_package_id")
+    private DailyPermitPackage dailyPermitPackage;
 
     private String date;
     private String time;

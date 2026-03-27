@@ -39,6 +39,7 @@ public class FieldChangeTracker {
     // Fields to exclude from tracking
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", // ID is never changed for updates, and Hibernate snapshot doesn't include it
+        "version",
         "dateCreated", "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );

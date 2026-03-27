@@ -6,8 +6,10 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.exception.StaleAggregateUpdateException;
 import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.JobLogMapper;
+import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
 import com.dk_power.power_plant_java.repository.permits.JobLogRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -35,6 +37,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private final EntityManager entityManager;
     private final JobLogRepo jobLogRepo;
     private final JobLogMapper jobLogMapper;
+    private final DailyPermitPackageRepo dailyPermitPackageRepo;
     private final WorkRequestRepo workRequestRepo;
     private final DailyPermitPackageMapper dailyPermitPackageMapper;
     private final PermitNumberGenerator permitNumberGenerator;
@@ -115,7 +118,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     public JobLogDto addDailyPackage(String jobId, DailyPermitPackageDto packageDto) {
         JobLog job = getEntityById(jobId);
         DailyPermitPackage pkg = dailyPermitPackageMapper.convertToEntity(packageDto);
-        job.getPackages().add(pkg);
+        job.addPackage(pkg);
         job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
@@ -136,7 +139,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
             job.setOriginatingWorkRequest(null);
         }
 
-        job.getPackages().removeIf(p -> p.getId().equals(pkgId));
+        job.removePackage(pkg);
         job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
@@ -148,7 +151,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         pkg.setName(truncate(job.getName() + " - Package " + (job.getPackages().size() + 1), 250));
         pkg.setCompanyName(job.getCompany());
         pkg.setPermitNumber(permitNumberGenerator.generate(job.getStartDate()));
-        job.getPackages().add(pkg);
+        job.addPackage(pkg);
         job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
         JobLog saved = jobLogRepo.save(job);
         return jobLogMapper.convertToDto(saved);
@@ -158,6 +161,7 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         // Load the managed entity to avoid orphanRemoval deleting child packages
         JobLog existing = getEntityById(id);
         if (existing == null) throw new RuntimeException("Job not found: " + id);
+        requireMatchingVersion("JobLog", existing.getId(), dto.getVersion(), existing.getVersion());
 
         // Update only scalar fields — NEVER replace the packages collection.
         // Packages are managed via addDailyPackage/removePackageFromJob/processWorkRequest.
@@ -254,14 +258,13 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
             jobLogRepo.save(source);
         }
 
-        // Use native SQL to move the package without triggering orphanRemoval
-        entityManager.createNativeQuery("UPDATE daily_permit_package SET job_log_id = :targetId WHERE id = :pkgId AND job_log_id = :sourceId")
-                .setParameter("targetId", targetId)
-                .setParameter("pkgId", pkgId)
-                .setParameter("sourceId", sourceId)
-                .executeUpdate();
-        entityManager.flush();
-        entityManager.clear();
+        source.removePackage(pkg);
+        target.addPackage(pkg);
+        source.setDateModified(java.time.LocalDateTime.now());
+        target.setDateModified(java.time.LocalDateTime.now());
+        dailyPermitPackageRepo.save(pkg);
+        jobLogRepo.save(source);
+        jobLogRepo.save(target);
 
         JobLog updatedSource = getEntityById(sourceJobId);
         JobLog updatedTarget = getEntityById(targetJobId);
@@ -283,13 +286,15 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         source.setOriginatingWorkRequest(null);
         jobLogRepo.save(source);
 
-        // Move all packages via native SQL
-        entityManager.createNativeQuery("UPDATE daily_permit_package SET job_log_id = :targetId WHERE job_log_id = :sourceId")
-                .setParameter("targetId", targetId)
-                .setParameter("sourceId", sourceId)
-                .executeUpdate();
-        entityManager.flush();
-        entityManager.clear();
+        Set<DailyPermitPackage> packagesToMove = new HashSet<>(source.getPackages());
+        for (DailyPermitPackage pkg : packagesToMove) {
+            source.removePackage(pkg);
+            target.addPackage(pkg);
+            dailyPermitPackageRepo.save(pkg);
+        }
+        source.setDateModified(java.time.LocalDateTime.now());
+        target.setDateModified(java.time.LocalDateTime.now());
+        jobLogRepo.save(target);
 
         // Delete empty source job
         JobLog emptySource = getEntityById(sourceJobId);
@@ -320,10 +325,10 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         pkg.setPermitNumber(permitNumberGenerator.generate(dateForPermit));
 
         // 3. Attach WR to package
-        pkg.getWorkRequests().add(wr);
+        pkg.addWorkRequest(wr);
 
         // 4. Attach package to job
-        job.getPackages().add(pkg);
+        job.addPackage(pkg);
         job.setDateModified(java.time.LocalDateTime.now()); // Force dirty for OneToMany change tracking
 
         // 5. Persist
@@ -430,5 +435,15 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
     private String truncate(String value, int maxLength) {
         if (value == null) return null;
         return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
+    }
+
+    private void requireMatchingVersion(String entityType, Long entityId, Long expectedVersion, Long actualVersion) {
+        if (expectedVersion == null) {
+            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: missing version");
+        }
+        if (!Objects.equals(expectedVersion, actualVersion)) {
+            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: stale version "
+                + expectedVersion + " (current " + actualVersion + ")");
+        }
     }
 }

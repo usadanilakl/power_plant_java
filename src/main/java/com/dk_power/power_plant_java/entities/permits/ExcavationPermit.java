@@ -3,10 +3,14 @@ package com.dk_power.power_plant_java.entities.permits;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.pojo.ExcavationChecklist;
 import com.dk_power.power_plant_java.entities.permits.pojo.ExcavationTypeOfWork;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +20,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ExcavationPermit extends BasePermitEntity {
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "daily_permit_package_id")
+    private DailyPermitPackage dailyPermitPackage;
+
     private String date;
     private String time;
     private String location;

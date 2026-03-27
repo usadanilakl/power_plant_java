@@ -28,6 +28,8 @@ public class BaseIdEntity {
     @GeneratedValue(generator = "device-prefixed")
     @GenericGenerator(name = "device-prefixed", type = DevicePrefixedIdGenerator.class)
     private Long id;
+    @Version
+    private Long version;
     @ColumnDefault("false")
     private Boolean deleted = false;
     private Boolean isVerified = false;

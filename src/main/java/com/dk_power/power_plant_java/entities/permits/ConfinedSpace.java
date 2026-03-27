@@ -4,9 +4,13 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePpe;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePrecautions;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -18,6 +22,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ConfinedSpace extends BasePermitEntity {
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "daily_permit_package_id")
+    private DailyPermitPackage dailyPermitPackage;
 
     private String date;
     private String time;

@@ -15,6 +15,7 @@ import java.util.UUID;
         property = "id")
 public class BaseDto {
     private Long id;
+    private Long version;
     private Boolean deleted = false;
     private Boolean isVerified = false;
     private String name;
