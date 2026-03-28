@@ -34,7 +34,10 @@
       (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)"
       (mouseup)="onMouseUp()"
-      (mouseleave)="onMouseUp()">
+      (mouseleave)="onMouseUp()"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd()">
 
       <div #zoomElement class="zoom-element">
         <img
@@ -47,13 +50,14 @@
           <div
             class="shape-overlay"
             [class.selected]="isSelected(shape)"
-            [ngStyle]="getShapeStyle(shape)"
+            [ngStyle]="isSelected(shape) ? mergeStyles(getShapeStyle(shape), getSelectedShapeCounterStyle()) : mergeStyles(getShapeStyle(shape), getShapeCounterStyle())"
             (click)="selectShape(shape); $event.stopPropagation()">
           </div>
           <div
             class="shape-label-anchor"
             [ngStyle]="getLabelStyle(shape)">
-            <span class="shape-label" [class.selected]="isSelected(shape)">{{ getDisplayName(shape) }}</span>
+            <span class="shape-label" [class.selected]="isSelected(shape)"
+              [ngStyle]="isSelected(shape) ? getSelectedLabelCounterStyle() : getLabelCounterStyle()">{{ getDisplayName(shape) }}</span>
           </div>
         }
       </div>

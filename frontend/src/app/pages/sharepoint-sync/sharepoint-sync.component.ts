@@ -72,8 +72,8 @@ interface SyncConfig {
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">Peer Sync Interval</span>
-              <span class="setting-hint">Frequency for peer-to-peer sync</span>
+              <span class="setting-label">Hub Sync Interval</span>
+              <span class="setting-hint">How often to exchange queued changes with the hub</span>
             </div>
             <select [(ngModel)]="config.peerSyncIntervalSeconds" (change)="save()" class="interval-select">
               <option [ngValue]="15">15 sec</option>

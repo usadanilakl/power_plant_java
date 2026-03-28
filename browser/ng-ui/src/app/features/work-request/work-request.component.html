@@ -16,7 +16,7 @@
     </div>
   </div>
 } @else {
-  <div class="form-header">
+  <div class="sticky-header">
     <button class="back-button" (click)="backToSelect()">← Back</button>
     <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
   </div>
@@ -24,12 +24,13 @@
 }
 
 <app-popup
-    [title]="'Table contains previously submitted requests from THIS device and THIS browser'"
+    [title]="'Select a previous request'"
     [size]="'large'"
     [isOpen]="isTablePopupOpen"
     (close)="closeTablePopup()"
 >
     <app-work-request-table
+        [resubmitMode]="true"
         (actionPopupClosed)="closeTablePopup()"
     ></app-work-request-table>
 </app-popup>

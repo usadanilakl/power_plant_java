@@ -12,10 +12,11 @@
 .router-menu.row ul {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
 }
 
 .router-menu.row li {
-  margin-right: 1rem;
+  flex-shrink: 0;
 }
 
 .router-menu.column li {
@@ -29,7 +30,8 @@
   color: var(--menu-item-text-color);
   border-radius: 6px;
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-  border-left: 3px solid transparent; /* For active indicator */
+  border-left: 3px solid transparent;
+  white-space: nowrap;
 }
 
 .router-menu a:hover {
@@ -40,6 +42,25 @@
   color: var(--menu-item-active-text-color);
   border-left-color: var(--menu-item-active-indicator-color);
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .router-menu.row ul {
+    gap: 0;
+  }
+
+  .router-menu.row a {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+  }
+
+  .router-menu.row a.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--menu-item-active-indicator-color, var(--accent-color));
+  }
 }
 
 

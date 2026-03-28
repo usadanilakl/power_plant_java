@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,6 +51,7 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
 
     private static final String PLANT_MAP_MARKER = "__PLANT_MAP__";
     private static final String WORK_AREA_MAP_ENTITY_TYPE = "WorkAreaMap";
+    private static final String PLANT_MAP_TOKEN_PREFIX = "plant-map-sync:";
 
     @Override
     public WorkAreaRepo getRepo() { return workAreaRepo; }
@@ -267,23 +269,57 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             marker.setName(PLANT_MAP_MARKER);
         }
         marker.setCoordinates(fileLink);
+        String mapSyncToken = createMapSyncToken();
+        marker.setLabel(mapSyncToken);
         marker = shapeRepo.save(marker);
 
         syncMapFiles(marker.getId());
+        persistLocalMapSyncToken(mapSyncToken);
 
         gitHubPublisher.publishAll();
-        return getMapImagePath();
+        return buildMapImageUrl(mapSyncToken);
     }
 
     public String getMapImagePath() {
         Path jpgPath = Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg");
+        Path pdfPath = Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.pdf");
+        String localToken = readLocalMapSyncToken();
         if (Files.exists(jpgPath)) {
-            return filesRelativePath + "/jpg/work-area-map/plant-map.jpg";
+            WorkAreaMapShape marker = shapeRepo.findByName(PLANT_MAP_MARKER);
+            String remoteToken = extractMapSyncToken(marker);
+            if (remoteToken == null || Objects.equals(remoteToken, localToken)) {
+                return buildMapImageUrl(localToken);
+            }
         }
 
         WorkAreaMapShape marker = shapeRepo.findByName(PLANT_MAP_MARKER);
         if (marker == null || marker.getId() == null) {
-            return null;
+            return Files.exists(jpgPath) ? buildMapImageUrl(localToken) : null;
+        }
+
+        String remoteToken = extractMapSyncToken(marker);
+        boolean hasLocalMap = Files.exists(jpgPath);
+        boolean needsRefresh = remoteToken != null && !Objects.equals(remoteToken, localToken);
+
+        if (hasLocalMap && needsRefresh) {
+            try {
+                clearTempMapFiles();
+                managedEntityFileSyncService.downloadEntityFiles(
+                        WORK_AREA_MAP_ENTITY_TYPE,
+                        marker.getId(),
+                        this::resolveTempMapFileDestination);
+                if (promoteTempMapFiles()) {
+                    persistLocalMapSyncToken(remoteToken);
+                    return buildMapImageUrl(remoteToken);
+                }
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                        .warn("Failed to refresh work-area map files locally: {}", e.getMessage());
+            } finally {
+                clearTempMapFiles();
+            }
+
+            return buildMapImageUrl(localToken);
         }
 
         try {
@@ -297,7 +333,10 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
         }
 
         if (Files.exists(jpgPath)) {
-            return filesRelativePath + "/jpg/work-area-map/plant-map.jpg";
+            if (remoteToken != null) {
+                persistLocalMapSyncToken(remoteToken);
+            }
+            return buildMapImageUrl(remoteToken);
         }
         return null;
     }
@@ -326,5 +365,118 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             return Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg");
         }
         return null;
+    }
+
+    private Path resolveTempMapFileDestination(ManagedEntityFileSyncService.RemoteFileDescriptor remoteFile) {
+        String fileName = remoteFile.fileName() == null ? "" : remoteFile.fileName().toLowerCase();
+        if (fileName.endsWith(".pdf")) {
+            return Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.next.pdf");
+        }
+        if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
+            return Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.next.jpg");
+        }
+        return null;
+    }
+
+    private String createMapSyncToken() {
+        return PLANT_MAP_TOKEN_PREFIX + System.currentTimeMillis();
+    }
+
+    private String extractMapSyncToken(WorkAreaMapShape marker) {
+        if (marker == null || marker.getLabel() == null || marker.getLabel().isBlank()) {
+            return null;
+        }
+        return marker.getLabel().startsWith(PLANT_MAP_TOKEN_PREFIX) ? marker.getLabel() : null;
+    }
+
+    private String buildMapImageUrl(String mapSyncToken) {
+        String path = filesRelativePath + "/jpg/work-area-map/plant-map.jpg";
+        if (mapSyncToken == null || mapSyncToken.isBlank()) {
+            return path;
+        }
+        return path + "?v=" + mapSyncToken;
+    }
+
+    private Path getMapSyncTokenFile() {
+        return Paths.get(filesRootPath, "jpg", "work-area-map", ".plant-map-sync-token");
+    }
+
+    private void persistLocalMapSyncToken(String mapSyncToken) {
+        if (mapSyncToken == null || mapSyncToken.isBlank()) {
+            return;
+        }
+        try {
+            Path tokenFile = getMapSyncTokenFile();
+            Files.createDirectories(tokenFile.getParent());
+            Files.writeString(tokenFile, mapSyncToken, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to persist work-area map sync token locally: {}", e.getMessage());
+        }
+    }
+
+    private String readLocalMapSyncToken() {
+        Path tokenFile = getMapSyncTokenFile();
+        if (!Files.exists(tokenFile)) {
+            return null;
+        }
+        try {
+            return Files.readString(tokenFile, StandardCharsets.UTF_8).trim();
+        } catch (IOException e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to read work-area map sync token locally: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private void deleteLocalMapFiles(Path jpgPath, Path pdfPath) {
+        try {
+            Files.deleteIfExists(jpgPath);
+        } catch (IOException e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to delete stale work-area JPG map: {}", e.getMessage());
+        }
+        try {
+            Files.deleteIfExists(pdfPath);
+        } catch (IOException e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to delete stale work-area PDF map: {}", e.getMessage());
+        }
+    }
+
+    private boolean promoteTempMapFiles() {
+        Path tempJpgPath = Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.next.jpg");
+        Path tempPdfPath = Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.next.pdf");
+        Path jpgPath = Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.jpg");
+        Path pdfPath = Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.pdf");
+
+        if (!Files.exists(tempJpgPath)) {
+            return false;
+        }
+
+        try {
+            Files.createDirectories(jpgPath.getParent());
+            Files.move(tempJpgPath, jpgPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (Files.exists(tempPdfPath)) {
+                Files.createDirectories(pdfPath.getParent());
+                Files.move(tempPdfPath, pdfPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            return true;
+        } catch (IOException e) {
+            org.slf4j.LoggerFactory.getLogger(NgWorkAreaService.class)
+                    .warn("Failed to promote refreshed work-area map files: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private void clearTempMapFiles() {
+        try {
+            Files.deleteIfExists(Paths.get(filesRootPath, "jpg", "work-area-map", "plant-map.next.jpg"));
+        } catch (IOException ignored) {
+        }
+        try {
+            Files.deleteIfExists(Paths.get(filesRootPath, "pdf", "work-area-map", "plant-map.next.pdf"));
+        } catch (IOException ignored) {
+        }
     }
 }

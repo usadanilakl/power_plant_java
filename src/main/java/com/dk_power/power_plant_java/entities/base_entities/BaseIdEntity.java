@@ -29,7 +29,7 @@ public class BaseIdEntity {
     @GenericGenerator(name = "device-prefixed", type = DevicePrefixedIdGenerator.class)
     private Long id;
     @Version
-    private Long version;
+    private Long version = 0L;
     @ColumnDefault("false")
     private Boolean deleted = false;
     private Boolean isVerified = false;

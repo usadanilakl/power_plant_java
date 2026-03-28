@@ -6,7 +6,6 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.permits.DailyPermitPackage;
 import com.dk_power.power_plant_java.entities.permits.JobLog;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
-import com.dk_power.power_plant_java.exception.StaleAggregateUpdateException;
 import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.JobLogMapper;
 import com.dk_power.power_plant_java.repository.permits.DailyPermitPackageRepo;
@@ -161,7 +160,6 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         // Load the managed entity to avoid orphanRemoval deleting child packages
         JobLog existing = getEntityById(id);
         if (existing == null) throw new RuntimeException("Job not found: " + id);
-        requireMatchingVersion("JobLog", existing.getId(), dto.getVersion(), existing.getVersion());
 
         // Update only scalar fields — NEVER replace the packages collection.
         // Packages are managed via addDailyPackage/removePackageFromJob/processWorkRequest.
@@ -437,13 +435,4 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
     }
 
-    private void requireMatchingVersion(String entityType, Long entityId, Long expectedVersion, Long actualVersion) {
-        if (expectedVersion == null) {
-            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: missing version");
-        }
-        if (!Objects.equals(expectedVersion, actualVersion)) {
-            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: stale version "
-                + expectedVersion + " (current " + actualVersion + ")");
-        }
-    }
 }

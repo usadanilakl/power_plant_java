@@ -10,8 +10,6 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SyncUpdateService } from '../../services/sync/sync-update.service';
 import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../services/sync-status.service';
-import { FullResyncService } from '../../services/full-resync.service';
-import { SyncServerConfigComponent } from '../sync-server-config/sync-server-config.component';
 
 /**
  * Sync status indicator component for the header.
@@ -29,7 +27,7 @@ import { SyncServerConfigComponent } from '../sync-server-config/sync-server-con
 @Component({
   selector: 'app-sync-indicator',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule, MatSlideToggleModule, MatButtonModule, MatDividerModule, FormsModule, SyncServerConfigComponent],
+  imports: [CommonModule, MatIconModule, MatTooltipModule, MatSlideToggleModule, MatButtonModule, MatDividerModule, FormsModule],
   template: `
     <div class="sync-indicator-wrapper">
       <div class="sync-indicator"
@@ -73,12 +71,18 @@ import { SyncServerConfigComponent } from '../sync-server-config/sync-server-con
             <div class="info-grid">
               @if (syncStatus()) {
                 <div class="info-item">
-                  <span class="info-label">Mode</span>
-                  <span class="info-value">{{ syncStatus()?.syncMode || 'N/A' }}</span>
+                  <span class="info-label">Target</span>
+                  <span class="info-value">{{ syncStatus()?.syncMode === 'SERVER' ? 'Hub' : 'Local only' }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Pending</span>
+                  <span class="info-label">Local Pending</span>
                   <span class="info-value">{{ syncStatus()?.pendingServerChanges ?? 0 }}</span>
+                </div>
+              }
+              @if (serverPendingCount() > 0) {
+                <div class="info-item">
+                  <span class="info-label">Server Pending</span>
+                  <span class="info-value">{{ serverPendingCount() }}</span>
                 </div>
               }
               @if (recentUpdateCount() > 0) {
@@ -89,26 +93,9 @@ import { SyncServerConfigComponent } from '../sync-server-config/sync-server-con
               }
             </div>
 
-            @if (autoResyncInProgress()) {
-              <div class="resync-suggestion auto-resync-active">
-                <mat-icon class="spin">sync</mat-icon>
-                Auto-resync in progress (attempt {{ autoResyncLevel() + 1 }} of 5)...
-              </div>
-            } @else if (autoResyncExhausted()) {
-              <div class="resync-suggestion auto-resync-failed">
-                Automatic resync attempts exhausted. Manual full resync recommended.
-                <div class="resync-actions">
-                  <button mat-stroked-button color="warn" (click)="goToDashboard()">Full Resync</button>
-                  <button mat-stroked-button (click)="resetAutoResync()">Retry Auto</button>
-                </div>
-              </div>
-            } @else if (suggestResync()) {
+            @if (suggestResync()) {
               <div class="resync-suggestion">
-                @if (suggestedSyncDate()) {
-                  Auto-resync will attempt from {{ suggestedSyncDate() }}
-                } @else {
-                  Full resync recommended
-                }
+                Full resync recommended
               </div>
             }
 
@@ -142,19 +129,7 @@ import { SyncServerConfigComponent } from '../sync-server-config/sync-server-con
                 <mat-icon>dashboard</mat-icon>
                 Dashboard
               </button>
-              <button mat-button (click)="toggleSettings()">
-                <mat-icon>settings</mat-icon>
-                Settings
-              </button>
             </div>
-
-            @if (showingSettings()) {
-              <mat-divider></mat-divider>
-              <app-sync-server-config
-                (saved)="onSettingsSaved()"
-                (cancelled)="onSettingsCancelled()">
-              </app-sync-server-config>
-            }
           </div>
         </div>
       }
@@ -409,7 +384,6 @@ import { SyncServerConfigComponent } from '../sync-server-config/sync-server-con
 export class SyncIndicatorComponent implements OnInit, OnDestroy {
   private syncUpdateService = inject(SyncUpdateService);
   private syncStatusService = inject(SyncStatusService);
-  private fullResyncService = inject(FullResyncService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
@@ -423,17 +397,13 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   syncHealthState = signal<SyncHealthStatusType>('UNKNOWN');
   syncHealthMessage = signal<string>('');
   suggestResync = signal<boolean>(false);
-  suggestedSyncDate = signal<string | null>(null);
-  autoResyncInProgress = signal<boolean>(false);
-  autoResyncExhausted = signal<boolean>(false);
-  autoResyncLevel = signal<number>(0);
+  serverPendingCount = signal<number>(0);
   recentUpdateCount = signal<number>(0);
   syncEnabled = signal<boolean>(true);
   syncStatus = signal<SyncStatus | null>(null);
   popoverOpen = signal<boolean>(false);
   togglingSync = signal<boolean>(false);
   syncingNow = signal<boolean>(false);
-  showingSettings = signal<boolean>(false);
   private updateTimer: any = null;
   private statusPollTimer: any = null;
 
@@ -539,12 +509,7 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
           this.syncHealthState.set(health.syncStatus);
           this.syncHealthMessage.set(health.message || '');
           this.suggestResync.set(health.suggestResync || false);
-          this.suggestedSyncDate.set(health.suggestedSyncDate || null);
-          if (health.autoResyncState) {
-            this.autoResyncInProgress.set(health.autoResyncState.autoResyncInProgress);
-            this.autoResyncExhausted.set(health.autoResyncState.autoResyncExhausted);
-            this.autoResyncLevel.set(health.autoResyncState.escalationLevel);
-          }
+          this.serverPendingCount.set(health.serverPendingChangesForClient ?? 0);
         }
       })
     );
@@ -629,30 +594,6 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
   goToDashboard(): void {
     this.closePopover();
     this.router.navigate(['/sync']);
-  }
-
-  resetAutoResync(): void {
-    this.fullResyncService.resetAutoResyncState().subscribe(() => {
-      this.autoResyncExhausted.set(false);
-      this.autoResyncLevel.set(0);
-    });
-  }
-
-  toggleSettings(): void {
-    this.showingSettings.update(v => !v);
-  }
-
-  onSettingsSaved(): void {
-    this.showingSettings.set(false);
-    // Refresh status after config change
-    setTimeout(() => {
-      this.loadSyncStatus();
-      this.loadSyncToggleState();
-    }, 500);
-  }
-
-  onSettingsCancelled(): void {
-    this.showingSettings.set(false);
   }
 
   private loadSyncToggleState(): void {

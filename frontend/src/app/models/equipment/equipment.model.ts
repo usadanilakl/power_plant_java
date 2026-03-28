@@ -91,6 +91,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   // Serialization method
   override toJson(): any {
     return {
+      ...super.toJson(),
       tagNumber: this.tagNumber || null,
       description: this.description || null,
       specificLocation: this.specificLocation || null,
@@ -107,6 +108,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPoints: this.lotoPoints?.map(point => point ? point.toJson() : null).filter(Boolean),
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
+      mainFileObject: this.mainFileObject ? FileDto.fromJson(this.mainFileObject).toJson() : null,
       symbolId: this.symbolId || null,
       svgPath: this.svgPath || null,
     };
@@ -120,7 +122,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     }
 
     return new EquipmentDto({
-      id: json.id || 0,
+      ...super.fromJson(json),
       tagNumber: json.tagNumber || null,
       description: json.description || null,
       specificLocation: json.specificLocation || null,

@@ -32,11 +32,23 @@ export class CurrentEnergizedWorkPermitService {
         this.loadPaperForm();
     }
 
+    private normalizePermit(item: Partial<EnergizedWorkPermitDto> | null | undefined): EnergizedWorkPermitDto {
+        return item ? EnergizedWorkPermitDto.fromJson(item) : new EnergizedWorkPermitDto();
+    }
+
+    private normalizePermits(items: Partial<EnergizedWorkPermitDto>[] | null | undefined): EnergizedWorkPermitDto[] {
+        return (items ?? []).map(item => this.normalizePermit(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+        return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadPermits() {
         this.energizedWorkPermitService.getAll().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActivePermitsSubject.next(response.responseData);
+            this.allActivePermitsSubject.next(this.normalizePermits(response.responseData));
             console.log('Energized work permits loaded:', response.responseData);
         });
     }
@@ -49,7 +61,7 @@ export class CurrentEnergizedWorkPermitService {
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
             }
         });
     }
@@ -62,7 +74,7 @@ export class CurrentEnergizedWorkPermitService {
         this.energizedWorkPermitService.getById(id.toString()).pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedPermitSubject.next(response.responseData);
+            this.selectedPermitSubject.next(this.normalizePermit(response.responseData));
         });
     }
 
@@ -92,9 +104,9 @@ export class CurrentEnergizedWorkPermitService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newPermit = response.responseData;
+                    const newPermit = this.normalizePermit(response.responseData);
                     this.addPermitToList(newPermit);
-                    this.setCurrentPermitWithDto(new EnergizedWorkPermitDto(newPermit));
+                    this.setCurrentPermitWithDto(newPermit);
                 }
             })
         );

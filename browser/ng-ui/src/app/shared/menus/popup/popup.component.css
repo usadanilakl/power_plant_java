@@ -54,10 +54,20 @@
   font-size: 1.5rem;
   cursor: pointer;
   color: var(--secondary-text);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .close-button:hover {
   color: var(--primary-text);
+  background-color: var(--border-color, rgba(0,0,0,0.1));
+}
+
+.popup-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .popup-small {
@@ -79,8 +89,25 @@
     width: 95%;
     max-height: 95vh;
   }
-  
-  .popup-small, .popup-medium, .popup-large {
+
+  .popup-small, .popup-medium {
     width: 100%;
+  }
+
+  .popup-large {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .close-button {
+    font-size: 1.75rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }

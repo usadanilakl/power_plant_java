@@ -32,11 +32,23 @@ export class CurrentVentingPermitService {
         this.loadPaperForm();
     }
 
+    private normalizePermit(item: Partial<VentingPermitDto> | null | undefined): VentingPermitDto {
+        return item ? VentingPermitDto.fromJson(item) : new VentingPermitDto();
+    }
+
+    private normalizePermits(items: Partial<VentingPermitDto>[] | null | undefined): VentingPermitDto[] {
+        return (items ?? []).map(item => this.normalizePermit(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+        return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadPermits() {
         this.ventingPermitService.getAll().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActivePermitsSubject.next(response.responseData);
+            this.allActivePermitsSubject.next(this.normalizePermits(response.responseData));
             console.log('Venting permits loaded:', response.responseData);
         });
     }
@@ -49,7 +61,7 @@ export class CurrentVentingPermitService {
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
             }
         });
     }
@@ -62,7 +74,7 @@ export class CurrentVentingPermitService {
         this.ventingPermitService.getById(id.toString()).pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedPermitSubject.next(response.responseData);
+            this.selectedPermitSubject.next(this.normalizePermit(response.responseData));
         });
     }
 
@@ -92,9 +104,9 @@ export class CurrentVentingPermitService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newPermit = response.responseData;
+                    const newPermit = this.normalizePermit(response.responseData);
                     this.addPermitToList(newPermit);
-                    this.setCurrentPermitWithDto(new VentingPermitDto(newPermit));
+                    this.setCurrentPermitWithDto(newPermit);
                 }
             })
         );

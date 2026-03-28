@@ -41,6 +41,32 @@ export class ZeroEnergyDto extends BaseDto implements ZeroEnergyModel {
       ? data.map(item => item instanceof EquipmentDto ? item : new EquipmentDto(item))
       : [];
   }
+
+  override toJson(): any {
+    return {
+      ...super.toJson(),
+      method: this.method,
+      zeroEnergyTemplate: this.zeroEnergyTemplate?.toJson?.() ?? this.zeroEnergyTemplate,
+      templateEquipment: this.templateEquipment.map(item => item.toJson()),
+      templateEquipmentIds: this.templateEquipmentIds,
+    };
+  }
+
+  static override fromJson(json: any): ZeroEnergyDto {
+    if (!json) {
+      return new ZeroEnergyDto();
+    }
+
+    return new ZeroEnergyDto({
+      ...super.fromJson(json),
+      method: json.method ?? '',
+      zeroEnergyTemplate: json.zeroEnergyTemplate ? ValueDto.fromJson(json.zeroEnergyTemplate) : new ValueDto(),
+      templateEquipment: Array.isArray(json.templateEquipment)
+        ? json.templateEquipment.map((item: any) => EquipmentDto.fromJson(item))
+        : [],
+      templateEquipmentIds: json.templateEquipmentIds ?? [],
+    });
+  }
 }
 
 

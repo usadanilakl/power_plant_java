@@ -52,6 +52,7 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
   private allWorkAreas: WorkAreaDto[] = [];
 
   // Transform state
+  currentScale = signal(1);
   private scale = 1;
   private translateX = 0;
   private translateY = 0;
@@ -151,6 +152,10 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
 
   // --- Shape Positioning ---
 
+  mergeStyles(...styles: Record<string, string>[]): Record<string, string> {
+    return Object.assign({}, ...styles);
+  }
+
   getShapeStyle(shape: ParsedShape): Record<string, string> {
     return {
       left: `${(shape.x / shape.originalWidth) * 100}%`,
@@ -245,9 +250,66 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
     this.isPanning = false;
   }
 
+  // --- Touch Events (mobile pinch-to-zoom + drag) ---
+
+  private lastTouchDist = 0;
+  private lastTouchCenterX = 0;
+  private lastTouchCenterY = 0;
+
+  onTouchStart(event: TouchEvent): void {
+    if (event.touches.length === 1) {
+      // Single finger pan
+      this.isPanning = true;
+      this.panStartX = event.touches[0].clientX;
+      this.panStartY = event.touches[0].clientY;
+      this.panStartTranslateX = this.translateX;
+      this.panStartTranslateY = this.translateY;
+    } else if (event.touches.length === 2) {
+      event.preventDefault();
+      this.isPanning = false;
+      const t = event.touches;
+      this.lastTouchDist = Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
+      this.lastTouchCenterX = (t[0].clientX + t[1].clientX) / 2;
+      this.lastTouchCenterY = (t[0].clientY + t[1].clientY) / 2;
+    }
+  }
+
+  onTouchMove(event: TouchEvent): void {
+    if (event.touches.length === 1 && this.isPanning) {
+      event.preventDefault();
+      this.translateX = this.panStartTranslateX + (event.touches[0].clientX - this.panStartX);
+      this.translateY = this.panStartTranslateY + (event.touches[0].clientY - this.panStartY);
+      this.applyTransform();
+    } else if (event.touches.length === 2) {
+      event.preventDefault();
+      const t = event.touches;
+      const dist = Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
+      const factor = dist / this.lastTouchDist;
+      const newScale = Math.min(Math.max(0.5, this.scale * factor), 8);
+
+      const centerX = (t[0].clientX + t[1].clientX) / 2;
+      const centerY = (t[0].clientY + t[1].clientY) / 2;
+      const container = this.mapContainer.nativeElement;
+      const rect = container.getBoundingClientRect();
+      const px = centerX - rect.left;
+      const py = centerY - rect.top;
+
+      this.translateX = px - (px - this.translateX) * (newScale / this.scale);
+      this.translateY = py - (py - this.translateY) * (newScale / this.scale);
+      this.scale = newScale;
+      this.lastTouchDist = dist;
+      this.applyTransform();
+    }
+  }
+
+  onTouchEnd(): void {
+    this.isPanning = false;
+  }
+
   // --- Transform ---
 
   private applyTransform(): void {
+    this.currentScale.set(this.scale);
     if (this.zoomElement) {
       const el = this.zoomElement.nativeElement;
       el.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
@@ -259,5 +321,41 @@ export class WorkAreaMapPickerComponent implements ControlValueAccessor, OnInit 
     this.translateX = 0;
     this.translateY = 0;
     this.applyTransform();
+  }
+
+  getShapeCounterStyle(): Record<string, string> {
+    const inv = 1 / this.scale;
+    return {
+      'border-width': `${2 * inv}px`,
+      'border-radius': `${4 * inv}px`,
+    };
+  }
+
+  getSelectedShapeCounterStyle(): Record<string, string> {
+    const inv = 1 / this.scale;
+    return {
+      'border-width': `${4 * inv}px`,
+      'border-radius': `${4 * inv}px`,
+    };
+  }
+
+  getLabelCounterStyle(): Record<string, string> {
+    const inv = 1 / this.scale;
+    const fontSize = Math.max(5 * inv, 3);
+    return {
+      'font-size': `${fontSize}px`,
+      'padding': `${inv}px ${2 * inv}px`,
+      'border-radius': `${2 * inv}px`,
+    };
+  }
+
+  getSelectedLabelCounterStyle(): Record<string, string> {
+    const inv = 1 / this.scale;
+    const fontSize = Math.max(6 * inv, 3.5);
+    return {
+      'font-size': `${fontSize}px`,
+      'padding': `${inv}px ${3 * inv}px`,
+      'border-radius': `${4 * inv}px`,
+    };
   }
 }

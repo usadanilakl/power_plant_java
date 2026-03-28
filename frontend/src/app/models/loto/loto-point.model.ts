@@ -138,9 +138,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   // Serialization method
   override toJson(): any {
     return {
-      id: this.id || 0,
+      ...super.toJson(),
       unit: this.unit || '',
-      isVerified: this.isVerified || false,
       tagged: this.tagged || '',
       tagNumber: this.tagNumber || '',
       description: this.description || '',
@@ -160,7 +159,6 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
             .map((equipment) => equipment.toJson())
         : [],
       oldId: this.oldId || '',
-      objectType: this.objectType || '',
       isUpdated: this.isUpdated || 0,
       fileIds: this.fileIds || '',
       conflictStatus: this.conflictStatus || '',
@@ -187,9 +185,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     }
 
     return new LotoPointDto({
-      id: json.id || 0,
+      ...super.fromJson(json),
       unit: json.unit || '',
-      isVerified: json.isVerified || false,
       tagged: json.tagged || '',
       tagNumber: json.tagNumber || '',
       description: json.description || '',
@@ -219,7 +216,6 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
             .filter((equipment: EquipmentDto | null) => equipment !== null)
         : [],
       oldId: json.oldId || '',
-      objectType: json.objectType || '',
       isUpdated: json.isUpdated || 0,
       fileIds: json.fileIds || '',
       conflictStatus: json.conflictStatus || '',
@@ -228,32 +224,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         : [],
       zeroEnergyMethod: json.zeroEnergyMethod || null,
 
-      zeroEnergy: json.zeroEnergy ? {
-        id: json.zeroEnergy.id || 0,
-        name: json.zeroEnergy.name || '',
-        objectType: json.zeroEnergy.objectType || '',
-        isVerified: json.zeroEnergy.isVerified || false,
-        method: json.zeroEnergy.method || '',
-        zeroEnergyTemplate: json.zeroEnergy.zeroEnergyTemplate
-          ? ValueDto.fromJson(json.zeroEnergy.zeroEnergyTemplate)
-          : new ValueDto(),
-        templateEquipment: Array.isArray(json.zeroEnergy.templateEquipment)
-          ? json.zeroEnergy.templateEquipment
-              .filter((equipment: any) => equipment != null)
-              .map((equipment: any) => {
-                try {
-                  return EquipmentDto.fromJson(equipment);
-                } catch (error) {
-                  console.warn('Error parsing ZeroEnergy EquipmentDto:', error);
-                  return null;
-                }
-              })
-              .filter((equipment: EquipmentDto | null) => equipment !== null)
-          : [],
-        templateEquipmentIds: Array.isArray(json.zeroEnergy.templateEquipmentIds)
-          ? json.zeroEnergy.templateEquipmentIds
-          : [],
-      } : null,
+      zeroEnergy: json.zeroEnergy ? ZeroEnergyDto.fromJson(json.zeroEnergy) : null,
       relatedLotoPointIds: Array.isArray(json.relatedLotoPointIds)
         ? json.relatedLotoPointIds
         : [],

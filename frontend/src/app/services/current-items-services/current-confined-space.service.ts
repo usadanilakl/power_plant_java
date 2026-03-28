@@ -32,11 +32,23 @@ export class CurrentConfinedSpaceService {
         this.loadPaperForm();
     }
 
+    private normalizeConfinedSpace(item: Partial<ConfinedSpaceDto> | null | undefined): ConfinedSpaceDto {
+        return item ? ConfinedSpaceDto.fromJson(item) : new ConfinedSpaceDto();
+    }
+
+    private normalizeConfinedSpaces(items: Partial<ConfinedSpaceDto>[] | null | undefined): ConfinedSpaceDto[] {
+        return (items ?? []).map(item => this.normalizeConfinedSpace(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+        return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadConfinedSpaces() {
         this.confinedSpaceService.getConfinedSpaceRequests().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActiveConfinedSpacesSubject.next(response.responseData);
+            this.allActiveConfinedSpacesSubject.next(this.normalizeConfinedSpaces(response.responseData));
             console.log('Confined spaces loaded:', response.responseData);
         });
     }
@@ -49,7 +61,7 @@ export class CurrentConfinedSpaceService {
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
                 // console.log('Paper form loaded:', response.responseData);
             }
         });
@@ -63,7 +75,7 @@ export class CurrentConfinedSpaceService {
         this.confinedSpaceService.getConfinedSpaceRequestById(id.toString()).pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedConfinedSpaceSubject.next(response.responseData);
+            this.selectedConfinedSpaceSubject.next(this.normalizeConfinedSpace(response.responseData));
         });
     }    
     setCurrentConfinedSpaceWithDto(dto: ConfinedSpaceDto) {
@@ -102,9 +114,9 @@ export class CurrentConfinedSpaceService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newConfinedSpace = response.responseData;
+                    const newConfinedSpace = this.normalizeConfinedSpace(response.responseData);
                     this.updateOrAddConfinedSpaceToList(newConfinedSpace);
-                    this.setCurrentConfinedSpaceWithDto(new ConfinedSpaceDto(newConfinedSpace));
+                    this.setCurrentConfinedSpaceWithDto(newConfinedSpace);
                 }
             })
         );

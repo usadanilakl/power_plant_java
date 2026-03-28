@@ -1,12 +1,21 @@
 package com.dk_power.power_plant_java.controller.angular.admin;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditEntityReportDto;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditIncidentReportRequestDto;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditMachineCompareReportDto;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditRecentEntityDto;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditReconstructionDto;
+import com.dk_power.power_plant_java.dto.admin.SyncAuditTypeSummaryDto;
 import com.dk_power.power_plant_java.sevice.angular.admin.AdminFunctionalitiesService;
+import com.dk_power.power_plant_java.sevice.angular.admin.SyncAuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -14,6 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NgAdminFunctionalitiesController {
     private final AdminFunctionalitiesService adminFunctionalitiesService;
+    private final SyncAuditService syncAuditService;
 
     /**
      * Check file integrity - compares physical files with database entries.
@@ -199,6 +209,150 @@ public class NgAdminFunctionalitiesController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                 .body(new NgApiResponse<>(null, "Error queuing PWA sync: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/types")
+    public ResponseEntity<NgApiResponse<List<SyncAuditTypeSummaryDto>>> getSyncAuditTypes() {
+        try {
+            List<SyncAuditTypeSummaryDto> result = syncAuditService.getTypeSummaries();
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Sync audit entity types retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error loading sync audit types: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/recent")
+    public ResponseEntity<NgApiResponse<List<SyncAuditRecentEntityDto>>> getRecentSyncAuditEntities(
+            @RequestParam String entityType,
+            @RequestParam(defaultValue = "25") int limit,
+            @RequestParam(required = false) String machineId,
+            @RequestParam(required = false) String fieldName,
+            @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        try {
+            List<SyncAuditRecentEntityDto> result = syncAuditService.getRecentEntities(entityType, limit, machineId, fieldName, changeType, from, to);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Recent sync-audited entities retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error loading recent sync-audited entities: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/entity")
+    public ResponseEntity<NgApiResponse<SyncAuditEntityReportDto>> getSyncAuditEntityReport(
+            @RequestParam String entityType,
+            @RequestParam Long entityId,
+            @RequestParam(defaultValue = "200") int limit,
+            @RequestParam(required = false) String machineId,
+            @RequestParam(required = false) String fieldName,
+            @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        try {
+            SyncAuditEntityReportDto result = syncAuditService.getEntityReport(entityType, entityId, limit, machineId, fieldName, changeType, from, to);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Sync audit entity report retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error loading sync audit entity report: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/export")
+    public ResponseEntity<String> exportSyncAuditEntityReport(
+            @RequestParam String entityType,
+            @RequestParam Long entityId,
+            @RequestParam(defaultValue = "200") int limit,
+            @RequestParam(required = false) String machineId,
+            @RequestParam(required = false) String fieldName,
+            @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        try {
+            String body = syncAuditService.exportEntityReportAsJson(entityType, entityId, limit, machineId, fieldName, changeType, from, to);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sync-audit-" + entityType + "-" + entityId + ".json\"")
+                .body(body);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .contentType(MediaType.TEXT_PLAIN)
+                .body("Error exporting sync audit entity report: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/sync-audit/compare-machines")
+    public ResponseEntity<NgApiResponse<SyncAuditMachineCompareReportDto>> compareSyncAuditMachines(
+            @RequestParam String entityType,
+            @RequestParam String leftMachineId,
+            @RequestParam String rightMachineId,
+            @RequestParam(defaultValue = "200") int limit,
+            @RequestParam(required = false) String fieldName,
+            @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        try {
+            SyncAuditMachineCompareReportDto result = syncAuditService.compareMachines(entityType, leftMachineId, rightMachineId, limit, fieldName, changeType, from, to);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Sync audit machine comparison retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error comparing sync audit machines: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/reconstruct")
+    public ResponseEntity<NgApiResponse<SyncAuditReconstructionDto>> reconstructSyncAuditEntity(
+            @RequestParam String entityType,
+            @RequestParam Long entityId,
+            @RequestParam String asOf) {
+        try {
+            SyncAuditReconstructionDto result = syncAuditService.reconstructEntityAtTime(entityType, entityId, asOf);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(result, "Point-in-time reconstruction retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error reconstructing sync audit entity: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sync-audit/incident-report")
+    public ResponseEntity<String> exportSyncAuditIncidentReport(
+            @RequestParam String entityType,
+            @RequestParam Long entityId,
+            @RequestParam(defaultValue = "200") int limit,
+            @RequestParam(required = false) String machineId,
+            @RequestParam(required = false) String fieldName,
+            @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String leftMachineId,
+            @RequestParam(required = false) String rightMachineId,
+            @RequestParam(defaultValue = "200") int compareLimit,
+            @RequestParam(required = false) String asOf) {
+        try {
+            String body = syncAuditService.exportIncidentReportAsJson(new SyncAuditIncidentReportRequestDto(
+                entityType, entityId, limit, machineId, fieldName, changeType, from, to,
+                leftMachineId, rightMachineId, compareLimit, asOf
+            ));
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sync-incident-" + entityType + "-" + entityId + ".json\"")
+                .body(body);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .contentType(MediaType.TEXT_PLAIN)
+                .body("Error exporting sync audit incident report: " + e.getMessage());
         }
     }
 }

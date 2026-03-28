@@ -115,13 +115,56 @@
               <span class="warning-text">{{ syncHealthCheck.fileDifference }}</span>
             </div>
             <div class="info-item" *ngIf="syncHealthCheck.localStats && syncHealthCheck.localStats.pendingSyncCount > 0">
-              <label>Pending Sync</label>
+              <label>Local Pending</label>
               <span class="warning-text">{{ syncHealthCheck.localStats.pendingSyncCount }} changes</span>
+            </div>
+            <div class="info-item" *ngIf="(syncHealthCheck.serverPendingChangesForClient ?? 0) > 0">
+              <label>Server Pending</label>
+              <span class="warning-text">{{ syncHealthCheck.serverPendingChangesForClient }} changes</span>
             </div>
           </div>
 
           <div class="sync-message" *ngIf="syncHealthCheck.message && syncHealthCheck.syncStatus !== 'IN_SYNC'">
             <p>{{ syncHealthCheck.message }}</p>
+          </div>
+
+          <div class="drift-report" *ngIf="hasEntityDrift() || hasFileDrift()">
+            <h4>Drift Report</h4>
+
+            <div class="file-drift-box" *ngIf="hasFileDrift() && syncHealthCheck.fileDrift">
+              <div><strong>Files</strong></div>
+              <div>Local: {{ syncHealthCheck.fileDrift.localCount }}</div>
+              <div>Server: {{ syncHealthCheck.fileDrift.serverCount }}</div>
+              <div>Difference: {{ syncHealthCheck.fileDrift.difference }}</div>
+            </div>
+
+            <div class="drift-table-wrapper" *ngIf="hasEntityDrift()">
+              <table class="drift-table">
+                <thead>
+                  <tr>
+                    <th>Entity Type</th>
+                    <th>Local</th>
+                    <th>Server</th>
+                    <th>Diff</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let drift of syncHealthCheck.entityDrift">
+                    <td>
+                      <a
+                        [routerLink]="['/admin']"
+                        [queryParams]="{ auditEntityType: drift.entityType, auditSection: 'sync-audit' }"
+                        class="drift-link">
+                        {{ drift.entityType }}
+                      </a>
+                    </td>
+                    <td>{{ drift.localCount }}</td>
+                    <td>{{ drift.serverCount }}</td>
+                    <td class="warning-text">{{ drift.difference }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Sync Suggestion Box -->
@@ -131,7 +174,7 @@
               <h4>Sync Recommended</h4>
               <p>{{ syncHealthCheck.recommendation }}</p>
               <div class="suggestion-details" *ngIf="syncHealthCheck.suggestedSyncDate">
-                <p><strong>Suggested sync date:</strong> {{ syncHealthCheck.suggestedSyncDate }}</p>
+                <p><strong>Suggested recovery point:</strong> {{ syncHealthCheck.suggestedSyncDate }}</p>
                 <p><strong>Last successful sync:</strong> {{ formatTimestamp(syncHealthCheck.lastSuccessfulSyncTime) }}</p>
                 <p><strong>Consecutive failures:</strong> {{ syncHealthCheck.consecutiveOutOfSyncCount }}</p>
               </div>
@@ -140,7 +183,7 @@
                   class="btn btn-warning"
                   (click)="executeSuggestedSync()"
                   [disabled]="loading || isOperationInProgress()">
-                  {{ syncHealthCheck.suggestedSyncDate ? 'Run Suggested Partial Sync' : 'Run Full Resync' }}
+                  Run Full Resync
                 </button>
               </div>
             </div>
@@ -153,137 +196,6 @@
               [disabled]="syncHealthCheckLoading">
               {{ syncHealthCheckLoading ? 'Checking...' : 'Check Now' }}
             </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Server Configuration Card -->
-      <div class="card server-config-card">
-        <div class="card-header">
-          <h3>Server Configuration</h3>
-          <div class="header-actions">
-            <span class="status-badge" [ngClass]="serverConfig?.effectivelyEnabled ? 'status-ok' : 'status-info'">
-              {{ serverConfig?.effectivelyEnabled ? 'Connected' : 'Disabled' }}
-            </span>
-            <button
-              class="btn btn-secondary btn-sm"
-              (click)="toggleServerConfig()">
-              {{ showServerConfig ? 'Hide' : 'Configure' }}
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="info-grid" *ngIf="serverConfig && !showServerConfig">
-            <div class="info-item">
-              <label>Server URL</label>
-              <span>{{ serverConfig.syncServerUrl || 'Not configured' }}</span>
-            </div>
-            <div class="info-item">
-              <label>Sync Enabled</label>
-              <span>{{ serverConfig.syncServerEnabled ? 'Yes' : 'No' }}</span>
-            </div>
-            <div class="info-item">
-              <label>Runtime Enabled</label>
-              <span>{{ serverConfig.syncRuntimeEnabled ? 'Yes' : 'No' }}</span>
-            </div>
-            <div class="info-item">
-              <label>Effectively Active</label>
-              <span [class.success-text]="serverConfig.effectivelyEnabled" [class.warning-text]="!serverConfig.effectivelyEnabled">
-                {{ serverConfig.effectivelyEnabled ? 'Yes' : 'No' }}
-              </span>
-            </div>
-          </div>
-
-          <div class="loading" *ngIf="serverConfigLoading && !serverConfig">
-            Loading configuration...
-          </div>
-
-          <div class="server-config-section" *ngIf="showServerConfig">
-            <app-sync-server-config
-              (saved)="onServerConfigSaved()"
-              (cancelled)="onServerConfigCancelled()">
-            </app-sync-server-config>
-          </div>
-        </div>
-      </div>
-
-      <!-- Auto-Resync Configuration Card -->
-      <div class="card auto-resync-card">
-        <div class="card-header">
-          <h3>Auto-Resync</h3>
-          <div class="header-actions">
-            <span class="status-badge"
-                  [ngClass]="autoResyncConfig?.effectivelyEnabled ? 'status-ok' : 'status-warning'">
-              {{ autoResyncConfig?.effectivelyEnabled ? 'Enabled' : 'Disabled' }}
-            </span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="loading" *ngIf="autoResyncLoading && !autoResyncConfig">
-            Loading configuration...
-          </div>
-
-          <div *ngIf="autoResyncConfig" class="auto-resync-content">
-            <!-- Toggle Row -->
-            <div class="toggle-row">
-              <div class="toggle-label">
-                <span>Automatically fix sync issues</span>
-                <p class="toggle-hint">When enabled, the system will attempt to resync automatically when out-of-sync is detected.</p>
-              </div>
-              <button
-                class="btn"
-                [class.btn-success]="!autoResyncConfig.runtimeEnabled"
-                [class.btn-warning]="autoResyncConfig.runtimeEnabled"
-                (click)="toggleAutoResync()"
-                [disabled]="autoResyncToggling || !autoResyncConfig.configEnabled">
-                {{ autoResyncToggling ? 'Saving...' : (autoResyncConfig.runtimeEnabled ? 'Disable' : 'Enable') }}
-              </button>
-            </div>
-
-            <!-- Config disabled warning -->
-            <div *ngIf="!autoResyncConfig.configEnabled" class="warning-note">
-              Auto-resync is disabled in application configuration (sync.auto-resync.enabled=false).
-              The toggle above only works when config is enabled.
-            </div>
-
-            <!-- Current State -->
-            <div class="state-info" *ngIf="autoResyncConfig.state">
-              <div class="info-row">
-                <label>Escalation Level:</label>
-                <span>{{ autoResyncConfig.state.escalationLevel }} / 4</span>
-              </div>
-              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptTime">
-                <label>Last Attempt:</label>
-                <span>{{ formatTimestamp(autoResyncConfig.state.lastAttemptTime) }}</span>
-              </div>
-              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptDate">
-                <label>Sync From Date:</label>
-                <span>{{ autoResyncConfig.state.lastAttemptDate }}</span>
-              </div>
-              <div class="info-row" *ngIf="autoResyncConfig.state.lastAttemptMessage">
-                <label>Status:</label>
-                <span [class.success-text]="autoResyncConfig.state.lastAttemptSuccess"
-                      [class.error-text]="!autoResyncConfig.state.lastAttemptSuccess">
-                  {{ autoResyncConfig.state.lastAttemptMessage }}
-                </span>
-              </div>
-              <div class="info-row" *ngIf="autoResyncConfig.state.autoResyncExhausted">
-                <span class="warning-text"><strong>Exhausted:</strong> All automatic attempts exhausted. Manual resync recommended.</span>
-              </div>
-              <div class="info-row" *ngIf="autoResyncConfig.state.autoResyncInProgress">
-                <span class="info-text"><strong>In Progress:</strong> An automatic resync is currently running.</span>
-              </div>
-            </div>
-
-            <!-- Reset Button -->
-            <div class="auto-resync-actions" *ngIf="(autoResyncConfig.state?.escalationLevel ?? 0) > 0 || autoResyncConfig.state?.autoResyncExhausted">
-              <button
-                class="btn btn-secondary btn-sm"
-                (click)="resetAutoResync()"
-                [disabled]="autoResyncLoading">
-                Reset State (Allow Retry)
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -473,104 +385,6 @@
                 </li>
               </ul>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Partial Sync Card -->
-      <div class="card partial-sync-card">
-        <div class="card-header">
-          <h3>Partial Sync (From Date)</h3>
-          <button
-            class="btn btn-secondary btn-sm"
-            (click)="loadPartialSyncDates()"
-            [disabled]="partialSyncLoading">
-            {{ partialSyncLoading ? 'Loading...' : 'Load Dates' }}
-          </button>
-        </div>
-        <div class="card-body">
-          <p class="partial-sync-description">
-            Partial sync applies only the changes since a specific date, without replacing the entire database.
-            Use this when you want to catch up on recent changes without a full resync.
-          </p>
-
-          <div class="partial-sync-form" *ngIf="partialSyncDates && partialSyncDates.availableDates?.length">
-            <div class="form-group">
-              <label for="partialSyncDate">Select Date to Sync From:</label>
-              <select
-                id="partialSyncDate"
-                class="form-select"
-                [value]="selectedPartialSyncDate"
-                (change)="onPartialSyncDateChange($event)"
-                [disabled]="loading || isOperationInProgress()">
-                <option value="">-- Select a date --</option>
-                <option *ngFor="let date of partialSyncDates.availableDates" [value]="date">
-                  {{ date }}
-                </option>
-              </select>
-            </div>
-
-            <div class="partial-sync-info">
-              <p><strong>History Retention:</strong> {{ partialSyncDates.retentionDays }} days</p>
-              <p><strong>Oldest Available:</strong> {{ partialSyncDates.oldestDate || 'N/A' }}</p>
-              <p><strong>Latest Available:</strong> {{ partialSyncDates.latestDate || 'N/A' }}</p>
-              <p><strong>Total Changes in History:</strong> {{ partialSyncDates.totalChangesInHistory }}</p>
-            </div>
-
-            <!-- Partial Sync Preview -->
-            <div class="partial-sync-preview" *ngIf="partialSyncPreview">
-              <h4>Preview for {{ partialSyncPreview.date }}</h4>
-              <div class="preview-summary">
-                <div class="summary-item">
-                  <span class="count">{{ partialSyncPreview.changeCount }}</span>
-                  <span class="label">Field Changes</span>
-                </div>
-                <div class="summary-item download">
-                  <span class="count">{{ partialSyncPreview.filesToDownload }}</span>
-                  <span class="label">Files to Download</span>
-                </div>
-                <div class="summary-item delete">
-                  <span class="count">{{ partialSyncPreview.filesToDelete }}</span>
-                  <span class="label">Files to Delete</span>
-                </div>
-                <div class="summary-item unchanged">
-                  <span class="count">{{ partialSyncPreview.filesUnchanged }}</span>
-                  <span class="label">Files Unchanged</span>
-                </div>
-              </div>
-              <div class="error-box" *ngIf="partialSyncPreview.errorMessage">
-                {{ partialSyncPreview.errorMessage }}
-              </div>
-            </div>
-
-            <div class="partial-sync-actions">
-              <button
-                class="btn btn-primary"
-                (click)="loadPartialSyncPreview()"
-                [disabled]="!selectedPartialSyncDate || partialSyncPreviewLoading || loading || isOperationInProgress()">
-                {{ partialSyncPreviewLoading ? 'Loading...' : 'Preview' }}
-              </button>
-              <button
-                class="btn btn-warning"
-                (click)="confirmPartialSync()"
-                [disabled]="!selectedPartialSyncDate || loading || isOperationInProgress()">
-                Execute Partial Sync
-              </button>
-              <button
-                class="btn btn-danger btn-sm"
-                (click)="confirmForcePartialSync()"
-                [disabled]="!selectedPartialSyncDate || loading || isOperationInProgress()">
-                Force (Skip Safety)
-              </button>
-            </div>
-          </div>
-
-          <div class="no-dates-message" *ngIf="partialSyncDates && !partialSyncDates.availableDates?.length">
-            <p>No sync history available. The sync server may not have any field changes recorded yet.</p>
-          </div>
-
-          <div class="error-box" *ngIf="partialSyncDates?.errorMessage">
-            {{ partialSyncDates?.errorMessage }}
           </div>
         </div>
       </div>
@@ -847,20 +661,14 @@
               <button
                 class="btn btn-primary"
                 (click)="loadPreview()"
-                [disabled]="loading || previewLoading || isOperationInProgress()">
-                {{ previewLoading ? 'Loading...' : 'Preview Full Resync' }}
+                [disabled]="isElectronManaged || loading || previewLoading || isOperationInProgress()">
+                {{ previewLoading ? 'Loading...' : 'Preview Browser Resync' }}
               </button>
               <button
                 class="btn btn-warning"
                 (click)="confirmResync()"
-                [disabled]="loading || isOperationInProgress() || !healthStatus?.backupAvailable">
-                Full Resync
-              </button>
-              <button
-                class="btn btn-danger"
-                (click)="confirmForceResync()"
-                [disabled]="loading || isOperationInProgress() || !healthStatus?.backupAvailable">
-                Force Resync (Skip Safety)
+                [disabled]="loading || isOperationInProgress() || (!isElectronManaged && !healthStatus?.backupAvailable)">
+                {{ isElectronManaged ? 'Desktop Full Resync' : 'Full Resync' }}
               </button>
             </div>
 
@@ -882,9 +690,9 @@
           </div>
 
           <div class="action-notes">
-            <p><strong>Preview Full Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
-            <p><strong>Full Resync:</strong> Replaces entire database from backup and syncs all files. Use for major recovery.</p>
-            <p><strong>Force Resync:</strong> Same as Full Resync but skips deletion safety checks. Use with caution!</p>
+            <p *ngIf="!isElectronManaged"><strong>Preview Browser Resync:</strong> Shows what files would be downloaded or deleted without making changes.</p>
+            <p *ngIf="isElectronManaged"><strong>Desktop Full Resync:</strong> Electron stops the app, replaces the local database and files from the hub, then starts the app again.</p>
+            <p *ngIf="!isElectronManaged"><strong>Full Resync:</strong> Replaces entire database from backup and syncs all files. Use for major recovery.</p>
             <p><strong>Create Full Backup:</strong> Creates a backup of database and file manifest to shared drive. Only use on a machine with up-to-date data.</p>
           </div>
         </div>
@@ -905,27 +713,6 @@
               class="btn"
               [ngClass]="confirmAction === 'force-resync' ? 'btn-danger' : 'btn-primary'"
               (click)="executeConfirmed()">
-              Confirm
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Partial Sync Confirmation Dialog -->
-      <div class="dialog-overlay" *ngIf="showPartialSyncConfirm" (click)="cancelPartialSyncConfirm()">
-        <div class="dialog" (click)="$event.stopPropagation()">
-          <div class="dialog-header">
-            <h3>Confirm Partial Sync</h3>
-          </div>
-          <div class="dialog-body">
-            <p>{{ getPartialSyncConfirmMessage() }}</p>
-          </div>
-          <div class="dialog-footer">
-            <button class="btn btn-secondary" (click)="cancelPartialSyncConfirm()">Cancel</button>
-            <button
-              class="btn"
-              [ngClass]="forcePartialSync ? 'btn-danger' : 'btn-warning'"
-              (click)="executePartialSync()">
               Confirm
             </button>
           </div>

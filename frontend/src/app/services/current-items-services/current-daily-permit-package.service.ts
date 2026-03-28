@@ -93,11 +93,45 @@ export class CurrentDailyPermitPackageService {
         this.loadDailyPermitPackages();
     }
 
+    private normalizePackage(packageItem: Partial<DailyPermitPackageDto> | null | undefined): DailyPermitPackageDto {
+        if (!packageItem) {
+            return new DailyPermitPackageDto();
+        }
+        return packageItem instanceof DailyPermitPackageDto
+            ? packageItem
+            : DailyPermitPackageDto.fromJson(packageItem);
+    }
+
+    private normalizePackages(packages: Partial<DailyPermitPackageDto>[] | null | undefined): DailyPermitPackageDto[] {
+        return (packages ?? []).map(packageItem => this.normalizePackage(packageItem));
+    }
+
+    private mergeWithCurrentVersion(packageItem: Partial<DailyPermitPackageDto> | null | undefined): DailyPermitPackageDto {
+        const normalized = this.normalizePackage(packageItem);
+        const selected = this.selectedDailyPermitPackageSubject.value;
+
+        if (
+            normalized.id &&
+            selected?.id === normalized.id &&
+            (selected.version ?? -1) > (normalized.version ?? -1)
+        ) {
+            const mergedData = {
+                ...(normalized as DailyPermitPackageDto & { version?: number | null }),
+                version: selected.version,
+            };
+            return new DailyPermitPackageDto(mergedData as any);
+        }
+
+        return normalized;
+    }
+
     private loadDailyPermitPackages() {
         this.dailyPermitPackageService.getDailyPermitPackages().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActiveDailyPermitPackagesSubject.next(response.responseData);
+            this.allActiveDailyPermitPackagesSubject.next(
+                this.normalizePackages(response.responseData)
+            );
         });
     }
 
@@ -114,7 +148,7 @@ export class CurrentDailyPermitPackageService {
           this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
               takeUntilDestroyed(this.destroyRef)
           ).subscribe(response => {
-              this.selectedDailyPermitPackageSubject.next(response.responseData);
+              this.setSelectedPackage(response.responseData);
           });
         }
     }
@@ -124,8 +158,7 @@ export class CurrentDailyPermitPackageService {
         takeUntilDestroyed(this.destroyRef)
       ).subscribe(
         (response) => {
-          this.updateDailyPermitPackageInList(response.responseData);
-          this.selectedDailyPermitPackageSubject.next(response.responseData);
+          this.setSelectedPackage(response.responseData);
         },
         (error) => {
           console.error('Error updating daily permit package:', error);
@@ -133,24 +166,26 @@ export class CurrentDailyPermitPackageService {
       );
     }
 
-    updateDailyPermitPackageInList(permitPackage: DailyPermitPackageDto) {
+    updateDailyPermitPackageInList(permitPackage: Partial<DailyPermitPackageDto>) {
+        const normalizedPackage = this.mergeWithCurrentVersion(permitPackage);
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
-        const itemIndex = currentPackages.findIndex(pkg => pkg.id === permitPackage.id);
+        const itemIndex = currentPackages.findIndex(pkg => pkg.id === normalizedPackage.id);
 
         if (itemIndex !== -1) {
             // Item exists, update it
             const updatedPackages = [...currentPackages];
-            updatedPackages[itemIndex] = permitPackage;
+            updatedPackages[itemIndex] = normalizedPackage;
             this.allActiveDailyPermitPackagesSubject.next(updatedPackages);
         } else {
             // Item is new, add it
-            this.allActiveDailyPermitPackagesSubject.next([permitPackage, ...currentPackages]);
+            this.allActiveDailyPermitPackagesSubject.next([normalizedPackage, ...currentPackages]);
         }
     }
 
-    addDailyPermitPackageToList(permitPackage: DailyPermitPackageDto) {
+    addDailyPermitPackageToList(permitPackage: Partial<DailyPermitPackageDto>) {
+        const normalizedPackage = this.mergeWithCurrentVersion(permitPackage);
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
-        this.allActiveDailyPermitPackagesSubject.next([...currentPackages, permitPackage]);
+        this.allActiveDailyPermitPackagesSubject.next([...currentPackages, normalizedPackage]);
     }
 
     removeDailyPermitPackageFromList(id: number) {
@@ -164,9 +199,9 @@ export class CurrentDailyPermitPackageService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newPackage = response.responseData;
+                    const newPackage = this.normalizePackage(response.responseData);
                     this.addDailyPermitPackageToList(newPackage);
-                    this.setCurrentDailyPermitPackage(newPackage.id);
+                    this.setSelectedPackage(newPackage);
                 }
             })
         );
@@ -200,10 +235,11 @@ export class CurrentDailyPermitPackageService {
     })
   }
     
-    setSelectedPackage(packageItem: DailyPermitPackageDto) {
-      this.selectedDailyPermitPackageSubject.next(packageItem);
-      if (packageItem?.id) {
-        this.updateDailyPermitPackageInList(packageItem);
+    setSelectedPackage(packageItem: Partial<DailyPermitPackageDto> | null | undefined) {
+      const normalizedPackage = this.mergeWithCurrentVersion(packageItem);
+      this.selectedDailyPermitPackageSubject.next(normalizedPackage);
+      if (normalizedPackage?.id) {
+        this.updateDailyPermitPackageInList(normalizedPackage);
       }
     }
     setCurrentDailyPackage(id: number) {

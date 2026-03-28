@@ -1,5 +1,5 @@
     <div class="sync-monitor-container">
-      <h2>Sync Monitor</h2>
+      <h2>Sync Status</h2>
 
       <!-- Message Banner -->
       <div *ngIf="message" class="message-banner" [ngClass]="messageType" (click)="clearMessage()">
@@ -20,26 +20,28 @@
             <span class="value">{{ status.machineName }}</span>
           </div>
           <div class="info-item">
-            <span class="label">Local IP:</span>
-            <span class="value">{{ status.localIp }}</span>
+            <span class="label">Sync Target:</span>
+            <span class="value">{{ status.syncMode === 'SERVER' ? 'Hub' : 'Local only' }}</span>
           </div>
           <div class="info-item">
-            <span class="label">Sync Port:</span>
-            <span class="value">{{ status.syncPort }}</span>
+            <span class="label">Server URL:</span>
+            <span class="value">{{ status.syncServerUrl || 'Not configured' }}</span>
           </div>
           <div class="info-item">
-            <span class="label">Discovery Port:</span>
-            <span class="value">{{ status.discoveryPort }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Discovery:</span>
-            <span class="value" [ngClass]="status.discoveryEnabled ? 'enabled' : 'disabled'">
-              {{ status.discoveryEnabled ? 'Enabled' : 'Disabled' }}
+            <span class="label">Server Reachable:</span>
+            <span class="value" [ngClass]="status.serverAvailable ? 'enabled' : 'disabled'">
+              {{ status.serverAvailable ? 'Yes' : 'No' }}
             </span>
           </div>
           <div class="info-item">
-            <span class="label">Active Peers:</span>
-            <span class="value highlight">{{ status.peerCount }}</span>
+            <span class="label">Realtime Link:</span>
+            <span class="value" [ngClass]="status.sseConnected ? 'enabled' : 'disabled'">
+              {{ status.sseConnected ? 'Connected' : 'Disconnected' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="label">Local Pending:</span>
+            <span class="value highlight">{{ status.pendingServerChanges ?? 0 }}</span>
           </div>
           <div class="info-item">
             <span class="label">Changes Tracked:</span>
@@ -49,9 +51,6 @@
         <div class="action-buttons">
           <button (click)="refreshStatus()" class="btn btn-secondary">
             Refresh Status
-          </button>
-          <button (click)="broadcastPresence()" class="btn btn-secondary">
-            Broadcast Presence
           </button>
           <button (click)="triggerSync()" [disabled]="isSyncing" class="btn btn-primary">
             {{ isSyncing ? 'Syncing...' : 'Trigger Sync' }}
@@ -73,72 +72,6 @@
         <button (click)="loadData()" class="btn btn-primary" style="margin-top: 10px;">
           Retry Connection
         </button>
-      </div>
-
-      <!-- Register Peer -->
-      <div class="card register-peer">
-        <h3>Register Peer Manually</h3>
-        <p class="help-text">Use this if UDP discovery is blocked by firewall</p>
-        <div class="form-row">
-          <div class="form-group">
-            <label>IP Address:</label>
-            <input type="text" [(ngModel)]="newPeerIp" placeholder="192.168.1.100">
-          </div>
-          <div class="form-group">
-            <label>Port:</label>
-            <input type="number" [(ngModel)]="newPeerPort" placeholder="8082">
-          </div>
-          <div class="form-group">
-            <label>Name (optional):</label>
-            <input type="text" [(ngModel)]="newPeerName" placeholder="Machine name">
-          </div>
-          <button (click)="registerPeer()" [disabled]="isRegistering" class="btn btn-primary">
-            {{ isRegistering ? 'Registering...' : 'Register Peer' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Peers List -->
-      <div class="card peers-list">
-        <h3>
-          Known Peers
-          <button (click)="loadAllPeers()" class="btn btn-small btn-secondary">Refresh</button>
-        </h3>
-        <div *ngIf="isLoading && allPeers.length === 0" class="empty-state">
-          Loading peers...
-        </div>
-        <div *ngIf="!isLoading && allPeers.length === 0" class="empty-state">
-          No peers discovered yet. Either open firewall port 8083 for UDP discovery,
-          or manually register a peer above.
-        </div>
-        <table *ngIf="allPeers.length > 0" class="data-table">
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Machine Name</th>
-              <th>Machine ID</th>
-              <th>IP Address</th>
-              <th>Port</th>
-              <th>Last Seen</th>
-              <th>Last Sync</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let peer of allPeers">
-              <td>
-                <span class="status-badge" [ngClass]="getPeerStatusClass(peer.status)">
-                  {{ peer.status }}
-                </span>
-              </td>
-              <td>{{ peer.machineName }}</td>
-              <td class="monospace">{{ peer.machineId }}</td>
-              <td class="monospace">{{ peer.ipAddress }}</td>
-              <td>{{ peer.port }}</td>
-              <td>{{ formatTimestamp(peer.lastSeen) }}</td>
-              <td>{{ peer.lastSyncTime ? formatTimestamp(peer.lastSyncTime) : 'Never' }}</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
 
       <!-- Recent Changes -->

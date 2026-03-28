@@ -1,11 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
 import { ProcessWrDialogService } from './process-wr-dialog.service';
 import { CurrentJobLogService } from '../../services/current-items-services/current-job-log.service';
 import { JobLogService } from '../../services/permits/job-log.service';
 import { JobLogDto } from '../../models/permits/job-log.model';
 import { RfPopupProjectionComponent } from '../popup-projection/rf-popup-projection.component';
+import { PopupWindowService } from '../popup-window/popup-window.service';
 
 @Component({
   selector: 'app-process-wr-dialog',
@@ -142,7 +142,7 @@ export class ProcessWrDialogComponent {
   dialogService = inject(ProcessWrDialogService);
   private currentJobLogService = inject(CurrentJobLogService);
   private jobLogService = inject(JobLogService);
-  private router = inject(Router);
+  private popupWindowService = inject(PopupWindowService);
 
   step = signal<'choose' | 'selectJob'>('choose');
   loading = signal(false);
@@ -189,12 +189,12 @@ export class ProcessWrDialogComponent {
         if (response?.responseData) {
           const newJob = JobLogDto.fromJson(response.responseData);
           this.currentJobLogService.processWorkRequest(newJob.id.toString(), wrId.toString()).subscribe({
-            next: () => {
+            next: (processResponse) => {
               this.loading.set(false);
               this.dialogService.close();
               this.dialogService.notifyComplete();
               this.step.set('choose');
-              this.router.navigate(['/permit-builder/jobs']);
+              this.openPackagePopup(processResponse?.responseData);
             },
             error: (err) => {
               this.loading.set(false);
@@ -217,12 +217,12 @@ export class ProcessWrDialogComponent {
     this.errorMessage.set('');
 
     this.currentJobLogService.processWorkRequest(jobId.toString(), wrId.toString()).subscribe({
-      next: () => {
+      next: (response) => {
         this.loading.set(false);
         this.dialogService.close();
         this.dialogService.notifyComplete();
         this.step.set('choose');
-        this.router.navigate(['/permit-builder/jobs']);
+        this.openPackagePopup(response?.responseData);
       },
       error: (err) => {
         this.loading.set(false);
@@ -238,17 +238,28 @@ export class ProcessWrDialogComponent {
     this.errorMessage.set('');
 
     this.currentJobLogService.processWorkRequest(job.id.toString(), wrId.toString()).subscribe({
-      next: () => {
+      next: (response) => {
         this.loading.set(false);
         this.dialogService.close();
         this.dialogService.notifyComplete();
         this.step.set('choose');
-        this.router.navigate(['/permit-builder/jobs']);
+        this.openPackagePopup(response?.responseData);
       },
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set(err.error?.message || 'Failed to process work request');
       }
     });
+  }
+
+  private openPackagePopup(jobLogData: any): void {
+    if (!jobLogData) return;
+    const jobLog = JobLogDto.fromJson(jobLogData);
+    const packages = jobLog.packages;
+    if (packages.length === 0) return;
+    const newPkg = packages[packages.length - 1];
+    this.popupWindowService.openOrFocus(
+      `${window.location.origin}/app/permit-builder/daily-packages?packageId=${newPkg.id}&mode=popup`
+    );
   }
 }

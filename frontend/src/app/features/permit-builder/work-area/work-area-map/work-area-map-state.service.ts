@@ -44,7 +44,10 @@ export class WorkAreaMapStateService {
 
     this.syncUpdateService.getEntityTypeUpdates$('WorkAreaMapShape')
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.reloadDataPreservingSelection());
+      .subscribe(() => {
+        this.reloadDataPreservingSelection();
+        this.loadMapImage();
+      });
   }
 
   // --- Computed ---

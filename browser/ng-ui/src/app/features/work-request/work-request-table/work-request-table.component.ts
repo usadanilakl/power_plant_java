@@ -36,6 +36,7 @@ export class WorkRequestTableComponent {
   selectedItem = toSignal(this.workRequestStateService.selectedWorkRequest$, { initialValue: new WorkRequest() });
 
   actionPopupClosed = output<void>();
+  resubmitMode = input<boolean>(false);
 
   columns = new WorkRequest().toTableColumns();
   actionButtons: ButtonConfig[] = [];
@@ -44,6 +45,13 @@ export class WorkRequestTableComponent {
 
   onRowClick({ item }: { item: WorkRequest, event: MouseEvent}){
     this.workRequestStateService.selectWorkRequest(item);
+
+    // In resubmit mode, directly resubmit and close - no action menu
+    if (this.resubmitMode()) {
+      this.resubmitSelected();
+      return;
+    }
+
     const buttons: ButtonConfig[] = [];
     if (item.sharepointId) {
       buttons.push({ name: 'Edit', action: () => this.editSelected(), color: 'primary' });

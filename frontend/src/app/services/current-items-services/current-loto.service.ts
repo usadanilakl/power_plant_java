@@ -47,10 +47,22 @@ export class CurrentLotoService{
         this.loadPaperForm();
     }
 
+    private normalizeLoto(item: Partial<LotoDto> | null | undefined): LotoDto {
+      return item ? LotoDto.fromJson(item) : new LotoDto();
+    }
+
+    private normalizeLotos(items: Partial<LotoDto>[] | null | undefined): LotoDto[] {
+      return (items ?? []).map(item => this.normalizeLoto(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+      return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadLotosFromServer() {
         this.lotoService.getLotos().pipe(
             takeUntilDestroyed(this.destroyRef),
-            map((response: SpringPaginatedResponse<LotoDto>) => response.responseData.content || [])
+            map((response: SpringPaginatedResponse<LotoDto>) => this.normalizeLotos(response.responseData.content || []))
         ).subscribe((lotos: LotoDto[]) => {
             this.allLotosSubject.next(lotos);
         });
@@ -64,7 +76,7 @@ export class CurrentLotoService{
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
                 // console.log('Paper form loaded:', response.responseData);
             }
         });
@@ -83,12 +95,12 @@ export class CurrentLotoService{
     }
 
     setCurrentLotoById(id: number) {
-      this.lotoService.getLotoById(id.toString()).pipe(
+        this.lotoService.getLotoById(id.toString()).pipe(
         takeUntilDestroyed(this.destroyRef),
-        map((response: SpringApiResponse<LotoDto>) => response.responseData)
+        map((response: SpringApiResponse<LotoDto>) => this.normalizeLoto(response.responseData))
       ).subscribe((lotoFromServer: LotoDto) => {
         if(lotoFromServer){
-          const lotoDto = new LotoDto(lotoFromServer);
+          const lotoDto = this.normalizeLoto(lotoFromServer);
           this.currentLotoSubject.next(lotoDto);
           this.loadCurrentLotoFiles(lotoDto.id);
         }
@@ -103,7 +115,7 @@ export class CurrentLotoService{
                 takeUntilDestroyed(this.destroyRef)
             ).subscribe((response: SpringApiResponse<LotoDto>) => {
                 // Update the current loto
-                const receivedLoto = new LotoDto(response.responseData);
+                const receivedLoto = this.normalizeLoto(response.responseData);
                 this.updateLotoInList(receivedLoto);
                 this.currentLotoSubject.next(receivedLoto);
                 this.loadCurrentLotoFiles(receivedLoto.id);
@@ -119,7 +131,7 @@ export class CurrentLotoService{
               takeUntilDestroyed(this.destroyRef)
           ).subscribe((response: SpringApiResponse<LotoDto>) => {
               // Update the current loto
-              const receivedLoto = new LotoDto(response.responseData);
+              const receivedLoto = this.normalizeLoto(response.responseData);
               this.updateLotoInList(receivedLoto);
               this.currentLotoSubject.next(receivedLoto);
               this.loadCurrentLotoFiles(receivedLoto.id);
@@ -172,7 +184,7 @@ export class CurrentLotoService{
         takeUntilDestroyed(this.destroyRef)
       ).subscribe((response: SpringApiResponse<LotoDto>) => {
         if(response){
-            const receivedLoto = new LotoDto(response.responseData);
+            const receivedLoto = this.normalizeLoto(response.responseData);
             this.updateLotoInList(receivedLoto);
             this.setCurrentLoto(receivedLoto);
         }
@@ -273,11 +285,11 @@ export class CurrentLotoService{
             if (existingStandardIndex!== -1) {
               // If the standard exists, update it in the array
               const updatedStandards = [...currentStandards];
-              updatedStandards[existingStandardIndex] = new LotoDto({...response.responseData});
+              updatedStandards[existingStandardIndex] = this.normalizeLoto(response.responseData);
               this.allLotosSubject.next(updatedStandards);
             }
 
-            this.currentLotoSubject.next(new LotoDto({...response.responseData}));
+            this.currentLotoSubject.next(this.normalizeLoto(response.responseData));
             this.loadCurrentLotoFiles(currentStandardId);
           }
         }),
@@ -299,7 +311,7 @@ export class CurrentLotoService{
       ).subscribe(response => {
         if (response?.responseData) {
           const current = this.allLotosSubject.value;
-          const imported = response.responseData.map((l: any) => new LotoDto(l));
+          const imported = this.normalizeLotos(response.responseData);
           this.allLotosSubject.next([...imported, ...current]);
         }
       });
@@ -314,7 +326,7 @@ export class CurrentLotoService{
         takeUntilDestroyed(this.destroyRef),
         tap((response) => {
           if(response && response.responseData){
-            this.updateLotosInList(response.responseData);
+            this.updateLotosInList(this.normalizeLotos(response.responseData));
           }
         }),
         catchError((error) => {

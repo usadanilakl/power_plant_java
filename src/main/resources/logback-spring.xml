@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <property name="LOGS" value="./logs" />
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{32} - %msg%n%throwable" />
     <property name="LOG_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [req=%X{requestId:-} user=%X{userId:-} machine=%X{machineId:-} job=%X{jobName:-} jobRun=%X{jobRunId:-} sync=%X{syncRunId:-} entity=%X{entityType:-}/%X{entityId:-} sp=%X{sharepointId:-}] %logger{40} - %msg%n%throwable" />
 
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <Pattern>${LOG_PATTERN}</Pattern>
+            <Pattern>${CONSOLE_LOG_PATTERN}</Pattern>
         </encoder>
     </appender>
 
@@ -77,45 +79,45 @@
 
     <logger name="com.dk_power.power_plant_java" level="info" />
 
-    <logger name="com.dk_power.power_plant_java.config.logging.RequestCorrelationFilter" level="debug" />
+    <logger name="com.dk_power.power_plant_java.config.logging.RequestCorrelationFilter" level="warn" />
 
-    <logger name="com.dk_power.power_plant_java.config.security" level="info">
+    <logger name="com.dk_power.power_plant_java.config.security" level="info" additivity="false">
         <appender-ref ref="SecurityFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.auth" level="info">
+    <logger name="com.dk_power.power_plant_java.controller.auth" level="info" additivity="false">
         <appender-ref ref="SecurityFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.sharepoint" level="info">
+    <logger name="com.dk_power.power_plant_java.sevice.sharepoint" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.hub" level="info">
+    <logger name="com.dk_power.power_plant_java.sevice.hub" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.hub" level="info">
+    <logger name="com.dk_power.power_plant_java.controller.hub" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker" level="info">
+    <logger name="com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService" level="info">
+    <logger name="com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn">
+    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn">
+    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn">
+    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn" additivity="false">
         <appender-ref ref="SyncFile" />
     </logger>
 </configuration>

@@ -29,7 +29,7 @@
                 [class.separator]="item.separator">
               <a [routerLink]="item.route" routerLinkActive="active-link">
                 @if (item.icon) {
-                  <span class="material-icons sub-icon">{{ item.icon }}</span>
+                  <span class="material-icons sub-icon" [style.color]="item.iconColor">{{ item.icon }}</span>
                 }
                 {{ item.label }}
               </a>

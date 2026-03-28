@@ -58,12 +58,13 @@ import { RfPopupProjectionComponent } from '../../../../../shared/popup-projecti
               [isOpen]="isMapOpen()"
               title="Select Work Area"
               size="xlarge"
+              [fullHeight]="true"
               [zIndex]="99999"
               (close)="isMapOpen.set(false)"
             >
               <app-work-area-map-picker
                 #popupMapPicker
-                style="--map-height: 70vh"
+                style="--map-height: 80vh"
                 (workAreaSelected)="onPopupMapWorkAreaSelected($event)"
               ></app-work-area-map-picker>
             </app-rf-popup-projection>

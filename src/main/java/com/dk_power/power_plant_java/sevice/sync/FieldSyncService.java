@@ -244,25 +244,26 @@ public class FieldSyncService {
         log.info("peer_sync.run.start activePeers={}", activePeers.size());
 
         int successCount = 0;
-        for (Peer peer : activePeers) {
-            try {
-                syncWithPeer(peer);
-                successCount++;
-            } catch (Exception e) {
-                log.error("Failed to sync with peer {} ({}): {}",
-                    peer.getMachineName(), peer.getMachineId(), e.getMessage());
-                peerDiscoveryService.markPeerError(peer.getMachineId());
+        try {
+            for (Peer peer : activePeers) {
+                try {
+                    syncWithPeer(peer);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("Failed to sync with peer {} ({}): {}",
+                        peer.getMachineName(), peer.getMachineId(), e.getMessage());
+                    peerDiscoveryService.markPeerError(peer.getMachineId());
+                }
             }
+        } finally {
+            syncing = false;
+            log.info("peer_sync.run.complete successfulPeers={} totalPeers={}", successCount, activePeers.size());
         }
-
-        syncing = false;
-        log.info("peer_sync.run.complete successfulPeers={} totalPeers={}", successCount, activePeers.size());
     }
 
     /**
      * Sync with a specific peer
      */
-    @Transactional
     public SyncResult syncWithPeer(Peer peer) {
         log.debug("Syncing with peer: {} ({}) at {}",
             peer.getMachineName(), peer.getMachineId(), peer.getBaseUrl());
@@ -1091,7 +1092,15 @@ public class FieldSyncService {
                         }
                     }
 
-                    entity = (BaseIdEntity) entityManager.merge(entity);
+                    // Hibernate treats a generated-ID entity with a pre-set sync ID and null
+                    // @Version as detached, even when this is genuinely a new row arriving from
+                    // another machine. Seed the initial optimistic-lock version so sync inserts
+                    // use the normal transient path instead of failing during persist().
+                    if (entity.getVersion() == null) {
+                        entity.setVersion(0L);
+                    }
+
+                    entityManager.persist(entity);
                     entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     log.debug("Created new entity {}#{} from sync", entityType, entityId);
                 }

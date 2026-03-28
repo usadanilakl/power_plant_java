@@ -7,7 +7,6 @@ import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.*;
 import com.dk_power.power_plant_java.entities.permits.pojo.PackageModification;
-import com.dk_power.power_plant_java.exception.StaleAggregateUpdateException;
 import com.dk_power.power_plant_java.mappers.permits.ConfinedSpaceMapper;
 import com.dk_power.power_plant_java.mappers.permits.DailyPermitPackageMapper;
 import com.dk_power.power_plant_java.mappers.permits.HotWorkMapper;
@@ -124,7 +123,6 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (existing == null) {
             throw new RuntimeException("DailyPermitPackage not found: " + id);
         }
-        requireMatchingVersion("DailyPermitPackage", packageId, permitPackageDto.getVersion(), existing.getVersion());
 
         // Build the "incoming" entity for change detection only
         DailyPermitPackage incoming = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
@@ -1192,13 +1190,4 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return true;
     }
 
-    private void requireMatchingVersion(String entityType, Long entityId, Long expectedVersion, Long actualVersion) {
-        if (expectedVersion == null) {
-            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: missing version");
-        }
-        if (!Objects.equals(expectedVersion, actualVersion)) {
-            throw new StaleAggregateUpdateException(entityType + " " + entityId + " update rejected: stale version "
-                + expectedVersion + " (current " + actualVersion + ")");
-        }
-    }
 }

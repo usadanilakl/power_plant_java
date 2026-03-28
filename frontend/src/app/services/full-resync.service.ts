@@ -124,6 +124,19 @@ export interface ServerSyncStats {
   totalFieldChanges: number;
 }
 
+export interface EntityDriftRow {
+  entityType: string;
+  localCount: number;
+  serverCount: number;
+  difference: number;
+}
+
+export interface FileDriftSummary {
+  localCount: number;
+  serverCount: number;
+  difference: number;
+}
+
 export interface SyncHealthCheckResult {
   checkTime: string;
   machineId: string;
@@ -132,8 +145,12 @@ export interface SyncHealthCheckResult {
   serverReachable: boolean;
   entityDifference: number;
   fileDifference: number;
+  backlogDetected?: boolean;
+  serverPendingChangesForClient?: number;
   localStats: LocalSyncStats | null;
   serverStats: ServerSyncStats | null;
+  entityDrift?: EntityDriftRow[];
+  fileDrift?: FileDriftSummary | null;
   // Sync suggestion fields
   suggestResync: boolean;              // True if system recommends a resync
   suggestedSyncDate: string | null;    // yyyy-MM-dd format date to sync from
@@ -143,57 +160,6 @@ export interface SyncHealthCheckResult {
   // Timer fields
   nextCheckDueAt: string | null;       // ISO-8601 / epoch — when next check runs
   healthCheckIntervalMs: number;       // Current interval in milliseconds
-}
-
-// Partial Sync interfaces
-export interface PartialSyncDatesResponse {
-  availableDates: string[];        // List of dates in yyyy-MM-dd format
-  oldestDate: string | null;       // Oldest available date
-  latestDate: string | null;       // Most recent date
-  totalChangesInHistory: number;   // Total changes available
-  retentionDays: number;           // How long history is kept
-  errorMessage: string | null;
-}
-
-export interface PartialSyncPreview {
-  date: string;
-  changeCount: number;
-  filesToDownload: number;
-  filesToDelete: number;
-  filesUnchanged: number;
-  errorMessage: string | null;
-}
-
-export interface PartialSyncResult {
-  success: boolean;
-  message: string;
-  fileComparison: FileComparisonResult | null;
-  changesApplied: number;
-}
-
-// Auto-Resync interfaces
-export interface AutoResyncState {
-  escalationLevel: number;
-  lastAttemptTime: string | null;
-  lastAttemptSuccess: boolean;
-  lastAttemptDate: string | null;
-  lastAttemptMessage: string | null;
-  autoResyncExhausted: boolean;
-  autoResyncInProgress: boolean;
-}
-
-export interface AutoResyncConfig {
-  configEnabled: boolean;       // From application.properties
-  runtimeEnabled: boolean;      // Runtime toggle (can be changed from UI)
-  effectivelyEnabled: boolean;  // Both must be true for auto-resync to work
-  state: AutoResyncState;
-}
-
-export interface AutoResyncToggleResult {
-  success: boolean;
-  runtimeEnabled: boolean;
-  effectivelyEnabled: boolean;
-  message: string;
 }
 
 // Files-only sync interfaces
@@ -523,61 +489,6 @@ export class FullResyncService {
   executeFilesSync(force: boolean = false, maxRetries: number = 3): Observable<FileSyncResult> {
     return this.http.post<FileSyncResult>(
       `${this.baseUrl}/files-sync/execute?force=${force}&maxRetries=${maxRetries}`, {}
-    );
-  }
-
-  // ==================== PARTIAL SYNC METHODS ====================
-
-  /**
-   * Get available dates for partial sync.
-   * Returns a list of dates where sync history is available on the server.
-   */
-  getAvailableSyncDates(): Observable<PartialSyncDatesResponse> {
-    return this.http.get<PartialSyncDatesResponse>(`${this.baseUrl}/partial-sync/dates`);
-  }
-
-  /**
-   * Preview what would happen in a partial sync from a specific date.
-   * Returns counts of changes and files that would be affected.
-   */
-  previewPartialSync(date: string): Observable<PartialSyncPreview> {
-    return this.http.get<PartialSyncPreview>(`${this.baseUrl}/partial-sync/preview?date=${date}`);
-  }
-
-  /**
-   * Execute a partial sync from a specific date.
-   * Fetches and applies all field changes since the date, then resyncs files.
-   */
-  executePartialSync(date: string, force: boolean = false): Observable<PartialSyncResult> {
-    return this.http.post<PartialSyncResult>(
-      `${this.baseUrl}/partial-sync/execute?date=${date}&force=${force}`, {}
-    );
-  }
-
-  // ==================== AUTO-RESYNC METHODS ====================
-
-  /**
-   * Reset auto-resync state. Use when the user wants to retry automatic
-   * resync after exhaustion, or after a manual resync.
-   */
-  resetAutoResyncState(): Observable<any> {
-    return this.http.post(`${this.baseUrl}/auto-resync/reset`, {});
-  }
-
-  /**
-   * Get current auto-resync configuration and state.
-   */
-  getAutoResyncConfig(): Observable<AutoResyncConfig> {
-    return this.http.get<AutoResyncConfig>(`${this.baseUrl}/auto-resync/config`);
-  }
-
-  /**
-   * Toggle auto-resync at runtime (enable/disable from UI).
-   * This does not change the application.properties setting.
-   */
-  toggleAutoResync(enabled: boolean): Observable<AutoResyncToggleResult> {
-    return this.http.post<AutoResyncToggleResult>(
-      `${this.baseUrl}/auto-resync/toggle?enabled=${enabled}`, {}
     );
   }
 

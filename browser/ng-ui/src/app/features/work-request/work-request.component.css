@@ -73,11 +73,17 @@
   text-align: center;
 }
 
-.form-header {
+.sticky-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--primary-background, #fff);
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .back-button {

@@ -1,35 +1,37 @@
 <div class="layout-container">
   <header class="header">
-    <div class="header-content" #headerContent [class.scrolled]="headerScrolled">
+    <div class="header-top-row">
       @if (header()) {
         <h1>{{ header() }}</h1>
       }@else {
         <h1>Jackson Generation</h1>
       }
-      <ng-content select="[header]"></ng-content>
-    </div>
-    <div class="header-actions">
-        <app-server-status></app-server-status>
-        @if (serverStatus.unreadMessageCount() > 0) {
-          <button class="message-badge" (click)="goToMessages()" title="Unread messages">
-            ✉ {{ serverStatus.unreadMessageCount() }}
-          </button>
-        }
-        @if (serverStatus.unreadNotificationCount() > 0) {
-          <button class="notification-badge" (click)="goToPermits()" title="Permit updates">
-            {{ serverStatus.unreadNotificationCount() }}
-          </button>
-        }
-        <app-theme-toggle></app-theme-toggle>
-        <app-user-icon></app-user-icon>
-
-        @if (serverStatus.isOnline()) {
-          @if (authService.isLoggedIn()) {
-            <button class="auth-btn" (click)="logout()">Logout</button>
-          } @else {
-            <button class="auth-btn" (click)="login()">Sign In</button>
+      <div class="header-actions">
+          <app-server-status></app-server-status>
+          @if (serverStatus.unreadMessageCount() > 0) {
+            <button class="message-badge" (click)="goToMessages()" title="Unread messages">
+              ✉ {{ serverStatus.unreadMessageCount() }}
+            </button>
           }
-        }
+          @if (serverStatus.unreadNotificationCount() > 0) {
+            <button class="notification-badge" (click)="goToPermits()" title="Permit updates">
+              {{ serverStatus.unreadNotificationCount() }}
+            </button>
+          }
+          <app-theme-toggle></app-theme-toggle>
+          <app-user-icon></app-user-icon>
+
+          @if (serverStatus.isOnline()) {
+            @if (authService.isLoggedIn()) {
+              <button class="auth-btn" (click)="logout()">Logout</button>
+            } @else {
+              <button class="auth-btn" (click)="login()">Sign In</button>
+            }
+          }
+      </div>
+    </div>
+    <div class="header-nav" #headerContent [class.scrolled]="headerScrolled">
+      <ng-content select="[header]"></ng-content>
     </div>
   </header>
 

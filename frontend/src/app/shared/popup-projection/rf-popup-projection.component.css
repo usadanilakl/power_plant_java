@@ -100,3 +100,22 @@
 .popup-full-height .popup-body {
   overflow: hidden;
 }
+
+/* Fullscreen on small screens (phones) */
+@media (max-width: 768px) {
+  .popup-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0;
+  }
+
+  .popup-header {
+    padding: 10px 16px;
+  }
+
+  .popup-header h2 {
+    font-size: 1.1em;
+  }
+}

@@ -21,11 +21,19 @@ export class CurrentWorkRequestService {
         this.loadWorkRequests();
     }
 
+    private normalizeWorkRequest(item: Partial<WorkRequestDto> | null | undefined): WorkRequestDto {
+        return item ? WorkRequestDto.fromJson(item) : new WorkRequestDto();
+    }
+
+    private normalizeWorkRequests(items: Partial<WorkRequestDto>[] | null | undefined): WorkRequestDto[] {
+        return (items ?? []).map(item => this.normalizeWorkRequest(item));
+    }
+
     private loadWorkRequests() {
         this.workRequestService.getWorkRequestsByStatus('active').pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActiveRequestsSubject.next(response.responseData);
+            this.allActiveRequestsSubject.next(this.normalizeWorkRequests(response.responseData));
             console.log('Work requests loaded:', response.responseData);
         });
     }
@@ -34,7 +42,7 @@ export class CurrentWorkRequestService {
       this.workRequestService.getWorkRequestById(id.toString()).pipe(
           takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedWorkRequestSubject.next(response.responseData);
+            this.selectedWorkRequestSubject.next(this.normalizeWorkRequest(response.responseData));
         });
     }
 }

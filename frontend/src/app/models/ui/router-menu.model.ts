@@ -2,6 +2,7 @@ export interface RouterMenuItem {
     route: string;
     label: string;
     icon?: string;
+    iconColor?: string;
     guideId?: string;
     guideMessage?: string;
     requiresFullAccess?: boolean;
@@ -28,8 +29,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         color: '#5C6BC0',
         defaultRoute: '/profile',
         items: [
-            { route: '/profile', label: 'My Profile', icon: 'person' },
-            { route: '/access-request', label: 'Access Request', icon: 'key' }
+            { route: '/profile', label: 'My Profile', icon: 'person', iconColor: '#5C6BC0' },
+            { route: '/access-request', label: 'Access Request', icon: 'key', iconColor: '#FFA726' }
         ]
     },
     {
@@ -39,9 +40,9 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/file',
         requiresFullAccess: true,
         items: [
-            { route: '/file', label: 'View Files', icon: 'description' },
-            { route: '/tag-number', label: 'Create New Tag', icon: 'new_label' },
-            { route: '/print', label: 'Print', icon: 'print' }
+            { route: '/file', label: 'View Files', icon: 'description', iconColor: '#26A69A' },
+            { route: '/tag-number', label: 'Create New Tag', icon: 'new_label', iconColor: '#FFA726' },
+            { route: '/print', label: 'Print', icon: 'print', iconColor: '#78909C' }
         ]
     },
     {
@@ -51,10 +52,10 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/loto',
         requiresFullAccess: true,
         items: [
-            { route: '/loto', label: 'LOTO', icon: 'lock' },
-            { route: '/loto-points', label: 'Loto Points', icon: 'place', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
-            { route: '/loto-standard', label: 'LOTO Standards', icon: 'checklist' },
-            { route: '/loto-builder', label: 'Loto Builder', icon: 'construction' }
+            { route: '/loto', label: 'LOTO', icon: 'lock', iconColor: '#FFA726' },
+            { route: '/loto-points', label: 'Loto Points', icon: 'place', iconColor: '#EF5350', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
+            { route: '/loto-standard', label: 'LOTO Standards', icon: 'checklist', iconColor: '#66BB6A' },
+            { route: '/loto-builder', label: 'Loto Builder', icon: 'construction', iconColor: '#42A5F5' }
         ]
     },
     {
@@ -64,19 +65,19 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/permit-builder',
         requiresFullAccess: true,
         items: [
-            { route: '/permits-monitor', label: 'Permits Monitor', icon: 'monitor_heart' },
-            { route: '/permit-builder/daily-packages', label: 'Daily Packages', icon: 'inventory_2', separator: true },
-            { route: '/permit-builder/work-requests', label: 'Work Requests', icon: 'request_page' },
-            { route: '/permit-builder/jobs', label: 'Job Logs', icon: 'work_history' },
-            { route: '/permit-builder/safe-works', label: 'Safe Works', icon: 'verified_user', separator: true },
-            { route: '/permit-builder/hot-works', label: 'Hot Works', icon: 'local_fire_department' },
-            { route: '/permit-builder/confined-spaces', label: 'Confined Spaces', icon: 'sensor_door' },
-            { route: '/permit-builder/jhas', label: 'JHAs', icon: 'health_and_safety' },
-            { route: '/permit-builder/energized-work-permits', label: 'Energized Work', icon: 'bolt' },
-            { route: '/permit-builder/excavation-permits', label: 'Excavation', icon: 'landscape' },
-            { route: '/permit-builder/venting-permits', label: 'Venting/Purging', icon: 'air' },
-            { route: '/permit-builder/lotos', label: 'LOTO', icon: 'lock', separator: true },
-            { route: '/scheduler', label: 'Scheduler', icon: 'calendar_month' }
+            { route: '/permits-monitor', label: 'Permits Monitor', icon: 'monitor_heart', iconColor: '#EF5350' },
+            { route: '/permit-builder/daily-packages', label: 'Daily Packages', icon: 'inventory_2', iconColor: '#AB47BC', separator: true },
+            { route: '/permit-builder/work-requests', label: 'Work Requests', icon: 'request_page', iconColor: '#42A5F5' },
+            { route: '/permit-builder/jobs', label: 'Job Logs', icon: 'work_history', iconColor: '#78909C' },
+            { route: '/permit-builder/safe-works', label: 'Safe Works', icon: 'verified_user', iconColor: '#66BB6A', separator: true },
+            { route: '/permit-builder/hot-works', label: 'Hot Works', icon: 'local_fire_department', iconColor: '#FF7043' },
+            { route: '/permit-builder/confined-spaces', label: 'Confined Spaces', icon: 'sensor_door', iconColor: '#FFA726' },
+            { route: '/permit-builder/jhas', label: 'JHAs', icon: 'health_and_safety', iconColor: '#26A69A' },
+            { route: '/permit-builder/energized-work-permits', label: 'Energized Work', icon: 'bolt', iconColor: '#FFEE58' },
+            { route: '/permit-builder/excavation-permits', label: 'Excavation', icon: 'landscape', iconColor: '#8D6E63' },
+            { route: '/permit-builder/venting-permits', label: 'Venting/Purging', icon: 'air', iconColor: '#29B6F6' },
+            { route: '/permit-builder/lotos', label: 'LOTO', icon: 'lock', iconColor: '#FFA726', separator: true },
+            { route: '/scheduler', label: 'Scheduler', icon: 'calendar_month', iconColor: '#5C6BC0' }
         ]
     },
     {
@@ -86,12 +87,12 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/visual-plant/work-areas',
         requiresFullAccess: true,
         items: [
-            { route: '/visual-plant/work-areas', label: 'Work Areas', icon: 'location_city' },
-            { route: '/visual-plant/work-area-map', label: 'Work Map', icon: 'map' },
-            { route: '/diagram-builder/list', label: 'Schematics', icon: 'account_tree', separator: true },
-            { route: '/form-designer/forms', label: 'Form Designer', icon: 'dynamic_form', separator: true },
-            { route: '/form-designer/design', label: 'Form Design', icon: 'edit_note' },
-            { route: '/form-designer/preview', label: 'Form Preview', icon: 'preview' }
+            { route: '/visual-plant/work-areas', label: 'Work Areas', icon: 'location_city', iconColor: '#66BB6A' },
+            { route: '/visual-plant/work-area-map', label: 'Work Map', icon: 'map', iconColor: '#42A5F5' },
+            { route: '/diagram-builder/list', label: 'Schematics', icon: 'account_tree', iconColor: '#FFA726', separator: true },
+            { route: '/form-designer/forms', label: 'Form Designer', icon: 'dynamic_form', iconColor: '#AB47BC', separator: true },
+            { route: '/form-designer/design', label: 'Form Design', icon: 'edit_note', iconColor: '#EF5350' },
+            { route: '/form-designer/preview', label: 'Form Preview', icon: 'preview', iconColor: '#78909C' }
         ]
     },
     {
@@ -101,11 +102,11 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/log',
         requiresFullAccess: true,
         items: [
-            { route: '/log/diagnostics', label: 'Diagnostics', icon: 'monitoring' },
-            { route: '/log/table', label: 'System Log', icon: 'list_alt' },
-            { route: '/log/correspondence', label: 'Correspondence', icon: 'mail' },
-            { route: '/log/messaging', label: 'Messages', icon: 'chat' },
-            { route: '/instrumentation', label: 'Instruments', icon: 'speed' }
+            { route: '/log/diagnostics', label: 'Diagnostics', icon: 'monitoring', iconColor: '#EF5350' },
+            { route: '/log/table', label: 'System Log', icon: 'list_alt', iconColor: '#42A5F5' },
+            { route: '/log/correspondence', label: 'Correspondence', icon: 'mail', iconColor: '#FFA726' },
+            { route: '/log/messaging', label: 'Messages', icon: 'chat', iconColor: '#66BB6A' },
+            { route: '/instrumentation', label: 'Instruments', icon: 'speed', iconColor: '#AB47BC' }
         ]
     },
     {
@@ -115,12 +116,12 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
         defaultRoute: '/admin/users',
         requiresFullAccess: true,
         items: [
-            { route: '/admin/users', label: 'User Management', icon: 'group' },
-            { route: '/admin/access-management', label: 'Access Management', icon: 'security' },
-            { route: '/backup', label: 'Backup', icon: 'backup', separator: true },
-            { route: '/sync', label: 'Sync Dashboard', icon: 'sync' },
-            { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload' },
-            { route: '/admin', label: 'Admin', icon: 'settings', separator: true }
+            { route: '/admin/users', label: 'User Management', icon: 'group', iconColor: '#5C6BC0' },
+            { route: '/admin/access-management', label: 'Access Management', icon: 'security', iconColor: '#EF5350' },
+            { route: '/backup', label: 'Backup', icon: 'backup', iconColor: '#66BB6A', separator: true },
+            { route: '/sync', label: 'Sync Dashboard', icon: 'sync', iconColor: '#42A5F5' },
+            { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload', iconColor: '#26A69A' },
+            { route: '/admin', label: 'Admin', icon: 'settings', iconColor: '#78909C', separator: true }
         ]
     }
 ];

@@ -222,6 +222,10 @@ code {
   border-left: 4px solid #007bff;
 }
 
+.sync-audit-section {
+  border-left: 4px solid #17a2b8;
+}
+
 .input-field {
   padding: 8px 12px;
   border: 1px solid #ccc;
@@ -255,6 +259,41 @@ code {
   align-items: center;
   font-size: 14px;
   color: #555;
+}
+
+.audit-controls {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.warning-item {
+  background-color: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.json-block,
+.cell-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.json-block {
+  padding: 12px;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
 }
 
 /* SharePoint list cards */

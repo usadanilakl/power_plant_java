@@ -58,12 +58,15 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomElement') zoomElement!: ElementRef<HTMLDivElement>;
   @ViewChild('mapImage') mapImage!: ElementRef<HTMLImageElement>;
+  @ViewChild('mapOverlay') mapOverlay!: ElementRef<HTMLDivElement>;
 
   private http = inject(HttpClient);
   private serverApi = inject(ServerApiService);
   private destroyRef = inject(DestroyRef);
   private ngZone = inject(NgZone);
+  private elementRef = inject(ElementRef);
   private cleanupListeners: (() => void)[] = [];
+  private overlayMovedToBody = false;
 
   shapes = signal<ParsedShape[]>([]);
   selectedAreaName = signal<string | null>(null);
@@ -87,6 +90,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   };
 
   // Transform state
+  currentScale = signal(1);
   private scale = 1;
   private translateX = 0;
   private translateY = 0;
@@ -170,6 +174,13 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     if (this.overlayOpen()) {
       document.body.style.overflow = '';
     }
+    // Clean up overlay from body if still there
+    if (this.overlayMovedToBody) {
+      const el = this.mapOverlay?.nativeElement;
+      if (el?.parentNode === document.body) {
+        document.body.removeChild(el);
+      }
+    }
   }
 
   // --- Overlay ---
@@ -178,12 +189,34 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.overlayOpen.set(true);
     document.body.style.overflow = 'hidden';
     this.resetZoom();
+    // Move overlay to body so transforms on parent containers don't break position:fixed
+    setTimeout(() => {
+      this.moveOverlayToBody();
+      this.fitToContainer();
+    }, 50);
   }
 
   closeOverlay(): void {
     this.detachListeners();
+    this.returnOverlayFromBody();
     this.overlayOpen.set(false);
     document.body.style.overflow = '';
+  }
+
+  private moveOverlayToBody(): void {
+    const el = this.mapOverlay?.nativeElement;
+    if (el && !this.overlayMovedToBody) {
+      document.body.appendChild(el);
+      this.overlayMovedToBody = true;
+    }
+  }
+
+  private returnOverlayFromBody(): void {
+    const el = this.mapOverlay?.nativeElement;
+    if (el && this.overlayMovedToBody) {
+      this.elementRef.nativeElement.appendChild(el);
+      this.overlayMovedToBody = false;
+    }
   }
 
   @HostListener('document:keydown.escape')
@@ -505,6 +538,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   // --- Transform ---
 
   private applyTransform(): void {
+    this.ngZone.run(() => this.currentScale.set(this.scale));
     if (this.zoomElement) {
       const el = this.zoomElement.nativeElement;
       el.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
@@ -516,5 +550,46 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.translateX = 0;
     this.translateY = 0;
     this.applyTransform();
+  }
+
+  /** Scale the image so it fills the container width on overlay open */
+  private fitToContainer(): void {
+    const container = this.mapContainer?.nativeElement;
+    const img = this.mapImage?.nativeElement;
+    if (!container || !img || !img.naturalWidth) return;
+
+    const containerWidth = container.clientWidth;
+    const imgWidth = img.naturalWidth;
+    const fitScale = containerWidth / imgWidth;
+
+    if (fitScale > 0 && fitScale !== Infinity) {
+      this.scale = fitScale;
+      this.translateX = 0;
+      this.translateY = 0;
+      this.applyTransform();
+    }
+  }
+
+  // --- Counter-scaling for shapes/labels at current zoom ---
+
+  getShapeBorderStyle(shape: ParsedShape, selected: boolean): Record<string, string> {
+    const inv = 1 / this.currentScale();
+    const bw = selected ? 3 * inv : 2 * inv;
+    return {
+      ...shape.style,
+      'border-width': `${bw}px`,
+      'border-radius': `${4 * inv}px`,
+      'outline-width': selected ? `${3 * inv}px` : '0',
+    };
+  }
+
+  getTooltipStyle(): Record<string, string> {
+    const inv = 1 / this.currentScale();
+    return {
+      'font-size': `${Math.max(12 * inv, 6)}px`,
+      'padding': `${4 * inv}px ${8 * inv}px`,
+      'border-radius': `${4 * inv}px`,
+      'bottom': `calc(100% + ${4 * inv}px)`,
+    };
   }
 }

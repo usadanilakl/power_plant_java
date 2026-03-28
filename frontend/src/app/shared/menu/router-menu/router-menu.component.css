@@ -82,7 +82,7 @@
   gap: 4px;
 }
 
-/* Color-coded group links */
+/* Color-coded group links — icons always colored, text inherits */
 .menu-group-link a {
   padding: 6px 12px;
   border-radius: 4px;
@@ -91,8 +91,12 @@
   border-bottom: 3px solid transparent;
 }
 
+.menu-group-link .nav-icon {
+  color: var(--group-color, inherit);
+}
+
 .menu-group-link a:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: color-mix(in srgb, var(--group-color, #888) 10%, transparent);
   border-bottom-color: var(--group-color, transparent);
 }
 
@@ -158,10 +162,10 @@
   border-bottom: 2px solid var(--group-color, currentColor);
 }
 
-/* Sub-item icons */
+/* Sub-item icons — individually colored */
 .sub-icon {
   font-size: 16px;
-  opacity: 0.65;
+  opacity: 0.85;
   line-height: 1;
 }
 
@@ -194,9 +198,12 @@
 }
 
 /* Dark mode support */
-:host-context(.dark-mode) .home-link a:hover,
-:host-context(.dark-mode) .menu-group-link a:hover {
+:host-context(.dark-mode) .home-link a:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context(.dark-mode) .menu-group-link a:hover {
+  background-color: color-mix(in srgb, var(--group-color, #888) 15%, transparent);
 }
 
 :host-context(.dark-mode) .menu-group-link.active a {

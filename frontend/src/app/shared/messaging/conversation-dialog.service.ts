@@ -15,6 +15,7 @@ export class ConversationDialogService {
   private _entityType = signal('');
   private _entityId = signal(0);
   private _selectedConversationId = signal<number | null>(null);
+  private _isComposing = signal(false);
   private _onOpen = new Subject<void>();
 
   private _conversationChanged = new Subject<{ entityType: string; entityId: number } | null>();
@@ -24,6 +25,7 @@ export class ConversationDialogService {
   entityType = this._entityType.asReadonly();
   entityId = this._entityId.asReadonly();
   selectedConversationId = this._selectedConversationId.asReadonly();
+  isComposing = this._isComposing.asReadonly();
   onOpen$ = this._onOpen.asObservable();
 
   constructor() {
@@ -68,10 +70,21 @@ export class ConversationDialogService {
 
   openConversation(conversationId: number): void {
     this._selectedConversationId.set(conversationId);
+    this._isComposing.set(false);
+  }
+
+  startComposing(): void {
+    this._isComposing.set(true);
+    this._selectedConversationId.set(null);
+  }
+
+  stopComposing(): void {
+    this._isComposing.set(false);
   }
 
   backToList(): void {
     this._selectedConversationId.set(null);
+    this._isComposing.set(false);
   }
 
   close(): void {
@@ -79,5 +92,6 @@ export class ConversationDialogService {
     this._entityType.set('');
     this._entityId.set(0);
     this._selectedConversationId.set(null);
+    this._isComposing.set(false);
   }
 }

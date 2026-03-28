@@ -32,11 +32,23 @@ export class CurrentHotWorkService {
         this.loadPaperForm();
     }
 
+    private normalizeHotWork(item: Partial<HotWorkDto> | null | undefined): HotWorkDto {
+        return item ? HotWorkDto.fromJson(item) : new HotWorkDto();
+    }
+
+    private normalizeHotWorks(items: Partial<HotWorkDto>[] | null | undefined): HotWorkDto[] {
+        return (items ?? []).map(item => this.normalizeHotWork(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+        return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadHotWorks() {
         this.hotWorkService.getHotWorkRequests().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActiveHotWorksSubject.next(response.responseData);
+            this.allActiveHotWorksSubject.next(this.normalizeHotWorks(response.responseData));
             console.log('Hot works loaded:', response.responseData);
         });
     }
@@ -49,7 +61,7 @@ export class CurrentHotWorkService {
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
                 // console.log('Paper form loaded:', response.responseData);
             }
         });
@@ -63,7 +75,7 @@ export class CurrentHotWorkService {
         this.hotWorkService.getHotWorkRequestById(id.toString()).pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedHotWorkSubject.next(response.responseData);
+            this.selectedHotWorkSubject.next(this.normalizeHotWork(response.responseData));
         });
     }
 
@@ -93,9 +105,9 @@ export class CurrentHotWorkService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newHotWork = response.responseData;
+                    const newHotWork = this.normalizeHotWork(response.responseData);
                     this.addHotWorkToList(newHotWork);
-                    this.setCurrentHotWorkWithDto(new HotWorkDto(newHotWork));
+                    this.setCurrentHotWorkWithDto(newHotWork);
                 }
             })
         );

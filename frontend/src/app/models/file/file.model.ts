@@ -42,15 +42,15 @@ export class FileDto extends BaseDto implements FileModel {
     super(data);
     this.id = data.id || 0;
     this.name = data.name || '';
-    this.fileType = data.fileType || new ValueDto({ id: 0, name: '' });
+    this.fileType = data.fileType ? ValueDto.fromJson(data.fileType) : new ValueDto({ id: 0, name: '' });
     this.fileLink = data.fileLink || '';
     this.baseLink = data.baseLink || '';
     this.folder = data.folder || '';
-    this.system = data.system || new ValueDto({ id: 0, name: '' });
+    this.system = data.system ? ValueDto.fromJson(data.system) : new ValueDto({ id: 0, name: '' });
     this.relatedSystems = data.relatedSystems || [];
     this.fileNumber = data.fileNumber || [];
-    this.vendor = data.vendor || new ValueDto({ id: 0, name: '' });
-    this.points = data.points || [];
+    this.vendor = data.vendor ? ValueDto.fromJson(data.vendor) : new ValueDto({ id: 0, name: '' });
+    this.points = data.points?.map(point => EquipmentDto.fromJson(point)) || [];
     this.objectType = data.objectType || '';
     this.extension = data.extension || '';
     this.extensions = data.extensions || [];
@@ -62,46 +62,40 @@ export class FileDto extends BaseDto implements FileModel {
     // Serialization method
     override toJson(): any {
         return {
-          id: this.id,
-          name: this.name,
-          fileType: this.fileType,
+          ...super.toJson(),
+          fileType: this.fileType?.toJson?.() ?? this.fileType,
           fileLink: this.fileLink,
           baseLink: this.baseLink,
           folder: this.folder,
-          system: this.system,
+          system: this.system?.toJson?.() ?? this.system,
           relatedSystems: this.relatedSystems,
           fileNumber: this.fileNumber,
-          vendor: this.vendor,
-          points: this.points,
-          objectType: this.objectType,
+          vendor: this.vendor?.toJson?.() ?? this.vendor,
+          points: this.points.map(point => point.toJson()),
           extension: this.extension,
           extensions: this.extensions,
           bulkEditStep: this.bulkEditStep,
           docNum: this.docNum,
-          isVerified: this.isVerified
         };
       }
     
       // Deserialization method (static)
       static override fromJson(json: any): FileDto {
         return new FileDto({
-          id: json.id,
-          name: json.name,
-          fileType: json.fileType,
+          ...super.fromJson(json),
+          fileType: json.fileType ? ValueDto.fromJson(json.fileType) : new ValueDto({ id: 0, name: '' }),
           fileLink: json.fileLink,
           baseLink: json.baseLink,
           folder: json.folder,
-          system: json.system,
+          system: json.system ? ValueDto.fromJson(json.system) : new ValueDto({ id: 0, name: '' }),
           relatedSystems: json.relatedSystems,
           fileNumber: json.fileNumber,
-          vendor: json.vendor,
-          points: json.points,
-          objectType: json.objectType,
+          vendor: json.vendor ? ValueDto.fromJson(json.vendor) : new ValueDto({ id: 0, name: '' }),
+          points: json.points?.map((point: any) => EquipmentDto.fromJson(point)) ?? [],
           extension: json.extension,
           extensions: json.extensions,
           bulkEditStep: json.bulkEditStep,
           docNum: json.docNum,
-          isVerified: json.isVerified
         });
       }
 

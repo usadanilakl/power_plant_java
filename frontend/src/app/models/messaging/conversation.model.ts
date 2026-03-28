@@ -27,7 +27,7 @@ export interface ConversationModel extends BaseModel {
   entityType: string;
   entityId: number;
   initiatorId: number;
-  responderId: number;
+  responderId: number | null;
   initiatorName: string;
   responderName: string;
   subject: string;
@@ -46,7 +46,7 @@ export class ConversationDto extends BaseDto implements ConversationModel {
   entityType: string;
   entityId: number;
   initiatorId: number;
-  responderId: number;
+  responderId: number | null;
   initiatorName: string;
   responderName: string;
   subject: string;
@@ -65,7 +65,7 @@ export class ConversationDto extends BaseDto implements ConversationModel {
     this.entityType = data.entityType || '';
     this.entityId = data.entityId || 0;
     this.initiatorId = data.initiatorId || 0;
-    this.responderId = data.responderId || 0;
+    this.responderId = data.responderId ?? null;
     this.initiatorName = data.initiatorName || '';
     this.responderName = data.responderName || '';
     this.subject = data.subject || '';
@@ -86,7 +86,7 @@ export class ConversationDto extends BaseDto implements ConversationModel {
       entityType: this.entityType,
       entityId: this.entityId,
       initiatorId: this.initiatorId,
-      responderId: this.responderId,
+      responderId: this.responderId || null,
       subject: this.subject,
       status: this.status,
       initialMessageContent: this.initialMessageContent,
@@ -100,7 +100,7 @@ export class ConversationDto extends BaseDto implements ConversationModel {
       entityType: json.entityType || '',
       entityId: json.entityId || 0,
       initiatorId: json.initiatorId || 0,
-      responderId: json.responderId || 0,
+      responderId: json.responderId ?? null,
       initiatorName: json.initiatorName || '',
       responderName: json.responderName || '',
       subject: json.subject || '',

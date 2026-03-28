@@ -23,7 +23,7 @@ export interface SyncStatus {
   serverAvailable?: boolean;
   sseConnected?: boolean;
   pendingServerChanges?: number;
-  syncMode?: 'SERVER' | 'PEER_TO_PEER';
+  syncMode?: 'SERVER' | 'LOCAL_ONLY';
   realtimeEnabled?: boolean;
 }
 
@@ -133,7 +133,7 @@ export class SyncStatusService {
   }
 
   /**
-   * Manually trigger sync with all peers
+   * Manually trigger sync with the configured hub/server when sync is enabled.
    */
   triggerSync(): Observable<TriggerSyncResponse> {
     return this.http.post<TriggerSyncResponse>(`${this.apiUrl}/trigger`, {});
@@ -297,40 +297,6 @@ export class SyncStatusService {
     return this.http.get<any>(`${this.apiUrl}/metrics`);
   }
 
-  // ==================== SERVER CONFIGURATION ====================
-
-  /**
-   * Get current sync server configuration
-   */
-  getSyncServerConfig(): Observable<SyncServerConfig> {
-    return this.http.get<SyncServerConfig>(`${this.apiUrl}/server-config`);
-  }
-
-  /**
-   * Validate sync server URL format and test connectivity
-   * @param url The URL to validate
-   */
-  validateSyncServerUrl(url: string): Observable<UrlValidationResult> {
-    return this.http.post<UrlValidationResult>(`${this.apiUrl}/server-config/validate`, { url });
-  }
-
-  /**
-   * Update sync server configuration and persist to file
-   * @param url The new sync server URL
-   * @param enabled Whether sync should be enabled
-   */
-  updateSyncServerConfig(url: string, enabled: boolean): Observable<ConfigUpdateResult> {
-    return this.http.post<ConfigUpdateResult>(`${this.apiUrl}/server-config`, { url, enabled });
-  }
-
-  /**
-   * Test connection to sync server
-   * @param url Optional URL to test (uses current config if not provided)
-   */
-  testSyncServerConnection(url?: string): Observable<ConnectionTestResult> {
-    const body = url ? { url } : {};
-    return this.http.post<ConnectionTestResult>(`${this.apiUrl}/server-config/test`, body);
-  }
 }
 
 export interface RegisterPeerResponse {
@@ -342,37 +308,6 @@ export interface RegisterPeerResponse {
     ip: string;
     port: number;
   };
-}
-
-// Server configuration interfaces
-export interface SyncServerConfig {
-  syncServerUrl: string;
-  syncServerEnabled: boolean;
-  syncRuntimeEnabled: boolean;
-  effectivelyEnabled: boolean;
-}
-
-export interface UrlValidationResult {
-  valid: boolean;
-  reachable: boolean;
-  message: string;
-  latencyMs?: number;
-}
-
-export interface ConfigUpdateResult {
-  success: boolean;
-  message: string;
-  syncServerUrl?: string;
-  syncServerEnabled?: boolean;
-  effectivelyEnabled?: boolean;
-  reconnected?: boolean;
-}
-
-export interface ConnectionTestResult {
-  success: boolean;
-  message: string;
-  latencyMs?: number;
-  serverStatus?: Record<string, any>;
 }
 
 export interface FileSyncStatus {
@@ -419,6 +354,8 @@ export interface SyncHealthCheckResult {
   serverReachable: boolean;
   entityDifference: number;
   fileDifference: number;
+  backlogDetected?: boolean;
+  serverPendingChangesForClient?: number;
   localStats: {
     entityCounts: Record<string, number>;
     totalEntities: number;

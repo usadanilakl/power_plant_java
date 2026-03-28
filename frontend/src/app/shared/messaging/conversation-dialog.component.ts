@@ -24,8 +24,25 @@ import { MessageDto } from '../../models/messaging/message.model';
       >
         <div class="messaging-dialog-content">
 
-          @if (!dialogService.selectedConversationId()) {
+          @if (dialogService.isComposing()) {
+            <div class="compose-form">
+              <button class="back-btn" (click)="cancelCompose()">&lt; Back to conversations</button>
+              <div class="form-group">
+                <label class="form-label">Subject</label>
+                <input class="form-input" [(ngModel)]="newSubject" placeholder="Conversation subject..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Message</label>
+                <textarea class="reply-input" [(ngModel)]="newMessageContent" placeholder="Type your message..." rows="4"></textarea>
+              </div>
+              <button class="send-btn compose-send-btn" (click)="createConversation()" [disabled]="!newSubject.trim() || !newMessageContent.trim() || isSending()">
+                Start Conversation
+              </button>
+            </div>
+
+          } @else if (!dialogService.selectedConversationId()) {
             <div class="conversation-list">
+              <button class="new-conversation-btn" (click)="startCompose()">+ New Conversation</button>
               @if (isLoading()) {
                 <div class="loading-state">Loading conversations...</div>
               } @else if (conversations().length === 0) {
@@ -42,7 +59,7 @@ import { MessageDto } from '../../models/messaging/message.model';
                       </span>
                     </div>
                     <div class="conv-meta">
-                      <span>{{ conv.initiatorName }} &lt;-&gt; {{ conv.responderName }}</span>
+                      <span>{{ conv.initiatorName }}{{ conv.responderName ? ' &lt;-&gt; ' + conv.responderName : '' }}</span>
                       @if (conv.lastMessageAt) {
                         <span class="conv-date">{{ formatDate(conv.lastMessageAt) }}</span>
                       }
@@ -329,6 +346,63 @@ import { MessageDto } from '../../models/messaging/message.model';
       color: var(--secondary-text, #6c757d);
       font-size: 14px;
     }
+
+    .new-conversation-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent-color, #007bff);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .new-conversation-btn:hover {
+      opacity: 0.9;
+    }
+
+    .compose-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--secondary-text, #6c757d);
+    }
+
+    .form-input {
+      padding: 8px 10px;
+      border: 1px solid var(--border-color, #dee2e6);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--card-background, #fff);
+      color: var(--primary-text, #212529);
+      box-sizing: border-box;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-color, #007bff);
+      box-shadow: 0 0 0 2px var(--accent-color-shadow, rgba(0,123,255,0.2));
+    }
+
+    .compose-send-btn {
+      align-self: flex-end;
+    }
   `]
 })
 export class ConversationDialogComponent {
@@ -347,6 +421,8 @@ export class ConversationDialogComponent {
   currentUserId = signal(0);
 
   replyContent = '';
+  newSubject = '';
+  newMessageContent = '';
 
   constructor() {
     this.authService.currentUser$
@@ -450,6 +526,47 @@ export class ConversationDialogComponent {
       keyEvent.preventDefault();
       this.sendMessage();
     }
+  }
+
+  startCompose(): void {
+    this.newSubject = '';
+    this.newMessageContent = '';
+    this.dialogService.startComposing();
+  }
+
+  cancelCompose(): void {
+    this.dialogService.stopComposing();
+  }
+
+  createConversation(): void {
+    const subject = this.newSubject.trim();
+    const content = this.newMessageContent.trim();
+    if (!subject || !content) return;
+
+    const entityType = this.dialogService.entityType();
+    const entityId = this.dialogService.entityId();
+    if (!entityType || !entityId) return;
+
+    this.isSending.set(true);
+    const dto = new ConversationDto({
+      entityType,
+      entityId,
+      subject,
+      initialMessageContent: content,
+    });
+    this.conversationService.startConversation(dto).subscribe({
+      next: (response) => {
+        this.isSending.set(false);
+        this.dialogService.stopComposing();
+        this.loadConversations();
+        this.dialogService.emitConversationChanged(entityType, entityId);
+        if (response.responseData) {
+          const created = ConversationDto.fromJson(response.responseData);
+          this.openConversation(created);
+        }
+      },
+      error: () => this.isSending.set(false)
+    });
   }
 
   backToList(): void {

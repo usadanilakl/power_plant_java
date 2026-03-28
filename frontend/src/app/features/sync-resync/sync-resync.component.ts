@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ElementRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Subject, Subscription, interval, EMPTY } from 'rxjs';
 import { takeUntil, switchMap } from 'rxjs/operators';
 import {
@@ -7,27 +8,31 @@ import {
   SyncHealthStatus,
   FileComparisonResult,
   OperationStatus,
-  ResyncResult,
-  BackupResult,
   RestartProgress,
   SyncHealthCheckResult,
-  PartialSyncDatesResponse,
-  PartialSyncPreview,
-  PartialSyncResult,
   FailedSyncItem,
   FileSyncResult,
-  FileSyncStats,
   IntegrityCheckResult,
   IntegrityFixResult,
-  TableIssues,
-  AutoResyncConfig
+  TableIssues
 } from '../../services/full-resync.service';
-import { SyncStatusService, SyncServerConfig } from '../../services/sync-status.service';
-import { SyncServerConfigComponent } from '../../shared/sync-server-config/sync-server-config.component';
+
+interface ElectronSyncExecuteProgress {
+  phase: string;
+  statusMessage: string;
+  progressPercent: number;
+  error?: string;
+}
+
+interface ElectronDesktopApi {
+  isElectron?: boolean;
+  executeSync?: (components: string[], options?: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
+  onSyncExecuteProgress?: (callback: (progress: ElectronSyncExecuteProgress) => void) => (() => void) | void;
+}
 @Component({
   selector: 'app-sync-resync',
   standalone: true,
-  imports: [CommonModule, SyncServerConfigComponent],
+  imports: [CommonModule, RouterLink],
   templateUrl: './sync-resync.component.html',
   styleUrls: ['./sync-resync.component.css']
 })
@@ -55,15 +60,6 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   syncHealthCheck: SyncHealthCheckResult | null = null;
   syncHealthCheckLoading = false;
 
-  // Partial sync state
-  partialSyncDates: PartialSyncDatesResponse | null = null;
-  partialSyncPreview: PartialSyncPreview | null = null;
-  selectedPartialSyncDate: string = '';
-  partialSyncLoading = false;
-  partialSyncPreviewLoading = false;
-  showPartialSyncConfirm = false;
-  forcePartialSync = false;
-
   // Failed sync items state
   failedSyncItems: (FailedSyncItem & { retrying?: boolean; dismissing?: boolean })[] = [];
   failedSyncItemsCount = 0;
@@ -86,15 +82,11 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   showPurgeConfirm = false;
   integrityFixType: 'duplicates' | 'orphans' | 'constraints' | 'all' = 'all';
 
-  // Server Configuration state
-  serverConfig: SyncServerConfig | null = null;
-  showServerConfig = false;
-  serverConfigLoading = false;
-
-  // Auto-Resync Configuration state
-  autoResyncConfig: AutoResyncConfig | null = null;
-  autoResyncLoading = false;
-  autoResyncToggling = false;
+  // Electron-managed full repair state
+  isElectronManaged = false;
+  desktopResyncInProgress = false;
+  desktopResyncProgress: ElectronSyncExecuteProgress | null = null;
+  private electronSyncProgressUnsubscribe: (() => void) | null = null;
 
   // Next check countdown
   nextCheckCountdown = '';
@@ -102,7 +94,6 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
 
   constructor(
     private resyncService: FullResyncService,
-    private syncStatusService: SyncStatusService,
     private elementRef: ElementRef,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
@@ -111,12 +102,12 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.isBrowser) {
+      this.isElectronManaged = !!this.getElectronApi()?.isElectron;
+      this.subscribeElectronSyncProgress();
       this.loadHealth();
       this.loadStatus();
       this.loadSyncHealthCheck();
       this.loadFailedSyncItemsCount();
-      this.loadServerConfig();
-      this.loadAutoResyncConfig();
       this.startAutoRefresh();
 
       // Subscribe to restart progress
@@ -136,6 +127,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.electronSyncProgressUnsubscribe?.();
   }
 
   private startAutoRefresh(): void {
@@ -186,10 +178,6 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     this.resyncService.getSyncHealthCheck().subscribe({
       next: (result) => {
         this.syncHealthCheck = result;
-        // Auto-select suggested date for partial sync if available
-        if (result.suggestResync && result.suggestedSyncDate) {
-          this.selectedPartialSyncDate = result.suggestedSyncDate;
-        }
       },
       error: (err) => console.debug('Could not load sync health check:', err.message)
     });
@@ -242,15 +230,39 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  /**
-   * Execute suggested partial sync from the recommended date
-   */
+  private getElectronApi(): ElectronDesktopApi | null {
+    if (!this.isBrowser) return null;
+    return (window as Window & { electronAPI?: ElectronDesktopApi }).electronAPI ?? null;
+  }
+
+  private subscribeElectronSyncProgress(): void {
+    const api = this.getElectronApi();
+    if (!api?.onSyncExecuteProgress) return;
+
+    const unsubscribe = api.onSyncExecuteProgress((progress) => {
+      this.desktopResyncProgress = progress;
+      this.desktopResyncInProgress = progress.phase !== 'done' && progress.phase !== 'error';
+      this.loading = this.desktopResyncInProgress;
+
+      if (progress.phase === 'done') {
+        this.loading = false;
+        this.desktopResyncInProgress = false;
+        this.showMessage('Desktop full resync completed', 'success');
+        this.loadHealth();
+        this.loadStatus();
+        this.loadSyncHealthCheck();
+      } else if (progress.phase === 'error') {
+        this.loading = false;
+        this.desktopResyncInProgress = false;
+        this.showMessage('Desktop full resync failed: ' + (progress.error || progress.statusMessage), 'error');
+      }
+    });
+
+    this.electronSyncProgressUnsubscribe = typeof unsubscribe === 'function' ? unsubscribe : null;
+  }
+
   executeSuggestedSync(): void {
-    if (this.syncHealthCheck?.suggestedSyncDate) {
-      this.selectedPartialSyncDate = this.syncHealthCheck.suggestedSyncDate;
-      this.confirmPartialSync();
-    } else if (this.syncHealthCheck?.suggestResync) {
-      // No suggested date - recommend full resync
+    if (this.syncHealthCheck?.suggestResync) {
       this.confirmResync();
     }
   }
@@ -288,6 +300,14 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       case 'OUT_OF_SYNC': return 'Out of Sync';
       default: return 'Unknown';
     }
+  }
+
+  hasEntityDrift(): boolean {
+    return (this.syncHealthCheck?.entityDrift?.length ?? 0) > 0;
+  }
+
+  hasFileDrift(): boolean {
+    return (this.syncHealthCheck?.fileDrift?.difference ?? 0) > 0;
   }
 
   loadPreview(): void {
@@ -355,6 +375,11 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   }
 
   private executeResync(force: boolean): void {
+    if (this.isElectronManaged) {
+      this.executeElectronResync();
+      return;
+    }
+
     this.loading = true;
     this.showMessage('Starting full resync...', 'info');
 
@@ -388,6 +413,37 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  private executeElectronResync(): void {
+    const api = this.getElectronApi();
+    if (!api?.executeSync) {
+      this.showMessage('Electron sync bridge is not available', 'error');
+      return;
+    }
+
+    this.loading = true;
+    this.desktopResyncInProgress = true;
+    this.desktopResyncProgress = {
+      phase: 'stopping_sb',
+      statusMessage: 'Preparing desktop full resync...',
+      progressPercent: 0
+    };
+    this.showMessage('Starting desktop full resync...', 'info');
+
+    api.executeSync(['db', 'files'], { cleanFiles: true })
+      .then((result) => {
+        if (!result.success) {
+          this.loading = false;
+          this.desktopResyncInProgress = false;
+          this.showMessage('Desktop full resync failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+      })
+      .catch((err) => {
+        this.loading = false;
+        this.desktopResyncInProgress = false;
+        this.showMessage('Desktop full resync failed: ' + (err?.message || err), 'error');
+      });
   }
 
   private executeBackup(): void {
@@ -483,6 +539,10 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   }
 
   getConfirmMessage(): string {
+    if (this.isElectronManaged && this.confirmAction === 'resync') {
+      return 'Are you sure you want to run a desktop full resync? Electron will stop the app, replace the local database and files from the hub, then start the app again.';
+    }
+
     switch (this.confirmAction) {
       case 'resync':
         return 'Are you sure you want to perform a full resync? This will restore database and files from the shared backup.';
@@ -496,7 +556,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   }
 
   isOperationInProgress(): boolean {
-    return this.operationStatus?.resyncInProgress || this.operationStatus?.backupInProgress || false;
+    return this.desktopResyncInProgress || this.operationStatus?.resyncInProgress || this.operationStatus?.backupInProgress || false;
   }
 
   /**
@@ -504,6 +564,10 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
    * Uses backend-computed progressPercent for accurate phase-weighted progress.
    */
   getProgressPercent(): number {
+    if (this.desktopResyncInProgress && this.desktopResyncProgress) {
+      return this.desktopResyncProgress.progressPercent || 0;
+    }
+
     if (this.operationStatus?.resyncInProgress) {
       const status = this.operationStatus.resyncStatus;
       // Use backend-computed progressPercent for accurate phase-weighted progress
@@ -549,6 +613,17 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
    * Get current phase name for display.
    */
   getCurrentPhaseName(): string {
+    if (this.desktopResyncInProgress && this.desktopResyncProgress?.phase) {
+      switch (this.desktopResyncProgress.phase) {
+        case 'stopping_sb': return 'Stopping App';
+        case 'db_download': return 'Database Download';
+        case 'db_extract': return 'Database Restore';
+        case 'files': return 'Files Sync';
+        case 'starting_sb': return 'Starting App';
+        default: return this.desktopResyncProgress.phase;
+      }
+    }
+
     const status = this.operationStatus?.resyncStatus;
     if (!status?.currentPhase) return '';
 
@@ -585,6 +660,9 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   }
 
   getCurrentPhase(): string {
+    if (this.desktopResyncInProgress && this.desktopResyncProgress) {
+      return this.desktopResyncProgress.statusMessage || 'Processing...';
+    }
     if (this.operationStatus?.resyncInProgress) {
       return this.operationStatus.resyncStatus?.phase || 'Processing...';
     }
@@ -592,145 +670,6 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       return this.operationStatus.backupStatus?.phase || 'Processing...';
     }
     return '';
-  }
-
-  // ==================== PARTIAL SYNC METHODS ====================
-
-  /**
-   * Load available dates for partial sync
-   */
-  loadPartialSyncDates(): void {
-    this.partialSyncLoading = true;
-    this.resyncService.getAvailableSyncDates().subscribe({
-      next: (response) => {
-        this.partialSyncDates = response;
-        this.partialSyncLoading = false;
-        if (response.errorMessage) {
-          this.showMessage('Failed to load sync dates: ' + response.errorMessage, 'error');
-        } else if (response.availableDates && response.availableDates.length > 0) {
-          // Pre-select the most recent date
-          this.selectedPartialSyncDate = response.availableDates[0];
-        }
-      },
-      error: (err) => {
-        this.partialSyncLoading = false;
-        this.showMessage('Failed to load sync dates: ' + err.message, 'error');
-      }
-    });
-  }
-
-  /**
-   * Preview partial sync for selected date
-   */
-  loadPartialSyncPreview(): void {
-    if (!this.selectedPartialSyncDate) {
-      this.showMessage('Please select a date first', 'warning');
-      return;
-    }
-
-    this.partialSyncPreviewLoading = true;
-    this.partialSyncPreview = null;
-
-    this.resyncService.previewPartialSync(this.selectedPartialSyncDate).subscribe({
-      next: (preview) => {
-        this.partialSyncPreview = preview;
-        this.partialSyncPreviewLoading = false;
-
-        if (preview.errorMessage) {
-          this.showMessage(preview.errorMessage, 'error');
-        } else {
-          this.showMessage(
-            `Partial sync preview: ${preview.changeCount} changes, ${preview.filesToDownload} files to download, ${preview.filesToDelete} files to delete`,
-            'info'
-          );
-        }
-      },
-      error: (err) => {
-        this.partialSyncPreviewLoading = false;
-        this.showMessage('Failed to preview partial sync: ' + err.message, 'error');
-      }
-    });
-  }
-
-  /**
-   * Show confirmation for partial sync
-   */
-  confirmPartialSync(): void {
-    if (!this.selectedPartialSyncDate) {
-      this.showMessage('Please select a date first', 'warning');
-      return;
-    }
-    this.forcePartialSync = false;
-    this.showPartialSyncConfirm = true;
-  }
-
-  /**
-   * Show confirmation for force partial sync
-   */
-  confirmForcePartialSync(): void {
-    if (!this.selectedPartialSyncDate) {
-      this.showMessage('Please select a date first', 'warning');
-      return;
-    }
-    this.forcePartialSync = true;
-    this.showPartialSyncConfirm = true;
-  }
-
-  /**
-   * Cancel partial sync confirmation
-   */
-  cancelPartialSyncConfirm(): void {
-    this.showPartialSyncConfirm = false;
-    this.forcePartialSync = false;
-  }
-
-  /**
-   * Execute partial sync
-   */
-  executePartialSync(): void {
-    this.showPartialSyncConfirm = false;
-    this.loading = true;
-    this.showMessage(`Starting partial sync from ${this.selectedPartialSyncDate}...`, 'info');
-
-    this.resyncService.executePartialSync(this.selectedPartialSyncDate, this.forcePartialSync).subscribe({
-      next: (result) => {
-        this.loading = false;
-        if (result.success) {
-          this.showMessage(result.message, 'success');
-        } else {
-          this.showMessage(result.message, 'error');
-        }
-        this.loadHealth();
-        this.loadStatus();
-        this.loadSyncHealthCheck();
-      },
-      error: (err) => {
-        this.loading = false;
-        this.showMessage('Partial sync failed: ' + (err.error?.message || err.message), 'error');
-      }
-    });
-  }
-
-  /**
-   * Handle date selection change
-   */
-  onPartialSyncDateChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.selectedPartialSyncDate = select.value;
-    this.partialSyncPreview = null;  // Clear preview when date changes
-  }
-
-  /**
-   * Get partial sync confirmation message
-   */
-  getPartialSyncConfirmMessage(): string {
-    if (this.forcePartialSync) {
-      return `WARNING: Force partial sync from ${this.selectedPartialSyncDate} will skip deletion safety checks. ` +
-             `This could delete a large number of files. Are you sure?`;
-    }
-    const changeCount = this.partialSyncPreview?.changeCount || 'unknown';
-    return `Are you sure you want to perform a partial sync from ${this.selectedPartialSyncDate}? ` +
-           `This will apply ${changeCount} changes and sync files.`;
   }
 
   // ==================== FAILED SYNC ITEMS METHODS ====================
@@ -1088,112 +1027,4 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
       .map(([key, value]) => ({ key, value }));
   }
 
-  // ==================== SERVER CONFIGURATION METHODS ====================
-
-  /**
-   * Load current server configuration
-   */
-  loadServerConfig(): void {
-    this.serverConfigLoading = true;
-    this.syncStatusService.getSyncServerConfig().subscribe({
-      next: (config) => {
-        this.serverConfig = config;
-        this.serverConfigLoading = false;
-      },
-      error: (err) => {
-        this.serverConfigLoading = false;
-        console.debug('Could not load server config:', err.message);
-      }
-    });
-  }
-
-  /**
-   * Toggle server config visibility
-   */
-  toggleServerConfig(): void {
-    this.showServerConfig = !this.showServerConfig;
-  }
-
-  /**
-   * Handle server config saved event
-   */
-  onServerConfigSaved(): void {
-    this.showServerConfig = false;
-    this.loadServerConfig();
-    this.showMessage('Server configuration updated successfully', 'success');
-    // Refresh status after config change
-    setTimeout(() => {
-      this.loadHealth();
-      this.loadSyncHealthCheck();
-    }, 1000);
-  }
-
-  /**
-   * Handle server config cancelled event
-   */
-  onServerConfigCancelled(): void {
-    this.showServerConfig = false;
-  }
-
-  // ==================== AUTO-RESYNC CONFIG METHODS ====================
-
-  /**
-   * Load current auto-resync configuration
-   */
-  loadAutoResyncConfig(): void {
-    this.autoResyncLoading = true;
-    this.resyncService.getAutoResyncConfig().subscribe({
-      next: (config) => {
-        this.autoResyncConfig = config;
-        this.autoResyncLoading = false;
-      },
-      error: (err) => {
-        this.autoResyncLoading = false;
-        console.debug('Could not load auto-resync config:', err.message);
-      }
-    });
-  }
-
-  /**
-   * Toggle auto-resync at runtime
-   */
-  toggleAutoResync(): void {
-    if (!this.autoResyncConfig) return;
-
-    const newState = !this.autoResyncConfig.runtimeEnabled;
-    this.autoResyncToggling = true;
-
-    this.resyncService.toggleAutoResync(newState).subscribe({
-      next: (result) => {
-        this.autoResyncToggling = false;
-        if (result.success) {
-          this.loadAutoResyncConfig();
-          this.showMessage(result.message, 'success');
-        } else {
-          this.showMessage('Failed to toggle auto-resync', 'error');
-        }
-      },
-      error: (err) => {
-        this.autoResyncToggling = false;
-        this.showMessage('Failed to toggle auto-resync: ' + err.message, 'error');
-      }
-    });
-  }
-
-  /**
-   * Reset auto-resync state (clear escalation, allow retry)
-   */
-  resetAutoResync(): void {
-    this.autoResyncLoading = true;
-    this.resyncService.resetAutoResyncState().subscribe({
-      next: () => {
-        this.showMessage('Auto-resync state reset', 'success');
-        this.loadAutoResyncConfig();
-      },
-      error: (err) => {
-        this.autoResyncLoading = false;
-        this.showMessage('Failed to reset auto-resync: ' + err.message, 'error');
-      }
-    });
-  }
 }

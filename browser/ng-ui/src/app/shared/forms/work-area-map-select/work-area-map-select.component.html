@@ -19,7 +19,7 @@
 
     <!-- Mobile: full-screen overlay -->
     @if (isMobile() && overlayOpen()) {
-      <div class="map-overlay">
+      <div class="map-overlay" #mapOverlay>
         <div class="overlay-header">
           <span class="overlay-title">Select Work Area</span>
           <button type="button" class="overlay-close-btn" aria-label="Close map" (click)="closeOverlay()">&times;</button>
@@ -64,9 +64,9 @@
               <div
                 class="shape-overlay"
                 [class.selected]="selectedShape() === shape"
-                [ngStyle]="shape.style"
+                [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape)"
                 (click)="selectShape(shape); $event.stopPropagation()">
-                <span class="shape-tooltip">{{ getDisplayName(shape) }}</span>
+                <span class="shape-tooltip" [ngStyle]="getTooltipStyle()">{{ getDisplayName(shape) }}</span>
               </div>
             }
           </div>
@@ -133,11 +133,11 @@
             <div
               class="shape-overlay"
               [class.selected]="isSelected(shape)"
-              [ngStyle]="shape.style"
+              [ngStyle]="getShapeBorderStyle(shape, isSelected(shape))"
               (click)="selectShape(shape); $event.stopPropagation()"
               (mouseenter)="hoveredShape.set(shape)"
               (mouseleave)="hoveredShape.set(null)">
-              <span class="shape-tooltip">{{ getDisplayName(shape) }}</span>
+              <span class="shape-tooltip" [ngStyle]="getTooltipStyle()">{{ getDisplayName(shape) }}</span>
             </div>
           }
         </div>

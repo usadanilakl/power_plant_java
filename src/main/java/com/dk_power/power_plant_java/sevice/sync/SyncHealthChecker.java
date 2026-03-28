@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.sync;
 import com.dk_power.power_plant_java.config.logging.LoggingContext;
 import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ public class SyncHealthChecker {
     private final RestTemplate restTemplate;
     private final EntityTableRegistry entityTableRegistry;
     private final SharePointSyncSettings syncIntervals;
+    private final FieldChangeRepository fieldChangeRepository;
 
     @Value("${files.root.path:uploads}")
     private String filesRootPath;
@@ -69,6 +71,8 @@ public class SyncHealthChecker {
 
     // Threshold for suggesting resync (after N consecutive out-of-sync checks)
     private static final int SUGGEST_RESYNC_THRESHOLD = 2;
+    private static final long ACTIVE_SYNC_GRACE_SECONDS = 300;
+    private static final long STALE_BACKLOG_SECONDS = 900;
 
     /**
      * Scheduled wrapper: polls every 30s, only runs when the configured health-check interval has elapsed.
@@ -228,11 +232,9 @@ public class SyncHealthChecker {
             log.debug("Could not count recent changes: {}", e.getMessage());
         }
 
-        // Pending sync count (changes not yet sent to server)
+        // Pending sync count using the same semantics as the actual outbound queue.
         try {
-            Long pendingCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM field_change WHERE synced = false", Long.class);
-            stats.setPendingSyncCount(pendingCount != null ? pendingCount : 0);
+            stats.setPendingSyncCount(fieldChangeRepository.countPendingChangesFor("SERVER"));
         } catch (Exception e) {
             log.debug("Could not count pending syncs: {}", e.getMessage());
         }
@@ -252,8 +254,25 @@ public class SyncHealthChecker {
 
             ResponseEntity<ServerSyncStats> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), ServerSyncStats.class);
+            ServerSyncStats stats = response.getBody();
+            if (stats == null) {
+                return null;
+            }
 
-            return response.getBody();
+            try {
+                String pendingUrl = syncConfig.getSyncServerUrl() + "/api/sync/changes/count";
+                ResponseEntity<Map<String, Long>> pendingResponse = restTemplate.exchange(
+                    pendingUrl, HttpMethod.GET, new HttpEntity<>(headers),
+                    new org.springframework.core.ParameterizedTypeReference<>() {});
+                Map<String, Long> pendingBody = pendingResponse.getBody();
+                if (pendingBody != null) {
+                    stats.setPendingChangesForClient(pendingBody.getOrDefault("count", 0L));
+                }
+            } catch (Exception e) {
+                log.debug("Could not get server pending change count: {}", e.getMessage());
+            }
+
+            return stats;
         } catch (Exception e) {
             log.debug("Could not get server stats: {}", e.getMessage());
             return null;
@@ -266,32 +285,24 @@ public class SyncHealthChecker {
     private void compareSyncStatus(SyncHealthResult result, LocalSyncStats local, ServerSyncStats server) {
         result.setServerReachable(true);
         StringBuilder issues = new StringBuilder();
+        long localPending = local.getPendingSyncCount();
+        long serverPending = Math.max(server.getPendingChangesForClient(), 0);
+        result.setServerPendingChangesForClient(serverPending);
+        result.setBacklogDetected(localPending > 0 || serverPending > 0);
+        result.setEntityDrift(buildEntityDrift(local, server));
+        result.setFileDrift(new FileDrift(local.getFileCount(), server.getFileCount(), Math.abs(local.getFileCount() - server.getFileCount())));
 
         // 1. Compare entity counts by type — only compare types reported by BOTH sides
         //    (server may not track all local entity types, e.g. Role, Jha, JobLog, etc.)
         long totalDiff = 0;
-        List<String> mismatchedTypes = new ArrayList<>();
-
-        Set<String> comparableTypes = new HashSet<>(entityTableRegistry.getAllEntityTypes());
-        comparableTypes.retainAll(server.getEntityCounts().keySet());
-
-        for (String entityType : comparableTypes) {
-            long localCount = local.getEntityCounts().getOrDefault(entityType, 0L);
-            long serverCount = server.getEntityCounts().getOrDefault(entityType, 0L);
-
-            if (localCount != serverCount) {
-                totalDiff += Math.abs(localCount - serverCount);
-                mismatchedTypes.add(String.format("%s: %d vs %d", entityType, localCount, serverCount));
+        for (EntityDrift drift : result.getEntityDrift()) {
+            if (drift.getDifference() > 0) {
+                totalDiff += drift.getDifference();
             }
         }
 
         double entityDiffPercent = server.getTotalEntities() > 0 ?
             (double) totalDiff / server.getTotalEntities() * 100 : 0;
-
-        if (!mismatchedTypes.isEmpty() && (totalDiff > 10 || entityDiffPercent > 5)) {
-            issues.append(String.format("Entity mismatches (%d total diff): %s. ",
-                totalDiff, String.join(", ", mismatchedTypes.subList(0, Math.min(3, mismatchedTypes.size())))));
-        }
 
         // Update the entityDifference to reflect actual comparison
         long entityDiff = totalDiff;
@@ -301,43 +312,94 @@ public class SyncHealthChecker {
         double fileDiffPercent = server.getFileCount() > 0 ?
             (double) fileDiff / server.getFileCount() * 100 : 0;
 
-        if (fileDiff > 10 || fileDiffPercent > 5) {
-            issues.append(String.format("File count mismatch: local=%d, server=%d (diff=%d). ",
-                local.getFileCount(), server.getFileCount(), fileDiff));
-        }
-
-        // 3. Check if local is behind on field changes
-        if (server.getLatestChangeTime() != null && local.getLatestChangeTime() != null) {
-            long timeDiffSeconds = server.getLatestChangeTime().getEpochSecond() -
-                local.getLatestChangeTime().getEpochSecond();
-
-            if (timeDiffSeconds > 300) { // More than 5 minutes behind
-                issues.append(String.format("Local is %d seconds behind server on changes. ",
-                    timeDiffSeconds));
+        if (result.isBacklogDetected()) {
+            if (localPending > 0) {
+                issues.append(String.format("local pending=%d", localPending));
             }
+            if (serverPending > 0) {
+                if (issues.length() > 0) issues.append(", ");
+                issues.append(String.format("server pending for this client=%d", serverPending));
+            }
+
+            Instant latestRelevantActivity = Stream.of(
+                    localPending > 0 ? local.getLatestChangeTime() : null,
+                    serverPending > 0 ? server.getLatestChangeTime() : null)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+
+            boolean activeBacklog = latestRelevantActivity != null &&
+                latestRelevantActivity.isAfter(Instant.now().minusSeconds(ACTIVE_SYNC_GRACE_SECONDS));
+            boolean staleBacklog = latestRelevantActivity == null ||
+                latestRelevantActivity.isBefore(Instant.now().minusSeconds(STALE_BACKLOG_SECONDS));
+
+            if (activeBacklog) {
+                result.setSyncStatus(SyncStatus.POSSIBLY_OUT_OF_SYNC);
+                result.setMessage("Sync is catching up: " + issues);
+            } else if (staleBacklog || localPending > 100 || serverPending > 100) {
+                result.setSyncStatus(SyncStatus.OUT_OF_SYNC);
+                result.setMessage("Sync backlog has not cleared: " + issues);
+            } else {
+                result.setSyncStatus(SyncStatus.POSSIBLY_OUT_OF_SYNC);
+                result.setMessage("Sync backlog detected: " + issues);
+            }
+
+            if (entityDiff > 0 || fileDiff > 0) {
+                result.setMessage(result.getMessage() + String.format(
+                    ". Secondary drift: entities diff=%d, files diff=%d", entityDiff, fileDiff));
+            }
+
+            result.setEntityDifference(entityDiff);
+            result.setFileDifference(fileDiff);
+            return;
         }
 
-        // 4. Check pending sync count (local changes not yet sent)
-        if (local.getPendingSyncCount() > 100) {
-            issues.append(String.format("Large pending sync queue: %d changes waiting. ",
-                local.getPendingSyncCount()));
-        }
-
-        // Determine overall status
-        if (issues.length() == 0) {
+        if (entityDiff == 0 && fileDiff == 0) {
             result.setSyncStatus(SyncStatus.IN_SYNC);
-            result.setMessage("All checks passed");
-        } else if (entityDiffPercent > 20 || fileDiffPercent > 20) {
-            result.setSyncStatus(SyncStatus.OUT_OF_SYNC);
-            result.setMessage(issues.toString().trim());
+            result.setMessage("No pending backlog and counts match");
         } else {
-            result.setSyncStatus(SyncStatus.POSSIBLY_OUT_OF_SYNC);
-            result.setMessage(issues.toString().trim());
+            if (entityDiff > 0) {
+                issues.append(String.format("Entity count drift=%d", entityDiff));
+            }
+            if (fileDiff > 0) {
+                if (issues.length() > 0) issues.append(". ");
+                issues.append(String.format("File count drift=%d", fileDiff));
+            }
+
+            if (entityDiffPercent > 20 || fileDiffPercent > 20) {
+                result.setSyncStatus(SyncStatus.OUT_OF_SYNC);
+            } else {
+                result.setSyncStatus(SyncStatus.POSSIBLY_OUT_OF_SYNC);
+            }
+            result.setMessage("No pending backlog, but counts still differ: " + issues);
+        }
+
+        if (result.getSyncStatus() == SyncStatus.POSSIBLY_OUT_OF_SYNC &&
+            entityDiff <= 10 && fileDiff <= 10) {
+            result.setSyncStatus(SyncStatus.IN_SYNC);
+            result.setMessage("Counts are close and no sync backlog is present");
         }
 
         // Set difference counts for UI
         result.setEntityDifference(entityDiff);
         result.setFileDifference(fileDiff);
+    }
+
+    private List<EntityDrift> buildEntityDrift(LocalSyncStats local, ServerSyncStats server) {
+        Set<String> comparableTypes = new TreeSet<>(entityTableRegistry.getAllEntityTypes());
+        comparableTypes.retainAll(server.getEntityCounts().keySet());
+
+        List<EntityDrift> drift = new ArrayList<>();
+        for (String entityType : comparableTypes) {
+            long localCount = local.getEntityCounts().getOrDefault(entityType, 0L);
+            long serverCount = server.getEntityCounts().getOrDefault(entityType, 0L);
+            if (localCount != serverCount) {
+                drift.add(new EntityDrift(entityType, localCount, serverCount, Math.abs(localCount - serverCount)));
+            }
+        }
+
+        drift.sort(Comparator.comparingLong(EntityDrift::getDifference).reversed().thenComparing(EntityDrift::getEntityType));
+        return drift;
     }
 
     /**
@@ -476,6 +538,8 @@ public class SyncHealthChecker {
         private long fileDifference;
         private LocalSyncStats localStats;
         private ServerSyncStats serverStats;
+        private List<EntityDrift> entityDrift = new ArrayList<>();
+        private FileDrift fileDrift;
 
         // Sync suggestion fields
         private boolean suggestResync;              // True if system recommends a resync
@@ -484,6 +548,8 @@ public class SyncHealthChecker {
         private String recommendation;              // Human-readable recommendation message
         private int consecutiveOutOfSyncCount;      // How many consecutive checks were out of sync
         private AutoResyncService.AutoResyncState autoResyncState; // Current auto-resync escalation state
+        private boolean backlogDetected;
+        private long serverPendingChangesForClient;
 
         // Timer fields for UI countdown
         private Instant nextCheckDueAt;             // When the next health check will run
@@ -509,5 +575,21 @@ public class SyncHealthChecker {
         private long totalFileBytes;
         private Instant latestChangeTime;
         private long totalFieldChanges;
+        private long pendingChangesForClient;
+    }
+
+    @Data
+    public static class EntityDrift {
+        private final String entityType;
+        private final long localCount;
+        private final long serverCount;
+        private final long difference;
+    }
+
+    @Data
+    public static class FileDrift {
+        private final long localCount;
+        private final long serverCount;
+        private final long difference;
     }
 }

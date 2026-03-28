@@ -32,11 +32,23 @@ export class CurrentSafeWorkService {
         this.loadPaperForm();
     }
 
+    private normalizeSafeWork(item: Partial<SafeWorkDto> | null | undefined): SafeWorkDto {
+        return item ? SafeWorkDto.fromJson(item) : new SafeWorkDto();
+    }
+
+    private normalizeSafeWorks(items: Partial<SafeWorkDto>[] | null | undefined): SafeWorkDto[] {
+        return (items ?? []).map(item => this.normalizeSafeWork(item));
+    }
+
+    private normalizePaperForm(item: Partial<PrintableFormDto> | null | undefined): PrintableFormDto {
+        return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
+    }
+
     private loadSafeWorks() {
         this.safeWorkService.getSafeWorkRequests().pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.allActiveSafeWorksSubject.next(response.responseData);
+            this.allActiveSafeWorksSubject.next(this.normalizeSafeWorks(response.responseData));
             console.log('Safe works loaded:', response.responseData);
         });
     }
@@ -49,7 +61,7 @@ export class CurrentSafeWorkService {
             })
         ).subscribe(response => {
             if (response && response.responseData) {
-                this.paperFormSubject.next(response.responseData);
+                this.paperFormSubject.next(this.normalizePaperForm(response.responseData));
                 console.log('Paper form loaded:', response.responseData);
             }
         });
@@ -59,7 +71,7 @@ export class CurrentSafeWorkService {
         this.safeWorkService.getSafeWorkRequestById(id.toString()).pipe(
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
-            this.selectedSafeWorkSubject.next(response.responseData);
+            this.selectedSafeWorkSubject.next(this.normalizeSafeWork(response.responseData));
         });
     }
 
@@ -98,9 +110,9 @@ export class CurrentSafeWorkService {
             takeUntilDestroyed(this.destroyRef),
             tap(response => {
                 if (response && response.responseData) {
-                    const newSafeWork = response.responseData;
+                    const newSafeWork = this.normalizeSafeWork(response.responseData);
                     this.updateSafeWorkInList(newSafeWork);
-                    this.setCurrentSafeWorkWithDto(new SafeWorkDto(newSafeWork));
+                    this.setCurrentSafeWorkWithDto(newSafeWork);
                 }
             })
         );

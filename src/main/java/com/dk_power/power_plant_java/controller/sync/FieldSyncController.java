@@ -253,7 +253,7 @@ public class FieldSyncController {
             status.put("syncMode", "SERVER");
             status.put("realtimeEnabled", centralSyncService.isSseConnected());
         } else {
-            status.put("syncMode", "PEER_TO_PEER");
+            status.put("syncMode", "LOCAL_ONLY");
             status.put("realtimeEnabled", false);
         }
 

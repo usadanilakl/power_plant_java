@@ -21,7 +21,7 @@ export class EngraverModalService {
   isProcessing = signal(false);
   layoutVersion = signal<'standard' | 'info'>('standard');
   selectedCharacteristicNames = signal<string[]>([]);
-  maxEngraveCharacteristics = 4;
+  maxEngraveCharacteristics = 5;
 
   // Template-based signals
   allTemplates = signal<EngraverTemplateDto[]>([]);

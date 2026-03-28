@@ -53,6 +53,18 @@ export class CurrentEquipmentService {
     private currentLotoPointPresetDataSubject = new BehaviorSubject<LotoPointDto>(new LotoPointDto());
     currentLotoPointPresetData$: Observable<LotoPointDto> = this.currentLotoPointPresetDataSubject.asObservable();
 
+    private normalizeEquipment(item: Partial<EquipmentDto> | null | undefined): EquipmentDto {
+      return item ? EquipmentDto.fromJson(item) : new EquipmentDto();
+    }
+
+    private normalizeEquipments(items: Partial<EquipmentDto>[] | null | undefined): EquipmentDto[] {
+      return (items ?? []).map(item => this.normalizeEquipment(item));
+    }
+
+    private normalizeLotoPoints(items: Partial<LotoPointDto>[] | null | undefined): LotoPointDto[] {
+      return (items ?? []).map(item => LotoPointDto.fromJson(item));
+    }
+
     setCurrentShape(shape: Shape | null): void {
       if(shape === null) {
         const currentShape = this.shapeSubject.getValue();
@@ -179,7 +191,7 @@ export class CurrentEquipmentService {
       this.equipmentService.getEquipmentById(id).subscribe(
         response => {
           if (response.responseData) {
-            this.setCurrentEquipment(response.responseData);
+            this.setCurrentEquipment(this.normalizeEquipment(response.responseData));
           }
         },
         error => {
@@ -190,11 +202,12 @@ export class CurrentEquipmentService {
     }
 
     setCurrentEquipment(eq: EquipmentDto | null): void {
-      this.currentEquipmentSubject.next(new EquipmentDto(eq || new EquipmentDto()));
-      if (eq) {
-        if(eq.lotoPoints)this.lotoPointSubject.next([...eq.lotoPoints]);
+      const normalizedEquipment = eq ? this.normalizeEquipment(eq) : null;
+      this.currentEquipmentSubject.next(normalizedEquipment);
+      if (normalizedEquipment) {
+        if(normalizedEquipment.lotoPoints)this.lotoPointSubject.next(this.normalizeLotoPoints(normalizedEquipment.lotoPoints));
         else this.lotoPointSubject.next([new LotoPointDto()]);
-        this.fetchRelatedEquipmentAndLotoPoints(eq);
+        this.fetchRelatedEquipmentAndLotoPoints(normalizedEquipment);
       } else {
         this.clearCurrentEquipment();
       }
@@ -219,7 +232,7 @@ export class CurrentEquipmentService {
       this.equipmentService.searchEqByBaseTagNumber(equipmentSearchCriteria, 1, 50).subscribe(
         response => {
           if (response.responseData) {
-            this.relatedEquipmentSubject.next(response.responseData.content);
+            this.relatedEquipmentSubject.next(this.normalizeEquipments(response.responseData.content));
           }
         },
         error => console.error('Error fetching related equipment:', error)
@@ -239,7 +252,7 @@ export class CurrentEquipmentService {
       this.lotoPointService.searchLpByBaseTagNumber(lotoPointSearchCriteria, 50).subscribe(
         response => {
           if (response.responseData) {
-            this.relatedLotoPointsSubject.next(response.responseData.content);
+            this.relatedLotoPointsSubject.next(this.normalizeLotoPoints(response.responseData.content));
           }
         },
         error => console.error('Error fetching related LOTO points:', error)
