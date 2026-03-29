@@ -10,6 +10,7 @@ import { ServerApiService } from '../../../services/server-api.service';
 interface WorkAreaEntry {
   id: number;
   name: string;
+  isConfinedSpace?: boolean;
 }
 
 interface ShapeEntry {
@@ -23,6 +24,7 @@ interface ShapeEntry {
 interface AreaRef {
   id: number;
   name: string;
+  isConfinedSpace?: boolean;
 }
 
 interface ParsedShape {
@@ -250,7 +252,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   private loadData(): void {
     this.loadAreasWithFallback((areas) => {
-      this.loadShapesFromStatic((shapes) => {
+      this.loadShapesWithFallback((shapes) => {
         this.handleLoadedData(areas, shapes);
       }, () => {
         console.warn('[PWA] Failed to load static work-area shapes');
@@ -280,17 +282,24 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     });
   }
 
-  private loadShapesFromStatic(next: (shapes: ShapeEntry[]) => void, fail: () => void): void {
-    this.http.get<ShapeEntry[]>('data/work-area-shapes.json')
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next,
-        error: fail,
-      });
+  private loadShapesWithFallback(next: (shapes: ShapeEntry[]) => void, fail: () => void): void {
+    this.serverApi.getWorkAreaShapes().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (shapes) => {
+        next(shapes as ShapeEntry[]);
+      },
+      error: () => {
+        this.http.get<ShapeEntry[]>('data/work-area-shapes.json')
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next,
+            error: fail,
+          });
+      }
+    });
   }
 
   private handleLoadedData(areas: WorkAreaEntry[], shapes: ShapeEntry[]): void {
-    const areaMap = new Map(areas.map(a => [a.id, a.name]));
+    const areaMap = new Map(areas.map(a => [a.id, a]));
     const parsed = shapes.map(s => this.parseShape(s, areaMap));
     this.shapes.set(parsed);
     this.imageUrl.set('data/work-area-map-image.jpg');
@@ -305,7 +314,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     }
   }
 
-  private parseShape(entry: ShapeEntry, areaMap: Map<number, string>): ParsedShape {
+  private parseShape(entry: ShapeEntry, areaMap: Map<number, WorkAreaEntry>): ParsedShape {
     let x = 0, y = 0, width = 100, height = 100;
     let originalWidth = 1000, originalHeight = 1000;
 
@@ -328,8 +337,11 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
     const areas: AreaRef[] = (entry.workAreaIds ?? [])
       .map(id => {
-        const name = areaMap.get(id);
-        return name ? { id, name } : null;
+        const areaEntry = areaMap.get(id);
+        if (!areaEntry) return null;
+        const ref: AreaRef = { id, name: areaEntry.name };
+        if (areaEntry.isConfinedSpace) ref.isConfinedSpace = true;
+        return ref;
       })
       .filter((a): a is AreaRef => !!a);
 

@@ -11,7 +11,7 @@ export type CounterpartStatus = 'linked' | 'found' | 'suggested' | 'not-found';
 
 /** Fields that can be synced between units */
 export type SyncableField = keyof Pick<LotoPointDto,
-  'tagNumber' | 'description' | 'specificLocation' | 'isoPos' | 'normPos' | 'zeroEnergy' | 'eqType' | 'location'
+  'tagNumber' | 'description' | 'specificLocation' | 'isoPos' | 'normPos' | 'zeroEnergy' | 'eqType' | 'location' | 'characteristicsJson'
 >;
 
 /** List of all syncable fields */
@@ -24,6 +24,7 @@ export const SYNCABLE_FIELDS: SyncableField[] = [
   'zeroEnergy',
   'eqType',
   'location',
+  'characteristicsJson',
 ];
 
 /** Short labels for syncable fields (for UI display) */
@@ -36,6 +37,7 @@ export const FIELD_LABELS: Record<SyncableField, string> = {
   eqType: 'Type',
   location: 'Area',
   zeroEnergy: 'Zero',
+  characteristicsJson: 'Chars',
 };
 
 /**
@@ -198,8 +200,8 @@ export class LotoPointCounterpartService {
       return value;
     }
 
-    // 3. Value-select fields - copy as-is
-    if (field === 'isoPos' || field === 'normPos' || field === 'eqType' || field === 'location') {
+    // 3. Value-select fields and characteristics - copy as-is
+    if (field === 'isoPos' || field === 'normPos' || field === 'eqType' || field === 'location' || field === 'characteristicsJson') {
       return value;
     }
 

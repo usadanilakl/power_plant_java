@@ -1,51 +1,52 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, OnInit, OnDestroy, Pipe, PipeTransform } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogDiagnosticsApiService } from '../services/log-diagnostics-api.service';
-import {
-  LogDiagnosticsEvent,
-  LogDiagnosticsEventsResponse,
-  LogDiagnosticsFinding,
-  LogDiagnosticsIncident,
-  LogDiagnosticsIncidentDetail,
-  LogDiagnosticsIncidentsResponse,
-  LogDiagnosticsOverview,
-} from '../services/log-diagnostics.models';
+import { LogEvent, LogSummary } from '../services/log-diagnostics.models';
+import { Subject, interval, merge, debounceTime, takeUntil, startWith } from 'rxjs';
+
+@Pipe({ name: 'relativeTime', standalone: true })
+export class RelativeTimePipe implements PipeTransform {
+  transform(value: string | null): string {
+    if (!value) return '';
+    const diff = Date.now() - new Date(value).getTime();
+    if (diff < 0) return 'just now';
+    if (diff < 60_000) return `${Math.max(1, Math.floor(diff / 1000))}s ago`;
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
+  }
+}
 
 type LevelFilter = 'ALL' | 'INFO' | 'WARN' | 'ERROR';
-type IncidentStatusFilter = 'ALL' | 'open' | 'acknowledged' | 'resolved';
 
 @Component({
   selector: 'app-log-diagnostics-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, RelativeTimePipe],
   templateUrl: './log-diagnostics-page.component.html',
   styleUrl: './log-diagnostics-page.component.css',
 })
-export class LogDiagnosticsPageComponent implements OnInit {
-  overview: LogDiagnosticsOverview | null = null;
-  events: LogDiagnosticsEvent[] = [];
+export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
+  events: LogEvent[] = [];
+  summary: LogSummary = { totalEvents: 0, infoEvents: 0, warnEvents: 0, errorEvents: 0 };
+  sourceFiles: string[] = [];
   totalMatched = 0;
-  incidents: LogDiagnosticsIncident[] = [];
-  selectedIncidentId: string | null = null;
-  selectedIncidentDetail: LogDiagnosticsIncidentDetail | null = null;
-  totalIncidents = 0;
 
   windowMinutes = 240;
-  eventLimit = 150;
+  eventLimit = 200;
   level: LevelFilter = 'ALL';
-  incidentStatus: IncidentStatusFilter = 'ALL';
-  text = '';
   sourceFile = '';
+  text = '';
   requestId = '';
   syncRunId = '';
   machineId = '';
+  showAdvancedFilters = false;
 
-  loadingOverview = false;
-  loadingEvents = false;
-  loadingIncidents = false;
-  loadingIncidentDetail = false;
+  loading = false;
   errorMessage = '';
+  autoRefresh = true;
+  expandedIndex: number | null = null;
 
   readonly windowOptions = [
     { label: '15 min', value: 15 },
@@ -54,32 +55,51 @@ export class LogDiagnosticsPageComponent implements OnInit {
     { label: '24 hours', value: 1440 },
   ];
 
+  private manualRefresh$ = new Subject<void>();
+  private textChanged$ = new Subject<void>();
+  private destroy$ = new Subject<void>();
+
   constructor(private diagnosticsApi: LogDiagnosticsApiService) {}
 
   ngOnInit(): void {
-    this.refreshAll();
+    const autoRefreshInterval$ = interval(10_000).pipe(
+      startWith(0),
+    );
+
+    // Text input debounce — triggers a load after 300ms pause
+    this.textChanged$.pipe(
+      debounceTime(300),
+      takeUntil(this.destroy$),
+    ).subscribe(() => this.loadEvents());
+
+    // Auto-refresh + manual refresh merge
+    merge(
+      this.manualRefresh$,
+      autoRefreshInterval$,
+    ).pipe(
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      if (this.autoRefresh || this.events.length === 0) {
+        this.loadEvents();
+      }
+    });
   }
 
-  get findings(): LogDiagnosticsFinding[] {
-    return this.overview?.findings ?? [];
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  get incidentDetail(): LogDiagnosticsIncidentDetail | null {
-    return this.selectedIncidentDetail;
+  refresh(): void {
+    this.manualRefresh$.next();
   }
 
-  get sourceFiles(): string[] {
-    return this.overview?.sourceFiles ?? [];
-  }
-
-  refreshAll(): void {
-    this.loadOverview();
-    this.loadIncidents();
+  onDropdownChange(): void {
     this.loadEvents();
   }
 
-  applyFilters(): void {
-    this.loadEvents();
+  onTextInput(): void {
+    this.textChanged$.next();
   }
 
   clearFilters(): void {
@@ -92,167 +112,52 @@ export class LogDiagnosticsPageComponent implements OnInit {
     this.loadEvents();
   }
 
-  useFinding(finding: LogDiagnosticsFinding): void {
-    this.level = finding.severity === 'critical' ? 'ERROR' : 'WARN';
-    this.machineId = finding.machineId ?? '';
-    this.requestId = '';
-    this.syncRunId = '';
-    this.text = finding.path || finding.type;
-    this.loadEvents();
+  toggleRow(index: number): void {
+    this.expandedIndex = this.expandedIndex === index ? null : index;
   }
 
-  selectIncident(incident: LogDiagnosticsIncident): void {
-    this.selectedIncidentId = incident.incidentId;
-    this.loadingIncidentDetail = true;
-    this.errorMessage = '';
-    this.diagnosticsApi
-      .getIncidentDetail(incident.incidentId, this.windowMinutes, this.eventLimit)
-      .subscribe({
-        next: (response) => {
-          this.selectedIncidentDetail = response.responseData;
-          this.loadingIncidentDetail = false;
-        },
-        error: (error) => {
-          this.errorMessage = error.error?.message || 'Failed to load incident detail.';
-          this.loadingIncidentDetail = false;
-        },
-      });
+  hasContext(event: LogEvent): boolean {
+    return !!(event.requestId || event.syncRunId || event.jobRunId
+      || event.machineId || event.entityType || event.durationMs);
   }
 
-  setIncidentStatus(
-    incident: LogDiagnosticsIncident,
-    status: 'open' | 'acknowledged' | 'resolved'
-  ): void {
-    this.diagnosticsApi.updateIncidentStatus(incident.incidentId, status, this.windowMinutes).subscribe({
-      next: () => {
-        this.loadIncidents();
-        if (this.selectedIncidentId === incident.incidentId) {
-          this.selectIncident({ ...incident, status });
-        }
-      },
-      error: (error) => {
-        this.errorMessage = error.error?.message || 'Failed to update incident status.';
-      },
-    });
+  trackEvent(index: number, event: LogEvent): string {
+    return `${event.timestamp}-${event.logger}-${index}`;
   }
 
-  useIncident(incident: LogDiagnosticsIncident): void {
-    this.level = incident.severity === 'critical' ? 'ERROR' : 'WARN';
-    this.requestId = incident.requestId ?? '';
-    this.syncRunId = incident.syncRunId ?? '';
-    this.machineId = incident.machineId ?? '';
-    this.text = incident.path || incident.incidentKey;
-    this.loadEvents();
-  }
-
-  severityClass(severity: string): string {
-    if (severity === 'warn' || severity === 'warning') {
-      return 'severity-warning';
+  levelClass(level: string): string {
+    switch (level?.toUpperCase()) {
+      case 'ERROR': return 'level-error';
+      case 'WARN': return 'level-warn';
+      default: return 'level-info';
     }
-    if (severity === 'error' || severity === 'critical') {
-      return 'severity-critical';
-    }
-    return 'severity-info';
-  }
-
-  statusClass(status: string): string {
-    if (status === 'resolved') {
-      return 'status-resolved';
-    }
-    if (status === 'acknowledged') {
-      return 'status-acknowledged';
-    }
-    return 'status-open';
-  }
-
-  trackEvent(_: number, event: LogDiagnosticsEvent): string {
-    return `${event.timestamp}-${event.logger}-${event.message}`;
-  }
-
-  trackIncident(_: number, incident: LogDiagnosticsIncident): string {
-    return incident.incidentId;
-  }
-
-  private loadOverview(): void {
-    this.loadingOverview = true;
-    this.errorMessage = '';
-    this.diagnosticsApi.getOverview(this.windowMinutes, this.eventLimit).subscribe({
-      next: (response) => {
-        this.overview = response.responseData;
-        this.loadingOverview = false;
-      },
-      error: (error) => {
-        this.errorMessage = error.error?.message || 'Failed to load diagnostics overview.';
-        this.loadingOverview = false;
-      },
-    });
-  }
-
-  loadIncidents(): void {
-    this.loadingIncidents = true;
-    this.errorMessage = '';
-    this.diagnosticsApi
-      .getIncidents({
-        windowMinutes: this.windowMinutes,
-        limit: 50,
-        status: this.incidentStatus === 'ALL' ? undefined : this.incidentStatus,
-      })
-      .subscribe({
-        next: (response) => {
-          const payload: LogDiagnosticsIncidentsResponse = response.responseData;
-          this.incidents = payload.incidents;
-          this.totalIncidents = payload.totalMatched;
-          this.loadingIncidents = false;
-
-          if (!this.selectedIncidentId && this.incidents.length > 0) {
-            this.selectIncident(this.incidents[0]);
-            return;
-          }
-
-          const active = this.incidents.find(
-            (incident) => incident.incidentId === this.selectedIncidentId
-          );
-          if (active) {
-            this.selectIncident(active);
-          } else {
-            this.selectedIncidentId = this.incidents[0]?.incidentId ?? null;
-            this.selectedIncidentDetail = null;
-            if (this.incidents[0]) {
-              this.selectIncident(this.incidents[0]);
-            }
-          }
-        },
-        error: (error) => {
-          this.errorMessage = error.error?.message || 'Failed to load incidents.';
-          this.loadingIncidents = false;
-        },
-      });
   }
 
   private loadEvents(): void {
-    this.loadingEvents = true;
-    this.diagnosticsApi
-      .getEvents({
-        windowMinutes: this.windowMinutes,
-        limit: this.eventLimit,
-        level: this.level,
-        text: this.text,
-        sourceFile: this.sourceFile,
-        requestId: this.requestId,
-        syncRunId: this.syncRunId,
-        machineId: this.machineId,
-      })
-      .subscribe({
-        next: (response) => {
-          const payload: LogDiagnosticsEventsResponse = response.responseData;
-          this.events = payload.events;
-          this.totalMatched = payload.totalMatched;
-          this.loadingEvents = false;
-        },
-        error: (error) => {
-          this.errorMessage = error.error?.message || 'Failed to load diagnostic events.';
-          this.loadingEvents = false;
-        },
-      });
+    this.loading = true;
+    this.errorMessage = '';
+    this.diagnosticsApi.getEvents({
+      windowMinutes: this.windowMinutes,
+      limit: this.eventLimit,
+      level: this.level === 'ALL' ? undefined : this.level,
+      text: this.text || undefined,
+      sourceFile: this.sourceFile || undefined,
+      requestId: this.requestId || undefined,
+      syncRunId: this.syncRunId || undefined,
+      machineId: this.machineId || undefined,
+    }).subscribe({
+      next: (response) => {
+        const data = response.responseData;
+        this.events = data.events;
+        this.summary = data.summary;
+        this.sourceFiles = data.sourceFiles;
+        this.totalMatched = data.totalMatched;
+        this.loading = false;
+      },
+      error: (error) => {
+        this.errorMessage = error.error?.message || 'Failed to load log events.';
+        this.loading = false;
+      },
+    });
   }
 }

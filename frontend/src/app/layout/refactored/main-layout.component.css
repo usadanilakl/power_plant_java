@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  overflow-x: auto;
+  overflow: visible;
   flex: 1;
   position: relative;
 }

@@ -1,4 +1,4 @@
-export interface LogDiagnosticsEvent {
+export interface LogEvent {
   timestamp: string;
   level: string;
   subsystem: string;
@@ -24,73 +24,16 @@ export interface LogDiagnosticsEvent {
   durationMs: number | null;
 }
 
-export interface LogDiagnosticsFinding {
-  groupKey: string;
-  type: string;
-  severity: 'critical' | 'warning' | 'info';
-  subsystem: string;
-  title: string;
-  summary: string;
-  recommendation: string;
-  count: number;
-  firstSeen: string;
-  lastSeen: string;
-  machineId: string | null;
-  path: string | null;
-  sampleMessage: string | null;
-}
-
-export interface LogDiagnosticsSummary {
+export interface LogSummary {
   totalEvents: number;
   infoEvents: number;
   warnEvents: number;
   errorEvents: number;
-  findings: number;
-  criticalFindings: number;
 }
 
-export interface LogDiagnosticsOverview {
-  generatedAt: string;
-  windowMinutes: number;
-  summary: LogDiagnosticsSummary;
+export interface LogEventsResponse {
+  totalMatched: number;
+  summary: LogSummary;
   sourceFiles: string[];
-  incidents: LogDiagnosticsIncident[];
-  findings: LogDiagnosticsFinding[];
-  recentEvents: LogDiagnosticsEvent[];
-}
-
-export interface LogDiagnosticsEventsResponse {
-  totalMatched: number;
-  events: LogDiagnosticsEvent[];
-}
-
-export interface LogDiagnosticsIncident {
-  incidentId: string;
-  incidentKey: string;
-  status: 'open' | 'acknowledged' | 'resolved';
-  severity: 'critical' | 'warning' | 'info';
-  subsystem: string;
-  title: string;
-  summary: string;
-  recommendation: string;
-  suspectedCause: string;
-  count: number;
-  firstSeen: string;
-  lastSeen: string;
-  machineId: string | null;
-  path: string | null;
-  requestId: string | null;
-  syncRunId: string | null;
-  findingTypes: string[];
-}
-
-export interface LogDiagnosticsIncidentDetail {
-  incident: LogDiagnosticsIncident;
-  findings: LogDiagnosticsFinding[];
-  timeline: LogDiagnosticsEvent[];
-}
-
-export interface LogDiagnosticsIncidentsResponse {
-  totalMatched: number;
-  incidents: LogDiagnosticsIncident[];
+  events: LogEvent[];
 }

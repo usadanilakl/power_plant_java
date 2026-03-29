@@ -110,8 +110,10 @@ public class FieldChangeTracker {
         // Skip transient fields
         if (field.isAnnotationPresent(Transient.class)) return false;
 
-        // Skip JsonIgnore fields
-        if (field.isAnnotationPresent(JsonIgnore.class)) return false;
+        // Skip JsonIgnore fields — but NOT ManyToOne associations, which use @JsonIgnore
+        // only to avoid circular serialization. The tracker serializes them as just an ID.
+        if (field.isAnnotationPresent(JsonIgnore.class)
+                && !field.isAnnotationPresent(ManyToOne.class)) return false;
 
         // Skip static fields
         if (Modifier.isStatic(field.getModifiers())) return false;

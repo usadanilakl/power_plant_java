@@ -148,6 +148,7 @@ export class LotoBuilderLotoPointLeftMenuComponent implements OnInit {
             // Still show the info window even if no file is found
             this.builderState.setCurrentLotoPoint(fullLotoPoint);
             this.builderState.showLotoPointInfoWindow(fullLotoPoint);
+            this.builderState.setRelatedFiles(fullLotoPoint);
           }
         },
         error: (error) => {
@@ -197,6 +198,14 @@ export class LotoBuilderLotoPointLeftMenuComponent implements OnInit {
     // IMPORTANT: Set the loto point BEFORE setCurrentFile so it's available when equipment loads
     this.builderState.setCurrentLotoPoint(lotoPoint);
     this.builderState.showLotoPointInfoWindow(lotoPoint);
+    this.builderState.setRelatedFiles(lotoPoint);
+
+    // Set active index to match the file we're opening
+    const relatedFiles = this.builderState.relatedFiles();
+    const openedIndex = relatedFiles.findIndex(rf => rf.file.id === file.id);
+    if (openedIndex >= 0) {
+      this.builderState.activeRelatedFileIndex.set(openedIndex);
+    }
 
     if (isSameFile) {
       // File is already loaded - directly highlight the equipment

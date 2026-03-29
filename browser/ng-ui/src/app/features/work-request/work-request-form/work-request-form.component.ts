@@ -122,6 +122,11 @@ export class WorkRequestFormComponent implements OnInit {
     if (mapValue && typeof mapValue === 'object' && mapValue.id !== undefined) {
       workRequest.workAreaId = mapValue.id;
       workRequest.workAreaName = mapValue.name;
+      // Auto-set confined space if work area is classified as confined space
+      if (mapValue.isConfinedSpace) {
+        workRequest.isConfinedSpaceEntryRequired = 'Yes';
+        workRequest.spaceToBeEntered = mapValue.name;
+      }
     }
     // Compose locationOfWork: map area name + optional user detail
     const locationDetail = ((workRequest as any).locationDetail ?? '').trim();

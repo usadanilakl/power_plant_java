@@ -1,3 +1,21 @@
+<!-- Hazard Suggestions from Work Category -->
+<div *ngIf="suggestedHazards().length > 0" class="suggestions-panel">
+  <div class="suggestions-header">
+    <span class="suggestions-title">Suggested Hazards ({{ suggestedHazards().length }})</span>
+    <button type="button" class="btn-add-all" (click)="addAllSuggestionsToLastStep()">Add All to Last Step</button>
+  </div>
+  <div class="suggestions-chips">
+    <button
+      *ngFor="let hazard of suggestedHazards()"
+      type="button"
+      class="suggestion-chip"
+      [class.used]="usedSuggestions().has(hazard)"
+      (click)="addSuggestionToLastStep(hazard)"
+      [title]="usedSuggestions().has(hazard) ? 'Already added' : 'Click to add to last job step'"
+    >{{ hazard }}</button>
+  </div>
+</div>
+
 <app-reactive-form
   [entity]="entity()"
   [fields]="fields()"

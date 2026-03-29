@@ -4,6 +4,8 @@ import java.util.List;
 
 public record LogDiagnosticsEventsResponseDto(
     int totalMatched,
+    LogDiagnosticsSummaryDto summary,
+    List<String> sourceFiles,
     List<LogDiagnosticsEventDto> events
 ) {
 }

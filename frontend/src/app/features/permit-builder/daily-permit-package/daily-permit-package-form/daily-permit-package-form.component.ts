@@ -15,6 +15,8 @@ import { CurrentHotWorkService } from '../../../../services/current-items-servic
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
 import { DailyPermitPackageService } from '../../../../services/permits/daily-permit-package.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { WorkCategoryProfileApiService } from '../../work-category-profile/services/work-category-profile-api.service';
+import { WorkCategoryProfileDto } from '../../../../models/permits/work-category-profile.model';
 
 @Component({
   selector: 'app-daily-permit-package-form',
@@ -29,27 +31,31 @@ export class DailyPermitPackageFormComponent {
   private currentSafeWorkService = inject(CurrentSafeWorkService);
   private currentHotWorkService = inject(CurrentHotWorkService);
   private currentConfinedSpaceService = inject(CurrentConfinedSpaceService);
+  private categoryProfileApi = inject(WorkCategoryProfileApiService);
   private destroyRef = inject(DestroyRef);
 
 
   @Input() workRequest: Signal<WorkRequestDto> = signal<WorkRequestDto>(new WorkRequestDto());
-  
+
   @Input() safeWorkInput?: Signal<SafeWorkDto>;
   @Input() hotWorkInput?: Signal<HotWorkDto>;
   @Input() confinedSpaceInput?: Signal<ConfinedSpaceDto>;
 
   @Output() formSubmit = new EventEmitter<DailyPermitPackageDto>();
 
+  // Category profile loaded reactively based on work request's work category
+  private categoryProfile = signal<WorkCategoryProfileDto | null>(null);
+
   safeWork: Signal<SafeWorkDto> = computed(() =>
-    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
+    this.safeWorkInput?.() ?? SafeWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
   );
 
   hotWork: Signal<HotWorkDto> = computed(() =>
-    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
+    this.hotWorkInput?.() ?? HotWorkDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
   );
 
   confinedSpace: Signal<ConfinedSpaceDto> = computed(() =>
-    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea)
+    this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest(), this.workRequest().workArea, this.categoryProfile())
   );
 
   isSafeWorkVisible = true;
@@ -66,6 +72,17 @@ export class DailyPermitPackageFormComponent {
   constructor() {
     effect(() => {
       this.packageName = this.workRequest().workScope ?? '';
+    });
+    // Fetch category profile when work category changes
+    effect(() => {
+      const categoryId = this.workRequest().workCategory?.id;
+      if (categoryId) {
+        this.categoryProfileApi.getByWorkCategoryId(categoryId).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe(profile => this.categoryProfile.set(profile));
+      } else {
+        this.categoryProfile.set(null);
+      }
     });
   }
 

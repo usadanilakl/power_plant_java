@@ -6,6 +6,8 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkCategoryProfileDto } from './work-category-profile.model';
+import { mergeSwHazards } from '../../utils/hazard-merge.util';
 
 
 export class SwHazards {
@@ -316,7 +318,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     return fields.map(fieldName => allColumns[fieldName]);
   }
 
-  static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null): SafeWorkDto{
+  static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null, categoryProfile?: WorkCategoryProfileDto | null): SafeWorkDto{
     const dto = new SafeWorkDto({
       date: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
       time: request.timeOfWorkToBePerformed,
@@ -325,10 +327,8 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       workScope: request.workScope,
       requestedBy: request.requestedBy
     });
-    // Auto-populate constant hazards from WorkArea
-    if (workArea?.constantHazards) {
-      dto.hazards = new SwHazards({ ...dto.hazards, ...workArea.constantHazards });
-    }
+    // Merge hazards: category standard hazards + work area constant hazards (OR-union)
+    dto.hazards = mergeSwHazards(categoryProfile?.standardHazards, workArea?.constantHazards);
     return dto;
   }
 

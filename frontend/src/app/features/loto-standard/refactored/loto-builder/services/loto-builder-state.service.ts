@@ -11,6 +11,11 @@ export type LeftMenuTab = 'file' | 'loto-point';
 export type DisplayMode = 'table' | 'toggle-menu';
 export type LotoPointPopupView = 'form' | 'table';
 
+export interface RelatedFileEntry {
+  file: FileDto;
+  equipment: EquipmentDto;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -87,6 +92,12 @@ export class LotoBuilderStateService {
 
   /** LOTO point to display in info window */
   infoWindowLotoPoint = signal<LotoPointDto | null>(null);
+
+  /** Related files for the currently selected LOTO point (for multi-file navigation) */
+  relatedFiles = signal<RelatedFileEntry[]>([]);
+
+  /** Index of the currently active related file */
+  activeRelatedFileIndex = signal<number>(0);
 
   /** Selected LOTO point for form editing */
   selectedLotoPointForEdit = signal<LotoPointDto | null>(null);
@@ -286,6 +297,38 @@ export class LotoBuilderStateService {
   hideLotoPointInfoWindow(): void {
     this.showLotoPointInfo.set(false);
     this.infoWindowLotoPoint.set(null);
+    this.relatedFiles.set([]);
+    this.activeRelatedFileIndex.set(0);
+  }
+
+  /**
+   * Populate related files from a LOTO point's equipment list.
+   * Deduplicates by file ID so each file appears once.
+   */
+  setRelatedFiles(lotoPoint: LotoPointDto): void {
+    if (!lotoPoint.equipmentList || lotoPoint.equipmentList.length === 0) {
+      this.relatedFiles.set([]);
+      this.activeRelatedFileIndex.set(0);
+      return;
+    }
+
+    const seen = new Set<number>();
+    const entries: RelatedFileEntry[] = [];
+
+    for (const eq of lotoPoint.equipmentList) {
+      const file = eq.mainFileObject as FileDto | null | undefined;
+      const fileId = file?.id ?? eq.mainFileId;
+      if (fileId && !seen.has(fileId)) {
+        seen.add(fileId);
+        entries.push({
+          file: file ? (file as FileDto) : new FileDto({ id: fileId } as any),
+          equipment: eq,
+        });
+      }
+    }
+
+    this.relatedFiles.set(entries);
+    this.activeRelatedFileIndex.set(0);
   }
 
   /**
@@ -574,7 +617,7 @@ export class LotoBuilderStateService {
     this.closeLotoPointForm();
     this.closeLotoPointTable();
     this.closeLotoStandardsPopup();
-    this.hideLotoPointInfoWindow();
+    this.hideLotoPointInfoWindow(); // also clears relatedFiles and activeRelatedFileIndex
     this.setPendingEquipment(null);
     // Reset text recognition state
     this.recognizedText.set(null);

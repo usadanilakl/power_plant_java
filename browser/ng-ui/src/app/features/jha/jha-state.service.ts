@@ -3,7 +3,7 @@ import { JhaApiService } from "./jha-api.service";
 import { JhaDbService } from "./jha-db.service";
 import { Jha } from "../../models/permits/jha.model";
 import { GlobalMessageService } from "../../services/global-message.service";
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { JhaLocalStorageService } from "./jha-local-storage.service";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { WorkRequestDbService } from "../work-request/work-request-db.service";
@@ -14,6 +14,7 @@ import { UserSetupService } from "../../services/user-setup.service";
 import { IAttachment } from "../../models/permits/attachment.model";
 import { SubmissionOrchestratorService } from "../../services/submission-orchestrator.service";
 import { captureJhaAsImage } from "./jha-image/jha-image.util";
+import { ServerApiService, PwaWorkCategoryProfileDto } from "../../services/server-api.service";
 @Injectable({
   providedIn: 'root'
 })
@@ -27,6 +28,7 @@ export class JhaStateService {
     routeDataEncoder = inject(RouteDataEncoderService);
     userSetupService = inject(UserSetupService);
     submissionOrchestrator = inject(SubmissionOrchestratorService);
+    serverApiService = inject(ServerApiService);
     destroyRef = inject(DestroyRef);
 
     constructor() {
@@ -50,6 +52,9 @@ export class JhaStateService {
     jhaTransfersSignal = toSignal(this.jhaTransfersSubject, { initialValue: [] });
 
     workRequestsForJha$: Observable<WorkRequest[]> = this.workRequestDbService.getWorkRequestsNeedingJha();
+
+    /** Suggested hazard labels from the work category profile */
+    suggestedHazards = signal<string[]>([]);
 
     private queryParamTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
 
@@ -136,6 +141,41 @@ export class JhaStateService {
         localUuid: current.localUuid || crypto.randomUUID(),
       });
       this.selectJha(updatedJha);
+
+      // Fetch hazard suggestions from work category profile
+      this.suggestedHazards.set([]);
+      if (workRequest.workCategoryName) {
+        this.serverApiService.getWorkCategoryProfileByName(workRequest.workCategoryName).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe(profile => {
+          if (profile) {
+            this.suggestedHazards.set(this.extractHazardLabels(profile));
+          }
+        });
+      }
+    }
+
+    /** Extract human-readable hazard labels from a category profile's true boolean fields */
+    private extractHazardLabels(profile: PwaWorkCategoryProfileDto): string[] {
+      const labels: string[] = [];
+      const formatKey = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+
+      if (profile.standardHazards) {
+        for (const [key, val] of Object.entries(profile.standardHazards)) {
+          if (val === true) labels.push(formatKey(key));
+        }
+      }
+      if (profile.standardHotWorkMeasures) {
+        for (const [key, val] of Object.entries(profile.standardHotWorkMeasures)) {
+          if (val === true) labels.push(formatKey(key));
+        }
+      }
+      if (profile.standardConfinedSpaceHazards) {
+        for (const [key, val] of Object.entries(profile.standardConfinedSpaceHazards)) {
+          if (val === true) labels.push(formatKey(key));
+        }
+      }
+      return labels;
     }
 
     getSelectedJha(): Jha {

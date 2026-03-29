@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, effect, untracked } from '@angular/core';
 import { LotoPointDto, LotoPointCharacteristic } from '../../models/loto/loto-point.model';
 import { EngraverTemplateDto } from './models/engraver-template.model';
 
@@ -91,13 +91,26 @@ export class EngraverModalService {
   });
 
   constructor() {
-    // Re-create batches when batchSize changes (template selection change)
+    // Re-create batches when batchSize or items change (template selection change, item edits)
     effect(() => {
       const size = this.batchSize();
       const items = this.allItems();
       if (items.length > 0) {
-        this.batches.set(this.createBatches(items));
-        this.currentBatchIndex.set(0);
+        const oldBatches = untracked(() => this.batches());
+        const newBatches = this.createBatches(items);
+        // Preserve batch statuses when only items changed (not batch structure)
+        if (oldBatches.length === newBatches.length) {
+          for (let i = 0; i < newBatches.length; i++) {
+            if (newBatches[i].items.length === oldBatches[i].items.length) {
+              newBatches[i].status = oldBatches[i].status;
+              newBatches[i].errorMessage = oldBatches[i].errorMessage;
+            }
+          }
+        } else {
+          // Batch structure changed (e.g. batch size change) — reset index
+          this.currentBatchIndex.set(0);
+        }
+        this.batches.set(newBatches);
       }
     });
   }

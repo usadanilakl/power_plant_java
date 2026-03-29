@@ -125,6 +125,10 @@ import { SyncStatusService, SyncHealthStatusType, SyncStatus } from '../../servi
                 <mat-icon>sync</mat-icon>
                 {{ syncingNow() ? 'Syncing...' : 'Sync Now' }}
               </button>
+              <button mat-button (click)="goToActivity()">
+                <mat-icon>timeline</mat-icon>
+                Activity
+              </button>
               <button mat-button (click)="goToDashboard()">
                 <mat-icon>dashboard</mat-icon>
                 Dashboard
@@ -589,6 +593,11 @@ export class SyncIndicatorComponent implements OnInit, OnDestroy {
         this.syncingNow.set(false);
       }
     });
+  }
+
+  goToActivity(): void {
+    this.closePopover();
+    this.router.navigate(['/sync/activity']);
   }
 
   goToDashboard(): void {

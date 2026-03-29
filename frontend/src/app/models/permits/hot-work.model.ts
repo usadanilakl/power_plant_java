@@ -7,6 +7,8 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkCategoryProfileDto } from './work-category-profile.model';
+import { mergeHotWorkMeasures } from '../../utils/hazard-merge.util';
 
 
 export class HotWorkMeasures {
@@ -289,7 +291,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     return fields.map(fieldName => allColumns[fieldName]);
   }
   
-    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null): HotWorkDto{
+    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null, categoryProfile?: WorkCategoryProfileDto | null): HotWorkDto{
       const dto = new HotWorkDto({
         date: request.dateOfWorkToBePerformed?.split('T')[0],
         foreman: request.requestedBy,
@@ -297,10 +299,8 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         workScope: request.workScope,
         fireWatch: request.fireWatch
       });
-      // Auto-populate constant hot work measures from WorkArea
-      if (workArea?.constantHotWorkMeasures) {
-        dto.measures = new HotWorkMeasures({ ...dto.measures, ...workArea.constantHotWorkMeasures });
-      }
+      // Merge measures: category standard measures + work area constant measures (OR-union)
+      dto.measures = mergeHotWorkMeasures(categoryProfile?.standardHotWorkMeasures, workArea?.constantHotWorkMeasures);
       return dto;
     }
 

@@ -19,9 +19,9 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOGS}/archived/power-plant-logger-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>50MB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -33,9 +33,9 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOGS}/archived/power-plant-sync-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>50MB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -47,9 +47,9 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOGS}/archived/power-plant-security-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>250MB</totalSizeCap>
+            <maxFileSize>2MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20MB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -64,9 +64,9 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOGS}/archived/power-plant-alerts-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>60</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>50MB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -83,41 +83,51 @@
 
     <logger name="com.dk_power.power_plant_java.config.security" level="info" additivity="false">
         <appender-ref ref="SecurityFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.controller.auth" level="info" additivity="false">
         <appender-ref ref="SecurityFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.sevice.sharepoint" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.sevice.hub" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.controller.hub" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.sevice.sync.SyncHealthChecker" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
     <logger name="com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.sevice.sync" level="warn" additivity="false">
+    <logger name="com.dk_power.power_plant_java.sevice.sync" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.sync" level="warn" additivity="false">
+    <logger name="com.dk_power.power_plant_java.controller.sync" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 
-    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="warn" additivity="false">
+    <logger name="com.dk_power.power_plant_java.controller.sync_and_backup" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
+        <appender-ref ref="WarnErrorFile" />
     </logger>
 </configuration>

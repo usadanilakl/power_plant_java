@@ -31,6 +31,15 @@ export interface SyncCompleteEvent {
   timestamp: number;
 }
 
+export interface SyncActivityEvent {
+  direction: 'SENDING' | 'RECEIVING';
+  entityType: string;
+  entityId: string;
+  changeType: 'CREATE' | 'UPDATE' | 'DELETE';
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  timestamp: number;
+}
+
 type SyncEvent = EntityUpdateEvent | SyncCompleteEvent;
 
 /**
@@ -63,6 +72,10 @@ export class SyncUpdateService {
   // Subject for sync complete events
   private syncCompleteSubject = new Subject<SyncCompleteEvent>();
   syncComplete$ = this.syncCompleteSubject.asObservable();
+
+  // Subject for sync activity events (real-time feed)
+  private syncActivitySubject = new Subject<SyncActivityEvent>();
+  syncActivity$ = this.syncActivitySubject.asObservable();
 
   // Subject for specific entity type updates (e.g., 'LotoPoint')
   private entityTypeUpdatedSubjects = new Map<string, Subject<EntityUpdateEvent>>();
@@ -157,6 +170,18 @@ export class SyncUpdateService {
             this.syncCompleteSubject.next(data);
           } catch (e) {
             console.error('Error parsing sync complete:', e);
+          }
+        });
+      });
+
+      // Listen for sync activity events (real-time feed)
+      this.eventSource.addEventListener('sync_activity', (event) => {
+        this.ngZone.run(() => {
+          try {
+            const data: SyncActivityEvent = JSON.parse(event.data);
+            this.syncActivitySubject.next(data);
+          } catch (e) {
+            // Silently drop malformed activity events
           }
         });
       });

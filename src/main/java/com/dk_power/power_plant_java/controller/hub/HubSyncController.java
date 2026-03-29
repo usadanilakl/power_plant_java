@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.config.HubSyncConfig;
 import com.dk_power.power_plant_java.entities.hub.HubClientInfo;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
+import com.dk_power.power_plant_java.sevice.hub.HubEntityComparisonService;
+import com.dk_power.power_plant_java.sevice.hub.HubFieldChangeQueryService;
 import com.dk_power.power_plant_java.sevice.hub.HubSseService;
 import com.dk_power.power_plant_java.sevice.hub.HubSyncService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +37,8 @@ public class HubSyncController {
     private final HubSseService hubSseService;
     private final FieldChangeRepository fieldChangeRepository;
     private final HubSyncConfig hubSyncConfig;
+    private final HubEntityComparisonService hubEntityComparisonService;
+    private final HubFieldChangeQueryService hubFieldChangeQueryService;
 
     private static final int MAX_BATCH_SIZE = 1000;
 
@@ -394,6 +398,64 @@ public class HubSyncController {
     @PostMapping("/failed/retry-all")
     public ResponseEntity<Map<String, Object>> retryAllFailed() {
         return ResponseEntity.ok(Map.of("success", true, "retried", 0));
+    }
+
+    // -------------------------------------------------------------------
+    // Entity comparison (for desktop mismatch detection)
+    // -------------------------------------------------------------------
+
+    @GetMapping("/entity-ids/{entityType}")
+    public ResponseEntity<?> getEntityIds(@PathVariable String entityType) {
+        try {
+            Set<Long> ids = hubEntityComparisonService.getEntityIds(entityType);
+            return ResponseEntity.ok(ids);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/entity/{entityType}/{entityId}")
+    public ResponseEntity<?> getEntityData(@PathVariable String entityType, @PathVariable Long entityId) {
+        try {
+            Map<String, String> data = hubEntityComparisonService.getEntityData(entityType, entityId);
+            if (data == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Entity not found: " + entityType + "#" + entityId));
+            }
+            return ResponseEntity.ok(data);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/entity-timestamps/{entityType}")
+    public ResponseEntity<?> getEntityTimestamps(
+            @PathVariable String entityType,
+            @RequestBody List<Long> entityIds) {
+        try {
+            Map<Long, java.time.Instant> timestamps = hubEntityComparisonService.getEntityTimestamps(entityType, entityIds);
+            return ResponseEntity.ok(timestamps);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Changes by entity type (for per-type resync)
+    // -------------------------------------------------------------------
+
+    @GetMapping("/changes/by-type/{entityType}")
+    public ResponseEntity<List<FieldChange>> getChangesByEntityType(
+            @PathVariable String entityType,
+            @RequestParam String since) {
+        try {
+            java.time.Instant sinceInstant = java.time.Instant.parse(since);
+            List<FieldChange> changes = hubFieldChangeQueryService.findChangesByEntityTypeSince(entityType, sinceInstant);
+            return ResponseEntity.ok(changes);
+        } catch (Exception e) {
+            log.error("Failed to fetch changes by type {}: {}", entityType, e.getMessage());
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     // -------------------------------------------------------------------

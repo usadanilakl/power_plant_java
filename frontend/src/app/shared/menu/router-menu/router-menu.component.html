@@ -8,7 +8,8 @@
           <a routerLink="/"><span class="material-icons nav-icon">home</span> Home</a>
         </li>
         @for (group of filteredGroupedMenu(); track group.label; let i = $index) {
-          <li class="menu-group-link" [class.active]="isGroupActive(group)" [style.--group-color]="group.color">
+          <li class="menu-group-link" [class.active]="isGroupActive(group)" [style.--group-color]="group.color"
+              (mouseenter)="showDropdown(group)" (mouseleave)="hideDropdown()">
             <a [routerLink]="group.defaultRoute">
               @if (group.icon) {
                 <span class="material-icons nav-icon">{{ group.icon }}</span>
@@ -16,6 +17,22 @@
               {{ group.label }}
               <kbd class="shortcut-badge">Alt+{{ i + 1 }}</kbd>
             </a>
+            <!-- Hover dropdown -->
+            @if (hoveredGroup() === group && !isGroupActive(group)) {
+              <ul class="dropdown-menu" [style.--group-color]="group.color"
+                  (mouseenter)="keepDropdown()" (mouseleave)="hideDropdown()">
+                @for (item of group.items; track item.route) {
+                  <li [class.separator]="item.separator">
+                    <a [routerLink]="item.route" routerLinkActive="active-link" (click)="closeDropdown()">
+                      @if (item.icon) {
+                        <span class="material-icons sub-icon" [style.color]="item.iconColor">{{ item.icon }}</span>
+                      }
+                      {{ item.label }}
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
           </li>
         }
       </ul>

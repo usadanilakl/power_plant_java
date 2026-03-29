@@ -4,8 +4,6 @@ public record LogDiagnosticsSummaryDto(
     int totalEvents,
     int infoEvents,
     int warnEvents,
-    int errorEvents,
-    int findings,
-    int criticalFindings
+    int errorEvents
 ) {
 }

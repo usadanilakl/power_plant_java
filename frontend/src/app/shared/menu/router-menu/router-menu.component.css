@@ -106,6 +106,66 @@
   font-weight: 600;
 }
 
+/* Hover dropdown */
+.menu-group-link {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 200;
+  min-width: 200px;
+  padding: 6px 0;
+  margin-top: 4px;
+  background: var(--primary-background, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-top: 2px solid var(--group-color, #888);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  list-style: none;
+  animation: dropdownFadeIn 0.15s ease;
+  /* Override row layout inherited from .router-menu.row ul */
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu li {
+  margin: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dropdown-menu li.separator {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dropdown-menu a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.88em;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.dropdown-menu a:hover {
+  background-color: color-mix(in srgb, var(--group-color, #888) 10%, transparent);
+}
+
+.dropdown-menu a.active-link {
+  background-color: color-mix(in srgb, var(--group-color, #888) 15%, transparent);
+  font-weight: 600;
+}
+
 /* Keyboard shortcut badges */
 .shortcut-badge {
   font-size: 9px;
@@ -207,6 +267,24 @@
 }
 
 :host-context(.dark-mode) .menu-group-link.active a {
+  background-color: color-mix(in srgb, var(--group-color, #888) 25%, transparent);
+}
+
+:host-context(.dark-mode) .dropdown-menu {
+  background: var(--primary-background, #1e1e1e);
+  border-color: var(--border-color-dark, #444);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+:host-context(.dark-mode) .dropdown-menu li.separator {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context(.dark-mode) .dropdown-menu a:hover {
+  background-color: color-mix(in srgb, var(--group-color, #888) 15%, transparent);
+}
+
+:host-context(.dark-mode) .dropdown-menu a.active-link {
   background-color: color-mix(in srgb, var(--group-color, #888) 25%, transparent);
 }
 

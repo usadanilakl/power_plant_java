@@ -41,6 +41,24 @@
       }
     </div>
 
+    @if (showFileNavigation()) {
+      <div class="file-navigation">
+        <span class="file-nav-label">Files:</span>
+        <div class="file-chips">
+          @for (entry of relatedFiles(); track entry.file.id; let i = $index) {
+            <button
+              class="file-chip"
+              [class.active]="i === activeFileIndex()"
+              (click)="switchToFile(i)"
+              [title]="entry.file.name || 'File ' + entry.file.id"
+            >
+              {{ entry.file.name || 'File ' + entry.file.id }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     <div class="info-footer">
       @if (canAddToStandard()) {
         <button class="action-button secondary" (click)="addToActiveStandard()" title="Add to active LOTO standard">

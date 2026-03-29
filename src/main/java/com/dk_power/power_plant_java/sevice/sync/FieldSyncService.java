@@ -506,6 +506,9 @@ public class FieldSyncService {
                     final List<FieldChange> changeList = new ArrayList<>(changes);
                     pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
                 }
+
+                // Broadcast activity event (real-time feed)
+                emitActivityEvent("RECEIVING", entityType, entityId, changes, applied > 0 ? "SUCCESS" : "SKIPPED");
             }
         }
 
@@ -534,6 +537,8 @@ public class FieldSyncService {
                     final List<FieldChange> changeList = new ArrayList<>(changes);
                     pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
                 }
+
+                emitActivityEvent("RECEIVING", entityType, entityId, changes, applied > 0 ? "SUCCESS" : "SKIPPED");
             }
         }
 
@@ -1092,15 +1097,7 @@ public class FieldSyncService {
                         }
                     }
 
-                    // Hibernate treats a generated-ID entity with a pre-set sync ID and null
-                    // @Version as detached, even when this is genuinely a new row arriving from
-                    // another machine. Seed the initial optimistic-lock version so sync inserts
-                    // use the normal transient path instead of failing during persist().
-                    if (entity.getVersion() == null) {
-                        entity.setVersion(0L);
-                    }
-
-                    entityManager.persist(entity);
+                    entityManager.merge(entity);
                     entityManager.flush();  // Force immediate INSERT — prevents cascade PK violations
                     log.debug("Created new entity {}#{} from sync", entityType, entityId);
                 }
@@ -1956,5 +1953,34 @@ public class FieldSyncService {
         public void setChangesApplied(int changesApplied) { this.changesApplied = changesApplied; }
         public String getErrorMessage() { return errorMessage; }
         public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    }
+
+    /**
+     * Emit a sync activity event to the frontend SSE feed.
+     * Determines the changeType from the first change in the list.
+     */
+    private void emitActivityEvent(String direction, String entityType, Long entityId,
+                                    List<FieldChange> changes, String status) {
+        try {
+            String changeType = "UPDATE";
+            if (changes != null && !changes.isEmpty()) {
+                FieldChange first = changes.get(0);
+                if (first.getChangeType() != null) {
+                    changeType = first.getChangeType().name();
+                }
+            }
+            syncUpdateController.broadcastSyncActivity(
+                SyncUpdateController.SyncActivityEvent.builder()
+                    .direction(direction)
+                    .entityType(entityType)
+                    .entityId(String.valueOf(entityId))
+                    .changeType(changeType)
+                    .status(status)
+                    .timestamp(System.currentTimeMillis())
+                    .build()
+            );
+        } catch (Exception e) {
+            log.trace("Failed to emit sync activity event: {}", e.getMessage());
+        }
     }
 }

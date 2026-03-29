@@ -44,7 +44,6 @@ public class DailyPermitPackageMapper implements BaseMapper {
 
         DailyPermitPackageDto dto = new DailyPermitPackageDto();
         dto.setId(entity.getId());
-        dto.setVersion(entity.getVersion());
 
         dto.setName(entity.getName());
 
@@ -155,7 +154,6 @@ public class DailyPermitPackageMapper implements BaseMapper {
 
         DailyPermitPackage entity = new DailyPermitPackage();
         if(dto.getId()!=0)entity.setId(dto.getId());
-        entity.setVersion(dto.getVersion());
         entity.setName(dto.getName());
 
         if(dto.getWorkRequestIds() != null && !dto.getWorkRequestIds().isEmpty()){

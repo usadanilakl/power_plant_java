@@ -20,6 +20,8 @@ import { VentingPermitDto } from "../../models/permits/venting-permit.model";
 import { EnergizedWorkPermitService } from "../permits/energized-work-permit.service";
 import { ExcavationPermitService } from "../permits/excavation-permit.service";
 import { VentingPermitService } from "../permits/venting-permit.service";
+import { WorkCategoryProfileApiService } from "../../features/permit-builder/work-category-profile/services/work-category-profile-api.service";
+import { WorkCategoryProfileDto } from "../../models/permits/work-category-profile.model";
 
 @Injectable({
   providedIn: 'root'
@@ -34,6 +36,7 @@ export class CurrentDailyPermitPackageService {
     private energizedWorkPermitService = inject(EnergizedWorkPermitService);
     private excavationPermitService = inject(ExcavationPermitService);
     private ventingPermitService = inject(VentingPermitService);
+    private categoryProfileApi = inject(WorkCategoryProfileApiService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveDailyPermitPackagesSubject = new BehaviorSubject<DailyPermitPackageDto[]>([]);
@@ -106,25 +109,6 @@ export class CurrentDailyPermitPackageService {
         return (packages ?? []).map(packageItem => this.normalizePackage(packageItem));
     }
 
-    private mergeWithCurrentVersion(packageItem: Partial<DailyPermitPackageDto> | null | undefined): DailyPermitPackageDto {
-        const normalized = this.normalizePackage(packageItem);
-        const selected = this.selectedDailyPermitPackageSubject.value;
-
-        if (
-            normalized.id &&
-            selected?.id === normalized.id &&
-            (selected.version ?? -1) > (normalized.version ?? -1)
-        ) {
-            const mergedData = {
-                ...(normalized as DailyPermitPackageDto & { version?: number | null }),
-                version: selected.version,
-            };
-            return new DailyPermitPackageDto(mergedData as any);
-        }
-
-        return normalized;
-    }
-
     private loadDailyPermitPackages() {
         this.dailyPermitPackageService.getDailyPermitPackages().pipe(
             takeUntilDestroyed(this.destroyRef)
@@ -167,7 +151,7 @@ export class CurrentDailyPermitPackageService {
     }
 
     updateDailyPermitPackageInList(permitPackage: Partial<DailyPermitPackageDto>) {
-        const normalizedPackage = this.mergeWithCurrentVersion(permitPackage);
+        const normalizedPackage = this.normalizePackage(permitPackage);
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
         const itemIndex = currentPackages.findIndex(pkg => pkg.id === normalizedPackage.id);
 
@@ -183,7 +167,7 @@ export class CurrentDailyPermitPackageService {
     }
 
     addDailyPermitPackageToList(permitPackage: Partial<DailyPermitPackageDto>) {
-        const normalizedPackage = this.mergeWithCurrentVersion(permitPackage);
+        const normalizedPackage = this.normalizePackage(permitPackage);
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
         this.allActiveDailyPermitPackagesSubject.next([...currentPackages, normalizedPackage]);
     }
@@ -236,7 +220,7 @@ export class CurrentDailyPermitPackageService {
   }
     
     setSelectedPackage(packageItem: Partial<DailyPermitPackageDto> | null | undefined) {
-      const normalizedPackage = this.mergeWithCurrentVersion(packageItem);
+      const normalizedPackage = this.normalizePackage(packageItem);
       this.selectedDailyPermitPackageSubject.next(normalizedPackage);
       if (normalizedPackage?.id) {
         this.updateDailyPermitPackageInList(normalizedPackage);
@@ -709,8 +693,10 @@ export class CurrentDailyPermitPackageService {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      const newPermit = SafeWorkDto.generatePermitFromRequest(currentRequest);
-      this.createAndAttachSafeWorksToPackage([newPermit]);
+      this.withCategoryProfile(currentRequest, profile => {
+        const newPermit = SafeWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
+        this.createAndAttachSafeWorksToPackage([newPermit]);
+      });
     }
 
     generateHotWorkFromCurrentRequest(){
@@ -719,8 +705,10 @@ export class CurrentDailyPermitPackageService {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      const newPermit = HotWorkDto.generatePermitFromRequest(currentRequest);
-      this.createAndAttachHotWorksToPackage([newPermit]);
+      this.withCategoryProfile(currentRequest, profile => {
+        const newPermit = HotWorkDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
+        this.createAndAttachHotWorksToPackage([newPermit]);
+      });
     }
 
     generateConfinedSpaceFromCurrentRequest(){
@@ -729,8 +717,10 @@ export class CurrentDailyPermitPackageService {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      const newPermit = ConfinedSpaceDto.generatePermitFromRequest(currentRequest);
-      this.createAndAttachConfinedSpacesToPackage([newPermit]);
+      this.withCategoryProfile(currentRequest, profile => {
+        const newPermit = ConfinedSpaceDto.generatePermitFromRequest(currentRequest, currentRequest.workArea, profile);
+        this.createAndAttachConfinedSpacesToPackage([newPermit]);
+      });
     }
 
     generateEnergizedWorkPermitFromCurrentRequest() {
@@ -758,6 +748,20 @@ export class CurrentDailyPermitPackageService {
       this.generateSafeWorkFromCurrentRequest();
       this.generateHotWorkFromCurrentRequest();
       this.generateConfinedSpaceFromCurrentRequest();
+    }
+
+    private withCategoryProfile(request: WorkRequestDto, callback: (profile: WorkCategoryProfileDto | null) => void) {
+      const categoryId = request.workCategory?.id;
+      if (categoryId) {
+        this.categoryProfileApi.getByWorkCategoryId(categoryId).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+          next: profile => callback(profile),
+          error: () => callback(null)
+        });
+      } else {
+        callback(null);
+      }
     }
 
     

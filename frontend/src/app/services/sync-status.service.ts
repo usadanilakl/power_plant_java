@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, interval, of, Subscription } from 'rxjs';
-import { switchMap, tap, catchError } from 'rxjs/operators';
+import { switchMap, tap, catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface SyncStatus {
@@ -70,10 +70,65 @@ export interface TriggerSyncResponse {
   activePeers?: number;
 }
 
+export interface NgApiResponse<T> {
+  responseData: T;
+  message: string;
+  timestamp: string;
+}
+
+export interface EntityComparisonResult {
+  entityType: string;
+  localCount: number;
+  serverCount: number;
+  localOnly: number[];
+  serverOnly: number[];
+  commonCount: number;
+  staleEntities: StaleEntity[];
+}
+
+export interface StaleEntity {
+  entityId: number;
+  localModified: string;
+  serverModified: string;
+  localNewer: boolean;
+}
+
+export interface EntityFieldDiff {
+  entityType: string;
+  entityId: number;
+  diffs: FieldDiffEntry[];
+}
+
+export interface FieldDiffEntry {
+  fieldName: string;
+  localValue: string | null;
+  serverValue: string | null;
+}
+
+export interface EntityTypeSummary {
+  entityType: string;
+  localCount: number;
+}
+
+export interface BulkResolveRequest {
+  entityType: string;
+  resolution: 'ACCEPT_LOCAL' | 'ACCEPT_REMOTE';
+  entityIds: number[];
+}
+
+export interface EntityDrift {
+  entityType: string;
+  localCount: number;
+  serverCount: number;
+  difference: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SyncStatusService {
   private apiUrl = `${environment.baseApiUrl}/api/field-sync`;
   private resyncApiUrl = `${environment.baseApiUrl}/api/resync`;
+  private compareApiUrl = `${environment.baseApiUrl}/ng/sync/compare`;
+  private resolveApiUrl = `${environment.baseApiUrl}/ng/sync/resolve`;
   private statusSubject = new BehaviorSubject<SyncStatus | null>(null);
   private syncHealthSubject = new BehaviorSubject<SyncHealthCheckResult | null>(null);
   private pollingSubscription: Subscription | null = null;
@@ -295,6 +350,54 @@ export class SyncStatusService {
    */
   getSyncMetrics(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/metrics`);
+  }
+
+  // ==================== Comparison APIs ====================
+
+  getEntityTypeSummaries(): Observable<EntityTypeSummary[]> {
+    return this.http.get<NgApiResponse<EntityTypeSummary[]>>(`${this.compareApiUrl}/entity-types`).pipe(
+      map(res => res.responseData ?? [])
+    );
+  }
+
+  compareEntityType(entityType: string): Observable<EntityComparisonResult | null> {
+    return this.http.get<NgApiResponse<EntityComparisonResult>>(`${this.compareApiUrl}/${entityType}`).pipe(
+      map(res => res.responseData)
+    );
+  }
+
+  compareEntity(entityType: string, entityId: number): Observable<EntityFieldDiff | null> {
+    return this.http.get<NgApiResponse<EntityFieldDiff>>(`${this.compareApiUrl}/${entityType}/${entityId}`).pipe(
+      map(res => res.responseData)
+    );
+  }
+
+  // ==================== Resolution APIs ====================
+
+  acceptRemote(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveApiUrl}/accept-remote/${entityType}/${entityId}`, {}).pipe(
+      map(res => res.responseData)
+    );
+  }
+
+  acceptLocal(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveApiUrl}/accept-local/${entityType}/${entityId}`, {}).pipe(
+      map(res => res.responseData)
+    );
+  }
+
+  resyncType(entityType: string, since?: string): Observable<any> {
+    const params: any = {};
+    if (since) params.since = since;
+    return this.http.post<NgApiResponse<any>>(`${this.resolveApiUrl}/resync-type/${entityType}`, {}, { params }).pipe(
+      map(res => res.responseData)
+    );
+  }
+
+  bulkResolve(request: BulkResolveRequest): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(`${this.resolveApiUrl}/bulk`, request).pipe(
+      map(res => res.responseData)
+    );
   }
 
 }

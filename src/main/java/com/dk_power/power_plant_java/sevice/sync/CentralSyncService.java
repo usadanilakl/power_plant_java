@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SharePointSyncSettings;
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class CentralSyncService {
     private final WorkRequestMergeService workRequestMergeService;
     private final JhaMergeService jhaMergeService;
     private final SharePointSyncSettings syncIntervals;
+    private final SyncUpdateController syncUpdateController;
 
     // Lazily fetched to avoid circular dependency
     private ServerSseClient serverSseClient;
@@ -306,6 +308,21 @@ public class CentralSyncService {
                     }
                     fieldChangeRepository.saveAll(changes);
                     totalSent += changes.size();
+
+                    // Emit activity events for sent changes
+                    for (FieldChange change : changes) {
+                        try {
+                            syncUpdateController.broadcastSyncActivity(
+                                SyncUpdateController.SyncActivityEvent.builder()
+                                    .direction("SENDING")
+                                    .entityType(change.getEntityType())
+                                    .entityId(String.valueOf(change.getEntityId()))
+                                    .changeType(change.getChangeType() != null ? change.getChangeType().name() : "UPDATE")
+                                    .status("SUCCESS")
+                                    .timestamp(System.currentTimeMillis())
+                                    .build());
+                        } catch (Exception ignored) {}
+                    }
 
                     log.debug("Batch {}: sent {} changes successfully", batchNumber, changes.size());
                 } else {

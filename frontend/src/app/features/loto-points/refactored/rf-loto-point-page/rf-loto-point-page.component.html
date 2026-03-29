@@ -37,7 +37,7 @@
   >
     <app-loto-point-dual-form
       [primaryLotoPoint]="stateService.selectedItem()!"
-      [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'characteristicsJson']"
+      [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'characteristicsJson', 'equipmentList']"
       (primarySaved)="onPrimarySaved()"
       (counterpartSaved)="onCounterpartSaved()"
       (bothSaved)="onBothSaved()"

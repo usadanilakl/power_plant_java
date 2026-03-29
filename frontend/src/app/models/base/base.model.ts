@@ -5,18 +5,16 @@ export interface BaseModel {
   isVerified: boolean;
 }
 
-type BaseDtoData = Partial<BaseModel> & { version?: number | null };
+type BaseDtoData = Partial<BaseModel>;
 
 export class BaseDto implements BaseModel {
   id: number;
-  version: number | null;
   name: string;
   objectType: string;
   isVerified: boolean;
 
   constructor(data: BaseDtoData = {}) {
     this.id = data.id || 0;
-    this.version = data.version ?? null;
     this.name = data.name || '';
     this.objectType = data.objectType || '';
     this.isVerified = this.toBooleanSafe(data.isVerified);
@@ -26,7 +24,6 @@ export class BaseDto implements BaseModel {
   toJson(): any {
     return {
       id: this.id,
-      version: this.version,
       name: this.name,
       objectType: this.objectType,
       isVerified: this.isVerified
@@ -42,7 +39,6 @@ export class BaseDto implements BaseModel {
 
     return new BaseDto({
       id: json.id || 0,
-      version: json.version ?? null,
       name: json.name || '',
       objectType: json.objectType || '',
       isVerified: json.isVerified

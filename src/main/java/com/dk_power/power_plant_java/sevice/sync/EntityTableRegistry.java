@@ -60,6 +60,7 @@ public class EntityTableRegistry {
         // Permits
         Map.entry("WorkAreaMapShape", "work_area_map_shape"),
         Map.entry("WorkArea", "work_area"),
+        Map.entry("WorkCategoryProfile", "work_category_profile"),
         Map.entry("SafeWork", "safe_work"),
         Map.entry("HotWork", "hot_work"),          // @Table(name = "hot_work")
         Map.entry("ConfinedSpace", "confined_space"), // @Table(name = "confined_space")
@@ -127,7 +128,11 @@ public class EntityTableRegistry {
         "LedStrip",
         "WorkAreaMapShape",
         "WorkArea",
+        "WorkCategoryProfile",
         // Tier 3: Permits & work management (depend on Value, Equipment)
+        // JobLog → DailyPermitPackage → permits (child permits have ManyToOne FK to package/log)
+        "JobLog",
+        "DailyPermitPackage",
         "SafeWork",
         "HotWork",
         "ConfinedSpace",
@@ -136,8 +141,6 @@ public class EntityTableRegistry {
         "EnergizedWorkPermit",
         "ExcavationPermit",
         "VentingPermit",
-        "DailyPermitPackage",
-        "JobLog",
         "FireImpairment",
         "PrintableForm",
         "FormContainer",

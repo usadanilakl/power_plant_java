@@ -58,6 +58,7 @@ import { TableClickService } from '../../../../shared/table/refactored/services/
 import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
 import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
 import { RfWorkRequestStateService } from '../../work-request/refactored/services/rf-work-request-state.service';
+import { PopupWindowService } from '../../../../shared/popup-window/popup-window.service';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
@@ -85,6 +86,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
   private workRequestStateService = inject(RfWorkRequestStateService);
+  private popupWindowService = inject(PopupWindowService);
   destroyRef = inject(DestroyRef);
   private readonly lotoStandardApiUrl = '/ng/loto-standards';
 
@@ -350,7 +352,9 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
       next: res => {
         if (res?.responseData) {
           const newPkg = new DailyPermitPackageDto(res.responseData);
-          this.currentDailyPermitPackageService.setSelectedPackage(newPkg);
+          this.popupWindowService.openOrFocus(
+            `${window.location.origin}/app/permit-builder/daily-packages?packageId=${newPkg.id}&mode=popup`
+          );
           if (this.reissueFromWrId != null) {
             this.workRequestStateService.refreshWorkRequest(
               this.reissueFromWrId,
@@ -358,6 +362,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
             );
           }
           this.isReissueFromWrOpen = false;
+          this.router.navigate(['/permit-builder/work-requests']);
         }
       },
       error: err => console.error('Reissue from WR failed:', err)

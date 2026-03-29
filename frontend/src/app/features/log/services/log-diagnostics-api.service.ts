@@ -3,13 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
-import {
-  LogDiagnosticsEventsResponse,
-  LogDiagnosticsIncident,
-  LogDiagnosticsIncidentDetail,
-  LogDiagnosticsIncidentsResponse,
-  LogDiagnosticsOverview,
-} from './log-diagnostics.models';
+import { LogEventsResponse } from './log-diagnostics.models';
 
 @Injectable({
   providedIn: 'root',
@@ -18,20 +12,6 @@ export class LogDiagnosticsApiService {
   private apiUrl = `${environment.apiUrl}/log-diagnostics`;
 
   constructor(private http: HttpClient) {}
-
-  getOverview(
-    windowMinutes: number,
-    limit: number
-  ): Observable<SpringApiResponse<LogDiagnosticsOverview>> {
-    const params = new HttpParams()
-      .set('windowMinutes', windowMinutes.toString())
-      .set('limit', limit.toString());
-
-    return this.http.get<SpringApiResponse<LogDiagnosticsOverview>>(
-      `${this.apiUrl}/overview`,
-      { params }
-    );
-  }
 
   getEvents(filters: {
     windowMinutes: number;
@@ -42,7 +22,7 @@ export class LogDiagnosticsApiService {
     requestId?: string;
     syncRunId?: string;
     machineId?: string;
-  }): Observable<SpringApiResponse<LogDiagnosticsEventsResponse>> {
+  }): Observable<SpringApiResponse<LogEventsResponse>> {
     let params = new HttpParams()
       .set('windowMinutes', filters.windowMinutes.toString())
       .set('limit', filters.limit.toString());
@@ -62,55 +42,8 @@ export class LogDiagnosticsApiService {
       }
     });
 
-    return this.http.get<SpringApiResponse<LogDiagnosticsEventsResponse>>(
+    return this.http.get<SpringApiResponse<LogEventsResponse>>(
       `${this.apiUrl}/events`,
-      { params }
-    );
-  }
-
-  getIncidents(filters: {
-    windowMinutes: number;
-    limit: number;
-    status?: string;
-  }): Observable<SpringApiResponse<LogDiagnosticsIncidentsResponse>> {
-    let params = new HttpParams()
-      .set('windowMinutes', filters.windowMinutes.toString())
-      .set('limit', filters.limit.toString());
-
-    if (filters.status && filters.status.trim()) {
-      params = params.set('status', filters.status.trim());
-    }
-
-    return this.http.get<SpringApiResponse<LogDiagnosticsIncidentsResponse>>(
-      `${this.apiUrl}/incidents`,
-      { params }
-    );
-  }
-
-  getIncidentDetail(
-    incidentId: string,
-    windowMinutes: number,
-    timelineLimit: number
-  ): Observable<SpringApiResponse<LogDiagnosticsIncidentDetail>> {
-    const params = new HttpParams()
-      .set('windowMinutes', windowMinutes.toString())
-      .set('timelineLimit', timelineLimit.toString());
-
-    return this.http.get<SpringApiResponse<LogDiagnosticsIncidentDetail>>(
-      `${this.apiUrl}/incidents/${incidentId}`,
-      { params }
-    );
-  }
-
-  updateIncidentStatus(
-    incidentId: string,
-    status: 'open' | 'acknowledged' | 'resolved',
-    windowMinutes: number
-  ): Observable<SpringApiResponse<LogDiagnosticsIncident>> {
-    const params = new HttpParams().set('windowMinutes', windowMinutes.toString());
-    return this.http.post<SpringApiResponse<LogDiagnosticsIncident>>(
-      `${this.apiUrl}/incidents/${incidentId}/status`,
-      { status },
       { params }
     );
   }

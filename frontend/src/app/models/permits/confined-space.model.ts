@@ -7,6 +7,8 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 import { ValueDto } from '../value.model';
 import { WorkAreaDto } from './work-area.model';
+import { WorkCategoryProfileDto } from './work-category-profile.model';
+import { mergeConfinedSpaceHazards } from '../../utils/hazard-merge.util';
 
 export class ConfinedSpaceHazards {
   oxygenDeficiency: boolean = false;
@@ -403,17 +405,15 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         return fields.map(fieldName => allColumns[fieldName]);
     }
       
-    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null): ConfinedSpaceDto{
+    static generatePermitFromRequest(request: WorkRequestDto, workArea?: WorkAreaDto | null, categoryProfile?: WorkCategoryProfileDto | null): ConfinedSpaceDto{
       const dto = new ConfinedSpaceDto({
         date: request.dateOfWorkToBePerformed?.split('T')[0],
         issuedTo: request.requestedBy,
         space: request.space,
         workScope: request.workScope
       });
-      // Auto-populate constant confined space hazards from WorkArea
-      if (workArea?.constantConfinedSpaceHazards) {
-        dto.hazards = new ConfinedSpaceHazards({ ...dto.hazards, ...workArea.constantConfinedSpaceHazards });
-      }
+      // Merge hazards: category standard hazards + work area constant hazards (OR-union)
+      dto.hazards = mergeConfinedSpaceHazards(categoryProfile?.standardConfinedSpaceHazards, workArea?.constantConfinedSpaceHazards);
       return dto;
     }
     

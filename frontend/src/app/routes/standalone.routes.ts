@@ -7,9 +7,13 @@ import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.c
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
 import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-sync.component';
+import { SyncOverviewComponent } from '../features/sync/sync-overview/sync-overview.component';
+import { SyncActivityComponent } from '../features/sync/sync-activity/sync-activity.component';
+import { SyncCompareComponent } from '../features/sync/sync-compare/sync-compare.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
+import { WorkCategoryProfileAdminComponent } from '../features/permit-builder/work-category-profile/work-category-profile-admin.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -20,7 +24,8 @@ export const STANDALONE_ROUTES: Routes = [
     path: 'admin',
     children: [
       { path: '', component: AdminFunctionalitiesComponent },
-      { path: 'category-values', component: CvManagerPageComponent }
+      { path: 'category-values', component: CvManagerPageComponent },
+      { path: 'work-category-profiles', component: WorkCategoryProfileAdminComponent }
     ]
   },
   // Sync Dashboard (Status + Health & Recovery)
@@ -28,7 +33,10 @@ export const STANDALONE_ROUTES: Routes = [
     path: 'sync',
     component: SyncDashboardComponent,
     children: [
-      { path: '', redirectTo: 'status', pathMatch: 'full' },
+      { path: '', redirectTo: 'overview', pathMatch: 'full' },
+      { path: 'overview', component: SyncOverviewComponent },
+      { path: 'activity', component: SyncActivityComponent },
+      { path: 'compare', component: SyncCompareComponent },
       { path: 'status', component: SyncMonitorComponent },
       { path: 'recovery', component: SyncResyncComponent },
       { path: 'sharepoint', component: SharepointSyncComponent }

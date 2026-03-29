@@ -17,24 +17,38 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
       <ng-container main-content>
         <nav mat-tab-nav-bar [tabPanel]="tabPanel">
           <a mat-tab-link
-             routerLink="status"
+             routerLink="overview"
+             routerLinkActive
+             #rla0="routerLinkActive"
+             [active]="rla0.isActive">
+            Overview
+          </a>
+          <a mat-tab-link
+             routerLink="activity"
              routerLinkActive
              #rla1="routerLinkActive"
              [active]="rla1.isActive">
-            Status
+            Activity
+          </a>
+          <a mat-tab-link
+             routerLink="compare"
+             routerLinkActive
+             #rla2="routerLinkActive"
+             [active]="rla2.isActive">
+            Compare
           </a>
           <a mat-tab-link
              routerLink="recovery"
              routerLinkActive
-             #rla2="routerLinkActive"
-             [active]="rla2.isActive">
-            Health & Recovery
+             #rla3="routerLinkActive"
+             [active]="rla3.isActive">
+            Recovery
           </a>
           <a mat-tab-link
              routerLink="sharepoint"
              routerLinkActive
-             #rla3="routerLinkActive"
-             [active]="rla3.isActive">
+             #rla4="routerLinkActive"
+             [active]="rla4.isActive">
             SharePoint
           </a>
         </nav>

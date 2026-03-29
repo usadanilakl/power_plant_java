@@ -454,14 +454,16 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         newPackage.setPersonName(source.getPersonName());
         newPackage.setCompanyName(wr.getCompany());
         newPackage.setName(wr.getWorkScope());
-        newPackage.setWorkRequests(new HashSet<>(Set.of(wr)));
         newPackage.setPermitNumber(permitNumberGenerator.generate(reissueDate));
 
         Value buildingStatus = ngValueService.createValue("Package Status", "Building");
         newPackage.setPackageStatus(buildingStatus);
 
-        // Save first to get ID
+        // Save first to get ID (before adding WR, to avoid transient reference)
         newPackage = dailyPermitPackageRepo.save(newPackage);
+
+        // Now add WR (newPackage is persisted, so back-ref won't cause transient error)
+        newPackage.addWorkRequest(wr);
 
         // Copy permits from source
         copyPermitsFromSource(source, newPackage, reissueDate, reissueTime);

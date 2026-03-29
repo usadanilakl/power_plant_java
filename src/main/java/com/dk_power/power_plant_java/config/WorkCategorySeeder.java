@@ -1,5 +1,8 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.permits.WorkCategoryProfile;
+import com.dk_power.power_plant_java.repository.permits.WorkCategoryProfileRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ public class WorkCategorySeeder {
 
     private final NgValueService valueService;
     private final SyncConfig syncConfig;
+    private final WorkCategoryProfileRepo profileRepo;
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
@@ -45,10 +49,23 @@ public class WorkCategorySeeder {
 
         try {
             valueService.createCategory(CATEGORY_NAME);
-            DEFAULT_WORK_CATEGORIES.forEach(category -> valueService.createValue(CATEGORY_NAME, category));
-            log.info("Work category seeder completed with {} default values", DEFAULT_WORK_CATEGORIES.size());
+            DEFAULT_WORK_CATEGORIES.forEach(category -> {
+                Value value = valueService.createValue(CATEGORY_NAME, category);
+                ensureProfileExists(value);
+            });
+            log.info("Work category seeder completed with {} default values and profiles", DEFAULT_WORK_CATEGORIES.size());
         } catch (Exception e) {
             log.error("Work category seeder failed (non-fatal): {}", e.getMessage(), e);
         }
+    }
+
+    private void ensureProfileExists(Value workCategory) {
+        if (workCategory == null || workCategory.getId() == null) return;
+        profileRepo.findByWorkCategory_Id(workCategory.getId()).orElseGet(() -> {
+            WorkCategoryProfile profile = new WorkCategoryProfile();
+            profile.setWorkCategory(workCategory);
+            profile.setName(workCategory.getName());
+            return profileRepo.save(profile);
+        });
     }
 }

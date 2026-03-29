@@ -5,6 +5,7 @@ import { ContextMenuService } from '../../../../../shared/menu/context-menu/cont
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { RfWorkRequestStateService } from './rf-work-request-state.service';
 import { CorrespondenceDialogService } from '../../../../../shared/correspondence-dialog/correspondence-dialog.service';
+import { ConversationDialogService } from '../../../../../shared/messaging/conversation-dialog.service';
 import { WrDetailDialogService } from '../../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/process-wr-dialog.service';
 
@@ -14,6 +15,7 @@ import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/
 export class WorkRequestContextMenuService extends ContextMenuService {
   private stateService = inject(RfWorkRequestStateService);
   private correspondenceDialogService = inject(CorrespondenceDialogService);
+  private conversationDialogService = inject(ConversationDialogService);
   private wrDetailDialogService = inject(WrDetailDialogService);
   private processWrDialogService = inject(ProcessWrDialogService);
   private router = inject(Router);
@@ -66,6 +68,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
         label: 'View Correspondence',
         icon: '📬',
         action: (item) => this.handleViewCorrespondence(item),
+      },
+      {
+        id: 'send-message',
+        label: 'Send Message',
+        icon: '💬',
+        action: (item) => this.handleSendMessage(item),
       },
       {
         id: 'view',
@@ -144,6 +152,12 @@ export class WorkRequestContextMenuService extends ContextMenuService {
       console.log('[Correspondence] dialogService.open() called, isVisible:', this.correspondenceDialogService.isVisible());
       this.closeContextMenu();
     }
+  }
+
+  private handleSendMessage(item: WorkRequestDto): void {
+    if (!item?.id) return;
+    this.conversationDialogService.openCompose('WorkRequest', item.id);
+    this.closeContextMenu();
   }
 
   private handleProcess(item: WorkRequestDto): void {

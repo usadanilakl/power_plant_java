@@ -64,6 +64,16 @@ export class ConversationDialogService {
     this._entityType.set(entityType);
     this._entityId.set(entityId);
     this._selectedConversationId.set(conversationId);
+    this._isComposing.set(false);
+    this._isVisible.set(true);
+    this._onOpen.next();
+  }
+
+  openCompose(entityType: string, entityId: number): void {
+    this._entityType.set(entityType);
+    this._entityId.set(entityId);
+    this._selectedConversationId.set(null);
+    this._isComposing.set(true);
     this._isVisible.set(true);
     this._onOpen.next();
   }

@@ -121,7 +121,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/backup', label: 'Backup', icon: 'backup', iconColor: '#66BB6A', separator: true },
             { route: '/sync', label: 'Sync Dashboard', icon: 'sync', iconColor: '#42A5F5' },
             { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload', iconColor: '#26A69A' },
-            { route: '/admin', label: 'Admin', icon: 'settings', iconColor: '#78909C', separator: true }
+            { route: '/admin', label: 'Admin', icon: 'settings', iconColor: '#78909C', separator: true },
+            { route: '/admin/work-category-profiles', label: 'Work Category Hazards', icon: 'category', iconColor: '#FF9800' }
         ]
     }
 ];

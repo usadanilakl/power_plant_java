@@ -1,5 +1,5 @@
 
-import { Component, input, computed, inject, HostListener } from '@angular/core';
+import { Component, input, computed, inject, signal, HostListener } from '@angular/core';
 import { MAIN_MENU_ITEMS, GROUPED_MAIN_MENU, RouterMenuItems, GroupedRouterMenu, RouterMenuGroup } from '../../../models/ui/router-menu.model';
 import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { NgClass } from '@angular/common';
@@ -68,6 +68,27 @@ export class RouterMenuComponent {
 
   isGroupActive(group: RouterMenuGroup): boolean {
     return this.activeGroup()?.label === group.label;
+  }
+
+  // Hover dropdown state
+  hoveredGroup = signal<RouterMenuGroup | null>(null);
+  private dropdownTimeout: any = null;
+
+  showDropdown(group: RouterMenuGroup): void {
+    clearTimeout(this.dropdownTimeout);
+    this.hoveredGroup.set(group);
+  }
+
+  hideDropdown(): void {
+    this.dropdownTimeout = setTimeout(() => this.hoveredGroup.set(null), 150);
+  }
+
+  keepDropdown(): void {
+    clearTimeout(this.dropdownTimeout);
+  }
+
+  closeDropdown(): void {
+    this.hoveredGroup.set(null);
   }
 
   @HostListener('document:keydown', ['$event'])

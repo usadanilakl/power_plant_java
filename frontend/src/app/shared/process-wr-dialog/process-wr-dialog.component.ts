@@ -257,7 +257,8 @@ export class ProcessWrDialogComponent {
     const jobLog = JobLogDto.fromJson(jobLogData);
     const packages = jobLog.packages;
     if (packages.length === 0) return;
-    const newPkg = packages[packages.length - 1];
+    const sorted = [...packages].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+    const newPkg = sorted[0];
     this.popupWindowService.openOrFocus(
       `${window.location.origin}/app/permit-builder/daily-packages?packageId=${newPkg.id}&mode=popup`
     );

@@ -116,6 +116,14 @@ export interface PwaMessageDto {
   isRead: boolean;
 }
 
+export interface PwaWorkCategoryProfileDto {
+  id: number;
+  workCategory: { id: number; name: string } | null;
+  standardHazards: { [key: string]: boolean | string } | null;
+  standardHotWorkMeasures: { [key: string]: boolean } | null;
+  standardConfinedSpaceHazards: { [key: string]: boolean | string } | null;
+}
+
 export interface PwaInstrumentLogDto {
   localUuid: string;
   instrumentTagNumber: string;
@@ -262,9 +270,19 @@ export class ServerApiService {
     );
   }
 
-  getWorkAreas(): Observable<{ id: number; name: string; description: string }[]> {
-    return this.http.get<{ responseData: { id: number; name: string; description: string }[] }>(
+  getWorkAreas(): Observable<{ id: number; name: string; description: string; isConfinedSpace?: boolean }[]> {
+    return this.http.get<{ responseData: { id: number; name: string; description: string; isConfinedSpace?: boolean }[] }>(
       `${this.baseUrl}/api/pwa/work-request/work-areas`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getWorkAreaShapes(): Observable<{ id: number; coordinates: string; originalPictureSize: string; label: string; workAreaIds: number[] }[]> {
+    return this.http.get<{ responseData: { id: number; coordinates: string; originalPictureSize: string; label: string; workAreaIds: number[] }[] }>(
+      `${this.baseUrl}/api/pwa/work-request/work-area-shapes`
     ).pipe(
       timeout(10000),
       map(response => response.responseData),
@@ -279,6 +297,26 @@ export class ServerApiService {
       timeout(10000),
       map(response => response.responseData),
       catchError(this.handleError)
+    );
+  }
+
+  getWorkCategoryProfiles(): Observable<PwaWorkCategoryProfileDto[]> {
+    return this.http.get<{ responseData: PwaWorkCategoryProfileDto[] }>(
+      `${this.baseUrl}/api/pwa/work-category-hazards/all`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData || []),
+      catchError(() => of([]))
+    );
+  }
+
+  getWorkCategoryProfileByName(name: string): Observable<PwaWorkCategoryProfileDto | null> {
+    return this.http.get<{ responseData: PwaWorkCategoryProfileDto }>(
+      `${this.baseUrl}/api/pwa/work-category-hazards/by-category-name/${encodeURIComponent(name)}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData || null),
+      catchError(() => of(null))
     );
   }
 

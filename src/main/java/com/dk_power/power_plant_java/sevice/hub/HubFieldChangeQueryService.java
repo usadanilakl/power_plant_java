@@ -79,6 +79,21 @@ public class HubFieldChangeQueryService {
     }
 
     @Transactional(readOnly = true)
+    public List<FieldChange> findChangesByEntityTypeSince(String entityType, Instant since) {
+        try {
+            return entityManager.createQuery(
+                "SELECT fc FROM FieldChange fc WHERE fc.entityType = :entityType AND fc.timestamp >= :since ORDER BY fc.timestamp ASC",
+                FieldChange.class)
+                .setParameter("entityType", entityType)
+                .setParameter("since", since)
+                .getResultList();
+        } catch (Exception e) {
+            log.error("Error finding changes for {} since {}: {}", entityType, since, e.getMessage());
+            return List.of();
+        }
+    }
+
+    @Transactional(readOnly = true)
     public Page<FieldChange> findChangesSincePaginated(Instant since, Pageable pageable) {
         // Count total
         long total = countChangesSince(since);

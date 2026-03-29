@@ -9,9 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -142,9 +140,53 @@ public class SyncUpdateController {
     }
 
     /**
+     * Broadcast a sync activity event to all connected clients.
+     * Used to show real-time sync activity feed in the UI.
+     * Runs async to avoid blocking the sync transaction thread.
+     */
+    public void broadcastSyncActivity(SyncActivityEvent event) {
+        if (emitters.isEmpty()) return;
+
+        // Run in a separate thread so SSE I/O doesn't block the sync transaction
+        Thread.startVirtualThread(() -> {
+            try {
+                String json = objectMapper.writeValueAsString(event);
+
+                for (SseEmitter emitter : emitters) {
+                    try {
+                        emitter.send(SseEmitter.event()
+                            .name("sync_activity")
+                            .data(json));
+                    } catch (IOException e) {
+                        emitters.remove(emitter);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Error broadcasting sync activity: {}", e.getMessage());
+            }
+        });
+    }
+
+    /**
      * Get number of connected clients (for status endpoint).
      */
     public int getConnectedClientCount() {
         return emitters.size();
+    }
+
+    /**
+     * DTO for sync activity events broadcast to the frontend.
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class SyncActivityEvent {
+        private String direction;     // "SENDING" or "RECEIVING"
+        private String entityType;
+        private String entityId;
+        private String changeType;    // "CREATE", "UPDATE", "DELETE"
+        private String status;        // "SUCCESS", "FAILED", "SKIPPED"
+        private long timestamp;
     }
 }

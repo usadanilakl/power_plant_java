@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { JhaStateService } from '../jha-state.service';
 import { FormField } from '../../../models/inputs/form-field.model';
@@ -9,7 +10,7 @@ import { EmailPromptComponent } from '../../../shared/communication/email-prompt
 @Component({
   selector: 'app-jha-form',
   standalone: true,
-  imports: [ReactiveFormComponent, EmailPromptComponent],
+  imports: [ReactiveFormComponent, EmailPromptComponent, CommonModule],
   templateUrl: './jha-form.component.html',
   styleUrl: './jha-form.component.css'
 })
@@ -22,19 +23,24 @@ export class JhaFormComponent {
   fieldsInput = input<FormField[]>();
   jhaChanged = output<Jha>();
 
-
   entity = signal<Jha>(new Jha());
   private entityFromState = toSignal(this.jhaStateService.selectedJha$, { initialValue: new Jha() });
-  // entity = computed(() => this.entityInput() ?? this.entityFromState());
 
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
 
+  suggestedHazards = this.jhaStateService.suggestedHazards;
+  usedSuggestions = signal<Set<string>>(new Set());
+
   constructor() {
-    // 3. Sync local signal from state service or input
     effect(() => {
       const entity = this.entityInput() ?? this.entityFromState();
       this.entity.set(entity);
+    });
+    // Reset used suggestions when suggestions change
+    effect(() => {
+      this.suggestedHazards();
+      this.usedSuggestions.set(new Set());
     });
   }
 
@@ -52,6 +58,58 @@ export class JhaFormComponent {
     this.entity.set(updatedJha);
     this.jhaStateService.saveDraft(updatedJha);
     this.jhaChanged.emit(updatedJha);
+  }
+
+  addSuggestionToLastStep(hazardLabel: string) {
+    const current = this.entity();
+    const steps = [...(current.jobSteps || [])];
+    if (steps.length === 0) {
+      // Auto-add a step if none exist
+      const updated = current.addJobStep();
+      steps.push(...updated.jobSteps);
+    }
+    const lastStep = { ...steps[steps.length - 1] };
+    const existing = lastStep.hazard || '';
+    // Avoid duplicates in the same step
+    if (!existing.toLowerCase().includes(hazardLabel.toLowerCase())) {
+      lastStep.hazard = existing ? existing + '; ' + hazardLabel : hazardLabel;
+    }
+    steps[steps.length - 1] = lastStep;
+    const updatedJha = new Jha({ ...current, jobSteps: steps });
+    this.entity.set(updatedJha);
+    this.jhaStateService.saveDraft(updatedJha);
+    this.jhaChanged.emit(updatedJha);
+
+    // Mark as used
+    const used = new Set(this.usedSuggestions());
+    used.add(hazardLabel);
+    this.usedSuggestions.set(used);
+  }
+
+  addAllSuggestionsToLastStep() {
+    const unused = this.suggestedHazards().filter(h => !this.usedSuggestions().has(h));
+    if (unused.length === 0) return;
+
+    const current = this.entity();
+    const steps = [...(current.jobSteps || [])];
+    if (steps.length === 0) {
+      const updated = current.addJobStep();
+      steps.push(...updated.jobSteps);
+    }
+    const lastStep = { ...steps[steps.length - 1] };
+    const existing = lastStep.hazard || '';
+    const toAdd = unused.filter(h => !existing.toLowerCase().includes(h.toLowerCase()));
+    if (toAdd.length > 0) {
+      lastStep.hazard = existing ? existing + '; ' + toAdd.join('; ') : toAdd.join('; ');
+    }
+    steps[steps.length - 1] = lastStep;
+    const updatedJha = new Jha({ ...current, jobSteps: steps });
+    this.entity.set(updatedJha);
+    this.jhaStateService.saveDraft(updatedJha);
+    this.jhaChanged.emit(updatedJha);
+
+    const used = new Set(this.suggestedHazards());
+    this.usedSuggestions.set(used);
   }
 
 }

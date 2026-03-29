@@ -31,7 +31,6 @@ public class JobLogMapper implements BaseMapper {
 
         JobLogDto dto = new JobLogDto();
         dto.setId(entity.getId());
-        dto.setVersion(entity.getVersion());
         dto.setName(entity.getName());
 
         if (entity.getPackages() != null && !entity.getPackages().isEmpty()) {
@@ -74,7 +73,6 @@ public class JobLogMapper implements BaseMapper {
         if (entity == null) entity = new JobLog();
 
         if (dto.getId() != null) entity.setId(dto.getId());
-        entity.setVersion(dto.getVersion());
         entity.setName(dto.getName());
 
         if (dto.getPackages() != null && !dto.getPackages().isEmpty()) {

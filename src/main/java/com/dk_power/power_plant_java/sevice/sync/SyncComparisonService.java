@@ -1,0 +1,429 @@
+package com.dk_power.power_plant_java.sevice.sync;
+
+import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.sevice.ServiceFacade;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * Desktop-side service for comparing local entities against the hub.
+ * Provides entity-type-level comparison (which IDs differ) and
+ * entity-level comparison (which fields differ for a specific entity).
+ */
+@Service
+@Slf4j
+public class SyncComparisonService {
+
+    private final SyncConfig syncConfig;
+    private final JdbcTemplate jdbcTemplate;
+    private final EntityTableRegistry entityTableRegistry;
+    private final ServiceFacade serviceFacade;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    private static final ConcurrentHashMap<Class<?>, List<FieldInfo>> FIELD_CACHE = new ConcurrentHashMap<>();
+    private static final Set<String> EXCLUDED_FIELDS = Set.of(
+        "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
+        "hibernateLazyInitializer", "handler"
+    );
+
+    public SyncComparisonService(SyncConfig syncConfig,
+                                  JdbcTemplate jdbcTemplate,
+                                  EntityTableRegistry entityTableRegistry,
+                                  ServiceFacade serviceFacade,
+                                  RestTemplate restTemplate,
+                                  ObjectMapper objectMapper) {
+        this.syncConfig = syncConfig;
+        this.jdbcTemplate = jdbcTemplate;
+        this.entityTableRegistry = entityTableRegistry;
+        this.serviceFacade = serviceFacade;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Compare local vs hub entity IDs for a given entity type.
+     * Returns which IDs are local-only, server-only, and common.
+     */
+    public EntityComparisonResult compareEntityType(String entityType) {
+        if (!entityTableRegistry.isRegistered(entityType)) {
+            throw new IllegalArgumentException("Unknown entity type: " + entityType);
+        }
+
+        String syncServerUrl = syncConfig.getSyncServerUrl();
+        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            throw new IllegalStateException("Sync server URL not configured");
+        }
+
+        // Get local IDs
+        Set<Long> localIds = getLocalEntityIds(entityType);
+
+        // Get server IDs
+        Set<Long> serverIds = fetchServerEntityIds(entityType, syncServerUrl);
+
+        // Compute differences
+        Set<Long> localOnly = new LinkedHashSet<>(localIds);
+        localOnly.removeAll(serverIds);
+
+        Set<Long> serverOnly = new LinkedHashSet<>(serverIds);
+        serverOnly.removeAll(localIds);
+
+        Set<Long> common = new LinkedHashSet<>(localIds);
+        common.retainAll(serverIds);
+
+        // For common IDs, check timestamp differences (stale records)
+        List<StaleEntity> staleEntities = Collections.emptyList();
+        if (!common.isEmpty() && common.size() <= 5000) {
+            staleEntities = findStaleEntities(entityType, new ArrayList<>(common), syncServerUrl);
+        }
+
+        return EntityComparisonResult.builder()
+            .entityType(entityType)
+            .localCount(localIds.size())
+            .serverCount(serverIds.size())
+            .localOnly(new ArrayList<>(localOnly))
+            .serverOnly(new ArrayList<>(serverOnly))
+            .commonCount(common.size())
+            .staleEntities(staleEntities)
+            .build();
+    }
+
+    /**
+     * Compare a single entity field-by-field: local vs hub.
+     */
+    @Transactional(readOnly = true)
+    public EntityFieldDiff compareEntity(String entityType, Long entityId) {
+        String syncServerUrl = syncConfig.getSyncServerUrl();
+        if (syncServerUrl == null || syncServerUrl.isEmpty()) {
+            throw new IllegalStateException("Sync server URL not configured");
+        }
+
+        // Fetch server entity data
+        Map<String, String> serverData = fetchServerEntityData(entityType, entityId, syncServerUrl);
+        if (serverData == null) {
+            throw new IllegalStateException("Entity not found on server: " + entityType + "#" + entityId);
+        }
+
+        // Get local entity data
+        Map<String, String> localData = getLocalEntityData(entityType, entityId);
+        if (localData == null) {
+            throw new IllegalStateException("Entity not found locally: " + entityType + "#" + entityId);
+        }
+
+        // Compare field-by-field
+        Set<String> allFields = new LinkedHashSet<>();
+        allFields.addAll(localData.keySet());
+        allFields.addAll(serverData.keySet());
+
+        List<FieldDiffEntry> diffs = new ArrayList<>();
+        for (String fieldName : allFields) {
+            String localValue = localData.get(fieldName);
+            String serverValue = serverData.get(fieldName);
+
+            if (!Objects.equals(localValue, serverValue)) {
+                diffs.add(FieldDiffEntry.builder()
+                    .fieldName(fieldName)
+                    .localValue(localValue)
+                    .serverValue(serverValue)
+                    .build());
+            }
+        }
+
+        return EntityFieldDiff.builder()
+            .entityType(entityType)
+            .entityId(entityId)
+            .diffs(diffs)
+            .build();
+    }
+
+    /**
+     * Get all registered entity types with their local counts, for the comparison UI.
+     */
+    public List<EntityTypeSummary> getAllEntityTypeSummaries() {
+        List<EntityTypeSummary> summaries = new ArrayList<>();
+        for (String entityType : entityTableRegistry.getSyncOrder()) {
+            String tableName = entityTableRegistry.getTableName(entityType);
+            try {
+                Long count;
+                try {
+                    count = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = false", Long.class);
+                } catch (Exception e) {
+                    count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Long.class);
+                }
+                summaries.add(new EntityTypeSummary(entityType, count != null ? count : 0));
+            } catch (Exception e) {
+                log.trace("Could not count {}: {}", entityType, e.getMessage());
+            }
+        }
+        return summaries;
+    }
+
+    // ==================== Private helpers ====================
+
+    private Set<Long> getLocalEntityIds(String entityType) {
+        String tableName = entityTableRegistry.getTableName(entityType);
+        List<Long> ids;
+        try {
+            ids = jdbcTemplate.queryForList(
+                "SELECT id FROM " + tableName + " WHERE deleted = false", Long.class);
+        } catch (Exception e) {
+            ids = jdbcTemplate.queryForList("SELECT id FROM " + tableName, Long.class);
+        }
+        return new LinkedHashSet<>(ids);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<Long> fetchServerEntityIds(String entityType, String syncServerUrl) {
+        String url = syncServerUrl + "/api/sync/entity-ids/" + entityType;
+        HttpHeaders headers = buildHeaders();
+
+        ResponseEntity<Set<Long>> response = restTemplate.exchange(
+            url, HttpMethod.GET, new HttpEntity<>(headers),
+            new ParameterizedTypeReference<>() {});
+
+        Set<Long> ids = response.getBody();
+        return ids != null ? ids : Collections.emptySet();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> fetchServerEntityData(String entityType, Long entityId, String syncServerUrl) {
+        String url = syncServerUrl + "/api/sync/entity/" + entityType + "/" + entityId;
+        HttpHeaders headers = buildHeaders();
+
+        try {
+            ResponseEntity<Map<String, String>> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+            return response.getBody();
+        } catch (Exception e) {
+            log.debug("Could not fetch entity data from server: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<StaleEntity> findStaleEntities(String entityType, List<Long> commonIds, String syncServerUrl) {
+        try {
+            // Get server timestamps
+            String url = syncServerUrl + "/api/sync/entity-timestamps/" + entityType;
+            HttpHeaders headers = buildHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<Map<Long, String>> response = restTemplate.exchange(
+                url, HttpMethod.POST, new HttpEntity<>(commonIds, headers),
+                new ParameterizedTypeReference<>() {});
+
+            Map<Long, String> serverTimestamps = response.getBody();
+            if (serverTimestamps == null) return Collections.emptyList();
+
+            // Get local timestamps
+            String tableName = entityTableRegistry.getTableName(entityType);
+            Map<Long, Instant> localTimestamps = new HashMap<>();
+
+            int batchSize = 500;
+            for (int i = 0; i < commonIds.size(); i += batchSize) {
+                List<Long> batch = commonIds.subList(i, Math.min(i + batchSize, commonIds.size()));
+                String placeholders = String.join(",", Collections.nCopies(batch.size(), "?"));
+                String sql = "SELECT id, date_modified FROM " + tableName + " WHERE id IN (" + placeholders + ")";
+
+                jdbcTemplate.query(sql, batch.toArray(), rs -> {
+                    long id = rs.getLong("id");
+                    java.sql.Timestamp ts = rs.getTimestamp("date_modified");
+                    if (ts != null) localTimestamps.put(id, ts.toInstant());
+                });
+            }
+
+            // Compare timestamps
+            List<StaleEntity> stale = new ArrayList<>();
+            for (Map.Entry<Long, String> entry : serverTimestamps.entrySet()) {
+                Long id = entry.getKey();
+                Instant serverTime = Instant.parse(entry.getValue());
+                Instant localTime = localTimestamps.get(id);
+
+                if (localTime != null && !localTime.equals(serverTime)) {
+                    long diffSeconds = Math.abs(localTime.getEpochSecond() - serverTime.getEpochSecond());
+                    if (diffSeconds > 5) { // ignore sub-5s differences (clock skew)
+                        stale.add(StaleEntity.builder()
+                            .entityId(id)
+                            .localModified(localTime)
+                            .serverModified(serverTime)
+                            .localNewer(localTime.isAfter(serverTime))
+                            .build());
+                    }
+                }
+            }
+            return stale;
+        } catch (Exception e) {
+            log.debug("Could not compare timestamps for {}: {}", entityType, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<String, String> getLocalEntityData(String entityType, Long entityId) {
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        if (service == null) return null;
+
+        BaseIdEntity entity = (BaseIdEntity) service.getEntityById(entityId);
+        if (entity == null) return null;
+
+        return serializeEntityFields(entity);
+    }
+
+    private Map<String, String> serializeEntityFields(BaseIdEntity entity) {
+        Map<String, String> fieldMap = new LinkedHashMap<>();
+        for (FieldInfo fi : getFields(entity.getClass())) {
+            try {
+                Object value = fi.field.get(entity);
+                fieldMap.put(fi.name, serializeValue(value));
+            } catch (Exception e) {
+                log.trace("Could not read field {}: {}", fi.name, e.getMessage());
+            }
+        }
+        return fieldMap;
+    }
+
+    private String serializeValue(Object value) {
+        if (value == null) return null;
+        try {
+            if (value instanceof BaseIdEntity) {
+                Long id = ((BaseIdEntity) value).getId();
+                return id != null ? String.valueOf(id) : null;
+            }
+            if (value instanceof Collection) {
+                Collection<?> col = (Collection<?>) value;
+                if (!col.isEmpty() && col.iterator().next() instanceof BaseIdEntity) {
+                    List<Long> ids = new ArrayList<>();
+                    for (Object item : col) {
+                        Long id = ((BaseIdEntity) item).getId();
+                        if (id != null) ids.add(id);
+                    }
+                    return objectMapper.writeValueAsString(ids);
+                }
+            }
+            if (value instanceof Enum) return ((Enum<?>) value).name();
+            if (value instanceof String) return (String) value;
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return String.valueOf(value);
+        }
+    }
+
+    private HttpHeaders buildHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
+        return headers;
+    }
+
+    private List<FieldInfo> getFields(Class<?> clazz) {
+        return FIELD_CACHE.computeIfAbsent(clazz, this::buildFieldList);
+    }
+
+    private List<FieldInfo> buildFieldList(Class<?> clazz) {
+        List<FieldInfo> fields = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                if (!seen.add(field.getName())) continue;
+                if (shouldTrack(field)) {
+                    field.setAccessible(true);
+                    fields.add(new FieldInfo(field, field.getName()));
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return fields;
+    }
+
+    private boolean shouldTrack(Field field) {
+        if (EXCLUDED_FIELDS.contains(field.getName())) return false;
+        if (field.isAnnotationPresent(Transient.class)) return false;
+        if (field.isAnnotationPresent(JsonIgnore.class) && !field.isAnnotationPresent(ManyToOne.class)) return false;
+        if (Modifier.isStatic(field.getModifiers())) return false;
+        if (Modifier.isFinal(field.getModifiers())) return false;
+        if (field.isAnnotationPresent(OneToMany.class)) {
+            OneToMany otm = field.getAnnotation(OneToMany.class);
+            if (otm.mappedBy() != null && !otm.mappedBy().isEmpty()) return false;
+        }
+        return true;
+    }
+
+    private record FieldInfo(Field field, String name) {}
+
+    // ==================== DTOs ====================
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EntityComparisonResult {
+        private String entityType;
+        private int localCount;
+        private int serverCount;
+        private List<Long> localOnly;
+        private List<Long> serverOnly;
+        private int commonCount;
+        private List<StaleEntity> staleEntities;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StaleEntity {
+        private Long entityId;
+        private Instant localModified;
+        private Instant serverModified;
+        private boolean localNewer;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EntityFieldDiff {
+        private String entityType;
+        private Long entityId;
+        private List<FieldDiffEntry> diffs;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FieldDiffEntry {
+        private String fieldName;
+        private String localValue;
+        private String serverValue;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EntityTypeSummary {
+        private String entityType;
+        private long localCount;
+    }
+}

@@ -5,9 +5,11 @@ import com.dk_power.power_plant_java.dto.pwa.PwaStatusResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaSubmissionResult;
 import com.dk_power.power_plant_java.dto.pwa.PwaWorkRequestDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkAreaService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaWorkRequestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class PwaWorkRequestController {
     private final ObjectMapper objectMapper;
     private final NgValueService valueService;
     private final WorkAreaRepo workAreaRepo;
+    private final NgWorkAreaService workAreaService;
 
     @PostMapping("/submit")
     public ResponseEntity<NgApiResponse<PwaSubmissionResult>> submit(
@@ -159,16 +162,40 @@ public class PwaWorkRequestController {
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkAreas() {
         try {
             List<Map<String, Object>> areas = workAreaRepo.findAll().stream()
-                    .map(wa -> Map.<String, Object>of(
-                            "id", wa.getId(),
-                            "name", wa.getName() != null ? wa.getName() : "",
-                            "description", wa.getDescription() != null ? wa.getDescription() : ""
-                    ))
+                    .map(wa -> {
+                        Map<String, Object> map = new java.util.HashMap<>();
+                        map.put("id", wa.getId());
+                        map.put("name", wa.getName() != null ? wa.getName() : "");
+                        map.put("description", wa.getDescription() != null ? wa.getDescription() : "");
+                        map.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
+                        return map;
+                    })
                     .toList();
             return ResponseEntity.ok(new NgApiResponse<>(areas, "Work areas retrieved"));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, "Failed to get work areas: " + e.getMessage()));
+        }
+    }
+
+    private boolean hasConfinedSpaceHazards(com.dk_power.power_plant_java.entities.permits.WorkArea wa) {
+        try {
+            var h = wa.getConstantConfinedSpaceHazards();
+            return h.isOxygenDeficiency() || h.isFlammableGas() || h.isCombustibleDust()
+                    || h.isToxicGas() || h.isRotatingEquipment() || h.isElectricalShock()
+                    || h.isEntrapment() || h.isEngulfment() || h.isHeatStress() || h.isOther();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @GetMapping("/work-area-shapes")
+    public ResponseEntity<NgApiResponse<List<WorkAreaMapShapeDto>>> getWorkAreaShapes() {
+        try {
+            List<WorkAreaMapShapeDto> shapes = workAreaService.getAllShapes();
+            return ResponseEntity.ok(new NgApiResponse<>(shapes, "Work area shapes retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(new NgApiResponse<>(List.of(), "No work area shapes found"));
         }
     }
 
