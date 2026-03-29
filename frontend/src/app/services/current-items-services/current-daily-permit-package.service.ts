@@ -289,6 +289,74 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
+    foremanSignOn(data: { personName: string; company: string }) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.foremanSignOn(pkg.id, data).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error foreman sign-on:', err)
+      });
+    }
+
+    foremanCloseOut(data: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.foremanSignOff(pkg.id, data).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error foreman close-out:', err)
+      });
+    }
+
+    signOnPerson(data: { personName: string; personRole: string; company: string }) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.signOnPerson(pkg.id, data).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error signing on person:', err)
+      });
+    }
+
+    signOffPerson(data: { personName: string; comments: string }) {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.signOffPerson(pkg.id, data).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error signing off person:', err)
+      });
+    }
+
     applyDateTimeToAllPermits(date: string, time: string) {
       const pkg = this.selectedDailyPermitPackageSubject.value;
       if (!pkg?.id) return;

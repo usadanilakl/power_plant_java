@@ -17,4 +17,6 @@ public interface LotoBoxRepo extends BaseRepository<LotoBox> {
     @Query("SELECT b FROM LotoBox b WHERE b.ledStrip.espDevice.id = :espDeviceId ORDER BY b.rangeStart")
     List<LotoBox> findByEspDeviceId(Long espDeviceId);
 
+    @Query("SELECT b FROM LotoBox b WHERE b.loto IS NULL ORDER BY b.number")
+    List<LotoBox> findAvailableBoxes();
 }

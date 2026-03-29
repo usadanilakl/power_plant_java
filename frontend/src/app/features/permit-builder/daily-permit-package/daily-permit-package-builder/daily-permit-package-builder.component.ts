@@ -59,11 +59,12 @@ import { TableControlsService } from '../../../../shared/table/refactored/servic
 import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
 import { RfWorkRequestStateService } from '../../work-request/refactored/services/rf-work-request-state.service';
 import { PopupWindowService } from '../../../../shared/popup-window/popup-window.service';
+import { PersonnelPanelComponent } from '../personnel-panel/personnel-panel.component';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, TableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent, RedTagProgressPanelComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, TableComponent, RfReactiveFormComponent, EnergizedWorkPermitTableComponent, ExcavationPermitTableComponent, VentingPermitTableComponent, EnergizedWorkPermitPaperFormComponent, ExcavationPermitPaperFormComponent, VentingPermitPaperFormComponent, RedTagProgressPanelComponent, PersonnelPanelComponent],
   providers: [
     TableSelectionService,
     TableStateService,
@@ -141,6 +142,10 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   ventingPermits = this.currentDailyPermitPackageService.ventingPermits;
   ventingPermitCount = this.currentDailyPermitPackageService.ventingPermitCount;
 
+  personnelSignedOnCount = computed(() =>
+    (this.currentPackage().personnel || []).filter(e => !e.signOffTime).length
+  );
+
   // Static field definitions for RF form components
   energizedWorkPermitFields = EnergizedWorkPermitDto.toFormFields(new EnergizedWorkPermitDto()) as RfFormField[];
   excavationPermitFields = ExcavationPermitDto.toFormFields(new ExcavationPermitDto()) as RfFormField[];
@@ -212,6 +217,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
     { key: 'energizedWork', label: 'Energized', count: this.energizedWorkPermitCount() },
     { key: 'excavation', label: 'Excavation', count: this.excavationPermitCount() },
     { key: 'venting', label: 'Venting', count: this.ventingPermitCount() },
+    { key: 'personnel', label: 'Personnel', count: this.personnelSignedOnCount() },
   ]);
 
   selectTab(tab: string) {
@@ -732,6 +738,23 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   confirmActivation(): void {
     this.currentDailyPermitPackageService.activatePackage();
     this.isActivationPopupOpen = false;
+    this.activeTab.set('personnel');
+  }
+
+  onForemanSignOn(event: { personName: string; company: string }): void {
+    this.currentDailyPermitPackageService.foremanSignOn(event);
+  }
+
+  onForemanCloseOut(event: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }): void {
+    this.currentDailyPermitPackageService.foremanCloseOut(event);
+  }
+
+  onPersonnelSignOn(event: { personName: string; personRole: string; company: string }): void {
+    this.currentDailyPermitPackageService.signOnPerson(event);
+  }
+
+  onPersonnelSignOff(event: { personName: string; comments: string }): void {
+    this.currentDailyPermitPackageService.signOffPerson(event);
   }
 
   isClosurePopupOpen = false;

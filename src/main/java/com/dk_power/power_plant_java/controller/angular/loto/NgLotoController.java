@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.dk_power.power_plant_java.sevice.angular.loto.LotoImportService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import lombok.RequiredArgsConstructor;
@@ -213,4 +214,98 @@ public class NgLotoController {
         }
     }
 
+    /*********************************************************************************************************************
+     * LOTO PERMIT WORKFLOW ENDPOINTS
+     ******************************************************************************************************************/
+
+    @PostMapping("/create-from-standard/{standardId}")
+    public ResponseEntity<NgApiResponse<LotoDto>> createFromStandard(
+            @PathVariable Long standardId,
+            @RequestBody(required = false) LotoIdDto permitData,
+            @RequestParam(required = false) Integer boxNumber) {
+        try {
+            LotoDto loto = ngLotoService.createFromStandard(standardId, permitData, boxNumber);
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "LOTO permit created from standard"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error creating LOTO: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/create-from-scratch")
+    public ResponseEntity<NgApiResponse<LotoDto>> createFromScratch(
+            @RequestBody(required = false) LotoIdDto permitData,
+            @RequestParam(required = false) Integer boxNumber) {
+        try {
+            LotoDto loto = ngLotoService.createFromScratch(permitData, boxNumber);
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "LOTO permit created from scratch"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error creating LOTO: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<NgApiResponse<LotoDto>> changeStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String status = body.get("status");
+            LotoDto loto = ngLotoService.changeStatus(id, status);
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "LOTO status changed to " + status));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error changing status: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/sign-on")
+    public ResponseEntity<NgApiResponse<LotoDto>> signOn(
+            @PathVariable Long id,
+            @RequestBody PersonnelSignEntry entry) {
+        try {
+            LotoDto loto = ngLotoService.signOnPerson(id, entry);
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "Person signed on successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error signing on: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/sign-off")
+    public ResponseEntity<NgApiResponse<LotoDto>> signOff(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            LotoDto loto = ngLotoService.signOffPerson(id, body.get("name"), body.get("comments"));
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "Person signed off successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error signing off: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/personnel")
+    public ResponseEntity<NgApiResponse<List<PersonnelSignEntry>>> getPersonnel(@PathVariable Long id) {
+        try {
+            List<PersonnelSignEntry> personnel = ngLotoService.getPersonnel(id);
+            return ResponseEntity.ok(new NgApiResponse<>(personnel, "Personnel retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/assign-locks")
+    public ResponseEntity<NgApiResponse<LotoDto>> assignLocks(
+            @PathVariable Long id,
+            @RequestBody List<Map<String, Object>> lockAssignments) {
+        try {
+            LotoDto loto = ngLotoService.assignLocksToPoints(id, lockAssignments);
+            return ResponseEntity.ok(new NgApiResponse<>(loto, "Locks assigned successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error assigning locks: " + e.getMessage()));
+        }
+    }
 }

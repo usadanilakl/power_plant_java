@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
+import com.dk_power.power_plant_java.sevice.esp.WledCommandQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class NgLotoBoxController {
     private final NgLotoBoxService ngLotoBoxService;
+    private final WledCommandQueueService wledCommandQueueService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoBoxDto>>> getPaginatedLotoBoxes(
@@ -142,4 +144,39 @@ public class NgLotoBoxController {
         }
     }
 
+    @GetMapping("/available")
+    public ResponseEntity<NgApiResponse<java.util.List<LotoBoxDto>>> getAvailableBoxes() {
+        try {
+            java.util.List<LotoBoxDto> boxes = ngLotoBoxService.findAvailableBoxes();
+            return ResponseEntity.ok(new NgApiResponse<>(boxes, "Available boxes retrieved"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/grid")
+    public ResponseEntity<NgApiResponse<java.util.List<LotoBoxDto>>> getBoxGrid() {
+        try {
+            java.util.List<LotoBoxDto> boxes = ngLotoBoxService.getAllBoxes();
+            return ResponseEntity.ok(new NgApiResponse<>(boxes, "Box grid retrieved"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/wled-queue-status")
+    public ResponseEntity<NgApiResponse<java.util.Map<String, Long>>> getWledQueueStatus() {
+        try {
+            java.util.Map<String, Long> status = java.util.Map.of(
+                    "pending", wledCommandQueueService.getPendingCount(),
+                    "expired", wledCommandQueueService.getExpiredCount()
+            );
+            return ResponseEntity.ok(new NgApiResponse<>(status, "Queue status retrieved"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

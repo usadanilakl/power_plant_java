@@ -39,6 +39,11 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     private Status status;
     private String workScope;
 
+    @Column(columnDefinition = "TEXT")
+    private String personnelSnapshot;
+
+    private String snapshotReason;
+
     @ElementCollection
     @CollectionTable(name = "loto_snapshot_points", joinColumns = @JoinColumn(name = "loto_snapshot_id"))
     @Column(name = "loto_point_data", columnDefinition = "TEXT")

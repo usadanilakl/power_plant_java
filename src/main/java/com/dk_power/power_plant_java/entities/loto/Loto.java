@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
+import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
@@ -30,6 +32,13 @@ public class Loto extends BasePermitEntity {
     private List<Lock> locks;
     @OneToMany(mappedBy = "loto")
     private Set<LotoSnapshot> snapshots = new HashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_standard_id")
+    private LotoStandard sourceStandard;
+
+    @Column(columnDefinition = "TEXT")
+    private String personnelJson;
 
     private String equipmentSystem;
     private String lotoRequestor;
@@ -253,6 +262,60 @@ public class Loto extends BasePermitEntity {
     public Set<LotoPointIdDto> getLotoPointDtos() {
         if (this.getLatestSnapshot() == null) this.createNewSnapshot();
         return this.getLatestSnapshot().getLotoPointDtos();
+    }
+
+    /*********************************************************************************************************************
+     * PERSONNEL SIGN-ON / SIGN-OFF
+     ******************************************************************************************************************/
+
+    public List<PersonnelSignEntry> getPersonnel() {
+        if (personnelJson == null || personnelJson.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(personnelJson, new TypeReference<List<PersonnelSignEntry>>() {});
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public void setPersonnel(List<PersonnelSignEntry> personnel) {
+        try {
+            this.personnelJson = objectMapper.writeValueAsString(personnel);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Cannot serialize personnel", e);
+        }
+    }
+
+    public void signOnPerson(String name, String role, String company, String performedBy) {
+        List<PersonnelSignEntry> list = getPersonnel();
+        PersonnelSignEntry entry = new PersonnelSignEntry();
+        entry.setPersonName(name);
+        entry.setPersonRole(role);
+        entry.setCompany(company);
+        entry.setSignOnTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        entry.setPerformedBy(performedBy);
+        list.add(entry);
+        setPersonnel(list);
+    }
+
+    public boolean signOffPerson(String name, String performedBy, String comments) {
+        List<PersonnelSignEntry> list = getPersonnel();
+        for (PersonnelSignEntry entry : list) {
+            if (entry.getPersonName() != null && entry.getPersonName().equals(name) && entry.getSignOffTime() == null) {
+                entry.setSignOffTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                entry.setSignOffComments(comments);
+                setPersonnel(list);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<PersonnelSignEntry> getSignedOnPersonnel() {
+        return getPersonnel().stream()
+                .filter(e -> e.getSignOffTime() == null)
+                .collect(Collectors.toList());
     }
 }
 

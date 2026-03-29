@@ -7,6 +7,7 @@ import {
 import { TableSelectionService } from './table-selection.service';
 import { TableDataService } from './table-data.service';
 import { ClipboardService } from '../../../clipboard/clipboard.service';
+import { SyncCheckGuardService } from '../../../sync-check/sync-check-guard.service';
 
 @Injectable()
 export class TableControlsService {
@@ -14,6 +15,7 @@ export class TableControlsService {
   protected selectionService = inject(TableSelectionService);
   protected dataService = inject(TableDataService);
   private clipboardService = inject(ClipboardService);
+  private syncCheckGuard = inject(SyncCheckGuardService);
 
   // ✅ Allow parent services to override with custom buttons
   customTableControlButtons = signal<ButtonConfig[] | undefined>(undefined);
@@ -81,6 +83,12 @@ export class TableControlsService {
         color: 'accent' as ButtonColor,
         icon: computed(() => this.feedbackIcon() ?? 'content_copy'),
       },
+      {
+        name: 'Check Sync',
+        action: () => this.checkSyncForSelected(),
+        color: 'accent' as ButtonColor,
+        icon: 'sync',
+      },
     ];
   }
 
@@ -129,6 +137,16 @@ export class TableControlsService {
    */
   resetTableSelectionControls(): void {
     this.customTableSelectionControls.set(undefined);
+  }
+
+  //======================Sync Check============================
+  private checkSyncForSelected(): void {
+    const items = this.dataService.selectedItems();
+    if (!items || items.length === 0) return;
+    const first = items[0];
+    if (first?.objectType && first?.id) {
+      this.syncCheckGuard.openSyncCheckDialog(first.objectType, first.id);
+    }
   }
 
   //======================Clipboard============================

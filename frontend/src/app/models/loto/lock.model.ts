@@ -6,18 +6,27 @@ export interface LockModel extends BaseModel {
   number: number;
   loto: LotoDto;
   lotoAccessoryStatus: ValueDto;
+  tagLabel: string;
+  assignedLotoPointId: number | null;
+  lockType: string;
 }
 
 export class LockDto extends BaseDto implements LockModel {
   number: number;
   loto: LotoDto;
   lotoAccessoryStatus: ValueDto;
+  tagLabel: string;
+  assignedLotoPointId: number | null;
+  lockType: string;
 
   constructor(data: Partial<LockModel> = {}) {
     super(data);
     this.number = data.number ?? 0;
     this.loto = data.loto ?? new LotoDto();
     this.lotoAccessoryStatus = data.lotoAccessoryStatus ?? new ValueDto();
+    this.tagLabel = data.tagLabel ?? '';
+    this.assignedLotoPointId = data.assignedLotoPointId ?? null;
+    this.lockType = data.lockType ?? 'LOCK';
   }
 
   // Override toJson method
@@ -26,7 +35,10 @@ export class LockDto extends BaseDto implements LockModel {
       ...super.toJson(),
       number: this.number,
       loto: this.loto.toJson(),
-      lotoAccessoryStatus: this.lotoAccessoryStatus.toJson()
+      lotoAccessoryStatus: this.lotoAccessoryStatus.toJson(),
+      tagLabel: this.tagLabel,
+      assignedLotoPointId: this.assignedLotoPointId,
+      lockType: this.lockType
     };
   }
 
@@ -41,7 +53,10 @@ export class LockDto extends BaseDto implements LockModel {
       ...super.fromJson(json),
       number: json.number ?? 0,
       loto: LotoDto.fromJson(json.loto),
-      lotoAccessoryStatus: ValueDto.fromJson(json.lotoAccessoryStatus)
+      lotoAccessoryStatus: ValueDto.fromJson(json.lotoAccessoryStatus),
+      tagLabel: json.tagLabel ?? '',
+      assignedLotoPointId: json.assignedLotoPointId ?? null,
+      lockType: json.lockType ?? 'LOCK'
     });
   }
 }

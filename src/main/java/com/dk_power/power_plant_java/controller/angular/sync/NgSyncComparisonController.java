@@ -53,6 +53,32 @@ public class NgSyncComparisonController {
         }
     }
 
+    @GetMapping("/check/{entityType}/{entityId}")
+    public ResponseEntity<NgApiResponse<EntitySyncStatus>> checkEntitySync(
+            @PathVariable String entityType, @PathVariable Long entityId) {
+        try {
+            EntitySyncStatus status = syncComparisonService.checkEntitySync(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(status, status.getStatus()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Sync check failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Check failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/check/{entityType}")
+    public ResponseEntity<NgApiResponse<List<EntitySyncStatus>>> checkEntitiesSync(
+            @PathVariable String entityType, @RequestBody List<Long> entityIds) {
+        try {
+            List<EntitySyncStatus> results = syncComparisonService.checkEntitiesSync(entityType, entityIds);
+            return ResponseEntity.ok(new NgApiResponse<>(results, "Batch check complete"));
+        } catch (Exception e) {
+            log.error("Batch sync check failed for {}: {}", entityType, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Batch check failed: " + e.getMessage()));
+        }
+    }
+
     /**
      * Compare a single entity field-by-field: local vs server values.
      */

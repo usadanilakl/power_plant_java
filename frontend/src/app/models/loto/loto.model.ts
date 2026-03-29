@@ -7,6 +7,16 @@ import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { Validators } from '@angular/forms';
 
+export interface PersonnelSignEntry {
+  personName: string;
+  personRole: string;
+  company: string;
+  signOnTime: string;
+  signOffTime: string | null;
+  signOffComments: string | null;
+  performedBy: string;
+}
+
 export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
@@ -15,6 +25,9 @@ export interface LotoModel extends BasePermitModel {
   equipmentSystem: string;
   lotoRequestor: string;
   date: string;
+  personnel: PersonnelSignEntry[];
+  sourceStandardId: number | null;
+  sourceStandardName: string;
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
@@ -22,10 +35,13 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   locks: LockDto[];
   lotoBox: LotoBoxDto | null;
   boxNumber: number | null;
-  
+
   equipmentSystem: string;
   lotoRequestor: string;
   date: string;
+  personnel: PersonnelSignEntry[];
+  sourceStandardId: number | null;
+  sourceStandardName: string;
 
   constructor(data: Partial<LotoModel> = {}) {
     super(data);
@@ -36,6 +52,9 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     this.equipmentSystem = data.equipmentSystem || '';
     this.lotoRequestor = data.lotoRequestor || '';
     this.date = data.date || '';
+    this.personnel = data.personnel ?? [];
+    this.sourceStandardId = data.sourceStandardId ?? null;
+    this.sourceStandardName = data.sourceStandardName ?? '';
   }
 
   // Override toJson method
@@ -48,7 +67,10 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       boxNumber : this.boxNumber,
       equipmentSystem: this.equipmentSystem,
       lotoRequestor: this.lotoRequestor,
-      date: this.date
+      date: this.date,
+      personnel: this.personnel,
+      sourceStandardId: this.sourceStandardId,
+      sourceStandardName: this.sourceStandardName
     };
   }
 
@@ -67,7 +89,10 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       boxNumber: json.boxNumber,
       equipmentSystem: json.equipmentSystem,
       lotoRequestor: json.lotoRequestor,
-      date: json.date
+      date: json.date,
+      personnel: json.personnel ?? [],
+      sourceStandardId: json.sourceStandardId ?? null,
+      sourceStandardName: json.sourceStandardName ?? ''
     });
   }
 
@@ -87,11 +112,14 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   static toTableColumns(): Column[] {
     return [
       { id: 'id', header: 'ID', accessorKey: 'id' },
+      { id: 'permitNumber', header: 'Permit #', accessorKey: 'permitNumber' },
       { id: 'name', header: 'LOTO Number', accessorKey: 'name' },
+      { id: 'permitStatus', header: 'Status', accessorKey: 'permitStatus.name' },
       { id: 'equipmentSystem', header: 'Equipment/System', accessorKey: 'equipmentSystem' },
       { id: 'lotoRequestor', header: 'Requestor', accessorKey: 'lotoRequestor' },
       { id: 'date', header: 'Date', accessorKey: 'date' },
       { id: 'boxNumber', header: 'Box #', accessorKey: 'boxNumber' },
+      { id: 'pointCount', header: 'Points', accessorKey: 'lotoPoints.length' },
     ];
   }
 

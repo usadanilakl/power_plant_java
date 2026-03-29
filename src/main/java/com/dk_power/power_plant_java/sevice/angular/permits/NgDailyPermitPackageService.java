@@ -879,8 +879,9 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             if (closureData.containsKey("scopeChanged")) pkg.setScopeChanged((Boolean) closureData.get("scopeChanged"));
             if (closureData.containsKey("closureScopeDetails")) pkg.setClosureScopeDetails((String) closureData.get("closureScopeDetails"));
             if (closureData.containsKey("continueDate")) pkg.setContinueDate((String) closureData.get("continueDate"));
-            dailyPermitPackageRepo.save(pkg);
         }
+        autoSignOffAllPersonnel(pkg);
+        dailyPermitPackageRepo.save(pkg);
         return changeStatus(id, "Closed", Set.of("Active", "Test"));
     }
 
@@ -1164,6 +1165,197 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    // --- Personnel Sign-On/Off ---
+
+    public DailyPermitPackageDto foremanSignOn(String packageId, String personName, String company) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        String currentStatus = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+        if (!"Active".equals(currentStatus) && !"Test".equals(currentStatus)) {
+            throw new RuntimeException("Cannot sign on when package status is '" + currentStatus + "'");
+        }
+        if (!pkg.getPersonnel().isEmpty()) {
+            throw new RuntimeException("Foreman must be the first person to sign on");
+        }
+        String user = getCurrentUsername();
+        pkg.signOnPerson(personName, "Foreman", company, user, true);
+
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("FOREMAN_SIGN_ON");
+        mod.setFieldName("personnel");
+        mod.setNewValue(personName + " (Foreman)");
+        mod.setPerformedBy(user);
+        mod.setDescription("Foreman " + personName + " signed on");
+        pkg.addModification(mod);
+
+        dailyPermitPackageRepo.save(pkg);
+        return dailyPermitPackageMapper.convertToDto(pkg);
+    }
+
+    public DailyPermitPackageDto signOnPerson(String packageId, String personName, String personRole, String company) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        String currentStatus = pkg.getPackageStatus() != null ? pkg.getPackageStatus().getName() : "Building";
+        if (!"Active".equals(currentStatus) && !"Test".equals(currentStatus)) {
+            throw new RuntimeException("Cannot sign on when package status is '" + currentStatus + "'");
+        }
+        if (!pkg.hasForemanSignedOn()) {
+            throw new RuntimeException("Foreman must sign on before workers can sign on");
+        }
+        String user = getCurrentUsername();
+        pkg.signOnPerson(personName, personRole, company, user, false);
+
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("PERSONNEL_SIGN_ON");
+        mod.setFieldName("personnel");
+        mod.setNewValue(personName + " (" + (personRole != null ? personRole : "") + ")");
+        mod.setPerformedBy(user);
+        mod.setDescription(personName + " signed on as " + (personRole != null ? personRole : "worker"));
+        pkg.addModification(mod);
+
+        dailyPermitPackageRepo.save(pkg);
+        return dailyPermitPackageMapper.convertToDto(pkg);
+    }
+
+    public DailyPermitPackageDto signOffPerson(String packageId, String personName, String comments) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        String user = getCurrentUsername();
+        boolean found = pkg.signOffPerson(personName, user, comments);
+        if (!found) {
+            throw new RuntimeException("Person '" + personName + "' is not currently signed on");
+        }
+
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("PERSONNEL_SIGN_OFF");
+        mod.setFieldName("personnel");
+        mod.setOldValue(personName);
+        mod.setPerformedBy(user);
+        mod.setDescription(personName + " signed off" + (comments != null && !comments.isBlank() ? ": " + comments : ""));
+        pkg.addModification(mod);
+
+        dailyPermitPackageRepo.save(pkg);
+        return dailyPermitPackageMapper.convertToDto(pkg);
+    }
+
+    public DailyPermitPackageDto foremanSignOff(String packageId, Map<String, Object> closeOutData) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        String user = getCurrentUsername();
+
+        // Sign off the foreman
+        var foremanEntry = pkg.getPersonnel().stream()
+                .filter(e -> e.isForeman() && e.getSignOffTime() == null)
+                .findFirst().orElseThrow(() -> new RuntimeException("No foreman currently signed on"));
+        pkg.signOffPerson(foremanEntry.getPersonName(), user, "Close-out completed");
+
+        // Store close-out data
+        Boolean workCompleted = closeOutData.containsKey("workCompleted") ? (Boolean) closeOutData.get("workCompleted") : null;
+        String comments = (String) closeOutData.get("comments");
+        Boolean scopeChanged = closeOutData.containsKey("scopeChanged") ? (Boolean) closeOutData.get("scopeChanged") : null;
+        String scopeDetails = (String) closeOutData.get("scopeDetails");
+        String continueDate = (String) closeOutData.get("continueDate");
+
+        pkg.setWorkCompleted(workCompleted);
+        pkg.setClosureComments(comments);
+        pkg.setScopeChanged(scopeChanged);
+        pkg.setClosureScopeDetails(scopeDetails);
+        pkg.setContinueDate(continueDate);
+
+        PackageModification mod = new PackageModification();
+        mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        mod.setAction("FOREMAN_SIGN_OFF");
+        mod.setFieldName("personnel");
+        mod.setOldValue(foremanEntry.getPersonName());
+        mod.setPerformedBy(user);
+        mod.setDescription("Foreman " + foremanEntry.getPersonName() + " completed close-out (work " +
+                (Boolean.TRUE.equals(workCompleted) ? "completed" : "not completed") + ")");
+        pkg.addModification(mod);
+
+        dailyPermitPackageRepo.save(pkg);
+
+        if (Boolean.TRUE.equals(workCompleted)) {
+            // Work done — auto-close package
+            autoSignOffAllPersonnel(pkg);
+            dailyPermitPackageRepo.save(pkg);
+            return changeStatus(packageId, "Closed", Set.of("Active", "Test"));
+        }
+
+        // Work not complete — generate continuation
+        if (continueDate != null && !continueDate.isBlank()) {
+            generateContinuation(pkg, continueDate, scopeChanged, scopeDetails);
+        }
+
+        return dailyPermitPackageMapper.convertToDto(pkg);
+    }
+
+    private void generateContinuation(DailyPermitPackage source, String continueDate, Boolean scopeChanged, String scopeDetails) {
+        // Clone originating WR
+        WorkRequest origWr = source.getWorkRequests().isEmpty() ? null : source.getWorkRequests().iterator().next();
+        if (origWr == null) return;
+
+        WorkRequest newWr = new WorkRequest();
+        newWr.setCompany(origWr.getCompany());
+        newWr.setRequestedBy(origWr.getRequestedBy());
+        newWr.setLocation(origWr.getLocation());
+        newWr.setAffectedEquipment(origWr.getAffectedEquipment());
+        newWr.setForeman(origWr.getForeman());
+        newWr.setFireWatch(origWr.getFireWatch());
+        newWr.setHotWorkRequired(origWr.getHotWorkRequired());
+        newWr.setLotoRequired(origWr.getLotoRequired());
+        newWr.setConfinedSpaceEntryRequired(origWr.getConfinedSpaceEntryRequired());
+        newWr.setSpace(origWr.getSpace());
+        newWr.setWorkCategory(origWr.getWorkCategory());
+        newWr.setWorkArea(origWr.getWorkArea());
+        newWr.setDateOfWorkToBePerformed(continueDate);
+        newWr.setTimeOfWorkToBePerformed(origWr.getTimeOfWorkToBePerformed());
+
+        if (Boolean.TRUE.equals(scopeChanged) && scopeDetails != null && !scopeDetails.isBlank()) {
+            newWr.setWorkScope(scopeDetails);
+            newWr.setName(scopeDetails);
+        } else {
+            String origScope = origWr.getWorkScope() != null ? origWr.getWorkScope() : "";
+            newWr.setWorkScope(origScope + " (Continuation)");
+            newWr.setName(origScope + " (Continuation)");
+        }
+
+        newWr = workRequestRepo.save(newWr);
+
+        // Create new package with copied permits
+        DailyPermitPackage newPackage = new DailyPermitPackage();
+        newPackage.setDate(continueDate);
+        newPackage.setTime(source.getTime());
+        newPackage.setPersonName(source.getPersonName());
+        newPackage.setCompanyName(source.getCompanyName());
+        newPackage.setName(newWr.getWorkScope());
+        newPackage.setPermitNumber(permitNumberGenerator.generate(continueDate));
+        newPackage.setPackageStatus(ngValueService.createValue("Package Status", "Building"));
+        newPackage = dailyPermitPackageRepo.save(newPackage);
+        newPackage.addWorkRequest(newWr);
+        copyPermitsFromSource(source, newPackage, continueDate, source.getTime());
+        newPackage = dailyPermitPackageRepo.save(newPackage);
+
+        // Attach to same job
+        try {
+            var jobOpt = jobLogRepo.findByPackageId(source.getId());
+            if (jobOpt.isPresent()) {
+                var job = jobOpt.get();
+                job.addPackage(newPackage);
+                jobLogRepo.save(job);
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Could not link continuation package to job: " + e.getMessage());
+        }
+    }
+
+    private void autoSignOffAllPersonnel(DailyPermitPackage pkg) {
+        var signedOn = pkg.getSignedOnPersonnel();
+        if (signedOn.isEmpty()) return;
+        String user = getCurrentUsername();
+        for (var entry : signedOn) {
+            pkg.signOffPerson(entry.getPersonName(), user, "Auto-signed off at package closure");
+        }
     }
 
     private String getCurrentUsername() {

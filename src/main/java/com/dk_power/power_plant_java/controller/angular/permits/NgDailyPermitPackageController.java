@@ -3,8 +3,10 @@ package com.dk_power.power_plant_java.controller.angular.permits;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.automation.AutomationSessionState;
 import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
+import com.dk_power.power_plant_java.config.NetworkUtils;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgDailyPermitPackageService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagStepExecutionService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -271,6 +273,81 @@ public class NgDailyPermitPackageController {
             );
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                     .body(new NgApiResponse<>(result, "Date and time applied to package permits", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    // --- Personnel Sign-On/Off ---
+
+    @PostMapping("/{id}/foreman-sign-on")
+    public ResponseEntity<?> foremanSignOn(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "LOCALHOST_REQUIRED",
+                    "message", "Foreman sign-on is only available from the control room desktop"
+            ));
+        }
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.foremanSignOn(
+                    id, body.get("personName"), body.get("company"));
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Foreman signed on", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/foreman-sign-off")
+    public ResponseEntity<?> foremanSignOff(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> closeOutData,
+            HttpServletRequest request) {
+        if (!NetworkUtils.isLoopbackRequest(request)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "LOCALHOST_REQUIRED",
+                    "message", "Foreman sign-off is only available from the control room desktop"
+            ));
+        }
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.foremanSignOff(id, closeOutData);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Foreman close-out completed", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/sign-on")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> signOn(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.signOnPerson(
+                    id, body.get("personName"), body.get("personRole"), body.get("company"));
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Person signed on", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/sign-off")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> signOff(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.signOffPerson(
+                    id, body.get("personName"), body.get("comments"));
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Person signed off", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

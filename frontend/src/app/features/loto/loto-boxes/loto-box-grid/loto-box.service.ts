@@ -77,4 +77,16 @@ export class LotoBoxService {
   syncAllBoxesToEsp(): Observable<SpringApiResponse<string>> {
     return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/sync-to-esp`, null);
   }
+
+  getAvailableBoxes(): Observable<SpringApiResponse<LotoBoxDto[]>> {
+    return this.http.get<SpringApiResponse<LotoBoxDto[]>>(`${this.apiUrl}/available`);
+  }
+
+  getBoxGrid(): Observable<SpringApiResponse<LotoBoxDto[]>> {
+    return this.http.get<SpringApiResponse<LotoBoxDto[]>>(`${this.apiUrl}/grid`);
+  }
+
+  getWledQueueStatus(): Observable<SpringApiResponse<{pending: number, expired: number}>> {
+    return this.http.get<SpringApiResponse<{pending: number, expired: number}>>(`${this.apiUrl}/wled-queue-status`);
+  }
 }

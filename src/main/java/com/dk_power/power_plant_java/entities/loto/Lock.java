@@ -24,4 +24,8 @@ public class Lock extends BaseAuditEntity {
     @ManyToOne
     @JoinColumn(name = "loto_id")
     private Loto loto;
+
+    private String tagLabel;
+    private Long assignedLotoPointId;
+    private String lockType; // "LOCK" or "ZIPTIE"
 }

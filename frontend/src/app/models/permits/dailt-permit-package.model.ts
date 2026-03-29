@@ -11,6 +11,17 @@ import { LotoDto } from '../loto/loto.model';
 import { ValueDto } from '../value.model';
 import { Column } from '../column.model';
 
+export interface PersonnelSignEntry {
+  personName: string;
+  personRole: string | null;
+  company: string | null;
+  signOnTime: string;
+  signOffTime: string | null;
+  signOffComments: string | null;
+  performedBy: string | null;
+  foreman: boolean;
+}
+
 export interface PackageModification {
   timestamp: string;
   action: string;
@@ -53,6 +64,7 @@ export interface DailyPermitPackageModel extends BaseModel {
   closureScopeDetails: string | null;
   continueDate: string | null;
   modifications: PackageModification[];
+  personnel: PersonnelSignEntry[];
   activationSnapshotJson: string | null;
 }
 
@@ -86,6 +98,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   closureScopeDetails: string | null;
   continueDate: string | null;
   modifications: PackageModification[];
+  personnel: PersonnelSignEntry[];
   activationSnapshotJson: string | null;
 
   constructor(data: Partial<DailyPermitPackageModel> = {}) {
@@ -118,6 +131,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.closureScopeDetails = data.closureScopeDetails ?? null;
     this.continueDate = data.continueDate ?? null;
     this.modifications = data.modifications ?? [];
+    this.personnel = data.personnel ?? [];
     this.activationSnapshotJson = data.activationSnapshotJson ?? null;
   }
 
@@ -152,6 +166,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       closureScopeDetails: this.closureScopeDetails,
       continueDate: this.continueDate,
       modifications: this.modifications,
+      personnel: this.personnel,
       activationSnapshotJson: this.activationSnapshotJson,
     };
   }
@@ -187,6 +202,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       closureScopeDetails: json.closureScopeDetails ?? null,
       continueDate: json.continueDate ?? null,
       modifications: json.modifications ?? [],
+      personnel: json.personnel ?? [],
       activationSnapshotJson: json.activationSnapshotJson ?? null,
     });
   }

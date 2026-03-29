@@ -403,6 +403,16 @@
             <button [disabled]="isReadOnly()" (click)="addVentingPermit()">Create Blank</button>
           </app-item-carousel>
         }
+        @case('personnel') {
+          <app-personnel-panel
+            [personnel]="currentPackage().personnel"
+            [packageStatus]="packageStatus()"
+            (foremanSignOnEvent)="onForemanSignOn($event)"
+            (foremanCloseOutEvent)="onForemanCloseOut($event)"
+            (signOnEvent)="onPersonnelSignOn($event)"
+            (signOffEvent)="onPersonnelSignOff($event)"
+          ></app-personnel-panel>
+        }
       }
     </ng-template>
 

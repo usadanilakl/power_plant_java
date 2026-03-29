@@ -124,6 +124,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
             dto.setPackageStatus(valueMapper.convertToDto(entity.getPackageStatus()));
         }
         dto.setModifications(entity.getModifications());
+        dto.setPersonnel(entity.getPersonnel());
 
         dto.setDate(entity.getDate());
         dto.setTime(entity.getTime());
@@ -268,6 +269,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
         if(dto.getPermitNumber()!=null) entity.setPermitNumber(dto.getPermitNumber());
         if(dto.getPackageStatus()!=null) entity.setPackageStatus(valueMapper.convertToEntity(dto.getPackageStatus()));
         if(dto.getModifications()!=null && !dto.getModifications().isEmpty()) entity.setModifications(dto.getModifications());
+        if(dto.getPersonnel()!=null && !dto.getPersonnel().isEmpty()) entity.setPersonnel(dto.getPersonnel());
 
         if (entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
             WorkRequest firstWorkRequest = entity.getWorkRequests().iterator().next();

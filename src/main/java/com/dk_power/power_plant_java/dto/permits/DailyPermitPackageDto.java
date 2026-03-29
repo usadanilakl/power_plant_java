@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.permits;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.PackageModification;
+import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -53,6 +54,7 @@ public class DailyPermitPackageDto extends BaseDto {
     private String closureScopeDetails;
     private String continueDate;
     private List<PackageModification> modifications = new ArrayList<>();
+    private List<PersonnelSignEntry> personnel = new ArrayList<>();
     private String activationSnapshotJson;
 
     @JsonIgnore

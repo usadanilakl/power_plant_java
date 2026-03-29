@@ -6,10 +6,13 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.*;
+import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
@@ -36,6 +39,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private final NgLotoBoxService lotoBoxService;
     private final NgLockService lockService;
     private final LotoSnapshotRepo lotoSnapshotRepo;
+    private final LotoStandardRepo lotoStandardRepo;
 
     @Override
     public LotoRepo getRepo() {
@@ -237,25 +241,183 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return this.mapper.convertIdDtoToEntity(lotoIdDto);
     }
 
-//    public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
-//        Loto loto = getEntityById(currentStandardId);
-//        if (loto == null) {
-//            throw new EntityNotFoundException("LotoStandard not found");
-//        }
-//        loto.reorderLotoPoints(lotoPoints);
-//        LotoStandard savedStandard = save(standard);
-//        return toDto(savedStandard);
-//    }
+    /*********************************************************************************************************************
+     * LOTO PERMIT WORKFLOW
+     ******************************************************************************************************************/
 
-//    public LotoDto createFirstVersionOfLoto(LotoDto loto){
-//        Loto entity = toEntity(loto);
-//    }
-//
-//    public LotoDto updateWithVersion(LotoDto loto){
-//
-//    }
-//
-//    public LotoDto updateWithNoVersion(LotoDto loto){
-//
-//    }
+    @Transactional
+    public LotoDto createFromStandard(Long standardId, LotoIdDto permitData, Integer requestedBoxNumber) {
+        LotoStandard standard = lotoStandardRepo.findById(standardId)
+                .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found with id: " + standardId));
+
+        Loto loto = new Loto();
+        if (permitData != null) mapper.updateLotoFromDto(permitData, loto);
+        loto.setSourceStandard(standard);
+        loto.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+
+        LotoSnapshot snapshot = loto.createNewSnapshot();
+        snapshot.setSnapshotReason("Created from standard: " + standard.getName());
+
+        Set<LotoPointIdDto> pointDtos = new HashSet<>();
+        for (LotoPoint point : standard.getLotoPoints()) {
+            pointDtos.add(lotoPointService.toIdDto(point));
+        }
+        snapshot.setLotoPointDtos(pointDtos);
+        try {
+            snapshot.setLotoPointOrder(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(standard.getLotoPointOrder()));
+        } catch (Exception e) {
+            snapshot.setLotoPointOrder("{}");
+        }
+
+        loto = repo.save(loto);
+        lotoSnapshotRepo.save(snapshot);
+        lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
+
+        for (LotoPoint point : standard.getLotoPoints()) {
+            Lock lock = new Lock();
+            lock.setLoto(loto);
+            lock.setAssignedLotoPointId(point.getId());
+            lock.setLockType("LOCK");
+            lockService.save(lock);
+        }
+
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto createFromScratch(LotoIdDto permitData, Integer requestedBoxNumber) {
+        Loto loto = new Loto();
+        if (permitData != null) mapper.updateLotoFromDto(permitData, loto);
+        loto.setPermitStatus(ngValueService.createValue("Permit Status", "Building"));
+
+        LotoSnapshot snapshot = loto.createNewSnapshot();
+        snapshot.setSnapshotReason("Created from scratch");
+
+        loto = repo.save(loto);
+        lotoSnapshotRepo.save(snapshot);
+        lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
+
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto changeStatus(Long lotoId, String newStatus) {
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+
+        String currentStatus = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        validateStatusTransition(currentStatus, newStatus);
+
+        switch (newStatus) {
+            case "Active" -> {
+                LotoSnapshot latest = loto.getLatestSnapshot();
+                latest.setPersonnelSnapshot(loto.getPersonnelJson());
+                latest.setSnapshotReason("Test".equals(currentStatus) ? "Re-Activated" : "Activated");
+                lotoSnapshotRepo.save(latest);
+            }
+            case "Test" -> {
+                LotoSnapshot latest = loto.getLatestSnapshot();
+                try {
+                    LotoSnapshot testSnapshot = (LotoSnapshot) latest.clone();
+                    testSnapshot.setId(null);
+                    testSnapshot.setDateCreated(java.time.LocalDateTime.now());
+                    testSnapshot.setLoto(loto);
+                    testSnapshot.setSnapshotReason("Test Started");
+                    loto.getSnapshots().add(testSnapshot);
+                    lotoSnapshotRepo.save(testSnapshot);
+                } catch (CloneNotSupportedException e) {
+                    throw new RuntimeException("Failed to clone snapshot for test", e);
+                }
+            }
+            case "Closed" -> {
+                LotoSnapshot latest = loto.getLatestSnapshot();
+                latest.setPersonnelSnapshot(loto.getPersonnelJson());
+                latest.setSnapshotReason("Closed");
+                lotoSnapshotRepo.save(latest);
+                if (loto.getLotoBox() != null) lotoBoxService.releaseBox(loto.getLotoBox());
+            }
+        }
+
+        Value statusValue = ngValueService.createValue("Permit Status", newStatus);
+        loto.setPermitStatus(statusValue);
+
+        if (!"Closed".equals(newStatus) && loto.getLotoBox() != null) {
+            lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), newStatus);
+        }
+
+        return toDto(repo.save(loto));
+    }
+
+    private void validateStatusTransition(String current, String target) {
+        if (target == null) throw new IllegalArgumentException("Target status cannot be null");
+        Set<String> allowed = switch (current != null ? current : "") {
+            case "Building" -> Set.of("Active", "Closed");
+            case "Active" -> Set.of("Test", "Closed");
+            case "Test" -> Set.of("Active", "Closed");
+            case "Closed" -> Set.of();
+            default -> Set.of("Active", "Building", "Closed");
+        };
+        if (!allowed.contains(target)) {
+            throw new IllegalArgumentException("Invalid status transition: " + (current != null ? current : "null") + " → " + target);
+        }
+    }
+
+    @Transactional
+    public LotoDto signOnPerson(Long lotoId, PersonnelSignEntry entry) {
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        entry.setSignOnTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        List<PersonnelSignEntry> personnel = loto.getPersonnel();
+        personnel.add(entry);
+        loto.setPersonnel(personnel);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto signOffPerson(Long lotoId, String personName, String comments) {
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        boolean found = loto.signOffPerson(personName, null, comments);
+        if (!found) throw new EntityNotFoundException("No active sign-on found for: " + personName);
+        return toDto(repo.save(loto));
+    }
+
+    public List<PersonnelSignEntry> getPersonnel(Long lotoId) {
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        return loto.getPersonnel();
+    }
+
+    @Transactional
+    public LotoDto assignLocksToPoints(Long lotoId, List<Map<String, Object>> lockAssignments) {
+        Loto loto = repo.findById(lotoId)
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+
+        for (Map<String, Object> assignment : lockAssignments) {
+            Long pointId = Long.valueOf(assignment.get("lotoPointId").toString());
+            String tagLabel = assignment.get("tagLabel") != null ? assignment.get("tagLabel").toString() : null;
+            String lockType = assignment.get("lockType") != null ? assignment.get("lockType").toString() : "LOCK";
+            Integer lockNumber = assignment.get("lockNumber") != null
+                    ? Integer.valueOf(assignment.get("lockNumber").toString()) : null;
+
+            Lock lock = loto.getLocks() != null
+                    ? loto.getLocks().stream()
+                        .filter(l -> pointId.equals(l.getAssignedLotoPointId()))
+                        .findFirst().orElse(null)
+                    : null;
+
+            if (lock == null) {
+                lock = new Lock();
+                lock.setLoto(loto);
+            }
+            lock.setAssignedLotoPointId(pointId);
+            lock.setTagLabel(tagLabel);
+            lock.setLockType(lockType);
+            if (lockNumber != null) lock.setNumber(lockNumber);
+            lockService.save(lock);
+        }
+
+        return toDto(repo.findById(lotoId).orElseThrow());
+    }
 }

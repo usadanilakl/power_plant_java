@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.pojo.PackageModification;
+import com.dk_power.power_plant_java.entities.permits.pojo.PersonnelSignEntry;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -80,6 +81,9 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     private String activationSnapshotJson;
 
+    @Column(columnDefinition = "TEXT")
+    private String personnelJson;
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<PackageModification> getModifications() {
@@ -105,6 +109,54 @@ public class DailyPermitPackage extends BaseAuditEntity {
         List<PackageModification> mods = getModifications();
         mods.add(mod);
         setModifications(mods);
+    }
+
+    // --- Personnel JSON ---
+
+    public List<PersonnelSignEntry> getPersonnel() {
+        if (personnelJson == null || personnelJson.isEmpty()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(personnelJson, new TypeReference<List<PersonnelSignEntry>>() {});
+        } catch (Exception e) { return new ArrayList<>(); }
+    }
+
+    public void setPersonnel(List<PersonnelSignEntry> personnel) {
+        try { this.personnelJson = objectMapper.writeValueAsString(personnel); }
+        catch (JsonProcessingException e) { throw new RuntimeException("Cannot serialize personnel", e); }
+    }
+
+    public void signOnPerson(String name, String role, String company, String performedBy, boolean isForeman) {
+        List<PersonnelSignEntry> list = getPersonnel();
+        PersonnelSignEntry entry = new PersonnelSignEntry();
+        entry.setPersonName(name);
+        entry.setPersonRole(role);
+        entry.setCompany(company);
+        entry.setSignOnTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        entry.setPerformedBy(performedBy);
+        entry.setForeman(isForeman);
+        list.add(entry);
+        setPersonnel(list);
+    }
+
+    public boolean signOffPerson(String name, String performedBy, String comments) {
+        List<PersonnelSignEntry> list = getPersonnel();
+        for (PersonnelSignEntry entry : list) {
+            if (entry.getPersonName() != null && entry.getPersonName().equals(name) && entry.getSignOffTime() == null) {
+                entry.setSignOffTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                entry.setSignOffComments(comments);
+                setPersonnel(list);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<PersonnelSignEntry> getSignedOnPersonnel() {
+        return getPersonnel().stream().filter(e -> e.getSignOffTime() == null).collect(java.util.stream.Collectors.toList());
+    }
+
+    public boolean hasForemanSignedOn() {
+        return getPersonnel().stream().anyMatch(e -> e.isForeman() && e.getSignOffTime() == null);
     }
 
     public void setWorkRequests(Set<WorkRequest> workRequests) {

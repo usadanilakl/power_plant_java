@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LotoDto } from '../../models/loto/loto.model';
+import { LotoDto, PersonnelSignEntry } from '../../models/loto/loto.model';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
@@ -93,5 +93,38 @@ export class LotoService {
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post<SpringApiResponse<LotoDto[]>>(`${this.apiUrl}/import`, formData);
+  }
+
+  // LOTO Permit Workflow
+  createFromStandard(standardId: number, permitData?: LotoIdDto, boxNumber?: number): Observable<SpringApiResponse<LotoDto>> {
+    let params = new HttpParams();
+    if (boxNumber != null) params = params.set('boxNumber', boxNumber.toString());
+    return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/create-from-standard/${standardId}`, permitData ?? {}, { params });
+  }
+
+  createFromScratch(permitData?: LotoIdDto, boxNumber?: number): Observable<SpringApiResponse<LotoDto>> {
+    let params = new HttpParams();
+    if (boxNumber != null) params = params.set('boxNumber', boxNumber.toString());
+    return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/create-from-scratch`, permitData ?? {}, { params });
+  }
+
+  changeStatus(lotoId: number, status: string): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/status`, { status });
+  }
+
+  signOn(lotoId: number, entry: PersonnelSignEntry): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/sign-on`, entry);
+  }
+
+  signOff(lotoId: number, name: string, comments: string): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/sign-off`, { name, comments });
+  }
+
+  getPersonnel(lotoId: number): Observable<SpringApiResponse<PersonnelSignEntry[]>> {
+    return this.http.get<SpringApiResponse<PersonnelSignEntry[]>>(`${this.apiUrl}/${lotoId}/personnel`);
+  }
+
+  assignLocks(lotoId: number, lockAssignments: any[]): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/assign-locks`, lockAssignments);
   }
 }

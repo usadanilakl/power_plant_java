@@ -62,6 +62,98 @@ public class SyncComparisonService {
         this.objectMapper = objectMapper;
     }
 
+    // ==================== Cached server IDs for quick checks ====================
+    private final Map<String, CachedIds> serverIdCache = new ConcurrentHashMap<>();
+
+    private static class CachedIds {
+        final Set<Long> ids;
+        final long fetchedAtMs;
+        CachedIds(Set<Long> ids) { this.ids = ids; this.fetchedAtMs = System.currentTimeMillis(); }
+        boolean isExpired() { return System.currentTimeMillis() - fetchedAtMs > 30_000; }
+    }
+
+    private Set<Long> getCachedServerIds(String entityType) {
+        CachedIds cached = serverIdCache.get(entityType);
+        if (cached != null && !cached.isExpired()) return cached.ids;
+        String syncServerUrl = syncConfig.getSyncServerUrl();
+        if (syncServerUrl == null || syncServerUrl.isEmpty()) return Collections.emptySet();
+        Set<Long> ids = fetchServerEntityIds(entityType, syncServerUrl);
+        serverIdCache.put(entityType, new CachedIds(ids));
+        return ids;
+    }
+
+    /**
+     * Quick sync status check for a single entity.
+     */
+    @Transactional(readOnly = true)
+    public EntitySyncStatus checkEntitySync(String entityType, Long entityId) {
+        if (!entityTableRegistry.isRegistered(entityType)) {
+            throw new IllegalArgumentException("Unknown entity type: " + entityType);
+        }
+        EntitySyncStatus status = new EntitySyncStatus();
+        status.setEntityType(entityType);
+        status.setEntityId(entityId);
+
+        SyncableService<?> service = serviceFacade.getService(entityType);
+        Object localEntity = service != null ? service.getEntityById(entityId) : null;
+        status.setExistsLocally(localEntity != null);
+
+        try {
+            Set<Long> serverIds = getCachedServerIds(entityType);
+            status.setExistsOnServer(serverIds.contains(entityId));
+        } catch (Exception e) {
+            status.setExistsOnServer(false);
+            status.setStatus("UNKNOWN");
+            return status;
+        }
+
+        if (!status.isExistsLocally() && !status.isExistsOnServer()) { status.setStatus("NOT_FOUND"); return status; }
+        if (status.isExistsLocally() && !status.isExistsOnServer()) {
+            status.setStatus("LOCAL_ONLY");
+            if (localEntity instanceof com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity bie && bie.getDateModified() != null)
+                status.setLocalModified(bie.getDateModified().atZone(java.time.ZoneId.systemDefault()).toInstant());
+            return status;
+        }
+        if (!status.isExistsLocally()) { status.setStatus("SERVER_ONLY"); return status; }
+
+        // Both exist — compare timestamps
+        try {
+            String syncServerUrl = syncConfig.getSyncServerUrl();
+            Map<Long, Instant> serverTs = fetchServerTimestamps(entityType, List.of(entityId), syncServerUrl);
+            Instant serverTime = serverTs.get(entityId);
+            status.setServerModified(serverTime);
+
+            if (localEntity instanceof com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity bie) {
+                Instant localTime = bie.getDateModified() != null ? bie.getDateModified().atZone(java.time.ZoneId.systemDefault()).toInstant() : null;
+                status.setLocalModified(localTime);
+                if (localTime != null && serverTime != null) {
+                    long diff = Math.abs(localTime.getEpochSecond() - serverTime.getEpochSecond());
+                    if (diff <= 5) { status.setTimestampsMatch(true); status.setStatus("IN_SYNC"); }
+                    else if (localTime.isAfter(serverTime)) status.setStatus("STALE_SERVER");
+                    else status.setStatus("STALE_LOCAL");
+                } else { status.setTimestampsMatch(true); status.setStatus("IN_SYNC"); }
+            }
+        } catch (Exception e) {
+            status.setTimestampsMatch(true);
+            status.setStatus("IN_SYNC");
+        }
+        return status;
+    }
+
+    @Transactional(readOnly = true)
+    public List<EntitySyncStatus> checkEntitiesSync(String entityType, List<Long> entityIds) {
+        List<EntitySyncStatus> results = new ArrayList<>();
+        for (Long id : entityIds) {
+            try { results.add(checkEntitySync(entityType, id)); }
+            catch (Exception e) {
+                EntitySyncStatus err = new EntitySyncStatus();
+                err.setEntityType(entityType); err.setEntityId(id); err.setStatus("UNKNOWN");
+                results.add(err);
+            }
+        }
+        return results;
+    }
+
     /**
      * Compare local vs hub entity IDs for a given entity type.
      * Returns which IDs are local-only, server-only, and common.
@@ -372,6 +464,23 @@ public class SyncComparisonService {
 
     private record FieldInfo(Field field, String name) {}
 
+    private Map<Long, Instant> fetchServerTimestamps(String entityType, List<Long> entityIds, String syncServerUrl) {
+        String url = syncServerUrl + "/api/sync/entity-timestamps/" + entityType;
+        HttpHeaders headers = buildHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<Map<Long, String>> response = restTemplate.exchange(
+            url, HttpMethod.POST, new HttpEntity<>(entityIds, headers),
+            new ParameterizedTypeReference<>() {});
+        Map<Long, String> raw = response.getBody();
+        if (raw == null) return Collections.emptyMap();
+        Map<Long, Instant> result = new HashMap<>();
+        for (Map.Entry<Long, String> entry : raw.entrySet()) {
+            try { result.put(entry.getKey(), Instant.parse(entry.getValue())); }
+            catch (Exception ignored) {}
+        }
+        return result;
+    }
+
     // ==================== DTOs ====================
 
     @Data
@@ -425,5 +534,20 @@ public class SyncComparisonService {
     public static class EntityTypeSummary {
         private String entityType;
         private long localCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EntitySyncStatus {
+        private String entityType;
+        private Long entityId;
+        private boolean existsLocally;
+        private boolean existsOnServer;
+        private boolean timestampsMatch;
+        private Instant localModified;
+        private Instant serverModified;
+        private String status;
     }
 }

@@ -2,11 +2,13 @@ import { computed, inject, Injectable, signal } from "@angular/core";
 import { ContextMenuAction } from "./context-menu.component";
 import { ClipboardService } from "../../clipboard/clipboard.service";
 import { ContextMenuRegistryService } from "./context-menu-registry.service";
+import { SyncCheckGuardService } from "../../sync-check/sync-check-guard.service";
 
 @Injectable()
 export class ContextMenuService {
   protected clibpoardService = inject(ClipboardService);
   protected registry = inject(ContextMenuRegistryService);
+  protected syncCheckGuard = inject(SyncCheckGuardService);
   // Context menu state
   contextMenuVisible = signal<boolean>(false);
   contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -44,6 +46,12 @@ export class ContextMenuService {
         () => this.contextMenuSelectedItem()?.isVerified ?? false
       )(),
       action: (item) => this.handleVerify(item),
+    },
+    {
+      id: 'sync-check',
+      label: 'Check Sync Status',
+      icon: '🔄',
+      action: (item) => this.handleSyncCheck(item),
     },
     {
       id: 'divider2',
@@ -90,6 +98,12 @@ export class ContextMenuService {
   public handleDelete(item: any): void {
     console.log('Deleting:', item);
     // Implement delete logic
+  }
+
+  public handleSyncCheck(item: any): void {
+    if (item?.objectType && item?.id) {
+      this.syncCheckGuard.openSyncCheckDialog(item.objectType, item.id);
+    }
   }
 
   /**

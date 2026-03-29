@@ -4,12 +4,15 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.entities.esp.EspDevice;
 import com.dk_power.power_plant_java.entities.esp.LedStrip;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.esp.EspLedService;
 import com.dk_power.power_plant_java.sevice.esp.LedStripService;
+import com.dk_power.power_plant_java.sevice.esp.LotoStatusColorMapping;
+import com.dk_power.power_plant_java.sevice.esp.WledCommandQueueService;
 
 import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
@@ -28,16 +31,19 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private final LotoBoxMapper lotoBoxMapper;
     private final EspLedService espLedService;
     private final LedStripService ledStripService;
+    private final WledCommandQueueService wledCommandQueueService;
 
     public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
                            EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
-                           EspLedService espLedService, LedStripService ledStripService) {
+                           EspLedService espLedService, LedStripService ledStripService,
+                           WledCommandQueueService wledCommandQueueService) {
         this.lotoBoxRepo = lotoBoxRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
         this.lotoBoxMapper = lotoBoxMapper;
         this.espLedService = espLedService;
         this.ledStripService = ledStripService;
+        this.wledCommandQueueService = wledCommandQueueService;
     }
 
     @Override
@@ -215,5 +221,57 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         absoluteRange.put("end", offset + box.getRangeEnd());
 
         return absoluteRange;
+    }
+
+    public List<LotoBoxDto> findAvailableBoxes() {
+        return lotoBoxRepo.findAvailableBoxes().stream()
+                .map(lotoBoxMapper::convertToDto)
+                .toList();
+    }
+
+    public LotoBox assignBoxToLoto(Loto loto, Integer requestedBoxNumber) {
+        LotoBox box;
+        if (requestedBoxNumber != null) {
+            box = lotoBoxRepo.findByNumber(requestedBoxNumber);
+            if (box == null) throw new RuntimeException("LotoBox not found with number: " + requestedBoxNumber);
+            if (box.getLoto() != null) throw new RuntimeException("LotoBox " + requestedBoxNumber + " is already assigned");
+        } else {
+            List<LotoBox> available = lotoBoxRepo.findAvailableBoxes();
+            if (available.isEmpty()) throw new RuntimeException("No available LOTO boxes");
+            box = available.get(0);
+        }
+        box.setLoto(loto);
+        loto.setLotoBox(box);
+        loto.setBoxNumber(box.getNumber());
+        updateBoxColorForStatus(box, "Building");
+        return box;
+    }
+
+    public void releaseBox(LotoBox box) {
+        box.setLoto(null);
+        updateBoxColorForStatus(box, "Closed");
+        lotoBoxRepo.save(box);
+    }
+
+    public void updateBoxColorForStatus(LotoBox box, String statusName) {
+        LotoStatusColorMapping.RgbColor color = LotoStatusColorMapping.getColorForStatus(statusName);
+        box.setR(color.r());
+        box.setG(color.g());
+        box.setB(color.b());
+        box.setBrightness(color.brightness());
+        lotoBoxRepo.save(box);
+
+        if (box.getLedStrip() != null && box.getLedStrip().getEspDevice() != null) {
+            Map<String, Object> segment = new HashMap<>();
+            segment.put("id", box.getNumber());
+            segment.put("col", List.of(List.of(color.r(), color.g(), color.b())));
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("seg", segment);
+            payload.put("bri", color.brightness());
+
+            wledCommandQueueService.enqueueCommand(
+                    box.getLedStrip().getEspDevice(), payload, box.getNumber());
+        }
     }
 }
