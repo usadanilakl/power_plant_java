@@ -55,9 +55,18 @@ public class OldWorkRequestMigrationService {
     @Scheduled(fixedDelay = 300000, initialDelay = 120000) // every 5 min, 2 min initial delay
     @Transactional
     public void migrateFromOldFlow() {
-        if (oldWrExcelFileId == null || oldWrExcelFileId.isBlank()) return;
-        if (!certAccess.isAvailable()) return;
-        if (!syncConfig.isHubMode()) return;
+        if (oldWrExcelFileId == null || oldWrExcelFileId.isBlank()) {
+            log.warn("[Old WR Migration] Skipped: no Excel file ID configured");
+            return;
+        }
+        if (!certAccess.isAvailable()) {
+            log.warn("[Old WR Migration] Skipped: SharePoint certificate not available");
+            return;
+        }
+        if (!syncConfig.isHubMode()) {
+            log.warn("[Old WR Migration] Skipped: not in hub mode");
+            return;
+        }
 
         log.info("[Old WR Migration] Starting migration pull from SharePoint Excel file");
 

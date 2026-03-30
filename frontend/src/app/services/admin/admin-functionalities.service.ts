@@ -547,4 +547,36 @@ export class AdminFunctionalitiesService {
       {}
     );
   }
+
+  // ==================== LOTO Management ====================
+
+  seedLotoBoxes(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${environment.apiUrl}/loto-boxes/seed-inventory`, {}
+    );
+  }
+
+  reconcileLotos(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${environment.apiUrl}/loto-boxes/reconcile`, {}
+    );
+  }
+
+  initializeEspDevices(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${environment.apiUrl}/loto-boxes/sync-to-esp`, null
+    );
+  }
+
+  getLotoBoxWledQueueStatus(): Observable<SpringApiResponse<{pending: number, expired: number}>> {
+    return this.http.get<SpringApiResponse<{pending: number, expired: number}>>(
+      `${environment.apiUrl}/loto-boxes/wled-queue-status`
+    );
+  }
+
+  activateAllLotos(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${environment.apiUrl}/lotos/activate-all`, {}
+    );
+  }
 }

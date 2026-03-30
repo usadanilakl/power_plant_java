@@ -745,7 +745,7 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
     this.currentDailyPermitPackageService.foremanSignOn(event);
   }
 
-  onForemanCloseOut(event: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }): void {
+  onForemanCloseOut(event: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string; continueTime: string }): void {
     this.currentDailyPermitPackageService.foremanCloseOut(event);
   }
 
@@ -755,6 +755,29 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
 
   onPersonnelSignOff(event: { personName: string; comments: string }): void {
     this.currentDailyPermitPackageService.signOffPerson(event);
+  }
+
+  onGenerateContinuation(): void {
+    this.currentDailyPermitPackageService.generateContinuation();
+    this.isClosurePopupOpen = false;
+  }
+
+  closeAndGenerateContinuation(): void {
+    this.currentDailyPermitPackageService.closeAndGenerateContinuation();
+    this.isClosurePopupOpen = false;
+  }
+
+  getSignedOffWithComments(): any[] {
+    return (this.currentPackage().personnel || [])
+      .filter((e: any) => e.signOffTime && e.signOffComments && e.signOffComments.trim());
+  }
+
+  getStillSignedOnCount(): number {
+    return (this.currentPackage().personnel || []).filter((e: any) => !e.signOffTime).length;
+  }
+
+  getSignedOffCount(): number {
+    return (this.currentPackage().personnel || []).filter((e: any) => !!e.signOffTime).length;
   }
 
   isClosurePopupOpen = false;
@@ -774,17 +797,9 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   }
 
   confirmClosure(): void {
-    this.currentDailyPermitPackageService.closePackage({
-      workCompleted: this.closureWorkCompleted,
-      closureComments: this.closureComments,
-      scopeChanged: this.closureScopeChanged,
-      closureScopeDetails: this.closureScopeDetails,
-      continueDate: this.closureContinueDate,
-    });
+    // Close-out data already stored by foreman — just close the package
+    this.currentDailyPermitPackageService.closePackage();
     this.isClosurePopupOpen = false;
-    if (!this.closureWorkCompleted || this.closureScopeChanged) {
-      this.isReissueAfterClosePromptOpen = true;
-    }
   }
 
   isReissueAfterClosePromptOpen = false;

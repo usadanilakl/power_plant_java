@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.enums.Status;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,8 +56,10 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
 
 
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
     public Set<LotoPointIdDto> getLotoPointDtos() {
-        ObjectMapper objectMapper = new ObjectMapper();
         Set<LotoPointIdDto> dtos = new HashSet<>();
 
         for (String jsonData : lotoPointsData) {
@@ -64,7 +67,6 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
                 LotoPointIdDto dto = objectMapper.readValue(jsonData, LotoPointIdDto.class);
                 dtos.add(dto);
             } catch (JsonProcessingException e) {
-                // Handle or log the error
                 e.printStackTrace();
             }
         }
@@ -73,7 +75,6 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     }
 
     public void setLotoPointDtos(Set<LotoPointIdDto> dtos) {
-        ObjectMapper objectMapper = new ObjectMapper();
         lotoPointsData = new HashSet<>();
 
         for (LotoPointIdDto dto : dtos) {
@@ -81,7 +82,6 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
                 String jsonData = objectMapper.writeValueAsString(dto);
                 lotoPointsData.add(jsonData);
             } catch (JsonProcessingException e) {
-                // Handle or log the error
                 e.printStackTrace();
             }
         }

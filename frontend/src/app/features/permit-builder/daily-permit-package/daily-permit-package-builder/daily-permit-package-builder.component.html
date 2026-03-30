@@ -167,13 +167,15 @@
                   <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume Work</button>
                   <button class="status-btn close" (click)="openClosureDialog()">Close Package</button>
                 }
+                @case('Closed') {
+                  <button class="status-btn" style="background:#2d5aa0;" (click)="reusePermitsPopupOpen()">Reissue Package</button>
+                }
               }
             </div>
           }
         </div>
         <div class="package-action-list">
           <button class="action-button action-button-primary" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Save Package</button>
-          <button class="action-button" (click)="reusePermitsPopupOpen()" [disabled]="isReadOnly()">Reissue Package</button>
           <button class="action-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build in Red Tag</button>
           @if(currentPackage().activationSnapshotJson){
             <button class="action-button" (click)="isSnapshotPopupOpen = true">View Snapshot</button>
@@ -246,13 +248,13 @@
             <ng-template let-sw>
               <app-safe-work-form
                 [values]="sw"
-                [submitButtonText]="'Build In Red Tag'"
-                (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
-                (formSubmit)="buildInRedTag($event, 'safeWork')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(sw(), 'safeWorks')">
+                [submitButtonText]="isReadOnly() ? '' : 'Build In Red Tag'"
+                (valuesChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitSafeWork($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'safeWork')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(sw(), 'safeWorks')">
               </app-safe-work-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addSafeWork()">Create Blank</button>
           </app-item-carousel>
         }
@@ -265,13 +267,13 @@
             <ng-template let-hw>
               <app-hot-work-form
                 [values]="hw"
-                [submitButtonText]="'Build In Red Tag'"
-                (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
-                (formSubmit)="buildInRedTag($event, 'hotWork')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(hw(), 'hotWorks')"
+                [submitButtonText]="isReadOnly() ? '' : 'Build In Red Tag'"
+                (valuesChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitHotWork($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'hotWork')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(hw(), 'hotWorks')"
               ></app-hot-work-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addHotWork()">Create Blank</button>
           </app-item-carousel>
         }
@@ -284,13 +286,13 @@
             <ng-template let-cs>
               <app-confined-space-form
                 [values]="cs"
-                [submitButtonText]="'Build In Red Tag'"
-                (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
-                (formSubmit)="buildInRedTag($event, 'confinedSpace')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(cs(), 'confinedSpaces')"
+                [submitButtonText]="isReadOnly() ? '' : 'Build In Red Tag'"
+                (valuesChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitConfinedSpace($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'confinedSpace')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(cs(), 'confinedSpaces')"
               ></app-confined-space-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addConfinedSpace()">Create Blank</button>
           </app-item-carousel>
         }
@@ -349,13 +351,13 @@
                 [entity]="ep()"
                 [title]="'Energized Work Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="ep().id ? 'Remove' : ''"
-                (formValueChange)="currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
-                (formSubmit)="buildInRedTag($event, 'energizedWorkPermit')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(ep(), 'energizedWorkPermits')"
+                [deleteButtonText]="isReadOnly() ? '' : (ep().id ? 'Remove' : '')"
+                (formValueChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitEnergizedWorkPermit($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'energizedWorkPermit')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(ep(), 'energizedWorkPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateEnergizedWorkPermitFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addEnergizedWorkPermit()">Create Blank</button>
           </app-item-carousel>
         }
@@ -371,13 +373,13 @@
                 [entity]="xp()"
                 [title]="'Excavation Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="xp().id ? 'Remove' : ''"
-                (formValueChange)="currentDailyPermitPackageService.submitExcavationPermit($event)"
-                (formSubmit)="buildInRedTag($event, 'excavationPermit')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(xp(), 'excavationPermits')"
+                [deleteButtonText]="isReadOnly() ? '' : (xp().id ? 'Remove' : '')"
+                (formValueChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitExcavationPermit($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'excavationPermit')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(xp(), 'excavationPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateExcavationPermitFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addExcavationPermit()">Create Blank</button>
           </app-item-carousel>
         }
@@ -393,13 +395,13 @@
                 [entity]="vp()"
                 [title]="'Venting Permit'"
                 [submitButtonText]="'Build In Red Tag'"
-                [deleteButtonText]="vp().id ? 'Remove' : ''"
-                (formValueChange)="currentDailyPermitPackageService.submitVentingPermit($event)"
-                (formSubmit)="buildInRedTag($event, 'ventingPermit')"
-                (formDelete)="currentDailyPermitPackageService.removePermitFromPackageItem(vp(), 'ventingPermits')"
+                [deleteButtonText]="isReadOnly() ? '' : (vp().id ? 'Remove' : '')"
+                (formValueChange)="isReadOnly() ? null : currentDailyPermitPackageService.submitVentingPermit($event)"
+                (formSubmit)="isReadOnly() ? null : buildInRedTag($event, 'ventingPermit')"
+                (formDelete)="isReadOnly() ? null : currentDailyPermitPackageService.removePermitFromPackageItem(vp(), 'ventingPermits')"
               ></app-rf-reactive-form>
             </ng-template>
-            <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate from WR</button>
+            <button [disabled]="requestCount()===0 || isReadOnly()" (click)="currentDailyPermitPackageService.generateVentingPermitFromCurrentRequest()">Generate from WR</button>
             <button [disabled]="isReadOnly()" (click)="addVentingPermit()">Create Blank</button>
           </app-item-carousel>
         }
@@ -839,43 +841,121 @@
 <app-popup-projection
   [title]="'Close Package'"
   [isOpen]="isClosurePopupOpen"
+  [size]="'large'"
   (close)="isClosurePopupOpen = false">
-  <div class="workflow-dialog">
-    <div class="closure-form">
-      <div class="closure-field">
-        <label>Is work completed?</label>
-        <select [(ngModel)]="closureWorkCompleted">
-          <option [ngValue]="true">Yes</option>
-          <option [ngValue]="false">No</option>
-        </select>
+  <div class="closure-review">
+
+    <!-- Personnel Comments Card -->
+    <div class="review-card">
+      <div class="review-card-header">
+        <span class="review-card-icon">&#128172;</span>
+        <span class="review-card-title">Personnel Comments</span>
+        <span class="review-card-badge">{{ getSignedOffWithComments().length }}</span>
       </div>
-      @if(!closureWorkCompleted){
-        <div class="closure-field">
-          <label>When will work continue?</label>
-          <input type="date" [(ngModel)]="closureContinueDate">
-        </div>
-      }
-      <div class="closure-field">
-        <label>Any changes to work scope?</label>
-        <select [(ngModel)]="closureScopeChanged">
-          <option [ngValue]="false">No</option>
-          <option [ngValue]="true">Yes</option>
-        </select>
-      </div>
-      @if(closureScopeChanged){
-        <div class="closure-field">
-          <label>Describe scope changes:</label>
-          <textarea [(ngModel)]="closureScopeDetails" rows="3"></textarea>
-        </div>
-      }
-      <div class="closure-field">
-        <label>Comments:</label>
-        <textarea [(ngModel)]="closureComments" rows="3" placeholder="Any additional comments..."></textarea>
+      <div class="review-card-body">
+        @if(getSignedOffWithComments().length > 0) {
+          @for(entry of getSignedOffWithComments(); track entry.personName) {
+            <div class="comment-row">
+              <div class="comment-author">
+                <span class="comment-name">{{ entry.personName }}</span>
+                <span class="comment-role" *ngIf="entry.personRole">{{ entry.personRole }}</span>
+              </div>
+              <div class="comment-text">{{ entry.signOffComments }}</div>
+            </div>
+          }
+        } @else {
+          <div class="review-empty">No comments from personnel</div>
+        }
       </div>
     </div>
-    <div class="workflow-actions">
-      <button class="status-btn close" (click)="confirmClosure()">Confirm Closure</button>
-      <button class="status-btn" style="background:#6c757d;" (click)="isClosurePopupOpen = false">Cancel</button>
+
+    <!-- Foreman Close-Out Card -->
+    <div class="review-card" [class.review-card-warning]="currentPackage().foremanCloseOutCompleted && !currentPackage().workCompleted">
+      <div class="review-card-header">
+        <span class="review-card-icon">&#128221;</span>
+        <span class="review-card-title">Foreman Close-Out</span>
+        @if(currentPackage().foremanCloseOutCompleted) {
+          <span class="review-card-badge review-badge-done">Completed</span>
+        } @else {
+          <span class="review-card-badge review-badge-pending">Pending</span>
+        }
+      </div>
+      <div class="review-card-body">
+        @if(currentPackage().foremanCloseOutCompleted) {
+          <div class="foreman-grid">
+            <div class="foreman-field">
+              <span class="foreman-label">Work Completed</span>
+              <span class="foreman-value" [class.value-yes]="currentPackage().workCompleted" [class.value-no]="!currentPackage().workCompleted">
+                {{ currentPackage().workCompleted ? 'Yes' : 'No' }}
+              </span>
+            </div>
+            @if(!currentPackage().workCompleted && currentPackage().continueDate) {
+              <div class="foreman-field">
+                <span class="foreman-label">Continue Date</span>
+                <span class="foreman-value">{{ currentPackage().continueDate }} {{ currentPackage().continueTime || '' }}</span>
+              </div>
+            }
+            @if(currentPackage().scopeChanged) {
+              <div class="foreman-field">
+                <span class="foreman-label">Scope Changed</span>
+                <span class="foreman-value value-no">Yes</span>
+              </div>
+              <div class="foreman-field foreman-field-wide">
+                <span class="foreman-label">New Scope</span>
+                <span class="foreman-value">{{ currentPackage().closureScopeDetails || 'Not specified' }}</span>
+              </div>
+            }
+            @if(currentPackage().closureComments) {
+              <div class="foreman-field foreman-field-wide">
+                <span class="foreman-label">Comments</span>
+                <span class="foreman-value">{{ currentPackage().closureComments }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="review-empty review-empty-warning">Foreman has not completed close-out yet. Package can still be closed by operator.</div>
+        }
+      </div>
+    </div>
+
+    <!-- Personnel Summary Card -->
+    <div class="review-card review-card-compact">
+      <div class="review-card-header">
+        <span class="review-card-icon">&#128101;</span>
+        <span class="review-card-title">Personnel Summary</span>
+      </div>
+      <div class="review-card-body">
+        <div class="summary-row">
+          <div class="summary-stat">
+            <span class="stat-number">{{ (currentPackage().personnel || []).length }}</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="summary-stat stat-signed-on">
+            <span class="stat-number">{{ getStillSignedOnCount() }}</span>
+            <span class="stat-label">Signed On</span>
+          </div>
+          <div class="summary-stat stat-signed-off">
+            <span class="stat-number">{{ getSignedOffCount() }}</span>
+            <span class="stat-label">Signed Off</span>
+          </div>
+        </div>
+        @if(getStillSignedOnCount() > 0) {
+          <div class="summary-notice">Remaining personnel will be auto-signed off on closure.</div>
+        }
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="review-actions">
+      <button class="review-btn review-btn-close" (click)="confirmClosure()">
+        <span class="review-btn-icon">&#10003;</span> Close Package
+      </button>
+      @if(currentPackage().foremanCloseOutCompleted && !currentPackage().workCompleted && currentPackage().continueDate) {
+        <button class="review-btn review-btn-reissue" (click)="closeAndGenerateContinuation()">
+          <span class="review-btn-icon">&#8634;</span> Close &amp; Reissue
+        </button>
+      }
+      <button class="review-btn review-btn-cancel" (click)="isClosurePopupOpen = false">Cancel</button>
     </div>
   </div>
 </app-popup-projection>

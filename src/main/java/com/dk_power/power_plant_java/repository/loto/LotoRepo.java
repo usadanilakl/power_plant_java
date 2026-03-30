@@ -21,4 +21,7 @@ public interface LotoRepo extends PermitRepo<Loto> {
     Loto getTempPermit(String currentUserName);
 
     Optional<Loto> findByName(String name);
+
+    @Query("SELECT l FROM Loto l WHERE l.boxNumber IS NOT NULL AND l.lotoBox IS NULL AND l.deleted = false")
+    List<Loto> findUnlinkedLotosWithBoxNumber();
 }

@@ -53,6 +53,9 @@ public class DailyPermitPackageDto extends BaseDto {
     private Boolean scopeChanged;
     private String closureScopeDetails;
     private String continueDate;
+    private String continueTime;
+    private Boolean foremanCloseOutCompleted;
+    private Integer modificationCount;
     private List<PackageModification> modifications = new ArrayList<>();
     private List<PersonnelSignEntry> personnel = new ArrayList<>();
     private String activationSnapshotJson;

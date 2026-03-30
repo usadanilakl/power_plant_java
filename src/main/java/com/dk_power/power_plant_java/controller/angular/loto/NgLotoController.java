@@ -308,4 +308,26 @@ public class NgLotoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error assigning locks: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/usage-monitor")
+    public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getLotoUsageMonitor() {
+        try {
+            List<Map<String, Object>> usage = ngLotoService.getLotoUsageMonitor();
+            return ResponseEntity.ok(new NgApiResponse<>(usage, "LOTO usage monitor retrieved"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/activate-all")
+    public ResponseEntity<NgApiResponse<String>> activateAllLotos() {
+        try {
+            String result = ngLotoService.activateAllLotos();
+            return ResponseEntity.ok(new NgApiResponse<>("OK", result));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
 }

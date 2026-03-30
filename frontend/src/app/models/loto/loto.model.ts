@@ -6,16 +6,9 @@ import { LotoIdDto } from './loto-id.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { Validators } from '@angular/forms';
+import { PersonnelSignEntry } from '../permits/dailt-permit-package.model';
 
-export interface PersonnelSignEntry {
-  personName: string;
-  personRole: string;
-  company: string;
-  signOnTime: string;
-  signOffTime: string | null;
-  signOffComments: string | null;
-  performedBy: string;
-}
+export type { PersonnelSignEntry };
 
 export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];

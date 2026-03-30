@@ -40,6 +40,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private final NgLockService lockService;
     private final LotoSnapshotRepo lotoSnapshotRepo;
     private final LotoStandardRepo lotoStandardRepo;
+    private final com.dk_power.power_plant_java.sevice.loto.loto_box.LotoAssignmentService lotoAssignmentService;
+    private final com.dk_power.power_plant_java.repository.permits.JobLogRepo jobLogRepo;
 
     @Override
     public LotoRepo getRepo() {
@@ -272,14 +274,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
         loto = repo.save(loto);
         lotoSnapshotRepo.save(snapshot);
-        lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
 
-        for (LotoPoint point : standard.getLotoPoints()) {
-            Lock lock = new Lock();
-            lock.setLoto(loto);
-            lock.setAssignedLotoPointId(point.getId());
-            lock.setLockType("LOCK");
-            lockService.save(lock);
+        // Auto-assign box + locks based on point count
+        int pointCount = standard.getLotoPoints().size();
+        if (requestedBoxNumber != null) {
+            lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
+        } else {
+            lotoAssignmentService.autoAssign(loto, pointCount);
+            lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), "Building");
         }
 
         return toDto(repo.save(loto));
@@ -296,7 +298,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
         loto = repo.save(loto);
         lotoSnapshotRepo.save(snapshot);
-        lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
+
+        // Auto-assign box (no locks yet since no points)
+        if (requestedBoxNumber != null) {
+            lotoBoxService.assignBoxToLoto(loto, requestedBoxNumber);
+        } else {
+            lotoAssignmentService.autoAssign(loto, 0);
+            lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), "Building");
+        }
 
         return toDto(repo.save(loto));
     }
@@ -335,6 +344,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 latest.setPersonnelSnapshot(loto.getPersonnelJson());
                 latest.setSnapshotReason("Closed");
                 lotoSnapshotRepo.save(latest);
+                // Release locks back to inventory
+                lotoAssignmentService.releaseLocks(loto);
+                // Release box
                 if (loto.getLotoBox() != null) lotoBoxService.releaseBox(loto.getLotoBox());
             }
         }
@@ -419,5 +431,96 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         }
 
         return toDto(repo.findById(lotoId).orElseThrow());
+    }
+
+    /*********************************************************************************************************************
+     * LOTO USAGE MONITOR
+     ******************************************************************************************************************/
+
+    /**
+     * Returns all active LOTOs with their associated jobs and foremen.
+     * Used by the LOTO Usage Monitor table to help foremen see what to sign on to
+     * and operators see if a LOTO is no longer needed (no associated jobs).
+     */
+    public List<Map<String, Object>> getLotoUsageMonitor() {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // Get all LOTOs that are not closed
+        List<Loto> activeLots = repo.findAll().stream()
+                .filter(loto -> {
+                    String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+                    return status != null && !"Closed".equals(status);
+                })
+                .toList();
+
+        // Get all open jobs with their LOTOs
+        List<com.dk_power.power_plant_java.entities.permits.JobLog> openJobs = jobLogRepo.findAllOpenJobs();
+
+        for (Loto loto : activeLots) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", loto.getId());
+            row.put("boxNumber", loto.getBoxNumber());
+            row.put("permitNumber", loto.getPermitNumber());
+            row.put("name", loto.getName());
+            row.put("workScope", loto.getWorkScope());
+            row.put("equipmentSystem", loto.getEquipmentSystem());
+            row.put("status", loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null);
+            row.put("pointCount", loto.getLotoPointDtos() != null ? loto.getLotoPointDtos().size() : 0);
+            row.put("lockCount", loto.getLocks() != null ? loto.getLocks().size() : 0);
+
+            // Find associated jobs
+            List<Map<String, Object>> associatedJobs = new ArrayList<>();
+            for (var job : openJobs) {
+                if (job.getLotos() != null && job.getLotos().contains(loto)) {
+                    Map<String, Object> jobInfo = new LinkedHashMap<>();
+                    jobInfo.put("jobId", job.getId());
+                    jobInfo.put("permitNumber", job.getPermitNumber());
+                    jobInfo.put("foreman", job.getForeman());
+                    jobInfo.put("company", job.getCompany());
+                    jobInfo.put("workScope", job.getWorkScope());
+                    associatedJobs.add(jobInfo);
+                }
+            }
+            row.put("associatedJobs", associatedJobs);
+
+            // Extract foremen names
+            List<String> foremen = associatedJobs.stream()
+                    .map(j -> (String) j.get("foreman"))
+                    .filter(f -> f != null && !f.isEmpty())
+                    .distinct()
+                    .toList();
+            row.put("foremen", foremen);
+            row.put("jobCount", associatedJobs.size());
+            row.put("hasNoJobs", associatedJobs.isEmpty());
+
+            result.add(row);
+        }
+
+        return result;
+    }
+
+    /**
+     * Activate all LOTOs that have no status or are in Building status.
+     * Sets their permitStatus to "Active" and updates box LED color.
+     */
+    @Transactional
+    public String activateAllLotos() {
+        List<Loto> allLotos = repo.findAll();
+        int activated = 0;
+
+        for (Loto loto : allLotos) {
+            String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+            if (status == null || status.isEmpty() || "Building".equals(status)) {
+                loto.setPermitStatus(ngValueService.createValue("Permit Status", "Active"));
+                repo.save(loto);
+
+                if (loto.getLotoBox() != null) {
+                    lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), "Active");
+                }
+                activated++;
+            }
+        }
+
+        return "Activated " + activated + " LOTOs";
     }
 }

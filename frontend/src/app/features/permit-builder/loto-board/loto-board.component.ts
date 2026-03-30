@@ -2,8 +2,6 @@ import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
-import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { LotoBoxService } from '../../loto/loto-boxes/loto-box-grid/loto-box.service';
 import { LotoBoxDto } from '../../../models/loto/loto-box.model';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -13,13 +11,8 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-loto-board',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent, RouterMenuComponent, MatButtonToggleModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule],
   template: `
-    <app-main-layout header="LOTO Board">
-      <ng-container header>
-        <app-router-menu [layout]="'row'"></app-router-menu>
-      </ng-container>
-      <ng-container main-content>
         <div class="board-container">
           <div class="board-toolbar">
             <mat-button-toggle-group [value]="viewMode()" (change)="viewMode.set($event.value)">
@@ -80,7 +73,7 @@ import { MatIconModule } from '@angular/material/icon';
               @for (box of boxes(); track box.id) {
                 <div class="box-tile"
                      [style.background-color]="'rgb(' + box.r + ',' + box.g + ',' + box.b + ')'"
-                     [style.opacity]="box.brightness / 255"
+                     [style.opacity]="(box.brightness ?? 255) / 255"
                      [class.has-loto]="box.loto?.id"
                      (click)="onBoxClick(box)">
                   <span class="box-number">{{ box.number }}</span>
@@ -92,8 +85,6 @@ import { MatIconModule } from '@angular/material/icon';
             </div>
           }
         </div>
-      </ng-container>
-    </app-main-layout>
   `,
   styles: [`
     .board-container { padding: 16px; }
@@ -198,8 +189,8 @@ export class LotoBoardComponent implements OnInit, OnDestroy {
   private loadBoxGrid(): void {
     this.lotoBoxService.getBoxGrid().subscribe({
       next: (res) => {
-        if (res.data) {
-          this.boxes.set(res.data.map((b: any) => LotoBoxDto.fromJson(b)));
+        if (res.responseData) {
+          this.boxes.set(res.responseData.map((b: any) => LotoBoxDto.fromJson(b)));
         }
       }
     });

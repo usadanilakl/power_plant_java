@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -44,6 +45,22 @@ public class JobLog extends BaseAuditEntity {
     @ManyToOne
     @JoinColumn(name = "work_category_id")
     private Value workCategory;
+
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "job_log_lotos",
+        joinColumns = @JoinColumn(name = "job_log_id"),
+        inverseJoinColumns = @JoinColumn(name = "loto_id")
+    )
+    private Set<Loto> lotos = new HashSet<>();
+
+    public void attachLoto(Loto loto) {
+        if (loto != null) lotos.add(loto);
+    }
+
+    public void detachLoto(Loto loto) {
+        if (loto != null) lotos.remove(loto);
+    }
 
     public void setPackages(Set<DailyPermitPackage> packages) {
         new HashSet<>(this.packages).forEach(this::removePackage);

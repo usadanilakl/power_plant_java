@@ -37,6 +37,7 @@ public class JacksonConfig {
     public ObjectMapper objectMapper() {
         return Jackson2ObjectMapperBuilder.json()
             .featuresToDisable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+            .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .featuresToEnable(MapperFeature.USE_ANNOTATIONS)
             .modules(new JavaTimeModule())
             .build();
@@ -46,6 +47,7 @@ public class JacksonConfig {
     public Jackson2ObjectMapperBuilder objectMapperBuilder() {
         Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
         builder.featuresToDisable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        builder.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         builder.featuresToEnable(MapperFeature.USE_ANNOTATIONS);
         builder.modules(new JavaTimeModule());
         return builder;

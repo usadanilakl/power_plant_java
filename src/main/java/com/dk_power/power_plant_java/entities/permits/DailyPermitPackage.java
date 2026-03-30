@@ -74,6 +74,9 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     private String closureScopeDetails;
     private String continueDate;
+    private String continueTime;
+    private Boolean foremanCloseOutCompleted;
+    private Integer modificationCount;
 
     @Column(columnDefinition = "TEXT")
     private String modificationsJson;

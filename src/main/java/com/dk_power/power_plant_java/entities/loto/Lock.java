@@ -28,4 +28,6 @@ public class Lock extends BaseAuditEntity {
     private String tagLabel;
     private Long assignedLotoPointId;
     private String lockType; // "LOCK" or "ZIPTIE"
+    private Integer homeBoxNumber; // Box this lock belongs to when not in use (null for single locks)
+    private Boolean isSingleLock = false; // true for singles (200-399), false for set locks
 }

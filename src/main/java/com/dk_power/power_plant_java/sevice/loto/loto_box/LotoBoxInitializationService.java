@@ -7,8 +7,9 @@ import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.esp.EspDeviceRepo;
 import com.dk_power.power_plant_java.repository.esp.LedStripRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.esp.EspLedService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,53 +19,109 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class LotoBoxInitializationService {
 
     private final LotoBoxRepo lotoBoxRepo;
     private final EspDeviceRepo espDeviceRepo;
     private final LedStripRepo ledStripRepo;
     private final EspLedService espLedService;
+    private final LockInventorySeedService lockInventorySeedService;
+    private final NgLotoBoxService ngLotoBoxService;
+
+    public LotoBoxInitializationService(LotoBoxRepo lotoBoxRepo, EspDeviceRepo espDeviceRepo,
+                                        LedStripRepo ledStripRepo, EspLedService espLedService,
+                                        LockInventorySeedService lockInventorySeedService,
+                                        @Lazy NgLotoBoxService ngLotoBoxService) {
+        this.lotoBoxRepo = lotoBoxRepo;
+        this.espDeviceRepo = espDeviceRepo;
+        this.ledStripRepo = ledStripRepo;
+        this.espLedService = espLedService;
+        this.lockInventorySeedService = lockInventorySeedService;
+        this.ngLotoBoxService = ngLotoBoxService;
+    }
 
     private static final List<LedConfigDto> LED_CONFIGURATIONS = initializeLedConfigurations();
 
     /**
-     * Initialize ESP devices, LED strips, and 72 loto boxes if they don't already exist
-     * Also initializes ESP WLED settings (pins, ranges, regions)
+     * Seed DB only: ESP devices, LED strips, boxes, locks, and reconcile existing LOTOs.
+     * Safe to run on every startup — idempotent, no network calls.
      */
     @Transactional
-    public void initializeLotoBoxesWithEspDevices() {
-        // Initialize ESP devices
+    public void seedLotoBoxData() {
         Map<Integer, EspDevice> espDevices = initializeEspDevices();
-
-        // Initialize LED strips
         Map<String, LedStrip> ledStrips = initializeLedStrips(espDevices);
 
-        // Initialize WLED settings on ESP devices
-        System.out.println("Initializing WLED settings on ESP devices...");
-        espLedService.initializeAllEspDevices();
+        // Clean up invalid boxes (number = 0 or null) that were auto-created by cascade
+        List<LotoBox> invalidBoxes = lotoBoxRepo.findAll().stream()
+                .filter(b -> b.getNumber() == null || b.getNumber() == 0)
+                .toList();
+        if (!invalidBoxes.isEmpty()) {
+            // Unlink any LOTOs pointing to these invalid boxes first
+            for (LotoBox box : invalidBoxes) {
+                if (box.getLoto() != null) {
+                    box.getLoto().setLotoBox(null);
+                    box.setLoto(null);
+                }
+            }
+            lotoBoxRepo.deleteAll(invalidBoxes);
+            System.out.println("Cleaned up " + invalidBoxes.size() + " invalid LOTO boxes (number=0)");
+        }
 
-        // Initialize Loto boxes
-        if (lotoBoxRepo.count() == 0) {
-            List<LotoBox> boxesToSave = new ArrayList<>();
+        // Create missing boxes and update existing ones with correct LED strip data
+        int created = 0;
+        int updated = 0;
+        for (LedConfigDto config : LED_CONFIGURATIONS) {
+            String stripKey = config.getStrip() + "_" + (config.getStrip() < 3 ? 0 : 1);
+            LedStrip ledStrip = ledStrips.get(stripKey);
 
-            for (LedConfigDto config : LED_CONFIGURATIONS) {
+            LotoBox existing = lotoBoxRepo.findByNumber(config.getNumber());
+            if (existing == null) {
                 LotoBox lotoBox = new LotoBox();
                 lotoBox.setNumber(config.getNumber());
-
-                // Get the appropriate LED strip based on strip number and ESP device
-                String stripKey = config.getStrip() + "_" + (config.getStrip() < 3 ? 0 : 1);
-                LedStrip ledStrip = ledStrips.get(stripKey);
-                
                 lotoBox.setLedStrip(ledStrip);
                 lotoBox.setRangeStart(config.getRangeStart());
                 lotoBox.setRangeEnd(config.getRangeEnd());
-                
-                boxesToSave.add(lotoBox);
+                lotoBoxRepo.save(lotoBox);
+                created++;
+            } else {
+                // Update LED strip mapping if missing or changed
+                boolean changed = false;
+                if (existing.getLedStrip() == null || !existing.getLedStrip().getId().equals(ledStrip.getId())) {
+                    existing.setLedStrip(ledStrip);
+                    changed = true;
+                }
+                if (existing.getRangeStart() == null || !existing.getRangeStart().equals(config.getRangeStart())) {
+                    existing.setRangeStart(config.getRangeStart());
+                    changed = true;
+                }
+                if (existing.getRangeEnd() == null || !existing.getRangeEnd().equals(config.getRangeEnd())) {
+                    existing.setRangeEnd(config.getRangeEnd());
+                    changed = true;
+                }
+                if (changed) {
+                    lotoBoxRepo.save(existing);
+                    updated++;
+                }
             }
-            
-            lotoBoxRepo.saveAll(boxesToSave);
         }
+        if (created > 0 || updated > 0) {
+            System.out.println("LOTO boxes: created " + created + ", updated " + updated);
+        }
+
+        lockInventorySeedService.seedLockInventory();
+        ngLotoBoxService.reconcileExistingLotos();
+    }
+
+    /**
+     * Full initialization: seed DB + push WLED settings to ESP controllers.
+     * Only call when ESP controllers are reachable (manual trigger or hub startup).
+     */
+    @Transactional
+    public void initializeLotoBoxesWithEspDevices() {
+        seedLotoBoxData();
+
+        System.out.println("Initializing WLED settings on ESP devices...");
+        espLedService.initializeAllEspDevices();
     }
     
     /**

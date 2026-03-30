@@ -354,6 +354,18 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    @PostMapping("/{id}/generate-continuation")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> generateContinuation(@PathVariable String id) {
+        try {
+            DailyPermitPackageDto result = ngDailyPermitPackageService.generateContinuationFromCloseOut(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Continuation package generated", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     // --- Red Tag Automation Control Endpoints ---
 
     @PostMapping("/automation/start/{id}")

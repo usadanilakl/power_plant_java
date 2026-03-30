@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.esp.WledCommandQueueService;
+import com.dk_power.power_plant_java.sevice.loto.loto_box.LotoBoxInitializationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 public class NgLotoBoxController {
     private final NgLotoBoxService ngLotoBoxService;
     private final WledCommandQueueService wledCommandQueueService;
+    private final LotoBoxInitializationService lotoBoxInitializationService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoBoxDto>>> getPaginatedLotoBoxes(
@@ -174,6 +176,28 @@ public class NgLotoBoxController {
                     "expired", wledCommandQueueService.getExpiredCount()
             );
             return ResponseEntity.ok(new NgApiResponse<>(status, "Queue status retrieved"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/seed-inventory")
+    public ResponseEntity<NgApiResponse<String>> seedInventory() {
+        try {
+            lotoBoxInitializationService.seedLotoBoxData();
+            return ResponseEntity.ok(new NgApiResponse<>("OK", "Boxes and lock inventory seeded"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reconcile")
+    public ResponseEntity<NgApiResponse<String>> reconcile() {
+        try {
+            String result = ngLotoBoxService.reconcileExistingLotos();
+            return ResponseEntity.ok(new NgApiResponse<>("OK", result));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

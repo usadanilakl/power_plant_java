@@ -34,6 +34,8 @@ public class LotoBox extends BaseAuditEntity {
 
     private String description;
 
+    private Integer setSize = 0; // Number of locks in this box's set (0 = no set)
+
     // Current LED color state (persisted to database)
     private Integer r = 0; // Red value (0-255)
 

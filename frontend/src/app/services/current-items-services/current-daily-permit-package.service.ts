@@ -306,7 +306,7 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
-    foremanCloseOut(data: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }) {
+    foremanCloseOut(data: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string; continueTime: string }) {
       const pkg = this.selectedDailyPermitPackageSubject.value;
       if (!pkg?.id) return;
       this.dailyPermitPackageService.foremanSignOff(pkg.id, data).pipe(
@@ -320,6 +320,48 @@ export class CurrentDailyPermitPackageService {
           }
         },
         error: err => console.error('Error foreman close-out:', err)
+      });
+    }
+
+    generateContinuation() {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      this.dailyPermitPackageService.generateContinuation(pkg.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+            this.updatePackageInList(updated);
+          }
+        },
+        error: err => console.error('Error generating continuation:', err)
+      });
+    }
+
+    closeAndGenerateContinuation() {
+      const pkg = this.selectedDailyPermitPackageSubject.value;
+      if (!pkg?.id) return;
+      // Close first, then generate continuation, then reload list
+      this.dailyPermitPackageService.closePackage(pkg.id).pipe(
+        switchMap(() => this.dailyPermitPackageService.generateContinuation(pkg.id)),
+        switchMap(response => {
+          if (response?.responseData) {
+            const updated = DailyPermitPackageDto.fromJson(response.responseData);
+            this.setSelectedPackage(updated);
+          }
+          // Reload all packages so the new continuation package appears in the left menu
+          return this.dailyPermitPackageService.getDailyPermitPackages();
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: response => {
+          this.allActiveDailyPermitPackagesSubject.next(
+            this.normalizePackages(response.responseData)
+          );
+        },
+        error: err => console.error('Error closing and generating continuation:', err)
       });
     }
 

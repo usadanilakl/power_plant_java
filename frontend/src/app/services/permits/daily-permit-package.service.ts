@@ -75,8 +75,12 @@ export class DailyPermitPackageService {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/foreman-sign-on`, body);
   }
 
-  foremanSignOff(id: number, body: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+  foremanSignOff(id: number, body: { workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string; continueTime: string }): Observable<SpringApiResponse<DailyPermitPackageDto>> {
     return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/foreman-sign-off`, body);
+  }
+
+  generateContinuation(id: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/${id}/generate-continuation`, {});
   }
 
   signOnPerson(id: number, body: { personName: string; personRole: string; company: string }): Observable<SpringApiResponse<DailyPermitPackageDto>> {

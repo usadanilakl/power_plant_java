@@ -55,7 +55,9 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/loto', label: 'LOTO', icon: 'lock', iconColor: '#FFA726' },
             { route: '/loto-points', label: 'Loto Points', icon: 'place', iconColor: '#EF5350', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
             { route: '/loto-standard', label: 'LOTO Standards', icon: 'checklist', iconColor: '#66BB6A' },
-            { route: '/loto-builder', label: 'Loto Builder', icon: 'construction', iconColor: '#42A5F5' }
+            { route: '/loto-builder', label: 'Loto Builder', icon: 'construction', iconColor: '#42A5F5' },
+            { route: '/permit-builder/loto-board', label: 'LOTO Board', icon: 'dashboard', iconColor: '#EC407A' },
+            { route: '/permit-builder/loto-usage', label: 'LOTO Usage', icon: 'monitor_heart', iconColor: '#26C6DA' }
         ]
     },
     {
@@ -178,6 +180,8 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Excavation', route: './excavation-permits' },
     { label: 'Venting/Purging', route: './venting-permits' },
     { label: 'LOTO', route: './lotos' },
+    { label: 'LOTO Board', route: './loto-board' },
+    { label: 'LOTO Usage', route: './loto-usage' },
     { label: 'Scheduler', route: '/scheduler' },
 ]
 

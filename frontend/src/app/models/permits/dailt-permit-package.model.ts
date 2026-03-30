@@ -63,6 +63,9 @@ export interface DailyPermitPackageModel extends BaseModel {
   scopeChanged: boolean | null;
   closureScopeDetails: string | null;
   continueDate: string | null;
+  continueTime: string | null;
+  foremanCloseOutCompleted: boolean | null;
+  modificationCount: number;
   modifications: PackageModification[];
   personnel: PersonnelSignEntry[];
   activationSnapshotJson: string | null;
@@ -97,6 +100,9 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   scopeChanged: boolean | null;
   closureScopeDetails: string | null;
   continueDate: string | null;
+  continueTime: string | null;
+  foremanCloseOutCompleted: boolean | null;
+  modificationCount: number;
   modifications: PackageModification[];
   personnel: PersonnelSignEntry[];
   activationSnapshotJson: string | null;
@@ -130,6 +136,9 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.scopeChanged = data.scopeChanged ?? null;
     this.closureScopeDetails = data.closureScopeDetails ?? null;
     this.continueDate = data.continueDate ?? null;
+    this.continueTime = data.continueTime ?? null;
+    this.foremanCloseOutCompleted = data.foremanCloseOutCompleted ?? null;
+    this.modificationCount = data.modificationCount ?? 0;
     this.modifications = data.modifications ?? [];
     this.personnel = data.personnel ?? [];
     this.activationSnapshotJson = data.activationSnapshotJson ?? null;
@@ -165,6 +174,9 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       scopeChanged: this.scopeChanged,
       closureScopeDetails: this.closureScopeDetails,
       continueDate: this.continueDate,
+      continueTime: this.continueTime,
+      foremanCloseOutCompleted: this.foremanCloseOutCompleted,
+      modificationCount: this.modificationCount,
       modifications: this.modifications,
       personnel: this.personnel,
       activationSnapshotJson: this.activationSnapshotJson,
@@ -201,6 +213,9 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       scopeChanged: json.scopeChanged ?? null,
       closureScopeDetails: json.closureScopeDetails ?? null,
       continueDate: json.continueDate ?? null,
+      continueTime: json.continueTime ?? null,
+      foremanCloseOutCompleted: json.foremanCloseOutCompleted ?? null,
+      modificationCount: json.modificationCount ?? 0,
       modifications: json.modifications ?? [],
       personnel: json.personnel ?? [],
       activationSnapshotJson: json.activationSnapshotJson ?? null,
@@ -321,8 +336,12 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       scopeChanged: { id: 'scopeChanged', header: 'Scope Changed', accessorFn: (item: DailyPermitPackageDto) => item.scopeChanged ? 'Yes' : 'No' },
       closureScopeDetails: { id: 'closureScopeDetails', header: 'Scope Details', accessorKey: 'closureScopeDetails' },
       continueDate: { id: 'continueDate', header: 'Continue Date', accessorKey: 'continueDate' },
+      continueTime: { id: 'continueTime', header: 'Continue Time', accessorKey: 'continueTime' },
+      foremanCloseOutCompleted: { id: 'foremanCloseOutCompleted', header: 'Foreman Close-Out', accessorFn: (item: DailyPermitPackageDto) => item.foremanCloseOutCompleted ? 'Yes' : 'No' },
+      modificationCount: { id: 'modificationCount', header: 'Revisions', accessorFn: (item: DailyPermitPackageDto) => String(item.modificationCount || 0) },
       modifications: { id: 'modifications', header: 'Changes', accessorFn: (item: DailyPermitPackageDto) => item.modifications.length + '' },
       activationSnapshotJson: { id: 'activationSnapshotJson', header: 'Snapshot', accessorFn: (item: DailyPermitPackageDto) => item.activationSnapshotJson ? 'Yes' : 'No' },
+      personnel: { id: 'personnel', header: 'Personnel', accessorFn: (item: DailyPermitPackageDto) => item.personnel.length + '' },
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

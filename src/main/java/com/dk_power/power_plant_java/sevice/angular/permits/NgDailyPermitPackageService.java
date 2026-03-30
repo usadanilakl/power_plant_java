@@ -500,19 +500,25 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         String reissueDate = (date != null && !date.isBlank()) ? date : source.getDate();
         String reissueTime = (time != null && !time.isBlank()) ? time : source.getTime();
 
+        // Generate permit number before linking work requests to avoid flush issues
+        String newPermitNumber = permitNumberGenerator.generate(reissueDate);
+
         DailyPermitPackage newPackage = new DailyPermitPackage();
         newPackage.setDate(reissueDate);
         newPackage.setTime(reissueTime);
         newPackage.setPersonName(source.getPersonName());
         newPackage.setCompanyName(source.getCompanyName());
         newPackage.setName(source.getName());
-        newPackage.setWorkRequests(new HashSet<>(source.getWorkRequests()));
-        newPackage.setPermitNumber(permitNumberGenerator.generate(reissueDate));
+        newPackage.setPermitNumber(newPermitNumber);
 
         Value buildingStatus = ngValueService.createValue("Package Status", "Building");
         newPackage.setPackageStatus(buildingStatus);
 
-        newPackage = dailyPermitPackageRepo.save(newPackage);
+        newPackage = dailyPermitPackageRepo.saveAndFlush(newPackage);
+        // Add work requests after package is persisted
+        for (WorkRequest wr : source.getWorkRequests()) {
+            newPackage.addWorkRequest(wr);
+        }
         copyPermitsFromSource(source, newPackage, reissueDate, reissueTime);
 
         DailyPermitPackage saved = dailyPermitPackageRepo.save(newPackage);
@@ -862,9 +868,59 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     // --- Status Lifecycle ---
 
     public DailyPermitPackageDto activatePackage(String id) {
+        DailyPermitPackage pkg = getEntityById(id);
+        boolean isReactivation = pkg.getActivationSnapshotJson() != null && !pkg.getActivationSnapshotJson().isEmpty();
+
         DailyPermitPackageDto result = changeStatus(id, "Active", Set.of("Building", "Test"));
         takeSnapshot(Long.parseLong(id));
+
+        // Attach LOTOs to the parent Job when package is activated
+        pkg = getEntityById(id);
+        if (pkg.getJobLog() != null && pkg.getLotos() != null) {
+            for (var loto : pkg.getLotos()) {
+                pkg.getJobLog().attachLoto(loto);
+            }
+        }
+
+        if (isReactivation) {
+            // Increment modification count
+            pkg = getEntityById(id); // re-fetch after status change
+            Integer count = pkg.getModificationCount() != null ? pkg.getModificationCount() : 0;
+            pkg.setModificationCount(count + 1);
+
+            PackageModification mod = new PackageModification();
+            mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            mod.setAction("PACKAGE_MODIFIED");
+            mod.setFieldName("modificationCount");
+            mod.setNewValue(String.valueOf(count + 1));
+            mod.setPerformedBy(getCurrentUsername());
+            mod.setDescription("Package re-activated after modification (revision " + (count + 1) + ")");
+            pkg.addModification(mod);
+
+            // Clear foreman close-out flag for fresh cycle
+            pkg.setForemanCloseOutCompleted(null);
+            pkg.setWorkCompleted(null);
+            pkg.setClosureComments(null);
+            pkg.setScopeChanged(null);
+            pkg.setClosureScopeDetails(null);
+            pkg.setContinueDate(null);
+            pkg.setContinueTime(null);
+
+            dailyPermitPackageRepo.save(pkg);
+
+            // Email signed-on personnel about modification
+            notifyPersonnelOfModification(pkg, count + 1);
+        }
+
         return getDtoById(id);
+    }
+
+    private void notifyPersonnelOfModification(DailyPermitPackage pkg, int revision) {
+        try {
+            notifyRequestorIfNeeded(pkg, "Active");
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to send modification notification: " + e.getMessage());
+        }
     }
 
     public DailyPermitPackageDto putPackageUnderTest(String id) {
@@ -969,6 +1025,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (pkg.getEnergizedWorkPermits() != null) pkg.getEnergizedWorkPermits().forEach(p -> p.setPermitStatus(permitStatus));
         if (pkg.getExcavationPermits() != null) pkg.getExcavationPermits().forEach(p -> p.setPermitStatus(permitStatus));
         if (pkg.getVentingPermits() != null) pkg.getVentingPermits().forEach(p -> p.setPermitStatus(permitStatus));
+        // LOTOs are NOT cascaded — they have their own independent lifecycle
+        // A LOTO can be attached to multiple packages and is activated/closed separately
     }
 
     private void updateParentJobStatus(DailyPermitPackage pkg) {
@@ -1248,20 +1306,24 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         var foremanEntry = pkg.getPersonnel().stream()
                 .filter(e -> e.isForeman() && e.getSignOffTime() == null)
                 .findFirst().orElseThrow(() -> new RuntimeException("No foreman currently signed on"));
-        pkg.signOffPerson(foremanEntry.getPersonName(), user, "Close-out completed");
-
-        // Store close-out data
+        // Store close-out data (operator will review these later)
         Boolean workCompleted = closeOutData.containsKey("workCompleted") ? (Boolean) closeOutData.get("workCompleted") : null;
         String comments = (String) closeOutData.get("comments");
+
+        // Sign off foreman with their actual close-out comments
+        pkg.signOffPerson(foremanEntry.getPersonName(), user, comments != null && !comments.isBlank() ? comments : "Close-out completed");
         Boolean scopeChanged = closeOutData.containsKey("scopeChanged") ? (Boolean) closeOutData.get("scopeChanged") : null;
         String scopeDetails = (String) closeOutData.get("scopeDetails");
         String continueDate = (String) closeOutData.get("continueDate");
+        String continueTime = (String) closeOutData.get("continueTime");
 
         pkg.setWorkCompleted(workCompleted);
         pkg.setClosureComments(comments);
         pkg.setScopeChanged(scopeChanged);
         pkg.setClosureScopeDetails(scopeDetails);
         pkg.setContinueDate(continueDate);
+        pkg.setContinueTime(continueTime);
+        pkg.setForemanCloseOutCompleted(true);
 
         PackageModification mod = new PackageModification();
         mod.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -1274,19 +1336,20 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         pkg.addModification(mod);
 
         dailyPermitPackageRepo.save(pkg);
+        // Package stays Active — operator reviews and decides to close or reissue
+        return dailyPermitPackageMapper.convertToDto(pkg);
+    }
 
-        if (Boolean.TRUE.equals(workCompleted)) {
-            // Work done — auto-close package
-            autoSignOffAllPersonnel(pkg);
-            dailyPermitPackageRepo.save(pkg);
-            return changeStatus(packageId, "Closed", Set.of("Active", "Test"));
+    public DailyPermitPackageDto generateContinuationFromCloseOut(String packageId) {
+        DailyPermitPackage pkg = getEntityById(packageId);
+        if (!Boolean.TRUE.equals(pkg.getForemanCloseOutCompleted())) {
+            throw new RuntimeException("Foreman close-out must be completed before generating continuation");
         }
-
-        // Work not complete — generate continuation
-        if (continueDate != null && !continueDate.isBlank()) {
-            generateContinuation(pkg, continueDate, scopeChanged, scopeDetails);
+        String continueDate = pkg.getContinueDate();
+        if (continueDate == null || continueDate.isBlank()) {
+            throw new RuntimeException("No continue date set in foreman close-out");
         }
-
+        generateContinuation(pkg, continueDate, pkg.getScopeChanged(), pkg.getClosureScopeDetails());
         return dailyPermitPackageMapper.convertToDto(pkg);
     }
 
@@ -1302,9 +1365,9 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         newWr.setAffectedEquipment(origWr.getAffectedEquipment());
         newWr.setForeman(origWr.getForeman());
         newWr.setFireWatch(origWr.getFireWatch());
-        newWr.setHotWorkRequired(origWr.getHotWorkRequired());
-        newWr.setLotoRequired(origWr.getLotoRequired());
-        newWr.setConfinedSpaceEntryRequired(origWr.getConfinedSpaceEntryRequired());
+        newWr.setIsHotWorkRequired(origWr.getIsHotWorkRequired());
+        newWr.setIsLotoRequired(origWr.getIsLotoRequired());
+        newWr.setIsConfinedSpaceEntryRequired(origWr.getIsConfinedSpaceEntryRequired());
         newWr.setSpace(origWr.getSpace());
         newWr.setWorkCategory(origWr.getWorkCategory());
         newWr.setWorkArea(origWr.getWorkArea());
@@ -1320,7 +1383,10 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             newWr.setName(origScope + " (Continuation)");
         }
 
-        newWr = workRequestRepo.save(newWr);
+        // Generate permit number before saving WR to avoid flush issues
+        String newPermitNumber = permitNumberGenerator.generate(continueDate);
+
+        newWr = workRequestRepo.saveAndFlush(newWr);
 
         // Create new package with copied permits
         DailyPermitPackage newPackage = new DailyPermitPackage();
@@ -1329,9 +1395,9 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         newPackage.setPersonName(source.getPersonName());
         newPackage.setCompanyName(source.getCompanyName());
         newPackage.setName(newWr.getWorkScope());
-        newPackage.setPermitNumber(permitNumberGenerator.generate(continueDate));
+        newPackage.setPermitNumber(newPermitNumber);
         newPackage.setPackageStatus(ngValueService.createValue("Package Status", "Building"));
-        newPackage = dailyPermitPackageRepo.save(newPackage);
+        newPackage = dailyPermitPackageRepo.saveAndFlush(newPackage);
         newPackage.addWorkRequest(newWr);
         copyPermitsFromSource(source, newPackage, continueDate, source.getTime());
         newPackage = dailyPermitPackageRepo.save(newPackage);

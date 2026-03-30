@@ -1,348 +1,27 @@
-<app-main-layout>
-  <ng-container header>
-    <app-router-menu [layout]="'row'"></app-router-menu>
-  </ng-container>
-  <ng-container main-content>
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import {
+  AdminFunctionalitiesService,
+  SyncQueueStatus,
+  SyncAuditTypeSummary,
+  SyncAuditRecentEntity,
+  SyncAuditEntityReport,
+  SyncAuditMachineCompareReport,
+  SyncAuditReconstruction,
+  SyncAuditFilters
+} from '../../../services/admin/admin-functionalities.service';
+
+@Component({
+  selector: 'app-admin-sync',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="admin-container">
-      <h2>Admin Functionalities</h2>
-
-      <!-- Quick Links -->
-      <div class="admin-section quick-links">
-        <h3>Data Management</h3>
-        <div class="button-group">
-          <a routerLink="category-values" class="nav-btn">Category & Value Manager</a>
-        </div>
-      </div>
-
-      <!-- 1. Files -->
+      <!-- PWA Sync -->
       <div class="admin-section">
-        <h3>1. Files</h3>
-
-        <!-- 1a. File Integrity Check -->
-        <div class="sub-section">
-          <h4>File Integrity Check</h4>
-          <p class="description">
-            Compares physical files in the uploads folder with database entries.
-            Identifies orphaned files (no database entry) and missing files (database entry but no physical file).
-          </p>
-          <div class="button-group">
-            <button (click)="checkFileIntegrity(true)" [disabled]="loading.fileIntegrity">
-              {{ loading.fileIntegrity ? 'Checking...' : 'Check (Dry Run)' }}
-            </button>
-          </div>
-
-          <div class="error" *ngIf="errors.fileIntegrity">{{ errors.fileIntegrity }}</div>
-
-          <div class="result" *ngIf="fileIntegrityResult">
-            <div class="result-summary">
-              <span class="badge">Files Scanned: {{ fileIntegrityResult.filesScanned }}</span>
-              <span class="badge">Entities Checked: {{ fileIntegrityResult.entitiesChecked }}</span>
-              <span class="badge warning" *ngIf="fileIntegrityResult.orphanedCount > 0">
-                Orphaned Files: {{ fileIntegrityResult.orphanedCount }}
-              </span>
-              <span class="badge success" *ngIf="fileIntegrityResult.orphanedCount === 0">
-                Orphaned Files: 0
-              </span>
-              <span class="badge warning" *ngIf="fileIntegrityResult.missingCount > 0">
-                Missing Files: {{ fileIntegrityResult.missingCount }}
-              </span>
-              <span class="badge success" *ngIf="fileIntegrityResult.missingCount === 0">
-                Missing Files: 0
-              </span>
-            </div>
-
-            <!-- Orphaned Files -->
-            <div class="details-section" *ngIf="fileIntegrityResult.orphanedCount > 0">
-              <button class="toggle-btn" (click)="toggleSection('orphanedFiles')">
-                {{ expandedSections['orphanedFiles'] ? 'Hide' : 'Show' }} Orphaned Files
-              </button>
-              <div class="details-list" *ngIf="expandedSections['orphanedFiles']">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Path</th>
-                      <th>File Number</th>
-                      <th>Type</th>
-                      <th>Vendor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let file of fileIntegrityResult.orphanedFiles">
-                      <td>{{ file.path }}</td>
-                      <td>{{ file.fileNumber }}</td>
-                      <td>{{ file.fileType }}</td>
-                      <td>{{ file.vendor }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Missing Files -->
-            <div class="details-section" *ngIf="fileIntegrityResult.missingCount > 0">
-              <button class="toggle-btn" (click)="toggleSection('missingFiles')">
-                {{ expandedSections['missingFiles'] ? 'Hide' : 'Show' }} Missing Files
-              </button>
-              <div class="details-list" *ngIf="expandedSections['missingFiles']">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>File Number</th>
-                      <th>Name</th>
-                      <th>Expected Path</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let file of fileIntegrityResult.missingFiles">
-                      <td>{{ file.id }}</td>
-                      <td>{{ file.fileNumber }}</td>
-                      <td>{{ file.name }}</td>
-                      <td>{{ file.expectedPath }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <hr class="sub-divider">
-
-        <!-- 1b. Fix File Extensions -->
-        <div class="sub-section">
-          <h4>Fix File Extensions</h4>
-          <p class="description">
-            Scans the filesystem for each FileObject and sets the <code>extensions</code> field
-            based on which extension folders actually contain matching files (e.g. pdf, jpg, dwg).
-            This fixes file move operations that rely on extensions being set correctly.
-          </p>
-          <div class="button-group">
-            <button (click)="fixFileExtensions(true)" [disabled]="loading.fixExtensions">
-              {{ loading.fixExtensions ? 'Scanning...' : 'Preview (Dry Run)' }}
-            </button>
-            <button (click)="fixFileExtensions(false)" [disabled]="loading.fixExtensions" class="action-btn">
-              {{ loading.fixExtensions ? 'Fixing...' : 'Fix Extensions' }}
-            </button>
-          </div>
-
-          <div class="error" *ngIf="errors.fixExtensions">{{ errors.fixExtensions }}</div>
-
-          <div class="result" *ngIf="fixExtensionsResult">
-            <div class="result-summary">
-              <span class="badge" [class.info]="fixExtensionsResult.dryRun">
-                {{ fixExtensionsResult.dryRun ? 'DRY RUN' : 'EXECUTED' }}
-              </span>
-              <span class="badge">Checked: {{ fixExtensionsResult.totalChecked }}</span>
-              <span class="badge" [class.warning]="fixExtensionsResult.totalFixed > 0"
-                                  [class.success]="fixExtensionsResult.totalFixed === 0">
-                Need Fix: {{ fixExtensionsResult.totalFixed }}
-              </span>
-              <span class="badge success">Already Correct: {{ fixExtensionsResult.alreadyCorrect }}</span>
-            </div>
-
-            <div class="result-summary" *ngIf="fixExtensionsResult.availableExtensions?.length">
-              <span class="badge info">
-                Extension Folders: {{ fixExtensionsResult.availableExtensions.join(', ') }}
-              </span>
-            </div>
-
-            <!-- Fixed Files Details -->
-            <div class="details-section" *ngIf="fixExtensionsResult.fixedFiles?.length && fixExtensionsResult.fixedFiles.length > 0">
-              <button class="toggle-btn" (click)="toggleSection('fixedFiles')">
-                {{ expandedSections['fixedFiles'] ? 'Hide' : 'Show' }} {{ fixExtensionsResult.dryRun ? 'Files to Fix' : 'Fixed Files' }}
-                ({{ fixExtensionsResult.fixedFiles.length }})
-              </button>
-              <div class="details-list" *ngIf="expandedSections['fixedFiles']">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>File Number</th>
-                      <th>Name</th>
-                      <th>Old Extensions</th>
-                      <th>New Extensions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let file of fixExtensionsResult.fixedFiles">
-                      <td>{{ file.id }}</td>
-                      <td>{{ file.fileNumber }}</td>
-                      <td>{{ file.name }}</td>
-                      <td>{{ file.oldExtensions }}</td>
-                      <td>{{ file.newExtensions }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. Split Equipment -->
-      <div class="admin-section">
-        <h3>2. Split Equipment with Multiple Loto Points</h3>
-        <p class="description">
-          Separates equipment entries that have multiple loto points into individual equipment entries,
-          each with exactly one loto point.
-        </p>
-        <div class="button-group">
-          <button (click)="splitEquipment()" [disabled]="loading.splitEquipment" class="action-btn">
-            {{ loading.splitEquipment ? 'Splitting...' : 'Split Equipment' }}
-          </button>
-        </div>
-
-        <div class="error" *ngIf="errors.splitEquipment">{{ errors.splitEquipment }}</div>
-
-        <div class="result" *ngIf="splitEquipmentResult">
-          <div class="result-summary">
-            <span class="badge" [class.success]="splitEquipmentResult.success">
-              {{ splitEquipmentResult.message }}
-            </span>
-            <span class="badge">Split Count: {{ splitEquipmentResult.splitCount }}</span>
-          </div>
-
-          <div class="details-section" *ngIf="splitEquipmentResult?.splitEquipment?.length && splitEquipmentResult.splitEquipment.length > 0">
-            <button class="toggle-btn" (click)="toggleSection('splitEquipment')">
-              {{ expandedSections['splitEquipment'] ? 'Hide' : 'Show' }} Split Equipment Details
-            </button>
-            <div class="details-list" *ngIf="expandedSections['splitEquipment']">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Tag Number</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let eq of splitEquipmentResult.splitEquipment">
-                    <td>{{ eq.id }}</td>
-                    <td>{{ eq.tagNumber }}</td>
-                    <td>{{ eq.description }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. Assign Equipment Attributes -->
-      <div class="admin-section">
-        <h3>3. Assign Equipment Attributes to Loto Points</h3>
-        <p class="description">
-          Copies Location and Equipment Type from Equipment to their associated Loto Points
-          (only for loto points that don't already have these values set).
-        </p>
-        <div class="button-group">
-          <button (click)="assignAttributes()" [disabled]="loading.assignAttributes" class="action-btn">
-            {{ loading.assignAttributes ? 'Assigning...' : 'Assign Attributes' }}
-          </button>
-        </div>
-
-        <div class="error" *ngIf="errors.assignAttributes">{{ errors.assignAttributes }}</div>
-
-        <div class="result" *ngIf="assignAttributesResult">
-          <div class="result-summary">
-            <span class="badge" [class.success]="assignAttributesResult.success">
-              {{ assignAttributesResult.message }}
-            </span>
-            <span class="badge">Points Updated: {{ assignAttributesResult.pointsUpdated }}</span>
-            <span class="badge">Before: {{ assignAttributesResult.pointsWithoutAttributesBefore }}</span>
-            <span class="badge">After: {{ assignAttributesResult.pointsWithoutAttributesAfter }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4. Associate Counterparts -->
-      <div class="admin-section">
-        <h3>4. Associate Loto Point Counterparts (U1/U2)</h3>
-        <p class="description">
-          Links loto points with their counterparts from the other unit.
-          Finds points starting with "01" and matches them with corresponding "02" points.
-        </p>
-        <div class="button-group">
-          <button (click)="associateCounterparts(true)" [disabled]="loading.counterparts">
-            {{ loading.counterparts ? 'Checking...' : 'Preview (Dry Run)' }}
-          </button>
-          <button (click)="associateCounterparts(false)" [disabled]="loading.counterparts" class="action-btn">
-            {{ loading.counterparts ? 'Linking...' : 'Link Counterparts' }}
-          </button>
-        </div>
-
-        <div class="error" *ngIf="errors.counterparts">{{ errors.counterparts }}</div>
-
-        <div class="result" *ngIf="counterpartResult">
-          <div class="result-summary">
-            <span class="badge" [class.info]="counterpartResult.dryRun">
-              {{ counterpartResult.dryRun ? 'DRY RUN' : 'EXECUTED' }}
-            </span>
-            <span class="badge">Processed: {{ counterpartResult.processedCount }}</span>
-            <span class="badge success">Linked: {{ counterpartResult.linkedCount }}</span>
-            <span class="badge warning" *ngIf="counterpartResult.skippedCount > 0">
-              Skipped: {{ counterpartResult.skippedCount }}
-            </span>
-          </div>
-
-          <!-- Linked Pairs -->
-          <div class="details-section" *ngIf="counterpartResult?.linkedPairs?.length && counterpartResult.linkedPairs.length > 0">
-            <button class="toggle-btn" (click)="toggleSection('linkedPairs')">
-              {{ expandedSections['linkedPairs'] ? 'Hide' : 'Show' }} Linked Pairs
-            </button>
-            <div class="details-list" *ngIf="expandedSections['linkedPairs']">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Unit 1 ID</th>
-                    <th>Unit 1 Tag</th>
-                    <th>Unit 2 ID</th>
-                    <th>Unit 2 Tag</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let pair of counterpartResult.linkedPairs">
-                    <td>{{ pair.point1Id }}</td>
-                    <td>{{ pair.point1Tag }}</td>
-                    <td>{{ pair.point2Id }}</td>
-                    <td>{{ pair.point2Tag }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Skipped Points -->
-          <div class="details-section" *ngIf="counterpartResult?.skippedPoints?.length && counterpartResult.skippedPoints.length > 0">
-            <button class="toggle-btn" (click)="toggleSection('skippedPoints')">
-              {{ expandedSections['skippedPoints'] ? 'Hide' : 'Show' }} Skipped Points
-            </button>
-            <div class="details-list" *ngIf="expandedSections['skippedPoints']">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Tag Number</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let point of counterpartResult.skippedPoints">
-                    <td>{{ point.id }}</td>
-                    <td>{{ point.tagNumber }}</td>
-                    <td>{{ point.reason }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 5. Sync Data to PWA -->
-      <div class="admin-section">
-        <h3>5. Sync Data to PWA</h3>
+        <h3>Sync Data to PWA</h3>
         <p class="description">
           Publish work-request static files to the GitHub-hosted PWA when Management-side changes are correct but the PWA is still showing stale work areas, map data, or work categories.
         </p>
@@ -360,9 +39,9 @@
         <div class="success-msg" *ngIf="pwaSyncMessage">{{ pwaSyncMessage }}</div>
       </div>
 
-      <!-- 6. Sync Queue Monitoring & Control -->
+      <!-- Sync Queue Monitoring & Control -->
       <div class="admin-section sync-section">
-        <h3>6. Sync Queue Monitoring & Control</h3>
+        <h3>Sync Queue Monitoring & Control</h3>
         <p class="description">
           Monitor and manage the FieldChange sync queue. Changes are tracked here and pushed to other machines during sync.
         </p>
@@ -465,9 +144,9 @@
         </div>
       </div>
 
-      <!-- 7. Sync Audit -->
+      <!-- Sync Audit -->
       <div class="admin-section sync-audit-section">
-        <h3>7. Sync Audit</h3>
+        <h3>Sync Audit</h3>
         <p class="description">
           Inspect <code>field_change</code> history for any sync entity, compare it with the current database row, and flag suspicious patterns like recreate-after-delete, detach changes, or missing current rows.
         </p>
@@ -840,63 +519,487 @@
           </div>
         </div>
       </div>
-
-      <!-- 8. SharePoint List Provisioning -->
-      <div class="admin-section">
-        <h3>8. SharePoint List Provisioning</h3>
-        <p class="description">
-          Manage SharePoint lists for all permit types. Each list shows its current status.
-        </p>
-
-        <div class="button-group">
-          <button (click)="checkSpListStatuses()" [disabled]="loading.spProvision">
-            {{ loading.spProvision ? 'Checking...' : 'Refresh Status' }}
-          </button>
-          <button class="action-btn" (click)="provisionAllLists()"
-                  [disabled]="loading.spProvision || spListStatuses.length === 0 || getMissingListCount() === 0">
-            Create All Missing ({{ getMissingListCount() }})
-          </button>
-        </div>
-
-        <div class="error" *ngIf="errors.spProvision">{{ errors.spProvision }}</div>
-
-        <div class="sp-list-grid" *ngIf="spListStatuses.length > 0">
-          <div class="sp-list-card" *ngFor="let list of spListStatuses"
-               [class.sp-exists]="list.exists"
-               [class.sp-missing]="!list.exists && !list.error"
-               [class.sp-error]="!!list.error">
-            <div class="sp-list-header">
-              <span class="sp-list-title">{{ list.title }}</span>
-              <span class="badge success" *ngIf="list.exists">Exists</span>
-              <span class="badge warning" *ngIf="!list.exists && !list.error">Missing</span>
-              <span class="badge warning" *ngIf="list.error" [title]="list.error!">Error</span>
-            </div>
-            <div class="sp-list-detail">
-              <span>{{ list.fieldCount }} fields</span>
-            </div>
-            <div class="sp-list-action">
-              <button *ngIf="!list.exists"
-                      class="action-btn"
-                      (click)="provisionSingleList(list.title)"
-                      [disabled]="spProvisioningList === list.title">
-                {{ spProvisioningList === list.title ? 'Creating...' : 'Create List' }}
-              </button>
-              <a *ngIf="list.exists"
-                 class="nav-btn sp-open-btn"
-                 [href]="getSharePointListUrl(list.title)"
-                 target="_blank"
-                 rel="noopener noreferrer">
-                Open in SharePoint
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="spListStatuses.length === 0 && !loading.spProvision" class="description" style="margin-top: 8px;">
-          Click "Refresh Status" to check SharePoint lists.
-        </div>
-      </div>
-
     </div>
-  </ng-container>
-</app-main-layout>
+  `,
+  styles: [`
+    .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .admin-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .admin-section h3 { color: #333; margin-top: 0; margin-bottom: 10px; }
+    .description { color: #666; font-size: 14px; margin-bottom: 15px; line-height: 1.5; }
+    .button-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    .button-group label { display: flex; align-items: center; font-size: 14px; color: #555; }
+    button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button:not(.action-btn):not(.toggle-btn):not(.danger-btn) { background-color: #6c757d; color: white; }
+    button:not(.action-btn):not(.toggle-btn):not(.danger-btn):hover:not(:disabled) { background-color: #5a6268; }
+    .action-btn { background-color: #007bff; color: white; }
+    .action-btn:hover:not(:disabled) { background-color: #0056b3; }
+    .toggle-btn { background-color: #e9ecef; color: #333; padding: 8px 15px; font-size: 13px; }
+    .toggle-btn:hover { background-color: #dee2e6; }
+    .danger-btn { background-color: #dc3545; color: white; }
+    .danger-btn:hover:not(:disabled) { background-color: #c82333; }
+    .error { background-color: #f8d7da; color: #721c24; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
+    .success-msg { background-color: #d4edda; color: #155724; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
+    .result { background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px; }
+    .result-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    .badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 13px; background-color: #e9ecef; color: #333; }
+    .badge.success { background-color: #d4edda; color: #155724; }
+    .badge.warning { background-color: #fff3cd; color: #856404; }
+    .badge.info { background-color: #cce5ff; color: #004085; }
+    .details-section { margin-top: 15px; }
+    .details-list { margin-top: 10px; max-height: 400px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table th, table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }
+    table th { background-color: #f1f3f4; font-weight: 600; position: sticky; top: 0; }
+    table tr:hover { background-color: #f8f9fa; }
+    table td { word-break: break-word; }
+    .sub-divider { border: none; border-top: 1px solid #e9ecef; margin: 20px 0; }
+    .sub-section { margin-bottom: 10px; }
+    .sub-section h4 { color: #495057; margin-top: 0; margin-bottom: 8px; font-size: 15px; }
+    .sync-section { border-left: 4px solid #007bff; }
+    .sync-audit-section { border-left: 4px solid #17a2b8; }
+    .input-field { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    .input-small { width: 70px; }
+    .audit-controls { flex-wrap: wrap; align-items: center; }
+    .warning-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+    .warning-item { background-color: #fff3cd; color: #856404; border-radius: 4px; padding: 10px 12px; }
+    .json-block, .cell-pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: Consolas, 'Courier New', monospace; font-size: 12px; }
+    .json-block { padding: 12px; background-color: #fff; border: 1px solid #dee2e6; border-radius: 4px; }
+    code { background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  `]
+})
+export class AdminSyncComponent implements OnInit {
+  loading = {
+    pwaSync: false,
+    syncQueue: false,
+    syncAction: false,
+    syncAuditTypes: false,
+    syncAuditRecent: false,
+    syncAuditEntity: false,
+    syncAuditCompare: false,
+    syncAuditExport: false,
+    syncAuditReconstruct: false,
+    syncAuditIncidentExport: false
+  };
+
+  errors = {
+    pwaSync: '',
+    syncQueue: '',
+    syncAudit: ''
+  };
+
+  syncQueueStatus: SyncQueueStatus | null = null;
+  syncAuditTypes: SyncAuditTypeSummary[] = [];
+  recentSyncAuditEntities: SyncAuditRecentEntity[] = [];
+  syncAuditReport: SyncAuditEntityReport | null = null;
+  syncAuditCompareReport: SyncAuditMachineCompareReport | null = null;
+  syncAuditReconstruction: SyncAuditReconstruction | null = null;
+  syncActionMessage: string = '';
+  pwaSyncMessage: string = '';
+
+  clearOldDays: number = 30;
+  markSyncedMachineId: string = '';
+  selectedAuditEntityType: string = '';
+  auditEntityIdInput: string = '';
+  auditRecentLimit: number = 25;
+  auditTimelineLimit: number = 200;
+  auditMachineIdFilter: string = '';
+  auditFieldNameFilter: string = '';
+  auditChangeTypeFilter: string = '';
+  auditFromFilter: string = '';
+  auditToFilter: string = '';
+  auditCompareLeftMachineId: string = '';
+  auditCompareRightMachineId: string = '';
+  auditCompareLimit: number = 100;
+  auditReconstructAsOf: string = '';
+
+  expandedSections: { [key: string]: boolean } = {
+    entityBreakdown: false,
+    syncAuditTimeline: false,
+    syncAuditCurrentRow: false,
+    syncAuditReconstruction: false
+  };
+
+  constructor(
+    private adminService: AdminFunctionalitiesService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    this.loadSyncAuditTypes();
+    this.route.queryParamMap.subscribe(params => {
+      const auditEntityType = params.get('auditEntityType');
+      const auditSection = params.get('auditSection');
+
+      if (auditEntityType) {
+        this.selectedAuditEntityType = auditEntityType;
+        this.loadRecentSyncAuditEntities();
+      }
+
+      if (auditSection === 'sync-audit') {
+        setTimeout(() => {
+          const element = document.querySelector('.sync-audit-section');
+          element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+      }
+    });
+  }
+
+  toggleSection(section: string) {
+    this.expandedSections[section] = !this.expandedSections[section];
+  }
+
+  getEntityBreakdownEntries(): [string, number][] {
+    if (!this.syncQueueStatus?.entityBreakdown) return [];
+    return Object.entries(this.syncQueueStatus.entityBreakdown);
+  }
+
+  // ==================== PWA Sync ====================
+
+  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories') {
+    const labels: Record<'all' | 'areas' | 'map' | 'categories', string> = {
+      all: 'all PWA work-request data',
+      areas: 'PWA work areas and shape links',
+      map: 'the PWA work-area map image',
+      categories: 'PWA work categories'
+    };
+
+    if (!confirm(`Queue a publish for ${labels[target]}?`)) return;
+
+    this.loading.pwaSync = true;
+    this.errors.pwaSync = '';
+    this.pwaSyncMessage = '';
+
+    this.adminService.publishPwaData(target).subscribe({
+      next: (response) => {
+        this.pwaSyncMessage = response.message || `Queued PWA sync for ${target}`;
+        this.loading.pwaSync = false;
+      },
+      error: (error) => {
+        this.errors.pwaSync = error.error?.message || error.message || 'Failed to queue PWA sync';
+        this.loading.pwaSync = false;
+      }
+    });
+  }
+
+  // ==================== Sync Queue ====================
+
+  loadSyncQueueStatus() {
+    this.loading.syncQueue = true;
+    this.errors.syncQueue = '';
+    this.syncActionMessage = '';
+
+    this.adminService.getSyncQueueStatus().subscribe({
+      next: (response) => {
+        this.syncQueueStatus = response.responseData;
+        this.loading.syncQueue = false;
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed to load sync queue status';
+        this.loading.syncQueue = false;
+      }
+    });
+  }
+
+  markAllSyncedToServer() {
+    if (!confirm('Mark ALL changes as synced to SERVER? This means the server will not receive these changes.')) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.markAllSyncedToServer().subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  markAllSyncedToMachine() {
+    if (!this.markSyncedMachineId.trim()) return;
+    if (!confirm(`Mark ALL changes as synced to "${this.markSyncedMachineId}"?`)) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.markAllSyncedToMachine(this.markSyncedMachineId.trim()).subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  clearOldChanges() {
+    if (!confirm(`Delete all sync changes older than ${this.clearOldDays} days?`)) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.clearOldChanges(this.clearOldDays).subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  clearAllChanges() {
+    if (!confirm('DELETE ALL sync changes? This cannot be undone. All machines will need a fresh bulk sync.')) return;
+
+    this.loading.syncAction = true;
+    this.syncActionMessage = '';
+    this.errors.syncQueue = '';
+
+    this.adminService.clearAllChanges().subscribe({
+      next: (response) => {
+        this.syncActionMessage = response.message || 'Done';
+        this.loading.syncAction = false;
+        this.loadSyncQueueStatus();
+      },
+      error: (error) => {
+        this.errors.syncQueue = error.error?.message || error.message || 'Failed';
+        this.loading.syncAction = false;
+      }
+    });
+  }
+
+  // ==================== Sync Audit ====================
+
+  loadSyncAuditTypes() {
+    this.loading.syncAuditTypes = true;
+    this.errors.syncAudit = '';
+
+    this.adminService.getSyncAuditTypes().subscribe({
+      next: (response) => {
+        this.syncAuditTypes = response.responseData || [];
+        if (!this.selectedAuditEntityType && this.syncAuditTypes.length > 0) {
+          this.selectedAuditEntityType = this.syncAuditTypes[0].entityType;
+          this.loadRecentSyncAuditEntities();
+        }
+        this.loading.syncAuditTypes = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to load sync audit types';
+        this.loading.syncAuditTypes = false;
+      }
+    });
+  }
+
+  loadRecentSyncAuditEntities() {
+    if (!this.selectedAuditEntityType) return;
+
+    this.loading.syncAuditRecent = true;
+    this.errors.syncAudit = '';
+
+    this.adminService.getRecentSyncAuditEntities(
+      this.selectedAuditEntityType,
+      this.auditRecentLimit,
+      this.getSyncAuditFilters()
+    ).subscribe({
+      next: (response) => {
+        this.recentSyncAuditEntities = response.responseData || [];
+        this.loading.syncAuditRecent = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to load recent sync-audited entities';
+        this.loading.syncAuditRecent = false;
+      }
+    });
+  }
+
+  inspectRecentSyncAuditEntity(entityId: number) {
+    this.auditEntityIdInput = entityId.toString();
+    this.loadSyncAuditEntityReport();
+  }
+
+  loadSyncAuditEntityReport() {
+    const entityId = Number(this.auditEntityIdInput);
+    if (!this.selectedAuditEntityType || !Number.isFinite(entityId) || entityId <= 0) {
+      this.errors.syncAudit = 'Select an entity type and enter a valid numeric entity ID.';
+      return;
+    }
+
+    this.loading.syncAuditEntity = true;
+    this.errors.syncAudit = '';
+    this.syncAuditReport = null;
+
+    this.adminService.getSyncAuditEntityReport(
+      this.selectedAuditEntityType,
+      entityId,
+      this.auditTimelineLimit,
+      this.getSyncAuditFilters()
+    ).subscribe({
+      next: (response) => {
+        this.syncAuditReport = response.responseData;
+        this.expandedSections['syncAuditTimeline'] = false;
+        this.expandedSections['syncAuditCurrentRow'] = false;
+        this.loading.syncAuditEntity = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to load sync audit report';
+        this.loading.syncAuditEntity = false;
+      }
+    });
+  }
+
+  exportSyncAuditEntityReport() {
+    const entityId = Number(this.auditEntityIdInput);
+    if (!this.selectedAuditEntityType || !Number.isFinite(entityId) || entityId <= 0) {
+      this.errors.syncAudit = 'Select an entity type and enter a valid numeric entity ID before exporting.';
+      return;
+    }
+
+    this.loading.syncAuditExport = true;
+    this.errors.syncAudit = '';
+
+    this.adminService.exportSyncAuditEntityReport(
+      this.selectedAuditEntityType,
+      entityId,
+      this.auditTimelineLimit,
+      this.getSyncAuditFilters()
+    ).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `sync-audit-${this.selectedAuditEntityType}-${entityId}.json`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        this.loading.syncAuditExport = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to export sync audit report';
+        this.loading.syncAuditExport = false;
+      }
+    });
+  }
+
+  exportSyncAuditIncidentReport() {
+    const entityId = Number(this.auditEntityIdInput);
+    if (!this.selectedAuditEntityType || !Number.isFinite(entityId) || entityId <= 0) {
+      this.errors.syncAudit = 'Select an entity type and enter a valid numeric entity ID before exporting an incident report.';
+      return;
+    }
+
+    this.loading.syncAuditIncidentExport = true;
+    this.errors.syncAudit = '';
+
+    this.adminService.exportSyncAuditIncidentReport(
+      this.selectedAuditEntityType,
+      entityId,
+      this.auditTimelineLimit,
+      this.getSyncAuditFilters(),
+      this.auditCompareLeftMachineId,
+      this.auditCompareRightMachineId,
+      this.auditCompareLimit,
+      this.auditReconstructAsOf
+    ).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `sync-incident-${this.selectedAuditEntityType}-${entityId}.json`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        this.loading.syncAuditIncidentExport = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to export incident report';
+        this.loading.syncAuditIncidentExport = false;
+      }
+    });
+  }
+
+  compareSyncAuditMachines() {
+    if (!this.selectedAuditEntityType || !this.auditCompareLeftMachineId.trim() || !this.auditCompareRightMachineId.trim()) {
+      this.errors.syncAudit = 'Select an entity type and enter both machine IDs to compare.';
+      return;
+    }
+
+    this.loading.syncAuditCompare = true;
+    this.errors.syncAudit = '';
+    this.syncAuditCompareReport = null;
+
+    this.adminService.compareSyncAuditMachines(
+      this.selectedAuditEntityType,
+      this.auditCompareLeftMachineId.trim(),
+      this.auditCompareRightMachineId.trim(),
+      this.auditCompareLimit,
+      this.getSyncAuditFilters()
+    ).subscribe({
+      next: (response) => {
+        this.syncAuditCompareReport = response.responseData;
+        this.loading.syncAuditCompare = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to compare machines';
+        this.loading.syncAuditCompare = false;
+      }
+    });
+  }
+
+  reconstructSyncAuditEntity() {
+    const entityId = Number(this.auditEntityIdInput);
+    if (!this.selectedAuditEntityType || !Number.isFinite(entityId) || entityId <= 0 || !this.auditReconstructAsOf.trim()) {
+      this.errors.syncAudit = 'Select an entity type, enter an entity ID, and provide an as-of timestamp.';
+      return;
+    }
+
+    this.loading.syncAuditReconstruct = true;
+    this.errors.syncAudit = '';
+    this.syncAuditReconstruction = null;
+
+    this.adminService.reconstructSyncAuditEntity(
+      this.selectedAuditEntityType,
+      entityId,
+      this.auditReconstructAsOf.trim()
+    ).subscribe({
+      next: (response) => {
+        this.syncAuditReconstruction = response.responseData;
+        this.expandedSections['syncAuditReconstruction'] = false;
+        this.loading.syncAuditReconstruct = false;
+      },
+      error: (error) => {
+        this.errors.syncAudit = error.error?.message || error.message || 'Failed to reconstruct entity state';
+        this.loading.syncAuditReconstruct = false;
+      }
+    });
+  }
+
+  clearSyncAuditFilters() {
+    this.auditMachineIdFilter = '';
+    this.auditFieldNameFilter = '';
+    this.auditChangeTypeFilter = '';
+    this.auditFromFilter = '';
+    this.auditToFilter = '';
+  }
+
+  getSyncAuditFilters(): SyncAuditFilters {
+    return {
+      machineId: this.auditMachineIdFilter,
+      fieldName: this.auditFieldNameFilter,
+      changeType: this.auditChangeTypeFilter,
+      from: this.auditFromFilter,
+      to: this.auditToFilter
+    };
+  }
+}

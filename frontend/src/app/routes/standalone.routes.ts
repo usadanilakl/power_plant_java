@@ -3,6 +3,10 @@ import { TagNumberComponent } from '../pages/tag-number/tag-number.component';
 import { PrintComponent } from '../pages/print/print.component';
 import { BackupComponent } from '../pages/backup/backup.component';
 import { AdminFunctionalitiesComponent } from '../pages/admin/admin-functionalities.component';
+import { AdminFilesComponent } from '../pages/admin/tabs/admin-files.component';
+import { AdminLotoComponent } from '../pages/admin/tabs/admin-loto.component';
+import { AdminSyncComponent } from '../pages/admin/tabs/admin-sync.component';
+import { AdminSharepointComponent } from '../pages/admin/tabs/admin-sharepoint.component';
 import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.component';
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
@@ -19,11 +23,16 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
   { path: 'print', component: PrintComponent },
   { path: 'backup', component: BackupComponent },
-  // Admin Dashboard with subroutes
+  // Admin Dashboard with tab-based layout
   {
     path: 'admin',
+    component: AdminFunctionalitiesComponent,
     children: [
-      { path: '', component: AdminFunctionalitiesComponent },
+      { path: '', redirectTo: 'files', pathMatch: 'full' },
+      { path: 'files', component: AdminFilesComponent },
+      { path: 'loto', component: AdminLotoComponent },
+      { path: 'sync', component: AdminSyncComponent },
+      { path: 'sharepoint', component: AdminSharepointComponent },
       { path: 'category-values', component: CvManagerPageComponent },
       { path: 'work-category-profiles', component: WorkCategoryProfileAdminComponent }
     ]

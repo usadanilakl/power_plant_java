@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.esp.EspLedService;
 import com.dk_power.power_plant_java.sevice.esp.LedStripService;
@@ -32,11 +33,12 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private final EspLedService espLedService;
     private final LedStripService ledStripService;
     private final WledCommandQueueService wledCommandQueueService;
+    private final LotoRepo lotoRepo;
 
     public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
                            EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
                            EspLedService espLedService, LedStripService ledStripService,
-                           WledCommandQueueService wledCommandQueueService) {
+                           WledCommandQueueService wledCommandQueueService, LotoRepo lotoRepo) {
         this.lotoBoxRepo = lotoBoxRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
@@ -44,6 +46,7 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         this.espLedService = espLedService;
         this.ledStripService = ledStripService;
         this.wledCommandQueueService = wledCommandQueueService;
+        this.lotoRepo = lotoRepo;
     }
 
     @Override
@@ -273,5 +276,48 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
             wledCommandQueueService.enqueueCommand(
                     box.getLedStrip().getEspDevice(), payload, box.getNumber());
         }
+    }
+
+    /**
+     * Reconcile all LOTO boxes:
+     * 1. Clear all box→loto links
+     * 2. For each non-closed LOTO with a boxNumber, re-link to matching box
+     * 3. Set LED colors based on current permit status
+     */
+    public String reconcileExistingLotos() {
+        // Step 1: Clear all boxes
+        List<LotoBox> allBoxes = lotoBoxRepo.findAll();
+        for (LotoBox box : allBoxes) {
+            box.setLoto(null);
+            box.setR(0); box.setG(0); box.setB(32); box.setBrightness(128); // default closed color
+        }
+        lotoBoxRepo.saveAll(allBoxes);
+
+        // Step 2: Re-link from LOTO.boxNumber
+        List<Loto> allLotos = lotoRepo.findAll();
+        int linked = 0;
+        for (Loto loto : allLotos) {
+            if (loto.getBoxNumber() == null || loto.getBoxNumber() == 0) continue;
+            String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+            if ("Closed".equals(status)) continue;
+
+            LotoBox box = lotoBoxRepo.findByNumber(loto.getBoxNumber());
+            if (box == null) continue;
+            if (box.getLoto() != null) continue; // already taken by another LOTO
+
+            box.setLoto(loto);
+            loto.setLotoBox(box);
+            lotoBoxRepo.save(box);
+            lotoRepo.save(loto);
+
+            if (status != null) {
+                updateBoxColorForStatus(box, status);
+            }
+            linked++;
+        }
+
+        String msg = "Reset " + allBoxes.size() + " boxes, linked " + linked + " active LOTOs";
+        System.out.println(msg);
+        return msg;
     }
 }

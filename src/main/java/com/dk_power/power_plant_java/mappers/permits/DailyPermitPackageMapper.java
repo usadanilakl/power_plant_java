@@ -125,6 +125,14 @@ public class DailyPermitPackageMapper implements BaseMapper {
         }
         dto.setModifications(entity.getModifications());
         dto.setPersonnel(entity.getPersonnel());
+        dto.setForemanCloseOutCompleted(entity.getForemanCloseOutCompleted());
+        dto.setModificationCount(entity.getModificationCount());
+        dto.setWorkCompleted(entity.getWorkCompleted());
+        dto.setClosureComments(entity.getClosureComments());
+        dto.setScopeChanged(entity.getScopeChanged());
+        dto.setClosureScopeDetails(entity.getClosureScopeDetails());
+        dto.setContinueDate(entity.getContinueDate());
+        dto.setContinueTime(entity.getContinueTime());
 
         dto.setDate(entity.getDate());
         dto.setTime(entity.getTime());

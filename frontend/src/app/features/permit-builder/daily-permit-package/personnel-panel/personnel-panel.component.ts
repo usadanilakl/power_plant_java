@@ -61,7 +61,14 @@ import { PersonnelSignEntry } from '../../../../models/permits/dailt-permit-pack
             <span class="person-company" *ngIf="entry.company">{{ entry.company }}</span>
             <span class="person-time">Since {{ formatTime(entry.signOnTime) }}</span>
           </div>
-          <button class="btn sign-off" *ngIf="isActive()" (click)="doSignOff(entry.personName)">Sign Off</button>
+          <div class="sign-off-area" *ngIf="isActive()">
+            <div *ngIf="signingOffPerson() === entry.personName" class="sign-off-inline">
+              <input type="text" [(ngModel)]="signOffComment" placeholder="Comments (optional)" class="form-input" (keydown.enter)="confirmSignOff(entry.personName)" />
+              <button class="btn sign-off" (click)="confirmSignOff(entry.personName)">Confirm</button>
+              <button class="btn cancel" (click)="cancelSignOff()">X</button>
+            </div>
+            <button *ngIf="signingOffPerson() !== entry.personName" class="btn sign-off" (click)="startSignOff(entry.personName)">Sign Off</button>
+          </div>
         </div>
       </div>
 
@@ -83,7 +90,10 @@ import { PersonnelSignEntry } from '../../../../models/permits/dailt-permit-pack
 
         <div *ngIf="closeOutWorkCompleted === false" class="form-group">
           <label>When will work continue?</label>
-          <input type="date" [(ngModel)]="closeOutContinueDate" class="form-input" />
+          <div class="form-row">
+            <input type="date" [(ngModel)]="closeOutContinueDate" class="form-input" />
+            <input type="time" [(ngModel)]="closeOutContinueTime" class="form-input" style="max-width:140px" />
+          </div>
         </div>
 
         <div *ngIf="closeOutWorkCompleted === false" class="form-group">
@@ -129,6 +139,7 @@ import { PersonnelSignEntry } from '../../../../models/permits/dailt-permit-pack
     </div>
   `,
   styles: [`
+    :host { display: block; height: 100%; overflow-y: auto; }
     .personnel-container { padding: 12px; }
 
     .foreman-section { margin-bottom: 16px; padding: 12px; background: rgba(255, 152, 0, 0.08); border: 1px solid #ff9800; border-radius: 8px; }
@@ -182,6 +193,10 @@ import { PersonnelSignEntry } from '../../../../models/permits/dailt-permit-pack
     .radio-row label { color: #ddd; font-size: 13px; display: flex; align-items: center; gap: 4px; }
     .form-actions { display: flex; gap: 10px; margin-top: 16px; }
 
+    .sign-off-area { display: flex; align-items: center; }
+    .sign-off-inline { display: flex; gap: 4px; align-items: center; }
+    .sign-off-inline .form-input { min-width: 140px; flex: 1; padding: 5px 8px; font-size: 12px; }
+
     .empty-message { color: #666; font-style: italic; padding: 20px 0; text-align: center; }
   `]
 })
@@ -190,7 +205,7 @@ export class PersonnelPanelComponent {
   packageStatus = input<string>('Building');
 
   foremanSignOnEvent = output<{ personName: string; company: string }>();
-  foremanCloseOutEvent = output<{ workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string }>();
+  foremanCloseOutEvent = output<{ workCompleted: boolean; comments: string; scopeChanged: boolean; scopeDetails: string; continueDate: string; continueTime: string }>();
   signOnEvent = output<{ personName: string; personRole: string; company: string }>();
   signOffEvent = output<{ personName: string; comments: string }>();
 
@@ -210,6 +225,7 @@ export class PersonnelPanelComponent {
   closeOutScopeChanged: boolean | null = null;
   closeOutScopeDetails = '';
   closeOutContinueDate = '';
+  closeOutContinueTime = '';
 
   showHistory = false;
 
@@ -261,9 +277,23 @@ export class PersonnelPanelComponent {
     this.newCompany = '';
   }
 
-  doSignOff(personName: string) {
-    const comments = prompt('Sign-off comments (optional):') ?? '';
-    this.signOffEvent.emit({ personName, comments });
+  signingOffPerson = signal<string | null>(null);
+  signOffComment = '';
+
+  startSignOff(personName: string) {
+    this.signingOffPerson.set(personName);
+    this.signOffComment = '';
+  }
+
+  confirmSignOff(personName: string) {
+    this.signOffEvent.emit({ personName, comments: this.signOffComment });
+    this.signingOffPerson.set(null);
+    this.signOffComment = '';
+  }
+
+  cancelSignOff() {
+    this.signingOffPerson.set(null);
+    this.signOffComment = '';
   }
 
   submitCloseOut() {
@@ -272,7 +302,8 @@ export class PersonnelPanelComponent {
       comments: this.closeOutComments,
       scopeChanged: this.closeOutScopeChanged === true,
       scopeDetails: this.closeOutScopeDetails,
-      continueDate: this.closeOutContinueDate
+      continueDate: this.closeOutContinueDate,
+      continueTime: this.closeOutContinueTime
     });
     this.showCloseOut = false;
     this.closeOutWorkCompleted = null;
@@ -280,6 +311,7 @@ export class PersonnelPanelComponent {
     this.closeOutScopeChanged = null;
     this.closeOutScopeDetails = '';
     this.closeOutContinueDate = '';
+    this.closeOutContinueTime = '';
   }
 
   formatTime(iso: string): string {

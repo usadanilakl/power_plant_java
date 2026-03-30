@@ -32,7 +32,7 @@ export class EngraverManagerComponent {
 
   // Click-to-edit state
   editingCell = signal<{ itemId: number; field: string } | null>(null);
-  syncCounterpart = signal(false);
+  syncCounterpart = signal(true);
   savingItems = signal<Set<number>>(new Set());
   savedItems = signal<Set<number>>(new Set());
   editingCharacteristicsItemId = signal<number | null>(null);
@@ -266,7 +266,7 @@ export class EngraverManagerComponent {
     }
     const newJson = JSON.stringify(updatedChars);
     this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
-    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), []);
+    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
   }
 
   onCellKeydown(event: KeyboardEvent, item: LotoPointDto, field: string): void {
@@ -289,7 +289,7 @@ export class EngraverManagerComponent {
 
   onCharacteristicsChanged(item: LotoPointDto, newJson: string): void {
     this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
-    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), []);
+    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
   }
 
   /**

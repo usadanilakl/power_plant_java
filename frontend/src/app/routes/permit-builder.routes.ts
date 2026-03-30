@@ -23,6 +23,7 @@ import { LotoPermitSideMenuComponent } from '../features/permit-builder/loto/lot
 import { RfJhaPageComponent } from '../features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component';
 import { RfJhaSideMenuComponent } from '../features/permit-builder/jha/refactored/rf-jha-side-menu/rf-jha-side-menu.component';
 import { LotoBoardComponent } from '../features/permit-builder/loto-board/loto-board.component';
+import { LotoUsageMonitorComponent } from '../features/permit-builder/loto-usage-monitor/loto-usage-monitor.component';
 
 export const PERMIT_BUILDER_ROUTES: Routes = [
   {
@@ -92,6 +93,7 @@ export const PERMIT_BUILDER_ROUTES: Routes = [
         data: { leftMenu: LotoPermitSideMenuComponent }
       },
       { path: 'loto-board', component: LotoBoardComponent },
+      { path: 'loto-usage', component: LotoUsageMonitorComponent },
     ]
   }
 ];
