@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.util.*;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -127,6 +128,26 @@ public class HubSyncController {
     public ResponseEntity<Map<String, Long>> getPendingChangeCount(
             @RequestHeader("X-Machine-Id") String machineId) {
         return ResponseEntity.ok(Map.of("count", hubSyncService.getPendingChangeCount(machineId)));
+    }
+
+    /**
+     * Reset sync status for a client — marks all changes as pending for re-sync.
+     * Use when a client fetched changes but failed to apply them.
+     */
+    @PostMapping("/changes/reset/{targetMachineId}")
+    public ResponseEntity<Map<String, Object>> resetSyncForClient(
+            @PathVariable String targetMachineId) {
+        int reset = hubSyncService.resetSyncStatusForClient(targetMachineId);
+        log.info("Reset sync status for {}: {} changes marked as pending", targetMachineId, reset);
+        return ResponseEntity.ok(Map.of("reset", reset, "machineId", targetMachineId));
+    }
+
+    @PostMapping("/changes/acknowledge")
+    public ResponseEntity<Map<String, Object>> acknowledgeChanges(
+            @RequestHeader("X-Machine-Id") String machineId,
+            @RequestBody List<UUID> changeIds) {
+        int acknowledged = hubSyncService.acknowledgeChanges(machineId, changeIds);
+        return ResponseEntity.ok(Map.of("acknowledged", acknowledged));
     }
 
     // -------------------------------------------------------------------

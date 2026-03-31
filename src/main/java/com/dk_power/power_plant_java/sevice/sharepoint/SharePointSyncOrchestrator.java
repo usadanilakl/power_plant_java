@@ -6,7 +6,6 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.sharepoint.SharePointSyncStatus;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
-import com.dk_power.power_plant_java.sevice.sync.SyncContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,7 +29,6 @@ public class SharePointSyncOrchestrator {
     private final SyncConfig syncConfig;
     private final CentralSyncService centralSyncService;
     private final SharePointFieldMergeService fieldMergeService;
-    private final SyncContext syncContext;
 
     private final Map<String, Long> lastSyncTimes = new ConcurrentHashMap<>();
     private final Map<String, SyncResult> lastResults = new ConcurrentHashMap<>();
@@ -40,14 +38,12 @@ public class SharePointSyncOrchestrator {
             SharePointSyncSettings syncSettings,
             SyncConfig syncConfig,
             @Lazy CentralSyncService centralSyncService,
-            SharePointFieldMergeService fieldMergeService,
-            SyncContext syncContext) {
+            SharePointFieldMergeService fieldMergeService) {
         this.syncables = syncables;
         this.syncSettings = syncSettings;
         this.syncConfig = syncConfig;
         this.centralSyncService = centralSyncService;
         this.fieldMergeService = fieldMergeService;
-        this.syncContext = syncContext;
         log.info("[SP Orchestrator] Registered {} syncable entity types: {}",
             syncables.size(),
             syncables.stream().map(SharePointSyncable::getEntityTypeName)
@@ -112,10 +108,11 @@ public class SharePointSyncOrchestrator {
         SyncResult result = new SyncResult();
         long start = System.currentTimeMillis();
 
-        // Wrap in SyncContext so FieldChangeEntityListener doesn't create
-        // false FieldChange records during SP sync saves
+        // DO NOT wrap in syncContext.startSync() — SP-created/updated entities must generate
+        // FieldChange records so clients receive them via field-level sync.
+        // The CRDT LWW timestamps prevent sync loops: clients apply the changes inside their
+        // own sync context, so they don't re-broadcast back to hub.
         try (LoggingContext.Scope ignored = LoggingContext.openSyncScope("sharepoint." + type, syncConfig.getMachineId())) {
-            syncContext.startSync();
             try {
                 List<D> remoteDtos = syncable.fetchAllFromSharePoint();
                 if (remoteDtos == null || remoteDtos.isEmpty()) {
@@ -151,8 +148,6 @@ public class SharePointSyncOrchestrator {
             } catch (Exception e) {
                 log.error("[SP Orchestrator] {} fetch failed: {}", type, e.getMessage(), e);
                 result.setErrorMessage(e.getMessage());
-            } finally {
-                syncContext.endSync();
             }
         }
 

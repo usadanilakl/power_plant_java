@@ -28,6 +28,7 @@ public class EspDevice extends BaseAuditEntity {
     private String pinSequence;
 
     public Set<String> getPinSequence() {
+        if (pinSequence == null || pinSequence.isEmpty()) return new HashSet<>();
         return new HashSet<>(Arrays.asList(pinSequence.split(",")));
     }
 

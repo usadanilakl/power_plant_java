@@ -1860,11 +1860,13 @@ public class FieldSyncService {
     }
 
     /**
-     * Cleanup old changes based on retention policy
+     * Cleanup old changes based on retention policy.
+     * Hub has its own cleanup in HubSyncService (3 AM) with hub-specific retention.
      */
     @Scheduled(cron = "0 0 2 * * ?") // Run at 2 AM daily
     @Transactional
     public void cleanupOldChanges() {
+        if (syncConfig.isHubMode()) return; // Hub uses HubSyncService.cleanupOldChanges()
         Instant cutoff = Instant.now().minusSeconds(syncConfig.getRetentionDays() * 24L * 60 * 60);
         int deleted = fieldChangeRepository.deleteChangesBefore(cutoff);
         if (deleted > 0) {

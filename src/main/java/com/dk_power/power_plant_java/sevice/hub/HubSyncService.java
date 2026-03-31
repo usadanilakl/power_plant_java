@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -103,19 +104,41 @@ public class HubSyncService {
         }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Page<FieldChange> getPendingChangesPaginated(String machineId, Pageable pageable) {
-        Page<FieldChange> page = fieldChangeRepository.findChangesNotSyncedTo(machineId, pageable);
+        // Return pending changes WITHOUT marking as synced.
+        // Client must call acknowledgeChanges() after successful apply.
+        return fieldChangeRepository.findChangesNotSyncedTo(machineId, pageable);
+    }
 
-        List<FieldChange> changes = page.getContent();
+    /**
+     * Mark changes as synced to a client AFTER the client confirms successful apply.
+     * This prevents changes from being lost if the client fetches but fails to apply.
+     */
+    @Transactional
+    public int acknowledgeChanges(String machineId, List<UUID> changeIds) {
+        if (changeIds == null || changeIds.isEmpty()) return 0;
+
+        List<FieldChange> changes = fieldChangeRepository.findAllById(changeIds);
         for (FieldChange change : changes) {
             change.addSyncedMachine(machineId);
         }
         if (!changes.isEmpty()) {
             fieldChangeRepository.saveAll(changes);
         }
+        log.debug("Acknowledged {} changes for {}", changes.size(), machineId);
+        return changes.size();
+    }
 
-        return page;
+    /**
+     * Reset sync status for a client — removes machine ID from all syncedToMachines fields.
+     * All changes become pending for this client again.
+     */
+    @Transactional
+    public int resetSyncStatusForClient(String machineId) {
+        int reset = fieldChangeRepository.removeMachineFromSynced(machineId);
+        log.info("Reset sync status for {}: {} changes re-queued", machineId, reset);
+        return reset;
     }
 
     public long getPendingChangeCount(String machineId) {

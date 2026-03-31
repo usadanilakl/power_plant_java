@@ -414,6 +414,22 @@ public class CentralSyncService {
                 int applied = applyIncomingChanges(batch);
                 result.totalApplied += applied;
 
+                // Acknowledge successfully applied changes so hub marks them as synced.
+                // Without this, hub would never know the client received them, and
+                // would keep returning the same changes on every poll.
+                if (applied > 0) {
+                    try {
+                        List<java.util.UUID> appliedIds = batch.stream()
+                            .map(FieldChange::getId)
+                            .filter(java.util.Objects::nonNull)
+                            .collect(java.util.stream.Collectors.toList());
+                        acknowledgeChangesToServer(appliedIds);
+                    } catch (Exception ackEx) {
+                        log.warn("Failed to acknowledge {} changes: {}", applied, ackEx.getMessage());
+                        // Not fatal — hub will re-send these changes next cycle
+                    }
+                }
+
                 log.debug("Batch {}: received {} changes, applied {}", batchNumber, batch.size(), applied);
 
                 // If we got less than batch size, we've reached the end
@@ -421,7 +437,9 @@ public class CentralSyncService {
                     break;
                 }
 
-                page++;
+                // Always fetch page 0 — acknowledged changes are removed from the
+                // pending set, so the next unacknowledged batch is always at page 0.
+                // Incrementing page would skip records.
 
                 // Safety check
                 if (batchNumber > 1000) {
@@ -487,6 +505,24 @@ public class CentralSyncService {
         );
 
         return response.getBody();
+    }
+
+    /**
+     * Acknowledge successfully applied changes to the server.
+     * The server only marks changes as synced after this call,
+     * so if the client fails to apply, the changes will be re-sent next cycle.
+     */
+    private void acknowledgeChangesToServer(List<java.util.UUID> changeIds) {
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/acknowledge";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+        HttpEntity<List<java.util.UUID>> entity = new HttpEntity<>(changeIds, headers);
+        restTemplate.postForEntity(url, entity, Map.class);
+
+        log.debug("Acknowledged {} changes to server", changeIds.size());
     }
 
     /**

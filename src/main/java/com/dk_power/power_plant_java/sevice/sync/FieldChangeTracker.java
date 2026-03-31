@@ -110,8 +110,9 @@ public class FieldChangeTracker {
         // Skip transient fields
         if (field.isAnnotationPresent(Transient.class)) return false;
 
-        // Skip JsonIgnore fields — but NOT ManyToOne associations, which use @JsonIgnore
-        // only to avoid circular serialization. The tracker serializes them as just an ID.
+        // Skip JsonIgnore fields — except ManyToOne FKs which need sync tracking.
+        // @JsonIgnore on ManyToOne prevents Jackson/ModelMapper circular traversal,
+        // but the tracker only serializes the referenced entity's ID (no lazy load issues).
         if (field.isAnnotationPresent(JsonIgnore.class)
                 && !field.isAnnotationPresent(ManyToOne.class)) return false;
 
