@@ -51,6 +51,13 @@ import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.c
              [active]="rla3.isActive">
             SharePoint
           </a>
+          <a mat-tab-link
+             routerLink="forms"
+             routerLinkActive
+             #rla4="routerLinkActive"
+             [active]="rla4.isActive">
+            Forms
+          </a>
         </nav>
         <mat-tab-nav-panel #tabPanel>
           <router-outlet></router-outlet>

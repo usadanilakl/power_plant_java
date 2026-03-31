@@ -36,4 +36,10 @@ export class PrintableFormService {
     getPrimaryFormByType(permitType: 'SafeWork' | 'HotWork' | 'ConfinedSpace' | 'Loto' | 'Jha' | 'EnergizedWorkPermit' | 'ExcavationPermit' | 'VentingPermit'): Observable<SpringApiResponse<PrintableFormDto>> {
         return this.http.get<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/get-primary-form-by-type/${permitType}`);
     }
+    getSeedTypes(): Observable<SpringApiResponse<Record<string, string>>> {
+        return this.http.get<SpringApiResponse<Record<string, string>>>(`${this.apiUrl}/seed-types`);
+    }
+    seedForm(formType: string, formName: string): Observable<SpringApiResponse<PrintableFormDto>> {
+        return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/seed`, { formType, formName });
+    }
 }

@@ -28,27 +28,45 @@ public class PermitFormSeeder {
     private static final int M = 20; // margin
     private static final int FW = 776; // full width (816 - 2 * margin)
 
+    /** Available seed types with their default names */
+    private static final Map<String, String> SEED_TYPES = Map.of(
+        "EnergizedWorkPermit", "Energized Electrical Work Permit",
+        "VentingPermit", "Combustible Gas System Venting/Inerting Checklist",
+        "ExcavationPermit", "Excavation & Blind Penetrations Permit",
+        "Loto", "LOTO Record Sheet"
+    );
+
+    public Map<String, String> getAvailableSeedTypes() {
+        return SEED_TYPES;
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
-    public void seedForms() {
+    public void onStartup() {
         // Non-hub machines: clean up any locally-seeded forms (they'll receive hub's forms via sync)
         if (!syncConfig.isHubMode()) {
             cleanupLocalDuplicateForms();
-            log.info("Permit form seeder skipped (not hub mode)");
-            return;
         }
+        // No longer auto-seeds forms — use the admin UI to seed on demand
+    }
 
-        // Hub seeds forms WITHOUT syncContext so FieldChanges are created and synced to clients.
-        // Existing guards (findByFormTypeAndIsPrimary) prevent re-seeding on subsequent startups.
-        try {
-            seedEnergizedWorkForm();
-            seedVentingForm();
-            seedExcavationForm();
-            seedLotoForm();
-            log.info("Permit form seeder completed");
-        } catch (Exception e) {
-            log.error("Permit form seeder failed (non-fatal): {}", e.getMessage(), e);
+    /**
+     * Seed a specific form type with a custom name.
+     * @return the created PrintableForm
+     * @throws IllegalArgumentException if formType is unknown
+     */
+    @Transactional
+    public PrintableForm seedForm(String formType, String formName) {
+        if (!SEED_TYPES.containsKey(formType)) {
+            throw new IllegalArgumentException("Unknown form type: " + formType + ". Available: " + SEED_TYPES.keySet());
         }
+        return switch (formType) {
+            case "EnergizedWorkPermit" -> seedEnergizedWorkForm(formName);
+            case "VentingPermit" -> seedVentingForm(formName);
+            case "ExcavationPermit" -> seedExcavationForm(formName);
+            case "Loto" -> seedLotoForm(formName);
+            default -> throw new IllegalArgumentException("Unknown form type: " + formType);
+        };
     }
 
     /**
@@ -90,10 +108,8 @@ public class PermitFormSeeder {
 
     // ========== ENERGIZED WORK PERMIT (1 page) ==========
 
-    private void seedEnergizedWorkForm() {
-        if (printableFormRepo.findByFormTypeAndIsPrimary("EnergizedWorkPermit", true).isPresent()) return;
-
-        PrintableForm form = createForm("Energized Electrical Work Permit", "EnergizedWorkPermit");
+    private PrintableForm seedEnergizedWorkForm(String name) {
+        PrintableForm form = createForm(name, "EnergizedWorkPermit");
         int p = 1;
         int y = M;
 
@@ -239,22 +255,22 @@ public class PermitFormSeeder {
         form.addFormContainer(text(M, y, FW, 38, "No work on energized equipment shall be performed alone.\nIf the work scope changes, notify the Plant Manager.\nNo modified work scope shall be performed without PRIOR authorization from the Plant Manager", p,
                 Map.of("backgroundColor", "#cc0000", "color", "white", "textAlign", "center", "fontSize", "9px")));
 
-        printableFormRepo.save(form);
-        log.info("Seeded EnergizedWorkPermit paper form");
+        PrintableForm saved = printableFormRepo.save(form);
+        log.info("Seeded EnergizedWorkPermit paper form: {}", name);
+        return saved;
     }
 
     // ========== VENTING PERMIT (2 pages) ==========
 
-    private void seedVentingForm() {
-        if (printableFormRepo.findByFormTypeAndIsPrimary("VentingPermit", true).isPresent()) return;
-
-        PrintableForm form = createForm("Combustible Gas System Venting/Inerting Checklist", "VentingPermit");
+    private PrintableForm seedVentingForm(String name) {
+        PrintableForm form = createForm(name, "VentingPermit");
 
         seedVentingPage1(form);
         seedVentingPage2(form);
 
-        printableFormRepo.save(form);
-        log.info("Seeded VentingPermit paper form");
+        PrintableForm saved = printableFormRepo.save(form);
+        log.info("Seeded VentingPermit paper form: {}", name);
+        return saved;
     }
 
     private void seedVentingPage1(PrintableForm form) {
@@ -490,17 +506,16 @@ public class PermitFormSeeder {
 
     // ========== EXCAVATION PERMIT (3 pages) ==========
 
-    private void seedExcavationForm() {
-        if (printableFormRepo.findByFormTypeAndIsPrimary("ExcavationPermit", true).isPresent()) return;
-
-        PrintableForm form = createForm("Excavation & Blind Penetrations Permit", "ExcavationPermit");
+    private PrintableForm seedExcavationForm(String name) {
+        PrintableForm form = createForm(name, "ExcavationPermit");
 
         seedExcavationPage1(form);
         seedExcavationPage2(form);
         seedExcavationPage3(form);
 
-        printableFormRepo.save(form);
-        log.info("Seeded ExcavationPermit paper form");
+        PrintableForm saved = printableFormRepo.save(form);
+        log.info("Seeded ExcavationPermit paper form: {}", name);
+        return saved;
     }
 
     private void seedExcavationPage1(PrintableForm form) {
@@ -817,15 +832,14 @@ public class PermitFormSeeder {
 
     // ========== LOTO (3 pages) ==========
 
-    private void seedLotoForm() {
-        if (printableFormRepo.findByFormTypeAndIsPrimary("Loto", true).isPresent()) return;
-
-        PrintableForm form = createForm("LOTO Record Sheet", "Loto");
+    private PrintableForm seedLotoForm(String name) {
+        PrintableForm form = createForm(name, "Loto");
         seedLotoPage1(form);
         seedLotoPage2(form);
         seedLotoPage3(form);
-        printableFormRepo.save(form);
-        log.info("Seeded LOTO form (3 pages)");
+        PrintableForm saved = printableFormRepo.save(form);
+        log.info("Seeded LOTO form (3 pages): {}", name);
+        return saved;
     }
 
     private void seedLotoPage1(PrintableForm form) {

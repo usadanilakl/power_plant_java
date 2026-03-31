@@ -7,6 +7,7 @@ import { AdminFilesComponent } from '../pages/admin/tabs/admin-files.component';
 import { AdminLotoComponent } from '../pages/admin/tabs/admin-loto.component';
 import { AdminSyncComponent } from '../pages/admin/tabs/admin-sync.component';
 import { AdminSharepointComponent } from '../pages/admin/tabs/admin-sharepoint.component';
+import { AdminFormsComponent } from '../pages/admin/tabs/admin-forms.component';
 import { SyncDashboardComponent } from '../pages/sync-dashboard/sync-dashboard.component';
 import { SyncMonitorComponent } from '../pages/sync-monitor/sync-monitor.component';
 import { SyncResyncComponent } from '../features/sync-resync/sync-resync.component';
@@ -33,6 +34,7 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'loto', component: AdminLotoComponent },
       { path: 'sync', component: AdminSyncComponent },
       { path: 'sharepoint', component: AdminSharepointComponent },
+      { path: 'forms', component: AdminFormsComponent },
       { path: 'category-values', component: CvManagerPageComponent },
       { path: 'work-category-profiles', component: WorkCategoryProfileAdminComponent }
     ]

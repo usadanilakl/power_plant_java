@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.angular.forms;
 
+import com.dk_power.power_plant_java.config.PermitFormSeeder;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,6 +26,7 @@ public class PrintableFormRestController {
     private final FormContainerRepo formContainerRepo;
     private final FormContainerService formContainerService;
     private final PrintableFormService printableFormService;
+    private final PermitFormSeeder permitFormSeeder;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<Iterable<PrintableForm>>> getAllForms() {
@@ -146,6 +149,32 @@ public class PrintableFormRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new NgApiResponse<>(null, "Error retrieving primary form: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/seed-types")
+    public ResponseEntity<NgApiResponse<Map<String, String>>> getAvailableSeedTypes() {
+        return ResponseEntity.ok(new NgApiResponse<>(permitFormSeeder.getAvailableSeedTypes(), "Available seed types."));
+    }
+
+    @PostMapping("/seed")
+    public ResponseEntity<NgApiResponse<PrintableForm>> seedForm(@RequestBody Map<String, String> request) {
+        try {
+            String formType = request.get("formType");
+            String formName = request.get("formName");
+            if (formType == null || formType.isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "formType is required"));
+            }
+            if (formName == null || formName.isBlank()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "formName is required"));
+            }
+            PrintableForm form = permitFormSeeder.seedForm(formType, formName);
+            return ResponseEntity.ok(new NgApiResponse<>(form, "Form seeded successfully."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error seeding form: " + e.getMessage()));
         }
     }
 
