@@ -61,6 +61,10 @@ public class SyncHealthChecker {
     // Track last successful sync date (when status was IN_SYNC)
     private final AtomicReference<Instant> lastSuccessfulSyncTime = new AtomicReference<>(null);
 
+    // Startup time — suppress resync recommendations during initial sync
+    private final Instant startupTime = Instant.now();
+    private static final long STARTUP_GRACE_MINUTES = 5;
+
     // Lazy-injected to avoid circular dependency (AutoResyncService depends on this)
     @Autowired
     @Lazy
@@ -70,7 +74,7 @@ public class SyncHealthChecker {
     private int consecutiveOutOfSyncCount = 0;
 
     // Threshold for suggesting resync (after N consecutive out-of-sync checks)
-    private static final int SUGGEST_RESYNC_THRESHOLD = 2;
+    private static final int SUGGEST_RESYNC_THRESHOLD = 5;
     private static final long ACTIVE_SYNC_GRACE_SECONDS = 300;
     private static final long STALE_BACKLOG_SECONDS = 900;
 
@@ -435,8 +439,18 @@ public class SyncHealthChecker {
             result.setSuggestResync(false);
             result.setSuggestedSyncDate(null);
             result.setRecommendation(null);
-        } else if (result.getSyncStatus() == SyncStatus.OUT_OF_SYNC ||
-                   result.getSyncStatus() == SyncStatus.POSSIBLY_OUT_OF_SYNC) {
+        } else if (result.getSyncStatus() == SyncStatus.POSSIBLY_OUT_OF_SYNC) {
+            // Actively catching up — don't increment counter, don't suggest resync
+            result.setSuggestResync(false);
+            result.setLastSuccessfulSyncTime(lastSuccessfulSyncTime.get());
+        } else if (result.getSyncStatus() == SyncStatus.OUT_OF_SYNC) {
+            // During startup grace period, don't increment — initial sync may still be running
+            if (now.isBefore(startupTime.plusSeconds(STARTUP_GRACE_MINUTES * 60))) {
+                result.setSuggestResync(false);
+                result.setLastSuccessfulSyncTime(lastSuccessfulSyncTime.get());
+                return;
+            }
+
             consecutiveOutOfSyncCount++;
 
             // Get the last successful sync date for suggestion

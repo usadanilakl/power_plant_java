@@ -49,6 +49,7 @@ public class HubSyncService {
     private final HubSyncConfig hubSyncConfig;
 
     private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
+    private final java.util.concurrent.ConcurrentLinkedQueue<List<FieldChange>> failedBatches = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
     @Transactional
     public SyncResponse syncExchange(String machineId, String machineName,
@@ -85,7 +86,8 @@ public class HubSyncService {
                         int retried = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
                         log.info("Retry succeeded: applied {} changes to hub entities", retried);
                     } catch (Exception retry) {
-                        log.error("Retry also failed - scheduling for periodic retry: {}", retry.getMessage());
+                        log.error("Retry also failed - queuing for periodic retry: {}", retry.getMessage());
+                        failedBatches.offer(new ArrayList<>(result.savedChanges));
                         pendingEntityRetry.set(true);
                     }
                 }
@@ -214,22 +216,28 @@ public class HubSyncService {
         long start = System.currentTimeMillis();
         try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.retryPendingEntityApplication")) {
             LoggingContext.setMachineId(syncConfig.getMachineId());
-            log.info("Retrying pending hub entity application...");
-            List<FieldChange> unapplied = fieldChangeRepository.findRecentIncomingChanges(
-                syncConfig.getMachineId(), Instant.now().minus(1, ChronoUnit.HOURS));
 
-            if (unapplied.isEmpty()) {
-                log.info("No unapplied changes found for retry");
-                return;
+            int totalRetried = 0;
+            boolean anyFailed = false;
+            List<FieldChange> batch;
+
+            while ((batch = failedBatches.poll()) != null) {
+                try {
+                    int applied = fieldSyncService.applyIncomingChanges(batch, true);
+                    totalRetried += applied;
+                } catch (Exception e) {
+                    log.error("Retry failed for batch of {} changes: {}", batch.size(), e.getMessage());
+                    failedBatches.offer(batch); // Re-queue for next cycle
+                    anyFailed = true;
+                    break; // Don't retry remaining batches if one fails
+                }
             }
 
-            try {
-                int applied = fieldSyncService.applyIncomingChanges(unapplied, true);
-                log.info("Periodic retry: applied {} changes to hub entities in {} ms",
-                    applied, System.currentTimeMillis() - start);
-            } catch (Exception e) {
-                log.error("Periodic retry failed - will retry next cycle: {}", e.getMessage());
-                pendingEntityRetry.set(true);
+            if (totalRetried > 0) {
+                log.info("Periodic retry: applied {} changes in {} ms", totalRetried, System.currentTimeMillis() - start);
+            }
+            if (anyFailed) {
+                pendingEntityRetry.set(true); // Schedule another retry
             }
         }
     }
