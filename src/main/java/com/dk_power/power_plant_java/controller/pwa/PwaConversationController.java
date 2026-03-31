@@ -55,6 +55,10 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
+            // PWA: verify user is participant (initiator or responder) — not just any authenticated user
+            if (!conversationService.isUserParticipant(id, user.getId())) {
+                return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
+            }
             List<MessageDto> messages = messageService.getMessagesForConversation(id);
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -74,6 +78,14 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
+            // PWA: verify user owns the entity they're starting a conversation about
+            if ("WorkRequest".equals(dto.getEntityType()) && dto.getEntityId() != null) {
+                WorkRequest wr = workRequestRepo.findById(dto.getEntityId()).orElse(null);
+                if (wr == null || !user.getEmail().equalsIgnoreCase(wr.getSubmitterEmail())) {
+                    return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
+                }
+            }
+
             ConversationDto created = conversationService.startConversation(dto);
             log.info("[PWA Conversations] User {} started conversation: {}", user.getEmail(), created.getSubject());
             return ResponseEntity.ok()
@@ -93,6 +105,10 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
+            if (!conversationService.isUserParticipant(id, user.getId())) {
+                return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
+            }
+
             String content = body.get("content");
             if (content == null || content.isBlank()) {
                 return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "content is required"));
@@ -120,6 +136,9 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
+            if (!conversationService.isUserParticipant(id, user.getId())) {
+                return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
+            }
             conversationService.markRead(id);
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -155,7 +174,9 @@ public class PwaConversationController {
         if (user == null) return unauthorized();
 
         try {
-            List<ConversationDto> conversations = conversationService.getConversationsForEntity(entityType, entityId);
+            // PWA: only return conversations where THIS user is initiator or responder
+            // (not open conversations visible to all operators — those are desktop-only)
+            List<ConversationDto> conversations = conversationService.getConversationsForEntityStrictUser(entityType, entityId, user.getId());
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(conversations, "Conversations retrieved"));
@@ -189,6 +210,9 @@ public class PwaConversationController {
             WorkRequest wr = workRequestRepo.findFirstBySharepointIdOrderByIdAsc(sharepointId).orElse(null);
             if (wr == null) {
                 return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Work Request not found for sharepointId: " + sharepointId));
+            }
+            if (!user.getEmail().equalsIgnoreCase(wr.getSubmitterEmail())) {
+                return ResponseEntity.status(403).body(new NgApiResponse<>(null, "Access denied"));
             }
 
             ConversationDto dto = new ConversationDto();

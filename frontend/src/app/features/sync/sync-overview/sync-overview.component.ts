@@ -9,6 +9,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subscription } from 'rxjs';
 import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../services/sync-status.service';
+import { EntitySyncCheckService, VerificationResult } from '../../../services/sync/entity-sync-check.service';
+
+interface DriftRow extends EntityDrift {
+  verifyResult?: VerificationResult | null;
+  verifying?: boolean;
+}
 
 @Component({
   selector: 'app-sync-overview',
@@ -68,7 +74,7 @@ import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../
       <!-- Entity Drift Table -->
       @if (entityDrift().length > 0) {
         <h3>Entity Type Drift</h3>
-        <table mat-table [dataSource]="entityDrift()" class="drift-table">
+        <table mat-table [dataSource]="driftRows()" class="drift-table">
           <ng-container matColumnDef="entityType">
             <th mat-header-cell *matHeaderCellDef>Entity Type</th>
             <td mat-cell *matCellDef="let row">{{ row.entityType }}</td>
@@ -78,7 +84,7 @@ import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../
             <td mat-cell *matCellDef="let row">{{ row.localCount }}</td>
           </ng-container>
           <ng-container matColumnDef="serverCount">
-            <th mat-header-cell *matHeaderCellDef>Server</th>
+            <th mat-header-cell *matHeaderCellDef>Hub</th>
             <td mat-cell *matCellDef="let row">{{ row.serverCount }}</td>
           </ng-container>
           <ng-container matColumnDef="difference">
@@ -87,6 +93,29 @@ import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../
               <mat-chip [color]="row.difference > 5 ? 'warn' : 'accent'" highlighted>
                 {{ row.difference }}
               </mat-chip>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="spStatus">
+            <th mat-header-cell *matHeaderCellDef>SP Check</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.verifying) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else if (row.verifyResult) {
+                @if (!row.verifyResult.hubReachable) {
+                  <span class="sp-err">Hub unreachable</span>
+                } @else if (row.verifyResult.issueCount === 0) {
+                  <span class="sp-ok"><mat-icon style="font-size:16px;width:16px;height:16px">check_circle</mat-icon> OK</span>
+                } @else {
+                  <span class="sp-warn">{{ row.verifyResult.issueCount }} issues</span>
+                }
+                @if (row.verifyResult.spBacked && row.verifyResult.spReachable) {
+                  <span class="sp-count">(SP: {{ row.verifyResult.spCount }})</span>
+                }
+              } @else {
+                <button mat-button (click)="verifyType(row); $event.stopPropagation()" style="font-size:11px">
+                  Verify
+                </button>
+              }
             </td>
           </ng-container>
           <ng-container matColumnDef="action">
@@ -131,17 +160,25 @@ import { SyncStatusService, SyncHealthCheckResult, EntityDrift } from '../../../
     .clickable-row:hover { background: rgba(255,255,255,0.05); }
     .all-good { display: flex; align-items: center; gap: 8px; padding: 24px; opacity: 0.7; }
     .all-good mat-icon { color: #4caf50; }
+    .sp-ok { color: #4caf50; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+    .sp-warn { color: #ffb74d; font-size: 12px; font-weight: 600; }
+    .sp-err { color: #ef5350; font-size: 12px; font-weight: 600; }
+    .sp-count { color: var(--text-secondary, #aaa); font-size: 11px; margin-left: 4px; }
     h3 { margin: 16px 0 8px; }
   `]
 })
 export class SyncOverviewComponent implements OnInit, OnDestroy {
   private syncStatusService = inject(SyncStatusService);
+  private syncCheckService = inject(EntitySyncCheckService);
   private router = inject(Router);
   private subs: Subscription[] = [];
 
   health = signal<SyncHealthCheckResult | null>(null);
   checking = signal(false);
-  displayedColumns = ['entityType', 'localCount', 'serverCount', 'difference', 'action'];
+  displayedColumns = ['entityType', 'localCount', 'serverCount', 'difference', 'spStatus', 'action'];
+
+  // Mutable drift rows with verify state
+  driftRows = signal<DriftRow[]>([]);
 
   overallStatus = computed(() => {
     const h = this.health();
@@ -193,18 +230,40 @@ export class SyncOverviewComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.subs.push(
       this.syncStatusService.syncHealth$.subscribe(h => {
-        if (h) this.health.set(h);
+        if (h) {
+          this.health.set(h);
+          this.rebuildDriftRows();
+        }
       })
     );
-    // Initial fetch
     this.syncStatusService.fetchSyncHealthCheck().subscribe();
   }
 
   checkNow() {
     this.checking.set(true);
     this.syncStatusService.forceSyncHealthCheck().subscribe({
-      next: h => { this.health.set(h); this.checking.set(false); },
+      next: h => {
+        this.health.set(h);
+        this.rebuildDriftRows();
+        this.checking.set(false);
+      },
       error: () => this.checking.set(false)
+    });
+  }
+
+  verifyType(row: DriftRow) {
+    row.verifying = true;
+    this.driftRows.set([...this.driftRows()]);
+    this.syncCheckService.verify(row.entityType).subscribe({
+      next: result => {
+        row.verifyResult = result;
+        row.verifying = false;
+        this.driftRows.set([...this.driftRows()]);
+      },
+      error: () => {
+        row.verifying = false;
+        this.driftRows.set([...this.driftRows()]);
+      }
     });
   }
 
@@ -214,5 +273,16 @@ export class SyncOverviewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subs.forEach(s => s.unsubscribe());
+  }
+
+  private rebuildDriftRows() {
+    const drifts = this.entityDrift();
+    // Preserve existing verify results
+    const existing = new Map(this.driftRows().map(r => [r.entityType, r]));
+    this.driftRows.set(drifts.map(d => ({
+      ...d,
+      verifyResult: existing.get(d.entityType)?.verifyResult ?? null,
+      verifying: false
+    })));
   }
 }

@@ -63,6 +63,34 @@ public interface ConversationRepo extends BaseRepository<Conversation> {
         @Param("userId") Long userId);
 
     /**
+     * Strict participant check: user must be initiator OR responder (no open-conversation wildcard).
+     * Used by PWA to prevent cross-contractor enumeration.
+     */
+    @Query("""
+        SELECT c FROM Conversation c
+        WHERE c.entityType = :entityType
+          AND c.entityId = :entityId
+          AND (c.initiatorId = :userId OR c.responderId = :userId)
+        ORDER BY c.lastMessageAt DESC, c.id DESC
+        """)
+    List<Conversation> findByEntityAndParticipantOrderByLastMessageAtDesc(
+        @Param("entityType") String entityType,
+        @Param("entityId") Long entityId,
+        @Param("userId") Long userId);
+
+    /**
+     * Strict access check: user must be initiator OR responder (not open-conversation wildcard).
+     */
+    @Query("""
+        SELECT COUNT(c) > 0 FROM Conversation c
+        WHERE c.id = :conversationId
+          AND (c.initiatorId = :userId OR c.responderId = :userId)
+        """)
+    boolean isUserParticipant(
+        @Param("conversationId") Long conversationId,
+        @Param("userId") Long userId);
+
+    /**
      * Find duplicate conversation groups: same (entityType, entityId, initiatorId, subject).
      */
     @Query("""

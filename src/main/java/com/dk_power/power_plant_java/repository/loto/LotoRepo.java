@@ -24,4 +24,8 @@ public interface LotoRepo extends PermitRepo<Loto> {
 
     @Query("SELECT l FROM Loto l WHERE l.boxNumber IS NOT NULL AND l.lotoBox IS NULL AND l.deleted = false")
     List<Loto> findUnlinkedLotosWithBoxNumber();
+
+    @Query("SELECT l FROM Loto l WHERE l.boxNumber IS NOT NULL AND l.deleted = false " +
+           "AND (l.permitStatus IS NULL OR l.permitStatus.name IN ('Building', 'Active', 'Test'))")
+    List<Loto> findActiveWithBox();
 }

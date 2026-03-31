@@ -131,6 +131,17 @@ public class NgLotoController {
         }
     }
 
+    @GetMapping("/active-with-box")
+    public ResponseEntity<NgApiResponse<List<LotoDto>>> getActiveWithBox() {
+        try {
+            List<LotoDto> lotos = ngLotoService.getActiveWithBox();
+            return ResponseEntity.ok(new NgApiResponse<>(lotos, "Active LOTOs with box retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/active")
     public ResponseEntity<NgApiResponse<List<LotoPointDto>>> getActiveLotoPoints() {
         try {

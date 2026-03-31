@@ -80,9 +80,16 @@ public class PwaWorkRequestService {
         // Auto-link or create job based on (company + workArea + workCategory) grouping key
         autoLinkOrCreateJob(entity);
 
-        // Save attachments
+        // Save attachments (with dedup by content hash)
         if (dto.getAttachments() != null) {
+            int saved = 0;
             for (PaAttachmentDto att : dto.getAttachments()) {
+                String contentHash = computeContentHash(att.getBase64Content());
+                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                        "WorkRequest", entity.getId(), att.getFileName(), contentHash)) {
+                    log.debug("[PWA Submit] Skipping duplicate attachment: {} (hash={})", att.getFileName(), contentHash);
+                    continue;
+                }
                 PermitAttachment attachment = new PermitAttachment();
                 attachment.setEntityType("WorkRequest");
                 attachment.setEntityId(entity.getId());
@@ -90,10 +97,12 @@ public class PwaWorkRequestService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
-                attachment.setContentHash(computeContentHash(att.getBase64Content()));
+                attachment.setContentHash(contentHash);
                 attachmentRepo.save(attachment);
+                saved++;
             }
-            log.info("[PWA Submit] Saved {} attachments for localUuid={}", dto.getAttachments().size(), dto.getLocalUuid());
+            log.info("[PWA Submit] Saved {} attachments ({} skipped as duplicates) for localUuid={}",
+                    saved, dto.getAttachments().size() - saved, dto.getLocalUuid());
         }
 
         // Attempt SharePoint submission via fallback chain (Certificate -> Power Automate)
@@ -178,7 +187,8 @@ public class PwaWorkRequestService {
         spDto.setWorkCategoryName(dto.getWorkCategoryName());
         if (dto.getWorkAreaId() != null) {
             workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(workArea -> spDto.setWorkAreaName(workArea.getName()));
-        } else if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+        }
+        if (spDto.getWorkAreaName() == null && dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
             spDto.setWorkAreaName(dto.getWorkAreaName());
         }
         return spDto;
@@ -200,10 +210,11 @@ public class PwaWorkRequestService {
         entity.setFireWatch(dto.getFireWatchName());
         entity.setSpace(dto.getSpaceToBeEntered());
 
-        // Resolve workArea from ID
+        // Resolve workArea from ID, fall back to name if ID is stale
         if (dto.getWorkAreaId() != null) {
             workAreaRepo.findById(dto.getWorkAreaId()).ifPresent(entity::setWorkArea);
-        } else if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
+        }
+        if (entity.getWorkArea() == null && dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
             workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresent(entity::setWorkArea);
         }
 
@@ -283,9 +294,15 @@ public class PwaWorkRequestService {
         entity = workRequestRepo.saveAndFlush(entity);
         log.info("[PWA Update] WR updated locally: id={}, localUuid={}", entity.getId(), localUuid);
 
-        // Save new attachments to DB
+        // Save new attachments to DB (with dedup by content hash)
         if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
+            int saved = 0;
             for (PaAttachmentDto att : dto.getAttachments()) {
+                String contentHash = computeContentHash(att.getBase64Content());
+                if (attachmentRepo.existsByEntityTypeAndEntityIdAndFileNameAndContentHash(
+                        "WorkRequest", entity.getId(), att.getFileName(), contentHash)) {
+                    continue;
+                }
                 PermitAttachment attachment = new PermitAttachment();
                 attachment.setEntityType("WorkRequest");
                 attachment.setEntityId(entity.getId());
@@ -293,10 +310,12 @@ public class PwaWorkRequestService {
                 attachment.setContentType(att.getContentType());
                 attachment.setBase64Content(att.getBase64Content());
                 attachment.setAttachmentType(guessAttachmentType(att.getContentType()));
-                attachment.setContentHash(computeContentHash(att.getBase64Content()));
+                attachment.setContentHash(contentHash);
                 attachmentRepo.save(attachment);
+                saved++;
             }
-            log.info("[PWA Update] Saved {} new attachments for localUuid={}", dto.getAttachments().size(), localUuid);
+            log.info("[PWA Update] Saved {} new attachments ({} skipped as duplicates) for localUuid={}",
+                    saved, dto.getAttachments().size() - saved, localUuid);
         }
 
         // Push to SharePoint

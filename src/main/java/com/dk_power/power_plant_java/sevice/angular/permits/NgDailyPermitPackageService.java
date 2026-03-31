@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -59,6 +60,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private final com.dk_power.power_plant_java.repository.permits.WorkAreaRepo workAreaRepo;
     private final com.dk_power.power_plant_java.repository.loto.LotoRepo lotoRepo;
     private final WorkRequestSharePointAdapter workRequestSharePointAdapter;
+    private final com.dk_power.power_plant_java.sevice.pwa.PwaSseService pwaSseService;
+    private final ObjectMapper objectMapper;
 
     @Override
     public DailyPermitPackageRepo getRepo() {
@@ -972,7 +975,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     }
 
     private void notifyRequestorIfNeeded(DailyPermitPackage pkg, String newStatus) {
-        if (!"Active".equals(newStatus) && !"Closed".equals(newStatus)) return;
+        if (!Set.of("Active", "Closed", "Test").contains(newStatus)) return;
 
         // Find submitter email from package's work requests
         String submitterEmail = pkg.getWorkRequests().stream()
@@ -982,27 +985,71 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (submitterEmail == null) return;
 
         String permitNumber = pkg.getPermitNumber() != null ? pkg.getPermitNumber() : "N/A";
-        String subject = "Permit Package " + permitNumber + " — " + newStatus;
+        String workArea = pkg.getWorkRequests().stream()
+                .filter(wr -> wr.getWorkArea() != null)
+                .map(wr -> wr.getWorkArea().getName())
+                .findFirst().orElse("the designated area");
+
+        String subject;
         String body;
 
-        if ("Active".equals(newStatus)) {
-            String workArea = pkg.getWorkRequests().stream()
-                    .filter(wr -> wr.getWorkArea() != null)
-                    .map(wr -> wr.getWorkArea().getName())
-                    .findFirst().orElse("the designated area");
-            body = "Your work request has been processed.\n\n" +
-                    "Permit Package: " + permitNumber + "\n" +
-                    "Status: Active\n\n" +
-                    "Please report to " + workArea + " for sign-on.";
-        } else {
-            body = "Permit Package " + permitNumber + " has been closed.\n\n" +
-                    "Work completed: " + (Boolean.TRUE.equals(pkg.getWorkCompleted()) ? "Yes" : "No") + "\n" +
-                    (pkg.getClosureComments() != null ? "Comments: " + pkg.getClosureComments() + "\n" : "") +
-                    (pkg.getContinueDate() != null ? "Work continues on: " + pkg.getContinueDate() + "\n" : "") +
-                    (Boolean.TRUE.equals(pkg.getScopeChanged()) ? "\nNote: Scope has changed. A new Work Request may be needed.\n" +
-                            (pkg.getClosureScopeDetails() != null ? "Details: " + pkg.getClosureScopeDetails() : "") : "");
+        switch (newStatus) {
+            case "Active" -> {
+                boolean isReactivation = pkg.getActivationSnapshotJson() != null
+                        && !pkg.getActivationSnapshotJson().isEmpty()
+                        && pkg.getModificationCount() != null
+                        && pkg.getModificationCount() > 0;
+
+                if (isReactivation) {
+                    subject = "Permit Package " + permitNumber + " — Resumed";
+                    body = "Work has resumed on Permit Package " + permitNumber + ".\n\n" +
+                            "Status: Active (revision " + pkg.getModificationCount() + ")\n" +
+                            "Location: " + workArea + "\n\n" +
+                            "Please report to " + workArea + " for sign-on.";
+                } else {
+                    subject = "Permit Package " + permitNumber + " — Active";
+                    body = "Your work request has been processed.\n\n" +
+                            "Permit Package: " + permitNumber + "\n" +
+                            "Status: Active\n\n" +
+                            "Please report to " + workArea + " for sign-on.";
+                }
+            }
+            case "Test" -> {
+                subject = "Permit Package " + permitNumber + " — Paused";
+                body = "Work has been paused on Permit Package " + permitNumber + ".\n\n" +
+                        "Status: Paused\n" +
+                        "Location: " + workArea + "\n\n" +
+                        "Stand by for further instructions.";
+            }
+            case "Closed" -> {
+                subject = "Permit Package " + permitNumber + " — Closed";
+                body = "Permit Package " + permitNumber + " has been closed.\n\n" +
+                        "Work completed: " + (Boolean.TRUE.equals(pkg.getWorkCompleted()) ? "Yes" : "No") + "\n" +
+                        (pkg.getClosureComments() != null ? "Comments: " + pkg.getClosureComments() + "\n" : "") +
+                        (pkg.getContinueDate() != null ? "Work continues on: " + pkg.getContinueDate() + "\n" : "") +
+                        (Boolean.TRUE.equals(pkg.getScopeChanged()) ? "\nNote: Scope has changed. A new Work Request may be needed.\n" +
+                                (pkg.getClosureScopeDetails() != null ? "Details: " + pkg.getClosureScopeDetails() : "") : "");
+            }
+            default -> { return; }
         }
 
+        // Push SSE event to PWA user (real-time)
+        try {
+            Map<String, Object> sseData = new LinkedHashMap<>();
+            sseData.put("type", "STATUS_CHANGE");
+            sseData.put("packageId", pkg.getId());
+            sseData.put("packageNumber", permitNumber);
+            sseData.put("status", newStatus);
+            sseData.put("description", subject);
+            sseData.put("workArea", workArea);
+            sseData.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            pwaSseService.sendToUser(submitterEmail, "permit_status", sseData);
+        } catch (Exception e) {
+            // SSE failure is non-critical
+            System.out.println("[PWA SSE] Failed to push to " + submitterEmail + ": " + e.getMessage());
+        }
+
+        // Send email notification
         try {
             var emailRequest = com.dk_power.power_plant_java.dto.email.EmailRequest.builder()
                     .to(submitterEmail)
@@ -1064,8 +1111,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             DailyPermitPackage pkg = dailyPermitPackageRepo.findById(packageId).orElse(null);
             if (pkg == null) return;
             DailyPermitPackageDto dto = dailyPermitPackageMapper.convertToDto(pkg);
-            ObjectMapper om = new ObjectMapper();
-            pkg.setActivationSnapshotJson(om.writeValueAsString(dto));
+            pkg.setActivationSnapshotJson(objectMapper.writeValueAsString(dto));
             dailyPermitPackageRepo.save(pkg);
         } catch (Exception e) {
             throw new RuntimeException("Failed to take activation snapshot", e);
@@ -1373,6 +1419,12 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         newWr.setWorkArea(origWr.getWorkArea());
         newWr.setDateOfWorkToBePerformed(continueDate);
         newWr.setTimeOfWorkToBePerformed(origWr.getTimeOfWorkToBePerformed());
+
+        // Preserve contractor identity for notifications
+        newWr.setSubmitterName(origWr.getSubmitterName());
+        newWr.setSubmitterEmail(origWr.getSubmitterEmail());
+        newWr.setSubmitterPhone(origWr.getSubmitterPhone());
+        newWr.setSubmitterCompany(origWr.getSubmitterCompany());
 
         if (Boolean.TRUE.equals(scopeChanged) && scopeDetails != null && !scopeDetails.isBlank()) {
             newWr.setWorkScope(scopeDetails);

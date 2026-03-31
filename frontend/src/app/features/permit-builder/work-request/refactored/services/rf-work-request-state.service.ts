@@ -152,8 +152,16 @@ export class RfWorkRequestStateService {
         updated[index] = updatedItem;
         this.allLoadedWorkRequestsSubject.next(updated);
       } else {
-        (updatedItem as any)._version = Date.now();
-        this.allLoadedWorkRequestsSubject.next([updatedItem, ...current]);
+        // Don't add new items when filters are active — they may not match
+        const criteria = this.currentSearchCriteriaSubject.value;
+        const hasActiveFilters = criteria && (
+          (criteria.filters && Object.keys(criteria.filters).length > 0) ||
+          criteria.query
+        );
+        if (!hasActiveFilters) {
+          (updatedItem as any)._version = Date.now();
+          this.allLoadedWorkRequestsSubject.next([updatedItem, ...current]);
+        }
       }
 
       const selectedItem = this.selectedItem();

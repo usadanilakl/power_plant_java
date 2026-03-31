@@ -162,6 +162,10 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return repo.save(loto);
     }
 
+    public List<LotoDto> getActiveWithBox() {
+        return repo.findActiveWithBox().stream().map(this::toDto).toList();
+    }
+
     public List<LotoPointDto> getActiveLotoPoints() {
 //        return repo.findAll().stream()
 //                .filter(loto -> loto.getLotoPoints() != null && !loto.getLotoPoints().isEmpty())

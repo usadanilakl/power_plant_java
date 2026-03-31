@@ -54,6 +54,7 @@ public class BasePermitEntity extends BaseAuditEntity {
     private String permitNumber;
     private String sharepointId;
     private Instant spModifiedTime;
+    @Column(unique = true)
     private String localUuid;
 
     @ManyToOne

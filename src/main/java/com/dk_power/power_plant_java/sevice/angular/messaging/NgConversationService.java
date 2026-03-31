@@ -92,6 +92,24 @@ public class NgConversationService implements NgCrudService<Conversation, Conver
             .toList();
     }
 
+    /**
+     * Strict version for PWA: only conversations where user is initiator or responder.
+     * Does NOT include open conversations (responderId IS NULL) to prevent cross-contractor access.
+     */
+    public List<ConversationDto> getConversationsForEntityStrictUser(String entityType, Long entityId, Long userId) {
+        return repo.findByEntityAndParticipantOrderByLastMessageAtDesc(entityType, entityId, userId)
+            .stream()
+            .map(mapper::convertToDto)
+            .toList();
+    }
+
+    /**
+     * Strict participant check for PWA: user must be initiator or responder (not open wildcard).
+     */
+    public boolean isUserParticipant(Long conversationId, Long userId) {
+        return repo.isUserParticipant(conversationId, userId);
+    }
+
     public List<ConversationDto> getMyConversations() {
         Long currentUserId = messagingUserContextService.getCurrentUserIdRequired();
         return repo.findVisibleByUserOrderByLastMessageAtDesc(currentUserId)

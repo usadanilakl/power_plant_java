@@ -37,4 +37,5 @@ public class NgWorkRequestDto extends BaseDto {
     private Integer attachmentCount;
     private WorkAreaDto workArea;
     private ValueDto workCategory;
+    private Long dailyPermitPackageId;
 }

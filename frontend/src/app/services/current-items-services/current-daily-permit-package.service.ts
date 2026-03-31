@@ -22,6 +22,9 @@ import { ExcavationPermitService } from "../permits/excavation-permit.service";
 import { VentingPermitService } from "../permits/venting-permit.service";
 import { WorkCategoryProfileApiService } from "../../features/permit-builder/work-category-profile/services/work-category-profile-api.service";
 import { WorkCategoryProfileDto } from "../../models/permits/work-category-profile.model";
+import { ProcessWrDialogService } from "../../shared/process-wr-dialog/process-wr-dialog.service";
+import { SyncUpdateService } from "../sync/sync-update.service";
+import { debounceTime, filter } from "rxjs";
 
 @Injectable({
   providedIn: 'root'
@@ -37,6 +40,8 @@ export class CurrentDailyPermitPackageService {
     private excavationPermitService = inject(ExcavationPermitService);
     private ventingPermitService = inject(VentingPermitService);
     private categoryProfileApi = inject(WorkCategoryProfileApiService);
+    private processWrDialogService = inject(ProcessWrDialogService);
+    private syncUpdateService = inject(SyncUpdateService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveDailyPermitPackagesSubject = new BehaviorSubject<DailyPermitPackageDto[]>([]);
@@ -90,6 +95,20 @@ export class CurrentDailyPermitPackageService {
 
     constructor() {
         this.loadDailyPermitPackages();
+
+        // Reload when a WR is processed (creates new package)
+        this.processWrDialogService.onComplete$
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => this.reloadDailyPermitPackages());
+
+        // Reload when DailyPermitPackage entities are updated via sync
+        this.syncUpdateService.entityUpdated$
+            .pipe(
+                filter(event => event.entityType === 'DailyPermitPackage'),
+                debounceTime(1000),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe(() => this.reloadDailyPermitPackages());
     }
 
     reloadDailyPermitPackages() {

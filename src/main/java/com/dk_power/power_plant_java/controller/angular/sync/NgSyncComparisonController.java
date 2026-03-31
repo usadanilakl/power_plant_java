@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.controller.angular.sync;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.sevice.sync.EntityVerificationService;
+import com.dk_power.power_plant_java.sevice.sync.EntityVerificationService.*;
 import com.dk_power.power_plant_java.sevice.sync.SyncComparisonService;
 import com.dk_power.power_plant_java.sevice.sync.SyncComparisonService.*;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Angular-facing controller for sync comparison operations.
- * Allows the frontend to compare local entities against the hub
- * and view field-level diffs.
+ * Angular-facing controller for sync comparison and 3-way verification.
+ * Provides local-vs-hub comparison (2-way) and local+hub+SharePoint verification (3-way).
  */
 @RestController
 @RequestMapping("/ng/sync/compare")
@@ -22,20 +23,16 @@ import java.util.List;
 public class NgSyncComparisonController {
 
     private final SyncComparisonService syncComparisonService;
+    private final EntityVerificationService entityVerificationService;
 
-    /**
-     * Get all entity types with their local counts for the comparison UI.
-     */
+    // ==================== Existing 2-way comparison ====================
+
     @GetMapping("/entity-types")
     public ResponseEntity<NgApiResponse<List<EntityTypeSummary>>> getEntityTypes() {
         List<EntityTypeSummary> summaries = syncComparisonService.getAllEntityTypeSummaries();
         return ResponseEntity.ok(new NgApiResponse<>(summaries, "Entity type summaries"));
     }
 
-    /**
-     * Compare a specific entity type: local IDs vs server IDs.
-     * Returns which IDs are local-only, server-only, and stale common records.
-     */
     @GetMapping("/{entityType}")
     public ResponseEntity<NgApiResponse<EntityComparisonResult>> compareEntityType(
             @PathVariable String entityType) {
@@ -79,9 +76,6 @@ public class NgSyncComparisonController {
         }
     }
 
-    /**
-     * Compare a single entity field-by-field: local vs server values.
-     */
     @GetMapping("/{entityType}/{entityId}")
     public ResponseEntity<NgApiResponse<EntityFieldDiff>> compareEntity(
             @PathVariable String entityType,
@@ -94,6 +88,48 @@ public class NgSyncComparisonController {
         } catch (Exception e) {
             log.error("Field diff failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Diff failed: " + e.getMessage()));
+        }
+    }
+
+    // ==================== 3-way verification (local + hub + SP) ====================
+
+    /**
+     * Full 3-way verification for an entity type.
+     * Optionally pass a list of entity IDs to check only those.
+     */
+    @PostMapping("/verify/{entityType}")
+    public ResponseEntity<NgApiResponse<VerificationResult>> verify(
+            @PathVariable String entityType,
+            @RequestBody(required = false) List<Long> entityIds) {
+        try {
+            VerificationResult result = entityVerificationService.verify(entityType, entityIds);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Verification failed for {}: {}", entityType, e.getMessage(), e);
+            return ResponseEntity.ok(
+                new NgApiResponse<>(null, "Verification failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 3-way field-level diff for a single entity.
+     * Returns local, hub, and SP values side by side.
+     */
+    @GetMapping("/verify/{entityType}/{entityId}/diff")
+    public ResponseEntity<NgApiResponse<ThreeWayFieldDiff>> threeWayDiff(
+            @PathVariable String entityType,
+            @PathVariable Long entityId) {
+        try {
+            ThreeWayFieldDiff diff = entityVerificationService.threeWayFieldDiff(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(diff,
+                diff.getMismatchCount() == 0 ? "All fields match" : diff.getMismatchCount() + " mismatches"));
+        } catch (Exception e) {
+            log.error("3-way diff failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
+            return ResponseEntity.ok(
+                new NgApiResponse<>(null, "3-way diff failed: " + e.getMessage()));
         }
     }
 }

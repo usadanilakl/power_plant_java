@@ -172,6 +172,9 @@ public class WorkRequestMapper implements BaseMapper {
         if (entity.getWorkCategory() != null) {
             dto.setWorkCategory(valueService.valueToDto(entity.getWorkCategory()));
         }
+        if (entity.getDailyPermitPackage() != null) {
+            dto.setDailyPermitPackageId(entity.getDailyPermitPackage().getId());
+        }
 
         return dto;
     }

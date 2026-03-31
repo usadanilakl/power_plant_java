@@ -307,6 +307,14 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
         WorkRequest wr = workRequestRepo.findById(Long.parseLong(workRequestId))
                 .orElseThrow(() -> new RuntimeException("WorkRequest not found: " + workRequestId));
 
+        // Guard: if already processed, return existing job instead of creating duplicate
+        if (wr.getDailyPermitPackage() != null) {
+            JobLog existingJob = jobLogRepo.findByPackageId(wr.getDailyPermitPackage().getId()).orElse(null);
+            if (existingJob != null) {
+                return jobLogMapper.convertToDto(existingJob);
+            }
+        }
+
         // 1. Set WR status to "Processed" in H2
         wr.setPermitStatus(ngValueService.createValue("Permit Status", "Processed"));
 
@@ -369,11 +377,18 @@ public class NgJobLogService implements NgCrudService<JobLog, JobLogDto, JobLogR
                 }
             }
 
-            // WorkArea match (second strongest, weight 30)
+            // WorkArea match (weight 30)
             if (wr.getWorkArea() != null && job.getWorkArea() != null
                     && wr.getWorkArea().getId().equals(job.getWorkArea().getId())) {
                 score += 30;
                 matchReasons.add("Same work area");
+            }
+
+            // WorkCategory match (weight 20)
+            if (wr.getWorkCategory() != null && job.getWorkCategory() != null
+                    && wr.getWorkCategory().getId().equals(job.getWorkCategory().getId())) {
+                score += 20;
+                matchReasons.add("Same work category");
             }
 
             // Location text match (weight 15)

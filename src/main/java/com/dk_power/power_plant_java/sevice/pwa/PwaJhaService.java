@@ -145,12 +145,14 @@ public class PwaJhaService {
             workRequestRepo.findFirstBySharepointIdOrderByIdAsc(dto.getWorkRequestSharepointId())
                     .ifPresent(entity::setWorkRequest);
         }
-        // Fall back to linking by WorkRequest localUuid
-        else if (dto.getWorkRequestLocalUuid() != null && !dto.getWorkRequestLocalUuid().isEmpty()) {
+        // Fall back to linking by WorkRequest localUuid (also if SharePoint ID was set but entity not found)
+        if (entity.getWorkRequest() == null && dto.getWorkRequestLocalUuid() != null && !dto.getWorkRequestLocalUuid().isEmpty()) {
             workRequestRepo.findFirstByLocalUuidOrderByIdAsc(dto.getWorkRequestLocalUuid())
                     .ifPresent(wr -> {
                         entity.setWorkRequest(wr);
-                        entity.setWorkRequestSharepointId(wr.getSharepointId());
+                        if (entity.getWorkRequestSharepointId() == null) {
+                            entity.setWorkRequestSharepointId(wr.getSharepointId());
+                        }
                     });
         }
     }

@@ -39,6 +39,18 @@ public class PwaPermitService {
     public Map<String, Object> signOn(Long permitId, User user) {
         WorkRequest wr = workRequestRepo.findById(permitId).orElse(null);
         if (wr == null) return Map.of("error", "NOT_FOUND", "message", "Permit not found");
+        if (!user.getEmail().equalsIgnoreCase(wr.getSubmitterEmail())) {
+            return Map.of("error", "ACCESS_DENIED", "message", "You can only sign on to your own permits");
+        }
+
+        // Verify package is in Active status
+        Optional<DailyPermitPackage> pkgOpt = dailyPermitPackageRepo.findByWorkRequestId(wr.getId());
+        if (pkgOpt.isPresent()) {
+            String pkgStatus = pkgOpt.get().getPackageStatus() != null ? pkgOpt.get().getPackageStatus().getName() : null;
+            if (!"Active".equals(pkgStatus)) {
+                return Map.of("error", "INVALID_STATE", "message", "Package is not active (status: " + pkgStatus + ")");
+            }
+        }
 
         wr.setSignedOnBy(user);
         wr.setSignedOnAt(Instant.now());
@@ -51,6 +63,9 @@ public class PwaPermitService {
     public Map<String, Object> signOff(Long permitId, User user, String comments) {
         WorkRequest wr = workRequestRepo.findById(permitId).orElse(null);
         if (wr == null) return Map.of("error", "NOT_FOUND", "message", "Permit not found");
+        if (!user.getEmail().equalsIgnoreCase(wr.getSubmitterEmail())) {
+            return Map.of("error", "ACCESS_DENIED", "message", "You can only sign off your own permits");
+        }
 
         wr.setSignedOffBy(user);
         wr.setSignedOffAt(Instant.now());

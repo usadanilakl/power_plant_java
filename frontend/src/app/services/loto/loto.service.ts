@@ -70,6 +70,10 @@ export class LotoService {
   getRelatedFiles(lotoStandardId: number): Observable<SpringApiResponse<FileDto[]>> {
     return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoStandardId}/related-files`);
   }
+  getActiveWithBox(): Observable<SpringApiResponse<LotoDto[]>> {
+    return this.http.get<SpringApiResponse<LotoDto[]>>(`${this.apiUrl}/active-with-box`);
+  }
+
   getActiveLotoPoints(): Observable<SpringApiResponse<LotoPointDto[]>> {
     return this.http.get<SpringApiResponse<LotoPointDto[]>>(`${this.apiUrl}/active`);
   }

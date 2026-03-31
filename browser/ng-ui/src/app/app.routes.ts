@@ -15,16 +15,12 @@ import { authGuard } from './auth/auth.guard';
 export const routes: Routes = [
     {
       path: 'login',
-      loadComponent: () => import('./pages/login-page/login-page.component').then(m => m.LoginPageComponent)
+      loadComponent: () => import('./pages/login-page/login-page.component').then(m => m.LoginPageComponent),
+      canActivate: [standaloneGuard]
     },
     {
       path: 'install',
       loadComponent: () => import('./pages/install-app-page/install-app-page.component').then(m => m.InstallAppPageComponent),
-      canActivate: [standaloneGuard]
-    },
-    {
-      path: 'setup',
-      loadComponent: () => import('./pages/user-setup-page/user-setup-page.component').then(m => m.UserSetupPageComponent),
       canActivate: [standaloneGuard]
     },
     { path: '', redirectTo: '/home', pathMatch: 'full' },

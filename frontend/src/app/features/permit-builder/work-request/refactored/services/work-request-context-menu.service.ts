@@ -8,6 +8,7 @@ import { CorrespondenceDialogService } from '../../../../../shared/correspondenc
 import { ConversationDialogService } from '../../../../../shared/messaging/conversation-dialog.service';
 import { WrDetailDialogService } from '../../../../../shared/wr-detail-dialog/wr-detail-dialog.service';
 import { ProcessWrDialogService } from '../../../../../shared/process-wr-dialog/process-wr-dialog.service';
+import { PopupWindowService } from '../../../../../shared/popup-window/popup-window.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,7 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   private conversationDialogService = inject(ConversationDialogService);
   private wrDetailDialogService = inject(WrDetailDialogService);
   private processWrDialogService = inject(ProcessWrDialogService);
+  private popupWindowService = inject(PopupWindowService);
   private router = inject(Router);
 
   constructor() {
@@ -162,6 +164,14 @@ export class WorkRequestContextMenuService extends ContextMenuService {
 
   private handleProcess(item: WorkRequestDto): void {
     if (item.id == null) return;
+    // If already processed and has a package, open the existing package directly
+    if (item.dailyPermitPackageId) {
+      this.popupWindowService.openOrFocus(
+        `${window.location.origin}/app/permit-builder/daily-packages?packageId=${item.dailyPermitPackageId}&mode=popup`
+      );
+      this.closeContextMenu();
+      return;
+    }
     this.processWrDialogService.open(item.id);
     this.closeContextMenu();
   }

@@ -324,20 +324,74 @@
               }
             </div>
           }
-          <app-item-carousel
-            [items]="lotos()"
-            title="LOTO"
-            (itemChangedEvent)="currentDailyPermitPackageService.currentLoto.set($event)"
-            (addItemEvent)="attachNew('LOTO')">
-            <ng-template let-loto>
-              <app-loto-detail-form
-                [values]="loto"
-                [withLotoPointDataBase]="false"
-                (formSubmitEvent)="buildInRedTag($event, 'loto')"
-                (formDeleteEvent)="currentDailyPermitPackageService.removePermitFromPackageItem(loto(), 'lotos')"
-              ></app-loto-detail-form>
-            </ng-template>
-          </app-item-carousel>
+
+          <!-- LOTO sub-tabs -->
+          <div class="loto-sub-tab-bar">
+            <button class="loto-sub-tab" [class.active]="lotoSubTab() === 'detail'" (click)="switchLotoSubTab('detail')">
+              Detail
+            </button>
+            <button class="loto-sub-tab" [class.active]="lotoSubTab() === 'select'" (click)="switchLotoSubTab('select')">
+              Select LOTOs
+            </button>
+          </div>
+
+          @switch (lotoSubTab()) {
+            @case ('detail') {
+              <app-item-carousel
+                [items]="lotos()"
+                title="LOTO"
+                (itemChangedEvent)="currentDailyPermitPackageService.currentLoto.set($event)"
+                (addItemEvent)="attachNew('LOTO')">
+                <ng-template let-loto>
+                  <app-loto-detail-form
+                    [values]="loto"
+                    [withLotoPointDataBase]="false"
+                    (formSubmitEvent)="buildInRedTag($event, 'loto')"
+                    (formDeleteEvent)="currentDailyPermitPackageService.removePermitFromPackageItem(loto(), 'lotos')"
+                  ></app-loto-detail-form>
+                </ng-template>
+              </app-item-carousel>
+            }
+            @case ('select') {
+              <div class="loto-chip-picker">
+                <div class="loto-chip-picker-header">
+                  <span class="loto-chip-picker-info">Click to add/remove LOTOs from this package</span>
+                  <input
+                    class="loto-chip-search"
+                    type="text"
+                    placeholder="Search by description, box, number..."
+                    [value]="lotoChipSearch()"
+                    (input)="lotoChipSearch.set($any($event.target).value)"
+                  />
+                  <button class="loto-chip-refresh" (click)="loadAvailableLotos()">Refresh</button>
+                </div>
+                @for (group of availableLotosGrouped(); track group.label) {
+                  <div class="loto-chip-group">
+                    <div class="loto-chip-group-header">{{ group.label }} ({{ group.lotos.length }})</div>
+                    <div class="loto-chip-group-chips">
+                      @for (loto of group.lotos; track loto.id) {
+                        <button
+                          class="loto-pick-chip"
+                          [class.selected]="loto.inPackage"
+                          (click)="toggleLotoInPackage(loto)">
+                          <span class="loto-pick-chip-desc">{{ loto.chipDescription }}</span>
+                          @if (loto.boxNumber) {
+                            <span class="loto-pick-chip-box">Box {{ loto.boxNumber }}</span>
+                          }
+                          @if (loto.permitStatus?.name) {
+                            <span class="loto-pick-chip-status" [attr.data-status]="loto.permitStatus.name">{{ loto.permitStatus.name }}</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (availableLotosGrouped().length === 0) {
+                  <div class="loto-chip-empty">No active LOTOs with box assigned found.</div>
+                }
+              </div>
+            }
+          }
         }
         @case('energizedWork') {
           <app-item-carousel

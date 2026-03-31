@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -186,6 +187,28 @@ public class PwaWorkRequestController {
                     || h.isEntrapment() || h.isEngulfment() || h.isHeatStress() || h.isOther();
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    @GetMapping("/work-areas/{id}/hazards")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getWorkAreaHazards(@PathVariable Long id) {
+        try {
+            WorkArea wa = workAreaRepo.findById(id).orElse(null);
+            if (wa == null) {
+                return ResponseEntity.notFound().build();
+            }
+            Map<String, Object> hazards = new LinkedHashMap<>();
+            hazards.put("workAreaId", wa.getId());
+            hazards.put("workAreaName", wa.getName());
+            hazards.put("constantHazards", wa.getConstantHazards());
+            hazards.put("constantHotWorkMeasures", wa.getConstantHotWorkMeasures());
+            hazards.put("constantConfinedSpaceHazards", wa.getConstantConfinedSpaceHazards());
+            hazards.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
+            return ResponseEntity.ok(new NgApiResponse<>(hazards, "Work area hazards retrieved"));
+        } catch (Exception e) {
+            log.error("[PWA] Failed to get hazards for work area {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Failed to get work area hazards: " + e.getMessage()));
         }
     }
 

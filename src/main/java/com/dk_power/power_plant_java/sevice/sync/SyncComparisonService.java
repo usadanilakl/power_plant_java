@@ -274,7 +274,7 @@ public class SyncComparisonService {
 
     // ==================== Private helpers ====================
 
-    private Set<Long> getLocalEntityIds(String entityType) {
+    public Set<Long> getLocalEntityIds(String entityType) {
         String tableName = entityTableRegistry.getTableName(entityType);
         List<Long> ids;
         try {
@@ -287,7 +287,7 @@ public class SyncComparisonService {
     }
 
     @SuppressWarnings("unchecked")
-    private Set<Long> fetchServerEntityIds(String entityType, String syncServerUrl) {
+    public Set<Long> fetchServerEntityIds(String entityType, String syncServerUrl) {
         String url = syncServerUrl + "/api/sync/entity-ids/" + entityType;
         HttpHeaders headers = buildHeaders();
 
@@ -300,7 +300,7 @@ public class SyncComparisonService {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, String> fetchServerEntityData(String entityType, Long entityId, String syncServerUrl) {
+    public Map<String, String> fetchServerEntityData(String entityType, Long entityId, String syncServerUrl) {
         String url = syncServerUrl + "/api/sync/entity/" + entityType + "/" + entityId;
         HttpHeaders headers = buildHeaders();
 
@@ -372,7 +372,7 @@ public class SyncComparisonService {
         }
     }
 
-    private Map<String, String> getLocalEntityData(String entityType, Long entityId) {
+    public Map<String, String> getLocalEntityData(String entityType, Long entityId) {
         SyncableService<?> service = serviceFacade.getService(entityType);
         if (service == null) return null;
 

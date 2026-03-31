@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
+import com.dk_power.power_plant_java.sevice.sync.EntityVerificationService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +43,7 @@ public class NgSyncResolutionController {
     private final SyncConfig syncConfig;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final EntityVerificationService entityVerificationService;
 
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
@@ -221,6 +223,27 @@ public class NgSyncResolutionController {
                 "Bulk resolve: " + totalResolved + "/" + request.getEntityIds().size()));
         } catch (Exception e) {
             log.error("Bulk resolve failed: {}", e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Accept the SharePoint version of a single entity.
+     * Applies all SP field values to the local entity.
+     */
+    @PostMapping("/accept-sp/{entityType}/{entityId}")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> acceptSharePoint(
+            @PathVariable String entityType,
+            @PathVariable Long entityId) {
+        try {
+            int applied = entityVerificationService.acceptFromSharePoint(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(
+                Map.of("applied", applied, "entityType", entityType, "entityId", entityId),
+                "Accepted SharePoint version: " + applied + " fields applied"));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.ok(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Accept SP failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Failed: " + e.getMessage()));
         }
     }

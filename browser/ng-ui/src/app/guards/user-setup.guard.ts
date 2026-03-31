@@ -6,20 +6,11 @@ export const userSetupGuard: CanActivateFn = (route, state) => {
   const userSetupService = inject(UserSetupService);
   const router = inject(Router);
 
-  const isSetupPage = state.url.includes('/setup');
-
   if (userSetupService.isValid()) {
-    if (isSetupPage) {
-      router.navigate(['/home']);
-      return false;
-    }
     return true;
   }
 
-  if (!isSetupPage) {
-    router.navigate(['/setup']);
-    return false;
-  }
-
-  return true;
+  // No local user data — redirect to login/register
+  router.navigate(['/login']);
+  return false;
 };

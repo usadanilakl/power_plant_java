@@ -79,8 +79,30 @@ public class SyncSchemaPreparation {
                 log.info("Sync schema preparation: altered {} NOT NULL columns to nullable", totalAltered);
             }
 
+            // Backfill null @Version columns — existing rows predate the version field
+            backfillVersionColumns(stmt);
+
         } catch (Exception e) {
             log.warn("Sync schema preparation failed (non-fatal): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Sets version = 0 for any rows where the version column is null.
+     * This handles existing data that predates the addition of @Version fields.
+     */
+    private void backfillVersionColumns(Statement stmt) {
+        String[] tables = {"DAILY_PERMIT_PACKAGE"};
+        for (String table : tables) {
+            try {
+                int updated = stmt.executeUpdate(
+                    "UPDATE " + table + " SET VERSION = 0 WHERE VERSION IS NULL");
+                if (updated > 0) {
+                    log.info("Backfilled {} null version rows in {}", updated, table);
+                }
+            } catch (Exception e) {
+                log.trace("Could not backfill version for {}: {}", table, e.getMessage());
+            }
         }
     }
 }

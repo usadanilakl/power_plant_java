@@ -47,13 +47,11 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token = extractToken(request);
+        if (token == null) {
             sendError(response, 401, "MISSING_TOKEN", "Authorization header with Bearer token required");
             return;
         }
-
-        String token = authHeader.substring(7);
         try {
             var claims = jwtService.validateToken(token);
             String email = claims.getSubject();
@@ -80,6 +78,26 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
             log.debug("[PWA JWT] Token validation failed: {}", e.getMessage());
             sendError(response, 401, "INVALID_TOKEN", "Token is invalid or expired");
         }
+    }
+
+    /**
+     * Extract JWT from Authorization header (primary) or ?token= query param (for SSE/EventSource
+     * which cannot send custom headers).
+     */
+    private String extractToken(HttpServletRequest request) {
+        // 1. Standard Authorization header
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // 2. Query parameter fallback (SSE — EventSource API cannot set headers)
+        String queryToken = request.getParameter("token");
+        if (queryToken != null && !queryToken.isBlank()) {
+            return queryToken;
+        }
+
+        return null;
     }
 
     private boolean requiresJwt(String path) {

@@ -29,6 +29,7 @@ export interface WorkRequestModel extends BaseModel {
   attachmentCount: number | null;
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
+  dailyPermitPackageId: number | null;
 }
 
 export class WorkRequestDto extends BaseDto implements WorkRequestModel {
@@ -51,6 +52,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   attachmentCount: number | null;
   workCategory: ValueDto | null;
   workArea: WorkAreaDto | null;
+  dailyPermitPackageId: number | null;
 
   constructor(data: Partial<WorkRequestModel> = {}) {
     super(data);
@@ -73,6 +75,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.attachmentCount = data.attachmentCount ?? null;
     this.workCategory = data.workCategory ? new ValueDto(data.workCategory) : null;
     this.workArea = data.workArea ? new WorkAreaDto(data.workArea) : null;
+    this.dailyPermitPackageId = data.dailyPermitPackageId ?? null;
   }
 
   // Serialization method
@@ -98,6 +101,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: this.attachmentCount,
       workCategory: this.workCategory?.toJson() ?? null,
       workArea: this.workArea?.toJson() ?? null,
+      dailyPermitPackageId: this.dailyPermitPackageId,
     };
   }
 
@@ -124,6 +128,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       attachmentCount: json.attachmentCount ?? null,
       workCategory: json.workCategory ? ValueDto.fromJson(json.workCategory) : null,
       workArea: json.workArea ? WorkAreaDto.fromJson(json.workArea) : null,
+      dailyPermitPackageId: json.dailyPermitPackageId ?? null,
     });
   }
 
@@ -276,6 +281,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       hasJha: { name: 'hasJha', label: 'Has JHA', type: 'checkbox', initialValue: dto.hasJha },
       attachmentCount: { name: 'attachmentCount', label: 'Attachments', type: 'text', readonly: true, initialValue: dto.attachmentCount },
       workCategory: { name: 'workCategory', label: 'Main Work Scope', type: 'text', readonly: true, initialValue: dto.workCategory?.name ?? '' },
+      dailyPermitPackageId: { name: 'dailyPermitPackageId', label: 'Package ID', type: 'text', readonly: true, initialValue: dto.dailyPermitPackageId },
     };
 
     return fields.map(fieldName => allFields[fieldName]);
@@ -368,6 +374,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         id: 'workCategory', header: 'Main Work Scope',
         accessorFn: (item: WorkRequestDto) => item.workCategory?.name ?? '',
       },
+      dailyPermitPackageId: { id: 'dailyPermitPackageId', header: 'Package ID', accessorKey: 'dailyPermitPackageId' },
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

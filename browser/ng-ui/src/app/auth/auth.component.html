@@ -3,7 +3,7 @@
     <!-- Tab toggle -->
     <div class="auth-tabs">
       <button class="tab" [class.active]="mode === 'signin'" (click)="switchMode('signin')">Sign In</button>
-      <button class="tab" [class.active]="mode === 'signup'" (click)="switchMode('signup')">Sign Up</button>
+      <button class="tab" [class.active]="mode === 'signup'" (click)="switchMode('signup')">Register</button>
     </div>
 
     <!-- Success message -->
@@ -14,7 +14,13 @@
 
     <!-- Server offline warning -->
     @if (!serverStatus.isOnline()) {
-      <div class="offline-warning">Server is offline. Sign in/up requires server connection.</div>
+      <div class="offline-warning">
+        @if (mode === 'signin') {
+          Server is offline. Sign in requires server connection.
+        } @else {
+          Server is offline. You can register locally and it will sync when online.
+        }
+      </div>
     }
 
     <!-- Sign In Form -->
@@ -43,27 +49,39 @@
       </form>
     }
 
-    <!-- Sign Up Form -->
+    <!-- Sign Up / Register Form -->
     @if (mode === 'signup') {
       <form [formGroup]="signupForm" (ngSubmit)="onSignUp()">
         <div class="form-group">
           <label for="signup-name">Full Name</label>
           <input id="signup-name" type="text" formControlName="name" placeholder="John Doe">
+          <div *ngIf="signupForm.get('name')?.invalid && signupForm.get('name')?.touched" class="error-text">
+            Name must be at least 2 characters.
+          </div>
         </div>
 
         <div class="form-group">
           <label for="signup-email">Email</label>
           <input id="signup-email" type="email" formControlName="email" placeholder="john@company.com">
+          <div *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched" class="error-text">
+            Please enter a valid email.
+          </div>
         </div>
 
         <div class="form-group">
           <label for="signup-phone">Phone</label>
           <input id="signup-phone" type="tel" formControlName="phone" placeholder="+1 (555) 123-4567">
+          <div *ngIf="signupForm.get('phone')?.invalid && signupForm.get('phone')?.touched" class="error-text">
+            Please enter a valid phone number.
+          </div>
         </div>
 
         <div class="form-group">
           <label for="signup-company">Company</label>
           <input id="signup-company" type="text" formControlName="company" placeholder="Your Company">
+          <div *ngIf="signupForm.get('company')?.invalid && signupForm.get('company')?.touched" class="error-text">
+            Company must be at least 2 characters.
+          </div>
         </div>
 
         <div class="form-group">
@@ -74,7 +92,14 @@
           </div>
         </div>
 
-        <button type="submit" [disabled]="signupForm.invalid || isLoading || !serverStatus.isOnline()">
+        <div class="form-group">
+          <app-signature-input
+            formControlName="signature"
+            label="Signature (optional)">
+          </app-signature-input>
+        </div>
+
+        <button type="submit" [disabled]="signupForm.invalid || isLoading">
           <span *ngIf="!isLoading">Create Account</span>
           <span *ngIf="isLoading" class="spinner"></span>
         </button>

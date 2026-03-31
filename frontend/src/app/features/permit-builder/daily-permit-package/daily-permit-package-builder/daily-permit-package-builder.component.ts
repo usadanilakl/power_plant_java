@@ -60,6 +60,7 @@ import { TableDataService } from '../../../../shared/table/refactored/services/t
 import { RfWorkRequestStateService } from '../../work-request/refactored/services/rf-work-request-state.service';
 import { PopupWindowService } from '../../../../shared/popup-window/popup-window.service';
 import { PersonnelPanelComponent } from '../personnel-panel/personnel-panel.component';
+import { LotoService } from '../../../../services/loto/loto.service';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
@@ -163,6 +164,40 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
     return s && (s.existingLotos.length > 0 || s.suggestedStandards.length > 0);
   });
 
+  // LOTO chip picker state
+  private lotoService = inject(LotoService);
+  lotoSubTab = signal<'detail' | 'select'>('detail');
+  availableLotos = signal<LotoDto[]>([]);
+  lotoChipSearch = signal('');
+  availableLotosGrouped = computed(() => {
+    const search = this.lotoChipSearch().toLowerCase().trim();
+    const all = search
+      ? this.availableLotos().filter(l => {
+          const haystack = [l.name, l.equipmentSystem, l.workScope, l.sourceStandardName, l.boxNumber?.toString()].join(' ').toLowerCase();
+          return haystack.includes(search);
+        })
+      : this.availableLotos();
+    const packageLotoIds = new Set(this.lotos().map(l => l.id));
+    type EnrichedLoto = LotoDto & { inPackage: boolean; chipDescription: string };
+    const groups: { label: string; lotos: EnrichedLoto[] }[] = [];
+    const buckets: Record<string, EnrichedLoto[]> = { 'U1': [], 'U2': [], 'BOP': [], 'Other': [] };
+    for (const loto of all) {
+      const searchText = [loto.name, loto.equipmentSystem, loto.workScope, loto.sourceStandardName].join(' ').toUpperCase();
+      const desc = loto.workScope || loto.sourceStandardName || loto.equipmentSystem || loto.name || '';
+      const enriched = Object.assign(Object.create(Object.getPrototypeOf(loto)), loto, {
+        inPackage: packageLotoIds.has(loto.id),
+        chipDescription: desc
+      }) as EnrichedLoto;
+      if (/\bU1\b|UNIT\s*1\b/.test(searchText)) buckets['U1'].push(enriched);
+      else if (/\bU2\b|UNIT\s*2\b/.test(searchText)) buckets['U2'].push(enriched);
+      else if (/\bBOP\b|BALANCE\s*OF\s*PLANT\b/.test(searchText)) buckets['BOP'].push(enriched);
+      else buckets['Other'].push(enriched);
+    }
+    for (const label of ['U1', 'U2', 'BOP', 'Other']) {
+      if (buckets[label].length > 0) groups.push({ label, lotos: buckets[label] });
+    }
+    return groups;
+  });
 
   popupTitle: string = '';
   isPopupVisible = false;
@@ -603,6 +638,35 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
 
   addLoto($event: LotoDto = new LotoDto()) {
     this.currentDailyPermitPackageService.createAndAttachLotosToPackage([$event]);
+  }
+
+  loadAvailableLotos(): void {
+    this.lotoService.getActiveWithBox().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => this.availableLotos.set((res.responseData ?? []).map(l => LotoDto.fromJson(l))),
+      error: () => this.availableLotos.set([])
+    });
+  }
+
+  switchLotoSubTab(tab: 'detail' | 'select'): void {
+    this.lotoSubTab.set(tab);
+    if (tab === 'select' && this.availableLotos().length === 0) {
+      this.loadAvailableLotos();
+    }
+  }
+
+  toggleLotoInPackage(loto: LotoDto): void {
+    const currentIds = this.lotos().map(l => l.id);
+    if (currentIds.includes(loto.id)) {
+      this.currentDailyPermitPackageService.removePermitFromPackageItem(loto, 'lotos');
+    } else {
+      this.currentDailyPermitPackageService.addNewAttachments([loto.id], 'lotos');
+    }
+  }
+
+  isLotoInPackage(lotoId: number): boolean {
+    return this.lotos().some(l => l.id === lotoId);
   }
 
   addEnergizedWorkPermit($event: EnergizedWorkPermitDto = new EnergizedWorkPermitDto()) {

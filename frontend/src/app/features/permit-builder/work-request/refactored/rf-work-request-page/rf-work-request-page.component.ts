@@ -1,4 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, DestroyRef } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { RfPopupProjectionComponent } from '../../../../../shared/popup-projection/rf-popup-projection.component';
 import { RfWorkRequestFormComponent } from '../rf-work-request-form/rf-work-request-form.component';
 import { RfWorkRequestTableComponent } from '../rf-work-request-table/rf-work-request-table.component';
@@ -22,6 +24,14 @@ import { SpSyncToolbarComponent } from '../../../../../shared/sp-sync-toolbar/sp
 })
 export class RfWorkRequestPageComponent {
   stateService = inject(RfWorkRequestStateService);
+
+  /** IDs of currently displayed WRs — passed to toolbar for scoped verification */
+  displayedIds = toSignal(
+    this.stateService.allLoadedWorkRequests$.pipe(
+      map(items => items.map(wr => wr.id).filter((id): id is number => id != null))
+    ),
+    { initialValue: [] as number[] }
+  );
 
   onRowDoubleClicked(item: WorkRequestDto): void {
     this.stateService.loadItemById(item.id);

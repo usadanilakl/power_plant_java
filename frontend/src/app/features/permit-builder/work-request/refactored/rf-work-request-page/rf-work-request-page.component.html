@@ -5,6 +5,7 @@
 
   <app-sp-sync-toolbar
     entityType="WorkRequest"
+    [entityIds]="displayedIds()"
     (syncComplete)="onSyncComplete()"
   ></app-sp-sync-toolbar>
 

@@ -752,6 +752,163 @@ input[type="text"] {
 }
 .btn-suggest:hover { background: #f57c00; }
 
+/* LOTO sub-tabs */
+.loto-sub-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.loto-sub-tab {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--secondary-text);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.loto-sub-tab:hover { color: var(--primary-text); }
+.loto-sub-tab.active {
+  color: var(--accent-color);
+  font-weight: 600;
+  border-bottom-color: var(--accent-color);
+}
+
+/* LOTO chip picker */
+.loto-chip-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+}
+.loto-chip-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.loto-chip-picker-info {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  font-style: italic;
+}
+.loto-chip-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--primary-background);
+  color: var(--primary-text);
+  font-size: 0.82rem;
+}
+.loto-chip-search::placeholder { color: var(--secondary-text); }
+.loto-chip-search:focus { outline: none; border-color: var(--accent-color); }
+.loto-chip-refresh {
+  padding: 4px 12px;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--primary-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.loto-chip-refresh:hover { background: var(--hover-color); }
+
+.loto-chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.loto-chip-group-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.loto-chip-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.loto-pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--secondary-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.loto-pick-chip:hover {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color-shadow) 50%, transparent);
+}
+.loto-pick-chip.selected {
+  border-color: #4CAF50;
+  background: color-mix(in srgb, #4CAF50 20%, transparent);
+  color: var(--primary-text);
+  font-weight: 600;
+}
+.loto-pick-chip.selected:hover {
+  border-color: #f44336;
+  background: color-mix(in srgb, #f44336 15%, transparent);
+}
+.loto-pick-chip-desc {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.loto-pick-chip-box {
+  font-size: 0.75rem;
+  color: var(--secondary-text);
+  padding: 1px 6px;
+  background: var(--card-background);
+  border-radius: 8px;
+}
+.loto-pick-chip-status {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.loto-pick-chip-status[data-status="Building"] {
+  background: var(--status-in-progress);
+  color: #1565c0;
+}
+.loto-pick-chip-status[data-status="Active"] {
+  background: color-mix(in srgb, var(--status-complete) 30%, transparent);
+  color: #2e7d32;
+}
+.loto-pick-chip-status[data-status="Test"] {
+  background: color-mix(in srgb, var(--status-incomplete) 30%, transparent);
+  color: #e65100;
+}
+
+.loto-chip-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
 .reissue-dialog {
   padding: 8px;
   display: flex;

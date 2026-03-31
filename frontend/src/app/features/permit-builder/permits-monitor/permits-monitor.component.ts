@@ -74,6 +74,7 @@ interface ApiResponse<T> {
 
       <app-sp-sync-toolbar
         entityType="WorkRequest"
+        [entityIds]="displayedWrIds"
         (syncComplete)="loadData()"
       ></app-sp-sync-toolbar>
 
@@ -680,6 +681,13 @@ export class PermitsMonitorComponent implements OnInit, OnDestroy {
       ...(this.showProcessed ? this.processedWorkRequests : []),
       ...(this.showExpired ? this.expiredWorkRequests : [])
     ];
+  }
+
+  /** IDs of active + updated WRs — scoped verification target */
+  get displayedWrIds(): number[] {
+    return [...this.activeWorkRequests, ...this.updatedWorkRequests]
+      .map(wr => wr.id)
+      .filter((id): id is number => id != null);
   }
 
   get uniqueLocations(): string[] {
