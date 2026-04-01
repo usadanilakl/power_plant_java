@@ -27,6 +27,7 @@ import { SimulationInspectorComponent } from '../../simulation/components/simula
 import { EquipmentLibraryComponent } from '../equipment-library/equipment-library.component';
 import { SimEquipmentDto, normalizeSimRole } from '../../models/sim-equipment.model';
 import { SimEquipmentApiService } from '../../services/sim-equipment-api.service';
+import { SimGraphBuilderService } from '../../simulation/services/sim-graph-builder.service';
 
 @Component({
   selector: 'app-diagram-canvas',
@@ -45,6 +46,7 @@ import { SimEquipmentApiService } from '../../services/sim-equipment-api.service
     SimulationEngineService,
     SimulationStateService,
     SimulationRenderService,
+    SimGraphBuilderService,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -480,9 +482,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         }
       }
 
-      // Simulation overlays
+      // Simulation static overlays (colors, badges, levels, handles — redrawn on tick)
       if (this.simState.isSimulating()) {
-        this.simRender.drawOverlays(
+        this.simRender.drawStaticOverlays(
           shapeCtx,
           this.shapeManager.shapes(),
           this.shapeManager.connections(),
@@ -519,6 +521,34 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       }
       tempCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
+  }
+
+  /**
+   * Render only the animation layer (temp canvas) at 60fps.
+   * Draws: flow dash animation, pump impeller rotation, warning pulses.
+   * Does NOT touch grid or shape canvases — those only redraw on sim tick.
+   * Every 30 frames (~500ms), also triggers a full render for static overlays.
+   */
+  private animFrameCount = 0;
+  private renderAnimationLayer(): void {
+    // Every ~500ms, refresh static overlays (badges, colors, levels)
+    this.animFrameCount++;
+    if (this.animFrameCount % 30 === 0) {
+      this.requestRender();
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const { scale, pointX, pointY } = this.transform;
+    const tempCtx = this.tempCanvasRef?.nativeElement?.getContext('2d');
+    if (!tempCtx) return;
+
+    tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+    tempCtx.clearRect(0, 0, tempCtx.canvas.width, tempCtx.canvas.height);
+    tempCtx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * pointX, dpr * pointY);
+
+    this.simRender.drawAnimatedOverlays(tempCtx);
+
+    tempCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   private ensureBackgroundImageLoaded(): void {
@@ -1118,7 +1148,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.shapeManager.shapes(),
         this.shapeManager.connections()
       );
-      this.simRender.startAnimation(() => this.requestRender());
+      this.requestRender(); // initial full render with static overlays
+      this.simRender.startAnimation(() => this.renderAnimationLayer());
     }
   }
 
@@ -1155,7 +1186,8 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.shapeManager.shapes(),
         this.shapeManager.connections()
       );
-      this.simRender.startAnimation(() => this.requestRender());
+      this.requestRender();
+      this.simRender.startAnimation(() => this.renderAnimationLayer());
     }
   }
 

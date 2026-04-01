@@ -82,12 +82,48 @@ public class NgDiagramController {
         }
     }
 
+    @PostMapping("/seed/seal-oil-system")
+    public ResponseEntity<NgApiResponse<DiagramDto>> seedSealOilSystem() {
+        try {
+            DiagramDto seeded = service.seedSealOilScenario();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(seeded, "Seal oil system diagram seeded successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NgApiResponse<DiagramDto>> update(@PathVariable String id, @RequestBody DiagramDto dto) {
         try {
             DiagramDto updated = service.updateDiagram(id, dto);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(new NgApiResponse<>(updated, "Diagram updated successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/migrate/{id}")
+    public ResponseEntity<NgApiResponse<Boolean>> migrate(@PathVariable Long id) {
+        try {
+            boolean migrated = service.migrateDiagramToEntities(id);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(migrated, migrated ? "Diagram migrated" : "Nothing to migrate", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/migrate-all")
+    public ResponseEntity<NgApiResponse<Integer>> migrateAll() {
+        try {
+            int count = service.migrateAllDiagrams();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(count, count + " diagrams migrated", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));

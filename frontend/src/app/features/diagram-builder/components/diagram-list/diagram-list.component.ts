@@ -14,6 +14,7 @@ import { DiagramDto } from '../../models/diagram.model';
         <h2>Diagrams</h2>
         <div class="header-actions">
           <button class="btn-secondary" (click)="seedFeedwaterTest()">Seed Feedwater Test</button>
+          <button class="btn-secondary" (click)="seedSealOilTest()">Seed Seal Oil System</button>
           <button class="btn-primary" (click)="createNew()">+ New Diagram</button>
         </div>
       </div>
@@ -154,6 +155,18 @@ export class DiagramListComponent implements OnInit {
 
   seedFeedwaterTest(): void {
     this.api.seedFeedwaterControlTest().subscribe({
+      next: (res) => {
+        const diagram = res.responseData;
+        this.loadDiagrams();
+        if (diagram?.id) {
+          this.router.navigate(['/diagram-builder', 'build', diagram.id]);
+        }
+      },
+    });
+  }
+
+  seedSealOilTest(): void {
+    this.api.seedSealOilSystem().subscribe({
       next: (res) => {
         const diagram = res.responseData;
         this.loadDiagrams();

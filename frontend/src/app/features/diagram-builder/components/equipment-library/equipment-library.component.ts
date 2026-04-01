@@ -15,20 +15,60 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
     <div class="library-panel">
       <h3>Equipment Library</h3>
 
-      <!-- Section A: P&ID Symbols -->
+      <!-- Search -->
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search symbols..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)"
+      />
+
+      <!-- Section A: P&ID Symbols — Visual Cards -->
       <details class="section" open>
         <summary class="section-header">
           P&ID Symbols
           <span class="section-count">{{ allSymbols.length }}</span>
         </summary>
-        <div class="section-body symbols-body">
-          <app-rf-toggle-menu
-            [menuItems]="symbolMenuItems()"
-            [enableSearch]="true"
-            [searchPlaceholder]="'Search symbols...'"
-            (itemDblClick)="onSymbolDblClick($event)"
-            (itemRightClick)="onSymbolRightClick($event)"
-          />
+        <div class="section-body">
+          <div class="categories-container">
+            @for (cat of categoryMeta; track cat.id) {
+              @let symbols = getFilteredSymbols(cat.id);
+              @if (symbols.length > 0) {
+                <div class="category-section">
+                  <button
+                    class="category-toggle"
+                    [class.expanded]="expandedCategory() === cat.id"
+                    [style.border-left-color]="cat.color"
+                    (click)="toggleCategory(cat.id)">
+                    <span>{{ cat.label }}</span>
+                    <span class="cat-count">{{ symbols.length }}</span>
+                  </button>
+                  @if (expandedCategory() === cat.id) {
+                    <div class="symbol-grid">
+                      @for (sym of symbols; track sym.id) {
+                        <div
+                          class="symbol-card"
+                          [class.selected]="selectedSymbolId() === sym.id"
+                          [title]="sym.name"
+                          (click)="onSymbolClick(sym)"
+                          (dblclick)="placeSymbolOnCanvas(sym.id)"
+                          (contextmenu)="onSymbolRightClick($event, sym)">
+                          <svg
+                            class="symbol-preview"
+                            [attr.viewBox]="'0 0 ' + sym.originalWidth + ' ' + sym.originalHeight"
+                            width="36" height="36">
+                            <path [attr.d]="sym.svgPath" fill="none" [attr.stroke]="selectedSymbolId() === sym.id ? '#4fc3f7' : '#ccc'" stroke-width="2"/>
+                          </svg>
+                          <span class="symbol-name">{{ sym.name }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
         </div>
       </details>
 
@@ -69,7 +109,7 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
       overflow: hidden;
     }
     .library-panel {
-      width: 220px;
+      width: 240px;
       height: 100%;
       background: #1a1a1a;
       border-right: 1px solid #333;
@@ -81,6 +121,23 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
       box-sizing: border-box;
     }
     h3 { margin: 0 0 4px; font-size: 13px; color: #aaa; }
+
+    .search-input {
+      width: 100%;
+      padding: 6px 8px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-size: 12px;
+      margin-bottom: 4px;
+      box-sizing: border-box;
+    }
+    .search-input::placeholder { color: #666; }
+    .search-input:focus {
+      outline: none;
+      border-color: #2196f3;
+    }
 
     .section {
       display: flex;
@@ -128,12 +185,108 @@ import { ContextMenuComponent, ContextMenuAction } from '../../../../shared/menu
     .section-body {
       flex: 1;
       min-height: 0;
-      overflow: hidden;
+      overflow-y: auto;
     }
     .section-body app-rf-toggle-menu {
       display: block;
       height: 100%;
     }
+    .templates-body {
+      overflow: hidden;
+    }
+
+    /* Categories */
+    .categories-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .category-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      background: #222;
+      border: none;
+      border-left: 3px solid #444;
+      color: #bbb;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .category-toggle:hover {
+      background: #2a2a2a;
+      color: #ddd;
+    }
+    .category-toggle.expanded {
+      background: #2a2a2a;
+      color: #fff;
+    }
+    .cat-count {
+      font-size: 10px;
+      color: #666;
+      font-weight: 400;
+    }
+
+    /* Symbol Grid */
+    .symbol-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 6px 4px;
+      background: #1e1e1e;
+    }
+    .symbol-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 2px 4px;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-height: 54px;
+    }
+    .symbol-card:hover {
+      background: #2d2d2d;
+      border-color: #555;
+      transform: translateY(-1px);
+    }
+    .symbol-card.selected {
+      background: #1a3a5c;
+      border-color: #2196f3;
+    }
+    .symbol-preview {
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+    .symbol-name {
+      font-size: 9px;
+      color: #888;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      line-height: 1.2;
+    }
+    .symbol-card:hover .symbol-name {
+      color: #bbb;
+    }
+    .symbol-card.selected .symbol-name {
+      color: #4fc3f7;
+    }
+
+    /* Scrollbar */
+    .section-body::-webkit-scrollbar { width: 5px; }
+    .section-body::-webkit-scrollbar-track { background: transparent; }
+    .section-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    .section-body::-webkit-scrollbar-thumb:hover { background: #666; }
   `],
 })
 export class EquipmentLibraryComponent implements OnInit {
@@ -145,6 +298,9 @@ export class EquipmentLibraryComponent implements OnInit {
 
   allEquipment = signal<SimEquipmentDto[]>([]);
   isLoading = signal(true);
+  searchQuery = signal('');
+  expandedCategory = signal<string | null>('valve');
+  selectedSymbolId = signal<string | null>(null);
 
   ctxMenuVisible = signal(false);
   ctxMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -155,12 +311,13 @@ export class EquipmentLibraryComponent implements OnInit {
 
   allSymbols = this.pidSymbols.getAllSymbols();
 
-  private static readonly CATEGORY_META: { id: string; label: string; color: string }[] = [
+  categoryMeta = [
     { id: 'valve', label: 'Valves', color: '#4caf50' },
     { id: 'pump', label: 'Pumps', color: '#ff9800' },
     { id: 'vessel', label: 'Vessels', color: '#00bcd4' },
     { id: 'instrument', label: 'Instruments', color: '#cddc39' },
     { id: 'electrical', label: 'Electrical', color: '#ff5722' },
+    { id: 'rotating-equipment', label: 'Rotating Equip', color: '#42a5f5' },
   ];
 
   private static readonly ROLE_COLORS: Record<string, string> = {
@@ -170,29 +327,64 @@ export class EquipmentLibraryComponent implements OnInit {
 
   private static readonly ROLE_ORDER = ['source', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe', 'sink'];
 
-  // --- P&ID Symbols menu (grouped by category) ---
+  getFilteredSymbols(category: string): PIDSymbol[] {
+    const query = this.searchQuery().toLowerCase().trim();
+    const symbols = this.pidSymbols.getSymbolsByCategory(category);
+    if (!query) return symbols;
+    return symbols.filter(s => s.name.toLowerCase().includes(query));
+  }
 
-  symbolMenuItems = computed((): NestedItem[] => {
-    return EquipmentLibraryComponent.CATEGORY_META.map(cat => {
-      const symbols = this.pidSymbols.getSymbolsByCategory(cat.id);
-      if (symbols.length === 0) return null;
-      return new NestedItemImpl({
-        id: `cat-${cat.id}`,
-        name: `${cat.label} (${symbols.length})`,
-        objectType: 'Group',
-        color: cat.color,
-        isExpanded: false,
-        values: symbols.map(sym => new NestedItemImpl({
-          id: sym.id,
-          name: sym.name,
-          objectType: 'PIDSymbol',
-          color: cat.color,
-        })),
-      });
-    }).filter((item): item is NestedItemImpl => item != null);
-  });
+  toggleCategory(categoryId: string): void {
+    this.expandedCategory.set(this.expandedCategory() === categoryId ? null : categoryId);
+  }
 
-  // --- Saved Templates menu (grouped by role) ---
+  // --- Symbol events ---
+
+  onSymbolClick(sym: PIDSymbol): void {
+    this.selectedSymbolId.set(sym.id);
+  }
+
+  onSymbolRightClick(event: MouseEvent, sym: PIDSymbol): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.ctxMenuItem.set(sym.id);
+    this.ctxMenuPosition.set({ x: event.clientX, y: event.clientY });
+    this.ctxMenuActions = [
+      {
+        id: 'add-to-diagram',
+        label: 'Add to Diagram',
+        action: () => this.placeSymbolOnCanvas(sym.id),
+      },
+    ];
+    this.ctxMenuVisible.set(true);
+  }
+
+  placeSymbolOnCanvas(symbolId: string): void {
+    const symbol = this.pidSymbols.getSymbolById(symbolId);
+    if (!symbol) return;
+
+    const role: SimRole = SYMBOL_ROLE_MAP[symbol.id] ?? 'junction';
+    const dto: SimEquipmentDto = {
+      name: symbol.name,
+      symbolId: symbol.id,
+      svgPath: symbol.svgPath,
+      defaultWidth: symbol.width,
+      defaultHeight: symbol.height,
+      simRole: role,
+      simParamsJson: serializeSimParams(defaultSimParams(role)),
+    };
+    this.api.create(dto).subscribe({
+      next: (res) => {
+        if (res.responseData) {
+          this.api.upsertCached(res.responseData);
+          this.onEquipmentAddToCanvas.emit(res.responseData);
+          this.loadAll();
+        }
+      },
+    });
+  }
+
+  // --- Saved Templates (unchanged) ---
 
   templateMenuItems = computed((): NestedItem[] => {
     const equipment = this.allEquipment();
@@ -229,33 +421,6 @@ export class EquipmentLibraryComponent implements OnInit {
   ngOnInit(): void {
     this.loadAll();
   }
-
-  // --- Symbol events ---
-
-  onSymbolDblClick(item: NestedItem): void {
-    if (item.objectType !== 'PIDSymbol') return;
-    this.placeSymbolOnCanvas(item.id as string);
-  }
-
-  onSymbolRightClick(event: { event: MouseEvent; item: NestedItem }): void {
-    event.event.preventDefault();
-    event.event.stopPropagation();
-    if (event.item.objectType !== 'PIDSymbol') return;
-
-    const symbolId = event.item.id as string;
-    this.ctxMenuItem.set(symbolId);
-    this.ctxMenuPosition.set({ x: event.event.clientX, y: event.event.clientY });
-    this.ctxMenuActions = [
-      {
-        id: 'add-to-diagram',
-        label: 'Add to Diagram',
-        action: () => this.placeSymbolOnCanvas(symbolId),
-      },
-    ];
-    this.ctxMenuVisible.set(true);
-  }
-
-  // --- Template events ---
 
   onTemplateClick(item: NestedItem): void {
     if (item.objectType !== 'SimEquipment') return;
@@ -298,33 +463,6 @@ export class EquipmentLibraryComponent implements OnInit {
       },
     ];
     this.ctxMenuVisible.set(true);
-  }
-
-  // --- Actions ---
-
-  private placeSymbolOnCanvas(symbolId: string): void {
-    const symbol = this.pidSymbols.getSymbolById(symbolId);
-    if (!symbol) return;
-
-    const role: SimRole = SYMBOL_ROLE_MAP[symbol.id] ?? 'junction';
-    const dto: SimEquipmentDto = {
-      name: symbol.name,
-      symbolId: symbol.id,
-      svgPath: symbol.svgPath,
-      defaultWidth: symbol.width,
-      defaultHeight: symbol.height,
-      simRole: role,
-      simParamsJson: serializeSimParams(defaultSimParams(role)),
-    };
-    this.api.create(dto).subscribe({
-      next: (res) => {
-        if (res.responseData) {
-          this.api.upsertCached(res.responseData);
-          this.onEquipmentAddToCanvas.emit(res.responseData);
-          this.loadAll();
-        }
-      },
-    });
   }
 
   loadAll(): void {

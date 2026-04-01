@@ -22,15 +22,6 @@ export interface SimEdgeState {
   isFlowing: boolean;
 }
 
-export interface SimGraphNode {
-  shapeId: number;
-  role: SimRole;
-  params: SimParams;
-  simEquipmentId?: number;
-  upstreamEdges: number[];
-  downstreamEdges: number[];
-}
-
 export function defaultNodeState(shapeId: number, role: SimRole): SimNodeState {
   return {
     shapeId,

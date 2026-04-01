@@ -1,38 +1,84 @@
-import { Injectable, inject } from '@angular/core';
-import { DiagramConnection } from '../../models/diagram-placement.model';
-import {
-  SimEdgeState, SimGraphNode, SimNodeState, SimParams, defaultNodeState,
-} from '../models/simulation.model';
-import { parseSimParams } from '../../models/sim-equipment.model';
-import { SimulationGraphService } from './simulation-graph.service';
-
-const FLOW_EPSILON = 0.1;
-const LARGE_DEMAND = 1_000_000;
-const AMBIENT_TEMP = 70;
+import { Injectable } from '@angular/core';
+import { SimNode, SimEdge } from '../models/sim-graph.model';
+import { SimEdgeState, SimNodeState, defaultNodeState } from '../models/simulation.model';
+import { getStrategy } from '../strategies/strategy-registry';
+import { FLOW_EPSILON, AMBIENT_TEMP } from '../strategies/simulation-utils';
 
 @Injectable()
 export class SimulationEngineService {
-  private graphService = inject(SimulationGraphService);
+
+  /**
+   * Topological sort via BFS from source nodes.
+   */
+  private topologicalSort(
+    nodes: Map<number, SimNode>,
+    edges: Map<number, SimEdge>
+  ): number[] {
+    const indegree = new Map<number, number>();
+    for (const node of nodes.values()) {
+      indegree.set(node.id, 0);
+    }
+
+    for (const edge of edges.values()) {
+      if (nodes.has(edge.sourceNodeId) && nodes.has(edge.targetNodeId)) {
+        indegree.set(edge.targetNodeId, (indegree.get(edge.targetNodeId) ?? 0) + 1);
+      }
+    }
+
+    const sources = [...nodes.values()].filter(n => n.role === 'source').map(n => n.id);
+    const zeroIndegree = [...nodes.keys()].filter(id => (indegree.get(id) ?? 0) === 0);
+    const queue = [...new Set([...(sources.length ? sources : []), ...zeroIndegree])];
+    const visited = new Set<number>();
+    const order: number[] = [];
+
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (visited.has(id)) continue;
+
+      visited.add(id);
+      order.push(id);
+
+      const node = nodes.get(id);
+      if (!node) continue;
+
+      for (const edgeId of node.downstreamEdgeIds) {
+        const edge = edges.get(edgeId);
+        if (!edge || !nodes.has(edge.targetNodeId)) continue;
+
+        const nextIndegree = (indegree.get(edge.targetNodeId) ?? 0) - 1;
+        indegree.set(edge.targetNodeId, nextIndegree);
+
+        if (nextIndegree <= 0 && !visited.has(edge.targetNodeId)) {
+          queue.push(edge.targetNodeId);
+        }
+      }
+    }
+
+    // Append unreachable or cyclic nodes so the engine can still process them safely.
+    for (const id of nodes.keys()) {
+      if (!visited.has(id)) order.push(id);
+    }
+
+    return order;
+  }
 
   step(
-    graph: Map<number, SimGraphNode>,
-    connections: DiagramConnection[],
+    nodes: Map<number, SimNode>,
+    edges: Map<number, SimEdge>,
     previousStates: Map<number, SimNodeState>,
     dtSeconds: number
   ): { nodes: Map<number, SimNodeState>; edges: Map<number, SimEdgeState> } {
-    const connMap = new Map<number, DiagramConnection>();
-    for (const c of connections) connMap.set(c.id, c);
-
-    const order = this.graphService.topologicalSort(graph, connections);
+    const order = this.topologicalSort(nodes, edges);
     const nextStates = new Map<number, SimNodeState>();
-    const edges = new Map<number, SimEdgeState>();
+    const edgeStates = new Map<number, SimEdgeState>();
     const demandCache = new Map<number, number>();
     const demandPath = new Set<number>();
     const dtHours = Math.max(dtSeconds, 0.1) / 3600;
 
-    for (const node of graph.values()) {
-      const prev = previousStates.get(node.shapeId) ?? defaultNodeState(node.shapeId, node.role);
-      nextStates.set(node.shapeId, {
+    // Initialize node states
+    for (const node of nodes.values()) {
+      const prev = previousStates.get(node.id) ?? defaultNodeState(node.id, node.role);
+      nextStates.set(node.id, {
         ...prev,
         role: node.role,
         params: { ...node.params, ...prev.params },
@@ -40,207 +86,113 @@ export class SimulationEngineService {
       });
     }
 
-    const desiredDemand = (shapeId: number): number => {
-      if (demandCache.has(shapeId)) return demandCache.get(shapeId)!;
-      if (demandPath.has(shapeId)) return 0;
+    // --- Backward pass: demand propagation ---
+    const desiredDemand = (nodeId: number): number => {
+      if (demandCache.has(nodeId)) return demandCache.get(nodeId)!;
+      if (demandPath.has(nodeId)) return 0;
 
-      demandPath.add(shapeId);
-      const node = graph.get(shapeId);
-      const state = nextStates.get(shapeId);
+      demandPath.add(nodeId);
+      const node = nodes.get(nodeId);
+      const state = nextStates.get(nodeId);
       if (!node || !state) {
-        demandPath.delete(shapeId);
+        demandPath.delete(nodeId);
         return 0;
       }
 
-      const childDemand = node.downstreamEdges.reduce((sum: number, edgeId: number) => {
-        const conn = connMap.get(edgeId);
-        return sum + (conn ? desiredDemand(conn.targetPlacementId) : 0);
+      const childDemand = node.downstreamEdgeIds.reduce((sum: number, edgeId: number) => {
+        const edge = edges.get(edgeId);
+        return sum + (edge ? desiredDemand(edge.targetNodeId) : 0);
       }, 0);
 
-      let demand = childDemand;
-      switch (node.role) {
-        case 'sink':
-          demand = LARGE_DEMAND;
-          break;
-        case 'pump':
-          demand = state.params.pumpRunning === false
-            ? 0
-            : Math.min(state.params.maxFlow ?? LARGE_DEMAND, childDemand > 0 ? childDemand : (state.params.maxFlow ?? LARGE_DEMAND));
-          break;
-        case 'valve':
-          demand = Math.min(
-            childDemand * this.getValveFactor(state.params),
-            state.params.cvCoefficient ?? LARGE_DEMAND
-          );
-          break;
-        case 'source':
-          demand = childDemand > 0 ? Math.min(childDemand, state.params.sourceFlowRate ?? childDemand) : (state.params.sourceFlowRate ?? 0);
-          break;
-        case 'vessel':
-          demand = childDemand;
-          break;
-        default:
-          demand = childDemand;
-          break;
-      }
+      const strategy = getStrategy(node.role);
+      const demand = strategy.computeDemand(node, state, childDemand);
 
-      demandPath.delete(shapeId);
-      demandCache.set(shapeId, demand);
+      demandPath.delete(nodeId);
+      demandCache.set(nodeId, demand);
       return demand;
     };
 
-    for (const shapeId of graph.keys()) {
-      desiredDemand(shapeId);
+    for (const nodeId of nodes.keys()) {
+      desiredDemand(nodeId);
     }
 
-    for (const shapeId of order) {
-      const node = graph.get(shapeId);
-      const state = nextStates.get(shapeId);
+    // --- Forward pass: compute node outputs in topological order ---
+    for (const nodeId of order) {
+      const node = nodes.get(nodeId);
+      const state = nextStates.get(nodeId);
       if (!node || !state) continue;
 
-      const previous = previousStates.get(shapeId) ?? state;
-      const upstreamEdges = node.upstreamEdges
-        .map((edgeId: number) => edges.get(edgeId))
+      const previous = previousStates.get(nodeId) ?? state;
+      const upstreamEdges = node.upstreamEdgeIds
+        .map((edgeId: number) => edgeStates.get(edgeId))
         .filter((edge): edge is SimEdgeState => !!edge);
 
-      const totalInFlow = upstreamEdges.reduce((sum: number, edge: SimEdgeState) => sum + edge.flowRate, 0);
+      const totalInFlow = upstreamEdges.reduce((sum, e) => sum + e.flowRate, 0);
       const avgInPressure = upstreamEdges.length
-        ? upstreamEdges.reduce((sum: number, edge: SimEdgeState) => sum + edge.pressure, 0) / upstreamEdges.length
+        ? upstreamEdges.reduce((sum, e) => sum + e.pressure, 0) / upstreamEdges.length
         : 0;
-      const avgInTemp = this.weightedAvgTempFromEdges(upstreamEdges);
-      const wantedFlow = demandCache.get(shapeId) ?? 0;
-      let outFlow = 0;
-      let pressure = avgInPressure;
-      let temperature = upstreamEdges.length ? avgInTemp : previous.temperature || AMBIENT_TEMP;
-      const warnings: string[] = [];
+      const avgInTemp = this.weightedAvgTemp(upstreamEdges);
+      const wantedFlow = demandCache.get(nodeId) ?? 0;
 
-      switch (node.role) {
-        case 'source':
-          outFlow = Math.min(state.params.sourceFlowRate ?? 0, wantedFlow || (state.params.sourceFlowRate ?? 0));
-          pressure = state.params.sourcePressure ?? 100;
-          temperature = state.params.sourceTemperature ?? AMBIENT_TEMP;
-          break;
+      const strategy = getStrategy(node.role);
+      const result = strategy.compute({
+        node,
+        previousState: previous,
+        currentState: state,
+        upstreamEdges,
+        totalInFlow,
+        avgInPressure,
+        avgInTemp,
+        wantedFlow,
+        dtHours,
+      });
 
-        case 'vessel': {
-          const volume = Math.max(1, state.params.volume ?? 1000);
-          const currentLevel = this.clampPercent(previous.params.currentLevel ?? state.params.currentLevel ?? 50);
-          const storedUnits = volume * (currentLevel / 100);
-          const maxDischargeFromInventory = storedUnits / dtHours;
-          outFlow = Math.min(
-            wantedFlow,
-            totalInFlow + maxDischargeFromInventory
-          );
-          pressure = Math.min(
-            state.params.maxPressure ?? LARGE_DEMAND,
-            (state.params.sourcePressure ?? 15) * Math.max(0.05, currentLevel / 100)
-          );
-          temperature = upstreamEdges.length ? avgInTemp : (previous.temperature || AMBIENT_TEMP);
-          const nextStoredUnits = Math.max(0, storedUnits + (totalInFlow - outFlow) * dtHours);
-          const nextLevel = this.clampPercent((nextStoredUnits / volume) * 100);
-          state.params = {
-            ...state.params,
-            currentLevel: nextLevel,
-          };
-          if (nextLevel <= (state.params.minLevel ?? 0) + 0.01) {
-            warnings.push('Low level');
-          }
-          if (nextLevel >= 99.9) {
-            warnings.push('High level');
-          }
-          break;
-        }
-
-        case 'valve': {
-          const openness = this.getValveFactor(state.params);
-          outFlow = Math.min(totalInFlow, wantedFlow || totalInFlow) * openness;
-          pressure = avgInPressure * (0.15 + 0.85 * openness);
-          temperature = avgInTemp;
-          if (state.params.valvePosition === 'closed') {
-            warnings.push('Valve closed');
-          }
-          break;
-        }
-
-        case 'pump': {
-          if (!state.params.pumpRunning) {
-            outFlow = 0;
-            pressure = avgInPressure;
-            temperature = avgInTemp;
-            warnings.push('Pump stopped');
-            break;
-          }
-
-          const suctionOk = totalInFlow > FLOW_EPSILON && avgInPressure >= (state.params.minInletPressure ?? 0);
-          if (!suctionOk) {
-            outFlow = 0;
-            pressure = avgInPressure;
-            temperature = avgInTemp;
-            warnings.push(totalInFlow <= FLOW_EPSILON ? 'No inlet flow' : 'Low inlet pressure');
-            warnings.push('Cavitation risk');
-            break;
-          }
-
-          const maxFlow = state.params.maxFlow ?? LARGE_DEMAND;
-          outFlow = Math.min(totalInFlow, wantedFlow || maxFlow, maxFlow);
-          pressure = avgInPressure + (state.params.pumpDeltaP ?? 50) * (state.params.pumpEfficiency ?? 1);
-          temperature = avgInTemp;
-          break;
-        }
-
-        case 'sink':
-          outFlow = 0;
-          pressure = avgInPressure;
-          temperature = avgInTemp;
-          break;
-
-        case 'pipe':
-        case 'junction':
-        case 'instrument':
-        case 'motor':
-        default:
-          outFlow = Math.min(totalInFlow, wantedFlow || totalInFlow);
-          pressure = avgInPressure;
-          temperature = avgInTemp;
-          break;
+      // Apply param updates (e.g., vessel level)
+      if (result.paramUpdates) {
+        state.params = { ...state.params, ...result.paramUpdates };
       }
 
-      nextStates.set(shapeId, {
+      const effectiveFlow = node.role === 'sink' ? totalInFlow : result.outFlow;
+      nextStates.set(nodeId, {
         ...state,
-        pressure,
-        temperature,
-        flowRate: node.role === 'sink' ? totalInFlow : outFlow,
-        isFlowing: (node.role === 'sink' ? totalInFlow : outFlow) > FLOW_EPSILON,
-        warnings,
+        pressure: result.pressure,
+        temperature: result.temperature,
+        flowRate: effectiveFlow,
+        isFlowing: effectiveFlow > FLOW_EPSILON,
+        warnings: result.warnings,
       });
 
-      const childWeights = node.downstreamEdges.map((edgeId: number) => {
-        const conn = connMap.get(edgeId);
-        const childDemand = conn ? (demandCache.get(conn.targetPlacementId) ?? 0) : 0;
-        return { edgeId, demand: childDemand };
+      // Distribute flow to downstream edges proportionally
+      const childWeights = node.downstreamEdgeIds.map((edgeId: number) => {
+        const edge = edges.get(edgeId);
+        const childDem = edge ? (demandCache.get(edge.targetNodeId) ?? 0) : 0;
+        return { edgeId, demand: childDem };
       });
-      const totalChildDemand = childWeights.reduce((sum: number, item: { edgeId: number; demand: number }) => sum + item.demand, 0);
+      const totalChildDemand = childWeights.reduce((sum, item) => sum + item.demand, 0);
 
       for (const item of childWeights) {
-        const conn = connMap.get(item.edgeId);
-        if (!conn) continue;
+        const edge = edges.get(item.edgeId);
+        if (!edge) continue;
         const ratio = totalChildDemand > 0
           ? item.demand / totalChildDemand
           : 1 / Math.max(1, childWeights.length);
-        const baseEdgeState: SimEdgeState = {
-          connectionId: conn.id,
-          flowRate: outFlow * ratio,
-          pressure,
-          temperature,
-          isFlowing: outFlow * ratio > FLOW_EPSILON,
+
+        const baseEdge: SimEdgeState = {
+          connectionId: edge.id,
+          flowRate: result.outFlow * ratio,
+          pressure: result.pressure,
+          temperature: result.temperature,
+          isFlowing: result.outFlow * ratio > FLOW_EPSILON,
         };
-        edges.set(conn.id, this.applyPipeEffects(baseEdgeState, conn));
+        edgeStates.set(edge.id, this.applyPipeEffects(baseEdge, edge));
       }
     }
 
-    for (const conn of connections) {
-      if (!edges.has(conn.id)) {
-        edges.set(conn.id, {
-          connectionId: conn.id,
+    // Zero-fill edges not yet computed
+    for (const edge of edges.values()) {
+      if (!edgeStates.has(edge.id)) {
+        edgeStates.set(edge.id, {
+          connectionId: edge.id,
           flowRate: 0,
           pressure: 0,
           temperature: AMBIENT_TEMP,
@@ -249,31 +201,11 @@ export class SimulationEngineService {
       }
     }
 
-    return { nodes: nextStates, edges };
+    return { nodes: nextStates, edges: edgeStates };
   }
 
-  private getValveFactor(params: SimParams): number {
-    switch (params.valvePosition) {
-      case 'closed':
-        return 0;
-      case 'throttled':
-        return Math.max(0, Math.min(1, (params.throttlePercent ?? 50) / 100));
-      case 'open':
-      default:
-        return 1;
-    }
-  }
-
-  private clampPercent(value: number): number {
-    return Math.max(0, Math.min(100, value));
-  }
-
-  private applyPipeEffects(
-    sourceState: SimEdgeState,
-    conn: DiagramConnection
-  ): SimEdgeState {
-    const params: SimParams = conn.pipeParamsJson ? parseSimParams(conn.pipeParamsJson) : { schemaVersion: 1 };
-
+  private applyPipeEffects(sourceState: SimEdgeState, edge: SimEdge): SimEdgeState {
+    const params = edge.pipeParams;
     const diameter = Math.max(0.1, params.diameter ?? 1);
     const length = Math.max(0, params.length ?? 0);
     const frictionFactor = Math.max(0, params.frictionFactor ?? 0);
@@ -288,7 +220,7 @@ export class SimulationEngineService {
     };
   }
 
-  private weightedAvgTempFromEdges(upstreams: SimEdgeState[]): number {
+  private weightedAvgTemp(upstreams: SimEdgeState[]): number {
     const totalFlow = upstreams.reduce((sum, edge) => sum + edge.flowRate, 0);
     if (totalFlow <= FLOW_EPSILON) {
       return upstreams.length ? upstreams[0].temperature : AMBIENT_TEMP;

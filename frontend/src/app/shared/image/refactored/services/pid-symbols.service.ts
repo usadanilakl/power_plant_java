@@ -4,7 +4,7 @@ import { Injectable } from '@angular/core';
 export interface PIDSymbol {
   id: string;
   name: string;
-  category: 'valve' | 'pump' | 'instrument' | 'vessel' | 'electrical';
+  category: 'valve' | 'pump' | 'instrument' | 'vessel' | 'electrical' | 'rotating-equipment';
   svgPath: string;
   width: number;
   height: number;
@@ -309,6 +309,100 @@ export class PIDSymbolsService {
       height: 40,
       originalWidth: 40,
       originalHeight: 40
+    },
+
+    // --- Rotating Equipment ---
+
+    {
+      id: 'generator-body',
+      name: 'Generator Body',
+      category: 'rotating-equipment',
+      // Large cylindrical generator body with end bells, shaft extending both sides,
+      // cooling fins on top, terminal box, and internal stator winding indication
+      svgPath: 'M 20,10 L 140,10 M 20,70 L 140,70 M 20,10 a 10,30 0 0,0 0,60 M 140,10 a 10,30 0 0,1 0,60 M 0,40 L 20,40 M 140,40 L 160,40 M 30,10 L 30,70 M 130,10 L 130,70 M 60,18 Q 80,26 100,18 M 60,62 Q 80,54 100,62 M 70,4 L 90,4 L 90,10 L 70,10 Z',
+      width: 160,
+      height: 80,
+      originalWidth: 160,
+      originalHeight: 80
+    },
+    {
+      id: 'shaft-seal',
+      name: 'Shaft Seal',
+      category: 'rotating-equipment',
+      // Cross-section of a shaft seal: shaft through center, seal housing above and below,
+      // oil inlet from top, H2 side (left), air side (right), drain at bottom
+      svgPath: 'M 0,25 L 50,25 M 0,35 L 50,35 M 10,15 L 10,45 L 18,45 L 18,15 Z M 32,15 L 32,45 L 40,45 L 40,15 Z M 25,0 L 25,15 M 25,45 L 25,60 M 14,20 L 14,40 M 36,20 L 36,40 M 18,25 L 32,25 M 18,35 L 32,35',
+      width: 50,
+      height: 60,
+      originalWidth: 50,
+      originalHeight: 60
+    },
+    {
+      id: 'bearing-housing',
+      name: 'Bearing Housing',
+      category: 'rotating-equipment',
+      // Bearing pedestal: rectangular housing with shaft through center,
+      // oil inlet top, drain bottom, bearing surfaces indicated
+      svgPath: 'M 5,8 L 45,8 L 45,42 L 5,42 Z M 0,25 L 5,25 M 45,25 L 50,25 M 25,0 L 25,8 M 25,42 L 25,50 M 12,18 a 13,7 0 0,1 26,0 M 12,32 a 13,7 0 0,0 26,0 M 12,18 L 12,32 M 38,18 L 38,32',
+      width: 50,
+      height: 50,
+      originalWidth: 50,
+      originalHeight: 50
+    },
+    {
+      id: 'exciter',
+      name: 'Exciter',
+      category: 'rotating-equipment',
+      // Smaller cylinder on the end of generator shaft
+      svgPath: 'M 8,8 L 42,8 M 8,32 L 42,32 M 8,8 a 6,12 0 0,0 0,24 M 42,8 a 6,12 0 0,1 0,24 M 0,20 L 8,20 M 42,20 L 50,20 M 20,4 L 30,4 L 30,8 L 20,8 Z',
+      width: 50,
+      height: 40,
+      originalWidth: 50,
+      originalHeight: 40
+    },
+    {
+      id: 'drain-pot',
+      name: 'Drain Pot',
+      category: 'rotating-equipment',
+      // Small vertical vessel with float mechanism inside, inlet side, drain bottom
+      svgPath: 'M 10,5 L 30,5 L 30,40 L 10,40 Z M 0,15 L 10,15 M 30,15 L 40,15 M 20,40 L 20,50 M 17,20 L 17,32 M 15,32 L 19,32 M 15,20 a 2,2 0 0,1 4,0',
+      width: 40,
+      height: 50,
+      originalWidth: 40,
+      originalHeight: 50
+    },
+    {
+      id: 'float-trap',
+      name: 'Float Trap',
+      category: 'rotating-equipment',
+      // Float-operated trap: body with float ball inside, inlet/outlet
+      svgPath: 'M 8,5 L 32,5 L 32,35 L 8,35 Z M 0,20 L 8,20 M 32,20 L 40,20 M 20,35 L 20,45 M 20,22 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0 M 20,17 L 20,12 L 24,12',
+      width: 40,
+      height: 45,
+      originalWidth: 40,
+      originalHeight: 45
+    },
+    {
+      id: 'vacuum-pump',
+      name: 'Vacuum Pump',
+      category: 'rotating-equipment',
+      // Pump circle with V inside for vacuum
+      svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 0,15 L 5,15 L 5,25 L 0,25 Z M 35,15 L 40,15 L 40,25 L 35,25 Z M 13,12 L 20,28 L 27,12',
+      width: 40,
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 40
+    },
+    {
+      id: 'detraining-tank',
+      name: 'Detraining Tank',
+      category: 'rotating-equipment',
+      // Vertical tank with internal baffles for air/gas separation
+      svgPath: 'M 8,6 L 32,6 M 8,6 a 12,4 0 0,0 0,8 M 32,6 a 12,4 0 0,1 0,8 M 8,14 L 8,44 M 32,14 L 32,44 M 8,44 a 12,4 0 0,0 24,0 M 12,20 L 28,20 M 14,28 L 26,28 M 16,36 L 24,36 M 20,44 L 20,54 M 0,20 L 8,20 M 32,25 L 40,25',
+      width: 40,
+      height: 54,
+      originalWidth: 40,
+      originalHeight: 54
     }
   ];
   

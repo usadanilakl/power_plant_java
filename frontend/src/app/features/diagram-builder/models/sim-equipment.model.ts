@@ -193,4 +193,13 @@ export const SYMBOL_ROLE_MAP: Record<string, SimRole> = {
   'transformer': 'motor',
   'breaker': 'motor',
   'switchgear': 'motor',
+  // Rotating equipment
+  'generator-body': 'vessel',
+  'shaft-seal': 'vessel',
+  'bearing-housing': 'junction',
+  'exciter': 'junction',
+  'drain-pot': 'vessel',
+  'float-trap': 'valve',
+  'vacuum-pump': 'pump',
+  'detraining-tank': 'vessel',
 };

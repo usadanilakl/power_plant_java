@@ -1,16 +1,15 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { DiagramPlacement, DiagramConnection } from '../../models/diagram-placement.model';
-import {
-  SimEdgeState, SimGraphNode, SimNodeState, defaultNodeState,
-} from '../models/simulation.model';
+import { SimEdgeState, SimNodeState, defaultNodeState } from '../models/simulation.model';
+import { SimNode, SimEdge } from '../models/sim-graph.model';
 import { SimParams, SimRole } from '../../models/sim-equipment.model';
-import { SimulationGraphService } from './simulation-graph.service';
+import { SimGraphBuilderService } from './sim-graph-builder.service';
 import { SimulationEngineService } from './simulation-engine.service';
 
 @Injectable()
 export class SimulationStateService {
-  private graphService = inject(SimulationGraphService);
+  private graphBuilder = inject(SimGraphBuilderService);
   private engine = inject(SimulationEngineService);
   private readonly tickMs = 500;
   private readonly dtSeconds = 1;
@@ -18,8 +17,8 @@ export class SimulationStateService {
   readonly isSimulating = signal(false);
   readonly simTimeSeconds = signal(0);
 
-  private graph = new Map<number, SimGraphNode>();
-  private connections: DiagramConnection[] = [];
+  private nodes = new Map<number, SimNode>();
+  private edges = new Map<number, SimEdge>();
   private nodeSubjects = new Map<number, BehaviorSubject<SimNodeState>>();
   private edgeSubjects = new Map<number, BehaviorSubject<SimEdgeState>>();
   private _nodeStates = new Map<number, SimNodeState>();
@@ -28,29 +27,32 @@ export class SimulationStateService {
 
   activate(shapes: DiagramPlacement[], connections: DiagramConnection[]): void {
     this.stopTicking();
-    this.connections = connections;
-    this.graph = this.graphService.buildGraph(shapes, connections);
+
+    // Build pure simulation graph from visual model
+    const graph = this.graphBuilder.build(shapes, connections);
+    this.nodes = graph.nodes;
+    this.edges = graph.edges;
     this.simTimeSeconds.set(0);
 
-    // Initialize node states with defaults
+    // Initialize node states
     this._nodeStates.clear();
     this.nodeSubjects.clear();
-    for (const node of this.graph.values()) {
-      const state = defaultNodeState(node.shapeId, node.role);
+    for (const node of this.nodes.values()) {
+      const state = defaultNodeState(node.id, node.role);
       state.params = { ...node.params };
-      this._nodeStates.set(node.shapeId, state);
-      this.nodeSubjects.set(node.shapeId, new BehaviorSubject(state));
+      this._nodeStates.set(node.id, state);
+      this.nodeSubjects.set(node.id, new BehaviorSubject(state));
     }
 
     // Initialize edge states
     this._edgeStates.clear();
     this.edgeSubjects.clear();
-    for (const conn of connections) {
-      const edge: SimEdgeState = {
-        connectionId: conn.id, flowRate: 0, pressure: 0, temperature: 0, isFlowing: false,
+    for (const edge of this.edges.values()) {
+      const edgeState: SimEdgeState = {
+        connectionId: edge.id, flowRate: 0, pressure: 0, temperature: 0, isFlowing: false,
       };
-      this._edgeStates.set(conn.id, edge);
-      this.edgeSubjects.set(conn.id, new BehaviorSubject(edge));
+      this._edgeStates.set(edge.id, edgeState);
+      this.edgeSubjects.set(edge.id, new BehaviorSubject(edgeState));
     }
 
     this.isSimulating.set(true);
@@ -68,7 +70,8 @@ export class SimulationStateService {
     this.edgeSubjects.clear();
     this._nodeStates.clear();
     this._edgeStates.clear();
-    this.graph.clear();
+    this.nodes.clear();
+    this.edges.clear();
   }
 
   updateNodeParams(shapeId: number, updates: Partial<SimParams>): void {
@@ -76,9 +79,9 @@ export class SimulationStateService {
     if (!state) return;
 
     state.params = { ...state.params, ...updates };
-    const graphNode = this.graph.get(shapeId);
-    if (graphNode) {
-      graphNode.params = { ...graphNode.params, ...updates };
+    const node = this.nodes.get(shapeId);
+    if (node) {
+      node.params = { ...node.params, ...updates };
     }
     this.runStep();
   }
@@ -88,8 +91,8 @@ export class SimulationStateService {
     if (!state) return;
 
     state.role = role;
-    const graphNode = this.graph.get(shapeId);
-    if (graphNode) graphNode.role = role;
+    const node = this.nodes.get(shapeId);
+    if (node) node.role = role;
 
     this.runStep();
   }
@@ -115,15 +118,13 @@ export class SimulationStateService {
   }
 
   private runStep(): void {
-    const result = this.engine.step(this.graph, this.connections, this._nodeStates, this.dtSeconds);
+    const result = this.engine.step(this.nodes, this.edges, this._nodeStates, this.dtSeconds);
 
-    // Update node states and notify subscribers
     for (const [id, state] of result.nodes) {
       this._nodeStates.set(id, state);
       this.nodeSubjects.get(id)?.next(state);
     }
 
-    // Update edge states and notify subscribers
     for (const [id, edge] of result.edges) {
       this._edgeStates.set(id, edge);
       this.edgeSubjects.get(id)?.next(edge);

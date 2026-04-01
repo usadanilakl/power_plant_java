@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.sevice;
 
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.diagrams.DiagramConnection;
+import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
 import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -18,6 +20,8 @@ import com.dk_power.power_plant_java.entities.scheduler.Flow;
 import com.dk_power.power_plant_java.entities.scheduler.Task;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.sevice.angular.NgCommentService;
+import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramPlacementService;
+import com.dk_power.power_plant_java.sevice.angular.diagrams.NgDiagramConnectionService;
 import com.dk_power.power_plant_java.sevice.angular.NgEmailCorrespondenceService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
 import com.dk_power.power_plant_java.sevice.angular.engraver.NgEngraverTemplateService;
@@ -102,7 +106,10 @@ public class ServiceFacade {
             @Lazy FormContainerService formContainerService,
             // Scheduler
             @Lazy FlowService flowService,
-            @Lazy TaskService taskService
+            @Lazy TaskService taskService,
+            // Diagrams
+            @Lazy NgDiagramPlacementService ngDiagramPlacementService,
+            @Lazy NgDiagramConnectionService ngDiagramConnectionService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -155,6 +162,9 @@ public class ServiceFacade {
         // Scheduler
         serviceMap.put(Flow.class.getSimpleName(), flowService);
         serviceMap.put(Task.class.getSimpleName(), taskService);
+        // Diagrams
+        serviceMap.put(DiagramPlacement.class.getSimpleName(), ngDiagramPlacementService);
+        serviceMap.put(DiagramConnection.class.getSimpleName(), ngDiagramConnectionService);
     }
 
     public SyncableService getService(String entityClass) {
