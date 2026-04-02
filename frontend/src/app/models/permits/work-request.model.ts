@@ -24,6 +24,7 @@ export interface WorkRequestModel extends BaseModel {
   isConfinedSpaceEntryRequired: boolean | null;
   space: string | null;
   sharepointId: string | null;
+  localUuid: string | null;
   status: string | null;
   hasJha: boolean | null;
   attachmentCount: number | null;
@@ -47,6 +48,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   isConfinedSpaceEntryRequired: boolean | null;
   space: string | null;
   sharepointId: string | null;
+  localUuid: string | null;
   status: string | null;
   hasJha: boolean | null;
   attachmentCount: number | null;
@@ -70,6 +72,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     this.isConfinedSpaceEntryRequired = data.isConfinedSpaceEntryRequired ?? null;
     this.space = data.space ?? null;
     this.sharepointId = data.sharepointId ?? null;
+    this.localUuid = data.localUuid ?? null;
     this.status = data.status ?? null;
     this.hasJha = data.hasJha ?? null;
     this.attachmentCount = data.attachmentCount ?? null;
@@ -96,6 +99,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isConfinedSpaceEntryRequired: this.isConfinedSpaceEntryRequired,
       space: this.space,
       sharepointId: this.sharepointId,
+      localUuid: this.localUuid,
       status: this.status,
       hasJha: this.hasJha,
       attachmentCount: this.attachmentCount,
@@ -123,6 +127,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isConfinedSpaceEntryRequired: json.isConfinedSpaceEntryRequired || null,
       space: json.space || null,
       sharepointId: json.sharepointId || null,
+      localUuid: json.localUuid || null,
       status: json.status || null,
       hasJha: json.hasJha ?? null,
       attachmentCount: json.attachmentCount ?? null,
@@ -139,7 +144,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       'company', 'location', 'affectedEquipment', 'workScope', 'isHotWorkRequired',
       'foreman', 'fireWatch', 'isLotoRequired', 'isConfinedSpaceEntryRequired',
       'workArea',
-      'space', 'sharepointId', 'status', 'hasJha', 'attachmentCount', 'workCategory', 'isVerified', 'name', 'objectType'
+      'space', 'sharepointId', 'localUuid', 'status', 'hasJha', 'attachmentCount', 'workCategory', 'isVerified', 'name', 'objectType'
     ].includes(key);
   }
   static toFormFields(
@@ -254,6 +259,13 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         type: 'text',
         initialValue: dto.sharepointId
       },
+      localUuid: {
+        name: 'localUuid',
+        label: 'Local UUID',
+        type: 'text',
+        readonly: true,
+        initialValue: dto.localUuid
+      },
       status: {
         name: 'status',
         label: 'Status',
@@ -341,6 +353,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
           return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
         }
       },
+      localUuid: { id: 'localUuid', header: 'Local UUID', accessorKey: 'localUuid' },
       status: {
         id: 'status',
         header: 'Status',

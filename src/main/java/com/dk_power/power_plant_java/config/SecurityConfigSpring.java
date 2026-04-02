@@ -124,7 +124,8 @@ public class SecurityConfigSpring {
                     "/api/sync-test/", "/api/sync-e2e/",
                     "/api/data-integrity/", "/api/backup/",
                     "/api/attachments/",
-                    "/h2-console/"
+                    "/h2-console/",
+                    "/work-requests-api/heal-snapshot"
                 )).permitAll()
 
                 // Admin-only endpoints — admin grant approval is localhost-only

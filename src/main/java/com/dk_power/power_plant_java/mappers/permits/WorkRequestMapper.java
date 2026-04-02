@@ -159,6 +159,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setIsConfinedSpaceEntryRequired(entity.getIsConfinedSpaceEntryRequired());
         dto.setSpace(entity.getSpace());
         dto.setSharepointId(entity.getSharepointId());
+        dto.setLocalUuid(entity.getLocalUuid());
         if(entity.getPermitStatus()!=null && entity.getPermitStatus().getName()!=null)dto.setStatus(entity.getPermitStatus().getName());
         dto.setHasJha(!jhaRepo.findByWorkRequestId(entity.getId()).isEmpty());
         dto.setAttachmentCount(permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", entity.getId()).size());
@@ -202,6 +203,7 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
         entity.setSharepointId(dto.getSharepointId());
+        entity.setLocalUuid(dto.getLocalUuid());
 
         if (dto.getWorkArea() != null && dto.getWorkArea().getId() != null) {
             WorkArea workArea = workAreaRepo.findById(dto.getWorkArea().getId()).orElse(null);

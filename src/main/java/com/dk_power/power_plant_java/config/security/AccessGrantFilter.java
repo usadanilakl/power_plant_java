@@ -68,7 +68,8 @@ public class AccessGrantFilter extends OncePerRequestFilter {
             "/api/sync-updates/",
             "/api/data-integrity/",
             "/api/attachments/",
-            "/h2-console/"
+            "/h2-console/",
+            "/work-requests-api/heal-snapshot"
     );
 
     // Static resources

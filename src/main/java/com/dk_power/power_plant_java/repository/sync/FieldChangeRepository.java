@@ -98,6 +98,10 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     boolean existsByEntityTypeAndEntityIdAndFieldNameAndTimestampAndOriginMachineId(
         String entityType, Long entityId, String fieldName, Instant timestamp, String originMachineId);
 
+    // Check whether an entity has a CREATE marker in sync history.
+    boolean existsByEntityTypeAndEntityIdAndChangeTypeAndFieldName(
+        String entityType, Long entityId, FieldChange.ChangeType changeType, String fieldName);
+
     // Find by origin machine
     List<FieldChange> findByOriginMachineIdOrderByTimestampDesc(String machineId);
 

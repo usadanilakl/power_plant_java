@@ -35,7 +35,7 @@ public class SyncUpdateController {
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeToUpdates() {
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE); // No timeout
+        SseEmitter emitter = new SseEmitter(10 * 60 * 1000L); // 10 minute timeout — frontend auto-reconnects
 
         emitters.add(emitter);
         log.info("New SSE client connected. Total clients: {}", emitters.size());

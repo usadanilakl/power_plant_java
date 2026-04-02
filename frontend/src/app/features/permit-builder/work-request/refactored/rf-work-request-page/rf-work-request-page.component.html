@@ -3,6 +3,34 @@
     <button class="action-btn new-btn" (click)="onNewWorkRequest()">+ New</button>
   </div>
 
+  <div class="auto-heal-bar" [class.offline]="healResult() && !healResult()!.hubAvailable">
+    <div class="auto-heal-copy">
+      <span class="auto-heal-title">Work Request Healing</span>
+      <span class="auto-heal-message">
+        @if (healRunning()) {
+          Checking hub and filling missing work requests into local...
+        } @else if (healResult()) {
+          {{ healResult()!.message }}
+        } @else {
+          No healing run yet.
+        }
+      </span>
+    </div>
+    <div class="auto-heal-stats">
+      @if (healResult()) {
+        <span>Hub: {{ healResult()!.hubAvailable ? 'online' : 'offline' }}</span>
+        <span>SharePoint: {{ healResult()!.sharePointAvailable ? 'available' : 'offline' }}</span>
+        <span>Local: {{ healResult()!.localCount }}</span>
+        <span>From hub: {{ healResult()!.importedFromHub }}</span>
+        <span>Into hub from SP: {{ healResult()!.importedFromSharePoint }}</span>
+        <span>Repaired: {{ healResult()!.repairedCreateHistory }}</span>
+      }
+    </div>
+    <button class="action-btn heal-btn" (click)="healAndReload('manual')" [disabled]="healRunning()">
+      {{ healRunning() ? 'Healing...' : 'Heal Missing' }}
+    </button>
+  </div>
+
   <app-sp-sync-toolbar
     entityType="WorkRequest"
     [entityIds]="displayedIds()"

@@ -7,6 +7,16 @@ import { SpringApiResponse } from '../../../../../models/api/spring-api-response
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { SearchCriteria } from '../../../../../models/api/search-criteria.model';
 
+export interface WorkRequestHealResult {
+  hubAvailable: boolean;
+  sharePointAvailable: boolean;
+  repairedCreateHistory: number;
+  importedFromSharePoint: number;
+  importedFromHub: number;
+  localCount: number;
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -102,6 +112,13 @@ export class RfWorkRequestApiService {
   triggerSync(): Observable<SpringApiResponse<number>> {
     return this.http.post<SpringApiResponse<number>>(
       `${this.apiUrl}/sync`,
+      {}
+    );
+  }
+
+  healView(): Observable<SpringApiResponse<WorkRequestHealResult>> {
+    return this.http.post<SpringApiResponse<WorkRequestHealResult>>(
+      `${this.apiUrl}/heal-view`,
       {}
     );
   }

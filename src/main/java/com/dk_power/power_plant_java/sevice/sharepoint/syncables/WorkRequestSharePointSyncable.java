@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncable;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sync.PermitAttachmentSyncService;
 import com.dk_power.power_plant_java.sevice.sync.WorkRequestMergeService;
+import com.dk_power.power_plant_java.sevice.sync.WorkRequestSyncRepairService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     private final NgValueService valueService;
     private final WorkRequestMergeService workRequestMergeService;
     private final PermitAttachmentSyncService permitAttachmentSyncService;
+    private final WorkRequestSyncRepairService workRequestSyncRepairService;
     private final SharePointFieldMergeService fieldMergeService;
     private final TransactionTemplate transactionTemplate;
 
@@ -94,6 +96,10 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             return EntitySyncOutcome.SKIPPED;
         }
 
+        if (decision.shouldEnsureCreateHistory()) {
+            workRequestSyncRepairService.ensureCreateHistoryIfMissing(decision.entityId());
+        }
+
         if (decision.shouldSyncAttachments()) {
             syncAttachmentsSafely(decision.entityId(), spId);
         }
@@ -132,6 +138,14 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     @Override
     public void mergeIfDuplicatesExist() {
         workRequestMergeService.mergeIfDuplicatesExist();
+    }
+
+    @Override
+    public void afterSync(SyncResult result) {
+        int repaired = workRequestSyncRepairService.backfillMissingCreateHistory();
+        if (repaired > 0) {
+            log.info("[WR Syncable] Repaired {} SharePoint-backed WR rows missing CREATE history", repaired);
+        }
     }
 
     @Override
@@ -245,6 +259,9 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             }
             log.info("[WR Syncable] Bound orphan/local WR id={} localUuid={} to SharePoint ID={}",
                 existing.getId(), remote.getLocalUuid(), spId);
+            // This row existed before SharePoint binding, so late clients may never
+            // have received a CREATE marker. Repair it after this transaction commits.
+            return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true, true);
         } else if (existing != null && localUuidMatch != null
                 && !existing.getId().equals(localUuidMatch.getId())) {
             workRequestMergeService.mergeDuplicateIntoCanonical(
@@ -262,12 +279,12 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             log.debug("[WR Syncable] Created: spId={}", spId);
 
             fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
-            return new WorkRequestSyncDecision(EntitySyncOutcome.CREATED, entity.getId(), true);
+            return new WorkRequestSyncDecision(EntitySyncOutcome.CREATED, entity.getId(), true, false);
         }
 
         Set<String> spChangedColumns = fieldMergeService.getSpChangedFields(ENTITY_TYPE, spId, spValues);
         if (spChangedColumns.isEmpty()) {
-            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
+            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true, false);
         }
 
         log.debug("[WR Syncable] spId={} has {} changed SP columns: {}, spModified={}",
@@ -278,7 +295,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         if (fieldsToApply.isEmpty()) {
             log.debug("[WR Syncable] spId={}: local wins ALL fields, entity unchanged, will re-check next sync", spId);
-            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
+            return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true, false);
         }
 
         log.debug("[WR Syncable] spId={}: SP wins {} fields: {}", spId, fieldsToApply.size(), fieldsToApply);
@@ -294,7 +311,7 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         log.debug("[WR Syncable] Updated spId={}, applied fields: {}", spId, fieldsToApply);
 
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
-        return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true);
+        return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true, false);
     }
 
     private WorkRequest findByLocalUuid(String localUuid) {
@@ -304,6 +321,11 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
         return workRequestRepo.findFirstByLocalUuidOrderByIdAsc(localUuid).orElse(null);
     }
 
-    private record WorkRequestSyncDecision(EntitySyncOutcome outcome, Long entityId, boolean shouldSyncAttachments) {
+    private record WorkRequestSyncDecision(
+        EntitySyncOutcome outcome,
+        Long entityId,
+        boolean shouldSyncAttachments,
+        boolean shouldEnsureCreateHistory
+    ) {
     }
 }

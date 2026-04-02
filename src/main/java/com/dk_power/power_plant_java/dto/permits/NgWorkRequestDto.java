@@ -32,6 +32,7 @@ public class NgWorkRequestDto extends BaseDto {
     private Boolean isConfinedSpaceEntryRequired;
     private String space;
     private String sharepointId;
+    private String localUuid;
     private String status;
     private Boolean hasJha;
     private Integer attachmentCount;

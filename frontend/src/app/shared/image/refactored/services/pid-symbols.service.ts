@@ -397,12 +397,55 @@ export class PIDSymbolsService {
       id: 'detraining-tank',
       name: 'Detraining Tank',
       category: 'rotating-equipment',
-      // Vertical tank with internal baffles for air/gas separation
       svgPath: 'M 8,6 L 32,6 M 8,6 a 12,4 0 0,0 0,8 M 32,6 a 12,4 0 0,1 0,8 M 8,14 L 8,44 M 32,14 L 32,44 M 8,44 a 12,4 0 0,0 24,0 M 12,20 L 28,20 M 14,28 L 26,28 M 16,36 L 24,36 M 20,44 L 20,54 M 0,20 L 8,20 M 32,25 L 40,25',
       width: 40,
       height: 54,
       originalWidth: 40,
       originalHeight: 54
+    },
+    {
+      id: 'vapor-extractor',
+      name: 'Vapor Extractor',
+      category: 'rotating-equipment',
+      // Fan/blower: circle with blades inside, inlet bottom, outlet top
+      svgPath: 'M 20,20 m -14,0 a 14,14 0 1,0 28,0 a 14,14 0 1,0 -28,0 M 20,8 L 14,18 L 20,20 L 26,18 Z M 20,32 L 14,22 L 20,20 L 26,22 Z M 20,0 L 20,6 M 20,34 L 20,40',
+      width: 40,
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 40
+    },
+    {
+      id: 'filter',
+      name: 'Filter / Strainer',
+      category: 'rotating-equipment',
+      // Circle with crosshatch pattern inside
+      svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 10,10 L 30,30 M 10,16 L 24,30 M 16,10 L 30,24 M 10,24 L 24,10 M 10,30 L 30,10 M 16,30 L 30,16 M 0,20 L 5,20 M 35,20 L 40,20',
+      width: 40,
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 40
+    },
+    {
+      id: 'seal-drain-tray',
+      name: 'Seal Drain Tray',
+      category: 'rotating-equipment',
+      // Wide rectangular tray with compartments — catches oil draining from seals
+      svgPath: 'M 0,0 L 80,0 L 80,20 L 0,20 Z M 20,0 L 20,20 M 40,0 L 40,20 M 60,0 L 60,20 M 10,20 L 10,28 M 70,20 L 70,28 M 40,20 L 40,28',
+      width: 80,
+      height: 28,
+      originalWidth: 80,
+      originalHeight: 28
+    },
+    {
+      id: 'vacuum-tank-horizontal',
+      name: 'Vacuum Tank',
+      category: 'rotating-equipment',
+      // Horizontal vessel with float mechanism inside, inlet left, oil drain bottom, gas vent top
+      svgPath: 'M 8,8 L 52,8 M 8,32 L 52,32 M 8,8 a 8,12 0 0,0 0,24 M 52,8 a 8,12 0 0,1 0,24 M 30,0 L 30,8 M 20,32 L 20,40 M 40,32 L 40,40 M 25,14 L 25,26 M 23,26 L 27,26 M 23,14 a 2,2 0 0,1 4,0 M 35,14 L 35,26 M 33,26 L 37,26 M 33,14 a 2,2 0 0,1 4,0 M 0,20 L 8,20',
+      width: 60,
+      height: 40,
+      originalWidth: 60,
+      originalHeight: 40
     }
   ];
   

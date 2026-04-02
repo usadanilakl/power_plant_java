@@ -4,12 +4,15 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.sharepoint.SyncResult;
+import com.dk_power.power_plant_java.dto.sync.WorkRequestHealResultDto;
+import com.dk_power.power_plant_java.dto.sync.WorkRequestHealSnapshotDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
+import com.dk_power.power_plant_java.sevice.sync.WorkRequestHealService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +31,7 @@ public class WorkRequestRestController {
     private final SharePointSyncOrchestrator syncOrchestrator;
     private final WorkRequestMapper workRequestMapper;
     private final PermitAttachmentRepo permitAttachmentRepo;
+    private final WorkRequestHealService workRequestHealService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<NgWorkRequestDto>>> getPaginated(
@@ -141,6 +145,26 @@ public class WorkRequestRestController {
             return ResponseEntity.ok(new NgApiResponse<>(result, message));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Sync failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/heal-snapshot")
+    public ResponseEntity<NgApiResponse<WorkRequestHealSnapshotDto>> getHealSnapshot() {
+        try {
+            WorkRequestHealSnapshotDto result = workRequestHealService.getHubSnapshot();
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "WR heal snapshot failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/heal-view")
+    public ResponseEntity<NgApiResponse<WorkRequestHealResultDto>> healView() {
+        try {
+            WorkRequestHealResultDto result = workRequestHealService.healLocalView();
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "WR heal failed: " + e.getMessage()));
         }
     }
 

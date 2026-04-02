@@ -1,4 +1,4 @@
-import { Component, inject, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { RfPopupProjectionComponent } from '../../../../../shared/popup-projection/rf-popup-projection.component';
@@ -8,6 +8,11 @@ import { RfWorkRequestStateService } from '../services/rf-work-request-state.ser
 import { WorkRequestDto } from '../../../../../models/permits/work-request.model';
 import { ExportDialogComponent } from '../../../../../shared/export-dialog/export-dialog.component';
 import { SpSyncToolbarComponent } from '../../../../../shared/sp-sync-toolbar/sp-sync-toolbar.component';
+import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
+import {
+  RfWorkRequestApiService,
+  WorkRequestHealResult,
+} from '../services/rf-work-request-api.service';
 
 @Component({
   selector: 'app-rf-work-request-page',
@@ -22,10 +27,14 @@ import { SpSyncToolbarComponent } from '../../../../../shared/sp-sync-toolbar/sp
   templateUrl: './rf-work-request-page.component.html',
   styleUrl: './rf-work-request-page.component.css',
 })
-export class RfWorkRequestPageComponent {
+export class RfWorkRequestPageComponent implements OnInit {
   stateService = inject(RfWorkRequestStateService);
+  private apiService = inject(RfWorkRequestApiService);
+  private messageService = inject(GlobalMessageService);
 
-  /** IDs of currently displayed WRs — passed to toolbar for scoped verification */
+  healRunning = signal(false);
+  healResult = signal<WorkRequestHealResult | null>(null);
+
   displayedIds = toSignal(
     this.stateService.allLoadedWorkRequests$.pipe(
       map(items => items.map(wr => wr.id).filter((id): id is number => id != null))
@@ -33,7 +42,14 @@ export class RfWorkRequestPageComponent {
     { initialValue: [] as number[] }
   );
 
+  ngOnInit(): void {
+    this.healAndReload('auto');
+  }
+
   onRowDoubleClicked(item: WorkRequestDto): void {
+    if (!item.id) {
+      return;
+    }
     this.stateService.loadItemById(item.id);
     this.stateService.openForm();
   }
@@ -51,6 +67,29 @@ export class RfWorkRequestPageComponent {
   }
 
   onSyncComplete(): void {
-    this.stateService.reloadData();
+    this.healAndReload('manual');
+  }
+
+  healAndReload(mode: 'auto' | 'manual'): void {
+    this.healRunning.set(true);
+    this.apiService.healView().subscribe({
+      next: (response) => {
+        this.healRunning.set(false);
+        this.healResult.set(response.responseData);
+        this.stateService.reloadData();
+
+        if (mode === 'manual') {
+          this.messageService.showSuccess(response.responseData.message, 6000);
+        }
+      },
+      error: (error) => {
+        this.healRunning.set(false);
+        const message = error?.error?.message || error?.message || 'Work request healing failed.';
+
+        if (mode === 'manual') {
+          this.messageService.showError(message, 6000);
+        }
+      }
+    });
   }
 }

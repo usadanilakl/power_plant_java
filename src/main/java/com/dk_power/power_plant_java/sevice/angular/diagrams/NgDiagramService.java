@@ -47,6 +47,11 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
     private static final String FLOAT_TRAP_PATH = "M 8,5 L 32,5 L 32,35 L 8,35 Z M 0,20 L 8,20 M 32,20 L 40,20 M 20,35 L 20,45 M 20,22 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0 M 20,17 L 20,12 L 24,12";
     private static final String EXCITER_PATH = "M 8,8 L 42,8 M 8,32 L 42,32 M 8,8 a 6,12 0 0,0 0,24 M 42,8 a 6,12 0 0,1 0,24 M 0,20 L 8,20 M 42,20 L 50,20 M 20,4 L 30,4 L 30,8 L 20,8 Z";
     private static final String BEARING_PATH = "M 5,8 L 45,8 L 45,42 L 5,42 Z M 0,25 L 5,25 M 45,25 L 50,25 M 25,0 L 25,8 M 25,42 L 25,50 M 12,18 a 13,7 0 0,1 26,0 M 12,32 a 13,7 0 0,0 26,0 M 12,18 L 12,32 M 38,18 L 38,32";
+    private static final String VAPOR_EXTRACTOR_PATH = "M 20,20 m -14,0 a 14,14 0 1,0 28,0 a 14,14 0 1,0 -28,0 M 20,8 L 14,18 L 20,20 L 26,18 Z M 20,32 L 14,22 L 20,20 L 26,22 Z M 20,0 L 20,6 M 20,34 L 20,40";
+    private static final String FILTER_PATH = "M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 10,10 L 30,30 M 10,16 L 24,30 M 16,10 L 30,24 M 10,24 L 24,10 M 10,30 L 30,10 M 16,30 L 30,16 M 0,20 L 5,20 M 35,20 L 40,20";
+    private static final String SEAL_DRAIN_TRAY_PATH = "M 0,0 L 80,0 L 80,20 L 0,20 Z M 20,0 L 20,20 M 40,0 L 40,20 M 60,0 L 60,20 M 10,20 L 10,28 M 70,20 L 70,28 M 40,20 L 40,28";
+    private static final String VACUUM_TANK_H_PATH = "M 8,8 L 52,8 M 8,32 L 52,32 M 8,8 a 8,12 0 0,0 0,24 M 52,8 a 8,12 0 0,1 0,24 M 30,0 L 30,8 M 20,32 L 20,40 M 40,32 L 40,40 M 25,14 L 25,26 M 23,26 L 27,26 M 23,14 a 2,2 0 0,1 4,0 M 35,14 L 35,26 M 33,26 L 37,26 M 33,14 a 2,2 0 0,1 4,0 M 0,20 L 8,20";
+    private static final String CHECK_VALVE_PATH = "M 0,10 L 18,0 L 18,20 Z M 18,0 L 40,10 L 18,20 Z M 8,10 L 18,10";
     private static final String TANK_PATH = "M 8,4 L 32,4 M 8,4 a 12,4 0 0,0 0,8 M 32,4 a 12,4 0 0,1 0,8 M 8,12 L 8,34 M 32,12 L 32,34 M 8,34 a 12,4 0 0,0 24,0";
     private static final String VERTICAL_VESSEL_PATH = "M 10,8 L 30,8 M 10,32 L 30,32 M 10,8 a 10,8 0 0,0 0,24 M 30,8 a 10,8 0 0,1 0,24 M 14,32 L 14,40 M 26,32 L 26,40";
 
@@ -115,8 +120,8 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
 
         diagram.setName(SEAL_OIL_TEST_NAME);
         diagram.setDescription("Generator seal oil system: AC/DC pumps feed oil through a pressure regulator to H2-side and air-side generator shaft seals. H2-side drain returns through a vacuum tank. Air-side drain mixes with lube oil and flows through an air detraining tank to the lube oil reservoir.");
-        diagram.setCanvasWidth(2600);
-        diagram.setCanvasHeight(1800);
+        diagram.setCanvasWidth(2400);
+        diagram.setCanvasHeight(2000);
         diagram.setGridSize(20);
         diagram.setShapesJson(buildSealOilJson());
         diagram.setConnectionsJson("");
@@ -140,149 +145,163 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
     private List<Map<String, Object>> buildSealOilPlacements() {
         List<Map<String, Object>> p = new ArrayList<>();
 
-        // ══════════════════════════════════════════
-        // ROW 1: Generator assembly (top, centered)
-        // Layout: [H2 Seal] — [Generator Body] — [Oil Deflector/Air Seal] — [Exciter]
-        // ══════════════════════════════════════════
+        // ══════════════════════════════════════════════════
+        // ROW 1 (y~80): Generator with seal ring bearings
+        // [Vapor Ext] [Seal Ring Bearing] [Generator] [Seal Ring Bearing] [Vapor Ext]
+        // ══════════════════════════════════════════════════
 
-        // 1 - H2-side shaft seal (turbine end, left of generator)
-        p.add(symbolPlacement(1, "Shaft Hydrogen Seal", "Hydrogen-side shaft seal. Oil pressure exceeds H2 pressure to prevent leakage.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 50, "currentLevel", 65, "minLevel", 30, "maxPressure", 80, "sourcePressure", 60)),
-            680, 120, 120, 140, "shaft-seal", SHAFT_SEAL_PATH, "#64b5f6"));
+        // 1 - Left vapor extractor + vent
+        p.add(symbolPlacement(1, "Vapor Extractor (L)", "Extracts H2 vapor from turbine-end seal area.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 2, "pumpEfficiency", 0.9, "maxFlow", 200, "minInletPressure", 0)),
+            80, 180, 70, 70, "vapor-extractor", VAPOR_EXTRACTOR_PATH, "#66bb6a"));
 
-        // 2 - Generator body (center)
-        p.add(symbolPlacement(2, "Hydrogen Cooled Generator", "Main generator. H2 cooled. Shaft extends both ends through seal assemblies.", "junction",
+        p.add(rectPlacement(2, "Vent (L)", "H2 vapor vent to atmosphere — turbine end.", "sink",
             json(mapOf("schemaVersion", 1)),
-            860, 100, 400, 200, "generator-body", GENERATOR_BODY_PATH, "#90caf9"));
+            70, 80, 90, 40, "#ef9a9a"));
 
-        // 3 - Air-side seal / oil deflector (collector end, right of generator)
-        p.add(symbolPlacement(3, "Oil Deflector / Collector Seal", "Collector-end seal. Air side — drain mixes with bearing oil.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 50, "currentLevel", 55, "minLevel", 25, "maxPressure", 30, "sourcePressure", 15)),
-            1320, 120, 120, 140, "shaft-seal", SHAFT_SEAL_PATH, "#81c784"));
+        // 3 - Left seal ring bearing (turbine end)
+        p.add(symbolPlacement(3, "Seal Ring Bearing (TE)", "Turbine-end seal ring and bearing assembly.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 30, "currentLevel", 70, "minLevel", 30, "maxPressure", 80, "sourcePressure", 65)),
+            320, 120, 120, 150, "shaft-seal", SHAFT_SEAL_PATH, "#64b5f6"));
 
-        // 4 - Exciter
-        p.add(symbolPlacement(4, "Exciter", "Generator exciter, collector end.", "junction",
+        // 4 - Generator body
+        p.add(symbolPlacement(4, "Generator", "Hydrogen cooled generator with rotor.", "junction",
             json(mapOf("schemaVersion", 1)),
-            1500, 150, 100, 80, "exciter", EXCITER_PATH, "#b0bec5"));
+            560, 80, 450, 240, "generator-body", GENERATOR_BODY_PATH, "#fff176"));
 
-        // 5 - Collector end bearing
-        p.add(symbolPlacement(5, "Collector End Bearing", "Outboard bearing, collector side.", "junction",
+        // 5 - Right seal ring bearing (collector end)
+        p.add(symbolPlacement(5, "Seal Ring Bearing (CE)", "Collector-end seal ring and bearing assembly.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 30, "currentLevel", 65, "minLevel", 30, "maxPressure", 80, "sourcePressure", 65)),
+            1130, 120, 120, 150, "shaft-seal", SHAFT_SEAL_PATH, "#64b5f6"));
+
+        // 6 - Right vapor extractor + vent
+        p.add(symbolPlacement(6, "Vapor Extractor (R)", "Extracts H2 vapor from collector-end seal area.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 2, "pumpEfficiency", 0.9, "maxFlow", 200, "minInletPressure", 0)),
+            1420, 180, 70, 70, "vapor-extractor", VAPOR_EXTRACTOR_PATH, "#66bb6a"));
+
+        p.add(rectPlacement(7, "Vent (R)", "H2 vapor vent to atmosphere — collector end.", "sink",
             json(mapOf("schemaVersion", 1)),
-            1650, 150, 80, 80, "bearing-housing", BEARING_PATH, "#b0bec5"));
+            1410, 80, 90, 40, "#ef9a9a"));
 
-        // ══════════════════════════════════════════
-        // ROW 2: Seal oil supply (left side, feeds up to seals)
-        // ══════════════════════════════════════════
+        // ══════════════════════════════════════════════════
+        // ROW 2 (y~380): Seal drain enlargement section
+        // ══════════════════════════════════════════════════
 
-        // 6 - Seal oil supply source
-        p.add(symbolPlacement(6, "Seal Oil Supply", "From bearing oil header. Clean oil supply to seal oil system.", "source",
-            json(mapOf("schemaVersion", 1, "sourcePressure", 25, "sourceTemperature", 120, "sourceFlowRate", 800)),
-            60, 600, 120, 140, "tank", TANK_PATH, "#80deea"));
+        // 8 - Seal drain enlargement section (wide tray spanning under generator)
+        p.add(symbolPlacement(8, "Seal Drain Enlargement Section", "Catches oil draining from both seal assemblies. Separates H2-side and air-side flows.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 200, "currentLevel", 35, "minLevel", 10, "maxPressure", 75, "sourcePressure", 60)),
+            450, 400, 480, 80, "seal-drain-tray", SEAL_DRAIN_TRAY_PATH, "#b0bec5"));
 
-        // 7 - AC seal oil pump
-        p.add(symbolPlacement(7, "AC Seal Oil Pump", "Primary AC-driven seal oil pump. Normally running.", "pump",
-            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 45, "pumpEfficiency", 0.88, "maxFlow", 600, "minInletPressure", 5)),
-            280, 540, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
-
-        // 8 - DC seal oil pump (backup)
-        p.add(symbolPlacement(8, "DC Seal Oil Pump", "Backup DC-driven pump. Auto-starts on AC failure or low DP.", "pump",
-            json(mapOf("schemaVersion", 1, "pumpRunning", false, "pumpDeltaP", 40, "pumpEfficiency", 0.82, "maxFlow", 500, "minInletPressure", 5)),
-            280, 700, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
-
-        // 9 - Pump discharge header
-        p.add(circlePlacement(9, "Pump Discharge Header", "junction",
-            json(mapOf("schemaVersion", 1)),
-            460, 620, 24, 24, "#ffffff"));
-
-        // 10 - Pressure regulator (differential pressure control valve)
-        p.add(symbolPlacement(10, "DP Regulator", "Differential pressure control valve. Maintains seal oil pressure above H2 pressure.", "valve",
-            json(mapOf("schemaVersion", 1, "valvePosition", "throttled", "throttlePercent", 60, "cvCoefficient", 400)),
-            560, 600, 70, 90, "cv", CV_PATH, "#8bc34a"));
-
-        // 11 - Seal oil supply header (splits to both seals)
-        p.add(circlePlacement(11, "Seal Oil Header", "junction",
-            json(mapOf("schemaVersion", 1)),
-            720, 620, 24, 24, "#ffffff"));
-
-        // 12 - Pressure gauge on header
-        p.add(symbolPlacement(12, "Seal Oil PG", "Pressure gauge on seal oil supply header.", "instrument",
-            json(mapOf("schemaVersion", 1, "measuredProperty", "pressure")),
-            700, 520, 50, 50, "pressure-indicator", "M 20,2 a 18,18 0 1,0 0,36 a 18,18 0 1,0 0,-36 M 20,20 L 28,8", "#cddc39"));
-
-        // 13 - H2 seal inlet valve (supply goes UP to seal)
-        p.add(symbolPlacement(13, "H2 Seal Supply Valve", "Supply isolation valve to hydrogen seal.", "valve",
-            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
-            710, 360, 60, 50, "manual-valve", MANUAL_VALVE_PATH, "#8bc34a"));
-
-        // 14 - Air seal inlet valve (supply goes UP to seal)
-        p.add(symbolPlacement(14, "Air Seal Supply Valve", "Supply isolation valve to collector-end seal.", "valve",
-            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
-            1350, 360, 60, 50, "manual-valve", MANUAL_VALVE_PATH, "#8bc34a"));
-
-        // ══════════════════════════════════════════
-        // ROW 3: Seal oil drain section (below generator)
-        // H2 side drains left, air side drains right
-        // ══════════════════════════════════════════
-
-        // 15 - H2 seal drain pot (below H2 seal)
-        p.add(symbolPlacement(15, "H2 Drain Pot", "Collects H2-side seal oil drain. Float maintains oil seal against H2.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 80, "currentLevel", 45, "minLevel", 15, "maxPressure", 70, "sourcePressure", 55)),
-            700, 860, 80, 100, "drain-pot", DRAIN_POT_PATH, "#7986cb"));
-
-        // 16 - Float trap (below H2 drain pot)
-        p.add(symbolPlacement(16, "Float Trap", "Float-operated trap. Allows oil to pass, prevents H2 gas blowthrough.", "valve",
-            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
-            710, 1020, 60, 70, "float-trap", FLOAT_TRAP_PATH, "#9fa8da"));
-
-        // 17 - Air seal drain pot (below air seal)
-        p.add(symbolPlacement(17, "Air Side Drain Pot", "Collects collector-end seal drain. Oil contains entrained air.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 80, "currentLevel", 50, "minLevel", 15, "maxPressure", 25, "sourcePressure", 10)),
-            1350, 860, 80, 100, "drain-pot", DRAIN_POT_PATH, "#a5d6a7"));
-
-        // ══════════════════════════════════════════
-        // ROW 4: Return paths
-        // Left: H2 path → Vacuum Tank → to main oil tank
-        // Right: Air path → Air Detraining → to main oil tank
-        // ══════════════════════════════════════════
-
-        // 18 - Seal oil vacuum tank (center, H2 return path)
-        p.add(symbolPlacement(18, "Seal Oil Vacuum Tank", "Removes dissolved H2 from seal oil under vacuum. Float controls oil level.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 2000, "currentLevel", 40, "minLevel", 15, "maxPressure", 15, "sourcePressure", 2)),
-            950, 1100, 160, 200, "vertical-vessel", VERTICAL_VESSEL_PATH, "#ce93d8"));
-
-        // 19 - Vacuum breaker (right of vacuum tank)
-        p.add(symbolPlacement(19, "Vacuum Breaker", "Prevents excessive vacuum in seal oil vacuum tank.", "valve",
+        // 9 - Vent (normally closed) — right of drain section
+        p.add(symbolPlacement(9, "Vent (Normally Closed)", "Emergency vent on seal drain section. Normally closed.", "valve",
             json(mapOf("schemaVersion", 1, "valvePosition", "closed")),
-            1180, 1100, 60, 50, "relief-valve", "M 0,12 L 14,12 L 20,6 L 26,12 L 40,12 M 20,6 L 20,-4 M 14,-4 L 26,-4 M 12,16 L 28,16", "#ef9a9a"));
+            980, 400, 60, 50, "manual-valve", MANUAL_VALVE_PATH, "#ef9a9a"));
 
-        // 20 - H2 vent (above vacuum tank, to outside)
-        p.add(rectPlacement(20, "To Outside Building (H2 Vent)", "Hydrogen gas vented from vacuum tank to safe area outside.", "sink",
+        p.add(rectPlacement(10, "Vent NC", "Normally closed vent.", "sink",
             json(mapOf("schemaVersion", 1)),
-            1180, 1020, 140, 40, "#ef9a9a"));
+            1060, 400, 60, 40, "#ef9a9a"));
 
-        // 21 - Air detraining section (far left, below bearing drain)
-        p.add(symbolPlacement(21, "Air Detraining Section", "Baffled tank removes entrained air from bearing/seal oil before return to reservoir.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 5000, "currentLevel", 60, "minLevel", 20, "maxPressure", 20, "sourcePressure", 5)),
-            100, 1100, 160, 200, "detraining-tank", DETRAINING_TANK_PATH, "#fff59d"));
+        // ══════════════════════════════════════════════════
+        // ROW 3 (y~560): Air detraining (left), Float trap (center), Vacuum tank (right)
+        // ══════════════════════════════════════════════════
 
-        // 22 - Bearing oil drain header (junction between air drain path and detraining)
-        p.add(circlePlacement(22, "Bearing Oil Drain", "junction",
+        // 11 - Air detraining section (left)
+        p.add(symbolPlacement(11, "Air Detraining Section", "Removes entrained air from seal/bearing oil. Baffled internals.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 3000, "currentLevel", 55, "minLevel", 20, "maxPressure", 20, "sourcePressure", 5)),
+            250, 600, 160, 160, "detraining-tank", DETRAINING_TANK_PATH, "#fff59d"));
+
+        // 12 - Float trap (center)
+        p.add(symbolPlacement(12, "Float Trap", "Float-operated trap between seal drain and vacuum tank. Passes oil, blocks H2 gas.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            700, 620, 80, 90, "float-trap", FLOAT_TRAP_PATH, "#9fa8da"));
+
+        // 13 - Check valve before float trap
+        p.add(symbolPlacement(13, "Check Valve (FT)", "Prevents backflow into float trap.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            580, 640, 60, 40, "check-valve", CHECK_VALVE_PATH, "#8bc34a"));
+
+        // 14 - Vacuum tank (right) — horizontal vessel with floats
+        p.add(symbolPlacement(14, "Seal Oil Vacuum Tank", "Removes dissolved H2 from seal oil under vacuum. Float valves control oil level.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 2000, "currentLevel", 40, "minLevel", 15, "maxPressure", 15, "sourcePressure", 2)),
+            1150, 580, 240, 140, "vacuum-tank-horizontal", VACUUM_TANK_H_PATH, "#ce93d8"));
+
+        // 15 - SOVP x2 (seal oil vacuum pump, right of vacuum tank)
+        p.add(symbolPlacement(15, "SOVP ×2", "Seal oil vacuum pump (2 installed). Maintains vacuum in vacuum tank.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 10, "pumpEfficiency", 0.8, "maxFlow", 100, "minInletPressure", 0)),
+            1480, 540, 80, 80, "vacuum-pump", "M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 0,15 L 5,15 L 5,25 L 0,25 Z M 35,15 L 40,15 L 40,25 L 35,25 Z M 13,12 L 20,28 L 27,12", "#66bb6a"));
+
+        p.add(rectPlacement(16, "Vent (SOVP)", "H2 gas exhaust from vacuum pump.", "sink",
             json(mapOf("schemaVersion", 1)),
-            100, 920, 24, 24, "#ffffff"));
+            1480, 460, 80, 40, "#ef9a9a"));
 
-        // ══════════════════════════════════════════
-        // ROW 5: Return to main oil tank (bottom)
-        // ══════════════════════════════════════════
+        // ══════════════════════════════════════════════════
+        // ROW 4 (y~860): Main oil tank (left), Pumps (right), Filter (bottom)
+        // ══════════════════════════════════════════════════
 
-        // 23 - Main oil tank (bottom center)
-        p.add(symbolPlacement(23, "Main Oil Tank", "Main lube/seal oil reservoir. Receives clean oil from both return paths.", "vessel",
-            json(mapOf("schemaVersion", 1, "volume", 50000, "currentLevel", 72, "minLevel", 40, "maxPressure", 15, "sourcePressure", 1)),
-            500, 1500, 180, 200, "tank", TANK_PATH, "#80deea"));
+        // 17 - Drain pot (below vacuum tank drain)
+        p.add(symbolPlacement(17, "Drain Pot", "Collects oil from vacuum tank before return to main tank.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 100, "currentLevel", 50, "minLevel", 15, "maxPressure", 15, "sourcePressure", 2)),
+            1250, 850, 80, 100, "drain-pot", DRAIN_POT_PATH, "#7986cb"));
 
-        // 24 - Sight glass / oil level gauge (on vacuum tank)
-        p.add(symbolPlacement(24, "Sight Glass", "Visual oil level indicator on vacuum tank.", "instrument",
+        // 18 - Sight glass on vacuum tank
+        p.add(symbolPlacement(18, "Sight Glass", "Visual oil level indicator.", "instrument",
             json(mapOf("schemaVersion", 1, "measuredProperty", "flow")),
-            1180, 1200, 50, 50, "level-indicator", "M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 12,24 L 28,24 M 16,16 L 24,16", "#cddc39"));
+            1430, 700, 50, 50, "level-indicator", "M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 12,24 L 28,24 M 16,16 L 24,16", "#cddc39"));
+
+        // 19 - Main oil tank (left, large)
+        p.add(symbolPlacement(19, "Main Oil Tank", "Main lube/seal oil reservoir.", "source",
+            json(mapOf("schemaVersion", 1, "sourcePressure", 5, "sourceTemperature", 120, "sourceFlowRate", 800)),
+            100, 1000, 200, 220, "tank", TANK_PATH, "#80deea"));
+
+        // 20 - MSOP (Main Seal Oil Pump)
+        p.add(symbolPlacement(20, "MSOP", "Main Seal Oil Pump. AC driven, normally running.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 55, "pumpEfficiency", 0.88, "maxFlow", 600, "minInletPressure", 3)),
+            1100, 1100, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
+
+        // 21 - ESOP (Emergency Seal Oil Pump)
+        p.add(symbolPlacement(21, "ESOP", "Emergency Seal Oil Pump. DC driven, auto-starts on low DP.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", false, "pumpDeltaP", 50, "pumpEfficiency", 0.82, "maxFlow", 500, "minInletPressure", 3)),
+            1100, 960, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
+
+        // 22 - Pump discharge header
+        p.add(circlePlacement(22, "Pump Header", "junction",
+            json(mapOf("schemaVersion", 1)),
+            960, 1060, 24, 24, "#ffffff"));
+
+        // 23 - Pressure regulating valve
+        p.add(symbolPlacement(23, "Pressure Regulating Valve", "Maintains constant seal oil differential pressure above H2 pressure.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "throttled", "throttlePercent", 60, "cvCoefficient", 400)),
+            700, 1180, 70, 90, "cv", CV_PATH, "#8bc34a"));
+
+        // 24 - Check valve after pressure regulator
+        p.add(symbolPlacement(24, "Check Valve (PRV)", "Prevents backflow from seal header.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            600, 1200, 60, 40, "check-valve", CHECK_VALVE_PATH, "#8bc34a"));
+
+        // 25 - Filter
+        p.add(symbolPlacement(25, "Filter", "Oil filter / strainer on return path.", "junction",
+            json(mapOf("schemaVersion", 1)),
+            200, 1400, 70, 70, "filter", FILTER_PATH, "#b0bec5"));
+
+        // 26 - Check valve before filter
+        p.add(symbolPlacement(26, "Check Valve (Filter)", "Check valve upstream of filter.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            350, 1420, 60, 40, "check-valve", CHECK_VALVE_PATH, "#8bc34a"));
+
+        // 27 - Seal oil supply header (goes UP from pumps to seals)
+        p.add(circlePlacement(27, "Seal Oil Supply Header", "junction",
+            json(mapOf("schemaVersion", 1)),
+            500, 530, 24, 24, "#ffffff"));
+
+        // 28 - Left supply branch valve to TE seal
+        p.add(symbolPlacement(28, "Supply Valve (TE)", "Supply isolation valve to turbine-end seal.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            350, 340, 60, 40, "check-valve", CHECK_VALVE_PATH, "#8bc34a"));
+
+        // 29 - Right supply branch valve to CE seal
+        p.add(symbolPlacement(29, "Supply Valve (CE)", "Supply isolation valve to collector-end seal.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            1150, 340, 60, 40, "check-valve", CHECK_VALVE_PATH, "#8bc34a"));
 
         return p;
     }
@@ -290,49 +309,71 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
     private List<Map<String, Object>> buildSealOilConnections() {
         List<Map<String, Object>> c = new ArrayList<>();
 
-        // ─── Supply path ───
-        c.add(connection(1, 6, 7, "right", "left", "AC Pump Suction", 8, 20, 0.02, 0));
-        c.add(connection(2, 6, 8, "right", "left", "DC Pump Suction", 8, 20, 0.02, 0));
-        c.add(connection(3, 7, 9, "right", "left", "AC Pump Discharge", 6, 15, 0.02, 0));
-        c.add(connection(4, 8, 9, "right", "bottom", "DC Pump Discharge", 6, 15, 0.02, 0));
-        c.add(connection(5, 9, 10, "right", "left", "To Regulator", 6, 12, 0.02, 0));
-        c.add(connection(6, 10, 11, "right", "left", "Regulated Supply", 6, 10, 0.02, 0));
+        // ─── Generator shaft (visual) ───
+        c.add(connection(1, 3, 4, "right", "left", "TE Shaft", 0, 0, 0, 0));
+        c.add(connection(2, 4, 5, "right", "left", "CE Shaft", 0, 0, 0, 0));
 
-        // ─── Pressure gauge tap ───
-        c.add(connection(7, 11, 12, "top", "bottom", "PG Tap", 2, 5, 0.01, 0));
+        // ─── Vapor extractors vent H2 from seal areas ───
+        c.add(connection(3, 3, 1, "left", "right", "H2 Vapor TE", 2, 5, 0.01, 0));
+        c.add(connection(4, 1, 2, "top", "bottom", "Vent TE", 2, 3, 0, 0));
+        c.add(connection(5, 5, 6, "right", "left", "H2 Vapor CE", 2, 5, 0.01, 0));
+        c.add(connection(6, 6, 7, "top", "bottom", "Vent CE", 2, 3, 0, 0));
 
-        // ─── Header to seal supply valves ───
-        c.add(connection(8, 11, 13, "top", "bottom", "H2 Seal Supply", 4, 18, 0.02, 0));
-        c.add(connection(9, 11, 14, "right", "bottom", "Air Seal Supply", 4, 18, 0.02, 0));
+        // ─── Seal oil drains DOWN from seals to drain tray ───
+        c.add(connection(7, 3, 8, "bottom", "top", "TE Seal Drain", 4, 8, 0.02, 0));
+        c.add(connection(8, 5, 8, "bottom", "top", "CE Seal Drain", 4, 8, 0.02, 0));
 
-        // ─── Supply valves UP to seals ───
-        c.add(connection(10, 13, 1, "top", "bottom", "To H2 Seal", 4, 8, 0.02, 0));
-        c.add(connection(11, 14, 3, "top", "bottom", "To Air Seal", 4, 8, 0.02, 0));
+        // ─── Drain tray vent (normally closed) ───
+        c.add(connection(9, 8, 9, "right", "left", "Drain Vent", 2, 3, 0.01, 0));
+        c.add(connection(10, 9, 10, "right", "left", "To Vent NC", 2, 3, 0, 0));
 
-        // ─── Generator shaft connections (visual) ───
-        c.add(connection(12, 1, 2, "right", "left", "Turbine End Shaft", 0, 0, 0, 0));
-        c.add(connection(13, 2, 3, "right", "left", "Collector End Shaft", 0, 0, 0, 0));
-        c.add(connection(14, 3, 4, "right", "left", "To Exciter", 0, 0, 0, 0));
-        c.add(connection(15, 4, 5, "right", "left", "To Bearing", 0, 0, 0, 0));
+        // ─── Drain tray to float trap (center path) ───
+        c.add(connection(11, 8, 13, "bottom", "left", "Drain to Check Valve", 4, 10, 0.02, 0));
+        c.add(connection(12, 13, 12, "right", "left", "To Float Trap", 4, 8, 0.02, 0));
 
-        // ─── Seal drains DOWN to drain pots ───
-        c.add(connection(16, 1, 15, "bottom", "top", "H2 Seal Drain", 4, 12, 0.02, 0));
-        c.add(connection(17, 3, 17, "bottom", "top", "Air Seal Drain", 4, 12, 0.02, 0));
+        // ─── Float trap to vacuum tank ───
+        c.add(connection(13, 12, 14, "right", "left", "To Vacuum Tank", 4, 12, 0.02, 0));
 
-        // ─── H2 drain path: drain pot → float trap → vacuum tank ───
-        c.add(connection(18, 15, 16, "bottom", "top", "H2 Drain to Trap", 4, 8, 0.02, 0));
-        c.add(connection(19, 16, 18, "bottom", "top", "To Vacuum Tank", 4, 15, 0.02, 0));
+        // ─── Vacuum tank: SOVP draws vacuum, vent gas out ───
+        c.add(connection(14, 14, 15, "right", "left", "To SOVP", 2, 8, 0.01, 0));
+        c.add(connection(15, 15, 16, "top", "bottom", "SOVP Exhaust", 2, 5, 0, 0));
 
-        // ─── Vacuum tank: H2 vent out, oil drain down ───
-        c.add(connection(20, 18, 20, "right", "left", "H2 Vent to Outside", 2, 10, 0.01, 0));
-        c.add(connection(21, 18, 24, "right", "left", "Sight Glass", 2, 3, 0, 0));
-        c.add(connection(22, 18, 23, "bottom", "top", "Vacuum Tank Drain", 4, 15, 0.02, 0));
+        // ─── Vacuum tank oil drain to drain pot ───
+        c.add(connection(16, 14, 17, "bottom", "top", "VT Oil Drain", 4, 10, 0.02, 0));
+        c.add(connection(17, 14, 18, "right", "left", "Sight Glass", 2, 3, 0, 0));
 
-        // ─── Air drain path: drain pot → bearing drain → detraining → main tank ───
-        c.add(connection(23, 17, 22, "bottom", "left", "Air Drain to Bearing Header", 4, 20, 0.02, 0));
-        c.add(connection(24, 5, 22, "bottom", "top", "Bearing Oil Drain", 4, 15, 0.02, 0));
-        c.add(connection(25, 22, 21, "bottom", "top", "To Air Detraining", 6, 12, 0.02, 0));
-        c.add(connection(26, 21, 23, "bottom", "left", "To Main Oil Tank", 6, 15, 0.02, 0));
+        // ─── Drain tray to air detraining (left path) ───
+        c.add(connection(18, 8, 11, "left", "top", "Air Side Drain", 4, 12, 0.02, 0));
+
+        // ─── Air detraining to main oil tank ───
+        c.add(connection(19, 11, 19, "bottom", "top", "Detrained to Tank", 6, 15, 0.02, 0));
+
+        // ─── Drain pot (vacuum tank) returns to main oil tank ───
+        c.add(connection(20, 17, 19, "bottom", "right", "VT Return to Tank", 4, 20, 0.02, 0));
+
+        // ─── Main oil tank to pumps ───
+        c.add(connection(21, 19, 20, "right", "left", "MSOP Suction", 8, 25, 0.02, 0));
+        c.add(connection(22, 19, 21, "right", "left", "ESOP Suction", 8, 25, 0.02, 0));
+
+        // ─── Pumps to header ───
+        c.add(connection(23, 20, 22, "top", "right", "MSOP Discharge", 6, 15, 0.02, 0));
+        c.add(connection(24, 21, 22, "top", "bottom", "ESOP Discharge", 6, 15, 0.02, 0));
+
+        // ─── Header through PRV and filter to supply ───
+        c.add(connection(25, 22, 23, "left", "right", "To PRV", 6, 12, 0.02, 0));
+        c.add(connection(26, 23, 24, "left", "right", "PRV Out", 6, 10, 0.02, 0));
+        c.add(connection(27, 24, 26, "left", "right", "To Filter CV", 4, 8, 0.02, 0));
+        c.add(connection(28, 26, 25, "left", "right", "To Filter", 4, 8, 0.02, 0));
+
+        // ─── Filter return to tank ───
+        c.add(connection(29, 25, 19, "left", "bottom", "Filter to Tank", 4, 10, 0.02, 0));
+
+        // ─── Supply header UP to seals ───
+        c.add(connection(30, 22, 27, "top", "bottom", "Supply Up", 6, 30, 0.02, 0));
+        c.add(connection(31, 27, 28, "left", "bottom", "To TE Seal", 4, 20, 0.02, 0));
+        c.add(connection(32, 28, 3, "top", "bottom", "TE Seal Supply", 4, 8, 0.02, 0));
+        c.add(connection(33, 27, 29, "right", "bottom", "To CE Seal", 4, 20, 0.02, 0));
+        c.add(connection(34, 29, 5, "top", "bottom", "CE Seal Supply", 4, 8, 0.02, 0));
 
         return c;
     }

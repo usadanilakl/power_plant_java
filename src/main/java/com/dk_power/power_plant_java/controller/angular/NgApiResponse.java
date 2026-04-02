@@ -1,11 +1,13 @@
 package com.dk_power.power_plant_java.controller.angular;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 @Getter
 @Setter
+@NoArgsConstructor
 public class NgApiResponse<T> {
     private T responseData;
     private String message;

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -47,11 +48,11 @@ public class HubSyncService {
     private final FieldSyncService fieldSyncService;
     private final SyncConfig syncConfig;
     private final HubSyncConfig hubSyncConfig;
+    private final TransactionTemplate transactionTemplate;
 
     private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
     private final java.util.concurrent.ConcurrentLinkedQueue<List<FieldChange>> failedBatches = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
-    @Transactional
     public SyncResponse syncExchange(String machineId, String machineName,
                                      String ipAddress, Integer deviceNumber,
                                      List<FieldChange> incomingChanges) {
@@ -61,21 +62,32 @@ public class HubSyncService {
             log.info("Hub sync exchange from {} ({}): {} incoming changes",
                 machineName, machineId, incomingChanges != null ? incomingChanges.size() : 0);
 
-            HubClientInfo client = registerClient(machineId, machineName, ipAddress, deviceNumber);
-            client.setStatus(HubClientInfo.ClientStatus.SYNCING);
-            hubClientInfoRepository.save(client);
+            // Phase 1: Register client and mark as syncing (own transaction, releases connection)
+            transactionTemplate.executeWithoutResult(status -> {
+                HubClientInfo client = doRegisterClient(machineId, machineName, ipAddress, deviceNumber);
+                client.setStatus(HubClientInfo.ClientStatus.SYNCING);
+                hubClientInfoRepository.save(client);
+            });
 
+            // Phase 2: Process incoming changes (per-entity-type transactions, releases connection between types)
             ProcessingResult result = processIncomingChangesBatched(incomingChanges, machineId);
-            long pendingForClient = fieldChangeRepository.countPendingChangesFor(machineId);
 
-            client.recordSync(result.changesReceived, 0);
-            client.setStatus(HubClientInfo.ClientStatus.ONLINE);
-            hubClientInfoRepository.save(client);
+            // Phase 3: Count pending and update client status (own transaction, releases connection)
+            long pendingForClient = transactionTemplate.execute(status -> {
+                long pending = fieldChangeRepository.countPendingChangesFor(machineId);
+                HubClientInfo client = hubClientInfoRepository.findById(machineId)
+                    .orElse(new HubClientInfo(machineId, machineName, ipAddress));
+                client.recordSync(result.changesReceived, 0);
+                client.setStatus(HubClientInfo.ClientStatus.ONLINE);
+                hubClientInfoRepository.save(client);
+                return pending;
+            });
 
             log.info("Hub sync complete for {}: received={}, skipped={}, pending={}, durationMs={}",
                 machineName, result.changesReceived, result.duplicatesSkipped, pendingForClient,
                 System.currentTimeMillis() - start);
 
+            // Phase 4: Apply to hub entities and broadcast (no connection held during SSE broadcast)
             if (!result.savedChanges.isEmpty()) {
                 try {
                     int applied = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
@@ -149,12 +161,17 @@ public class HubSyncService {
 
     @Transactional
     public HubClientInfo registerClient(String machineId, String machineName, String ipAddress) {
-        return registerClient(machineId, machineName, ipAddress, null);
+        return doRegisterClient(machineId, machineName, ipAddress, null);
     }
 
     @Transactional
     public HubClientInfo registerClient(String machineId, String machineName,
                                         String ipAddress, Integer deviceNumber) {
+        return doRegisterClient(machineId, machineName, ipAddress, deviceNumber);
+    }
+
+    private HubClientInfo doRegisterClient(String machineId, String machineName,
+                                           String ipAddress, Integer deviceNumber) {
         HubClientInfo client = hubClientInfoRepository.findById(machineId)
             .orElse(new HubClientInfo(machineId, machineName, ipAddress));
 
@@ -186,26 +203,21 @@ public class HubSyncService {
     }
 
     @Scheduled(fixedDelay = 300000)
+    @Transactional
     public void markInactiveClients() {
         long start = System.currentTimeMillis();
         try (LoggingContext.Scope ignored = LoggingContext.openJobScope("hub.markInactiveClients")) {
             LoggingContext.setMachineId(syncConfig.getMachineId());
             Instant cutoff = Instant.now().minus(5, ChronoUnit.MINUTES);
-            List<HubClientInfo> onlineClients = hubClientInfoRepository
-                .findByStatus(HubClientInfo.ClientStatus.ONLINE);
-
-            int markedOffline = 0;
-            for (HubClientInfo client : onlineClients) {
-                if (client.getLastSeen() != null && client.getLastSeen().isBefore(cutoff)) {
-                    client.setStatus(HubClientInfo.ClientStatus.OFFLINE);
-                    hubClientInfoRepository.save(client);
-                    markedOffline++;
-                    log.debug("Marked client {} as offline", client.getMachineName());
-                }
-            }
+            int onlineClients = hubClientInfoRepository.findByStatus(HubClientInfo.ClientStatus.ONLINE).size();
+            int markedOffline = hubClientInfoRepository.markClientsOfflineBefore(
+                cutoff,
+                HubClientInfo.ClientStatus.ONLINE,
+                HubClientInfo.ClientStatus.OFFLINE
+            );
 
             log.info("hub.markInactiveClients.complete onlineChecked={} markedOffline={} durationMs={}",
-                onlineClients.size(), markedOffline, System.currentTimeMillis() - start);
+                onlineClients, markedOffline, System.currentTimeMillis() - start);
         }
     }
 
@@ -270,60 +282,68 @@ public class HubSyncService {
         Map<String, List<FieldChange>> changesByType = changesToProcess.stream()
             .collect(Collectors.groupingBy(FieldChange::getEntityType));
 
+        // Process each entity type in its own transaction to keep connections short-lived
         for (Map.Entry<String, List<FieldChange>> entry : changesByType.entrySet()) {
             String entityType = entry.getKey();
             List<FieldChange> typeChanges = entry.getValue();
 
-            List<Long> entityIds = typeChanges.stream()
-                .map(FieldChange::getEntityId)
-                .distinct()
-                .collect(Collectors.toList());
+            transactionTemplate.executeWithoutResult(status -> {
+                List<Long> entityIds = typeChanges.stream()
+                    .map(FieldChange::getEntityId)
+                    .distinct()
+                    .collect(Collectors.toList());
 
-            Set<String> existingKeys = new HashSet<>(
-                fieldChangeRepository.findExistingChangeKeys(entityType, entityIds));
+                Set<String> existingKeys = new HashSet<>(
+                    fieldChangeRepository.findExistingChangeKeys(entityType, entityIds));
 
-            Map<String, FieldChange> latestChanges = fieldChangeRepository
-                .findLatestChangesForEntities(entityType, entityIds)
-                .stream()
-                .collect(Collectors.toMap(
-                    fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
-                    fc -> fc,
-                    (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b,
-                    LinkedHashMap::new
-                ));
+                Map<String, FieldChange> latestChanges = fieldChangeRepository
+                    .findLatestChangesForEntities(entityType, entityIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                        fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
+                        fc -> fc,
+                        (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b,
+                        LinkedHashMap::new
+                    ));
 
-            for (FieldChange change : typeChanges) {
-                String changeKey = buildChangeKey(change);
+                List<FieldChange> batch = new ArrayList<>();
+                for (FieldChange change : typeChanges) {
+                    String changeKey = buildChangeKey(change);
 
-                if (existingKeys.contains(changeKey)) {
-                    result.duplicatesSkipped++;
-                    continue;
+                    if (existingKeys.contains(changeKey)) {
+                        result.duplicatesSkipped++;
+                        continue;
+                    }
+
+                    if (shouldAcceptChange(change, latestChanges)) {
+                        FieldChange newChange = new FieldChange();
+                        newChange.setEntityType(change.getEntityType());
+                        newChange.setEntityId(change.getEntityId());
+                        newChange.setFieldName(change.getFieldName());
+                        newChange.setOldValue(change.getOldValue());
+                        newChange.setNewValue(change.getNewValue());
+                        newChange.setTimestamp(change.getTimestamp());
+                        newChange.setOriginMachineId(change.getOriginMachineId());
+                        newChange.setOriginMachineName(change.getOriginMachineName());
+                        newChange.setChangeType(change.getChangeType());
+                        newChange.setRelationshipType(change.getRelationshipType());
+                        newChange.setReceivedAt(Instant.now());
+                        newChange.addSyncedMachine(machineId);
+                        newChange.addSyncedMachine(hubMachineId);
+                        batch.add(newChange);
+                        result.changesReceived++;
+                    } else {
+                        log.debug("Skipping change for {}.{} - newer change exists",
+                            change.getEntityType(), change.getFieldName());
+                        result.duplicatesSkipped++;
+                    }
                 }
 
-                if (shouldAcceptChange(change, latestChanges)) {
-                    FieldChange newChange = new FieldChange();
-                    newChange.setEntityType(change.getEntityType());
-                    newChange.setEntityId(change.getEntityId());
-                    newChange.setFieldName(change.getFieldName());
-                    newChange.setOldValue(change.getOldValue());
-                    newChange.setNewValue(change.getNewValue());
-                    newChange.setTimestamp(change.getTimestamp());
-                    newChange.setOriginMachineId(change.getOriginMachineId());
-                    newChange.setOriginMachineName(change.getOriginMachineName());
-                    newChange.setChangeType(change.getChangeType());
-                    newChange.setRelationshipType(change.getRelationshipType());
-                    newChange.setReceivedAt(Instant.now());
-                    newChange.addSyncedMachine(machineId);
-                    newChange.addSyncedMachine(hubMachineId);
-                    FieldChange saved = fieldChangeRepository.save(newChange);
-                    result.savedChanges.add(saved);
-                    result.changesReceived++;
-                } else {
-                    log.debug("Skipping change for {}.{} - newer change exists",
-                        change.getEntityType(), change.getFieldName());
-                    result.duplicatesSkipped++;
+                if (!batch.isEmpty()) {
+                    List<FieldChange> saved = fieldChangeRepository.saveAll(batch);
+                    result.savedChanges.addAll(saved);
                 }
-            }
+            });
         }
 
         return result;

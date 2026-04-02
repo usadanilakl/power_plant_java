@@ -340,6 +340,54 @@ public class FieldChangeTracker {
     }
 
     /**
+     * Ensure an entity has a CREATE marker and full synthetic create history.
+     * Used when an existing local row becomes sync-visible later (for example,
+     * a WR bound to SharePoint after being created through another ingestion path).
+     *
+     * This is idempotent: if a CREATE marker already exists, nothing is written.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public <T extends BaseIdEntity> List<FieldChange> ensureCreateHistoryIfMissing(T entity) {
+        List<FieldChange> changes = new ArrayList<>();
+
+        if (entity == null || entity.getId() == null) {
+            log.warn("Cannot ensure create history: entity or ID is null");
+            return changes;
+        }
+
+        if (syncContext.isSyncing()) {
+            log.debug("Skipping create-history repair - in sync context for {} #{}",
+                entity.getClass().getSimpleName(), entity.getId());
+            return changes;
+        }
+
+        String entityType = entity.getClass().getSimpleName();
+        Long entityId = entity.getId();
+
+        try {
+            boolean hasCreateMarker = fieldChangeRepository
+                .existsByEntityTypeAndEntityIdAndChangeTypeAndFieldName(
+                    entityType, entityId, FieldChange.ChangeType.CREATE, "_entity_");
+            if (hasCreateMarker) {
+                return changes;
+            }
+
+            changes.addAll(trackEntityCreation(entityType, entityId, entity));
+            if (!changes.isEmpty()) {
+                fieldChangeRepository.saveAll(changes);
+                log.info("Backfilled {} synthetic create FieldChanges for {} #{}",
+                    changes.size(), entityType, entityId);
+
+                syncEventPublisher.publishChanges(changes);
+            }
+        } catch (Exception e) {
+            log.error("Error ensuring create history for {} #{}: {}", entityType, entityId, e.getMessage(), e);
+        }
+
+        return changes;
+    }
+
+    /**
      * Track entity update using map of original values - called from EntityListener
      * Compares original database values (from Hibernate snapshot) with current entity values
      */

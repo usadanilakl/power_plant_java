@@ -44,10 +44,85 @@
   background-color: var(--accent-hover, #357abd);
 }
 
+.auto-heal-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color, #444);
+  background: linear-gradient(135deg, rgba(53, 98, 135, 0.16), rgba(31, 63, 88, 0.08));
+  flex-shrink: 0;
+}
+
+.auto-heal-bar.offline {
+  background: linear-gradient(135deg, rgba(160, 120, 20, 0.16), rgba(100, 80, 20, 0.08));
+}
+
+.auto-heal-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.auto-heal-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary-text, #fff);
+}
+
+.auto-heal-message {
+  font-size: 0.78rem;
+  color: var(--secondary-text, #c7d0da);
+}
+
+.auto-heal-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.auto-heal-stats span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--primary-text, #fff);
+}
+
+.heal-btn {
+  background-color: rgba(74, 144, 217, 0.18);
+  border: 1px solid rgba(74, 144, 217, 0.5);
+  color: white;
+}
+
+.heal-btn:hover {
+  background-color: rgba(74, 144, 217, 0.28);
+}
+
+.heal-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 app-rf-work-request-table {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .auto-heal-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .heal-btn {
+    width: 100%;
+  }
 }

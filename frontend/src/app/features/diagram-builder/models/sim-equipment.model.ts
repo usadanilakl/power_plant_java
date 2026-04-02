@@ -202,4 +202,8 @@ export const SYMBOL_ROLE_MAP: Record<string, SimRole> = {
   'float-trap': 'valve',
   'vacuum-pump': 'pump',
   'detraining-tank': 'vessel',
+  'vapor-extractor': 'pump',
+  'filter': 'junction',
+  'seal-drain-tray': 'vessel',
+  'vacuum-tank-horizontal': 'vessel',
 };
