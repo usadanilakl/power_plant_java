@@ -72,7 +72,7 @@ public class SyncComparisonService {
         boolean isExpired() { return System.currentTimeMillis() - fetchedAtMs > 30_000; }
     }
 
-    private Set<Long> getCachedServerIds(String entityType) {
+    public Set<Long> getCachedServerIds(String entityType) {
         CachedIds cached = serverIdCache.get(entityType);
         if (cached != null && !cached.isExpired()) return cached.ids;
         String syncServerUrl = syncConfig.getSyncServerUrl();

@@ -4,10 +4,10 @@
 }
 
 .group-card {
-  background: var(--card-bg, #ffffff);
+  background: var(--card-background, #ffffff);
   border-radius: 12px;
   border: 1px solid var(--border-color, #e0e0e0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow, 0 2px 4px rgba(0, 0, 0, 0.05));
   overflow: hidden;
   transition: all 0.2s ease;
   height: 100%;
@@ -68,13 +68,13 @@
   margin: 0 0 0.25rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--primary-text, #1a1a1a);
 }
 
 .card-description {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--secondary-text, #666);
   line-height: 1.3;
 }
 
@@ -95,7 +95,7 @@
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border-color, #e0e0e0);
-  background: var(--items-bg, #fafafa);
+  background: var(--secondary-background, #fafafa);
   flex: 1;
   align-content: flex-start;
 }
@@ -106,16 +106,16 @@
   gap: 0.35rem;
   padding: 0.35rem 0.65rem;
   border-radius: 16px;
-  background: var(--card-bg, white);
+  background: var(--card-background, white);
   border: 1px solid var(--border-color, #e0e0e0);
   text-decoration: none;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--primary-text, #1a1a1a);
   font-size: 0.8rem;
   transition: all 0.15s ease;
 
   &:hover {
     border-color: var(--item-color, var(--card-color));
-    background: color-mix(in srgb, var(--item-color, var(--card-color)) 10%, white);
+    background: color-mix(in srgb, var(--item-color, var(--card-color)) 10%, var(--card-background, white));
     color: var(--item-color, var(--card-color));
   }
 
@@ -129,33 +129,19 @@
   }
 }
 
-// Dark mode support
-:host-context(.dark-mode) {
+// Dark theme support — variables from theme-styles.css handle most of the switch
+:host-context(.dark-theme) {
   .group-card {
-    background: var(--card-bg-dark, #2a2a2a);
-    border-color: var(--border-color-dark, #404040);
-  }
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 
-  .card-title {
-    color: var(--text-primary-dark, #f0f0f0);
-  }
-
-  .card-description {
-    color: var(--text-secondary-dark, #aaa);
-  }
-
-  .card-items {
-    background: var(--items-bg-dark, #252525);
-    border-color: var(--border-color-dark, #404040);
+    &:hover {
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
   }
 
   .card-item {
-    background: var(--card-bg-dark, #2a2a2a);
-    border-color: var(--border-color-dark, #404040);
-    color: var(--text-primary-dark, #f0f0f0);
-
     &:hover {
-      background: color-mix(in srgb, var(--item-color, var(--card-color)) 20%, #2a2a2a);
+      background: color-mix(in srgb, var(--item-color, var(--card-color)) 20%, var(--card-background, #2c2c2c));
     }
   }
 }

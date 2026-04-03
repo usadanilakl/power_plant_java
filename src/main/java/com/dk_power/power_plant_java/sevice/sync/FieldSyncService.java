@@ -5,7 +5,6 @@ import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
-import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
@@ -14,12 +13,7 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -27,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.client.RestTemplate;
-
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.lang.reflect.Field;
@@ -43,11 +35,9 @@ import java.util.stream.Collectors;
 public class FieldSyncService {
 
     private final FieldChangeRepository fieldChangeRepository;
-    private final PeerDiscoveryService peerDiscoveryService;
     private final ServiceFacade serviceFacade;
     private final SyncConfig syncConfig;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
     private final SyncContext syncContext;
     private final SyncUpdateController syncUpdateController;
     private final ApplicationEventPublisher eventPublisher;
@@ -80,8 +70,6 @@ public class FieldSyncService {
     private Map<String, Map<Long, Long>> idRemapTable;
     private boolean idRemapTableLoaded = false;
 
-    private volatile boolean syncing = false;
-
     // Guard to prevent concurrent merge operations in afterCommit callbacks.
     // During cold resync, many sync batches commit simultaneously — only one merge should run.
     private final AtomicBoolean mergeInProgress = new AtomicBoolean(false);
@@ -95,11 +83,9 @@ public class FieldSyncService {
 
     public FieldSyncService(
             FieldChangeRepository fieldChangeRepository,
-            PeerDiscoveryService peerDiscoveryService,
             ServiceFacade serviceFacade,
             SyncConfig syncConfig,
             ObjectMapper objectMapper,
-            RestTemplate restTemplate,
             SyncContext syncContext,
             SyncUpdateController syncUpdateController,
             ApplicationEventPublisher eventPublisher,
@@ -119,11 +105,9 @@ public class FieldSyncService {
             MessageMergeService messageMergeService,
             DedupKeyResolver dedupKeyResolver) {
         this.fieldChangeRepository = fieldChangeRepository;
-        this.peerDiscoveryService = peerDiscoveryService;
         this.serviceFacade = serviceFacade;
         this.syncConfig = syncConfig;
         this.objectMapper = objectMapper;
-        this.restTemplate = restTemplate;
         this.syncContext = syncContext;
         this.syncUpdateController = syncUpdateController;
         this.eventPublisher = eventPublisher;
@@ -147,201 +131,6 @@ public class FieldSyncService {
         this.conversationMergeService = conversationMergeService;
         this.messageMergeService = messageMergeService;
         this.dedupKeyResolver = dedupKeyResolver;
-    }
-
-    /**
-     * Sync with all known peers on application startup.
-     * Only runs if server sync is disabled (peer-to-peer mode).
-     */
-    @Async
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReady() {
-        if (syncConfig.isHubMode()) {
-            log.info("peer_sync.startup.skipped reason=hub_mode");
-            return;
-        }
-        if (syncConfig.isServerSyncEnabled()) {
-            log.info("peer_sync.startup.skipped reason=server_sync_enabled");
-            return;
-        }
-
-        log.info("peer_sync.startup.begin");
-        // Small delay to ensure all services are fully initialized
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-        syncWithAllPeers();
-    }
-
-    /**
-     * Sync with a peer when it comes online (new or returning).
-     * Only runs if server sync is disabled (peer-to-peer mode).
-     */
-    @Async
-    @EventListener
-    public void onPeerOnline(SyncEventPublisher.PeerOnlineEvent event) {
-        if (syncConfig.isHubMode() || syncConfig.isServerSyncEnabled()) {
-            return; // Hub or server sync handles this
-        }
-
-        log.debug("Peer online event: {} ({}) - triggering sync",
-            event.getPeer().getMachineName(), event.getPeer().getMachineId());
-        try {
-            syncWithPeer(event.getPeer());
-        } catch (Exception e) {
-            log.error("Failed to sync with newly online peer {} ({}): {}",
-                event.getPeer().getMachineName(), event.getPeer().getMachineId(), e.getMessage());
-        }
-    }
-
-    /**
-     * Event-driven sync: triggered when changes are detected locally.
-     * Only runs if server sync is disabled (peer-to-peer mode).
-     */
-    @Async
-    @EventListener
-    public void onChangesDetected(SyncEventPublisher.ChangesDetectedEvent event) {
-        if (syncConfig.isServerSyncEnabled()) {
-            return; // CentralSyncService handles this
-        }
-
-        log.debug("onChangesDetected event received with {} changes",
-            event.getChanges() != null ? event.getChanges().size() : 0);
-
-        if (event.getChanges() == null || event.getChanges().isEmpty()) {
-            log.debug("No changes in event, skipping sync");
-            return;
-        }
-
-        log.debug("Changes detected, triggering sync with peers");
-        syncWithAllPeers();
-    }
-
-    /**
-     * Sync with all active peers.
-     * Called on-demand when changes are detected (event-driven).
-     */
-    public void syncWithAllPeers() {
-        log.debug("syncWithAllPeers called, syncing={}", syncing);
-
-        if (syncing) {
-            log.debug("Sync already in progress, skipping");
-            return;
-        }
-
-        List<Peer> activePeers = peerDiscoveryService.getActivePeers();
-        log.debug("Found {} active peers", activePeers.size());
-
-        if (activePeers.isEmpty()) {
-            log.debug("No active peers found for sync");
-            return;
-        }
-
-        syncing = true;
-        log.info("peer_sync.run.start activePeers={}", activePeers.size());
-
-        int successCount = 0;
-        try {
-            for (Peer peer : activePeers) {
-                try {
-                    syncWithPeer(peer);
-                    successCount++;
-                } catch (Exception e) {
-                    log.error("Failed to sync with peer {} ({}): {}",
-                        peer.getMachineName(), peer.getMachineId(), e.getMessage());
-                    peerDiscoveryService.markPeerError(peer.getMachineId());
-                }
-            }
-        } finally {
-            syncing = false;
-            log.info("peer_sync.run.complete successfulPeers={} totalPeers={}", successCount, activePeers.size());
-        }
-    }
-
-    /**
-     * Sync with a specific peer
-     */
-    public SyncResult syncWithPeer(Peer peer) {
-        log.debug("Syncing with peer: {} ({}) at {}",
-            peer.getMachineName(), peer.getMachineId(), peer.getBaseUrl());
-
-        peerDiscoveryService.markPeerSyncing(peer.getMachineId());
-        SyncResult result = new SyncResult();
-
-        try {
-            // 1. Get changes we need to send to this peer
-            List<FieldChange> outgoingChanges = fieldChangeRepository
-                .findChangesNotSyncedTo(peer.getMachineId());
-            result.setChangesSent(outgoingChanges.size());
-
-            // 2. Send our changes and receive their changes
-            List<FieldChange> incomingChanges = exchangeChanges(peer, outgoingChanges);
-            result.setChangesReceived(incomingChanges != null ? incomingChanges.size() : 0);
-
-            // 3. Apply incoming changes with conflict resolution
-            if (incomingChanges != null && !incomingChanges.isEmpty()) {
-                int applied = applyIncomingChanges(incomingChanges);
-                result.setChangesApplied(applied);
-            }
-
-            // 4. Mark our changes as synced to this peer
-            for (FieldChange change : outgoingChanges) {
-                change.addSyncedMachine(peer.getMachineId());
-            }
-            if (!outgoingChanges.isEmpty()) {
-                fieldChangeRepository.saveAll(outgoingChanges);
-            }
-
-            // Update peer status
-            peerDiscoveryService.updatePeerSyncTime(peer.getMachineId());
-            result.setSuccess(true);
-
-            log.info("peer_sync.peer.complete peerName={} sent={} received={} applied={}",
-                peer.getMachineName(), result.getChangesSent(),
-                result.getChangesReceived(), result.getChangesApplied());
-
-        } catch (Exception e) {
-            peerDiscoveryService.markPeerError(peer.getMachineId());
-            result.setSuccess(false);
-            result.setErrorMessage(e.getMessage());
-            throw e;
-        }
-
-        return result;
-    }
-
-    /**
-     * Exchange changes with a peer via REST API
-     */
-    private List<FieldChange> exchangeChanges(Peer peer, List<FieldChange> outgoingChanges) {
-        String url = peer.getBaseUrl() + "/api/field-sync/exchange";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-Machine-Id", syncConfig.getMachineId());
-        headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
-        headers.set("X-Machine-Name", syncConfig.getMachineName());
-
-        Map<String, Object> request = new HashMap<>();
-        request.put("machineId", syncConfig.getMachineId());
-        request.put("machineName", syncConfig.getMachineName());
-        request.put("changes", outgoingChanges);
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
-
-        try {
-            ResponseEntity<List<FieldChange>> response = restTemplate.exchange(
-                url, HttpMethod.POST, entity,
-                new ParameterizedTypeReference<List<FieldChange>>() {}
-            );
-            return response.getBody();
-        } catch (Exception e) {
-            log.error("Error exchanging changes with {}: {}", peer.getMachineId(), e.getMessage());
-            throw new RuntimeException("Sync exchange failed: " + e.getMessage(), e);
-        }
     }
 
     /**
@@ -1830,29 +1619,6 @@ public class FieldSyncService {
     }
 
     /**
-     * Receive and process changes from a peer, return our pending changes
-     */
-    @Transactional
-    public List<FieldChange> receiveChangesAndRespond(String fromMachineId, String fromMachineName,
-                                                       List<FieldChange> incomingChanges) {
-        // Apply incoming changes
-        if (incomingChanges != null && !incomingChanges.isEmpty()) {
-            log.debug("Received {} changes from {} ({})", incomingChanges.size(), fromMachineName, fromMachineId);
-            applyIncomingChanges(incomingChanges);
-        }
-
-        // Return our pending changes for that peer
-        return getPendingChangesFor(fromMachineId);
-    }
-
-    /**
-     * Get pending changes for a specific peer
-     */
-    public List<FieldChange> getPendingChangesFor(String machineId) {
-        return fieldChangeRepository.findChangesNotSyncedTo(machineId);
-    }
-
-    /**
      * Get total change count
      */
     public long getTotalChangeCount() {
@@ -1932,29 +1698,6 @@ public class FieldSyncService {
             this.field = field;
             this.referencedId = referencedId;
         }
-    }
-
-    /**
-     * Result of a sync operation
-     */
-    public static class SyncResult {
-        private boolean success;
-        private int changesSent;
-        private int changesReceived;
-        private int changesApplied;
-        private String errorMessage;
-
-        // Getters and setters
-        public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
-        public int getChangesSent() { return changesSent; }
-        public void setChangesSent(int changesSent) { this.changesSent = changesSent; }
-        public int getChangesReceived() { return changesReceived; }
-        public void setChangesReceived(int changesReceived) { this.changesReceived = changesReceived; }
-        public int getChangesApplied() { return changesApplied; }
-        public void setChangesApplied(int changesApplied) { this.changesApplied = changesApplied; }
-        public String getErrorMessage() { return errorMessage; }
-        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     }
 
     /**

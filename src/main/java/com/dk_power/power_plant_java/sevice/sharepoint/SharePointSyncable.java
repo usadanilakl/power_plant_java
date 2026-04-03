@@ -29,6 +29,15 @@ public interface SharePointSyncable<D> {
     List<D> fetchAllFromSharePoint();
 
     /**
+     * Fetch only items modified since the given timestamp.
+     * Default: falls back to fetchAllFromSharePoint() (no incremental support).
+     * Override to use SP $filter for fast "any news?" checks.
+     */
+    default List<D> fetchModifiedSince(Instant since) {
+        return fetchAllFromSharePoint();
+    }
+
+    /**
      * Process a single remote DTO: create or update the local entity.
      * Implementations should use SharePointFieldMergeService for field-level LWW.
      */
@@ -36,6 +45,13 @@ public interface SharePointSyncable<D> {
 
     /** Extract the sharepointId from a DTO. */
     String getSharepointId(D dto);
+
+    /**
+     * Per-type sync interval in milliseconds.
+     * Override for entity types that need more frequent polling (e.g., WorkRequest, JHA).
+     * Default: 5 minutes. The orchestrator checks this per entity type.
+     */
+    default long getSyncIntervalMs() { return 300_000; } // 5 minutes
 
     /** Whether this entity type supports auto-close (e.g., WR does, JHA does not). */
     boolean supportsAutoClose();

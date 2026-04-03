@@ -17,22 +17,20 @@
               {{ group.label }}
               <kbd class="shortcut-badge">Alt+{{ i + 1 }}</kbd>
             </a>
-            <!-- Hover dropdown -->
-            @if (hoveredGroup() === group && !isGroupActive(group)) {
-              <ul class="dropdown-menu" [style.--group-color]="group.color"
-                  (mouseenter)="keepDropdown()" (mouseleave)="hideDropdown()">
-                @for (item of group.items; track item.route) {
-                  <li [class.separator]="item.separator">
-                    <a [routerLink]="item.route" routerLinkActive="active-link" (click)="closeDropdown()">
-                      @if (item.icon) {
-                        <span class="material-icons sub-icon" [style.color]="item.iconColor">{{ item.icon }}</span>
-                      }
-                      {{ item.label }}
-                    </a>
-                  </li>
-                }
-              </ul>
-            }
+            <!-- Hover dropdown — always in DOM, toggled via CSS to avoid spurious mouseleave from DOM insertion -->
+            <ul class="dropdown-menu" [style.--group-color]="group.color"
+                [class.show]="hoveredGroup() === group && !isGroupActive(group)">
+              @for (item of group.items; track item.route) {
+                <li [class.separator]="item.separator">
+                  <a [routerLink]="item.route" routerLinkActive="active-link" (click)="closeDropdown()">
+                    @if (item.icon) {
+                      <span class="material-icons sub-icon" [style.color]="item.iconColor">{{ item.icon }}</span>
+                    }
+                    {{ item.label }}
+                  </a>
+                </li>
+              }
+            </ul>
           </li>
         }
       </ul>

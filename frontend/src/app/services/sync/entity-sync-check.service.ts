@@ -124,14 +124,44 @@ export class EntitySyncCheckService {
     ).pipe(map(res => res.responseData));
   }
 
-  // ==================== Resolution ====================
+  // ==================== Dependency-Aware Resolution ====================
 
-  /** Push local entity to hub */
+  /** Preview push: shows dependency graph and what will be pushed */
+  previewPush(entityType: string, entityId: number): Observable<PushPullPreview> {
+    return this.http.get<NgApiResponse<PushPullPreview>>(
+      `${this.resolveUrl}/preview/${entityType}/${entityId}?direction=push`
+    ).pipe(map(res => res.responseData));
+  }
+
+  /** Preview pull: shows what will be pulled */
+  previewPull(entityType: string, entityId: number): Observable<PushPullPreview> {
+    return this.http.get<NgApiResponse<PushPullPreview>>(
+      `${this.resolveUrl}/preview/${entityType}/${entityId}?direction=pull`
+    ).pipe(map(res => res.responseData));
+  }
+
+  /** Execute push with dependency walking */
+  executePush(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(
+      `${this.resolveUrl}/execute-push/${entityType}/${entityId}`, {}
+    ).pipe(map(res => res.responseData));
+  }
+
+  /** Execute pull with dependency walking */
+  executePull(entityType: string, entityId: number): Observable<any> {
+    return this.http.post<NgApiResponse<any>>(
+      `${this.resolveUrl}/execute-pull/${entityType}/${entityId}`, {}
+    ).pipe(map(res => res.responseData));
+  }
+
+  // ==================== Legacy (simple, no dependency walking) ====================
+
+  /** Push local entity to hub (simple, no dependencies) */
   pushToHub(entityType: string, entityId: number): Observable<any> {
     return this.syncStatusService.acceptLocal(entityType, entityId);
   }
 
-  /** Pull entity from hub */
+  /** Pull entity from hub (simple, no dependencies) */
   pullFromHub(entityType: string, entityId: number): Observable<any> {
     return this.syncStatusService.acceptRemote(entityType, entityId);
   }
@@ -142,4 +172,20 @@ export class EntitySyncCheckService {
       `${this.resolveUrl}/accept-sp/${entityType}/${entityId}`, {}
     ).pipe(map(res => res.responseData));
   }
+}
+
+// ==================== Preview types ====================
+
+export interface PushPullPreview {
+  entityType: string;
+  entityId: number;
+  direction: 'push' | 'pull';
+  entities: EntityRef[];
+  countByType: Record<string, number>;
+  totalCount: number;
+}
+
+export interface EntityRef {
+  entityType: string;
+  entityId: number;
 }

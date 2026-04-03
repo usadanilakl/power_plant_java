@@ -151,7 +151,7 @@ public class EmailResponseMatcherService {
             }
         }
 
-        log.warn("[EmailMatcher] Could not match email from '{}' with subject: {}",
+        log.debug("[EmailMatcher] Could not match email from '{}' with subject: {}",
             incomingEmail.getSenderEmail(), incomingEmail.getSubject());
         return Optional.empty();
     }

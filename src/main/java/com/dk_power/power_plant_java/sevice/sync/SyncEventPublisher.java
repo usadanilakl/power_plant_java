@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
-import com.dk_power.power_plant_java.entities.sync.Peer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,33 +50,4 @@ public class SyncEventPublisher {
         }
     }
 
-    /**
-     * Event indicating a peer has come online (new or returning)
-     */
-    public static class PeerOnlineEvent {
-        private final Peer peer;
-        private final boolean isNew;
-
-        public PeerOnlineEvent(Peer peer, boolean isNew) {
-            this.peer = peer;
-            this.isNew = isNew;
-        }
-
-        public Peer getPeer() {
-            return peer;
-        }
-
-        public boolean isNew() {
-            return isNew;
-        }
-    }
-
-    /**
-     * Publish event that a peer has come online
-     */
-    public void publishPeerOnline(Peer peer, boolean isNew) {
-        log.info("Publishing peer online event: {} ({}) - {}",
-            peer.getMachineName(), peer.getMachineId(), isNew ? "NEW" : "RETURNING");
-        eventPublisher.publishEvent(new PeerOnlineEvent(peer, isNew));
-    }
 }

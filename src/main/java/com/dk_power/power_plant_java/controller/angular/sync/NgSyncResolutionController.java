@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.sync.EntityVerificationService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
+import com.dk_power.power_plant_java.sevice.sync.SyncResolutionService;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.ManyToOne;
@@ -44,6 +45,7 @@ public class NgSyncResolutionController {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final EntityVerificationService entityVerificationService;
+    private final SyncResolutionService syncResolutionService;
 
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", "version", "dateCreated", "dateModified", "objectType", "serialVersionUID",
@@ -227,6 +229,64 @@ public class NgSyncResolutionController {
         }
     }
 
+    // ==================== Dependency-Aware Push/Pull ====================
+
+    /**
+     * Preview: show what entities will be pushed/pulled (with dependencies).
+     */
+    @GetMapping("/preview/{entityType}/{entityId}")
+    public ResponseEntity<NgApiResponse<SyncResolutionService.PushPullPreview>> preview(
+            @PathVariable String entityType,
+            @PathVariable Long entityId,
+            @RequestParam(defaultValue = "push") String direction) {
+        try {
+            SyncResolutionService.PushPullPreview preview = "pull".equals(direction)
+                ? syncResolutionService.previewPull(entityType, entityId)
+                : syncResolutionService.previewPush(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(preview,
+                preview.getTotalCount() + " entities to " + direction));
+        } catch (Exception e) {
+            log.error("Preview failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Preview failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Execute push with dependency walking.
+     * Pushes the entity + all missing dependencies to hub in SYNC_ORDER.
+     */
+    @PostMapping("/execute-push/{entityType}/{entityId}")
+    public ResponseEntity<NgApiResponse<SyncResolutionService.PushResult>> executePush(
+            @PathVariable String entityType,
+            @PathVariable Long entityId) {
+        try {
+            SyncResolutionService.PushResult result = syncResolutionService.pushWithDependencies(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (Exception e) {
+            log.error("Push failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Push failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Execute pull with dependency walking.
+     * Pulls the entity + all related entities from hub and applies locally.
+     */
+    @PostMapping("/execute-pull/{entityType}/{entityId}")
+    public ResponseEntity<NgApiResponse<SyncResolutionService.PullResult>> executePull(
+            @PathVariable String entityType,
+            @PathVariable Long entityId) {
+        try {
+            SyncResolutionService.PullResult result = syncResolutionService.pullWithDependencies(entityType, entityId);
+            return ResponseEntity.ok(new NgApiResponse<>(result, result.getMessage()));
+        } catch (Exception e) {
+            log.error("Pull failed for {}#{}: {}", entityType, entityId, e.getMessage(), e);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Pull failed: " + e.getMessage()));
+        }
+    }
+
+    // ==================== SharePoint Resolution ====================
+
     /**
      * Accept the SharePoint version of a single entity.
      * Applies all SP field values to the local entity.
@@ -295,7 +355,8 @@ public class NgSyncResolutionController {
     private List<FieldChange> buildCreateChangesFromEntity(String entityType, Long entityId,
                                                             BaseIdEntity entity) {
         List<FieldChange> changes = new ArrayList<>();
-        String machineId = syncConfig.getMachineId();
+        // Use "-RESOLVE" suffix so hub's LWW tiebreaker doesn't reject these
+        String machineId = syncConfig.getMachineId() + "-RESOLVE";
         String machineName = syncConfig.getMachineName();
 
         // CREATE marker

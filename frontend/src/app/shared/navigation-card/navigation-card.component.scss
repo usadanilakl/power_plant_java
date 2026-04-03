@@ -8,7 +8,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  background: var(--card-bg, #ffffff);
+  background: var(--card-background, #ffffff);
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
@@ -91,13 +91,13 @@
   margin: 0 0 0.25rem 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--primary-text, #1a1a1a);
 }
 
 .card-description {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--text-secondary, #666);
+  color: var(--secondary-text, #666);
   line-height: 1.4;
 }
 
@@ -112,18 +112,13 @@
   }
 }
 
-// Dark mode support
-:host-context(.dark-mode) {
+// Dark theme — variables from theme-styles.css handle the switch automatically
+:host-context(.dark-theme) {
   .nav-card {
-    background: var(--card-bg-dark, #2a2a2a);
-    border-color: var(--border-color-dark, #404040);
-  }
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 
-  .card-title {
-    color: var(--text-primary-dark, #f0f0f0);
-  }
-
-  .card-description {
-    color: var(--text-secondary-dark, #aaa);
+    &:hover {
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
   }
 }

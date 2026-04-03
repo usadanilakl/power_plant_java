@@ -152,7 +152,7 @@
 }
 .table-header {
   display: grid;
-  grid-template-columns: 80px 60px 180px 100px 1fr;
+  grid-template-columns: 80px 60px 160px 90px 180px 1fr;
   gap: 8px;
   padding: 10px 14px;
   font-size: 11px;
@@ -164,7 +164,7 @@
 }
 .table-row {
   display: grid;
-  grid-template-columns: 80px 60px 180px 100px 1fr;
+  grid-template-columns: 80px 60px 160px 90px 180px 1fr;
   gap: 8px;
   padding: 8px 14px;
   font-size: 13px;
@@ -178,6 +178,7 @@
 .col-time { color: #8ea4bb; font-size: 12px; }
 .col-source { color: #7fd1b9; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .col-subsystem { color: #9db0c7; font-size: 12px; }
+.col-eventcode { color: #c4a7e7; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .col-message { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dce6f0; }
 
 /* Level pills */
@@ -252,5 +253,5 @@
   .table-header, .table-row {
     grid-template-columns: 70px 50px 1fr;
   }
-  .col-source, .col-subsystem { display: none; }
+  .col-source, .col-subsystem, .col-eventcode { display: none; }
 }

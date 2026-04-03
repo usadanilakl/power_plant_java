@@ -2,16 +2,13 @@ package com.dk_power.power_plant_java.controller.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
-import com.dk_power.power_plant_java.entities.sync.Peer;
 import org.springframework.core.env.Environment;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
-import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
 import com.dk_power.power_plant_java.sevice.sync.FullSyncToServerService;
-import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
 import com.dk_power.power_plant_java.sevice.sync.ServerSseClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,168 +28,12 @@ public class FieldSyncController {
 
     private final FieldSyncService fieldSyncService;
     private final CentralSyncService centralSyncService;
-    private final PeerDiscoveryService peerDiscoveryService;
     private final FieldChangeRepository fieldChangeRepository;
-    private final PeerRepository peerRepository;
     private final SyncConfig syncConfig;
     private final FileObjectSyncHandler fileObjectSyncHandler;
     private final FullSyncToServerService fullSyncToServerService;
     private final ServerSseClient serverSseClient;
     private final Environment environment;
-
-    /**
-     * Exchange changes with a peer
-     * POST /api/field-sync/exchange
-     *
-     * This is the main sync endpoint called by peers
-     */
-    @PostMapping("/exchange")
-    public ResponseEntity<List<FieldChange>> exchangeChanges(
-            @RequestHeader(value = "X-Machine-Id", required = false) String fromMachineId,
-            @RequestHeader(value = "X-Machine-Name", required = false) String fromMachineName,
-            @RequestHeader(value = "X-Device-Number", required = false) Integer fromDeviceNumber,
-            @RequestBody Map<String, Object> request) {
-
-        // Extract from body if not in headers
-        if (fromMachineId == null) {
-            fromMachineId = (String) request.get("machineId");
-        }
-        if (fromMachineName == null) {
-            fromMachineName = (String) request.get("machineName");
-        }
-
-        log.info("Received sync exchange request from {} ({})", fromMachineName, fromMachineId);
-
-        // Device conflict detection
-        if (fromMachineId != null && fromDeviceNumber != null) {
-            checkDeviceNumberConflict(fromMachineId, fromDeviceNumber);
-        }
-
-        @SuppressWarnings("unchecked")
-        List<FieldChange> incomingChanges = parseIncomingChanges(request.get("changes"));
-
-        List<FieldChange> ourChanges = fieldSyncService.receiveChangesAndRespond(
-            fromMachineId, fromMachineName, incomingChanges);
-
-        log.info("Responding with {} changes to {} ({})", ourChanges.size(), fromMachineName, fromMachineId);
-
-        return ResponseEntity.ok(ourChanges);
-    }
-
-    /**
-     * Check if a connecting peer's device number conflicts with another peer.
-     * Updates the Peer record with conflict info if detected.
-     */
-    private void checkDeviceNumberConflict(String machineId, Integer deviceNumber) {
-        if (deviceNumber == null || deviceNumber <= 0) return;
-
-        List<Peer> conflicting = peerRepository.findAll().stream()
-            .filter(p -> deviceNumber.equals(p.getDeviceNumber()))
-            .filter(p -> !machineId.equals(p.getMachineId()))
-            .collect(Collectors.toList());
-
-        // Also check if this server itself has the same device number
-        if (deviceNumber == syncConfig.getDeviceNumber()
-                && !machineId.equals(syncConfig.getMachineId())) {
-            log.warn("DEVICE NUMBER CONFLICT: Device #{} claimed by {} but also used by this server ({})",
-                deviceNumber, machineId, syncConfig.getMachineId());
-        }
-
-        if (!conflicting.isEmpty()) {
-            String conflictWith = conflicting.stream()
-                .map(Peer::getMachineId)
-                .collect(Collectors.joining(", "));
-            log.warn("DEVICE NUMBER CONFLICT: Device #{} claimed by {} but also registered to: {}",
-                deviceNumber, machineId, conflictWith);
-
-            // Update the connecting peer's conflict field
-            peerRepository.findById(machineId).ifPresent(peer -> {
-                peer.setDeviceNumberConflict(conflictWith);
-                peerRepository.save(peer);
-            });
-
-            // Update the conflicting peers too
-            for (Peer cp : conflicting) {
-                String existingConflict = cp.getDeviceNumberConflict();
-                if (existingConflict == null || !existingConflict.contains(machineId)) {
-                    cp.setDeviceNumberConflict(existingConflict == null ? machineId : existingConflict + ", " + machineId);
-                    peerRepository.save(cp);
-                }
-            }
-        } else {
-            // Clear conflict if it was previously set
-            peerRepository.findById(machineId).ifPresent(peer -> {
-                if (peer.getDeviceNumberConflict() != null) {
-                    peer.setDeviceNumberConflict(null);
-                    peerRepository.save(peer);
-                }
-            });
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<FieldChange> parseIncomingChanges(Object changesObj) {
-        if (changesObj == null) return List.of();
-
-        if (changesObj instanceof List) {
-            List<?> list = (List<?>) changesObj;
-            if (list.isEmpty()) return List.of();
-
-            // If already FieldChange objects, return as-is
-            if (list.get(0) instanceof FieldChange) {
-                return (List<FieldChange>) list;
-            }
-
-            // If maps, convert to FieldChange objects
-            if (list.get(0) instanceof Map) {
-                return list.stream()
-                    .map(item -> convertMapToFieldChange((Map<String, Object>) item))
-                    .toList();
-            }
-        }
-
-        return List.of();
-    }
-
-    private FieldChange convertMapToFieldChange(Map<String, Object> map) {
-        FieldChange fc = new FieldChange();
-        fc.setEntityType((String) map.get("entityType"));
-        fc.setEntityId(((Number) map.get("entityId")).longValue());
-        fc.setFieldName((String) map.get("fieldName"));
-        fc.setOldValue(getStringValue(map.get("oldValue")));
-        fc.setNewValue(getStringValue(map.get("newValue")));
-        fc.setOriginMachineId((String) map.get("originMachineId"));
-        fc.setOriginMachineName((String) map.get("originMachineName"));
-        fc.setSyncedToMachines((String) map.get("syncedToMachines"));
-        fc.setRelationshipType((String) map.get("relationshipType"));
-
-        // Handle timestamp - can be String (ISO format) or Number (epoch seconds)
-        Object timestampObj = map.get("timestamp");
-        if (timestampObj != null) {
-            if (timestampObj instanceof String) {
-                fc.setTimestamp(Instant.parse((String) timestampObj));
-            } else if (timestampObj instanceof Number) {
-                // Timestamp as epoch seconds (possibly with decimal for nanos)
-                double epochSeconds = ((Number) timestampObj).doubleValue();
-                long seconds = (long) epochSeconds;
-                long nanos = (long) ((epochSeconds - seconds) * 1_000_000_000);
-                fc.setTimestamp(Instant.ofEpochSecond(seconds, nanos));
-            }
-        }
-
-        String changeType = (String) map.get("changeType");
-        if (changeType != null) {
-            fc.setChangeType(FieldChange.ChangeType.valueOf(changeType));
-        }
-
-        return fc;
-    }
-
-    private String getStringValue(Object value) {
-        if (value == null) return null;
-        if (value instanceof String) return (String) value;
-        return String.valueOf(value);
-    }
 
     /**
      * Get changes since a timestamp
@@ -225,21 +66,7 @@ public class FieldSyncController {
         status.put("machineId", syncConfig.getMachineId());
         status.put("machineName", syncConfig.getMachineName());
         status.put("deviceNumber", syncConfig.getDeviceNumber());
-
-        // Check for device number conflicts
-        if (syncConfig.getDeviceNumber() >= 0) {
-            boolean hasConflict = peerRepository.findAll().stream()
-                .anyMatch(p -> syncConfig.getDeviceNumber() == (p.getDeviceNumber() != null ? p.getDeviceNumber() : -1)
-                    && !syncConfig.getMachineId().equals(p.getMachineId()));
-            status.put("deviceNumberConflict", hasConflict);
-        } else {
-            status.put("deviceNumberConflict", false);
-        }
-        status.put("localIp", peerDiscoveryService.getLocalIpAddress());
         status.put("syncPort", syncConfig.getSyncPort());
-        status.put("discoveryPort", syncConfig.getDiscoveryPort());
-        status.put("discoveryEnabled", syncConfig.isDiscoveryEnabled());
-        status.put("syncIntervalSeconds", syncConfig.getSyncIntervalSeconds());
 
         // Server sync status
         status.put("serverSyncEnabled", syncConfig.isServerSyncEnabled());
@@ -257,10 +84,6 @@ public class FieldSyncController {
             status.put("realtimeEnabled", false);
         }
 
-        List<Peer> peers = peerDiscoveryService.getActivePeers();
-        status.put("activePeers", peers);
-        status.put("peerCount", peers.size());
-
         long totalChanges = fieldSyncService.getTotalChangeCount();
         status.put("totalChangesTracked", totalChanges);
 
@@ -268,7 +91,7 @@ public class FieldSyncController {
     }
 
     /**
-     * Manually trigger sync (with server or peers depending on mode)
+     * Manually trigger sync with central server.
      * POST /api/field-sync/trigger
      */
     @PostMapping("/trigger")
@@ -276,23 +99,18 @@ public class FieldSyncController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            if (syncConfig.isServerSyncEnabled()) {
-                // Server sync mode
-                CentralSyncService.SyncResult syncResult = centralSyncService.syncWithServer();
-                result.put("success", syncResult.isSuccess());
-                result.put("message", syncResult.isSuccess() ? "Server sync triggered successfully" : syncResult.getErrorMessage());
-                result.put("changesSent", syncResult.getChangesSent());
-                result.put("changesReceived", syncResult.getChangesReceived());
-                result.put("changesApplied", syncResult.getChangesApplied());
-                result.put("syncMode", "SERVER");
-            } else {
-                // Peer-to-peer mode
-                fieldSyncService.syncWithAllPeers();
-                result.put("success", true);
-                result.put("message", "Peer sync triggered successfully");
-                result.put("activePeers", peerDiscoveryService.getActivePeers().size());
-                result.put("syncMode", "PEER_TO_PEER");
+            if (!syncConfig.isServerSyncEnabled()) {
+                result.put("success", false);
+                result.put("message", "Server sync is not enabled");
+                return ResponseEntity.ok(result);
             }
+            CentralSyncService.SyncResult syncResult = centralSyncService.syncWithServer();
+            result.put("success", syncResult.isSuccess());
+            result.put("message", syncResult.isSuccess() ? "Server sync triggered successfully" : syncResult.getErrorMessage());
+            result.put("changesSent", syncResult.getChangesSent());
+            result.put("changesReceived", syncResult.getChangesReceived());
+            result.put("changesApplied", syncResult.getChangesApplied());
+            result.put("syncMode", "SERVER");
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", "Sync failed: " + e.getMessage());
@@ -300,24 +118,6 @@ public class FieldSyncController {
         }
 
         return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Get list of discovered peers
-     * GET /api/field-sync/peers
-     */
-    @GetMapping("/peers")
-    public ResponseEntity<List<Peer>> getPeers() {
-        return ResponseEntity.ok(peerDiscoveryService.getActivePeers());
-    }
-
-    /**
-     * Get all known peers (including offline)
-     * GET /api/field-sync/peers/all
-     */
-    @GetMapping("/peers/all")
-    public ResponseEntity<List<Peer>> getAllPeers() {
-        return ResponseEntity.ok(peerDiscoveryService.getAllPeers());
     }
 
     /**
@@ -361,24 +161,6 @@ public class FieldSyncController {
         health.put("machineName", syncConfig.getMachineName());
         health.put("timestamp", Instant.now().toString());
         return ResponseEntity.ok(health);
-    }
-
-    /**
-     * Broadcast presence manually (for testing)
-     * POST /api/field-sync/broadcast
-     */
-    @PostMapping("/broadcast")
-    public ResponseEntity<Map<String, Object>> broadcast() {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            peerDiscoveryService.broadcastPresence();
-            result.put("success", true);
-            result.put("message", "Presence broadcasted");
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("message", e.getMessage());
-        }
-        return ResponseEntity.ok(result);
     }
 
     /**
@@ -939,253 +721,5 @@ public class FieldSyncController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Manually register a peer (bypasses UDP discovery)
-     * POST /api/field-sync/peers/register
-     * Body: { "ip": "192.168.1.100", "port": 8082, "name": "OtherMachine" }
-     */
-    @PostMapping("/peers/register")
-    public ResponseEntity<Map<String, Object>> registerPeer(@RequestBody Map<String, Object> request) {
-        Map<String, Object> result = new HashMap<>();
-
-        String ip = (String) request.get("ip");
-        Integer port = request.get("port") != null ? ((Number) request.get("port")).intValue() : 8082;
-        String name = (String) request.get("name");
-
-        if (ip == null || ip.isEmpty()) {
-            result.put("success", false);
-            result.put("message", "IP address is required");
-            return ResponseEntity.badRequest().body(result);
-        }
-
-        try {
-            // Try to fetch the peer's status to get their machine ID
-            String statusUrl = "http://" + ip + ":" + port + "/api/field-sync/status";
-            log.info("Attempting to register peer at {}", statusUrl);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> peerStatus = new org.springframework.web.client.RestTemplate()
-                .getForObject(statusUrl, Map.class);
-
-            if (peerStatus == null) {
-                result.put("success", false);
-                result.put("message", "Could not connect to peer at " + ip + ":" + port);
-                return ResponseEntity.ok(result);
-            }
-
-            String machineId = (String) peerStatus.get("machineId");
-            String machineName = name != null ? name : (String) peerStatus.get("machineName");
-
-            // Check if peer has same machine ID as us (invalid configuration)
-            if (machineId.equals(syncConfig.getMachineId())) {
-                result.put("success", false);
-                result.put("message", "ERROR: Peer has the SAME machine ID as this machine (" + machineId + "). " +
-                    "Delete 'machine-id.properties' file on one of the machines and restart to generate a unique ID.");
-                result.put("peer", Map.of(
-                    "machineId", machineId,
-                    "machineName", machineName,
-                    "ip", ip,
-                    "port", port
-                ));
-                log.error("Cannot register peer - same machine ID: {} ({})", machineName, machineId);
-                return ResponseEntity.ok(result);
-            }
-
-            // Register the peer
-            Peer peer = peerDiscoveryService.getAllPeers().stream()
-                .filter(p -> p.getMachineId().equals(machineId))
-                .findFirst()
-                .orElse(new Peer(machineId, machineName, ip, port));
-
-            peer.setIpAddress(ip);
-            peer.setPort(port);
-            peer.setMachineName(machineName);
-            peer.setLastSeen(Instant.now());
-            peer.setStatus(Peer.PeerStatus.ONLINE);
-
-            // Save via repository directly
-            peerRepository.save(peer);
-
-            result.put("success", true);
-            result.put("message", "Peer registered successfully");
-            result.put("peer", Map.of(
-                "machineId", machineId,
-                "machineName", machineName,
-                "ip", ip,
-                "port", port
-            ));
-
-            log.info("Manually registered peer: {} ({}) at {}:{}", machineName, machineId, ip, port);
-
-        } catch (Exception e) {
-            log.error("Failed to register peer at {}:{} - {}", ip, port, e.getMessage());
-            result.put("success", false);
-            result.put("message", "Failed to connect to peer: " + e.getMessage());
-        }
-
-        return ResponseEntity.ok(result);
-    }
-
-    // ==================== Device Registry ====================
-
-    /**
-     * Get all registered devices with their device numbers.
-     * Used by Electron to show which device numbers are taken.
-     * GET /api/field-sync/device-registry
-     */
-    @GetMapping("/device-registry")
-    public ResponseEntity<Map<String, Object>> getDeviceRegistry() {
-        Map<String, Object> result = new HashMap<>();
-
-        List<Map<String, Object>> devices = peerRepository.findAll().stream()
-            .filter(p -> p.getDeviceNumber() != null)
-            .map(p -> {
-                Map<String, Object> device = new HashMap<>();
-                device.put("deviceNumber", p.getDeviceNumber());
-                device.put("deviceName", p.getMachineName());
-                device.put("machineId", p.getMachineId());
-                device.put("lastSeen", p.getLastSeen() != null ? p.getLastSeen().toString() : null);
-                device.put("status", p.getStatus() != null ? p.getStatus().name() : "UNKNOWN");
-                device.put("conflict", p.getDeviceNumberConflict());
-                return device;
-            })
-            .collect(Collectors.toList());
-
-        // Also include this machine if it has a device number
-        if (syncConfig.getDeviceNumber() >= 0) {
-            boolean selfIncluded = devices.stream()
-                .anyMatch(d -> syncConfig.getMachineId().equals(d.get("machineId")));
-            if (!selfIncluded) {
-                Map<String, Object> self = new HashMap<>();
-                self.put("deviceNumber", syncConfig.getDeviceNumber());
-                self.put("deviceName", syncConfig.getDeviceName());
-                self.put("machineId", syncConfig.getMachineId());
-                self.put("lastSeen", Instant.now().toString());
-                self.put("status", "SELF");
-                devices.add(self);
-            }
-        }
-
-        // Sort by device number
-        devices.sort(Comparator.comparingInt(d -> (Integer) d.get("deviceNumber")));
-
-        result.put("devices", devices);
-        result.put("takenNumbers", devices.stream()
-            .map(d -> (Integer) d.get("deviceNumber"))
-            .collect(Collectors.toList()));
-
-        // Available numbers (0-99 minus taken)
-        Set<Integer> taken = devices.stream()
-            .map(d -> (Integer) d.get("deviceNumber"))
-            .collect(Collectors.toSet());
-        List<Integer> available = new ArrayList<>();
-        for (int i = 0; i <= 99; i++) {
-            if (!taken.contains(i)) available.add(i);
-        }
-        result.put("availableNumbers", available);
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Register a new device and assign the next available device number.
-     * POST /api/field-sync/device-registry
-     * Body: { "deviceName": "CRO Tablet" } or { "deviceName": "CRO Tablet", "deviceNumber": 4 }
-     */
-    @PostMapping("/device-registry")
-    public ResponseEntity<Map<String, Object>> registerDevice(@RequestBody Map<String, Object> request) {
-        Map<String, Object> result = new HashMap<>();
-
-        String deviceName = (String) request.get("deviceName");
-        if (deviceName == null || deviceName.trim().isEmpty()) {
-            result.put("success", false);
-            result.put("message", "deviceName is required");
-            return ResponseEntity.badRequest().body(result);
-        }
-        deviceName = deviceName.trim();
-
-        // Derive machineId from device name: uppercase, spaces→hyphens, strip non-alphanumeric
-        String machineId = deviceName.toUpperCase()
-            .replaceAll("\\s+", "-")
-            .replaceAll("[^A-Z0-9\\-]", "");
-        if (machineId.isEmpty()) {
-            machineId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        }
-
-        // Check if machineId already registered
-        Optional<Peer> existing = peerRepository.findById(machineId);
-        if (existing.isPresent() && existing.get().getDeviceNumber() != null) {
-            Peer p = existing.get();
-            result.put("success", true);
-            result.put("message", "Device already registered");
-            result.put("deviceNumber", p.getDeviceNumber());
-            result.put("deviceName", p.getMachineName());
-            result.put("machineId", p.getMachineId());
-            result.put("alreadyRegistered", true);
-            return ResponseEntity.ok(result);
-        }
-
-        // Determine device number
-        Integer requestedNumber = request.get("deviceNumber") != null
-            ? ((Number) request.get("deviceNumber")).intValue() : null;
-
-        // Get taken numbers
-        Set<Integer> taken = peerRepository.findAll().stream()
-            .filter(p -> p.getDeviceNumber() != null)
-            .map(Peer::getDeviceNumber)
-            .collect(Collectors.toSet());
-        // Include self
-        if (syncConfig.getDeviceNumber() >= 0) {
-            taken.add(syncConfig.getDeviceNumber());
-        }
-
-        int assignedNumber;
-        if (requestedNumber != null) {
-            if (requestedNumber < 0 || requestedNumber > 99) {
-                result.put("success", false);
-                result.put("message", "Device number must be between 0 and 99");
-                return ResponseEntity.badRequest().body(result);
-            }
-            if (taken.contains(requestedNumber)) {
-                result.put("success", false);
-                result.put("message", "Device number " + requestedNumber + " is already taken");
-                result.put("takenNumbers", new ArrayList<>(taken));
-                return ResponseEntity.ok(result);
-            }
-            assignedNumber = requestedNumber;
-        } else {
-            // Auto-assign next available
-            assignedNumber = -1;
-            for (int i = 0; i <= 99; i++) {
-                if (!taken.contains(i)) {
-                    assignedNumber = i;
-                    break;
-                }
-            }
-            if (assignedNumber == -1) {
-                result.put("success", false);
-                result.put("message", "All device numbers (0-99) are taken");
-                return ResponseEntity.ok(result);
-            }
-        }
-
-        // Create or update peer record
-        Peer peer = existing.orElse(new Peer());
-        peer.setMachineId(machineId);
-        peer.setMachineName(deviceName);
-        peer.setDeviceNumber(assignedNumber);
-        peer.setLastSeen(Instant.now());
-        peer.setStatus(Peer.PeerStatus.OFFLINE);
-        peerRepository.save(peer);
-
-        result.put("success", true);
-        result.put("message", "Device registered with number " + assignedNumber);
-        result.put("deviceNumber", assignedNumber);
-        result.put("deviceName", deviceName);
-        result.put("machineId", machineId);
-
-        log.info("Registered device: {} ({}) with device number {}", deviceName, machineId, assignedNumber);
-
-        return ResponseEntity.ok(result);
-    }
+    // P2P endpoints removed: /peers/register, /device-registry, /peers, /peers/all, /broadcast, /exchange
 }

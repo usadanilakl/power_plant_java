@@ -55,6 +55,11 @@ public class SafeWorkSharePointSyncable implements SharePointSyncable<SafeWorkDt
     }
 
     @Override
+    public List<SafeWorkDto> fetchModifiedSince(Instant since) {
+        return safeWorkAdapter.getModifiedSince(since);
+    }
+
+    @Override
     @Transactional
     public EntitySyncOutcome processRemoteItem(SafeWorkDto remote, SyncResult result) {
         if (remote.getSharepointId() == null) {
@@ -107,7 +112,8 @@ public class SafeWorkSharePointSyncable implements SharePointSyncable<SafeWorkDt
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[SW Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[SW Syncable] spId={}: local wins ALL fields — entity unchanged, snapshot updated", spId);
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return EntitySyncOutcome.SKIPPED;
         }
 

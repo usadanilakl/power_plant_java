@@ -57,6 +57,7 @@ public class CentralSyncService {
     // Using AtomicBoolean instead of volatile boolean to prevent race conditions
     // where two threads could both pass the syncing check simultaneously
     private final AtomicBoolean syncing = new AtomicBoolean(false);
+    private volatile long syncStartedAt = 0; // epoch millis — detects stuck syncs
     private volatile boolean serverAvailable = false;
     private final AtomicBoolean pendingSyncRequest = new AtomicBoolean(false);
 
@@ -65,9 +66,12 @@ public class CentralSyncService {
     private final AtomicLong totalChangesReceived = new AtomicLong(0);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
 
-    // Configurable batch size - can be adjusted based on network/memory constraints
-    private static final int DEFAULT_BATCH_SIZE = 500;
+    // Batch size for sync operations. Smaller batches prevent hub timeouts — the hub applies
+    // each batch to entities (LWW + save) which is slow on H2. 50 keeps each POST under 30s.
+    private static final int DEFAULT_SEND_BATCH_SIZE = 50;
+    private static final int DEFAULT_RECEIVE_BATCH_SIZE = 500;
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
+    private static final long MAX_SYNC_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
     private ServerSseClient getServerSseClient() {
         if (serverSseClient == null) {
@@ -79,9 +83,12 @@ public class CentralSyncService {
     /**
      * Get the configured batch size for sync operations.
      */
-    private int getBatchSize() {
-        // Could be made configurable via SyncConfig
-        return DEFAULT_BATCH_SIZE;
+    private int getSendBatchSize() {
+        return DEFAULT_SEND_BATCH_SIZE;
+    }
+
+    private int getReceiveBatchSize() {
+        return DEFAULT_RECEIVE_BATCH_SIZE;
     }
 
     /**
@@ -175,10 +182,19 @@ public class CentralSyncService {
 
         // Use compareAndSet for atomic check-and-set to prevent race conditions
         if (!syncing.compareAndSet(false, true)) {
+            // Check if the previous sync is stuck (exceeded max duration)
+            long elapsed = System.currentTimeMillis() - syncStartedAt;
+            if (syncStartedAt > 0 && elapsed > MAX_SYNC_DURATION_MS) {
+                log.warn("server_sync.stuck_detected elapsed={}ms — forcing reset", elapsed);
+                syncing.set(false);
+                // Fall through to acquire the lock on next attempt
+                return new SyncResult(false, "Stuck sync reset — retry immediately", 0, 0, 0);
+            }
             log.debug("Sync already in progress, marking pending sync request");
             pendingSyncRequest.set(true);
             return new SyncResult(false, "Sync in progress", 0, 0, 0);
         }
+        syncStartedAt = System.currentTimeMillis();
 
         // Circuit breaker: if too many consecutive failures, back off
         if (consecutiveFailures.get() >= MAX_CONSECUTIVE_FAILURES) {
@@ -244,6 +260,7 @@ public class CentralSyncService {
             log.error("Failed to sync with server: {}", e.getMessage());
             // Changes remain in local DB, will be synced when server is available
         } finally {
+            syncStartedAt = 0;
             syncing.set(false);
 
             // If another sync was requested while we were syncing, trigger it now
@@ -272,7 +289,7 @@ public class CentralSyncService {
      */
     @Transactional
     protected int sendOutgoingChangesInBatches() {
-        int batchSize = getBatchSize();
+        int batchSize = getSendBatchSize();
         int totalSent = 0;
         int batchNumber = 0;
 
@@ -381,7 +398,7 @@ public class CentralSyncService {
     @Transactional
     protected BatchedReceiveResult receiveIncomingChangesInBatches() {
         BatchedReceiveResult result = new BatchedReceiveResult();
-        int batchSize = getBatchSize();
+        int batchSize = getReceiveBatchSize();
         int batchNumber = 0;
 
         // First, check how many changes the server has for us

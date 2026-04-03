@@ -118,17 +118,25 @@
   z-index: 200;
   min-width: 200px;
   padding: 6px 0;
-  margin-top: 4px;
   background: var(--primary-background, #fff);
   border: 1px solid var(--border-color, #e0e0e0);
   border-top: 2px solid var(--group-color, #888);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   list-style: none;
-  animation: dropdownFadeIn 0.15s ease;
   /* Override row layout inherited from .router-menu.row ul */
   flex-direction: column !important;
   align-items: stretch !important;
+  color: var(--primary-text, #333);
+  /* Hidden by default — no DOM insertion/removal, just visibility toggle */
+  display: none !important;
+  pointer-events: none;
+}
+
+.dropdown-menu.show {
+  display: flex !important;
+  pointer-events: auto;
+  animation: dropdownFadeIn 0.15s ease;
 }
 
 @keyframes dropdownFadeIn {
@@ -155,6 +163,7 @@
   font-size: 0.88em;
   white-space: nowrap;
   transition: background-color 0.15s;
+  color: var(--primary-text, #333);
 }
 
 .dropdown-menu a:hover {
@@ -258,56 +267,56 @@
 }
 
 /* Dark mode support */
-:host-context(.dark-mode) .home-link a:hover {
+:host-context(.dark-theme) .home-link a:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-:host-context(.dark-mode) .menu-group-link a:hover {
+:host-context(.dark-theme) .menu-group-link a:hover {
   background-color: color-mix(in srgb, var(--group-color, #888) 15%, transparent);
 }
 
-:host-context(.dark-mode) .menu-group-link.active a {
+:host-context(.dark-theme) .menu-group-link.active a {
   background-color: color-mix(in srgb, var(--group-color, #888) 25%, transparent);
 }
 
-:host-context(.dark-mode) .dropdown-menu {
+:host-context(.dark-theme) .dropdown-menu {
   background: var(--primary-background, #1e1e1e);
   border-color: var(--border-color-dark, #444);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-:host-context(.dark-mode) .dropdown-menu li.separator {
+:host-context(.dark-theme) .dropdown-menu li.separator {
   border-top-color: rgba(255, 255, 255, 0.1);
 }
 
-:host-context(.dark-mode) .dropdown-menu a:hover {
+:host-context(.dark-theme) .dropdown-menu a:hover {
   background-color: color-mix(in srgb, var(--group-color, #888) 15%, transparent);
 }
 
-:host-context(.dark-mode) .dropdown-menu a.active-link {
+:host-context(.dark-theme) .dropdown-menu a.active-link {
   background-color: color-mix(in srgb, var(--group-color, #888) 25%, transparent);
 }
 
-:host-context(.dark-mode) .shortcut-badge {
+:host-context(.dark-theme) .shortcut-badge {
   background: rgba(255, 255, 255, 0.1);
 }
 
-:host-context(.dark-mode) .secondary-menu {
+:host-context(.dark-theme) .secondary-menu {
   border-color: var(--group-color, var(--border-color-dark, #444));
 }
 
-:host-context(.dark-mode) .secondary-menu li.separator {
+:host-context(.dark-theme) .secondary-menu li.separator {
   border-left-color: rgba(255, 255, 255, 0.15);
 }
 
-:host-context(.dark-mode) .secondary-menu a:hover {
+:host-context(.dark-theme) .secondary-menu a:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-:host-context(.dark-mode) .secondary-menu a.active-link {
+:host-context(.dark-theme) .secondary-menu a.active-link {
   background-color: color-mix(in srgb, var(--group-color, #888) 25%, transparent);
 }
 
-:host-context(.dark-mode) .router-menu.column .secondary-menu li.separator {
+:host-context(.dark-theme) .router-menu.column .secondary-menu li.separator {
   border-top-color: rgba(255, 255, 255, 0.15);
 }

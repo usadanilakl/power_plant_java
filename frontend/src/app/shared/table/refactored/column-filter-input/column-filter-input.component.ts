@@ -87,11 +87,10 @@ export class ColumnFilterInputComponent {
   }
 
   onMouseLeave(): void {
-    // Set a 1 second delay before closing
     this.closeDropdownTimeout = setTimeout(() => {
       this.filterDropdownOpen.set(false);
       this.closeDropdownTimeout = null;
-    }, 1000);
+    }, 300);
   }
 
   selectOption(option: string): void {

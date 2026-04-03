@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.hub.HubClientInfo;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.hub.HubClientInfoRepository;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import lombok.Builder;
 import lombok.Getter;
@@ -49,6 +50,7 @@ public class HubSyncService {
     private final SyncConfig syncConfig;
     private final HubSyncConfig hubSyncConfig;
     private final TransactionTemplate transactionTemplate;
+    private final SharePointSyncOrchestrator sharePointSyncOrchestrator;
 
     private final AtomicBoolean pendingEntityRetry = new AtomicBoolean(false);
     private final java.util.concurrent.ConcurrentLinkedQueue<List<FieldChange>> failedBatches = new java.util.concurrent.ConcurrentLinkedQueue<>();
@@ -62,49 +64,53 @@ public class HubSyncService {
             log.info("Hub sync exchange from {} ({}): {} incoming changes",
                 machineName, machineId, incomingChanges != null ? incomingChanges.size() : 0);
 
-            // Phase 1: Register client and mark as syncing (own transaction, releases connection)
+            // Phase 1: Register client
             transactionTemplate.executeWithoutResult(status -> {
                 HubClientInfo client = doRegisterClient(machineId, machineName, ipAddress, deviceNumber);
                 client.setStatus(HubClientInfo.ClientStatus.SYNCING);
                 hubClientInfoRepository.save(client);
             });
 
-            // Phase 2: Process incoming changes (per-entity-type transactions, releases connection between types)
-            ProcessingResult result = processIncomingChangesBatched(incomingChanges, machineId);
+            // Phase 2: Save FieldChange records.
+            // Signal SP sync to yield between items — SP checks clientSyncInProgress
+            // and pauses its per-item processing loop, freeing the H2 table lock.
+            sharePointSyncOrchestrator.setClientSyncInProgress(true);
+            ProcessingResult result;
+            try {
+                result = processIncomingChangesBatched(incomingChanges, machineId);
+            } finally {
+                sharePointSyncOrchestrator.setClientSyncInProgress(false);
+            }
 
-            // Phase 3: Count pending and update client status (own transaction, releases connection)
-            long pendingForClient = transactionTemplate.execute(status -> {
-                long pending = fieldChangeRepository.countPendingChangesFor(machineId);
+            // Phase 3: Update client status
+            transactionTemplate.executeWithoutResult(status -> {
                 HubClientInfo client = hubClientInfoRepository.findById(machineId)
                     .orElse(new HubClientInfo(machineId, machineName, ipAddress));
                 client.recordSync(result.changesReceived, 0);
                 client.setStatus(HubClientInfo.ClientStatus.ONLINE);
                 hubClientInfoRepository.save(client);
-                return pending;
             });
 
-            log.info("Hub sync complete for {}: received={}, skipped={}, pending={}, durationMs={}",
-                machineName, result.changesReceived, result.duplicatesSkipped, pendingForClient,
+            log.info("Hub sync complete for {}: received={}, skipped={}, durationMs={}",
+                machineName, result.changesReceived, result.duplicatesSkipped,
                 System.currentTimeMillis() - start);
 
-            // Phase 4: Apply to hub entities and broadcast (no connection held during SSE broadcast)
+            // Phase 4: Apply to hub entities + broadcast asynchronously.
+            // Safe because FieldChanges are already saved — retryPendingEntityApplication handles failures.
             if (!result.savedChanges.isEmpty()) {
-                try {
-                    int applied = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
-                    log.debug("Applied {} changes to hub entities", applied);
-                } catch (Exception e) {
-                    log.error("Failed to apply changes to hub entities, retrying: {}", e.getMessage());
+                List<FieldChange> savedCopy = new ArrayList<>(result.savedChanges);
+                String originMachine = machineId;
+                Thread.ofVirtual().name("hub-apply-" + machineId).start(() -> {
                     try {
-                        int retried = fieldSyncService.applyIncomingChanges(result.savedChanges, true);
-                        log.info("Retry succeeded: applied {} changes to hub entities", retried);
-                    } catch (Exception retry) {
-                        log.error("Retry also failed - queuing for periodic retry: {}", retry.getMessage());
-                        failedBatches.offer(new ArrayList<>(result.savedChanges));
+                        int applied = fieldSyncService.applyIncomingChanges(savedCopy, true);
+                        log.debug("Applied {} changes to hub entities from {}", applied, originMachine);
+                    } catch (Exception e) {
+                        log.error("Failed to apply changes to hub entities from {}: {}", originMachine, e.getMessage());
+                        failedBatches.offer(savedCopy);
                         pendingEntityRetry.set(true);
                     }
-                }
-
-                broadcastChangesInBatches(result.savedChanges, machineId);
+                    broadcastChangesInBatches(savedCopy, originMachine);
+                });
             }
 
             return SyncResponse.builder()
@@ -113,7 +119,7 @@ public class HubSyncService {
                 .duplicatesSkipped(result.duplicatesSkipped)
                 .changesSent(0)
                 .changes(List.of())
-                .totalPending(pendingForClient)
+                .totalPending(0)
                 .build();
         }
     }
@@ -122,7 +128,8 @@ public class HubSyncService {
     public Page<FieldChange> getPendingChangesPaginated(String machineId, Pageable pageable) {
         // Return pending changes WITHOUT marking as synced.
         // Client must call acknowledgeChanges() after successful apply.
-        return fieldChangeRepository.findChangesNotSyncedTo(machineId, pageable);
+        // Excludes changes that originated FROM this client — no point sending them back.
+        return fieldChangeRepository.findChangesNotSyncedToExcludingOrigin(machineId, pageable);
     }
 
     /**
@@ -155,8 +162,15 @@ public class HubSyncService {
         return reset;
     }
 
+    @Transactional
+    public int clearSelfOriginatedChanges(String machineId) {
+        int cleared = fieldChangeRepository.markOwnChangesSyncedTo(machineId);
+        log.info("Cleared self-originated changes for {}: {} marked as synced", machineId, cleared);
+        return cleared;
+    }
+
     public long getPendingChangeCount(String machineId) {
-        return fieldChangeRepository.countPendingChangesFor(machineId);
+        return fieldChangeRepository.countPendingChangesForExcludingOrigin(machineId);
     }
 
     @Transactional

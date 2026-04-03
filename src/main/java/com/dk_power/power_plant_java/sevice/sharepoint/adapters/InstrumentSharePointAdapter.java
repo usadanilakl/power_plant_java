@@ -38,6 +38,20 @@ public class InstrumentSharePointAdapter {
         );
     }
 
+    public List<InstrumentDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll,  // PA fallback doesn't support filtering
+                "getModifiedSince Instrumentation"
+        );
+    }
+
+    private List<InstrumentDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public ProbeState getProbeState() {
         return spService.executeWithFallback(
                 this::certGetProbeState,

@@ -131,6 +131,19 @@ public class HubSyncController {
     }
 
     /**
+     * Mark a client's own changes as already synced to that client.
+     * Prevents the hub from sending a client's own changes back to it.
+     * POST /api/sync/changes/clear-self/{machineId}
+     */
+    @PostMapping("/changes/clear-self/{machineId}")
+    public ResponseEntity<Map<String, Object>> clearSelfOriginatedChanges(
+            @PathVariable String machineId) {
+        int cleared = hubSyncService.clearSelfOriginatedChanges(machineId);
+        log.info("Cleared self-originated changes for {}: {} marked as synced", machineId, cleared);
+        return ResponseEntity.ok(Map.of("cleared", cleared, "machineId", machineId));
+    }
+
+    /**
      * Reset sync status for a client — marks all changes as pending for re-sync.
      * Use when a client fetched changes but failed to apply them.
      */

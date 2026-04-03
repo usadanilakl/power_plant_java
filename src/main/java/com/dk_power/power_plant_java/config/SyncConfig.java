@@ -41,12 +41,6 @@ public class SyncConfig {
     @Value("${server.port:8082}")
     private int syncPort;
 
-    @Value("${sync.discovery.port:8083}")
-    private int discoveryPort;
-
-    @Value("${sync.discovery.enabled:true}")
-    private boolean discoveryEnabled;
-
     @Value("${sync.interval.seconds:30}")
     private int syncIntervalSeconds;
 
@@ -143,15 +137,13 @@ public class SyncConfig {
         }
 
         log.info(
-            "sync.config.ready role={} machineId={} machineName={} deviceNumber={} deviceName={} discoveryEnabled={} syncPort={} discoveryPort={} intervalSeconds={} serverSyncEnabled={} syncServerUrl={}",
+            "sync.config.ready role={} machineId={} machineName={} deviceNumber={} deviceName={} syncPort={} intervalSeconds={} serverSyncEnabled={} syncServerUrl={}",
             syncRole,
             machineId,
             machineName,
             deviceNumber >= 0 ? deviceNumber : "unconfigured",
             deviceName != null && !deviceName.isEmpty() ? deviceName : "unconfigured",
-            discoveryEnabled,
             syncPort,
-            discoveryPort,
             syncIntervalSeconds,
             syncServerEnabled,
             syncServerUrl
@@ -178,16 +170,8 @@ public class SyncConfig {
             Process tcpProcess = tcpBuilder.start();
             int tcpResult = tcpProcess.waitFor();
 
-            // Add UDP rule for discovery
-            String udpRuleName = "PowerPlantSync_UDP_" + discoveryPort;
-            ProcessBuilder udpBuilder = new ProcessBuilder(
-                "netsh", "advfirewall", "firewall", "add", "rule",
-                "name=" + udpRuleName, "dir=in", "action=allow", "protocol=UDP", "localport=" + discoveryPort);
-            Process udpProcess = udpBuilder.start();
-            int udpResult = udpProcess.waitFor();
-
-            if (tcpResult == 0 || udpResult == 0) {
-                log.debug("Firewall rules configured for sync ports (TCP:{}, UDP:{})", syncPort, discoveryPort);
+            if (tcpResult == 0) {
+                log.debug("Firewall rule configured for sync port (TCP:{})", syncPort);
             } else {
                 log.debug("Firewall rules may already exist or require admin privileges");
             }

@@ -64,6 +64,12 @@ public interface EmailCorrespondenceRepo extends BaseRepository<EmailCorresponde
         EmailCorrespondence.Direction direction);
 
     /**
+     * Check if a conversation ID exists in our correspondence records.
+     * Used to filter incoming emails — only process replies to threads we started.
+     */
+    boolean existsByConversationId(String conversationId);
+
+    /**
      * Find unlinked correspondence (entityId is null) for retry matching.
      */
     List<EmailCorrespondence> findByEntityIdIsNull();

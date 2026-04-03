@@ -31,17 +31,23 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
   events: LogEvent[] = [];
   summary: LogSummary = { totalEvents: 0, infoEvents: 0, warnEvents: 0, errorEvents: 0 };
   sourceFiles: string[] = [];
+  subsystems: string[] = [];
+  eventCodes: string[] = [];
   totalMatched = 0;
 
   windowMinutes = 240;
-  eventLimit = 200;
+  eventLimit = 500;
   level: LevelFilter = 'ALL';
   sourceFile = '';
+  subsystem = '';
+  eventCode = '';
   text = '';
   requestId = '';
   syncRunId = '';
   machineId = '';
   showAdvancedFilters = false;
+
+  readonly limitOptions = [200, 500, 1000, 2000, 5000];
 
   loading = false;
   errorMessage = '';
@@ -106,6 +112,8 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
     this.level = 'ALL';
     this.text = '';
     this.sourceFile = '';
+    this.subsystem = '';
+    this.eventCode = '';
     this.requestId = '';
     this.syncRunId = '';
     this.machineId = '';
@@ -142,6 +150,8 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
       level: this.level === 'ALL' ? undefined : this.level,
       text: this.text || undefined,
       sourceFile: this.sourceFile || undefined,
+      subsystem: this.subsystem || undefined,
+      eventCode: this.eventCode || undefined,
       requestId: this.requestId || undefined,
       syncRunId: this.syncRunId || undefined,
       machineId: this.machineId || undefined,
@@ -151,6 +161,8 @@ export class LogDiagnosticsPageComponent implements OnInit, OnDestroy {
         this.events = data.events;
         this.summary = data.summary;
         this.sourceFiles = data.sourceFiles;
+        this.subsystems = data.subsystems || [];
+        this.eventCodes = data.eventCodes || [];
         this.totalMatched = data.totalMatched;
         this.loading = false;
       },

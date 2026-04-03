@@ -15,6 +15,7 @@ import { SharepointSyncComponent } from '../pages/sharepoint-sync/sharepoint-syn
 import { SyncOverviewComponent } from '../features/sync/sync-overview/sync-overview.component';
 import { SyncActivityComponent } from '../features/sync/sync-activity/sync-activity.component';
 import { SyncCompareComponent } from '../features/sync/sync-compare/sync-compare.component';
+import { SyncAuditPageComponent } from '../features/sync-audit/sync-audit-page/sync-audit-page.component';
 import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-sync-to-server.component';
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
@@ -50,7 +51,8 @@ export const STANDALONE_ROUTES: Routes = [
       { path: 'compare', component: SyncCompareComponent },
       { path: 'status', component: SyncMonitorComponent },
       { path: 'recovery', component: SyncResyncComponent },
-      { path: 'sharepoint', component: SharepointSyncComponent }
+      { path: 'sharepoint', component: SharepointSyncComponent },
+      { path: 'audit', component: SyncAuditPageComponent }
     ]
   },
   // Full Sync to Server (standalone)

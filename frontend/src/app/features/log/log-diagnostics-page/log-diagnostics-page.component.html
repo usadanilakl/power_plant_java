@@ -42,6 +42,10 @@
       <option *ngFor="let opt of windowOptions" [ngValue]="opt.value">{{ opt.label }}</option>
     </select>
 
+    <select [(ngModel)]="eventLimit" (change)="onDropdownChange()">
+      <option *ngFor="let lim of limitOptions" [ngValue]="lim">{{ lim }} rows</option>
+    </select>
+
     <select [(ngModel)]="level" (change)="onDropdownChange()">
       <option value="ALL">All Levels</option>
       <option value="INFO">Info</option>
@@ -52,6 +56,11 @@
     <select [(ngModel)]="sourceFile" (change)="onDropdownChange()">
       <option value="">All Files</option>
       <option *ngFor="let file of sourceFiles" [value]="file">{{ file }}</option>
+    </select>
+
+    <select [(ngModel)]="subsystem" (change)="onDropdownChange()">
+      <option value="">All Subsystems</option>
+      <option *ngFor="let sub of subsystems" [value]="sub">{{ sub }}</option>
     </select>
 
     <input
@@ -69,6 +78,10 @@
   </section>
 
   <section class="filters-advanced" *ngIf="showAdvancedFilters">
+    <label>
+      Event Code
+      <input [(ngModel)]="eventCode" (input)="onTextInput()" placeholder="server_sync.send..." />
+    </label>
     <label>
       Request ID
       <input [(ngModel)]="requestId" (input)="onTextInput()" placeholder="req-..." />
@@ -89,6 +102,7 @@
       <span class="col-level">Level</span>
       <span class="col-source">Source</span>
       <span class="col-subsystem">Subsystem</span>
+      <span class="col-eventcode">Event Code</span>
       <span class="col-message">Message</span>
     </div>
 
@@ -103,6 +117,7 @@
         </span>
         <span class="col-source">{{ event.sourceFile }}</span>
         <span class="col-subsystem">{{ event.subsystem }}</span>
+        <span class="col-eventcode">{{ event.eventCode }}</span>
         <span class="col-message">{{ event.message }}</span>
       </div>
 

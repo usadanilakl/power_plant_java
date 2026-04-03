@@ -53,6 +53,11 @@ public class LotoSharePointSyncable implements SharePointSyncable<LotoDto> {
     }
 
     @Override
+    public List<LotoDto> fetchModifiedSince(Instant since) {
+        return lotoAdapter.getModifiedSince(since);
+    }
+
+    @Override
     @Transactional
     public EntitySyncOutcome processRemoteItem(LotoDto remote, SyncResult result) {
         if (remote.getSharepointId() == null) {
@@ -103,7 +108,8 @@ public class LotoSharePointSyncable implements SharePointSyncable<LotoDto> {
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[LOTO Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[LOTO Syncable] spId={}: local wins ALL fields — entity unchanged, snapshot updated", spId);
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return EntitySyncOutcome.SKIPPED;
         }
 

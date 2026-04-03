@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -32,6 +33,16 @@ public class SharePointSyncOrchestrator {
 
     private final Map<String, Long> lastSyncTimes = new ConcurrentHashMap<>();
     private final Map<String, SyncResult> lastResults = new ConcurrentHashMap<>();
+    // Tracks the last successful sync completion time per entity type (for incremental fetch)
+    private final Map<String, Instant> lastSuccessfulSyncAt = new ConcurrentHashMap<>();
+
+    // Client sync exchange sets this flag to pause SharePoint sync.
+    // Prevents H2 table-level lock contention between SP writes and client sync saves.
+    private volatile boolean clientSyncInProgress = false;
+
+    public void setClientSyncInProgress(boolean inProgress) {
+        this.clientSyncInProgress = inProgress;
+    }
 
     public SharePointSyncOrchestrator(
             List<SharePointSyncable<?>> syncables,
@@ -60,6 +71,10 @@ public class SharePointSyncOrchestrator {
     public void scheduledSync() {
         if (!syncConfig.isHubMode()) return;
         if (!syncSettings.isEnabled()) return;
+        if (clientSyncInProgress) {
+            log.debug("sharepoint.sync.scheduler.deferred reason=client_sync_in_progress");
+            return;
+        }
 
         long start = System.currentTimeMillis();
         int dueTypes = 0;
@@ -68,8 +83,14 @@ public class SharePointSyncOrchestrator {
             log.info("sharepoint.sync.scheduler.start registeredTypes={}", syncables.size());
 
             for (SharePointSyncable<?> syncable : syncables) {
+                // Yield to client sync between entity types
+                if (clientSyncInProgress) {
+                    log.debug("sharepoint.sync.yielding reason=client_sync_in_progress after {} types", dueTypes);
+                    break;
+                }
+
                 String type = syncable.getEntityTypeName();
-                if (isSyncDue(type)) {
+                if (isSyncDue(type, syncable)) {
                     dueTypes++;
                     markSynced(type);
                     try {
@@ -102,29 +123,56 @@ public class SharePointSyncOrchestrator {
 
     /**
      * Core sync logic for one entity type.
+     * Always uses incremental fetch ($filter=Modified gt ...).
+     * On first run uses a 7-day window; subsequent runs use last successful sync time.
      */
     private <D> SyncResult executeSyncForType(SharePointSyncable<D> syncable) {
         String type = syncable.getEntityTypeName();
         SyncResult result = new SyncResult();
         long start = System.currentTimeMillis();
 
-        // DO NOT wrap in syncContext.startSync() — SP-created/updated entities must generate
-        // FieldChange records so clients receive them via field-level sync.
-        // The CRDT LWW timestamps prevent sync loops: clients apply the changes inside their
-        // own sync context, so they don't re-broadcast back to hub.
+        Instant lastSync = lastSuccessfulSyncAt.get(type);
+
         try (LoggingContext.Scope ignored = LoggingContext.openSyncScope("sharepoint." + type, syncConfig.getMachineId())) {
             try {
-                List<D> remoteDtos = syncable.fetchAllFromSharePoint();
+                // Always use incremental fetch. On first run (no lastSync), use 7 days ago
+                // as the starting point — the hub already has older data from previous syncs.
+                Instant since = lastSync != null
+                    ? lastSync.minusSeconds(30)   // 30s buffer for clock skew
+                    : Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
+                List<D> remoteDtos = syncable.fetchModifiedSince(since);
+
                 if (remoteDtos == null || remoteDtos.isEmpty()) {
-                    log.debug("[SP Orchestrator] No {} items from SharePoint", type);
+                    log.debug("[SP Orchestrator] No modified {} items from SharePoint", type);
+                    lastSuccessfulSyncAt.put(type, Instant.now());
                     return result;
                 }
-                log.debug("[SP Orchestrator] Fetched {} {} items from SharePoint", remoteDtos.size(), type);
+                log.debug("[SP Orchestrator] Fetched {} {} items from SharePoint{}",
+                    remoteDtos.size(), type, lastSync != null ? " (incremental)" : " (first run, 7d window)");
 
+                // Collect SP IDs from fetched DTOs (memory only — no DB)
                 Set<String> remoteIds = new HashSet<>();
                 for (D dto : remoteDtos) {
                     String spId = syncable.getSharepointId(dto);
                     if (spId != null) remoteIds.add(spId.toLowerCase());
+                }
+
+                // Process all items. Each syncable's processRemoteItem opens its own
+                // short transaction. Yield to client sync between items if requested.
+                for (D dto : remoteDtos) {
+                    if (clientSyncInProgress) {
+                        log.info("[SP Orchestrator] {} yielding mid-sync for client sync ({} items remaining)",
+                            type, remoteDtos.size() - remoteIds.size());
+                        // Wait for client sync to finish before resuming
+                        while (clientSyncInProgress) {
+                            try { Thread.sleep(100); } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+                        }
+                    }
+
+                    String spId = syncable.getSharepointId(dto);
                     try (LoggingContext.Scope entityScope =
                              LoggingContext.openEntityScope(type, null, spId)) {
                         syncable.processRemoteItem(dto, result);
@@ -135,16 +183,17 @@ public class SharePointSyncOrchestrator {
                     }
                 }
 
-                if (syncable.supportsAutoClose()) {
-                    syncable.autoCloseAbsentRecords(remoteIds, result);
-                }
+                // Auto-close skipped — incremental fetch doesn't have the complete remote set.
+                // WR expiry (WorkRequestExpiryService) handles closing overdue WRs separately.
 
                 syncable.afterSync(result);
+                lastSuccessfulSyncAt.put(type, Instant.now());
 
-                log.info("[SP Orchestrator] {} sync: created={}, updated={}, autoClosed={}, skipped={}, failed={}, durationMs={}",
-                    type, result.getCreated(), result.getUpdated(),
+                log.info("[SP Orchestrator] {} sync{}: created={}, updated={}, autoClosed={}, skipped={}, failed={}, fetched={}, durationMs={}",
+                    type,
+                    result.getCreated(), result.getUpdated(),
                     result.getAutoClosed(), result.getSkipped(), result.getFailed(),
-                    System.currentTimeMillis() - start);
+                    remoteDtos.size(), System.currentTimeMillis() - start);
             } catch (Exception e) {
                 log.error("[SP Orchestrator] {} fetch failed: {}", type, e.getMessage(), e);
                 result.setErrorMessage(e.getMessage());
@@ -205,9 +254,9 @@ public class SharePointSyncOrchestrator {
             lastResults.get(type));
     }
 
-    private boolean isSyncDue(String entityType) {
+    private boolean isSyncDue(String entityType, SharePointSyncable<?> syncable) {
         long lastSync = lastSyncTimes.getOrDefault(entityType, 0L);
-        return System.currentTimeMillis() - lastSync >= syncSettings.getIntervalMs();
+        return System.currentTimeMillis() - lastSync >= syncable.getSyncIntervalMs();
     }
 
     private void markSynced(String entityType) {

@@ -32,6 +32,20 @@ public class VentingPermitSharePointAdapter {
         return spService.executeWithFallback(this::certGetAll, this::paGetAll, "getAll VentingPermits");
     }
 
+    public List<VentingPermitDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll,  // PA fallback doesn't support filtering
+                "getModifiedSince VentingPermits"
+        );
+    }
+
+    private List<VentingPermitDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public String create(VentingPermitDto dto) {
         return spService.executeWithFallback(() -> certCreate(dto), () -> paCreate(dto), "create VentingPermit");
     }

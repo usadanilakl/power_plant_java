@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SyncStatusService, EntityFieldDiff, FieldDiffEntry } from '../../../services/sync-status.service';
 import {
-  EntitySyncCheckService, ThreeWayFieldDiff, ThreeWayFieldEntry
+  EntitySyncCheckService, ThreeWayFieldDiff, ThreeWayFieldEntry, PushPullPreview
 } from '../../../services/sync/entity-sync-check.service';
 
 @Component({
@@ -204,26 +204,66 @@ export class SyncEntityDiffComponent implements OnInit, OnChanges {
 
   acceptRemote() {
     this.resolving.set(true);
-    this.syncStatusService.acceptRemote(this.entityType, this.entityId).subscribe({
-      next: () => {
-        this.snackBar.open('Accepted hub version', 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.resolved.emit();
+    // Preview first, then execute with dependencies
+    this.syncCheckService.previewPull(this.entityType, this.entityId).subscribe({
+      next: preview => {
+        if (preview && preview.totalCount > 1) {
+          const summary = this.formatPreview(preview);
+          if (!confirm(`Pull will include ${preview.totalCount} entities:\n${summary}\n\nProceed?`)) {
+            this.resolving.set(false);
+            return;
+          }
+        }
+        this.syncCheckService.executePull(this.entityType, this.entityId).subscribe({
+          next: (res) => {
+            this.snackBar.open(res?.message || 'Accepted hub version', 'OK', { duration: 3000 });
+            this.resolving.set(false);
+            this.resolved.emit();
+          },
+          error: () => this.resolving.set(false)
+        });
       },
-      error: () => this.resolving.set(false)
+      error: () => {
+        // Fallback to simple
+        this.syncStatusService.acceptRemote(this.entityType, this.entityId).subscribe({
+          next: () => { this.snackBar.open('Accepted hub version', 'OK', { duration: 3000 }); this.resolving.set(false); this.resolved.emit(); },
+          error: () => this.resolving.set(false)
+        });
+      }
     });
   }
 
   acceptLocal() {
     this.resolving.set(true);
-    this.syncStatusService.acceptLocal(this.entityType, this.entityId).subscribe({
-      next: () => {
-        this.snackBar.open('Pushed local version to hub', 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.resolved.emit();
+    this.syncCheckService.previewPush(this.entityType, this.entityId).subscribe({
+      next: preview => {
+        if (preview && preview.totalCount > 1) {
+          const summary = this.formatPreview(preview);
+          if (!confirm(`Push will include ${preview.totalCount} entities:\n${summary}\n\nProceed?`)) {
+            this.resolving.set(false);
+            return;
+          }
+        }
+        this.syncCheckService.executePush(this.entityType, this.entityId).subscribe({
+          next: (res) => {
+            this.snackBar.open(res?.message || 'Pushed to hub', 'OK', { duration: 3000 });
+            this.resolving.set(false);
+            this.resolved.emit();
+          },
+          error: () => this.resolving.set(false)
+        });
       },
-      error: () => this.resolving.set(false)
+      error: () => {
+        this.syncStatusService.acceptLocal(this.entityType, this.entityId).subscribe({
+          next: () => { this.snackBar.open('Pushed to hub', 'OK', { duration: 3000 }); this.resolving.set(false); this.resolved.emit(); },
+          error: () => this.resolving.set(false)
+        });
+      }
     });
+  }
+
+  private formatPreview(preview: PushPullPreview): string {
+    return Object.entries(preview.countByType).map(([t, c]) => `  ${t}: ${c}`).join('\n');
   }
 
   acceptSp() {

@@ -32,6 +32,20 @@ public class EnergizedWorkPermitSharePointAdapter {
         return spService.executeWithFallback(this::certGetAll, this::paGetAll, "getAll EnergizedWorkPermits");
     }
 
+    public List<EnergizedWorkPermitDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll,  // PA fallback doesn't support filtering
+                "getModifiedSince EnergizedWorkPermits"
+        );
+    }
+
+    private List<EnergizedWorkPermitDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public String create(EnergizedWorkPermitDto dto) {
         return spService.executeWithFallback(() -> certCreate(dto), () -> paCreate(dto), "create EnergizedWorkPermit");
     }

@@ -27,6 +27,15 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) ORDER BY fc.timestamp ASC")
     Page<FieldChange> findChangesNotSyncedTo(@Param("machineId") String machineId, Pageable pageable);
 
+    // PAGINATED: Get changes not yet synced to a machine, excluding changes that originated FROM that machine.
+    // Used by hub when serving changes to a client — prevents sending a client's own changes back to it.
+    @Query("SELECT fc FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC")
+    Page<FieldChange> findChangesNotSyncedToExcludingOrigin(@Param("machineId") String machineId, Pageable pageable);
+
+    // COUNT: Pending changes for a machine, excluding its own changes (hub use)
+    @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE (fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') OR fc.syncedToMachines IS NULL) AND fc.originMachineId != :machineId")
+    long countPendingChangesForExcludingOrigin(@Param("machineId") String machineId);
+
     // Get changes since a timestamp, excluding a specific machine's own changes
     @Query("SELECT fc FROM FieldChange fc WHERE fc.timestamp > :since AND fc.originMachineId != :machineId ORDER BY fc.timestamp ASC")
     List<FieldChange> findChangesSince(@Param("since") Instant since, @Param("machineId") String excludeMachineId);
@@ -63,6 +72,12 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     @Modifying
     @Query("DELETE FROM FieldChange fc WHERE fc.timestamp < :before")
     int deleteChangesBefore(@Param("before") Instant before);
+
+    // Mark a machine's OWN changes as synced back to itself (hub cleanup — prevents sending changes back to origin)
+    @Modifying
+    @Query(value = "UPDATE FIELD_CHANGE SET SYNCED_TO_MACHINES = CONCAT(COALESCE(SYNCED_TO_MACHINES, ''), CONCAT('|', :machineId, '|')) " +
+           "WHERE ORIGIN_MACHINE_ID = :machineId AND (SYNCED_TO_MACHINES NOT LIKE CONCAT('%|', :machineId, '|%') OR SYNCED_TO_MACHINES IS NULL)", nativeQuery = true)
+    int markOwnChangesSyncedTo(@Param("machineId") String machineId);
 
     // Mark ALL existing changes as synced to a machine (used after bulk import — the client already has all data)
     @Modifying

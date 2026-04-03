@@ -25,12 +25,15 @@ public class NgLogDiagnosticsController {
         @RequestParam(required = false) String level,
         @RequestParam(required = false) String text,
         @RequestParam(required = false) String sourceFile,
+        @RequestParam(required = false) String subsystem,
+        @RequestParam(required = false) String eventCode,
         @RequestParam(required = false) String requestId,
         @RequestParam(required = false) String syncRunId,
         @RequestParam(required = false) String machineId
     ) {
         LogDiagnosticsEventsResponseDto events = logDiagnosticsService.getEvents(
-            windowMinutes, limit, level, text, sourceFile, requestId, syncRunId, machineId
+            windowMinutes, limit, level, text, sourceFile, subsystem, eventCode,
+            requestId, syncRunId, machineId
         );
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)

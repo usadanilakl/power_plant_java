@@ -1,0 +1,90 @@
+<div class="sync-audit-container">
+  <!-- Controls -->
+  <div class="controls-bar">
+    <select
+      class="entity-select"
+      [ngModel]="selectedEntityType()"
+      (ngModelChange)="onEntityTypeChange($event)"
+      [disabled]="loadingTypes()">
+      <option value="" disabled>Select entity type...</option>
+      @for (et of entityTypes(); track et.entityType) {
+        <option [value]="et.entityType">
+          {{ et.entityType }} ({{ et.localCount }} items, {{ et.changeCount }} changes)
+        </option>
+      }
+    </select>
+
+    <button class="refresh-btn" (click)="refresh()" [disabled]="!selectedEntityType() || loading()">
+      {{ loading() ? 'Loading...' : 'Refresh' }}
+    </button>
+
+    @if (selectedEntityType() && !loading()) {
+      <span class="entity-count">{{ entities().length }} total</span>
+    }
+  </div>
+
+  <!-- Sync Summary Badges -->
+  @if (comparison() && !loading()) {
+    <div class="summary-bar">
+      <span class="badge in-sync">In Sync: {{ comparison()!.commonCount - staleCount() }}</span>
+      <span class="badge local-only">Local Only: {{ localOnlyCount() }}</span>
+      <span class="badge server-only">Server Only: {{ serverOnlyCount() }}</span>
+      @if (staleCount() > 0) {
+        <span class="badge stale">Stale: {{ staleCount() }}</span>
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  @if (statusMessage()) {
+    <div class="success-message">{{ statusMessage() }}</div>
+  }
+
+  <!-- Bulk Actions -->
+  @if (selectedItems().length > 0) {
+    <div class="bulk-bar">
+      <span class="bulk-count">{{ selectedItems().length }} selected</span>
+      <button class="bulk-btn local" (click)="bulkAcceptLocal()" [disabled]="bulkLoading()">
+        {{ bulkLoading() ? 'Working...' : 'Accept Local (push to server)' }}
+      </button>
+      <button class="bulk-btn server" (click)="bulkAcceptServer()" [disabled]="bulkLoading()">
+        {{ bulkLoading() ? 'Working...' : 'Accept Server (pull from hub)' }}
+      </button>
+    </div>
+  }
+
+  <!-- Table -->
+  @if (selectedEntityType()) {
+    <div class="table-area">
+      @if (loading()) {
+        <div class="loading-overlay">Loading entities and sync status...</div>
+      }
+      <app-table
+        [tableId]="tableId()"
+        [items]="entities()"
+        [columns]="currentColumns()"
+        [isTableIsolated]="true"
+        [clickSetupInput]="{ applyTo: 'row', actions: ['leftClick', 'doubleClick'] }"
+        (rowDoubleClicked)="onEntityClicked($event)"
+        (selectedItemsEvent)="onSelectionChanged($event)"
+      ></app-table>
+    </div>
+  } @else {
+    <div class="placeholder">
+      Select an entity type to view its data and sync history.
+    </div>
+  }
+
+  <!-- Comparison Dialog -->
+  @if (dialogOpen()) {
+    <app-sync-audit-comparison-dialog
+      [entityType]="dialogEntityType()"
+      [entityId]="dialogEntityId()"
+      (close)="onDialogClose()"
+      (resolved)="onDialogResolved()">
+    </app-sync-audit-comparison-dialog>
+  }
+</div>

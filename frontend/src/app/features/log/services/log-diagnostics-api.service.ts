@@ -19,6 +19,8 @@ export class LogDiagnosticsApiService {
     level?: string;
     text?: string;
     sourceFile?: string;
+    subsystem?: string;
+    eventCode?: string;
     requestId?: string;
     syncRunId?: string;
     machineId?: string;
@@ -31,6 +33,8 @@ export class LogDiagnosticsApiService {
       level: filters.level,
       text: filters.text,
       sourceFile: filters.sourceFile,
+      subsystem: filters.subsystem,
+      eventCode: filters.eventCode,
       requestId: filters.requestId,
       syncRunId: filters.syncRunId,
       machineId: filters.machineId,

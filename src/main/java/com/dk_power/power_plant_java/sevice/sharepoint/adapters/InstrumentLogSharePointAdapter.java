@@ -37,6 +37,20 @@ public class InstrumentLogSharePointAdapter {
         );
     }
 
+    public List<InstrumentLogDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll,  // PA fallback doesn't support filtering
+                "getModifiedSince InstrumentationLogs"
+        );
+    }
+
+    private List<InstrumentLogDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public String create(InstrumentLogDto dto) {
         return spService.executeWithFallback(
                 () -> certCreate(dto),

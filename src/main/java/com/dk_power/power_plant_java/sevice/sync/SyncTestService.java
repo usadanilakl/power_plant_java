@@ -180,12 +180,8 @@ public class SyncTestService {
         log.info("Triggering sync test with {} pending changes", pendingBefore);
 
         try {
-            // Trigger sync based on configuration
-            if (syncConfig.isServerSyncEnabled()) {
-                centralSyncService.syncWithServer();
-            } else {
-                fieldSyncService.syncWithAllPeers();
-            }
+            // Trigger sync with central server
+            centralSyncService.syncWithServer();
 
             long duration = System.currentTimeMillis() - startTime;
             long pendingAfter = getPendingChangesCount();

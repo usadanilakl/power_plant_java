@@ -65,7 +65,8 @@
       "Read(//c/Users/usada/my_projects/dk_power_plant/spring-boot/src/**)",
       "Read(//c/Users/usada/my_projects/dk_power_plant/frontend/**)",
       "Read(//c/Users/usada/my_projects/dk_power_plant/spring-boot/**)",
-      "Bash(xargs -I {} basename {})"
+      "Bash(xargs -I {} basename {})",
+      "Read(//c/Users/usada/Downloads/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java",

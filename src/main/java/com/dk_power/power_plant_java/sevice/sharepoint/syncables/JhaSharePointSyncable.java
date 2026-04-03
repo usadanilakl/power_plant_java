@@ -71,11 +71,19 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
     public String getEntityTypeName() { return ENTITY_TYPE; }
 
     @Override
+    public long getSyncIntervalMs() { return 30_000; } // 30 seconds — JHAs need frequent polling
+
+    @Override
     public String getSharePointListTitle() { return LIST_TITLE; }
 
     @Override
     public List<JhaDto> fetchAllFromSharePoint() {
         return jhaAdapter.getAll();
+    }
+
+    @Override
+    public List<JhaDto> fetchModifiedSince(Instant since) {
+        return jhaAdapter.getModifiedSince(since);
     }
 
     @Override
@@ -263,7 +271,8 @@ public class JhaSharePointSyncable implements SharePointSyncable<JhaDto> {
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[JHA Syncable] spId={}: local wins ALL fields, will re-check next sync", spId);
+            log.debug("[JHA Syncable] spId={}: local wins ALL fields — entity unchanged, snapshot updated", spId);
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return new JhaSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
         }
 

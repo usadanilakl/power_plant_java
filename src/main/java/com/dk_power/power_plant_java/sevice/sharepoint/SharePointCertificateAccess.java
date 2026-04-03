@@ -206,9 +206,19 @@ public class SharePointCertificateAccess implements SharePointAccess {
     // ====================== Generic list methods (used by adapters) ======================
 
     public List<JsonNode> getListItems(String listTitle) {
-        ResponseEntity<String> response = sendGetRequest(
-                "/_api/web/lists/getbytitle('" + listTitle + "')/items?$top=5000"
-        );
+        return getListItems(listTitle, null);
+    }
+
+    /**
+     * Fetch items from a SharePoint list, optionally filtered by an OData expression.
+     * @param filter OData $filter (e.g. "Modified gt datetime'2026-04-01T00:00:00Z'"), or null for all
+     */
+    public List<JsonNode> getListItems(String listTitle, String filter) {
+        String url = "/_api/web/lists/getbytitle('" + listTitle + "')/items?$top=5000";
+        if (filter != null && !filter.isEmpty()) {
+            url += "&$filter=" + filter;
+        }
+        ResponseEntity<String> response = sendGetRequest(url);
         try {
             JsonNode root = objectMapper.readTree(response.getBody());
             JsonNode items = root.has("value") ? root.path("value") : root.path("d").path("results");
@@ -216,7 +226,8 @@ public class SharePointCertificateAccess implements SharePointAccess {
             for (JsonNode item : items) {
                 result.add(item);
             }
-            log.debug("[SharePoint] Fetched {} items from '{}'", result.size(), listTitle);
+            log.debug("[SharePoint] Fetched {} items from '{}'{}", result.size(), listTitle,
+                filter != null ? " (filtered)" : "");
             return result;
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse items from list '" + listTitle + "': " + e.getMessage(), e);

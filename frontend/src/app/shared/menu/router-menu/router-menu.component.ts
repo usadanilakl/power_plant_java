@@ -83,10 +83,6 @@ export class RouterMenuComponent {
     this.dropdownTimeout = setTimeout(() => this.hoveredGroup.set(null), 150);
   }
 
-  keepDropdown(): void {
-    clearTimeout(this.dropdownTimeout);
-  }
-
   closeDropdown(): void {
     this.hoveredGroup.set(null);
   }

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -122,6 +122,25 @@ import { SyncEntityDiffComponent } from '../sync-entity-diff/sync-entity-diff.co
                 </mat-panel-title>
                 <mat-panel-description>Entities with mismatches across Local / Hub / SharePoint</mat-panel-description>
               </mat-expansion-panel-header>
+              <!-- Bulk issue resolution buttons -->
+              <div class="bulk-actions" style="margin-bottom: 8px;">
+                @if (hubOnlyIssueIds().length > 0) {
+                  <button mat-raised-button color="accent" (click)="bulkResolveIssues('hub')" [disabled]="resolving()">
+                    <mat-icon>cloud_download</mat-icon> Pull All Hub-Only ({{ hubOnlyIssueIds().length }})
+                  </button>
+                }
+                @if (localOnlyIssueIds().length > 0) {
+                  <button mat-raised-button color="primary" (click)="bulkResolveIssues('local')" [disabled]="resolving()">
+                    <mat-icon>cloud_upload</mat-icon> Push All Local-Only ({{ localOnlyIssueIds().length }})
+                  </button>
+                }
+                @if (staleIssueIds().length > 0) {
+                  <button mat-raised-button (click)="bulkResolveIssues('hub')" [disabled]="resolving()"
+                          style="background: rgba(255,152,0,0.15); color: #ffb74d;">
+                    <mat-icon>sync</mat-icon> Accept Hub for All Stale ({{ staleIssueIds().length }})
+                  </button>
+                }
+              </div>
               <table mat-table [dataSource]="verifyResult()!.issues" class="verify-table">
                 <ng-container matColumnDef="entityId">
                   <th mat-header-cell *matHeaderCellDef>ID</th>
@@ -344,6 +363,25 @@ export class SyncCompareComponent implements OnInit {
   staleColumns = ['entityId', 'localNewer', 'action'];
   verifyColumns: string[] = [];
 
+  // Computed: filter verification issues by status for bulk buttons
+  hubOnlyIssueIds = computed(() => {
+    const issues = this.verifyResult()?.issues ?? [];
+    return issues.filter(i => i.entityId != null && (i.overallStatus === 'HUB_ONLY' || i.overallStatus === 'STALE_LOCAL'))
+      .map(i => i.entityId!);
+  });
+
+  localOnlyIssueIds = computed(() => {
+    const issues = this.verifyResult()?.issues ?? [];
+    return issues.filter(i => i.entityId != null && (i.overallStatus === 'LOCAL_ONLY' || i.overallStatus === 'STALE_HUB'))
+      .map(i => i.entityId!);
+  });
+
+  staleIssueIds = computed(() => {
+    const issues = this.verifyResult()?.issues ?? [];
+    return issues.filter(i => i.entityId != null && (i.overallStatus === 'STALE_LOCAL' || i.overallStatus === 'STALE_HUB' || i.overallStatus === 'MISMATCH'))
+      .map(i => i.entityId!);
+  });
+
   ngOnInit() {
     this.loadEntityTypes();
     this.route.queryParams.subscribe(params => {
@@ -409,13 +447,13 @@ export class SyncCompareComponent implements OnInit {
     if (issue.entityId == null) return;
     this.resolving.set(true);
     let action$;
-    if (source === 'local') action$ = this.syncCheckService.pushToHub(this.selectedType()!, issue.entityId);
-    else if (source === 'hub') action$ = this.syncCheckService.pullFromHub(this.selectedType()!, issue.entityId);
+    if (source === 'local') action$ = this.syncCheckService.executePush(this.selectedType()!, issue.entityId);
+    else if (source === 'hub') action$ = this.syncCheckService.executePull(this.selectedType()!, issue.entityId);
     else action$ = this.syncCheckService.acceptFromSp(this.selectedType()!, issue.entityId);
 
     action$.subscribe({
-      next: () => {
-        this.snackBar.open(`Accepted from ${source}`, 'OK', { duration: 3000 });
+      next: (res) => {
+        this.snackBar.open(res?.message || `Accepted from ${source}`, 'OK', { duration: 3000 });
         this.resolving.set(false);
         this.runVerification();
       },
@@ -427,36 +465,47 @@ export class SyncCompareComponent implements OnInit {
     const comp = this.comparison();
     if (!comp || !this.selectedType()) return;
     this.resolving.set(true);
-    this.syncStatusService.bulkResolve({
-      entityType: this.selectedType()!,
-      resolution: 'ACCEPT_REMOTE',
-      entityIds: comp.serverOnly
-    }).subscribe({
-      next: res => {
-        this.snackBar.open(`Resolved ${res?.resolved ?? 0} entities`, 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.compare(this.selectedType()!);
-      },
-      error: () => this.resolving.set(false)
-    });
+
+    // Use dependency-aware push for each server-only entity sequentially
+    const ids = [...comp.serverOnly];
+    this.bulkExecute(ids, 'pull', 0, 0);
   }
 
   bulkAcceptLocal() {
     const comp = this.comparison();
     if (!comp || !this.selectedType()) return;
     this.resolving.set(true);
-    this.syncStatusService.bulkResolve({
-      entityType: this.selectedType()!,
-      resolution: 'ACCEPT_LOCAL',
-      entityIds: comp.localOnly
-    }).subscribe({
-      next: res => {
-        this.snackBar.open(`Pushed ${res?.resolved ?? 0} entities`, 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.compare(this.selectedType()!);
-      },
-      error: () => this.resolving.set(false)
+
+    const ids = [...comp.localOnly];
+    this.bulkExecute(ids, 'push', 0, 0);
+  }
+
+  /** Process bulk resolve sequentially to respect dependency ordering */
+  private bulkExecute(ids: number[], direction: 'push' | 'pull', index: number, successCount: number) {
+    if (index >= ids.length) {
+      this.snackBar.open(`${direction === 'push' ? 'Pushed' : 'Pulled'} ${successCount}/${ids.length} entities`, 'OK', { duration: 3000 });
+      this.resolving.set(false);
+      this.compare(this.selectedType()!);
+      return;
+    }
+
+    const entityId = ids[index];
+    const action$ = direction === 'push'
+      ? this.syncCheckService.executePush(this.selectedType()!, entityId)
+      : this.syncCheckService.executePull(this.selectedType()!, entityId);
+
+    action$.subscribe({
+      next: () => this.bulkExecute(ids, direction, index + 1, successCount + 1),
+      error: () => this.bulkExecute(ids, direction, index + 1, successCount)
     });
+  }
+
+  bulkResolveIssues(direction: 'local' | 'hub') {
+    const ids = direction === 'hub' ? [...this.hubOnlyIssueIds(), ...this.staleIssueIds().filter(id => !this.hubOnlyIssueIds().includes(id))]
+                                    : this.localOnlyIssueIds();
+    if (ids.length === 0) return;
+    this.resolving.set(true);
+    this.bulkExecute(ids, direction === 'hub' ? 'pull' : 'push', 0, 0);
   }
 
   onResolved() {

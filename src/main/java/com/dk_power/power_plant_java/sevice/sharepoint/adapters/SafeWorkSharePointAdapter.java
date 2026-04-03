@@ -32,6 +32,20 @@ public class SafeWorkSharePointAdapter {
         return spService.executeWithFallback(this::certGetAll, this::paGetAll, "getAll SafeWorks");
     }
 
+    public List<SafeWorkDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll,  // PA fallback doesn't support filtering
+                "getModifiedSince SafeWorks"
+        );
+    }
+
+    private List<SafeWorkDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public String create(SafeWorkDto dto) {
         return spService.executeWithFallback(() -> certCreate(dto), () -> paCreate(dto), "create SafeWork");
     }

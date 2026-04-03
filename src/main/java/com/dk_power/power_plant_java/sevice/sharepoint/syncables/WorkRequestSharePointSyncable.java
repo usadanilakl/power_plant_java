@@ -71,11 +71,19 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     public String getEntityTypeName() { return ENTITY_TYPE; }
 
     @Override
+    public long getSyncIntervalMs() { return 30_000; } // 30 seconds — WRs need frequent polling
+
+    @Override
     public String getSharePointListTitle() { return LIST_TITLE; }
 
     @Override
     public List<WorkRequestDto> fetchAllFromSharePoint() {
         return wrAdapter.getAll();
+    }
+
+    @Override
+    public List<WorkRequestDto> fetchModifiedSince(Instant since) {
+        return wrAdapter.getModifiedSince(since);
     }
 
     @Override
@@ -188,41 +196,55 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
     @Override
     public void applySelectiveFields(Object entityObj, WorkRequestDto dto, Set<String> fields) {
         WorkRequest entity = (WorkRequest) entityObj;
-        if (fields.contains("workScope")) entity.setWorkScope(dto.getWorkScope());
-        if (fields.contains("dateOfWorkToBePerformed")) entity.setDateOfWorkToBePerformed(dto.getDateOfWorkToBePerformed());
-        if (fields.contains("timeOfWorkToBePerformed")) entity.setTimeOfWorkToBePerformed(dto.getTimeOfWorkToBePerformed());
-        if (fields.contains("requestedBy")) entity.setRequestedBy(dto.getRequestedBy());
-        if (fields.contains("company")) entity.setCompany(dto.getCompany());
-        if (fields.contains("location")) entity.setLocation(dto.getLocation());
-        if (fields.contains("affectedEquipment")) entity.setAffectedEquipment(dto.getAffectedEquipment());
-        if (fields.contains("isLotoRequired")) entity.setIsLotoRequired(dto.getIsLotoRequired());
-        if (fields.contains("isHotWorkRequired")) entity.setIsHotWorkRequired(dto.getIsHotWorkRequired());
-        if (fields.contains("isConfinedSpaceEntryRequired")) entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
-        if (fields.contains("foreman")) entity.setForeman(dto.getForeman());
-        if (fields.contains("fireWatch")) entity.setFireWatch(dto.getFireWatch());
-        if (fields.contains("space")) entity.setSpace(dto.getSpace());
-        if (fields.contains("submitterName")) entity.setSubmitterName(dto.getSubmitterName());
-        if (fields.contains("submitterEmail")) entity.setSubmitterEmail(dto.getSubmitterEmail());
-        if (fields.contains("submitterPhone")) entity.setSubmitterPhone(dto.getSubmitterPhone());
-        if (fields.contains("submitterCompany")) entity.setSubmitterCompany(dto.getSubmitterCompany());
-        if (fields.contains("localUuid")) entity.setLocalUuid(dto.getLocalUuid());
-        if (fields.contains("timeSubmitted")) entity.setTimeSubmitted(dto.getTimeSubmitted());
+        if (fields.contains("workScope")) setIfDifferent(entity::getWorkScope, entity::setWorkScope, dto.getWorkScope());
+        if (fields.contains("dateOfWorkToBePerformed")) setIfDifferent(entity::getDateOfWorkToBePerformed, entity::setDateOfWorkToBePerformed, dto.getDateOfWorkToBePerformed());
+        if (fields.contains("timeOfWorkToBePerformed")) setIfDifferent(entity::getTimeOfWorkToBePerformed, entity::setTimeOfWorkToBePerformed, dto.getTimeOfWorkToBePerformed());
+        if (fields.contains("requestedBy")) setIfDifferent(entity::getRequestedBy, entity::setRequestedBy, dto.getRequestedBy());
+        if (fields.contains("company")) setIfDifferent(entity::getCompany, entity::setCompany, dto.getCompany());
+        if (fields.contains("location")) setIfDifferent(entity::getLocation, entity::setLocation, dto.getLocation());
+        if (fields.contains("affectedEquipment")) setIfDifferent(entity::getAffectedEquipment, entity::setAffectedEquipment, dto.getAffectedEquipment());
+        if (fields.contains("isLotoRequired")) setIfDifferent(entity::getIsLotoRequired, entity::setIsLotoRequired, dto.getIsLotoRequired());
+        if (fields.contains("isHotWorkRequired")) setIfDifferent(entity::getIsHotWorkRequired, entity::setIsHotWorkRequired, dto.getIsHotWorkRequired());
+        if (fields.contains("isConfinedSpaceEntryRequired")) setIfDifferent(entity::getIsConfinedSpaceEntryRequired, entity::setIsConfinedSpaceEntryRequired, dto.getIsConfinedSpaceEntryRequired());
+        if (fields.contains("foreman")) setIfDifferent(entity::getForeman, entity::setForeman, dto.getForeman());
+        if (fields.contains("fireWatch")) setIfDifferent(entity::getFireWatch, entity::setFireWatch, dto.getFireWatch());
+        if (fields.contains("space")) setIfDifferent(entity::getSpace, entity::setSpace, dto.getSpace());
+        if (fields.contains("submitterName")) setIfDifferent(entity::getSubmitterName, entity::setSubmitterName, dto.getSubmitterName());
+        if (fields.contains("submitterEmail")) setIfDifferent(entity::getSubmitterEmail, entity::setSubmitterEmail, dto.getSubmitterEmail());
+        if (fields.contains("submitterPhone")) setIfDifferent(entity::getSubmitterPhone, entity::setSubmitterPhone, dto.getSubmitterPhone());
+        if (fields.contains("submitterCompany")) setIfDifferent(entity::getSubmitterCompany, entity::setSubmitterCompany, dto.getSubmitterCompany());
+        if (fields.contains("localUuid")) setIfDifferent(entity::getLocalUuid, entity::setLocalUuid, dto.getLocalUuid());
+        if (fields.contains("timeSubmitted")) setIfDifferent(entity::getTimeSubmitted, entity::setTimeSubmitted, dto.getTimeSubmitted());
         if (fields.contains("workCategory")) {
             if (dto.getWorkCategoryName() != null && !dto.getWorkCategoryName().isBlank()) {
-                entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+                String currentName = entity.getWorkCategory() != null ? entity.getWorkCategory().getName() : null;
+                if (!dto.getWorkCategoryName().equals(currentName)) {
+                    entity.setWorkCategory(valueService.createValue("Work Category", dto.getWorkCategoryName()));
+                }
             } else {
                 entity.setWorkCategory(null);
             }
         }
         if (fields.contains("workArea")) {
             if (dto.getWorkAreaName() != null && !dto.getWorkAreaName().isBlank()) {
-                workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresentOrElse(
-                    entity::setWorkArea,
-                    () -> entity.setWorkArea(null)
-                );
+                String currentName = entity.getWorkArea() != null ? entity.getWorkArea().getName() : null;
+                if (!dto.getWorkAreaName().equalsIgnoreCase(currentName)) {
+                    workAreaRepo.findFirstByNameIgnoreCase(dto.getWorkAreaName()).ifPresentOrElse(
+                        entity::setWorkArea,
+                        () -> entity.setWorkArea(null)
+                    );
+                }
             } else {
                 entity.setWorkArea(null);
             }
+        }
+    }
+
+    /** Only call the setter if the new value differs from the current one. */
+    private static <T> void setIfDifferent(java.util.function.Supplier<T> getter,
+                                            java.util.function.Consumer<T> setter, T newValue) {
+        if (!Objects.equals(getter.get(), newValue)) {
+            setter.accept(newValue);
         }
     }
 
@@ -294,7 +316,11 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[WR Syncable] spId={}: local wins ALL fields, entity unchanged, will re-check next sync", spId);
+            log.debug("[WR Syncable] spId={}: local wins ALL fields, entity unchanged", spId);
+            // Still update snapshot so we don't re-detect the same SP "changes" every 30s.
+            // Local FieldChange timestamps are preserved — if SP later updates a field,
+            // the new SP value will differ from snapshot and trigger conflict resolution again.
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return new WorkRequestSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true, false);
         }
 
@@ -303,7 +329,10 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         if (fieldsToApply.contains("status")) {
             String remoteStatus = remote.getStatus() != null ? remote.getStatus() : "Active";
-            existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+            String currentStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : null;
+            if (!remoteStatus.equalsIgnoreCase(currentStatus)) {
+                existing.setPermitStatus(valueService.createValue("Permit Status", remoteStatus));
+            }
         }
 
         workRequestRepo.save(existing);

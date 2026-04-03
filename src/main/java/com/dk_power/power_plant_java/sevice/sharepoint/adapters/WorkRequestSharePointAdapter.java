@@ -38,6 +38,20 @@ public class WorkRequestSharePointAdapter {
         );
     }
 
+    public List<WorkRequestDto> getModifiedSince(Instant since) {
+        String filter = "Modified gt datetime'" + since.toString() + "'";
+        return spService.executeWithFallback(
+                () -> certGetFiltered(filter),
+                this::paGetAll, // PA fallback doesn't support filtering
+                "getModifiedSince WorkRequests"
+        );
+    }
+
+    private List<WorkRequestDto> certGetFiltered(String filter) {
+        List<JsonNode> items = certAccess.getListItems(LIST_TITLE, filter);
+        return items.stream().map(this::mapFromSharePoint).collect(Collectors.toList());
+    }
+
     public String create(WorkRequestDto dto) {
         return spService.executeWithFallback(
                 () -> certCreate(dto),

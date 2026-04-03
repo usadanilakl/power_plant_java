@@ -92,7 +92,7 @@ public class EmailPollingService {
     /**
      * Processes a single incoming email message.
      * First checks if it's a PWA fallback submission email (auto-processes it).
-     * Otherwise checks for duplicates, matches to entity, and saves if matched.
+     * Otherwise checks for duplicates, filters for relevance, matches to entity, and saves if matched.
      */
     private void processIncomingMessage(GraphEmailMessage message) {
         if (message == null || message.getId() == null) {
@@ -111,6 +111,13 @@ public class EmailPollingService {
             return; // Successfully auto-processed (or duplicate detected)
         }
 
+        // Filter: only process emails that are relevant to our system
+        if (!isRelevantEmail(message)) {
+            log.debug("[EmailPoll] Skipping irrelevant email from '{}' with subject: {}",
+                message.getSenderEmail(), message.getSubject());
+            return;
+        }
+
         // Try to match to an entity
         Optional<EmailResponseMatcherService.CorrespondenceMatch> match =
             matcherService.matchEmailToEntity(message);
@@ -123,6 +130,33 @@ public class EmailPollingService {
                 message.getSubject(), message.getSenderEmail());
             saveUnmatchedCorrespondence(message);
         }
+    }
+
+    /**
+     * Determines if an incoming email is relevant to our system.
+     * An email is relevant if:
+     * 1. Its conversationId matches a known conversation we initiated, OR
+     * 2. Its subject contains our outbound email markers ([SP:, [PWA:,
+     *    "Additional Information Required", "Permit Package")
+     */
+    private boolean isRelevantEmail(GraphEmailMessage message) {
+        // Check 1: conversation ID matches a known thread we started
+        if (message.getConversationId() != null && !message.getConversationId().isEmpty()
+                && correspondenceRepo.existsByConversationId(message.getConversationId())) {
+            return true;
+        }
+
+        // Check 2: subject contains our outbound email markers
+        String subject = message.getSubject();
+        if (subject != null && !subject.isEmpty()) {
+            String subjectLower = subject.toLowerCase();
+            return subjectLower.contains("[sp:")
+                || subjectLower.contains("[pwa:")
+                || subjectLower.contains("additional information required")
+                || subjectLower.contains("permit package");
+        }
+
+        return false;
     }
 
     /**

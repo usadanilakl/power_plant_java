@@ -25,6 +25,8 @@ public class LogDiagnosticsService {
         String level,
         String text,
         String sourceFile,
+        String subsystem,
+        String eventCode,
         String requestId,
         String syncRunId,
         String machineId
@@ -35,6 +37,8 @@ public class LogDiagnosticsService {
             .filter(event -> event.timestamp() != null && !event.timestamp().isBefore(cutoff))
             .filter(event -> matchesLevel(event, level))
             .filter(event -> matchesSource(event, sourceFile))
+            .filter(event -> matchesSubsystem(event, subsystem))
+            .filter(event -> matchesEventCode(event, eventCode))
             .filter(event -> matchesText(event, text))
             .filter(event -> matchesValue(event.requestId(), requestId))
             .filter(event -> matchesValue(event.syncRunId(), syncRunId))
@@ -43,7 +47,7 @@ public class LogDiagnosticsService {
             .toList();
 
         int total = filtered.size();
-        int cappedLimit = Math.max(1, Math.min(limit, 500));
+        int cappedLimit = Math.max(1, Math.min(limit, 5000));
 
         int infoCount = 0, warnCount = 0, errorCount = 0;
         for (LogDiagnosticsEventDto event : filtered) {
@@ -54,10 +58,26 @@ public class LogDiagnosticsService {
             }
         }
 
+        List<String> subsystems = filtered.stream()
+            .map(LogDiagnosticsEventDto::subsystem)
+            .filter(s -> s != null && !s.isBlank())
+            .distinct()
+            .sorted()
+            .toList();
+
+        List<String> eventCodes = filtered.stream()
+            .map(LogDiagnosticsEventDto::eventCode)
+            .filter(c -> c != null && !c.isBlank())
+            .distinct()
+            .sorted()
+            .toList();
+
         return new LogDiagnosticsEventsResponseDto(
             total,
             new LogDiagnosticsSummaryDto(total, infoCount, warnCount, errorCount),
             fileService.getSourceFileNames(),
+            subsystems,
+            eventCodes,
             filtered.stream().limit(cappedLimit).toList()
         );
     }
@@ -70,6 +90,23 @@ public class LogDiagnosticsService {
     private boolean matchesSource(LogDiagnosticsEventDto event, String sourceFile) {
         return sourceFile == null || sourceFile.isBlank()
             || sourceFile.equalsIgnoreCase(event.sourceFile());
+    }
+
+    private boolean matchesSubsystem(LogDiagnosticsEventDto event, String subsystem) {
+        return subsystem == null || subsystem.isBlank()
+            || subsystem.equalsIgnoreCase(event.subsystem());
+    }
+
+    private boolean matchesEventCode(LogDiagnosticsEventDto event, String eventCode) {
+        if (eventCode == null || eventCode.isBlank()) {
+            return true;
+        }
+        String actual = event.eventCode();
+        if (actual == null) {
+            return false;
+        }
+        String needle = eventCode.toLowerCase(Locale.ROOT);
+        return actual.toLowerCase(Locale.ROOT).contains(needle);
     }
 
     private boolean matchesValue(String actual, String expected) {

@@ -7,7 +7,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { EntitySyncCheckService, EntitySyncStatus } from '../../services/sync/entity-sync-check.service';
+import { EntitySyncCheckService, EntitySyncStatus, PushPullPreview } from '../../services/sync/entity-sync-check.service';
 import { FieldChange } from '../../services/sync-status.service';
 
 @Component({
@@ -241,26 +241,70 @@ export class EntitySyncCheckComponent implements OnInit, OnChanges {
 
   pull() {
     this.resolving.set(true);
-    this.syncCheckService.pullFromHub(this.entityType, this.entityId).subscribe({
-      next: () => {
-        this.snackBar.open('Pulled from hub', 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.refresh();
+    // Preview first to check for dependencies
+    this.syncCheckService.previewPull(this.entityType, this.entityId).subscribe({
+      next: preview => {
+        if (preview && preview.totalCount > 1) {
+          const summary = this.formatPreviewSummary(preview);
+          if (!confirm(`Pull will include ${preview.totalCount} entities:\n${summary}\n\nProceed?`)) {
+            this.resolving.set(false);
+            return;
+          }
+        }
+        this.syncCheckService.executePull(this.entityType, this.entityId).subscribe({
+          next: (res) => {
+            this.snackBar.open(res?.message || 'Pulled from hub', 'OK', { duration: 3000 });
+            this.resolving.set(false);
+            this.refresh();
+          },
+          error: () => this.resolving.set(false)
+        });
       },
-      error: () => this.resolving.set(false)
+      error: () => {
+        // Fallback to simple pull if preview fails
+        this.syncCheckService.pullFromHub(this.entityType, this.entityId).subscribe({
+          next: () => { this.snackBar.open('Pulled from hub', 'OK', { duration: 3000 }); this.resolving.set(false); this.refresh(); },
+          error: () => this.resolving.set(false)
+        });
+      }
     });
   }
 
   push() {
     this.resolving.set(true);
-    this.syncCheckService.pushToHub(this.entityType, this.entityId).subscribe({
-      next: () => {
-        this.snackBar.open('Pushed to hub', 'OK', { duration: 3000 });
-        this.resolving.set(false);
-        this.refresh();
+    // Preview first to check for dependencies
+    this.syncCheckService.previewPush(this.entityType, this.entityId).subscribe({
+      next: preview => {
+        if (preview && preview.totalCount > 1) {
+          const summary = this.formatPreviewSummary(preview);
+          if (!confirm(`Push will include ${preview.totalCount} entities:\n${summary}\n\nProceed?`)) {
+            this.resolving.set(false);
+            return;
+          }
+        }
+        this.syncCheckService.executePush(this.entityType, this.entityId).subscribe({
+          next: (res) => {
+            this.snackBar.open(res?.message || 'Pushed to hub', 'OK', { duration: 3000 });
+            this.resolving.set(false);
+            this.refresh();
+          },
+          error: () => this.resolving.set(false)
+        });
       },
-      error: () => this.resolving.set(false)
+      error: () => {
+        // Fallback to simple push if preview fails
+        this.syncCheckService.pushToHub(this.entityType, this.entityId).subscribe({
+          next: () => { this.snackBar.open('Pushed to hub', 'OK', { duration: 3000 }); this.resolving.set(false); this.refresh(); },
+          error: () => this.resolving.set(false)
+        });
+      }
     });
+  }
+
+  private formatPreviewSummary(preview: PushPullPreview): string {
+    return Object.entries(preview.countByType)
+      .map(([type, count]) => `  ${type}: ${count}`)
+      .join('\n');
   }
 
   loadHistory() {

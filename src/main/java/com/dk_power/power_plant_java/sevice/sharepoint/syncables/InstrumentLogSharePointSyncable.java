@@ -58,6 +58,11 @@ public class InstrumentLogSharePointSyncable implements SharePointSyncable<Instr
     }
 
     @Override
+    public List<InstrumentLogDto> fetchModifiedSince(Instant since) {
+        return logAdapter.getModifiedSince(since);
+    }
+
+    @Override
     public EntitySyncOutcome processRemoteItem(InstrumentLogDto remote, SyncResult result) {
         if (remote.getSharepointId() == null || remote.getSharepointId().isEmpty()) {
             result.incrementSkipped();
@@ -186,6 +191,7 @@ public class InstrumentLogSharePointSyncable implements SharePointSyncable<Instr
         Set<String> fieldsToApply = fieldMergeService.resolveConflicts(
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
         if (fieldsToApply.isEmpty()) {
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return new InstrumentLogSyncDecision(EntitySyncOutcome.SKIPPED, existing.getId(), true);
         }
 

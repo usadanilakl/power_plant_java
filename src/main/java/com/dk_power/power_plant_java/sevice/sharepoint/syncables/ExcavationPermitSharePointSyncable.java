@@ -65,6 +65,11 @@ public class ExcavationPermitSharePointSyncable implements SharePointSyncable<Ex
     }
 
     @Override
+    public List<ExcavationPermitDto> fetchModifiedSince(Instant since) {
+        return excAdapter.getModifiedSince(since);
+    }
+
+    @Override
     @Transactional
     public EntitySyncOutcome processRemoteItem(ExcavationPermitDto remote, SyncResult result) {
         if (remote.getSharepointId() == null) {
@@ -127,7 +132,8 @@ public class ExcavationPermitSharePointSyncable implements SharePointSyncable<Ex
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[EXC Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[EXC Syncable] spId={}: local wins ALL fields — entity unchanged, snapshot updated", spId);
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return EntitySyncOutcome.SKIPPED;
         }
 

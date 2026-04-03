@@ -67,6 +67,11 @@ public class VentingPermitSharePointSyncable implements SharePointSyncable<Venti
     }
 
     @Override
+    public List<VentingPermitDto> fetchModifiedSince(Instant since) {
+        return ventAdapter.getModifiedSince(since);
+    }
+
+    @Override
     @Transactional
     public EntitySyncOutcome processRemoteItem(VentingPermitDto remote, SyncResult result) {
         if (remote.getSharepointId() == null) {
@@ -131,7 +136,8 @@ public class VentingPermitSharePointSyncable implements SharePointSyncable<Venti
             ENTITY_TYPE, existing.getId(), FIELD_MAPPING, spChangedColumns, spModified);
 
         if (fieldsToApply.isEmpty()) {
-            log.debug("[VENT Syncable] spId={}: local wins ALL fields — entity unchanged, will re-check next sync", spId);
+            log.debug("[VENT Syncable] spId={}: local wins ALL fields — entity unchanged, snapshot updated", spId);
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
             return EntitySyncOutcome.SKIPPED;
         }
 

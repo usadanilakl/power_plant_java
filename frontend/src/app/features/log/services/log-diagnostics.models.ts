@@ -35,5 +35,7 @@ export interface LogEventsResponse {
   totalMatched: number;
   summary: LogSummary;
   sourceFiles: string[];
+  subsystems: string[];
+  eventCodes: string[];
   events: LogEvent[];
 }

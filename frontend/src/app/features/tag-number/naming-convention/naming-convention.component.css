@@ -589,135 +589,135 @@
 }
 
 /* Dark mode support */
-:host-context(.dark-mode) .naming-convention {
+:host-context(.dark-theme) .naming-convention {
   background-color: var(--card-bg-dark, #1e1e1e);
   border-color: var(--border-color-dark, #404040);
 }
 
-:host-context(.dark-mode) .section-title {
+:host-context(.dark-theme) .section-title {
   color: var(--text-primary-dark, #f0f0f0);
 }
 
-:host-context(.dark-mode) .tab-navigation {
+:host-context(.dark-theme) .tab-navigation {
   background: #2a2a2a;
 }
 
-:host-context(.dark-mode) .tab-btn {
+:host-context(.dark-theme) .tab-btn {
   color: #aaa;
 }
 
-:host-context(.dark-mode) .tab-btn.active {
+:host-context(.dark-theme) .tab-btn.active {
   background: #3a3a3a;
   color: #64b5f6;
 }
 
-:host-context(.dark-mode) .flow-chart {
+:host-context(.dark-theme) .flow-chart {
   background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
 }
 
-:host-context(.dark-mode) .flow-step {
+:host-context(.dark-theme) .flow-step {
   background: #3a3a3a;
 }
 
-:host-context(.dark-mode) .flow-title {
+:host-context(.dark-theme) .flow-title {
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .name-builder {
+:host-context(.dark-theme) .name-builder {
   background: linear-gradient(135deg, #1a3a4a 0%, #1a2a3a 100%);
   border-color: #2a4a5a;
 }
 
-:host-context(.dark-mode) .builder-field input {
+:host-context(.dark-theme) .builder-field input {
   background: #2a2a2a;
   border-color: #404040;
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .builder-result {
+:host-context(.dark-theme) .builder-result {
   background: #2a2a2a;
 }
 
-:host-context(.dark-mode) .example-card {
+:host-context(.dark-theme) .example-card {
   background: #2a2a2a;
   border-color: #404040;
 }
 
-:host-context(.dark-mode) .example-name {
+:host-context(.dark-theme) .example-name {
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .location-table {
+:host-context(.dark-theme) .location-table {
   background: #2a2a2a;
   border-color: #404040;
 }
 
-:host-context(.dark-mode) .table-header {
+:host-context(.dark-theme) .table-header {
   background: #333;
   border-color: #404040;
 }
 
-:host-context(.dark-mode) .table-row {
+:host-context(.dark-theme) .table-row {
   border-color: #3a3a3a;
 }
 
-:host-context(.dark-mode) .rules-header,
-:host-context(.dark-mode) .examples-label {
+:host-context(.dark-theme) .rules-header,
+:host-context(.dark-theme) .examples-label {
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .rule-card.warning {
+:host-context(.dark-theme) .rule-card.warning {
   background: #3a3020;
   color: #ffd54f;
 }
 
-:host-context(.dark-mode) .rule-card.tip {
+:host-context(.dark-theme) .rule-card.tip {
   background: #1a3a2a;
   color: #81c784;
 }
 
-:host-context(.dark-mode) .rule-card.info {
+:host-context(.dark-theme) .rule-card.info {
   background: #1a2a3a;
   color: #64b5f6;
 }
 
-:host-context(.dark-mode) .keyword-chip {
+:host-context(.dark-theme) .keyword-chip {
   background: #3a4a5a;
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .keyword-chips.interactive .keyword-chip:hover {
+:host-context(.dark-theme) .keyword-chips.interactive .keyword-chip:hover {
   background: #4a5a6a;
 }
 
-:host-context(.dark-mode) .keyword-chips.interactive .keyword-chip.selected {
+:host-context(.dark-theme) .keyword-chips.interactive .keyword-chip.selected {
   background: #2196f3;
   color: white;
 }
 
-:host-context(.dark-mode) .field-hint {
+:host-context(.dark-theme) .field-hint {
   color: #888;
 }
 
-:host-context(.dark-mode) .main-input-field {
+:host-context(.dark-theme) .main-input-field {
   background: #2a2a2a;
   border-color: #64b5f6;
 }
 
-:host-context(.dark-mode) .main-name-input {
+:host-context(.dark-theme) .main-name-input {
   background: #3a3a3a;
   border-color: #404040;
   color: #e0e0e0;
 }
 
-:host-context(.dark-mode) .main-name-input::placeholder {
+:host-context(.dark-theme) .main-name-input::placeholder {
   color: #888;
 }
 
-:host-context(.dark-mode) .clear-btn {
+:host-context(.dark-theme) .clear-btn {
   background: #c0392b;
 }
 
-:host-context(.dark-mode) .clear-btn:hover {
+:host-context(.dark-theme) .clear-btn:hover {
   background: #a93226;
 }
