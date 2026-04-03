@@ -169,7 +169,14 @@ public class WorkAreaGitHubPublisher {
     }
 
     private String buildCategoriesJson() throws IOException {
-        List<com.dk_power.power_plant_java.entities.categories.Value> categories = valueService.getValuesByCategory("Work Category");
+        List<com.dk_power.power_plant_java.entities.categories.Value> categories;
+        try {
+            categories = valueService.getValuesByCategory("Work Category");
+        } catch (RuntimeException e) {
+            // Category may not exist yet on fresh DB (seeding in progress) — return empty array
+            log.debug("[PWA Publisher] Work Category not found yet, returning empty list");
+            categories = List.of();
+        }
         List<Map<String, Object>> result = categories.stream()
                 .map(cat -> Map.<String, Object>of("id", cat.getId(), "name", cat.getName() != null ? cat.getName() : ""))
                 .collect(Collectors.toList());

@@ -16,16 +16,27 @@ export const rendererAppName = 'renderer';
 export const electronAppName = 'electron-manager';
 
 // Spring Boot profile — controls which database file and uploads dir are used.
-// Must match the profile passed to Spring Boot via --spring.profiles.active.
+// Default profile used when no device config exists. Overridden by DeviceConfig.springProfile.
 // Profile → database name / uploads dir mapping (mirrors application-{profile}.properties):
 //   prod → proddb / uploads-prod
 //   test → testdb / uploads-test
 //   dev  → devdb  / uploads
 export const SPRING_PROFILE = 'prod';
 
-const PROFILE_DB_MAP: Record<string, string> = { prod: 'proddb', test: 'testdb', dev: 'devdb' };
-const PROFILE_UPLOADS_MAP: Record<string, string> = { prod: 'uploads-prod', test: 'uploads-test', dev: 'uploads' };
+export const PROFILE_DB_MAP: Record<string, string> = { prod: 'proddb', test: 'testdb', dev: 'devdb' };
+export const PROFILE_UPLOADS_MAP: Record<string, string> = { prod: 'uploads-prod', test: 'uploads-test', dev: 'uploads' };
 
+/** Resolve DB name for the given profile (falls back to proddb) */
+export function getDbNameForProfile(profile?: string): string {
+  return PROFILE_DB_MAP[profile || SPRING_PROFILE] || 'proddb';
+}
+
+/** Resolve uploads dir for the given profile (falls back to uploads-prod) */
+export function getUploadsDirForProfile(profile?: string): string {
+  return PROFILE_UPLOADS_MAP[profile || SPRING_PROFILE] || 'uploads-prod';
+}
+
+// Legacy constants — resolve for default profile
 export const SPRING_DB_NAME = PROFILE_DB_MAP[SPRING_PROFILE] || 'proddb';
 export const SPRING_UPLOADS_DIR = PROFILE_UPLOADS_MAP[SPRING_PROFILE] || 'uploads';
 

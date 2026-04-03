@@ -32,10 +32,23 @@ public class TestCleanupConfig {
      */
     public static void runCleanup() {
         // First check if test profile is active
-        Properties mainProps = loadProperties("application.properties");
-        String activeProfile = mainProps.getProperty("spring.profiles.active", "");
+        // CLI arg (--spring.profiles.active=test) overrides properties file,
+        // so check system property first, then fall back to properties file.
+        String activeProfile = System.getProperty("spring.profiles.active");
+        if (activeProfile == null || activeProfile.isEmpty()) {
+            Properties mainProps = loadProperties("application.properties");
+            activeProfile = mainProps.getProperty("spring.profiles.active", "");
+        }
 
-        if (!"test".equalsIgnoreCase(activeProfile)) {
+        // Check if "test" is among the active profiles (could be "test,hub,server")
+        boolean isTestActive = false;
+        for (String profile : activeProfile.split(",")) {
+            if ("test".equalsIgnoreCase(profile.trim())) {
+                isTestActive = true;
+                break;
+            }
+        }
+        if (!isTestActive) {
             logger.info("Test profile is not active (current: {}). Skipping test cleanup.", activeProfile);
             return;
         }

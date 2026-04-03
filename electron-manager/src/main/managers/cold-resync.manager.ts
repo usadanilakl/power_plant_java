@@ -12,8 +12,9 @@ import * as path from 'path';
 import * as http from 'http';
 import AdmZip from 'adm-zip';
 import { ColdResyncProgress, IpcResult } from '../../shared/types';
-import { DEFAULT_SPRING_BOOT_CONFIG, SPRING_DB_NAME, SPRING_UPLOADS_DIR } from '../constants';
+import { DEFAULT_SPRING_BOOT_CONFIG, getDbNameForProfile, getUploadsDirForProfile } from '../constants';
 import { getWorkingDir } from '../paths';
+import { DeviceConfigManager } from './device-config.manager';
 
 const SYNC_STATUS_FILE = 'sync-status.json';
 
@@ -29,12 +30,15 @@ export class ColdResyncManager {
   private dbDir: string;
   private dbPath: string;
   private uploadsDir: string;
+  private dbName: string;
 
-  constructor() {
+  constructor(deviceConfigManager?: DeviceConfigManager) {
     this.workingDir = getWorkingDir();
+    const profile = deviceConfigManager?.getConfig()?.springProfile;
+    this.dbName = getDbNameForProfile(profile);
     this.dbDir = path.join(this.workingDir, 'db');
-    this.dbPath = path.join(this.dbDir, `${SPRING_DB_NAME}.mv.db`);
-    this.uploadsDir = path.join(this.workingDir, SPRING_UPLOADS_DIR);
+    this.dbPath = path.join(this.dbDir, `${this.dbName}.mv.db`);
+    this.uploadsDir = path.join(this.workingDir, getUploadsDirForProfile(profile));
     console.log(`ColdResyncManager: workingDir=${this.workingDir} dbPath=${this.dbPath} uploadsDir=${this.uploadsDir}`);
   }
 
@@ -258,7 +262,7 @@ export class ColdResyncManager {
     }
 
     // Extract using extractEntryTo — safer for large files than getData() which buffers everything
-    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, `${SPRING_DB_NAME}.mv.db`);
+    zip.extractEntryTo(dbEntry, this.dbDir, false, true, false, `${this.dbName}.mv.db`);
 
     // Verify extraction succeeded
     if (!fs.existsSync(this.dbPath)) {

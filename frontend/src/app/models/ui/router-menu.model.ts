@@ -7,6 +7,8 @@ export interface RouterMenuItem {
     guideMessage?: string;
     requiresFullAccess?: boolean;
     separator?: boolean;
+    /** Only visible when test mode is enabled on backend */
+    testOnly?: boolean;
 }
 
 export interface RouterMenuGroup {
@@ -124,7 +126,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/sync', label: 'Sync Dashboard', icon: 'sync', iconColor: '#42A5F5' },
             { route: '/full-sync-to-server', label: 'Full Sync to Server', icon: 'cloud_upload', iconColor: '#26A69A' },
             { route: '/admin', label: 'Admin', icon: 'settings', iconColor: '#78909C', separator: true },
-            { route: '/admin/work-category-profiles', label: 'Work Category Hazards', icon: 'category', iconColor: '#FF9800' }
+            { route: '/admin/work-category-profiles', label: 'Work Category Hazards', icon: 'category', iconColor: '#FF9800' },
+            { route: '/e2e-test', label: 'E2E Test', icon: 'science', iconColor: '#E91E63', separator: true, testOnly: true }
         ]
     }
 ];

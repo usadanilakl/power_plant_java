@@ -14,6 +14,8 @@ export interface NavigationCard {
   /** Message to show when this card is highlighted by a reactive guide */
   reactiveGuideMessage?: string;
   requiresFullAccess?: boolean;
+  /** Only visible when test mode is enabled on backend */
+  testOnly?: boolean;
 }
 
 export interface NavigationCardGroup {
@@ -132,7 +134,8 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Sync Dashboard', description: 'Monitor sync status & recovery', icon: 'sync', route: '/sync', color: '#27ae60' },
       { title: 'Full Sync to Server', description: 'Full sync to server', icon: 'cloud_upload', route: '/full-sync-to-server', color: '#2980b9' },
       { title: 'Admin', description: 'Admin settings', icon: 'admin_panel_settings', route: '/admin', color: '#c0392b' },
-      { title: 'Work Category Hazards', description: 'Configure standard hazards by work category', icon: 'category', route: '/admin/work-category-profiles', color: '#e67e22' }
+      { title: 'Work Category Hazards', description: 'Configure standard hazards by work category', icon: 'category', route: '/admin/work-category-profiles', color: '#e67e22' },
+      { title: 'E2E Test', description: 'Run end-to-end permit flow tests', icon: 'science', route: '/e2e-test', color: '#E91E63', testOnly: true }
     ]
   }
 ];

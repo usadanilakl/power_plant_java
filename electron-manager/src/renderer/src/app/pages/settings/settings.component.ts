@@ -28,6 +28,7 @@ import {
             <span class="device-id">{{ deviceConfig.machineId }}</span>
           </div>
           <div class="device-meta">
+            Profile: <strong>{{ deviceConfig.springProfile || 'prod' }}</strong> &middot;
             Configured {{ deviceConfig.configuredAt | date:'medium' }}
           </div>
           <button class="btn btn-secondary btn-sm" (click)="showSetup = true" *ngIf="!showSetup">
@@ -49,6 +50,16 @@ import {
           <div class="form-group">
             <label class="form-label">Sync Server URL</label>
             <input class="form-input" [(ngModel)]="setupServerUrl" placeholder="http://10.10.190.122:8090" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Spring Profile</label>
+            <select class="form-input" [(ngModel)]="setupProfile">
+              <option value="prod">prod (production database)</option>
+              <option value="test">test (test database, E2E test UI enabled)</option>
+              <option value="dev">dev (development database)</option>
+            </select>
+            <span class="form-hint">Controls which database and features are active. Requires relaunch.</span>
           </div>
 
           <div class="form-actions">
@@ -454,6 +465,7 @@ export class SettingsComponent implements OnInit {
   // Setup form
   setupName = '';
   setupServerUrl = 'http://10.10.190.122:8090';
+  setupProfile = 'prod';
   setupNumber: number | null = null;
 
   // Server check
@@ -481,6 +493,7 @@ export class SettingsComponent implements OnInit {
       this.deviceConfig = result.data;
       this.setupName = this.deviceConfig.deviceName;
       this.setupServerUrl = this.deviceConfig.syncServerUrl || this.setupServerUrl;
+      this.setupProfile = this.deviceConfig.springProfile || 'prod';
     }
   }
 
@@ -529,6 +542,7 @@ export class SettingsComponent implements OnInit {
       const config: DeviceConfig = {
         ...result.data,
         syncServerUrl: this.setupServerUrl,
+        springProfile: this.setupProfile,
         configuredAt: new Date().toISOString()
       };
       const saveResult = await this.electronService.saveDeviceConfig(config);
@@ -560,6 +574,7 @@ export class SettingsComponent implements OnInit {
       deviceName: device.deviceName,
       machineId: device.machineId,
       syncServerUrl: this.setupServerUrl,
+      springProfile: this.setupProfile,
       configuredAt: new Date().toISOString()
     };
 
@@ -589,6 +604,7 @@ export class SettingsComponent implements OnInit {
       deviceName: this.setupName,
       machineId,
       syncServerUrl: this.setupServerUrl,
+      springProfile: this.setupProfile,
       configuredAt: new Date().toISOString()
     };
 

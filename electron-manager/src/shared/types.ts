@@ -224,6 +224,7 @@ export interface DeviceConfig {
   machineId: string;       // "HOME-PC"
   syncServerUrl: string;   // "http://10.10.190.122:8090"
   configuredAt: string;    // ISO date
+  springProfile?: string;  // "prod" | "test" — Spring Boot profile (default: "prod")
 }
 
 export interface DeviceRegistryEntry {

@@ -7,6 +7,7 @@ import { GuideDirective } from '../../guide/guide.directive';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+import { AppConfigService } from '../../../services/app-config.service';
 
 @Component({
   selector: 'app-router-menu',
@@ -18,6 +19,8 @@ import { AuthService } from '../../../services/auth.service';
 export class RouterMenuComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
+  private appConfigService = inject(AppConfigService);
+  private isTestMode = toSignal(this.appConfigService.testMode$);
 
   menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   groupedMenu = input<GroupedRouterMenu>(GROUPED_MAIN_MENU);
@@ -35,18 +38,20 @@ export class RouterMenuComponent {
 
   private currentUser = toSignal(this.authService.currentUser$);
 
-  /** Grouped menu filtered by access level — hides groups/items requiring full access for restricted users */
+  /** Grouped menu filtered by access level and test mode — hides groups/items accordingly */
   filteredGroupedMenu = computed<GroupedRouterMenu>(() => {
     const groups = this.groupedMenu();
     const hasFullAccess = this.currentUser()?.accessLevel === 'FULL';
-
-    if (hasFullAccess) return groups;
+    const testMode = this.isTestMode();
 
     return groups
-      .filter(group => !group.requiresFullAccess)
+      .filter(group => hasFullAccess || !group.requiresFullAccess)
       .map(group => ({
         ...group,
-        items: group.items.filter(item => !item.requiresFullAccess)
+        items: group.items.filter(item =>
+          (hasFullAccess || !item.requiresFullAccess) &&
+          (!item.testOnly || testMode)
+        )
       }))
       .filter(group => group.items.length > 0);
   });

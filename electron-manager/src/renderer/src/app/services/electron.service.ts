@@ -32,6 +32,7 @@ export interface DeviceConfig {
   machineId: string;
   syncServerUrl: string;
   configuredAt: string;
+  springProfile?: string;  // "prod" | "test" | "dev" — Spring Boot profile (default: "prod")
 }
 
 export interface DeviceRegistryEntry {

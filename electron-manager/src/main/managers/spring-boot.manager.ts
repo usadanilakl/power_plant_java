@@ -106,7 +106,8 @@ export class SpringBootManager {
       console.log(`  JAR: ${jarPath}`);
 
       try {
-        const javaArgs = ['-jar', config.jar, `--spring.profiles.active=${SPRING_PROFILE}`];
+        const activeProfile = deviceConfig?.springProfile || SPRING_PROFILE;
+        const javaArgs = ['-jar', config.jar, `--spring.profiles.active=${activeProfile}`];
         console.log(`  Java args: ${javaArgs.join(' ')}`);
 
         const proc = spawn(getJavaPath(), javaArgs, {

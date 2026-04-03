@@ -1,12 +1,37 @@
-[
-  {"id": 0, "name": "Mechanical"},
-  {"id": 0, "name": "Electrical"},
-  {"id": 0, "name": "I&C"},
-  {"id": 0, "name": "Civil"},
-  {"id": 0, "name": "Scaffolding"},
-  {"id": 0, "name": "Insulation"},
-  {"id": 0, "name": "Painting"},
-  {"id": 0, "name": "Crane/Rigging"},
-  {"id": 0, "name": "Cleaning"},
-  {"id": 0, "name": "General"}
-]
+[ {
+  "id" : 2000000145,
+  "name" : "Welding / Hot Work"
+}, {
+  "id" : 2000000125,
+  "name" : "Insulation"
+}, {
+  "id" : 2000000127,
+  "name" : "Inspection"
+}, {
+  "id" : 2000000123,
+  "name" : "Scaffolding"
+}, {
+  "id" : 2000000133,
+  "name" : "Energized"
+}, {
+  "id" : 2000000135,
+  "name" : "I&C"
+}, {
+  "id" : 2000000129,
+  "name" : "Mechanical"
+}, {
+  "id" : 2000000131,
+  "name" : "Electrical"
+}, {
+  "id" : 2000000141,
+  "name" : "Civil"
+}, {
+  "id" : 2000000143,
+  "name" : "Operations"
+}, {
+  "id" : 2000000137,
+  "name" : "Rigging"
+}, {
+  "id" : 2000000139,
+  "name" : "Cleaning"
+} ]

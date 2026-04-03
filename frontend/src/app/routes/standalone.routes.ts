@@ -20,6 +20,7 @@ import { FullSyncToServerComponent } from '../features/full-sync-to-server/full-
 import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
 import { WorkCategoryProfileAdminComponent } from '../features/permit-builder/work-category-profile/work-category-profile-admin.component';
+import { E2eTestPageComponent } from '../pages/e2e-test/e2e-test-page.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -59,6 +60,8 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'full-sync-to-server', component: FullSyncToServerComponent },
   // Trash / Recycle Bin
   { path: 'trash', component: TrashComponent },
+  // E2E Test page (visible only when test.ui.enabled=true on backend)
+  { path: 'e2e-test', component: E2eTestPageComponent },
   // Redirects for old bookmarked routes
   { path: 'sync-admin/full-sync', redirectTo: 'full-sync-to-server', pathMatch: 'full' },
   { path: 'sync-resync', redirectTo: 'sync/recovery', pathMatch: 'full' }

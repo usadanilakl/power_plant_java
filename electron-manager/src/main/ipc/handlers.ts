@@ -51,7 +51,6 @@ export class IpcHandlers {
     this.webview = new WebViewManager(mainWindow);
     this.updateManager = new UpdateManager();
     this.syncStatusManager = new SyncStatusManager();
-    this.coldResyncManager = new ColdResyncManager();
     this.resourcePackManager = new ResourcePackManager();
     this.electronUpdateManager = new ElectronUpdateManager();
     this.gateLogManager = new GateLogManager();
@@ -127,6 +126,9 @@ export class IpcHandlers {
         }
       }
     );
+
+    // Must init after springBoot so we can read the device config's profile
+    this.coldResyncManager = new ColdResyncManager(this.springBoot.getDeviceConfigManager());
 
     // Intercept main-process console output and route to unified log buffer
     this.interceptConsole();
