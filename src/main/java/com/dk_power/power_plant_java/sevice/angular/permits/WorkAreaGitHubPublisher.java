@@ -60,6 +60,9 @@ public class WorkAreaGitHubPublisher {
     @Value("${files.root.path}")
     private String filesRootPath;
 
+    @Value("${test.ui.enabled:false}")
+    private boolean testMode;
+
     private static final String PLANT_MAP_MARKER = "__PLANT_MAP__";
     private final AtomicBoolean publishInProgress = new AtomicBoolean(false);
     private final AtomicBoolean publishRequested = new AtomicBoolean(false);
@@ -101,6 +104,10 @@ public class WorkAreaGitHubPublisher {
     }
 
     private void requestPublish(PublishTarget target) {
+        if (testMode) {
+            log.debug("[PWA Publisher] Skipping publish (test mode active)");
+            return;
+        }
         mergePendingTarget(target);
         if (!publishInProgress.compareAndSet(false, true)) {
             log.info("[PWA Publisher] Publish already in progress, queueing a follow-up run for {}", pendingTarget);

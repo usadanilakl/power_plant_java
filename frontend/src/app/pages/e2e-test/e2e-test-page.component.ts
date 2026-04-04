@@ -1,13 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
-import { E2eTestService } from '../../services/e2e-test.service';
+import { E2eTestService, E2eInfo } from '../../services/e2e-test.service';
 import { firstValueFrom } from 'rxjs';
 
 interface TestStep {
   name: string;
-  status: 'pending' | 'running' | 'success' | 'error';
+  status: 'pending' | 'running' | 'success' | 'error' | 'warn';
   result?: string;
   error?: string;
 }
@@ -15,7 +16,7 @@ interface TestStep {
 @Component({
   selector: 'app-e2e-test-page',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
   template: `
     <app-main-layout>
       <ng-container header>
@@ -25,10 +26,26 @@ interface TestStep {
         <div class="e2e-container">
           <div class="e2e-header">
             <h2>E2E Test Runner</h2>
+            <div class="info-bar">
+              <span class="info-tag" [class.hub]="e2eInfo?.isHub" [class.client]="!e2eInfo?.isHub">
+                {{ e2eInfo?.isHub ? 'HUB' : 'CLIENT' }}
+              </span>
+              <span class="info-item">{{ e2eInfo?.machineName }} (port {{ e2eInfo?.localPort }})</span>
+              <span class="info-item" *ngIf="!e2eInfo?.isHub">Hub: {{ e2eInfo?.syncServerUrl }}</span>
+              <span class="info-item" *ngIf="e2eInfo?.isHub && clientUrl">Client: {{ clientUrl }}</span>
+            </div>
             <div class="run-id-display">
               <span class="label">Run ID:</span>
               <code>{{ runId }}</code>
               <button class="btn btn-sm" (click)="regenerateRunId()" [disabled]="isRunning">New ID</button>
+            </div>
+            <div class="config-row" *ngIf="e2eInfo?.isHub">
+              <label class="form-label">Client URL:</label>
+              <input class="config-input" [(ngModel)]="clientUrl" placeholder="http://localhost:8082" [disabled]="isRunning" />
+            </div>
+            <div class="config-row">
+              <label class="form-label">Sync wait (seconds):</label>
+              <input class="config-input config-input-sm" type="number" [(ngModel)]="syncWaitSeconds" min="3" max="60" [disabled]="isRunning" />
             </div>
           </div>
 
@@ -45,7 +62,7 @@ interface TestStep {
                 <span class="step-number">{{ i + 1 }}</span>
                 <span class="step-name">{{ step.name }}</span>
                 <span class="step-status" [class]="step.status">
-                  {{ step.status === 'pending' ? '--' : step.status === 'running' ? 'Running...' : step.status === 'success' ? 'OK' : 'FAIL' }}
+                  {{ step.status === 'pending' ? '--' : step.status === 'running' ? 'Running...' : step.status === 'success' ? 'OK' : step.status === 'warn' ? 'WARN' : 'FAIL' }}
                 </span>
                 <button class="btn btn-sm btn-outline"
                         (click)="runSingleStep(i)"
@@ -64,7 +81,7 @@ interface TestStep {
 
           <div class="log-section">
             <h3>Execution Log</h3>
-            <div class="log-area">
+            <div class="log-area" #logArea>
               <div *ngFor="let entry of logEntries" class="log-entry" [class]="entry.level">
                 <span class="log-time">{{ entry.time }}</span>
                 <span class="log-msg">{{ entry.message }}</span>
@@ -81,12 +98,30 @@ interface TestStep {
     .e2e-container { padding: 20px; max-width: 900px; margin: 0 auto; }
     .e2e-header { margin-bottom: 20px; }
     .e2e-header h2 { color: #333; margin-bottom: 10px; }
+    .info-bar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+      padding: 8px 14px; background: #f5f5f5; border-radius: 6px; font-size: 13px;
+    }
+    .info-tag {
+      padding: 2px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; text-transform: uppercase;
+    }
+    .info-tag.hub { background: #e8f5e9; color: #2e7d32; }
+    .info-tag.client { background: #e3f2fd; color: #1565c0; }
+    .info-item { color: #555; }
     .run-id-display {
       display: flex; align-items: center; gap: 10px;
-      background: #f5f5f5; padding: 8px 14px; border-radius: 6px; font-size: 14px;
+      margin-bottom: 10px; font-size: 14px;
     }
     .run-id-display .label { font-weight: 600; color: #666; }
-    .run-id-display code { background: #fff; padding: 2px 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 13px; }
+    .run-id-display code { background: #f5f5f5; padding: 2px 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 13px; }
+    .config-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px;
+    }
+    .form-label { font-weight: 500; color: #555; white-space: nowrap; }
+    .config-input {
+      padding: 4px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 280px;
+    }
+    .config-input-sm { width: 80px; }
     .controls { display: flex; gap: 10px; margin-bottom: 20px; }
     .btn {
       padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer;
@@ -119,6 +154,7 @@ interface TestStep {
     .step-status.pending { background: #f5f5f5; color: #999; }
     .step-status.running { background: #fff3e0; color: #e65100; }
     .step-status.success { background: #e8f5e9; color: #2e7d32; }
+    .step-status.warn { background: #fff8e1; color: #f57f17; }
     .step-status.error { background: #ffebee; color: #c62828; }
     .step-result { margin-top: 8px; }
     .step-result pre {
@@ -140,17 +176,21 @@ interface TestStep {
     .log-entry.error .log-msg { color: #f44336; }
     .log-entry.success .log-msg { color: #66bb6a; }
     .log-entry.info .log-msg { color: #42a5f5; }
+    .log-entry.warn .log-msg { color: #ffa726; }
     .log-time { color: #888; flex-shrink: 0; }
     .log-msg { word-break: break-all; }
     .log-empty { color: #888; font-style: italic; }
   `]
 })
-export class E2eTestPageComponent {
+export class E2eTestPageComponent implements OnInit {
   private api = inject(E2eTestService);
 
   runId = this.generateRunId();
   isRunning = false;
   logEntries: { time: string; message: string; level: string }[] = [];
+  e2eInfo: E2eInfo | null = null;
+  clientUrl = 'http://localhost:8082';
+  syncWaitSeconds = 10;
 
   // State tracked across steps
   private createdWrId: string | null = null;
@@ -162,12 +202,21 @@ export class E2eTestPageComponent {
 
   steps: TestStep[] = [
     { name: 'Create Work Request', status: 'pending' },
-    { name: 'Create Job & Process WR into Package', status: 'pending' },
+    { name: 'Create Job from WR (+ Package)', status: 'pending' },
     { name: 'Create SafeWork Permit', status: 'pending' },
     { name: 'Create HotWork Permit', status: 'pending' },
     { name: 'Create ConfinedSpace Permit', status: 'pending' },
     { name: 'Attach All Permits to Package', status: 'pending' },
+    { name: 'Wait for Sync', status: 'pending' },
+    { name: 'Verify Sync: Local vs Remote', status: 'pending' },
   ];
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.api.getE2eInfo());
+      this.e2eInfo = res.responseData;
+    } catch { /* ignore */ }
+  }
 
   generateRunId(): string {
     const now = new Date();
@@ -195,7 +244,7 @@ export class E2eTestPageComponent {
 
   canRunStep(index: number): boolean {
     if (index === 0) return true;
-    // Steps 1+ depend on prior steps completing
+    if (index === 6 || index === 7) return this.steps[5].status === 'success';
     return this.steps[index - 1].status === 'success';
   }
 
@@ -229,9 +278,13 @@ export class E2eTestPageComponent {
         case 3: await this.stepCreateHotWork(step); break;
         case 4: await this.stepCreateConfinedSpace(step); break;
         case 5: await this.stepAttachPermits(step); break;
+        case 6: await this.stepWaitForSync(step); break;
+        case 7: await this.stepVerifySync(step); break;
       }
-      step.status = 'success';
-      this.log('success', `Step ${index + 1}: ${step.name} - OK`);
+      const currentStatus = step.status as string;
+      if (currentStatus === 'running') step.status = 'success';
+      this.log(currentStatus === 'warn' ? 'warn' : 'success',
+        `Step ${index + 1}: ${step.name} - ${currentStatus === 'warn' ? 'WARN' : 'OK'}`);
     } catch (e: any) {
       step.status = 'error';
       step.error = e?.error?.message || e?.message || JSON.stringify(e);
@@ -241,11 +294,20 @@ export class E2eTestPageComponent {
 
   // ==================== Step Implementations ====================
 
-  private async stepCreateWorkRequest(step: TestStep): Promise<void> {
+  /** Returns today in MM/dd/yyyy (WR format) */
+  private buildDateStrMmDdYyyy(): string {
     const today = new Date();
-    const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+    return `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+  }
+
+  /** Returns today in yyyy-MM-dd (permit/form format) */
+  private buildDateStr(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private async stepCreateWorkRequest(step: TestStep): Promise<void> {
     const payload = [{
-      dateOfWorkToBePerformed: dateStr,
+      dateOfWorkToBePerformed: this.buildDateStrMmDdYyyy(),
       timeOfWorkToBePerformed: '08:00',
       requestedBy: `Test User [${this.runId}]`,
       company: `Test Company [${this.runId}]`,
@@ -269,42 +331,36 @@ export class E2eTestPageComponent {
   private async stepCreateJobAndProcessWR(step: TestStep): Promise<void> {
     if (!this.createdWrId) throw new Error('No WR ID from previous step');
 
-    // Create job
-    const today = new Date();
-    const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
-    const jobPayload = {
-      workScope: `E2E Test Job [${this.runId}]`,
-      company: `Test Company [${this.runId}]`,
-      foreman: `Test Foreman [${this.runId}]`,
-      location: `Unit 2 Turbine Hall [${this.runId}]`,
-      startDate: dateStr
-    };
-
-    const jobRes = await firstValueFrom(this.api.createJob(jobPayload));
+    // Step 1: Create job from WR (creates job only, no package)
+    const jobRes = await firstValueFrom(this.api.createJobFromWorkRequest(this.createdWrId));
     const job = jobRes.responseData;
     if (!job?.id) throw new Error('No Job ID returned');
     this.createdJobId = String(job.id);
     this.log('info', `  Job created: ID=${job.id}, permitNumber=${job.permitNumber || 'N/A'}`);
 
-    // Process WR into job (creates package automatically)
+    // Step 2: Process WR into the job (creates package + attaches WR to it)
     const processRes = await firstValueFrom(this.api.processWorkRequest(this.createdJobId, this.createdWrId));
     const updatedJob = processRes.responseData;
-    const packages = updatedJob?.packages;
-    if (packages && packages.length > 0) {
-      // Find the package that was just created (last one)
-      const pkg = packages[packages.length - 1];
-      this.createdPackageId = String(pkg.id);
-      step.result = `Job ID=${this.createdJobId}, Package ID=${this.createdPackageId}, permitNumber=${pkg.permitNumber || 'N/A'}`;
+    const pkgArray = this.toArray(updatedJob?.packages);
+    if (pkgArray.length > 0) {
+      this.createdPackageId = String(pkgArray[0].id);
+      step.result = `Job ID=${this.createdJobId}, Package ID=${this.createdPackageId}, permitNumber=${pkgArray[0].permitNumber || 'N/A'}`;
     } else {
-      throw new Error('No package created from processWorkRequest');
+      // Fetch job separately in case packages weren't in the response
+      const fetchRes = await firstValueFrom(this.api.getJob(this.createdJobId));
+      const fetchedPkgs = this.toArray(fetchRes.responseData?.packages);
+      if (fetchedPkgs.length > 0) {
+        this.createdPackageId = String(fetchedPkgs[0].id);
+        step.result = `Job ID=${this.createdJobId}, Package ID=${this.createdPackageId} (fetched)`;
+      } else {
+        throw new Error('No package created from processWorkRequest');
+      }
     }
   }
 
   private async stepCreateSafeWork(step: TestStep): Promise<void> {
-    const today = new Date();
-    const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
     const payload = {
-      date: dateStr,
+      date: this.buildDateStr(),
       time: '08:00',
       companyPerson: `Test Company/Test Person [${this.runId}]`,
       location: `Unit 2 Turbine Hall [${this.runId}]`,
@@ -338,10 +394,9 @@ export class E2eTestPageComponent {
   }
 
   private async stepCreateHotWork(step: TestStep): Promise<void> {
-    const today = new Date();
-    const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
     const payload = {
-      date: dateStr,
+      date: this.buildDateStr(),
+      time: '08:00',
       foreman: `Test Foreman [${this.runId}]`,
       fireWatch: `Test FireWatch [${this.runId}]`,
       meterModel: 'MSA Altair 5X',
@@ -371,42 +426,36 @@ export class E2eTestPageComponent {
   }
 
   private async stepCreateConfinedSpace(step: TestStep): Promise<void> {
-    const today = new Date();
-    const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
     const payload = {
-      date: dateStr,
+      date: this.buildDateStr(),
       time: '08:00',
       space: `Condenser A Waterbox [${this.runId}]`,
       issuedTo: `Test Worker [${this.runId}]`,
       duration: '4 hours',
       meterModel: 'MSA Altair 5X',
       meterNum: `E2E-${this.runId.slice(-4)}`,
-      calibrated: 'Yes',
-      oxygen: '20.9',
-      lel: '0',
-      hydrogenSulfide: '0',
-      carbonMonoxide: '0',
-      ammonia: '0',
-      timeOfSample: '07:45',
-      testerInitials: 'E2E',
+      calibrated: true,
+      ventilation: false,
+      blankFlanged: false,
       workScope: `E2E ConfinedSpace Scope [${this.runId}]`,
       hazards: {
-        oxygenDeficiency: true, oxygenEnrichment: false,
-        flammableGas: false, toxicGas: true,
-        mechanicalHazard: true, electricalHazard: false,
-        thermalHazard: false, engulfment: false,
-        fallHazard: true, noiseHazard: false
+        oxygenDeficiency: true, flammableGas: false,
+        combustibleDust: false, toxicGas: true,
+        rotatingEquipment: true, electricalShock: false,
+        entrapment: false, engulfment: false,
+        heatStress: true
       },
       precautions: {
-        lockoutTagout: true, lineBreaking: false,
-        ventilation: true, monitoring: true,
-        communication: true, rescuePlan: true,
-        hotWorkPermit: false, standbyPerson: true
+        ventilation: true, blankFlanged: false,
+        doubleBlockAndBleed: false, barriers: true,
+        lockOutTagOut: 'LOTO-E2E', hotWorkPermit: 'HW-E2E'
       },
       ppe: {
-        hardHat: true, safetyGlasses: true, steelToeBoots: true,
-        gloves: true, respirator: true, harness: true,
-        lifeline: true, coveralls: false
+        faceShield: true, fcfi: false,
+        lovVoltageTools: false, explosionProofTools: false,
+        nonSparkingTools: true, fallProtection: true,
+        retrievalSystem: true, lifeline: true,
+        personalAtmosphericMeter: true, tripod: false
       }
     };
 
@@ -421,8 +470,6 @@ export class E2eTestPageComponent {
     if (!this.createdPackageId) throw new Error('No Package ID from previous steps');
 
     const payload: any = { id: Number(this.createdPackageId) };
-
-    // Attach permits by ID sets
     if (this.createdSafeWorkId) payload.safeWorkIds = [Number(this.createdSafeWorkId)];
     if (this.createdHotWorkId) payload.hotWorkIds = [Number(this.createdHotWorkId)];
     if (this.createdConfinedSpaceId) payload.confinedSpaceIds = [Number(this.createdConfinedSpaceId)];
@@ -440,7 +487,125 @@ export class E2eTestPageComponent {
     step.result = `Package ${this.createdPackageId} updated. Contains: ${counts || 'permits attached'}`;
   }
 
-  // ==================== Logging ====================
+  private async stepWaitForSync(step: TestStep): Promise<void> {
+    const seconds = this.syncWaitSeconds;
+    this.log('info', `  Waiting ${seconds}s for sync to propagate...`);
+    for (let i = seconds; i > 0; i--) {
+      step.result = `Waiting... ${i}s remaining`;
+      await this.delay(1000);
+    }
+    step.result = `Waited ${seconds}s for sync`;
+  }
+
+  private async stepVerifySync(step: TestStep): Promise<void> {
+    if (!this.createdJobId || !this.createdPackageId) {
+      throw new Error('No Job/Package ID to verify');
+    }
+
+    const remoteUrl = this.getRemoteUrl();
+    if (!remoteUrl) {
+      throw new Error('Cannot determine remote URL. Configure client URL (hub) or sync server URL (client).');
+    }
+
+    this.log('info', `  Verifying sync against: ${remoteUrl}`);
+    const diffs: string[] = [];
+
+    // Fetch local job
+    const localJobRes = await firstValueFrom(this.api.getJob(this.createdJobId));
+    const localJob = localJobRes.responseData;
+
+    // Fetch remote job
+    let remoteJob: any;
+    try {
+      const remoteJobRes = await firstValueFrom(this.api.getJobFromRemote(remoteUrl, this.createdJobId));
+      remoteJob = remoteJobRes.responseData;
+    } catch (e: any) {
+      throw new Error(`Failed to fetch job ${this.createdJobId} from ${remoteUrl}: ${e?.message || e?.status || 'unknown error'}`);
+    }
+
+    if (!remoteJob) {
+      diffs.push(`Job ${this.createdJobId}: NOT FOUND on remote`);
+    } else {
+      this.compareFields(diffs, 'Job', localJob, remoteJob,
+        ['workScope', 'company', 'foreman', 'location', 'startDate', 'permitNumber']);
+    }
+
+    // Fetch local package
+    const localPkgRes = await firstValueFrom(this.api.getPackage(this.createdPackageId));
+    const localPkg = localPkgRes.responseData;
+
+    // Fetch remote package
+    let remotePkg: any;
+    try {
+      const remotePkgRes = await firstValueFrom(this.api.getPackageFromRemote(remoteUrl, this.createdPackageId));
+      remotePkg = remotePkgRes.responseData;
+    } catch (e: any) {
+      diffs.push(`Package ${this.createdPackageId}: NOT FOUND on remote`);
+    }
+
+    if (remotePkg) {
+      this.compareFields(diffs, 'Package', localPkg, remotePkg,
+        ['companyName', 'personName', 'date', 'time', 'permitNumber']);
+
+      // Compare permit counts
+      const localSw = this.toArray(localPkg?.safeWorks).length;
+      const remoteSw = this.toArray(remotePkg?.safeWorks).length;
+      if (localSw !== remoteSw) diffs.push(`Package.safeWorks count: local=${localSw} remote=${remoteSw}`);
+
+      const localHw = this.toArray(localPkg?.hotWorks).length;
+      const remoteHw = this.toArray(remotePkg?.hotWorks).length;
+      if (localHw !== remoteHw) diffs.push(`Package.hotWorks count: local=${localHw} remote=${remoteHw}`);
+
+      const localCs = this.toArray(localPkg?.confinedSpaces).length;
+      const remoteCs = this.toArray(remotePkg?.confinedSpaces).length;
+      if (localCs !== remoteCs) diffs.push(`Package.confinedSpaces count: local=${localCs} remote=${remoteCs}`);
+
+      const localWr = this.toArray(localPkg?.workRequests).length;
+      const remoteWr = this.toArray(remotePkg?.workRequests).length;
+      if (localWr !== remoteWr) diffs.push(`Package.workRequests count: local=${localWr} remote=${remoteWr}`);
+    }
+
+    if (diffs.length === 0) {
+      step.result = `Sync verified OK. Job and Package match between local and ${remoteUrl}`;
+      step.status = 'success';
+    } else {
+      step.result = `Sync differences found:\n${diffs.map(d => '  - ' + d).join('\n')}`;
+      step.status = 'warn';
+      this.log('warn', `  ${diffs.length} difference(s) found`);
+      for (const d of diffs) this.log('warn', `    ${d}`);
+    }
+  }
+
+  // ==================== Helpers ====================
+
+  private getRemoteUrl(): string | null {
+    if (this.e2eInfo?.isHub) {
+      return this.clientUrl || null;
+    } else {
+      return this.e2eInfo?.syncServerUrl || null;
+    }
+  }
+
+  private compareFields(diffs: string[], entity: string, local: any, remote: any, fields: string[]): void {
+    for (const field of fields) {
+      const lv = local?.[field] ?? '';
+      const rv = remote?.[field] ?? '';
+      if (String(lv) !== String(rv)) {
+        diffs.push(`${entity}.${field}: local="${lv}" remote="${rv}"`);
+      }
+    }
+  }
+
+  private toArray(val: any): any[] {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'object') return Object.values(val);
+    return [];
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
   private log(level: string, message: string): void {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });

@@ -60,6 +60,8 @@ public class FieldSyncService {
     private EntityManager entityManager;
 
     // Set by applyIncomingChanges overload to skip re-saving FieldChanges.
+    // When true, also skips LWW comparison — the hub just saved these records,
+    // so they ARE the latest and should always be applied to entities.
     // Safe to use as plain field because applyChangesLock ensures single-threaded access.
     private boolean skipSaveFieldChanges = false;
 
@@ -969,6 +971,13 @@ public class FieldSyncService {
      * @return true if the incoming change should be applied
      */
     private boolean shouldApplyChange(FieldChange incoming, Map<String, FieldChange> latestChangesMap) {
+        // Hub path: FieldChanges are already saved (Phase 2), so LWW would find them
+        // and reject the incoming changes as "same timestamp, same origin." Skip LWW
+        // entirely — these records are definitionally the latest, just apply them.
+        if (skipSaveFieldChanges) {
+            return true;
+        }
+
         String key = incoming.buildChangeKey();
         FieldChange local = latestChangesMap.get(key);
 
