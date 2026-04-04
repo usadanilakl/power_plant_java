@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgDailyPermitPackageService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgJobLogService;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,8 @@ public class NgAppConfigController {
     private final SyncConfig syncConfig;
     private final NgJobLogService jobLogService;
     private final NgDailyPermitPackageService packageService;
+    private final NgFileService fileService;
+    private final NgLotoPointService lotoPointService;
 
     @Value("${test.ui.enabled:false}")
     private boolean testUiEnabled;
@@ -62,6 +66,32 @@ public class NgAppConfigController {
         }
         try {
             var dto = packageService.getDtoById(id);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Not found: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/e2e-verify/file/{id}")
+    public ResponseEntity<NgApiResponse<Object>> getFileForVerification(@PathVariable String id) {
+        if (!testUiEnabled) {
+            return ResponseEntity.status(403).body(new NgApiResponse<>(null, "E2E verification disabled"));
+        }
+        try {
+            var dto = fileService.findDtoById(Long.parseLong(id)).orElse(null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Not found: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/e2e-verify/loto-point/{id}")
+    public ResponseEntity<NgApiResponse<Object>> getLotoPointForVerification(@PathVariable String id) {
+        if (!testUiEnabled) {
+            return ResponseEntity.status(403).body(new NgApiResponse<>(null, "E2E verification disabled"));
+        }
+        try {
+            var dto = lotoPointService.findDtoById(Long.parseLong(id)).orElse(null);
             return ResponseEntity.ok(new NgApiResponse<>(dto, "ok"));
         } catch (Exception e) {
             return ResponseEntity.ok(new NgApiResponse<>(null, "Not found: " + e.getMessage()));

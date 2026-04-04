@@ -80,6 +80,54 @@ export class E2eTestService {
     );
   }
 
+  // ==================== Values (find-or-create) ====================
+
+  createValue(category: string, value: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.baseUrl}/ng/values/${encodeURIComponent(category)}/${encodeURIComponent(value)}`, {});
+  }
+
+  // ==================== Files ====================
+
+  uploadFile(file: Blob, fileName: string, fileTypeId: number, vendorId: number): Observable<SpringApiResponse<any[]>> {
+    const formData = new FormData();
+    formData.append('files', file, fileName);
+    formData.append('fileTypeId', String(fileTypeId));
+    formData.append('vendorId', String(vendorId));
+    return this.http.post<SpringApiResponse<any[]>>(`${this.baseUrl}/ng/files/multi-upload`, formData);
+  }
+
+  getFile(fileId: string): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/ng/files/${fileId}`);
+  }
+
+  // ==================== Equipment (shapes on files) ====================
+
+  createEquipment(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.put<SpringApiResponse<any>>(`${this.baseUrl}/ng/equipment`, payload);
+  }
+
+  getEquipment(equipmentId: string): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/ng/equipment/${equipmentId}`);
+  }
+
+  // ==================== LOTO Points ====================
+
+  createLotoPoint(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-points`, payload);
+  }
+
+  updateLotoPoint(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.put<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-points`, payload);
+  }
+
+  getLotoPoint(id: string): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-points/${id}`);
+  }
+
+  generateTagNumber(system: string): Observable<SpringApiResponse<string>> {
+    return this.http.get<SpringApiResponse<string>>(`${this.baseUrl}/ng/loto-points/tag-number/${encodeURIComponent(system)}`);
+  }
+
   // ==================== Cross-Instance (public e2e-verify endpoints) ====================
 
   /** Fetch a job from a remote instance via public verification endpoint */
@@ -90,5 +138,15 @@ export class E2eTestService {
   /** Fetch a package from a remote instance via public verification endpoint */
   getPackageFromRemote(remoteBaseUrl: string, packageId: string): Observable<SpringApiResponse<any>> {
     return this.http.get<SpringApiResponse<any>>(`${remoteBaseUrl}/ng/config/e2e-verify/package/${packageId}`);
+  }
+
+  /** Fetch a file from a remote instance via public verification endpoint */
+  getFileFromRemote(remoteBaseUrl: string, fileId: string): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${remoteBaseUrl}/ng/config/e2e-verify/file/${fileId}`);
+  }
+
+  /** Fetch a loto point from a remote instance via public verification endpoint */
+  getLotoPointFromRemote(remoteBaseUrl: string, lpId: string): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${remoteBaseUrl}/ng/config/e2e-verify/loto-point/${lpId}`);
   }
 }
