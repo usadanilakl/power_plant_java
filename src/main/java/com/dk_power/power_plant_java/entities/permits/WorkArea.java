@@ -53,6 +53,14 @@ public class WorkArea extends BaseAuditEntity {
     )
     private Set<LotoStandard> constantLotos = new HashSet<>();
 
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+            name = "work_area_location",
+            joinColumns = @JoinColumn(name = "work_area_id"),
+            inverseJoinColumns = @JoinColumn(name = "location_id")
+    )
+    private Set<Value> locations = new HashSet<>();
+
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public SwHazards getConstantHazards() {

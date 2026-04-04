@@ -75,6 +75,13 @@
                   [formControl]="getFormControl(field.name)">
                 </app-work-area-map-select>
               }
+              @case('equipment-picker'){
+                <label class="field-label">{{ field.label }}</label>
+                <app-equipment-picker
+                  [formControl]="getFormControl(field.name)"
+                  [workAreaId]="form.get('workAreaMap')?.value?.id ?? null">
+                </app-equipment-picker>
+              }
               @case('form-array'){
               <app-form-array-input
                 [label]="field.label"

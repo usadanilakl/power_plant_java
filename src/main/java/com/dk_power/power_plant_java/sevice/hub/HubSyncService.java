@@ -163,6 +163,13 @@ public class HubSyncService {
     }
 
     @Transactional
+    public int markAllSyncedToClient(String machineId) {
+        int marked = fieldChangeRepository.markAllChangesSyncedTo(machineId);
+        log.info("Marked all {} changes as synced to {} (full resync)", marked, machineId);
+        return marked;
+    }
+
+    @Transactional
     public int clearSelfOriginatedChanges(String machineId) {
         int cleared = fieldChangeRepository.markOwnChangesSyncedTo(machineId);
         log.info("Cleared self-originated changes for {}: {} marked as synced", machineId, cleared);

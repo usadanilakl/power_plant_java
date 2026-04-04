@@ -169,6 +169,11 @@ public class PwaWorkRequestController {
                         map.put("name", wa.getName() != null ? wa.getName() : "");
                         map.put("description", wa.getDescription() != null ? wa.getDescription() : "");
                         map.put("isConfinedSpace", hasConfinedSpaceHazards(wa));
+                        map.put("locationIds", wa.getLocations() != null
+                                ? wa.getLocations().stream()
+                                    .map(v -> v.getId())
+                                    .toList()
+                                : java.util.List.of());
                         return map;
                     })
                     .toList();

@@ -636,6 +636,70 @@ export class ServerApiService {
     }).replace(',', '');
   }
 
+  // ====================== Equipment Data (for PWA picker) ======================
+
+  getLotoPoints(): Observable<any[]> {
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/field-list-item/loto-points`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getLocations(): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string }[] }>(
+      `${this.baseUrl}/api/pwa/field-list-item/locations`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  // ====================== Field Lists ======================
+
+  getFieldListTypes(): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string }[] }>(
+      `${this.baseUrl}/api/pwa/field-list-item/list-types`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  submitFieldListItem(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/field-list-item/submit`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  updateFieldListItem(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.put<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/field-list-item/update`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  getFieldListItemStatus(localUuid: string): Observable<PwaStatusResult> {
+    return this.http.get<{ responseData: PwaStatusResult }>(
+      `${this.baseUrl}/api/pwa/field-list-item/status/${localUuid}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
   private handleError(error: HttpErrorResponse): Observable<never> {
     let errorMessage = 'Server request failed';
     if (error.error instanceof ErrorEvent) {

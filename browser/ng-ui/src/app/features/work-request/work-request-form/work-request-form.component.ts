@@ -137,6 +137,11 @@ export class WorkRequestFormComponent implements OnInit {
     } else if (locationDetail) {
       workRequest.locationOfWork = locationDetail;
     }
+    // Extract equipment tag from picker value (object → string)
+    const equipmentValue = workRequest.affectedEquipment;
+    if (equipmentValue && typeof equipmentValue === 'object' && (equipmentValue as any).tagNumber) {
+      workRequest.affectedEquipment = (equipmentValue as any).tagNumber;
+    }
     // Clean up virtual fields before saving
     delete (workRequest as any).workAreaMap;
     delete (workRequest as any).locationDetail;

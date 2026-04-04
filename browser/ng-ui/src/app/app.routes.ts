@@ -10,6 +10,8 @@ import { InstrumentPageComponent } from './pages/instrument-page/instrument-page
 import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
 import { InstrumentFormComponent } from './features/equipment/instrument/instrument-form/instrument-form.component';
 import { HomePageComponent } from './pages/home-page/home-page.component';
+import { FieldListPageComponent } from './pages/field-list-page/field-list-page.component';
+import { FieldListComponent } from './features/field-list/field-list.component';
 import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -66,6 +68,15 @@ export const routes: Routes = [
       path: 'messages',
       loadComponent: () => import('./pages/messages-page/messages-page.component').then(m => m.MessagesPageComponent),
       canActivate: [standaloneGuard, userSetupGuard, authGuard]
+    },
+    {
+      path: 'field-lists',
+      component: FieldListPageComponent,
+      canActivate: [standaloneGuard, userSetupGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: FieldListComponent }
+      ]
     },
     {
       path: 'instruments',

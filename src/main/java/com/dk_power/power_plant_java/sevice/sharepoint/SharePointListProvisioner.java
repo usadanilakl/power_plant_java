@@ -185,7 +185,13 @@ public class SharePointListProvisioner {
                 list("Instrumentation Log",
                         text("PwaId"), text("Tag Number"), lookup("InstrumentId", "Instrumentation", "ID"),
                         text("Description"), text("Status"), text("Date"), text("Time"),
-                        text("Name"), note("Comment"))
+                        text("Name"), note("Comment")),
+
+                list("Field Lists",
+                        text("PwaId"), text("ListType"), text("Status"), text("Location"),
+                        text("SpecificLocation"), note("Notes"), text("DateObserved"),
+                        text("EquipmentTag"),
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"))
         );
     }
 

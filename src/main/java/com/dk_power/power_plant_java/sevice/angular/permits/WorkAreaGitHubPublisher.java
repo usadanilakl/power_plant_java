@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.permits.WorkAreaMapper;
+import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaMapShapeRepo;
 import com.dk_power.power_plant_java.repository.permits.WorkAreaRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -35,6 +37,9 @@ public class WorkAreaGitHubPublisher {
         AREAS,
         MAP,
         CATEGORIES,
+        FIELD_LIST_TYPES,
+        LOCATIONS,
+        LOTO_POINTS,
         ALL
     }
 
@@ -42,6 +47,7 @@ public class WorkAreaGitHubPublisher {
     private final WorkAreaMapShapeRepo shapeRepo;
     private final WorkAreaMapper workAreaMapper;
     private final NgValueService valueService;
+    private final LotoPointRepo lotoPointRepo;
     private final ObjectMapper objectMapper;
     private final GitHub gitHub;
 
@@ -79,6 +85,21 @@ public class WorkAreaGitHubPublisher {
         requestPublish(PublishTarget.CATEGORIES);
     }
 
+    @Async
+    public void publishFieldListTypes() {
+        requestPublish(PublishTarget.FIELD_LIST_TYPES);
+    }
+
+    @Async
+    public void publishLocations() {
+        requestPublish(PublishTarget.LOCATIONS);
+    }
+
+    @Async
+    public void publishLotoPoints() {
+        requestPublish(PublishTarget.LOTO_POINTS);
+    }
+
     private void requestPublish(PublishTarget target) {
         mergePendingTarget(target);
         if (!publishInProgress.compareAndSet(false, true)) {
@@ -106,6 +127,24 @@ public class WorkAreaGitHubPublisher {
                     String categoriesJson = buildCategoriesJson();
                     writeCategoriesLocally(dataDir, categoriesJson);
                     pushCategoriesToGitHub(categoriesJson);
+                }
+
+                if (shouldPublishFieldListTypes(targetToPublish)) {
+                    String fieldListTypesJson = buildFieldListTypesJson();
+                    writeFieldListTypesLocally(dataDir, fieldListTypesJson);
+                    pushFieldListTypesToGitHub(fieldListTypesJson);
+                }
+
+                if (shouldPublishLocations(targetToPublish)) {
+                    String locationsJson = buildLocationsJson();
+                    writeLocationsLocally(dataDir, locationsJson);
+                    pushLocationsToGitHub(locationsJson);
+                }
+
+                if (shouldPublishLotoPoints(targetToPublish)) {
+                    String lotoPointsJson = buildLotoPointsJson();
+                    writeLotoPointsLocally(dataDir, lotoPointsJson);
+                    pushLotoPointsToGitHub(lotoPointsJson);
                 }
 
                 if (shouldPublishMap(targetToPublish)) {
@@ -161,9 +200,31 @@ public class WorkAreaGitHubPublisher {
         return target == PublishTarget.ALL || target == PublishTarget.CATEGORIES;
     }
 
+    private boolean shouldPublishFieldListTypes(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.FIELD_LIST_TYPES;
+    }
+
+    private boolean shouldPublishLocations(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.LOCATIONS;
+    }
+
+    private boolean shouldPublishLotoPoints(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.LOTO_POINTS;
+    }
+
     private String buildAreasJson() throws IOException {
         List<Map<String, Object>> areas = workAreaRepo.findAll().stream()
-                .map(area -> Map.<String, Object>of("id", area.getId(), "name", area.getName() != null ? area.getName() : ""))
+                .map(area -> {
+                    java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+                    map.put("id", area.getId());
+                    map.put("name", area.getName() != null ? area.getName() : "");
+                    map.put("locationIds", area.getLocations() != null
+                            ? area.getLocations().stream()
+                                .map(com.dk_power.power_plant_java.entities.categories.Value::getId)
+                                .collect(Collectors.toList())
+                            : List.of());
+                    return (Map<String, Object>) map;
+                })
                 .collect(Collectors.toList());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(areas);
     }
@@ -212,6 +273,63 @@ public class WorkAreaGitHubPublisher {
         Files.writeString(dataDir.resolve("work-categories.json"), categoriesJson);
     }
 
+    private String buildFieldListTypesJson() throws IOException {
+        List<com.dk_power.power_plant_java.entities.categories.Value> types;
+        try {
+            types = valueService.getValuesByCategory("FieldListType");
+        } catch (RuntimeException e) {
+            log.debug("[PWA Publisher] FieldListType not found yet, returning empty list");
+            types = List.of();
+        }
+        List<Map<String, Object>> result = types.stream()
+                .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName() != null ? v.getName() : ""))
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    private void writeFieldListTypesLocally(Path dataDir, String json) throws IOException {
+        Files.writeString(dataDir.resolve("field-list-types.json"), json);
+    }
+
+    private String buildLocationsJson() throws IOException {
+        List<com.dk_power.power_plant_java.entities.categories.Value> locations;
+        try {
+            locations = valueService.getValuesByCategory("Location");
+        } catch (RuntimeException e) {
+            log.debug("[PWA Publisher] Location category not found yet, returning empty list");
+            locations = List.of();
+        }
+        List<Map<String, Object>> result = locations.stream()
+                .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName() != null ? v.getName() : ""))
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    private String buildLotoPointsJson() throws IOException {
+        List<LotoPoint> points = lotoPointRepo.findAll();
+        List<Map<String, Object>> result = points.stream()
+                .map(lp -> {
+                    java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+                    map.put("id", lp.getId());
+                    map.put("tagNumber", lp.getTagNumber() != null ? lp.getTagNumber() : "");
+                    map.put("description", lp.getDescription() != null ? lp.getDescription() : "");
+                    map.put("specificLocation", lp.getSpecificLocation() != null ? lp.getSpecificLocation() : "");
+                    map.put("eqType", lp.getEqType() != null ? lp.getEqType().getName() : "");
+                    map.put("locationId", lp.getLocation() != null ? lp.getLocation().getId() : null);
+                    return (Map<String, Object>) map;
+                })
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    private void writeLocationsLocally(Path dataDir, String json) throws IOException {
+        Files.writeString(dataDir.resolve("locations.json"), json);
+    }
+
+    private void writeLotoPointsLocally(Path dataDir, String json) throws IOException {
+        Files.writeString(dataDir.resolve("loto-points.json"), json);
+    }
+
     private void writeMapLocally(Path dataDir, byte[] imageBytes) throws IOException {
         if (imageBytes == null) {
             return;
@@ -238,6 +356,36 @@ public class WorkAreaGitHubPublisher {
             log.info("[PWA Publisher] GitHub repo {} updated for work categories", pwaGitHubRepo);
         } catch (Exception e) {
             log.error("[PWA Publisher] GitHub push failed for work categories (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushFieldListTypesToGitHub(String json) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/field-list-types.json", json);
+            log.info("[PWA Publisher] GitHub repo {} updated for field list types", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for field list types (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushLocationsToGitHub(String json) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/locations.json", json);
+            log.info("[PWA Publisher] GitHub repo {} updated for locations", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for locations (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushLotoPointsToGitHub(String json) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/loto-points.json", json);
+            log.info("[PWA Publisher] GitHub repo {} updated for loto points", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for loto points (local files still written): {}", e.getMessage(), e);
         }
     }
 

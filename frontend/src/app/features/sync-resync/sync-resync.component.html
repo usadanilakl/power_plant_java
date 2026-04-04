@@ -670,6 +670,12 @@
                 [disabled]="loading || isOperationInProgress() || (!isElectronManaged && !healthStatus?.backupAvailable)">
                 {{ isElectronManaged ? 'Desktop Full Resync' : 'Full Resync' }}
               </button>
+              <button
+                class="btn btn-info"
+                (click)="confirmSmartResync()"
+                [disabled]="loading || isOperationInProgress()">
+                Smart Resync (Send + Restore)
+              </button>
             </div>
 
             <div class="action-group">

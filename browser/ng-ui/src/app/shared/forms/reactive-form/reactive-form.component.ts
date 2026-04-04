@@ -14,6 +14,7 @@ import { FormArrayInputComponent } from "../../input-fields/form-array-input/for
 import { FileInputComponent } from "../../input-fields/file-input/file-input.component";
 import { SignatureInputComponent } from "../../input-fields/signature-input/signature-input.component";
 import { WorkAreaMapSelectComponent } from "../work-area-map-select/work-area-map-select.component";
+import { EquipmentPickerComponent } from "../equipment-picker/equipment-picker.component";
 
 @Component({
   selector: 'app-reactive-form',
@@ -31,6 +32,7 @@ import { WorkAreaMapSelectComponent } from "../work-area-map-select/work-area-ma
     FileInputComponent,
     SignatureInputComponent,
     WorkAreaMapSelectComponent,
+    EquipmentPickerComponent,
 ],
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.css'

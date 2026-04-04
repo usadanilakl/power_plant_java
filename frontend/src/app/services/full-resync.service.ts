@@ -338,6 +338,14 @@ export class FullResyncService {
   }
 
   /**
+   * Smart resync: sends local changes to hub first, then performs full DB resync.
+   * Use when receive backlog is too large for incremental sync.
+   */
+  executeSmartResync(): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/smart-resync`, {});
+  }
+
+  /**
    * Get current operation status
    */
   getStatus(): Observable<OperationStatus> {

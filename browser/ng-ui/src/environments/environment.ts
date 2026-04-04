@@ -8,7 +8,8 @@ export const environment = {
     jha: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f5fd7de804c1461e82a22c274a4f4dac/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=M6uJ_xAu7gvpHYzxqmRRJvKZHpQvGNlMOY4jBY3O8kc',
     confinedSpace: '',
     instrumentLog: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4',
-    instrument: ''
+    instrument: '',
+    fieldList: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e0bad99434cc416eb14e7f1e6049b18f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lpx4Wm2gB8rap8XYk3MwAD97LaZg52oTuDKjwHoEw5k'
   },
   emailRecipient: 'jgportal@jpowerusa.com',
   emailCcRecipients: 'jgportal@jpowerusa.com',

@@ -113,7 +113,8 @@ public class SecurityConfigSpring {
                     "/bootstrap-5.3.3-dist/**", "/functions/**",
                     "/interact.js-main/**", "/my_styles/**",
                     "/background/**", "/uploads/**",
-                    "/favicon.ico", "/assets/**"
+                    "/favicon.ico", "/assets/**",
+                    "/ng/config/**"
                 ).permitAll()
 
                 // LAN-only endpoints — only internal IPs can access

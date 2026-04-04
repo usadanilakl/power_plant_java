@@ -54,24 +54,24 @@ public class CentralSyncService {
     // Lazily fetched to avoid circular dependency
     private ServerSseClient serverSseClient;
 
-    // Using AtomicBoolean instead of volatile boolean to prevent race conditions
-    // where two threads could both pass the syncing check simultaneously
-    private final AtomicBoolean syncing = new AtomicBoolean(false);
-    private volatile long syncStartedAt = 0; // epoch millis — detects stuck syncs
+    // Independent locks for send and receive — so local changes can reach the hub
+    // immediately even while the receive phase is downloading a large backlog.
+    private final AtomicBoolean sending = new AtomicBoolean(false);
+    private final AtomicBoolean receiving = new AtomicBoolean(false);
     private volatile boolean serverAvailable = false;
-    private final AtomicBoolean pendingSyncRequest = new AtomicBoolean(false);
+
+    // When receive backlog exceeds this, skip incremental receive and recommend full resync
+    private volatile boolean backlogTooLarge = false;
+    private static final long BACKLOG_THRESHOLD = 5000;
 
     // Sync metrics
     private final AtomicLong totalChangesSent = new AtomicLong(0);
     private final AtomicLong totalChangesReceived = new AtomicLong(0);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
 
-    // Batch size for sync operations. Smaller batches prevent hub timeouts — the hub applies
-    // each batch to entities (LWW + save) which is slow on H2. 50 keeps each POST under 30s.
     private static final int DEFAULT_SEND_BATCH_SIZE = 50;
     private static final int DEFAULT_RECEIVE_BATCH_SIZE = 500;
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
-    private static final long MAX_SYNC_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
     private ServerSseClient getServerSseClient() {
         if (serverSseClient == null) {
@@ -108,179 +108,192 @@ public class CentralSyncService {
 
         log.info("server_sync.startup.begin url={}", syncConfig.getSyncServerUrl());
 
-        // Small delay to ensure all services are initialized
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
+        try { Thread.sleep(5000); } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
         }
 
-        syncWithServer();
+        // Send first, then receive — send is fast and critical
+        sendToServer();
+        receiveFromServer();
     }
 
     /**
      * Triggered when local changes are detected.
-     * Uses small delay to ensure the transaction that created the changes has committed.
+     * Only sends — does NOT wait for receive. This ensures local changes
+     * reach the hub within seconds regardless of any receive backlog.
      */
     @Async
     @EventListener
     public void onChangesDetected(SyncEventPublisher.ChangesDetectedEvent event) {
-        if (syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled()) {
-            return; // Hub is the server; or let peer-to-peer handle it
-        }
+        if (syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled()) return;
+        if (event.getChanges() == null || event.getChanges().isEmpty()) return;
 
-        if (event.getChanges() == null || event.getChanges().isEmpty()) {
-            return;
-        }
+        log.debug("Changes detected ({} changes), sending to server", event.getChanges().size());
 
-        log.debug("Changes detected ({} changes), scheduling sync with central server", event.getChanges().size());
-
-        // Small delay to ensure the transaction that created the FieldChange records has committed
-        // This prevents race condition where we query for changes before they're visible
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
+        // Small delay to ensure FieldChange transaction has committed
+        try { Thread.sleep(500); } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
         }
 
-        // If sync is in progress, wait for it to finish then retry
-        int retries = 0;
-        while (syncing.get() && retries < 5) {
-            try {
-                Thread.sleep(1000);
-                retries++;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-        }
-
-        syncWithServer();
+        sendToServer();
     }
 
     /**
-     * Polls every 15s; only runs actual sync when the configured peer interval has elapsed.
+     * Polls every 15s; runs send + receive when interval has elapsed.
      */
     @Scheduled(fixedDelay = 15000, initialDelay = 60000)
     public void periodicSync() {
         if (syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled()) return;
         if (!syncIntervals.isPeerSyncDue()) return;
         syncIntervals.markPeerSynced();
-        syncWithServer();
+        sendToServer();
+        receiveFromServer();
     }
 
     /**
-     * Main sync method - sends local changes to server, receives changes from server.
-     * Now uses batched processing to handle large datasets safely.
+     * Send local pending changes to the hub. Independent of receive — can run
+     * even while receive is downloading. Uses its own lock so sends are never
+     * blocked by a slow receive phase.
+     */
+    public SyncResult sendToServer() {
+        if (!syncConfig.isServerSyncEnabled()) {
+            return new SyncResult(false, "Server sync not enabled", 0, 0, 0);
+        }
+
+        if (!sending.compareAndSet(false, true)) {
+            log.debug("Send already in progress, skipping");
+            return new SyncResult(false, "Send in progress", 0, 0, 0);
+        }
+
+        SyncResult result = new SyncResult();
+        try {
+            int totalSent = sendOutgoingChangesInBatches();
+            result.setChangesSent(totalSent);
+            result.setSuccess(true);
+            serverAvailable = true;
+            consecutiveFailures.set(0);
+            totalChangesSent.addAndGet(totalSent);
+
+            if (totalSent > 0) {
+                log.info("server_sync.send.done sent={}", totalSent);
+            }
+        } catch (Exception e) {
+            serverAvailable = false;
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+            consecutiveFailures.incrementAndGet();
+            log.error("server_sync.send.failed: {}", e.getMessage());
+        } finally {
+            sending.set(false);
+        }
+        return result;
+    }
+
+    /**
+     * Receive pending changes from the hub. Independent of send — uses its own lock.
+     * If the backlog exceeds BACKLOG_THRESHOLD, skips incremental receive and sets
+     * backlogTooLarge flag so the UI can recommend a full resync.
+     */
+    public SyncResult receiveFromServer() {
+        if (!syncConfig.isServerSyncEnabled()) {
+            return new SyncResult(false, "Server sync not enabled", 0, 0, 0);
+        }
+
+        if (!receiving.compareAndSet(false, true)) {
+            log.debug("Receive already in progress, skipping");
+            return new SyncResult(false, "Receive in progress", 0, 0, 0);
+        }
+
+        SyncResult result = new SyncResult();
+        try {
+            // Check backlog size before committing to a long download
+            long pendingCount = getPendingChangeCountFromServer();
+            if (pendingCount < 0) {
+                throw new RuntimeException("Server unreachable");
+            }
+            if (pendingCount > BACKLOG_THRESHOLD) {
+                backlogTooLarge = true;
+                log.warn("server_sync.receive.skipped reason=large_backlog pending={} threshold={}. Full resync recommended.",
+                    pendingCount, BACKLOG_THRESHOLD);
+                result.setSuccess(true);
+                result.setErrorMessage("Backlog too large (" + pendingCount + ") — full resync recommended");
+                return result;
+            }
+            backlogTooLarge = false;
+
+            BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();
+            result.setChangesReceived(receiveResult.totalReceived);
+            result.setChangesApplied(receiveResult.totalApplied);
+            result.setSuccess(true);
+            serverAvailable = true;
+
+            totalChangesReceived.addAndGet(receiveResult.totalReceived);
+
+            if (receiveResult.totalReceived > 0) {
+                log.info("server_sync.receive.done received={} applied={}", receiveResult.totalReceived, receiveResult.totalApplied);
+            }
+
+            // Post-receive dedup
+            if (receiveResult.totalApplied > 0) {
+                try { workRequestMergeService.mergeIfDuplicatesExist(); } catch (Exception ex) {
+                    log.error("Post-sync WorkRequest merge failed: {}", ex.getMessage(), ex);
+                }
+                try { jhaMergeService.mergeIfDuplicatesExist(); } catch (Exception ex) {
+                    log.error("Post-sync JHA merge failed: {}", ex.getMessage(), ex);
+                }
+            }
+        } catch (Exception e) {
+            serverAvailable = false;
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+            consecutiveFailures.incrementAndGet();
+            log.error("server_sync.receive.failed: {}", e.getMessage());
+        } finally {
+            receiving.set(false);
+        }
+        return result;
+    }
+
+    /**
+     * Combined sync — kept for backward compatibility (trigger endpoint, etc.).
+     * Calls send then receive independently.
      */
     public SyncResult syncWithServer() {
         if (!syncConfig.isServerSyncEnabled()) {
             return new SyncResult(false, "Server sync not enabled", 0, 0, 0);
         }
 
-        // Use compareAndSet for atomic check-and-set to prevent race conditions
-        if (!syncing.compareAndSet(false, true)) {
-            // Check if the previous sync is stuck (exceeded max duration)
-            long elapsed = System.currentTimeMillis() - syncStartedAt;
-            if (syncStartedAt > 0 && elapsed > MAX_SYNC_DURATION_MS) {
-                log.warn("server_sync.stuck_detected elapsed={}ms — forcing reset", elapsed);
-                syncing.set(false);
-                // Fall through to acquire the lock on next attempt
-                return new SyncResult(false, "Stuck sync reset — retry immediately", 0, 0, 0);
-            }
-            log.debug("Sync already in progress, marking pending sync request");
-            pendingSyncRequest.set(true);
-            return new SyncResult(false, "Sync in progress", 0, 0, 0);
-        }
-        syncStartedAt = System.currentTimeMillis();
-
-        // Circuit breaker: if too many consecutive failures, back off
+        // Circuit breaker
         if (consecutiveFailures.get() >= MAX_CONSECUTIVE_FAILURES) {
             int failures = consecutiveFailures.incrementAndGet();
-            // Self-healing: after enough blocked attempts, reset and retry
             if (failures > MAX_CONSECUTIVE_FAILURES * 2) {
                 log.info("server_sync.circuit_breaker.self_heal failures={}", failures);
                 consecutiveFailures.set(0);
-                // Fall through to attempt sync
             } else {
                 log.warn("Too many consecutive sync failures ({}), backing off", failures);
-                syncing.set(false); // Release the lock we acquired
                 return new SyncResult(false, "Circuit breaker open - too many failures", 0, 0, 0);
             }
         }
 
-        // syncing is already true from compareAndSet above
-        pendingSyncRequest.set(false);
-        SyncResult result = new SyncResult();
+        SyncResult sendResult = sendToServer();
+        SyncResult receiveResult = receiveFromServer();
 
-        try {
-            // Phase 1: Send outgoing changes in batches
-            int totalSent = sendOutgoingChangesInBatches();
-            result.setChangesSent(totalSent);
-
-            // Phase 2: Receive incoming changes in batches
-            BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();
-            result.setChangesReceived(receiveResult.totalReceived);
-            result.setChangesApplied(receiveResult.totalApplied);
-
-            result.setSuccess(true);
-            serverAvailable = true;
-            consecutiveFailures.set(0); // Reset on success
-
-            // Update metrics
-            totalChangesSent.addAndGet(totalSent);
-            totalChangesReceived.addAndGet(receiveResult.totalReceived);
-
-            log.info("server_sync.run.complete sent={} received={} applied={}",
-                result.getChangesSent(), result.getChangesReceived(), result.getChangesApplied());
-
-            // After all batches applied, run WorkRequest dedup as a final pass.
-            // Per-batch afterCommit merge may miss duplicates when sharepointId
-            // arrives in a later batch than the entity creation.
-            if (receiveResult.totalApplied > 0) {
-                try {
-                    workRequestMergeService.mergeIfDuplicatesExist();
-                } catch (Exception ex) {
-                    log.error("Post-sync WorkRequest merge failed: {}", ex.getMessage(), ex);
-                }
-                try {
-                    jhaMergeService.mergeIfDuplicatesExist();
-                } catch (Exception ex) {
-                    log.error("Post-sync JHA merge failed: {}", ex.getMessage(), ex);
-                }
-            }
-
-        } catch (Exception e) {
-            serverAvailable = false;
-            result.setSuccess(false);
-            result.setErrorMessage(e.getMessage());
-            consecutiveFailures.incrementAndGet();
-            log.error("Failed to sync with server: {}", e.getMessage());
-            // Changes remain in local DB, will be synced when server is available
-        } finally {
-            syncStartedAt = 0;
-            syncing.set(false);
-
-            // If another sync was requested while we were syncing, trigger it now
-            if (pendingSyncRequest.compareAndSet(true, false)) {
-                log.debug("Processing pending sync request");
-                // Use async to avoid stack overflow with recursive calls
-                Thread pendingSyncThread = new Thread(() -> {
-                    try {
-                        Thread.sleep(200);
-                        syncWithServer();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }, "pending-sync");
-                pendingSyncThread.setDaemon(true); // Daemon so it doesn't block shutdown
-                pendingSyncThread.start();
-            }
+        SyncResult combined = new SyncResult();
+        combined.setSuccess(sendResult.isSuccess() || receiveResult.isSuccess());
+        combined.setChangesSent(sendResult.getChangesSent());
+        combined.setChangesReceived(receiveResult.getChangesReceived());
+        combined.setChangesApplied(receiveResult.getChangesApplied());
+        if (!combined.isSuccess()) {
+            combined.setErrorMessage(sendResult.getErrorMessage() != null ?
+                sendResult.getErrorMessage() : receiveResult.getErrorMessage());
         }
 
-        return result;
+        log.info("server_sync.run.complete sent={} received={} applied={}",
+            combined.getChangesSent(), combined.getChangesReceived(), combined.getChangesApplied());
+
+        return combined;
     }
 
     /**
@@ -431,20 +444,20 @@ public class CentralSyncService {
                 int applied = applyIncomingChanges(batch);
                 result.totalApplied += applied;
 
-                // Acknowledge successfully applied changes so hub marks them as synced.
-                // Without this, hub would never know the client received them, and
-                // would keep returning the same changes on every poll.
-                if (applied > 0) {
-                    try {
-                        List<java.util.UUID> appliedIds = batch.stream()
-                            .map(FieldChange::getId)
-                            .filter(java.util.Objects::nonNull)
-                            .collect(java.util.stream.Collectors.toList());
-                        acknowledgeChangesToServer(appliedIds);
-                    } catch (Exception ackEx) {
-                        log.warn("Failed to acknowledge {} changes: {}", applied, ackEx.getMessage());
-                        // Not fatal — hub will re-send these changes next cycle
+                // Acknowledge ALL received changes so hub marks them as synced to this client.
+                // Even if applied=0 (LWW rejected them as older), the client has seen them
+                // and doesn't need them again. Without this, unapplied changes stay pending
+                // on the hub forever, causing the client to re-download them every cycle.
+                try {
+                    List<java.util.UUID> receivedIds = batch.stream()
+                        .map(FieldChange::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toList());
+                    if (!receivedIds.isEmpty()) {
+                        acknowledgeChangesToServer(receivedIds);
                     }
+                } catch (Exception ackEx) {
+                    log.warn("Failed to acknowledge {} changes: {}", batch.size(), ackEx.getMessage());
                 }
 
                 log.debug("Batch {}: received {} changes, applied {}", batchNumber, batch.size(), applied);
@@ -611,12 +624,16 @@ public class CentralSyncService {
     /**
      * Get sync metrics for monitoring.
      */
+    public boolean isBacklogTooLarge() {
+        return backlogTooLarge;
+    }
+
     public SyncMetrics getMetrics() {
         return new SyncMetrics(
             totalChangesSent.get(),
             totalChangesReceived.get(),
             consecutiveFailures.get(),
-            syncing.get(),
+            sending.get() || receiving.get(),
             serverAvailable,
             isSseConnected(),
             getPendingChangeCount()

@@ -192,12 +192,18 @@ public class SharePointCertificateAccess implements SharePointAccess {
             return true;
         } catch (HttpClientErrorException.NotFound e) {
             return false;
+        } catch (HttpClientErrorException.BadRequest e) {
+            // SharePoint sometimes returns 400 instead of 404 for missing fields
+            log.debug("[SharePoint] fieldExists 400 for '{}' on '{}', treating as not found", fieldName, listTitle);
+            return false;
         } catch (HttpClientErrorException.Unauthorized e) {
             tokenExpirationTime = null;
             try {
                 sendGetRequest(endpoint);
                 return true;
             } catch (HttpClientErrorException.NotFound e2) {
+                return false;
+            } catch (HttpClientErrorException.BadRequest e2) {
                 return false;
             }
         }

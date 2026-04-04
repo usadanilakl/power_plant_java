@@ -65,10 +65,13 @@ public class SyncHealthChecker {
     private final Instant startupTime = Instant.now();
     private static final long STARTUP_GRACE_MINUTES = 5;
 
-    // Lazy-injected to avoid circular dependency (AutoResyncService depends on this)
     @Autowired
     @Lazy
     private AutoResyncService autoResyncService;
+
+    @Autowired
+    @Lazy
+    private CentralSyncService centralSyncService;
 
     // Track how many consecutive OUT_OF_SYNC checks have occurred
     private int consecutiveOutOfSyncCount = 0;
@@ -124,6 +127,15 @@ public class SyncHealthChecker {
 
             // Track last successful sync and consecutive failures
             updateSyncTracking(result);
+
+            // Attach backlog-too-large flag from CentralSyncService
+            try {
+                if (centralSyncService != null) {
+                    result.setBacklogTooLarge(centralSyncService.isBacklogTooLarge());
+                }
+            } catch (Exception e) {
+                log.debug("Could not get backlog flag: {}", e.getMessage());
+            }
 
             // Attach auto-resync state for frontend visibility
             if (autoResyncService != null) {
@@ -563,6 +575,7 @@ public class SyncHealthChecker {
         private int consecutiveOutOfSyncCount;      // How many consecutive checks were out of sync
         private AutoResyncService.AutoResyncState autoResyncState; // Current auto-resync escalation state
         private boolean backlogDetected;
+        private boolean backlogTooLarge;  // True when receive backlog exceeds threshold — full resync recommended
         private long serverPendingChangesForClient;
 
         // Timer fields for UI countdown

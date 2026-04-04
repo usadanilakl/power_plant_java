@@ -16,6 +16,11 @@
   --hover-background: #f0f2f5;
   --selected-background: #cce5ff;
   --selected-text: #004085;
+  --input-bg: #ffffff;
+  --success-bg: #d4edda;
+  --success-text: #155724;
+  --error-bg: #f8d7da;
+  --error-text: #721c24;
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
@@ -42,6 +47,11 @@
   --hover-background: #333333;
   --selected-background: #1a3a5c;
   --selected-text: #cce5ff;
+  --input-bg: #2c2c2c;
+  --success-bg: #1b3d2a;
+  --success-text: #81c995;
+  --error-bg: #3d1b1b;
+  --error-text: #ef9a9a;
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);

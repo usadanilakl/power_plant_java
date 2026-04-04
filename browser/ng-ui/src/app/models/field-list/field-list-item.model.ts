@@ -1,0 +1,90 @@
+import { Validators } from '@angular/forms';
+import { FormField } from '../inputs/form-field.model';
+import { Option } from '../inputs/option.model';
+
+export interface PwaFieldListItem {
+  localUuid: string;
+  sharepointId?: string;
+  listTypeName: string;
+  statusName: string;
+  title: string;
+  notes: string;
+  dateObserved: string;
+  timeObserved: string;
+  locationName: string;
+  specificLocation: string;
+  equipmentTag: string;
+  submitterName: string;
+  submitterEmail: string;
+  submitterPhone: string;
+}
+
+export function fieldListFormFields(
+  listTypeOptions: Option[],
+  initialListType: string = ''
+): FormField[] {
+  return [
+    {
+      name: 'workAreaMap',
+      label: 'Work Area',
+      type: 'work-area-map',
+      initialValue: null,
+    },
+    {
+      name: 'listTypeName',
+      label: 'List Type',
+      type: 'select',
+      options: listTypeOptions,
+      initialValue: initialListType,
+      validators: [Validators.required],
+    },
+    {
+      name: 'title',
+      label: 'Title',
+      type: 'text',
+      initialValue: '',
+      validators: [Validators.required],
+      placeholder: 'Brief description of the observation',
+    },
+    {
+      name: 'equipmentTag',
+      label: 'Equipment / Loto Point',
+      type: 'equipment-picker',
+      initialValue: null,
+    },
+    {
+      name: 'locationDetail',
+      label: 'Specific Location',
+      type: 'text',
+      initialValue: '',
+      placeholder: 'Floor, column, etc.',
+    },
+    {
+      name: 'dateObserved',
+      label: 'Date Observed',
+      type: 'date',
+      initialValue: new Date().toISOString().split('T')[0],
+    },
+    {
+      name: 'timeObserved',
+      label: 'Time Observed',
+      type: 'time',
+      initialValue: '',
+    },
+    {
+      name: 'notes',
+      label: 'Notes',
+      type: 'textarea',
+      initialValue: '',
+      placeholder: 'Detailed notes about the observation',
+    },
+    {
+      name: 'attachments',
+      label: 'Attachments',
+      type: 'file',
+      multiple: true,
+      accept: 'image/*,.pdf,.doc,.docx',
+      initialValue: null,
+    },
+  ];
+}

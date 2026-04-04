@@ -14,6 +14,7 @@ export interface WorkAreaModel extends BaseModel {
   constantHotWorkMeasures: HotWorkMeasures | null;
   constantConfinedSpaceHazards: ConfinedSpaceHazards | null;
   constantLotoIds: number[];
+  locationIds: number[];
   shapeId: number | null;
 }
 
@@ -24,6 +25,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
   constantHotWorkMeasures: HotWorkMeasures | null;
   constantConfinedSpaceHazards: ConfinedSpaceHazards | null;
   constantLotoIds: number[];
+  locationIds: number[];
   shapeId: number | null;
 
   constructor(data: Partial<WorkAreaModel> = {}) {
@@ -34,6 +36,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
     this.constantHotWorkMeasures = data.constantHotWorkMeasures ? new HotWorkMeasures(data.constantHotWorkMeasures) : null;
     this.constantConfinedSpaceHazards = data.constantConfinedSpaceHazards ? new ConfinedSpaceHazards(data.constantConfinedSpaceHazards) : null;
     this.constantLotoIds = data.constantLotoIds ?? [];
+    this.locationIds = data.locationIds ?? [];
     this.shapeId = data.shapeId ?? null;
   }
 
@@ -46,6 +49,7 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
       constantHotWorkMeasures: this.constantHotWorkMeasures,
       constantConfinedSpaceHazards: this.constantConfinedSpaceHazards,
       constantLotoIds: this.constantLotoIds,
+      locationIds: this.locationIds,
       shapeId: this.shapeId,
     };
   }
@@ -61,11 +65,12 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
       constantHotWorkMeasures: json.constantHotWorkMeasures,
       constantConfinedSpaceHazards: json.constantConfinedSpaceHazards,
       constantLotoIds: json.constantLotoIds || [],
+      locationIds: json.locationIds || [],
       shapeId: json.shapeId,
     });
   }
 
-  static toFormFields(entity: WorkAreaDto, lotoStandardOptions: Option[] = []): RfFormField[] {
+  static toFormFields(entity: WorkAreaDto, lotoStandardOptions: Option[] = [], locationOptions: Option[] = []): RfFormField[] {
     return [
       {
         name: 'name',
@@ -94,6 +99,13 @@ export class WorkAreaDto extends BaseDto implements WorkAreaModel {
         type: 'loto-standard-select',
         options: lotoStandardOptions,
         initialValue: entity.constantLotoIds ?? [],
+      },
+      {
+        name: 'locationIds',
+        label: 'Locations',
+        type: 'multi-select',
+        options: locationOptions,
+        initialValue: entity.locationIds ?? [],
       },
       ...WorkAreaDto.getHazardFields(entity.constantHazards),
       ...WorkAreaDto.getHotWorkMeasureFields(entity.constantHotWorkMeasures),

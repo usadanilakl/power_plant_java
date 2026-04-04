@@ -156,6 +156,12 @@ export class HomePageComponent {
       description: 'Instrument logs and management',
       icon: '🔧',
       route: '/instruments'
+    },
+    {
+      title: 'Field Lists',
+      description: 'Track insulation, leaks, winterization',
+      icon: '📝',
+      route: '/field-lists'
     }
   ];
 

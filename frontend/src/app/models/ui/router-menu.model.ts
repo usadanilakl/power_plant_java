@@ -110,7 +110,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/log/table', label: 'System Log', icon: 'list_alt', iconColor: '#42A5F5' },
             { route: '/log/correspondence', label: 'Correspondence', icon: 'mail', iconColor: '#FFA726' },
             { route: '/log/messaging', label: 'Messages', icon: 'chat', iconColor: '#66BB6A' },
-            { route: '/instrumentation', label: 'Instruments', icon: 'speed', iconColor: '#AB47BC' }
+            { route: '/instrumentation', label: 'Instruments', icon: 'speed', iconColor: '#AB47BC' },
+            { route: '/field-lists', label: 'Field Lists', icon: 'checklist_rtl', iconColor: '#26A69A' }
         ]
     },
     {

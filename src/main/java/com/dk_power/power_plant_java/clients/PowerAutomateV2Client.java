@@ -55,6 +55,9 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.instrument-log-url:}")
     private String instrumentLogFlowUrl;
 
+    @Value("${pa.flow.field-list-url:}")
+    private String fieldListFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -193,6 +196,14 @@ public class PowerAutomateV2Client {
 
     public boolean isInstrumentLogConfigured() {
         return instrumentLogFlowUrl != null && !instrumentLogFlowUrl.isBlank();
+    }
+
+    public PaResponseDto fieldList(PaRequestDto request) {
+        return sendRequest(fieldListFlowUrl, request);
+    }
+
+    public boolean isFieldListConfigured() {
+        return fieldListFlowUrl != null && !fieldListFlowUrl.isBlank();
     }
 
 }

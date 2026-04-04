@@ -51,7 +51,7 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
   message = '';
   messageType: 'success' | 'error' | 'info' | 'warning' = 'info';
   showConfirmDialog = false;
-  confirmAction: 'resync' | 'backup' | 'force-resync' | null = null;
+  confirmAction: 'resync' | 'backup' | 'force-resync' | 'smart-resync' | null = null;
 
   // Restart monitoring
   restartProgress: RestartProgress = { isRestarting: false, message: '', checkCount: 0 };
@@ -351,6 +351,11 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     this.showConfirmDialog = true;
   }
 
+  confirmSmartResync(): void {
+    this.confirmAction = 'smart-resync';
+    this.showConfirmDialog = true;
+  }
+
   cancelConfirm(): void {
     this.showConfirmDialog = false;
     this.confirmAction = null;
@@ -368,6 +373,9 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
         break;
       case 'backup':
         this.executeBackup();
+        break;
+      case 'smart-resync':
+        this.executeSmartResync();
         break;
     }
 
@@ -410,6 +418,32 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
           this.resyncService.startRestartMonitoring();
         } else {
           this.showMessage('Resync failed: ' + (err.error?.message || err.message), 'error');
+        }
+      }
+    });
+  }
+
+  private executeSmartResync(): void {
+    this.loading = true;
+    this.showMessage('Smart resync: sending local changes then restoring from hub...', 'info');
+
+    this.resyncService.executeSmartResync().subscribe({
+      next: (result: any) => {
+        this.loading = false;
+        if (result.success) {
+          this.showMessage(result.message, 'success');
+          this.resyncService.startRestartMonitoring();
+        } else {
+          this.showMessage(result.message, 'error');
+        }
+      },
+      error: (err: any) => {
+        this.loading = false;
+        if (err.status === 0 || err.status === 504) {
+          this.showMessage('Connection lost - server may be restarting...', 'warning');
+          this.resyncService.startRestartMonitoring();
+        } else {
+          this.showMessage('Smart resync failed: ' + (err.error?.message || err.message), 'error');
         }
       }
     });

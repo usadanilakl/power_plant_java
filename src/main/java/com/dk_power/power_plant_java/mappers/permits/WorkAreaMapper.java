@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers.permits;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.WorkAreaDto;
 import com.dk_power.power_plant_java.dto.permits.WorkAreaMapShapeDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.entities.permits.WorkArea;
 import com.dk_power.power_plant_java.entities.permits.WorkAreaMapShape;
@@ -66,6 +67,14 @@ public class WorkAreaMapper implements BaseMapper {
             dto.setConstantLotoIds(
                     entity.getConstantLotos().stream()
                             .map(LotoStandard::getId)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        if (entity.getLocations() != null) {
+            dto.setLocationIds(
+                    entity.getLocations().stream()
+                            .map(Value::getId)
                             .collect(Collectors.toList())
             );
         }

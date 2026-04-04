@@ -628,6 +628,9 @@ public class AdminFunctionalitiesService {
             case "areas" -> workAreaGitHubPublisher.publishAreas();
             case "map" -> workAreaGitHubPublisher.publishMap();
             case "categories" -> workAreaGitHubPublisher.publishCategories();
+            case "fieldlisttypes" -> workAreaGitHubPublisher.publishFieldListTypes();
+            case "locations" -> workAreaGitHubPublisher.publishLocations();
+            case "lotopoints" -> workAreaGitHubPublisher.publishLotoPoints();
             case "all" -> workAreaGitHubPublisher.publishAll();
             default -> throw new IllegalArgumentException("Unsupported PWA publish target: " + target);
         }

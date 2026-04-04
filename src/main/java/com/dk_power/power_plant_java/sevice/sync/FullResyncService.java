@@ -64,6 +64,10 @@ public class FullResyncService {
     private final FileRepo fileRepo;
     private final AttachmentSyncHandler attachmentSyncHandler;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private CentralSyncService centralSyncService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -334,6 +338,58 @@ public class FullResyncService {
         }
     }
 
+    /**
+     * Smart resync: send local changes to hub first, then perform full DB resync.
+     * Ensures no local data is lost before replacing the database.
+     * After resync, JVM exits and Electron restarts the app with a clean DB from hub.
+     *
+     * @return result with send status; if send succeeds, full resync is triggered async
+     */
+    public ResyncResult smartResync() {
+        log.info("smart_resync.start — sending local changes before full resync");
+
+        // Step 1: Send all local pending changes to the hub
+        try {
+            CentralSyncService.SyncResult sendResult = centralSyncService.sendToServer();
+            if (!sendResult.isSuccess() && sendResult.getChangesSent() == 0
+                    && centralSyncService.getPendingChangeCount() > 0) {
+                String msg = "Failed to send local changes to hub: " + sendResult.getErrorMessage()
+                    + ". Aborting resync to prevent data loss.";
+                log.error("smart_resync.aborted reason=send_failed: {}", msg);
+                return new ResyncResult(false, msg, null);
+            }
+            log.info("smart_resync.send_complete sent={}", sendResult.getChangesSent());
+        } catch (Exception e) {
+            String msg = "Failed to send local changes: " + e.getMessage();
+            log.error("smart_resync.aborted reason=send_error: {}", msg);
+            return new ResyncResult(false, msg, null);
+        }
+
+        // Step 2: Notify hub that after resync this client will have everything
+        notifyHubAllSynced();
+
+        // Step 3: Trigger full resync (downloads DB from hub, restores, exits JVM)
+        log.info("smart_resync.starting_full_resync");
+        performFullResyncAsync(true); // force=true skips deletion safety checks
+        return new ResyncResult(true, "Local changes sent. Full resync started — app will restart.", null);
+    }
+
+    /**
+     * Notify the hub to mark ALL changes as synced to this client.
+     * Called after full DB restore — the client now has everything.
+     */
+    private void notifyHubAllSynced() {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/mark-all-synced";
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+            restTemplate.postForEntity(url, new HttpEntity<>(headers), Map.class);
+            log.info("Hub notified — all changes marked as synced for {}", syncConfig.getMachineId());
+        } catch (Exception e) {
+            log.warn("Failed to notify hub (non-fatal): {}", e.getMessage());
+        }
+    }
+
     public ResyncResult performFullResync(boolean skipDeletionCheck) {
         if (!resyncInProgress.compareAndSet(false, true)) {
             return new ResyncResult(false, "Resync already in progress", null);
@@ -463,6 +519,10 @@ public class FullResyncService {
                 comparison.getFilesToDownload().size(),
                 comparison.getFilesToDelete().size(),
                 comparison.getUnchangedFiles().size());
+
+            // Notify hub to mark ALL changes as synced to this client.
+            // After a full DB restore the client has everything — no pending changes needed.
+            notifyHubAllSynced();
 
             return new ResyncResult(true,
                 "Resync completed successfully. Application will restart.", comparison);

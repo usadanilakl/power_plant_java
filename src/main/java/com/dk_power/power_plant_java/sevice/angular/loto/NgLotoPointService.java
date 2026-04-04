@@ -14,6 +14,8 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.base.FuzzySearchService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.angular.permits.WorkAreaGitHubPublisher;
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -38,6 +40,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final NgEquipmentService equipmentService;
     private final FuzzySearchService fuzzySearchService;
     private final TagNumberDetector tagNumberDetector;
+    private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
 
 
     @Override
@@ -257,7 +260,15 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         }
 
         // Fetch with equipment list eagerly loaded (will reflect database state)
-        return lotoPointRepo.findByIdWithEquipment(savedLpId);
+        LotoPoint result = lotoPointRepo.findByIdWithEquipment(savedLpId);
+
+        // Publish loto points to GitHub Pages for PWA equipment picker
+        WorkAreaGitHubPublisher publisher = gitHubPublisherProvider.getIfAvailable();
+        if (publisher != null) {
+            publisher.publishLotoPoints();
+        }
+
+        return result;
     }
 
     public LotoPoint copyPointFromOtherUnit(Long id) {

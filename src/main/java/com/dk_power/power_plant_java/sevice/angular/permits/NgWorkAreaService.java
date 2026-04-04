@@ -96,6 +96,15 @@ public class NgWorkAreaService implements NgCrudService<WorkArea, WorkAreaDto, W
             entity.setConstantLotos(new HashSet<>());
         }
 
+        // Handle locations (Location Values)
+        if (dto.getLocationIds() != null) {
+            Set<Value> locations = dto.getLocationIds().stream()
+                    .map(id -> entityManager.find(Value.class, id))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            entity.setLocations(locations);
+        }
+
         WorkArea saved = workAreaRepo.save(entity);
         gitHubPublisher.publishAll();
         return workAreaMapper.convertToDto(saved);

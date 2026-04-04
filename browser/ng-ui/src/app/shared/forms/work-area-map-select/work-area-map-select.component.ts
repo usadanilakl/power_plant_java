@@ -426,7 +426,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
   onWheel(event: WheelEvent): void {
     event.preventDefault();
     const factor = event.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(Math.max(0.5, this.scale * factor), 8);
+    const newScale = Math.min(Math.max(0.8, this.scale * factor), 8);
 
     const container = this.mapContainer.nativeElement;
     const rect = container.getBoundingClientRect();
@@ -490,7 +490,7 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
       this.applyTransform();
     } else if (event.touches.length === 2) {
       const newDistance = this.getTouchDistance(event.touches);
-      const newScale = Math.min(Math.max(0.5, this.initialPinchScale * (newDistance / this.initialPinchDistance)), 8);
+      const newScale = Math.min(Math.max(0.8, this.initialPinchScale * (newDistance / this.initialPinchDistance)), 8);
 
       const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
       const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
@@ -597,11 +597,16 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
 
   getTooltipStyle(): Record<string, string> {
     const inv = 1 / this.currentScale();
+    const fontSize = Math.min(Math.max(12 * inv, 6), 16);
     return {
-      'font-size': `${Math.max(12 * inv, 6)}px`,
-      'padding': `${4 * inv}px ${8 * inv}px`,
-      'border-radius': `${4 * inv}px`,
-      'bottom': `calc(100% + ${4 * inv}px)`,
+      'font-size': `${fontSize}px`,
+      'padding': `${Math.min(4 * inv, 6)}px ${Math.min(8 * inv, 10)}px`,
+      'border-radius': `${Math.min(4 * inv, 6)}px`,
+      'bottom': `calc(100% + ${Math.min(4 * inv, 6)}px)`,
+      'max-width': `${Math.min(200 * inv, 250)}px`,
+      'overflow': 'hidden',
+      'text-overflow': 'ellipsis',
+      'white-space': 'nowrap',
     };
   }
 }

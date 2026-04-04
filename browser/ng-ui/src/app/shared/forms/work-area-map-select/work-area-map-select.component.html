@@ -34,13 +34,22 @@
                   <button type="button"
                     class="area-option-btn"
                     [class.active]="selectedAreaName() === area.name"
+                    [class.confined-space]="area.isConfinedSpace"
                     (click)="setArea(area)">
                     {{ area.name }}
+                    @if (area.isConfinedSpace) {
+                      <span class="cs-badge">Confined Space</span>
+                    }
                   </button>
                 }
               </div>
             } @else {
-              <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
+              <div class="selected-panel-name">
+                {{ selectedShape()!.areaNames[0] }}
+                @if (selectedShape()!.areas[0]?.isConfinedSpace) {
+                  <span class="cs-badge">Confined Space</span>
+                }
+              </div>
             }
             @if (selectedShape()!.entry.label) {
               <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>
@@ -103,13 +112,22 @@
                 <button type="button"
                   class="area-option-btn"
                   [class.active]="selectedAreaName() === area.name"
+                  [class.confined-space]="area.isConfinedSpace"
                   (click)="setArea(area)">
                   {{ area.name }}
+                  @if (area.isConfinedSpace) {
+                    <span class="cs-badge">Confined Space</span>
+                  }
                 </button>
               }
             </div>
           } @else {
-            <div class="selected-panel-name">{{ selectedShape()!.areaNames[0] }}</div>
+            <div class="selected-panel-name">
+              {{ selectedShape()!.areaNames[0] }}
+              @if (selectedShape()!.areas[0]?.isConfinedSpace) {
+                <span class="cs-badge">Confined Space</span>
+              }
+            </div>
           }
           @if (selectedShape()!.entry.label) {
             <div class="selected-panel-label">{{ selectedShape()!.entry.label }}</div>

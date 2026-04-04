@@ -104,7 +104,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         validators: [Validators.required]
       },
       { name: 'workRequestedBy', label: 'Work Requested By', type: 'text', initialValue: this.workRequestedBy, placeholder: 'Full name', validators: [Validators.required] },
-      { name: 'affectedEquipment', label: 'Affected Equipment', type: 'text', initialValue: this.affectedEquipment, placeholder: 'e.g. Boiler Feed Pump 1A', validators: [Validators.required] },
+      { name: 'affectedEquipment', label: 'Affected Equipment', type: 'equipment-picker', initialValue: this.affectedEquipment, validators: [Validators.required] },
       { name: 'workScope', label: 'Detailed Work Scope', type: 'textarea', initialValue: this.workScope, placeholder: 'Describe the work to be performed', validators: [Validators.required] },
       { name: 'isLOTORequired', label: 'LOTO Required?', type: 'radio-group', initialValue: this.isLOTORequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },
       { name: 'isHotWorkRequired', label: 'Hot Work Required?', type: 'radio-group', initialValue: this.isHotWorkRequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}], validators: [Validators.required] },

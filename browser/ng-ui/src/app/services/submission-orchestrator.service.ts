@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, timeout } from 'rxjs';
 import { ServerApiService, PwaSubmissionResult, PwaWorkRequestDto, PwaJhaDto, PwaInstrumentLogDto, PwaInstrumentDto, PwaInstrumentStateDto } from './server-api.service';
 import { PowerAutomateService } from './power-automate.service';
 import { UserSetupService } from './user-setup.service';
@@ -778,6 +778,108 @@ export class SubmissionOrchestratorService {
 
     const mailto = this.buildMailtoUrl(subject, body);
     return { subject, body, mailto, submitLink };
+  }
+
+  // ====================== Field List ======================
+
+  submitFieldListItem(payload: any): Observable<SubmissionResult> {
+    const localUuid = payload.localUuid || crypto.randomUUID();
+    payload.localUuid = localUuid;
+
+    return this.serverApi.submitFieldListItem(payload).pipe(
+      map(response => ({
+        success: !!response.success,
+        method: (response.method === 'local' ? 'local' : 'server') as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || localUuid,
+        message: response.method === 'local'
+          ? 'Saved on server. Will sync to SharePoint when available.'
+          : 'Submitted successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for field list, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateFieldList(payload, localUuid);
+      })
+    );
+  }
+
+  updateFieldListItem(payload: any): Observable<SubmissionResult> {
+    return this.serverApi.updateFieldListItem(payload).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || payload.localUuid,
+        message: 'Updated successfully.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for field list update, trying Power Automate:', serverError.message);
+        return this.tryPowerAutomateFieldList({ ...payload, actionType: 'update' }, payload.localUuid);
+      })
+    );
+  }
+
+  private tryPowerAutomateFieldList(payload: any, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured('fieldList')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Server unavailable and Power Automate not configured.',
+        requiresEmail: true
+      });
+    }
+
+    const paData: Record<string, any> = {
+      Title: payload.title || '',
+      PwaId: localUuid,
+      ListType: payload.listTypeName || '',
+      Status: payload.statusName || 'Open',
+      Location: payload.locationName || '',
+      SpecificLocation: payload.specificLocation || '',
+      Notes: payload.notes || '',
+      DateObserved: payload.dateObserved || '',
+      EquipmentTag: payload.equipmentTag || '',
+      SubmitterName: payload.submitterName || '',
+      SubmitterEmail: payload.submitterEmail || '',
+      SubmitterPhone: payload.submitterPhone || '',
+    };
+
+    const paRequest = {
+      actionType: 'create',
+      data: paData,
+      attachments: (payload.attachments || []).map((a: any) => ({
+        fileName: a.fileName || a.name,
+        contentType: a.contentType || 'application/octet-stream',
+        base64Content: a.base64Content || a.content
+      }))
+    };
+
+    return this.powerAutomate.submitV2('fieldList', paRequest).pipe(
+      map(response => {
+        // PA may return success as string "True"/"true" or boolean
+        const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
+        return {
+          success: isSuccess,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: isSuccess
+            ? 'Submitted directly to SharePoint via Power Automate.'
+            : (response.message || 'Power Automate submission failed.')
+        };
+      }),
+      catchError(paError => {
+        console.error('[Orchestrator] Power Automate also failed for field list:', paError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: 'Both server and Power Automate unavailable. Item saved locally.',
+          requiresEmail: true
+        });
+      })
+    );
   }
 
   private buildMailtoUrl(subject: string, body: string): string {

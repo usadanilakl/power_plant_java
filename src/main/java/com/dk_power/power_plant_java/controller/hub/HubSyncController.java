@@ -144,6 +144,18 @@ public class HubSyncController {
     }
 
     /**
+     * Mark ALL changes as synced to a client (used after full DB resync — client now has everything).
+     * POST /api/sync/changes/mark-all-synced
+     */
+    @PostMapping("/changes/mark-all-synced")
+    public ResponseEntity<Map<String, Object>> markAllSynced(
+            @RequestHeader("X-Machine-Id") String machineId) {
+        int marked = hubSyncService.markAllSyncedToClient(machineId);
+        log.info("Marked all changes as synced for {} after full resync: {} changes", machineId, marked);
+        return ResponseEntity.ok(Map.of("marked", marked, "machineId", machineId));
+    }
+
+    /**
      * Reset sync status for a client — marks all changes as pending for re-sync.
      * Use when a client fetched changes but failed to apply them.
      */

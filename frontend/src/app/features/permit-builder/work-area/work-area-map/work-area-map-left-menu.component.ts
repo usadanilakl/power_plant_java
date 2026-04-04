@@ -6,6 +6,7 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
 import { WorkAreaMapStateService } from './work-area-map-state.service';
 import { WorkAreaDto, WorkAreaPermitCounts } from '../../../../models/permits/work-area.model';
 import { LotoStandardService } from '../../../../services/loto/loto-standard.service';
+import { SharedDataService } from '../../../../services/shared-data.service';
 import { Option } from '../../../../models/option.model';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
@@ -426,9 +427,11 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
   initialDisplayMode = input<'table' | 'toggle-menu'>('toggle-menu');
   state = inject(WorkAreaMapStateService);
   private lotoStandardService = inject(LotoStandardService);
+  private sharedDataService = inject(SharedDataService);
   private contextMenuService = inject(WorkAreaContextMenuService);
   private leftMenuService = inject(WorkAreaLeftMenuService);
   lotoStandardOptions = signal<Option[]>([]);
+  locationOptions = signal<Option[]>([]);
   currentDisplayMode = signal<'table' | 'toggle-menu'>('toggle-menu');
   selectedGrouping = signal<WorkAreaGroupingCriteria>('areaType');
   groupingOptions = this.leftMenuService.groupingOptions;
@@ -436,6 +439,7 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
   ngOnInit(): void {
     this.currentDisplayMode.set(this.initialDisplayMode());
     this.loadLotoStandards();
+    this.loadLocations();
   }
 
   devTableColumns = computed(() => WorkAreaDto.toTableColumns());
@@ -473,7 +477,7 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
 
   workAreaFormFields = computed(() => {
     const editing = this.state.editingWorkArea();
-    return WorkAreaDto.toFormFields(editing ?? new WorkAreaDto(), this.lotoStandardOptions());
+    return WorkAreaDto.toFormFields(editing ?? new WorkAreaDto(), this.lotoStandardOptions(), this.locationOptions());
   });
 
   workAreaFormTitle = computed(() => {
@@ -583,6 +587,9 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
     dto.constantLotoIds = Array.isArray(formData.constantLotoIds)
       ? formData.constantLotoIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
       : [];
+    dto.locationIds = Array.isArray(formData.locationIds)
+      ? formData.locationIds.map((id: any) => Number(id)).filter((id: number) => !Number.isNaN(id))
+      : [];
     this.state.saveWorkArea(dto);
   }
 
@@ -595,6 +602,21 @@ export class WorkAreaMapLeftMenuComponent implements OnInit {
 
   setDisplayMode(mode: 'table' | 'toggle-menu'): void {
     this.currentDisplayMode.set(mode);
+  }
+
+  private loadLocations(): void {
+    this.sharedDataService.loadLocations().subscribe({
+      next: (locations) => {
+        const options = locations.map((loc) => ({
+          value: loc.id,
+          label: loc.name || `Location ${loc.id}`,
+        }));
+        this.locationOptions.set(options);
+      },
+      error: () => {
+        this.locationOptions.set([]);
+      }
+    });
   }
 
   private loadLotoStandards(): void {

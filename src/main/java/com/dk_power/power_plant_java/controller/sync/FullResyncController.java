@@ -80,6 +80,27 @@ public class FullResyncController {
     }
 
     /**
+     * Smart resync: sends local changes to hub, then performs full DB resync.
+     * Use when the receive backlog is too large for incremental sync.
+     * App will restart after completion.
+     */
+    @PostMapping("/smart-resync")
+    public ResponseEntity<Map<String, Object>> smartResync() {
+        Map<String, Object> result = new HashMap<>();
+        if (fullResyncService.isResyncInProgress()) {
+            result.put("success", false);
+            result.put("message", "Resync already in progress");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        log.info("Smart resync requested");
+        FullResyncService.ResyncResult resyncResult = fullResyncService.smartResync();
+        result.put("success", resyncResult.isSuccess());
+        result.put("message", resyncResult.getMessage());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Get current resync operation status.
      */
     @GetMapping("/status")

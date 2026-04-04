@@ -21,5 +21,6 @@ public class WorkAreaDto extends BaseDto {
     private HotWorkMeasures constantHotWorkMeasures;
     private ConfinedSpaceHazards constantConfinedSpaceHazards;
     private List<Long> constantLotoIds;
+    private List<Long> locationIds;
     private Long shapeId;
 }
