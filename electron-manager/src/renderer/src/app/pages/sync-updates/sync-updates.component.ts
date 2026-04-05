@@ -166,6 +166,11 @@ import { Subscription } from 'rxjs';
                     (click)="syncNeeded()">
               Sync Needed
             </button>
+            <button class="btn btn-info"
+                    [disabled]="syncInProgress || !assessment?.serverReachable"
+                    (click)="smartResync()">
+              Smart Resync
+            </button>
           </div>
 
           <label class="toggle-option">
@@ -664,6 +669,30 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
     this.syncProgress = null;
     const options: SyncOptions = this.cleanFiles ? { cleanFiles: true } : {};
     this.electronService.executeSync(components, options);
+  }
+
+  async smartResync(): Promise<void> {
+    if (this.syncInProgress) return;
+    this.syncProgress = { phase: 'stopping_sb' as any, statusMessage: 'Sending local changes to hub...', progressPercent: 0 };
+    this.syncInProgress = true;
+
+    try {
+      // Step 1: Tell Spring Boot to send local changes and notify hub
+      const resp = await fetch('http://localhost:8082/api/resync/smart-resync', { method: 'POST' });
+      const result = await resp.json();
+
+      if (!result.success) {
+        this.syncProgress = { phase: 'error', statusMessage: 'Failed: ' + result.message, progressPercent: 0 };
+        this.syncInProgress = false;
+        return;
+      }
+
+      // Step 2: Electron handles shutdown → DB + files sync → restart
+      this.executeSync(['db', 'files']);
+    } catch (err: any) {
+      this.syncProgress = { phase: 'error', statusMessage: 'Smart resync failed: ' + (err?.message || err), progressPercent: 0 };
+      this.syncInProgress = false;
+    }
   }
 
   syncNeeded(): void {

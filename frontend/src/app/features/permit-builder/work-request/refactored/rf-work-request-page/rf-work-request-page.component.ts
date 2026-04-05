@@ -43,7 +43,7 @@ export class RfWorkRequestPageComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.healAndReload('auto');
+    this.stateService.reloadData();
   }
 
   onRowDoubleClicked(item: WorkRequestDto): void {

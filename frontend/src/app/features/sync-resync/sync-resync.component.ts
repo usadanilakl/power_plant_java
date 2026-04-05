@@ -430,10 +430,10 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
     this.resyncService.executeSmartResync().subscribe({
       next: (result: any) => {
         if (result.success && result.message === 'SMART_RESYNC_READY') {
-          this.showMessage('Local changes sent. Starting DB sync via Electron...', 'info');
-          // Electron handles: shutdown → download DB + files → restart
+          this.showMessage('Local changes sent. Starting full resync...', 'info');
           const api = this.getElectronApi();
           if (api?.executeSync) {
+            // Electron: shutdown → download DB + files → restart
             api.executeSync(['db', 'files']).then(() => {
               this.showMessage('Sync complete. App will restart.', 'success');
             }).catch((err: any) => {
@@ -441,8 +441,27 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
               this.showMessage('Electron sync failed: ' + (err?.message || err), 'error');
             });
           } else {
-            this.loading = false;
-            this.showMessage('Electron sync bridge not available. Use Desktop Full Resync instead.', 'error');
+            // Browser: fall back to Spring Boot full resync (downloads DB itself)
+            this.resyncService.executeResync(true).subscribe({
+              next: (resyncResult) => {
+                this.loading = false;
+                if (resyncResult.success) {
+                  this.showMessage(resyncResult.message, 'success');
+                  this.resyncService.startRestartMonitoring();
+                } else {
+                  this.showMessage(resyncResult.message, 'error');
+                }
+              },
+              error: (err: any) => {
+                this.loading = false;
+                if (err.status === 0 || err.status === 504) {
+                  this.showMessage('Connection lost - server may be restarting...', 'warning');
+                  this.resyncService.startRestartMonitoring();
+                } else {
+                  this.showMessage('Resync failed: ' + (err.error?.message || err.message), 'error');
+                }
+              }
+            });
           }
         } else if (result.success) {
           this.loading = false;

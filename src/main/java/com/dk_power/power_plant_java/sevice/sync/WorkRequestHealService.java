@@ -102,20 +102,19 @@ public class WorkRequestHealService {
     }
 
     public WorkRequestHealSnapshotDto getHubSnapshot() {
-        int repairedBefore = workRequestSyncRepairService.backfillMissingCreateHistory();
-        boolean sharePointAvailable = false;
-        int importedFromSharePoint = 0;
-
-        try {
-            importedFromSharePoint = importMissingFromSharePoint();
-            sharePointAvailable = true;
-        } catch (Exception e) {
-            log.warn("[WR Heal] SharePoint top-off failed on hub: {}", e.getMessage());
-        }
-
-        int repairedAfter = importedFromSharePoint > 0
-            ? workRequestSyncRepairService.backfillMissingCreateHistory()
-            : 0;
+        // Return what the hub has immediately — SP orchestrator keeps it up to date.
+        // Run SP import + backfill in background as safety net for any gaps.
+        Thread.ofVirtual().name("wr-heal-bg").start(() -> {
+            try {
+                int imported = importMissingFromSharePoint();
+                if (imported > 0) {
+                    log.info("[WR Heal] Background SP import filled {} gaps", imported);
+                    workRequestSyncRepairService.backfillMissingCreateHistory();
+                }
+            } catch (Exception e) {
+                log.debug("[WR Heal] Background heal failed (non-critical): {}", e.getMessage());
+            }
+        });
 
         List<NgWorkRequestDto> items = getLocalItems().stream()
             .map(workRequestMapper::convertToNgDto)
@@ -123,15 +122,11 @@ public class WorkRequestHealService {
 
         return WorkRequestHealSnapshotDto.builder()
             .items(items)
-            .sharePointAvailable(sharePointAvailable)
-            .repairedCreateHistory(repairedBefore + repairedAfter)
-            .importedFromSharePoint(importedFromSharePoint)
+            .sharePointAvailable(true)
+            .repairedCreateHistory(0)
+            .importedFromSharePoint(0)
             .localCount(items.size())
-            .message(String.format(
-                "Hub prepared %d local work requests. Imported %d missing from SharePoint.",
-                items.size(),
-                importedFromSharePoint
-            ))
+            .message(String.format("Hub has %d work requests.", items.size()))
             .build();
     }
 
@@ -166,7 +161,9 @@ public class WorkRequestHealService {
     }
 
     private int importMissingFromSharePoint() {
-        List<WorkRequestDto> remoteItems = workRequestSharePointAdapter.getAll();
+        // Only fetch WRs modified in the last 2 days — not the full 800+ list
+        List<WorkRequestDto> remoteItems = workRequestSharePointAdapter.getModifiedSince(
+            java.time.Instant.now().minus(2, java.time.temporal.ChronoUnit.DAYS));
         if (remoteItems.isEmpty()) {
             return 0;
         }

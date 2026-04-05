@@ -17,8 +17,8 @@ import { MessageCellComponent } from '../../../../../shared/messaging/message-ce
 import { RfWorkRequestApiService } from '../services/rf-work-request-api.service';
 import { RfWorkRequestStateService } from '../services/rf-work-request-state.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { tap, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { tap, catchError, switchMap } from 'rxjs/operators';
+import { of, Subject } from 'rxjs';
 import { TableComponent } from '../../../../../shared/table/refactored/table.component';
 import { RfWorkRequestMapperService } from '../services/rf-work-request-mapper.service';
 import { WorkRequestDto, WorkRequestFieldName } from '../../../../../models/permits/work-request.model';
@@ -81,6 +81,7 @@ export class RfWorkRequestTableComponent implements OnInit {
   // State
   items$ = toSignal(this.stateService.allLoadedWorkRequests$, { initialValue: [] });
   columnInFocus = signal<string | null>(null);
+  private searchSubject = new Subject<SearchCriteria>();
 
   columns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
@@ -109,6 +110,43 @@ export class RfWorkRequestTableComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Subscribe to search subject with switchMap to cancel previous in-flight requests
+    this.searchSubject.pipe(
+      switchMap((criteria) => {
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
+
+        const existingCriteria = this.stateService.getCurrentSearchCriteria() || {};
+        const mergedCriteria: SearchCriteria = {
+          ...existingCriteria,
+          ...criteria,
+          page: 1,
+          pageSize: 50,
+        };
+
+        this.stateService.setSearchCriteria(mergedCriteria);
+        this.stateService.resetPage();
+        this.stateService.clearWorkRequests();
+
+        return this.apiService.searchWorkRequests(mergedCriteria, 50).pipe(
+          tap((response) => {
+            if (response.responseData?.content) {
+              this.stateService.addWorkRequests(response.responseData.content);
+              this.stateService.incrementPage();
+            }
+            this.isLoading.set(false);
+          }),
+          catchError((error) => {
+            console.error('Error searching work requests:', error);
+            this.errorMessage.set('Search failed');
+            this.isLoading.set(false);
+            return of(null);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+
     const initialCriteria = this.initialSearchCriteria();
     if (initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0))) {
       this.loadInitialDataWithCriteria(initialCriteria);
@@ -192,40 +230,7 @@ export class RfWorkRequestTableComponent implements OnInit {
   }
 
   private searchInDatabase(criteria: SearchCriteria): void {
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
-    const existingCriteria = this.stateService.getCurrentSearchCriteria() || {};
-    const mergedCriteria: SearchCriteria = {
-      ...existingCriteria,
-      ...criteria,
-      page: 1,
-      pageSize: 50,
-    };
-
-    this.stateService.setSearchCriteria(mergedCriteria);
-    this.stateService.resetPage();
-    this.stateService.clearWorkRequests();
-
-    this.apiService
-      .searchWorkRequests(mergedCriteria, 50)
-      .pipe(
-        tap((response) => {
-          if (response.responseData?.content) {
-            this.stateService.addWorkRequests(response.responseData.content);
-            this.stateService.incrementPage();
-          }
-          this.isLoading.set(false);
-        }),
-        catchError((error) => {
-          console.error('Error searching work requests:', error);
-          this.errorMessage.set('Search failed');
-          this.isLoading.set(false);
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    this.searchSubject.next(criteria);
   }
 
   onTableSortChanged(event: { column: Column; isAscending: boolean }): void {

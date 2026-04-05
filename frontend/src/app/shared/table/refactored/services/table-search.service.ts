@@ -225,20 +225,24 @@ export class TableSearchService {
   // }
 
   search(): void {
-    const searchCriteria = this.utilService.buildSearchCriteria(
-      this.dataService.globalSearchQuery,
-      this.dataService.columnFilters(),
-      this.dataService.columnFilterLogic,
-      this.dataService.globalFilterLogic
-    );
+    clearTimeout(this.searchDebounceTimer);
 
-    this.dataService.currentSearchCriteria = searchCriteria;
-    this.localStorageService.saveTableFilters(
-      this.dataService.currentSearchCriteria,
-      this.dataService.tableId
-    );
-    this.updateFilteredItems();
-    this.dataService.search.set({ ...searchCriteria });
+    this.searchDebounceTimer = setTimeout(() => {
+      const searchCriteria = this.utilService.buildSearchCriteria(
+        this.dataService.globalSearchQuery,
+        this.dataService.columnFilters(),
+        this.dataService.columnFilterLogic,
+        this.dataService.globalFilterLogic
+      );
+
+      this.dataService.currentSearchCriteria = searchCriteria;
+      this.localStorageService.saveTableFilters(
+        this.dataService.currentSearchCriteria,
+        this.dataService.tableId
+      );
+      this.updateFilteredItems();
+      this.dataService.search.set({ ...searchCriteria });
+    }, 400);
   }
 
   /**

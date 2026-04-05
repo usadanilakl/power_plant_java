@@ -82,6 +82,16 @@ public class SyncSchemaPreparation {
             // Backfill null @Version columns — existing rows predate the version field
             backfillVersionColumns(stmt);
 
+            // Index for fast lookups on field_change — used by LWW, pending counts,
+            // sync queries, and the NOT EXISTS check in findIdsMissingCreateMarker.
+            // Without this, queries scan 270k+ rows on the hub.
+            createIndexIfNotExists(stmt, "IDX_FC_ENTITY_LOOKUP",
+                "FIELD_CHANGE", "ENTITY_TYPE, ENTITY_ID, CHANGE_TYPE, FIELD_NAME");
+            createIndexIfNotExists(stmt, "IDX_FC_SYNCED_ORIGIN",
+                "FIELD_CHANGE", "ORIGIN_MACHINE_ID, SYNCED_TO_MACHINES");
+            createIndexIfNotExists(stmt, "IDX_FC_TIMESTAMP",
+                "FIELD_CHANGE", "TIMESTAMP");
+
         } catch (Exception e) {
             log.warn("Sync schema preparation failed (non-fatal): {}", e.getMessage());
         }
@@ -103,6 +113,15 @@ public class SyncSchemaPreparation {
             } catch (Exception e) {
                 log.trace("Could not backfill version for {}: {}", table, e.getMessage());
             }
+        }
+    }
+
+    private void createIndexIfNotExists(Statement stmt, String indexName, String tableName, String columns) {
+        try {
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS " + indexName + " ON " + tableName + " (" + columns + ")");
+            log.debug("Index {} ensured on {}({})", indexName, tableName, columns);
+        } catch (Exception e) {
+            log.trace("Could not create index {}: {}", indexName, e.getMessage());
         }
     }
 }
