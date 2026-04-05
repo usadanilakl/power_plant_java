@@ -69,7 +69,7 @@ public class CentralSyncService {
     private final AtomicLong totalChangesReceived = new AtomicLong(0);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
 
-    private static final int DEFAULT_SEND_BATCH_SIZE = 50;
+    private static final int DEFAULT_SEND_BATCH_SIZE = 5000;
     private static final int DEFAULT_RECEIVE_BATCH_SIZE = 500;
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
 

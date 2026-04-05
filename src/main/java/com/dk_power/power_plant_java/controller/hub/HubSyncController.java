@@ -41,7 +41,7 @@ public class HubSyncController {
     private final HubEntityComparisonService hubEntityComparisonService;
     private final HubFieldChangeQueryService hubFieldChangeQueryService;
 
-    private static final int MAX_BATCH_SIZE = 1000;
+    private static final int MAX_BATCH_SIZE = 10000;
 
     // -------------------------------------------------------------------
     // Main sync exchange
