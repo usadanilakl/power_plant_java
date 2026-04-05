@@ -73,7 +73,9 @@
       "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\integration",
       "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\file",
       "C:\\Users\\usada\\my_projects\\dk_power_plant\\project\\spring-boot\\features\\equipment",
-      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project"
+      "C:\\Users\\usada\\my_projects\\dk_power_plant\\project",
+      "C:\\Users\\usada\\my_projects\\sync-server\\src\\main\\java\\com\\dk_power\\sync_server\\repository\\domain",
+      "C:\\Users\\usada\\my_projects\\sync-server\\src\\main\\java\\com\\dk_power\\sync_server\\service"
     ]
   }
 }

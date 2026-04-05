@@ -38,6 +38,7 @@ public class HubResyncController {
     private final HubResyncService resyncService;
     private final HubFileService hubFileService;
     private final HubBulkImportService bulkImportService;
+    private final com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator sharePointSyncOrchestrator;
 
     // ==================== Health & Export ====================
 
@@ -98,9 +99,13 @@ public class HubResyncController {
 
     @GetMapping("/database/h2-backup")
     public ResponseEntity<byte[]> downloadH2Backup() {
-        log.info("H2 database backup requested");
+        log.info("H2 database backup requested — pausing SP sync");
+        // Pause SharePoint sync during backup. H2 BACKUP TO needs a quiet DB —
+        // concurrent SP writes cause it to hang waiting for locks.
+        sharePointSyncOrchestrator.setClientSyncInProgress(true);
         try {
             byte[] backupData = resyncService.getLatestH2Backup();
+            log.info("H2 backup complete, size={} bytes", backupData != null ? backupData.length : 0);
             return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hub_backup.zip")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -108,6 +113,8 @@ public class HubResyncController {
         } catch (Exception e) {
             log.error("Failed to create H2 backup: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } finally {
+            sharePointSyncOrchestrator.setClientSyncInProgress(false);
         }
     }
 

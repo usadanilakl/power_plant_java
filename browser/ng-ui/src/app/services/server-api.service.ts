@@ -690,6 +690,17 @@ export class ServerApiService {
     );
   }
 
+  getOpenFieldListItems(listType?: string): Observable<any[]> {
+    const params = listType ? `?listType=${encodeURIComponent(listType)}` : '';
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/secured/field-list/open-items${params}`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
   getFieldListItemStatus(localUuid: string): Observable<PwaStatusResult> {
     return this.http.get<{ responseData: PwaStatusResult }>(
       `${this.baseUrl}/api/pwa/field-list-item/status/${localUuid}`

@@ -11,5 +11,7 @@ public interface FieldListItemRepo extends BaseRepository<FieldListItem> {
     Optional<FieldListItem> findFirstByLocalUuidOrderByIdAsc(String localUuid);
     List<FieldListItem> findByListType_NameIgnoreCase(String listTypeName);
     List<FieldListItem> findByStatus_NameIgnoreCase(String statusName);
+    List<FieldListItem> findByStatus_NameIn(List<String> statusNames);
+    List<FieldListItem> findByListType_NameIgnoreCaseAndStatus_NameIn(String listTypeName, List<String> statusNames);
     boolean existsBySharepointId(String sharepointId);
 }

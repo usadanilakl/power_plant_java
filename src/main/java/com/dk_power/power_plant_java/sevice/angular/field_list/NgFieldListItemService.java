@@ -36,6 +36,18 @@ public class NgFieldListItemService {
                 .map(mapper::convertToDto).toList();
     }
 
+    private static final List<String> OPEN_STATUSES = List.of("Open", "In Progress");
+
+    public List<FieldListItemDto> getOpenItems() {
+        return repo.findByStatus_NameIn(OPEN_STATUSES).stream()
+                .map(mapper::convertToDto).toList();
+    }
+
+    public List<FieldListItemDto> getOpenItemsByListType(String listTypeName) {
+        return repo.findByListType_NameIgnoreCaseAndStatus_NameIn(listTypeName, OPEN_STATUSES).stream()
+                .map(mapper::convertToDto).toList();
+    }
+
     public FieldListItemDto getDtoById(Long id) {
         return repo.findById(id).map(mapper::convertToDto).orElse(null);
     }

@@ -40,4 +40,7 @@ public class FieldListItemDto {
     private String createdBy;
     private String dateCreated;
     private String dateModified;
+
+    // Attachment count (for table display)
+    private int attachmentCount;
 }

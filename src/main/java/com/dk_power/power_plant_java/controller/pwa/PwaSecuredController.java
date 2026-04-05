@@ -1,8 +1,11 @@
 package com.dk_power.power_plant_java.controller.pwa;
 
+import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.field_list.FieldListItemDto;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.enums.PermissionLevel;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.angular.field_list.NgFieldListItemService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaNotificationService;
 import com.dk_power.power_plant_java.sevice.pwa.PwaPermitService;
 import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
@@ -33,6 +36,7 @@ public class PwaSecuredController {
 
     private final PwaPermitService pwaPermitService;
     private final PwaNotificationService pwaNotificationService;
+    private final NgFieldListItemService fieldListItemService;
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
 
@@ -306,6 +310,24 @@ public class PwaSecuredController {
             log.error("[PWA Signature] Failed to serve signature image: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    // ============ Field Lists ============
+
+    @GetMapping("/field-list/open-items")
+    public ResponseEntity<NgApiResponse<List<FieldListItemDto>>> getOpenFieldListItems(
+            @RequestParam(required = false) String listType) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(
+                new NgApiResponse<>(null, "NOT_AUTHENTICATED"));
+
+        List<FieldListItemDto> items;
+        if (listType != null && !listType.isBlank()) {
+            items = fieldListItemService.getOpenItemsByListType(listType);
+        } else {
+            items = fieldListItemService.getOpenItems();
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(items, "Open items retrieved"));
     }
 
     private User getCurrentUser() {

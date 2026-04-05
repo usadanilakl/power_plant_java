@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointFieldMergeService;
 import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncable;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.FieldListItemSharePointAdapter;
+import com.dk_power.power_plant_java.sevice.sync.PermitAttachmentSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,7 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
     private final FieldListItemMapper mapper;
     private final NgValueService valueService;
     private final SharePointFieldMergeService fieldMergeService;
+    private final PermitAttachmentSyncService permitAttachmentSyncService;
 
     private static final String ENTITY_TYPE = "FieldListItem";
     private static final String LIST_TITLE = "Field Lists";
@@ -95,6 +97,7 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
             repo.save(entity);
             result.incrementCreated();
             fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+            syncAttachmentsSafely(entity.getId(), spId);
             return EntitySyncOutcome.CREATED;
         }
 
@@ -115,6 +118,7 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
         repo.save(existing);
         result.incrementUpdated();
         fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+        syncAttachmentsSafely(existing.getId(), spId);
         return EntitySyncOutcome.UPDATED;
     }
 
@@ -191,6 +195,14 @@ public class FieldListItemSharePointSyncable implements SharePointSyncable<Field
         if (fields.contains("submitterPhone")) entity.setSubmitterPhone(dto.getSubmitterPhone());
         if (fields.contains("localUuid")) entity.setLocalUuid(dto.getLocalUuid());
         entity.setSharepointId(dto.getSharepointId());
+    }
+
+    private void syncAttachmentsSafely(Long entityId, String sharepointId) {
+        try {
+            permitAttachmentSyncService.syncAttachmentsForFieldListItem(entityId, sharepointId);
+        } catch (Exception e) {
+            log.warn("[FieldList Syncable] Attachment sync failed for spId={}: {}", sharepointId, e.getMessage());
+        }
     }
 
     @Override

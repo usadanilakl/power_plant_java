@@ -365,29 +365,32 @@ public class FullResyncService {
             return new ResyncResult(false, msg, null);
         }
 
-        // Step 2: Notify hub that after resync this client will have everything
+        // Step 2: Notify hub to mark all changes as synced (fire-and-forget)
         notifyHubAllSynced();
 
-        // Step 3: Trigger full resync (downloads DB from hub, restores, exits JVM)
-        log.info("smart_resync.starting_full_resync");
-        performFullResyncAsync(true); // force=true skips deletion safety checks
-        return new ResyncResult(true, "Local changes sent. Full resync started — app will restart.", null);
+        // Step 3: Return success — frontend tells Electron to shut down,
+        // sync DB + files from hub, and restart. Electron owns the full lifecycle.
+        log.info("smart_resync.complete — Electron will handle shutdown + DB/file sync + restart");
+        return new ResyncResult(true, "SMART_RESYNC_READY", null);
     }
 
     /**
      * Notify the hub to mark ALL changes as synced to this client.
-     * Called after full DB restore — the client now has everything.
+     * Runs async (fire-and-forget) — the UPDATE on 279k+ rows is slow on H2,
+     * and the client doesn't need to wait for it.
      */
     private void notifyHubAllSynced() {
-        try {
-            String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/mark-all-synced";
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("X-Machine-Id", syncConfig.getMachineId());
-            restTemplate.postForEntity(url, new HttpEntity<>(headers), Map.class);
-            log.info("Hub notified — all changes marked as synced for {}", syncConfig.getMachineId());
-        } catch (Exception e) {
-            log.warn("Failed to notify hub (non-fatal): {}", e.getMessage());
-        }
+        Thread.ofVirtual().name("hub-mark-synced").start(() -> {
+            try {
+                String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/mark-all-synced";
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("X-Machine-Id", syncConfig.getMachineId());
+                restTemplate.postForEntity(url, new HttpEntity<>(headers), Map.class);
+                log.info("Hub notified — all changes marked as synced for {}", syncConfig.getMachineId());
+            } catch (Exception e) {
+                log.warn("Failed to notify hub (non-fatal): {}", e.getMessage());
+            }
+        });
     }
 
     public ResyncResult performFullResync(boolean skipDeletionCheck) {
@@ -445,7 +448,16 @@ public class FullResyncService {
             headers.set("X-Machine-Id", syncConfig.getMachineId());
             headers.set("X-Device-Number", String.valueOf(syncConfig.getDeviceNumber()));
 
-            ResponseEntity<byte[]> response = restTemplate.exchange(
+            // Use a dedicated RestTemplate with a long timeout for large file downloads.
+            // The shared restTemplate has a 5-min timeout which isn't enough for DB backups.
+            org.springframework.web.client.RestTemplate downloadTemplate = new org.springframework.web.client.RestTemplate();
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(30_000);   // 30s connect
+            factory.setReadTimeout(30 * 60_000); // 30 min read
+            downloadTemplate.setRequestFactory(factory);
+
+            ResponseEntity<byte[]> response = downloadTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
 
             byte[] backupData = response.getBody();

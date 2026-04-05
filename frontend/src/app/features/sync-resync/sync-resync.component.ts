@@ -425,26 +425,36 @@ export class SyncResyncComponent implements OnInit, OnDestroy {
 
   private executeSmartResync(): void {
     this.loading = true;
-    this.showMessage('Smart resync: sending local changes then restoring from hub...', 'info');
+    this.showMessage('Sending local changes to hub...', 'info');
 
     this.resyncService.executeSmartResync().subscribe({
       next: (result: any) => {
-        this.loading = false;
-        if (result.success) {
+        if (result.success && result.message === 'SMART_RESYNC_READY') {
+          this.showMessage('Local changes sent. Starting DB sync via Electron...', 'info');
+          // Electron handles: shutdown → download DB + files → restart
+          const api = this.getElectronApi();
+          if (api?.executeSync) {
+            api.executeSync(['db', 'files']).then(() => {
+              this.showMessage('Sync complete. App will restart.', 'success');
+            }).catch((err: any) => {
+              this.loading = false;
+              this.showMessage('Electron sync failed: ' + (err?.message || err), 'error');
+            });
+          } else {
+            this.loading = false;
+            this.showMessage('Electron sync bridge not available. Use Desktop Full Resync instead.', 'error');
+          }
+        } else if (result.success) {
+          this.loading = false;
           this.showMessage(result.message, 'success');
-          this.resyncService.startRestartMonitoring();
         } else {
+          this.loading = false;
           this.showMessage(result.message, 'error');
         }
       },
       error: (err: any) => {
         this.loading = false;
-        if (err.status === 0 || err.status === 504) {
-          this.showMessage('Connection lost - server may be restarting...', 'warning');
-          this.resyncService.startRestartMonitoring();
-        } else {
-          this.showMessage('Smart resync failed: ' + (err.error?.message || err.message), 'error');
-        }
+        this.showMessage('Smart resync failed: ' + (err.error?.message || err.message), 'error');
       }
     });
   }

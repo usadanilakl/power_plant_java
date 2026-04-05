@@ -697,8 +697,11 @@ export class IpcHandlers {
       const sbWasRunning = this.springBoot.isRunning();
 
       try {
-        // 1. Stop Spring Boot if DB or files sync requested
-        if (needsDbOrFiles && sbWasRunning) {
+        // 1. Stop Spring Boot if DB, files, or JAR sync requested
+        //    - DB/files: H2 file is locked while running
+        //    - JAR: can't replace a running JAR file
+        const needsStop = needsDbOrFiles || components.includes('jar');
+        if (needsStop && sbWasRunning) {
           sendProgress({ phase: 'stopping_sb', statusMessage: `Stopping ${APP_DISPLAY_NAME}...`, progressPercent: 0 });
           await this.springBoot.stop();
         }
@@ -761,7 +764,7 @@ export class IpcHandlers {
         }
 
         // 6. Clear Chromium cache (stale Angular assets in iframe) and restart Spring Boot
-        if ((needsDbOrFiles && sbWasRunning) || components.includes('jar')) {
+        if (needsStop && sbWasRunning) {
           await session.defaultSession.clearCache();
           sendProgress({ phase: 'starting_sb', statusMessage: `Starting ${APP_DISPLAY_NAME}...`, progressPercent: 95 });
           await this.springBoot.start();

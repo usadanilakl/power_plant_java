@@ -25,6 +25,7 @@ export interface FieldListItemModel extends BaseModel {
   createdBy: string;
   dateCreated: string;
   dateModified: string;
+  attachmentCount: number;
 }
 
 export type FieldListItemFieldName = keyof FieldListItemModel;
@@ -52,6 +53,7 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
   createdBy: string;
   dateCreated: string;
   dateModified: string;
+  attachmentCount: number;
 
   constructor(data: Partial<FieldListItemModel> = {}) {
     super(data);
@@ -77,6 +79,7 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
     this.createdBy = data.createdBy || '';
     this.dateCreated = data.dateCreated || '';
     this.dateModified = data.dateModified || '';
+    this.attachmentCount = data.attachmentCount || 0;
   }
 
   override toJson(): any {
@@ -131,6 +134,7 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
       createdBy: json.createdBy || '',
       dateCreated: json.dateCreated || '',
       dateModified: json.dateModified || '',
+      attachmentCount: json.attachmentCount || 0,
     });
   }
 
@@ -174,6 +178,11 @@ export class FieldListItemDto extends BaseDto implements FieldListItemModel {
       { id: 'equipmentTag', header: 'Equipment', accessorKey: 'equipmentTag' },
       { id: 'submitterName', header: 'Submitter', accessorKey: 'submitterName' },
       { id: 'notes', header: 'Notes', accessorKey: 'notes' },
+      {
+        id: 'attachmentCount',
+        header: 'Files',
+        accessorFn: (item: any) => item.attachmentCount > 0 ? `\u{1F4CE} ${item.attachmentCount}` : ''
+      },
       { id: 'createdBy', header: 'Created By', accessorKey: 'createdBy' },
       { id: 'dateCreated', header: 'Date Created', accessorKey: 'dateCreated' },
     ];

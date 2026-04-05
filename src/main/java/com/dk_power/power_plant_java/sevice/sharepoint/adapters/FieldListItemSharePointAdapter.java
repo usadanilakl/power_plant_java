@@ -70,6 +70,14 @@ public class FieldListItemSharePointAdapter {
         );
     }
 
+    public List<PaAttachmentDto> getAttachments(String sharepointId) {
+        return spService.executeWithFallback(
+                () -> certGetAttachments(sharepointId),
+                () -> paGetAttachments(sharepointId),
+                "getAttachments FieldListItem"
+        );
+    }
+
     public void addAttachment(String sharepointId, PaAttachmentDto attachment) {
         spService.executeWithFallback(
                 () -> { certAccess.addListItemAttachment(LIST_TITLE, sharepointId, attachment.getFileName(),
@@ -88,6 +96,21 @@ public class FieldListItemSharePointAdapter {
     }
 
     // ====================== Certificate path ======================
+
+    private List<PaAttachmentDto> certGetAttachments(String sharepointId) {
+        List<JsonNode> attachmentNodes = certAccess.getListItemAttachments(LIST_TITLE, sharepointId);
+        List<PaAttachmentDto> result = new ArrayList<>();
+        for (JsonNode node : attachmentNodes) {
+            String fileName = node.path("FileName").asText();
+            byte[] content = certAccess.downloadListItemAttachment(LIST_TITLE, sharepointId, fileName);
+            PaAttachmentDto dto = new PaAttachmentDto();
+            dto.setFileName(fileName);
+            dto.setContentType(guessContentType(fileName));
+            dto.setBase64Content(Base64.getEncoder().encodeToString(content));
+            result.add(dto);
+        }
+        return result;
+    }
 
     private List<FieldListItemDto> certGetAll() {
         List<JsonNode> items = certAccess.getListItems(LIST_TITLE);
@@ -162,6 +185,23 @@ public class FieldListItemSharePointAdapter {
         }
     }
 
+    private List<PaAttachmentDto> paGetAttachments(String sharepointId) {
+        PaRequestDto req = new PaRequestDto();
+        req.setActionType("getAttachments");
+        req.setId(sharepointId);
+        PaResponseDto resp = v2Client.fieldList(req);
+        if (!resp.isSuccess() || resp.getData() == null) {
+            throw new RuntimeException("PA-V2 getAttachments FieldListItem failed: " + resp.getMessage());
+        }
+        return resp.getData().stream().map(map -> {
+            PaAttachmentDto dto = new PaAttachmentDto();
+            dto.setFileName(str(map, "fileName"));
+            dto.setContentType(str(map, "contentType"));
+            dto.setBase64Content(str(map, "base64Content"));
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
     // ====================== Column mapping ======================
 
     private FieldListItemDto mapFromSharePoint(JsonNode item) {
@@ -233,5 +273,15 @@ public class FieldListItemSharePointAdapter {
             log.warn("[FieldList-Adapter] Failed to parse Modified datetime '{}': {}", raw, e.getMessage());
             return null;
         }
+    }
+
+    private static String guessContentType(String fileName) {
+        if (fileName == null) return "application/octet-stream";
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        return "application/octet-stream";
     }
 }

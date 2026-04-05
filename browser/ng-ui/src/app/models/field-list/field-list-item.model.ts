@@ -21,7 +21,8 @@ export interface PwaFieldListItem {
 
 export function fieldListFormFields(
   listTypeOptions: Option[],
-  initialListType: string = ''
+  initialListType: string = '',
+  presetListType: boolean = false
 ): FormField[] {
   return [
     {
@@ -30,14 +31,23 @@ export function fieldListFormFields(
       type: 'work-area-map',
       initialValue: null,
     },
-    {
-      name: 'listTypeName',
-      label: 'List Type',
-      type: 'select',
-      options: listTypeOptions,
-      initialValue: initialListType,
-      validators: [Validators.required],
-    },
+    presetListType
+      ? {
+          name: 'listTypeName',
+          label: 'List Type',
+          type: 'text' as const,
+          initialValue: initialListType,
+          readonly: true,
+          validators: [Validators.required],
+        }
+      : {
+          name: 'listTypeName',
+          label: 'List Type',
+          type: 'select' as const,
+          options: listTypeOptions,
+          initialValue: initialListType,
+          validators: [Validators.required],
+        },
     {
       name: 'title',
       label: 'Title',

@@ -8,11 +8,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Only add auth header for secured PWA endpoints
-  const securedPaths = ['/api/pwa/secured/', '/api/pwa/auth/me', '/api/pwa/auth/refresh'];
-  const needsAuth = securedPaths.some(path => req.url.includes(path));
-
-  if (needsAuth) {
+  // Always attach token if available for any PWA API request
+  const isPwaApi = req.url.includes('/api/pwa/');
+  if (isPwaApi) {
     const token = authService.getToken();
     if (token) {
       req = req.clone({
@@ -20,6 +18,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       });
     }
   }
+
+  // Only redirect to login on 401 for explicitly secured paths
+  const securedPaths = ['/api/pwa/secured/', '/api/pwa/auth/me', '/api/pwa/auth/refresh'];
+  const needsAuth = securedPaths.some(path => req.url.includes(path));
 
   return next(req).pipe(
     tap({

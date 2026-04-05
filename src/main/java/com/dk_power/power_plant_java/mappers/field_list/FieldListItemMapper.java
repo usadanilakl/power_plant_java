@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ public class FieldListItemMapper {
     private final NgValueService valueService;
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
+    private final PermitAttachmentRepo attachmentRepo;
 
     public FieldListItemDto convertToDto(FieldListItem entity) {
         if (entity == null) return null;
@@ -57,6 +59,10 @@ public class FieldListItemMapper {
         } else if (entity.getEquipment() != null) {
             dto.setEquipmentId(entity.getEquipment().getId());
             dto.setEquipmentTag(entity.getEquipment().getTagNumber());
+        }
+        if (entity.getId() != null) {
+            dto.setAttachmentCount(
+                attachmentRepo.findByEntityTypeAndEntityId("FieldListItem", entity.getId()).size());
         }
         return dto;
     }

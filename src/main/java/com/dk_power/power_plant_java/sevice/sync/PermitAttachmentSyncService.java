@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.dto.pa.PaAttachmentDto;
 import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
 import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
+import com.dk_power.power_plant_java.sevice.sharepoint.adapters.FieldListItemSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.InstrumentLogSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.JhaSharePointAdapter;
 import com.dk_power.power_plant_java.sevice.sharepoint.adapters.WorkRequestSharePointAdapter;
@@ -24,6 +25,7 @@ public class PermitAttachmentSyncService {
     private final WorkRequestSharePointAdapter wrAdapter;
     private final JhaSharePointAdapter jhaAdapter;
     private final InstrumentLogSharePointAdapter instrumentLogAdapter;
+    private final FieldListItemSharePointAdapter fieldListItemAdapter;
     private final PermitAttachmentRepo attachmentRepo;
     private final SyncConfig syncConfig;
 
@@ -40,6 +42,11 @@ public class PermitAttachmentSyncService {
     public int syncAttachmentsForInstrumentLog(Long entityId, String sharepointId) {
         return syncAttachments("InstrumentLog", entityId, sharepointId,
                 () -> instrumentLogAdapter.getAttachments(sharepointId));
+    }
+
+    public int syncAttachmentsForFieldListItem(Long entityId, String sharepointId) {
+        return syncAttachments("FieldListItem", entityId, sharepointId,
+                () -> fieldListItemAdapter.getAttachments(sharepointId));
     }
 
     private int syncAttachments(String entityType, Long entityId, String sharepointId,

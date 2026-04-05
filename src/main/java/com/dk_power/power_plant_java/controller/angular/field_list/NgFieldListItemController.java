@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.controller.angular.field_list;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.field_list.FieldListItemDto;
+import com.dk_power.power_plant_java.entities.permits.PermitAttachment;
+import com.dk_power.power_plant_java.repository.permits.PermitAttachmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.field_list.NgFieldListItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import java.util.List;
 public class NgFieldListItemController {
 
     private final NgFieldListItemService service;
+    private final PermitAttachmentRepo attachmentRepo;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<FieldListItemDto>>> getAll() {
@@ -85,6 +88,17 @@ public class NgFieldListItemController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to update field list item: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<NgApiResponse<List<PermitAttachment>>> getAttachments(@PathVariable Long id) {
+        try {
+            List<PermitAttachment> attachments = attachmentRepo.findByEntityTypeAndEntityId("FieldListItem", id);
+            return ResponseEntity.ok(new NgApiResponse<>(attachments, "Attachments retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get attachments: " + e.getMessage()));
         }
     }
 

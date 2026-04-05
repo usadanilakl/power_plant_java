@@ -49,4 +49,8 @@ export class RfFieldListApiService {
       tap(() => this.itemDeletedSubject.next(id))
     );
   }
+
+  getAttachments(id: number): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(`${this.apiUrl}/${id}/attachments`);
+  }
 }
