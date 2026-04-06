@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { Subject } from 'rxjs';
 import { ContextMenuService } from '../../../../shared/menu/context-menu/context-menu.service';
 import { ContextMenuAction } from '../../../../shared/menu/context-menu/context-menu.component';
 import { RfFieldListApiService } from './rf-field-list-api.service';
@@ -9,10 +8,6 @@ import { RfFieldListStateService } from './rf-field-list-state.service';
 export class RfFieldListContextMenuService extends ContextMenuService {
   private fieldListApi = inject(RfFieldListApiService);
   private fieldListState = inject(RfFieldListStateService);
-
-  // Events the page subscribes to
-  viewDetails$ = new Subject<any>();
-  editItem$ = new Subject<any>();
 
   override contextMenuActions: ContextMenuAction[] = [
     {
@@ -79,12 +74,13 @@ export class RfFieldListContextMenuService extends ContextMenuService {
 
   override handleViewDetails(item: any): void {
     this.closeContextMenu();
-    this.viewDetails$.next(item);
+    this.fieldListState.openDetail(item);
   }
 
   override handleEdit(item: any): void {
     this.closeContextMenu();
-    this.editItem$.next(item);
+    this.fieldListState.selectedItem.set(item);
+    this.fieldListState.isFormOpen.set(true);
   }
 
   private changeStatus(item: any, status: string): void {

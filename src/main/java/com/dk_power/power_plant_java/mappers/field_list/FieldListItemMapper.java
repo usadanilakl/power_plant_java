@@ -11,7 +11,9 @@ import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -62,7 +64,65 @@ public class FieldListItemMapper {
         }
         if (entity.getId() != null) {
             dto.setAttachmentCount(
-                attachmentRepo.findByEntityTypeAndEntityId("FieldListItem", entity.getId()).size());
+                (int) attachmentRepo.countByEntityTypeAndEntityId("FieldListItem", entity.getId()));
+        }
+        return dto;
+    }
+
+    /**
+     * Batch-optimized: converts a list using 1 query for attachment counts instead of N.
+     */
+    public List<FieldListItemDto> convertToDtos(List<FieldListItem> entities) {
+        if (entities == null || entities.isEmpty()) return List.of();
+
+        List<Long> ids = entities.stream().map(FieldListItem::getId).toList();
+        Map<Long, Integer> attachmentCounts = new HashMap<>();
+        attachmentRepo.countByEntityTypeGroupedByEntityId("FieldListItem", ids)
+            .forEach(row -> attachmentCounts.put((Long) row[0], ((Number) row[1]).intValue()));
+
+        return entities.stream().map(entity -> {
+            FieldListItemDto dto = convertToDtoWithoutAttachmentCount(entity);
+            dto.setAttachmentCount(attachmentCounts.getOrDefault(entity.getId(), 0));
+            return dto;
+        }).toList();
+    }
+
+    private FieldListItemDto convertToDtoWithoutAttachmentCount(FieldListItem entity) {
+        if (entity == null) return null;
+        FieldListItemDto dto = new FieldListItemDto();
+        dto.setId(entity.getId());
+        dto.setTitle(entity.getTitle());
+        dto.setNotes(entity.getNotes());
+        dto.setDateObserved(entity.getDateObserved());
+        dto.setTimeObserved(entity.getTimeObserved());
+        dto.setSpecificLocation(entity.getSpecificLocation());
+        dto.setSharepointId(entity.getSharepointId());
+        dto.setLocalUuid(entity.getLocalUuid());
+        dto.setSpModifiedTime(entity.getSpModifiedTime());
+        dto.setSubmitterName(entity.getSubmitterName());
+        dto.setSubmitterEmail(entity.getSubmitterEmail());
+        dto.setSubmitterPhone(entity.getSubmitterPhone());
+        dto.setCreatedBy(entity.getCreatedBy());
+        if (entity.getDateCreated() != null) dto.setDateCreated(entity.getDateCreated().toString());
+        if (entity.getDateModified() != null) dto.setDateModified(entity.getDateModified().toString());
+        if (entity.getListType() != null) {
+            dto.setListTypeId(entity.getListType().getId());
+            dto.setListTypeName(entity.getListType().getName());
+        }
+        if (entity.getStatus() != null) {
+            dto.setStatusId(entity.getStatus().getId());
+            dto.setStatusName(entity.getStatus().getName());
+        }
+        if (entity.getLocation() != null) {
+            dto.setLocationId(entity.getLocation().getId());
+            dto.setLocationName(entity.getLocation().getName());
+        }
+        if (entity.getLotoPoint() != null) {
+            dto.setLotoPointId(entity.getLotoPoint().getId());
+            dto.setEquipmentTag(entity.getLotoPoint().getTagNumber());
+        } else if (entity.getEquipment() != null) {
+            dto.setEquipmentId(entity.getEquipment().getId());
+            dto.setEquipmentTag(entity.getEquipment().getTagNumber());
         }
         return dto;
     }

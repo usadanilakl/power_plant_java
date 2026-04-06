@@ -18,6 +18,8 @@ export class RfFieldListStateService {
   selectedListType = signal<string | null>(null);
 
   isFormOpen = signal(false);
+  isDetailOpen = signal(false);
+  detailItem = signal<FieldListItemDto | null>(null);
 
   constructor() {
     this.apiService.itemDeleted$.pipe(
@@ -83,6 +85,16 @@ export class RfFieldListStateService {
         this.isFormOpen.set(false);
       }
     });
+  }
+
+  openDetail(item: any): void {
+    this.detailItem.set(FieldListItemDto.fromJson(item));
+    this.isDetailOpen.set(true);
+  }
+
+  closeDetail(): void {
+    this.isDetailOpen.set(false);
+    this.detailItem.set(null);
   }
 
   openNewForm(): void {

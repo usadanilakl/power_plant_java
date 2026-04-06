@@ -1,5 +1,5 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Component, OnInit, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { RfFieldListStateService } from '../services/rf-field-list-state.service';
@@ -12,7 +12,6 @@ import { MainLayoutComponent } from '../../../../layout/refactored/main-layout.c
 import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-menu.component';
 import { FieldListItemDto } from '../../../../models/field-list/field-list-item.model';
 import { RfFieldListApiService } from '../services/rf-field-list-api.service';
-import { RfFieldListContextMenuService } from '../services/rf-field-list-context-menu.service';
 
 @Component({
   selector: 'app-rf-field-list-page',
@@ -66,12 +65,12 @@ import { RfFieldListContextMenuService } from '../services/rf-field-list-context
             </app-rf-popup-projection>
           }
 
-          @if (isDetailOpen()) {
+          @if (stateService.isDetailOpen()) {
             <app-rf-field-list-detail-dialog
-              [item]="detailItem()!"
-              (close)="isDetailOpen.set(false)"
+              [item]="stateService.detailItem()!"
+              (close)="stateService.closeDetail()"
               (edit)="onEditFromDetail($event)"
-              (deleted)="isDetailOpen.set(false)">
+              (deleted)="stateService.closeDetail()">
             </app-rf-field-list-detail-dialog>
           }
         </div>
@@ -113,12 +112,7 @@ import { RfFieldListContextMenuService } from '../services/rf-field-list-context
 export class RfFieldListPageComponent implements OnInit {
   stateService = inject(RfFieldListStateService);
   private apiService = inject(RfFieldListApiService);
-  private contextMenuService = inject(RfFieldListContextMenuService);
   private route = inject(ActivatedRoute);
-  private destroyRef = inject(DestroyRef);
-
-  isDetailOpen = signal(false);
-  detailItem = signal<FieldListItemDto | null>(null);
 
   displayedIds = toSignal(
     this.stateService.allItems$.pipe(
@@ -135,23 +129,10 @@ export class RfFieldListPageComponent implements OnInit {
       this.stateService.loadAll();
     }
 
-    // Subscribe to context menu / double-click events
-    this.contextMenuService.viewDetails$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(item => this.onRowDoubleClicked(item));
-
-    this.contextMenuService.editItem$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(item => this.onEditFromDetail(item));
   }
 
   onListTypeChange(listType: string | null): void {
     this.stateService.loadByListType(listType);
-  }
-
-  onRowDoubleClicked(item: FieldListItemDto): void {
-    this.detailItem.set(item);
-    this.isDetailOpen.set(true);
   }
 
   onSelectedItems(items: FieldListItemDto[]): void {
@@ -166,7 +147,7 @@ export class RfFieldListPageComponent implements OnInit {
   }
 
   onEditFromDetail(item: FieldListItemDto): void {
-    this.isDetailOpen.set(false);
+    this.stateService.closeDetail();
     this.stateService.selectedItem.set(item);
     this.stateService.isFormOpen.set(true);
   }

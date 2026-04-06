@@ -33,29 +33,25 @@ public class NgFieldListItemService {
     private final SyncConfig syncConfig;
 
     public List<FieldListItemDto> getAll() {
-        return repo.findAll().stream().map(mapper::convertToDto).toList();
+        return mapper.convertToDtos(repo.findAll());
     }
 
     public List<FieldListItemDto> getByListType(String listTypeName) {
-        return repo.findByListType_NameIgnoreCase(listTypeName).stream()
-                .map(mapper::convertToDto).toList();
+        return mapper.convertToDtos(repo.findByListType_NameIgnoreCase(listTypeName));
     }
 
     public List<FieldListItemDto> getByStatus(String statusName) {
-        return repo.findByStatus_NameIgnoreCase(statusName).stream()
-                .map(mapper::convertToDto).toList();
+        return mapper.convertToDtos(repo.findByStatus_NameIgnoreCase(statusName));
     }
 
     private static final List<String> OPEN_STATUSES = List.of("Open", "In Progress");
 
     public List<FieldListItemDto> getOpenItems() {
-        return repo.findByStatus_NameIn(OPEN_STATUSES).stream()
-                .map(mapper::convertToDto).toList();
+        return mapper.convertToDtos(repo.findByStatus_NameIn(OPEN_STATUSES));
     }
 
     public List<FieldListItemDto> getOpenItemsByListType(String listTypeName) {
-        return repo.findByListType_NameIgnoreCaseAndStatus_NameIn(listTypeName, OPEN_STATUSES).stream()
-                .map(mapper::convertToDto).toList();
+        return mapper.convertToDtos(repo.findByListType_NameIgnoreCaseAndStatus_NameIn(listTypeName, OPEN_STATUSES));
     }
 
     public FieldListItemDto getDtoById(Long id) {
