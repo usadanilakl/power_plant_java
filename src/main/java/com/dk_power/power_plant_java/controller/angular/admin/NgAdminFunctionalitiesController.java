@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.dto.admin.SyncAuditReconstructionDto;
 import com.dk_power.power_plant_java.dto.admin.SyncAuditTypeSummaryDto;
 import com.dk_power.power_plant_java.sevice.angular.admin.AdminFunctionalitiesService;
 import com.dk_power.power_plant_java.sevice.angular.admin.SyncAuditService;
+import com.dk_power.power_plant_java.sevice.hub.H2ToPostgresMigrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class NgAdminFunctionalitiesController {
     private final AdminFunctionalitiesService adminFunctionalitiesService;
     private final SyncAuditService syncAuditService;
+    private final H2ToPostgresMigrationService migrationService;
 
     /**
      * Check file integrity - compares physical files with database entries.
@@ -323,6 +325,47 @@ public class NgAdminFunctionalitiesController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                 .body(new NgApiResponse<>(null, "Error reconstructing sync audit entity: " + e.getMessage()));
+        }
+    }
+
+    // ==================== Database Migration ====================
+
+    @GetMapping("/migration/status")
+    public ResponseEntity<NgApiResponse<H2ToPostgresMigrationService.MigrationStatus>> getMigrationStatus() {
+        try {
+            var status = migrationService.getStatus();
+            return ResponseEntity.ok(new NgApiResponse<>(status, "Migration status retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Error checking migration status: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/migration/compare")
+    public ResponseEntity<NgApiResponse<H2ToPostgresMigrationService.MigrationReport>> compareMigration() {
+        try {
+            var report = migrationService.compareSourceAndTarget();
+            String message = report.getTotalDeviations() == 0
+                ? "All tables match (" + report.getTotalPgRecords() + " records)"
+                : report.getTotalDeviations() + " table(s) have deviations";
+            return ResponseEntity.ok(new NgApiResponse<>(report, message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Comparison error: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/migration/run")
+    public ResponseEntity<NgApiResponse<H2ToPostgresMigrationService.MigrationResult>> runMigration() {
+        try {
+            var result = migrationService.migrate();
+            String message = result.isSuccess()
+                ? "Migration complete: " + result.getTotalRecords() + " records in " + result.getElapsedMs() + "ms"
+                : "Migration failed: " + result.getError();
+            return ResponseEntity.ok(new NgApiResponse<>(result, message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new NgApiResponse<>(null, "Migration error: " + e.getMessage()));
         }
     }
 

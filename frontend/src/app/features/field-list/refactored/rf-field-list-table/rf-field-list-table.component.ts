@@ -49,7 +49,7 @@ interface Attachment {
         [items]="items()"
         [columns]="columns()"
         (selectedItemsEvent)="selectedItemsEvent.emit($event)"
-        (rowDoubleClicked)="rowDoubleClickedEvent.emit($event)">
+        (rowDoubleClicked)="onRowDoubleClick($event)">
       </app-table>
     </div>
 
@@ -152,8 +152,6 @@ export class RfFieldListTableComponent implements AfterViewInit {
   private apiService = inject(RfFieldListApiService);
 
   selectedItemsEvent = output<FieldListItemDto[]>();
-  rowDoubleClickedEvent = output<FieldListItemDto>();
-  viewDetailsEvent = output<FieldListItemDto>();
 
   // Template refs for custom columns
   imageTpl = viewChild.required<TemplateRef<any>>('imageTpl');
@@ -186,6 +184,11 @@ export class RfFieldListTableComponent implements AfterViewInit {
         }
       }
     });
+  }
+
+  onRowDoubleClick(item: any): void {
+    console.log('[FieldList Table] onRowDoubleClick fired:', item?.id, item?.title);
+    this.stateService.openDetail(item);
   }
 
   ngAfterViewInit(): void {
@@ -265,7 +268,7 @@ export class RfFieldListTableComponent implements AfterViewInit {
       this.lightboxSrc.set(images[0]);
     } else {
       // No images loaded yet — open detail dialog instead
-      this.viewDetailsEvent.emit(item);
+      this.stateService.openDetail(item);
     }
   }
 
@@ -281,6 +284,6 @@ export class RfFieldListTableComponent implements AfterViewInit {
 
   onViewDetails(event: MouseEvent, item: FieldListItemDto): void {
     event.stopPropagation();
-    this.viewDetailsEvent.emit(item);
+    this.stateService.openDetail(item);
   }
 }

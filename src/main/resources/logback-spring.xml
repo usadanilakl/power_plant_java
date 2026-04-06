@@ -101,6 +101,13 @@
         <appender-ref ref="WarnErrorFile" />
     </logger>
 
+    <!-- Migration service logs to main file + console for visibility -->
+    <logger name="com.dk_power.power_plant_java.sevice.hub.H2ToPostgresMigrationService" level="info" additivity="false">
+        <appender-ref ref="RollingFile" />
+        <appender-ref ref="WarnErrorFile" />
+        <appender-ref ref="Console" />
+    </logger>
+
     <logger name="com.dk_power.power_plant_java.controller.hub" level="info" additivity="false">
         <appender-ref ref="SyncFile" />
         <appender-ref ref="WarnErrorFile" />

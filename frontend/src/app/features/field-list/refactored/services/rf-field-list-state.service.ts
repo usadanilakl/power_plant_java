@@ -88,8 +88,10 @@ export class RfFieldListStateService {
   }
 
   openDetail(item: any): void {
+    console.log('[FieldList] openDetail called with:', item?.id, item?.title);
     this.detailItem.set(FieldListItemDto.fromJson(item));
     this.isDetailOpen.set(true);
+    console.log('[FieldList] isDetailOpen:', this.isDetailOpen(), 'detailItem:', this.detailItem()?.title);
   }
 
   closeDetail(): void {
