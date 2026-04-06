@@ -1,5 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 import { RfFieldListStateService } from '../services/rf-field-list-state.service';
@@ -12,6 +12,7 @@ import { MainLayoutComponent } from '../../../../layout/refactored/main-layout.c
 import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-menu.component';
 import { FieldListItemDto } from '../../../../models/field-list/field-list-item.model';
 import { RfFieldListApiService } from '../services/rf-field-list-api.service';
+import { RfFieldListContextMenuService } from '../services/rf-field-list-context-menu.service';
 
 @Component({
   selector: 'app-rf-field-list-page',
@@ -56,9 +57,7 @@ import { RfFieldListApiService } from '../services/rf-field-list-api.service';
           </app-sp-sync-toolbar>
 
           <app-rf-field-list-table
-            (selectedItemsEvent)="onSelectedItems($event)"
-            (rowDoubleClickedEvent)="onRowDoubleClicked($event)"
-            (viewDetailsEvent)="onRowDoubleClicked($event)">
+            (selectedItemsEvent)="onSelectedItems($event)">
           </app-rf-field-list-table>
 
           @if (stateService.isFormOpen()) {
@@ -71,7 +70,8 @@ import { RfFieldListApiService } from '../services/rf-field-list-api.service';
             <app-rf-field-list-detail-dialog
               [item]="detailItem()!"
               (close)="isDetailOpen.set(false)"
-              (edit)="onEditFromDetail($event)">
+              (edit)="onEditFromDetail($event)"
+              (deleted)="isDetailOpen.set(false)">
             </app-rf-field-list-detail-dialog>
           }
         </div>
@@ -113,7 +113,9 @@ import { RfFieldListApiService } from '../services/rf-field-list-api.service';
 export class RfFieldListPageComponent implements OnInit {
   stateService = inject(RfFieldListStateService);
   private apiService = inject(RfFieldListApiService);
+  private contextMenuService = inject(RfFieldListContextMenuService);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   isDetailOpen = signal(false);
   detailItem = signal<FieldListItemDto | null>(null);
@@ -132,6 +134,15 @@ export class RfFieldListPageComponent implements OnInit {
     } else {
       this.stateService.loadAll();
     }
+
+    // Subscribe to context menu / double-click events
+    this.contextMenuService.viewDetails$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(item => this.onRowDoubleClicked(item));
+
+    this.contextMenuService.editItem$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(item => this.onEditFromDetail(item));
   }
 
   onListTypeChange(listType: string | null): void {

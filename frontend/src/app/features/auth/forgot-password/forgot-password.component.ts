@@ -12,7 +12,7 @@ import { AuthService } from '../../../services/auth.service';
     <div class="container">
       <div class="card">
         <h2>Reset Password</h2>
-        <p class="subtitle">Enter your email to receive a reset link</p>
+        <p class="subtitle">Enter your email or username to receive a reset link</p>
 
         <div *ngIf="successMessage" class="success-message">
           {{ successMessage }}
@@ -24,13 +24,13 @@ import { AuthService } from '../../../services/auth.service';
 
         <form *ngIf="!successMessage" (ngSubmit)="onSubmit()">
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email">Email or Username</label>
             <input
               id="email"
-              type="email"
+              type="text"
               [(ngModel)]="email"
               name="email"
-              placeholder="Enter your email address"
+              placeholder="Enter your email or username"
               required
               autofocus
             />
@@ -168,7 +168,7 @@ export class ForgotPasswordComponent {
 
   onSubmit(): void {
     if (!this.email) {
-      this.errorMessage = 'Please enter your email';
+      this.errorMessage = 'Please enter your email or username';
       return;
     }
 

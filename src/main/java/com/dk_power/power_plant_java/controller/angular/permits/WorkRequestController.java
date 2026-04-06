@@ -25,7 +25,7 @@ public class WorkRequestController {
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAll() {
         try {
             List<WorkRequest> allRequests = workRequestService.getAll();
-            List<NgWorkRequestDto> allDtos = allRequests.stream().map(workRequestMapper::convertToNgDto).toList();
+            List<NgWorkRequestDto> allDtos = workRequestMapper.convertToNgDtos(allRequests);
             return ResponseEntity.ok(
                     new NgApiResponse<>(allDtos, "Successfully got all requests from local DB")
             );
@@ -46,7 +46,7 @@ public class WorkRequestController {
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAllByStatus(@PathVariable String status) {
         try {
             List<WorkRequest> allRequests = workRequestService.getAllByStatus(status);
-            List<NgWorkRequestDto> allDtos = allRequests.stream().map(workRequestMapper::convertToNgDto).toList();
+            List<NgWorkRequestDto> allDtos = workRequestMapper.convertToNgDtos(allRequests);
             return ResponseEntity.ok(
                     new NgApiResponse<>(allDtos, "Successfully got all requests with status '" + status + "' from local DB")
             );
@@ -125,7 +125,7 @@ public class WorkRequestController {
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> save(@RequestBody List<NgWorkRequestDto> workRequests) {
         try {
             List<WorkRequest> savedRequests = workRequestService.saveAllFromDto(workRequests);
-            List<NgWorkRequestDto> savedDtos = savedRequests.stream().map(workRequestMapper::convertToNgDto).toList();
+            List<NgWorkRequestDto> savedDtos = workRequestMapper.convertToNgDtos(savedRequests);
             return ResponseEntity.ok(
                     new NgApiResponse<>(savedDtos, "Successfully saved work requests.")
             );

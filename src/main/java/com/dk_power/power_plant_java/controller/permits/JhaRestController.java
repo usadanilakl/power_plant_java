@@ -181,22 +181,26 @@ public class JhaRestController {
     public ResponseEntity<NgApiResponse<java.util.Map<String, Object>>> debugDbCheck() {
         java.util.Map<String, Object> info = new java.util.LinkedHashMap<>();
         try {
-            Long totalCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA", Long.class);
-            Long activeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA WHERE DELETED = FALSE", Long.class);
-            Long deletedCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM JHA WHERE DELETED = TRUE", Long.class);
+            Long totalCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM jha", Long.class);
+            Long activeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM jha WHERE deleted = FALSE", Long.class);
+            Long deletedCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM jha WHERE deleted = TRUE", Long.class);
             info.put("totalRows", totalCount);
             info.put("activeRows", activeCount);
             info.put("deletedRows", deletedCount);
 
             var rows = jdbcTemplate.queryForList(
-                    "SELECT ID, JOB_NAME, LOCAL_UUID, DELETED, SHAREPOINT_ID, DATE_CREATED FROM JHA ORDER BY ID DESC");
+                    "SELECT id, job_name, local_uuid, deleted, sharepoint_id, date_created FROM jha ORDER BY id DESC");
             info.put("rows", rows.size() > 20 ? rows.subList(0, 20) : rows);
 
-            Long wrCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM WORK_REQUEST", Long.class);
+            Long wrCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM work_request", Long.class);
             info.put("workRequestTotalRows", wrCount);
 
-            String dbUrl = jdbcTemplate.queryForObject("CALL DATABASE_PATH()", String.class);
-            info.put("databasePath", dbUrl);
+            try {
+                String dbUrl = jdbcTemplate.queryForObject("CALL DATABASE_PATH()", String.class);
+                info.put("databasePath", dbUrl);
+            } catch (Exception ignored) {
+                info.put("databasePath", "N/A (not H2)");
+            }
         } catch (Exception e) {
             info.put("error", e.getMessage());
         }

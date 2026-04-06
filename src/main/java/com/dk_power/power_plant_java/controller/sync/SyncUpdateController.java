@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.controller.sync;
 
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -10,12 +12,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SSE endpoint for pushing sync updates to connected frontend clients.
  * When changes are applied from server sync, this broadcasts to all connected clients
  * so they can reactively update their UI.
+ *
+ * Emitters are keyed by clientId so that reconnects from the same browser tab
+ * immediately evict the stale emitter instead of accumulating.
  */
 @RestController
 @RequestMapping("/api/sync-updates")
@@ -24,21 +32,55 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @CrossOrigin(origins = "*")
 public class SyncUpdateController {
 
+    private static final long EMITTER_TIMEOUT_MS = 60_000L; // 60s — frontend reconnects well before this
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000L;
+
     private final ObjectMapper objectMapper;
 
-    // Store active SSE connections
-    private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    /** Active SSE connections keyed by clientId. One emitter per client. */
+    private final ConcurrentHashMap<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+
+    private ScheduledExecutorService heartbeatExecutor;
+
+    @PostConstruct
+    void startHeartbeat() {
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "sse-heartbeat");
+            t.setDaemon(true);
+            return t;
+        });
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat,
+                HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    }
+
+    @PreDestroy
+    void stopHeartbeat() {
+        if (heartbeatExecutor != null) heartbeatExecutor.shutdownNow();
+    }
 
     /**
      * SSE endpoint for clients to subscribe to sync updates.
-     * Clients call this to establish a persistent connection for receiving updates.
+     * Each client must pass a unique {@code clientId} query parameter.
+     * Reconnects with the same clientId evict the previous emitter immediately,
+     * preventing connection accumulation.
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribeToUpdates() {
-        SseEmitter emitter = new SseEmitter(10 * 60 * 1000L); // 10 minute timeout — frontend auto-reconnects
+    public SseEmitter subscribeToUpdates(@RequestParam(defaultValue = "") String clientId) {
+        // Assign a server-generated ID if the client didn't provide one (backward compat)
+        if (clientId.isBlank()) {
+            clientId = UUID.randomUUID().toString();
+        }
 
-        emitters.add(emitter);
-        log.info("New SSE client connected. Total clients: {}", emitters.size());
+        // Evict any previous emitter for the same client
+        SseEmitter oldEmitter = emitters.remove(clientId);
+        if (oldEmitter != null) {
+            log.debug("Evicting previous SSE emitter for clientId={}", clientId);
+            try { oldEmitter.complete(); } catch (Exception ignored) {}
+        }
+
+        SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
+        emitters.put(clientId, emitter);
+        log.info("New SSE client connected. clientId={} Total clients: {}", clientId, emitters.size());
 
         // Send initial connection confirmation
         try {
@@ -49,23 +91,55 @@ public class SyncUpdateController {
             log.warn("Failed to send connection confirmation: {}", e.getMessage());
         }
 
-        // Cleanup on completion or error
+        // Capture clientId for callbacks (must be effectively final)
+        final String cid = clientId;
+
+        // Cleanup on completion or error — remove only if this emitter is still the active one for this clientId
+        Runnable removeIfCurrent = () -> emitters.remove(cid, emitter);
+
         emitter.onCompletion(() -> {
-            emitters.remove(emitter);
-            log.info("SSE client disconnected (completion). Total clients: {}", emitters.size());
+            removeIfCurrent.run();
+            log.info("SSE client disconnected (completion). clientId={} Total clients: {}", cid, emitters.size());
         });
 
         emitter.onTimeout(() -> {
-            emitters.remove(emitter);
-            log.info("SSE client disconnected (timeout). Total clients: {}", emitters.size());
+            removeIfCurrent.run();
+            log.info("SSE client disconnected (timeout). clientId={} Total clients: {}", cid, emitters.size());
         });
 
         emitter.onError((ex) -> {
-            emitters.remove(emitter);
-            log.info("SSE client disconnected (error): {}. Total clients: {}", ex.getMessage(), emitters.size());
+            removeIfCurrent.run();
+            log.info("SSE client disconnected (error): {}. clientId={} Total clients: {}", ex.getMessage(), cid, emitters.size());
         });
 
         return emitter;
+    }
+
+    /**
+     * Send a heartbeat comment to all emitters.
+     * Dead connections will throw IOException, triggering their onError callback and removal.
+     */
+    private void sendHeartbeat() {
+        if (emitters.isEmpty()) return;
+        emitters.forEach((cid, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().comment("heartbeat"));
+            } catch (Exception e) {
+                emitters.remove(cid, emitter);
+            }
+        });
+    }
+
+    /** Send an SSE event to all connected emitters, removing any that fail. */
+    private void broadcastEvent(String eventName, String json) {
+        emitters.forEach((cid, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(json));
+            } catch (IOException e) {
+                log.debug("Failed to send {} to clientId={}, removing: {}", eventName, cid, e.getMessage());
+                emitters.remove(cid, emitter);
+            }
+        });
     }
 
     /**
@@ -88,19 +162,8 @@ public class SyncUpdateController {
             );
 
             String json = objectMapper.writeValueAsString(payload);
-
             log.debug("Broadcasting entity update to {} clients: {} #{}", emitters.size(), entityType, entityId);
-
-            for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event()
-                        .name("entity_updated")
-                        .data(json));
-                } catch (IOException e) {
-                    log.debug("Failed to send to client, will be removed: {}", e.getMessage());
-                    emitters.remove(emitter);
-                }
-            }
+            broadcastEvent("entity_updated", json);
         } catch (Exception e) {
             log.error("Error broadcasting entity update: {}", e.getMessage());
         }
@@ -111,9 +174,7 @@ public class SyncUpdateController {
      * Lets clients know a sync cycle completed with summary info.
      */
     public void broadcastSyncComplete(int changesApplied, int changesReceived) {
-        if (emitters.isEmpty()) {
-            return;
-        }
+        if (emitters.isEmpty()) return;
 
         try {
             Map<String, Object> payload = Map.of(
@@ -124,16 +185,7 @@ public class SyncUpdateController {
             );
 
             String json = objectMapper.writeValueAsString(payload);
-
-            for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event()
-                        .name("sync_complete")
-                        .data(json));
-                } catch (IOException e) {
-                    emitters.remove(emitter);
-                }
-            }
+            broadcastEvent("sync_complete", json);
         } catch (Exception e) {
             log.error("Error broadcasting sync complete: {}", e.getMessage());
         }
@@ -151,16 +203,7 @@ public class SyncUpdateController {
         Thread.startVirtualThread(() -> {
             try {
                 String json = objectMapper.writeValueAsString(event);
-
-                for (SseEmitter emitter : emitters) {
-                    try {
-                        emitter.send(SseEmitter.event()
-                            .name("sync_activity")
-                            .data(json));
-                    } catch (IOException e) {
-                        emitters.remove(emitter);
-                    }
-                }
+                broadcastEvent("sync_activity", json);
             } catch (Exception e) {
                 log.debug("Error broadcasting sync activity: {}", e.getMessage());
             }

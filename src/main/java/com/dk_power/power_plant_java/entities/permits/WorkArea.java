@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
 
 import java.util.HashSet;
@@ -23,6 +24,7 @@ import java.util.Set;
 @NoArgsConstructor
 @Table(name = "work_area")
 @Where(clause = "deleted IS NOT TRUE")
+@BatchSize(size = 50)
 public class WorkArea extends BaseAuditEntity {
 
     @Column(columnDefinition = "TEXT")

@@ -59,4 +59,8 @@ export class UserService {
   getRoles(): Observable<{ roles: string[] }> {
     return this.http.get<{ roles: string[] }>(`${this.apiUrl}/roles`);
   }
+
+  seedPlantUsers(): Observable<SpringApiResponse<{ created: string[], skipped: string[] }>> {
+    return this.http.post<SpringApiResponse<{ created: string[], skipped: string[] }>>(`${this.apiUrl}/seed-plant-users`, {});
+  }
 }

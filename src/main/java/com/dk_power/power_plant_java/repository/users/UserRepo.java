@@ -25,7 +25,11 @@ public interface UserRepo extends BaseRepository<User> {
 
     User findFirstByEmailOrderByIdAsc(String email);
 
+    User findFirstByEmailIgnoreCaseOrderByIdAsc(String email);
+
     User findFirstByUsernameOrderByIdAsc(String username);
+
+    User findFirstByUsernameIgnoreCaseOrderByIdAsc(String username);
 
     boolean existsByUsername(String username);
 
@@ -36,4 +40,6 @@ public interface UserRepo extends BaseRepository<User> {
     User findFirstByRoleAndIsActiveTrue(String role);
 
     User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);
+
+    boolean existsByWindowsUsername(String windowsUsername);
 }

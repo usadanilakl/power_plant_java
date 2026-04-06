@@ -1,10 +1,6 @@
 <div class="login-container">
   <div class="login-card">
-    <!-- Tab toggle -->
-    <div class="auth-tabs">
-      <button class="tab" [class.active]="mode === 'signin'" (click)="switchMode('signin')">Sign In</button>
-      <button class="tab" [class.active]="mode === 'signup'" (click)="switchMode('signup')">Register</button>
-    </div>
+    <h2>Power Plant Manager</h2>
 
     <!-- Success message -->
     <div *ngIf="successMessage" class="success-message">{{ successMessage }}</div>
@@ -13,30 +9,42 @@
     <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
     <!-- Server offline warning -->
-    @if (!serverStatus.isOnline()) {
+    @if (!serverStatus.isOnline() && step !== 'offline_choice') {
       <div class="offline-warning">
-        @if (mode === 'signin') {
-          Server is offline. Sign in requires server connection.
-        } @else {
-          Server is offline. You can register locally and it will sync when online.
-        }
+        Server is offline. Some features may be limited.
       </div>
     }
 
-    <!-- Sign In Form -->
-    @if (mode === 'signin') {
+    <!-- Step 1: Identify — enter email or username -->
+    @if (step === 'identify') {
+      <p class="subtitle">Enter your email or username to get started</p>
+      <form [formGroup]="identifyForm" (ngSubmit)="onLookup()">
+        <div class="form-group">
+          <label for="identify-credential">Email or Username</label>
+          <input id="identify-credential" type="text" formControlName="credential"
+                 placeholder="Enter your email or username" autofocus>
+        </div>
+
+        <button type="submit" [disabled]="identifyForm.invalid || isLoading">
+          <span *ngIf="!isLoading">Continue</span>
+          <span *ngIf="isLoading" class="spinner"></span>
+        </button>
+      </form>
+    }
+
+    <!-- Step 2a: Sign In — user found and active -->
+    @if (step === 'signin') {
+      <p class="subtitle">Welcome back{{ lookedUpName ? ', ' + lookedUpName : '' }}</p>
       <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
         <div class="form-group">
           <label for="login-email">Email</label>
-          <input id="login-email" type="email" formControlName="email" placeholder="Enter your email">
-          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="error-text">
-            Please enter a valid email.
-          </div>
+          <input id="login-email" type="text" formControlName="email" readonly class="readonly-input">
         </div>
 
         <div class="form-group">
           <label for="login-password">Password</label>
-          <input id="login-password" type="password" formControlName="password" placeholder="Enter your password">
+          <input id="login-password" type="password" formControlName="password"
+                 placeholder="Enter your password" autofocus>
           <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error-text">
             Password is required.
           </div>
@@ -47,10 +55,26 @@
           <span *ngIf="isLoading" class="spinner"></span>
         </button>
       </form>
+
+      <div class="auth-links">
+        <a (click)="onForgotPassword()" class="link">Forgot password?</a>
+        <a (click)="goBack()" class="link">Use a different account</a>
+      </div>
     }
 
-    <!-- Sign Up / Register Form -->
-    @if (mode === 'signup') {
+    <!-- Step 2b: Pending Approval -->
+    @if (step === 'pending_approval') {
+      <div class="info-message">
+        <strong>Account pending approval</strong>
+        <p>Your account is registered but needs to be approved by an administrator before you can sign in.</p>
+        <p>Please contact your supervisor or plant admin.</p>
+      </div>
+      <button (click)="goBack()">Try a different account</button>
+    }
+
+    <!-- Step 2c: Register — user not found -->
+    @if (step === 'register') {
+      <p class="subtitle">Create a new account</p>
       <form [formGroup]="signupForm" (ngSubmit)="onSignUp()">
         <div class="form-group">
           <label for="signup-name">Full Name</label>
@@ -62,7 +86,7 @@
 
         <div class="form-group">
           <label for="signup-email">Email</label>
-          <input id="signup-email" type="email" formControlName="email" placeholder="john@company.com">
+          <input id="signup-email" type="email" formControlName="email" placeholder="john&#64;company.com">
           <div *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched" class="error-text">
             Please enter a valid email.
           </div>
@@ -104,6 +128,25 @@
           <span *ngIf="isLoading" class="spinner"></span>
         </button>
       </form>
+
+      <div class="auth-links">
+        <a (click)="goBack()" class="link">Back</a>
+      </div>
+    }
+
+    <!-- Offline Choice — can't determine if user exists -->
+    @if (step === 'offline_choice') {
+      <div class="offline-warning">
+        Server is offline. We can't check if you have an account.
+      </div>
+      <p class="subtitle">Choose an option:</p>
+      <div class="choice-buttons">
+        <button (click)="chooseSignIn()" class="choice-btn">I have an account — Sign In</button>
+        <button (click)="chooseRegister()" class="choice-btn">I'm new — Register</button>
+      </div>
+      <div class="auth-links">
+        <a (click)="goBack()" class="link">Back</a>
+      </div>
     }
   </div>
 </div>

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,10 +15,12 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
+@BatchSize(size = 50)
 public class JobLog extends BaseAuditEntity {
 
     @JsonIgnore
     @OneToMany(mappedBy = "jobLog", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<DailyPermitPackage> packages = new HashSet<>();
 
     @Column(columnDefinition = "TEXT")
@@ -52,6 +55,7 @@ public class JobLog extends BaseAuditEntity {
         joinColumns = @JoinColumn(name = "job_log_id"),
         inverseJoinColumns = @JoinColumn(name = "loto_id")
     )
+    @BatchSize(size = 50)
     private Set<Loto> lotos = new HashSet<>();
 
     public void attachLoto(Loto loto) {

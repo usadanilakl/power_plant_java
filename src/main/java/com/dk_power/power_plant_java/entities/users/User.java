@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Where;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -15,6 +18,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@BatchSize(size = 50)
+@Where(clause = "deleted IS NOT TRUE")
 public class User extends BaseAuditEntity {
 
     @Column(name = "username")

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,6 +22,7 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
+@BatchSize(size = 50)
 public class DailyPermitPackage extends BaseAuditEntity {
 
     @JsonIgnore
@@ -29,15 +31,19 @@ public class DailyPermitPackage extends BaseAuditEntity {
     private JobLog jobLog;
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<WorkRequest> workRequests = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<SafeWork> safeWorks = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<HotWork> hotWorks = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<ConfinedSpace> confinedSpaces = new HashSet<>();
 
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
@@ -46,15 +52,19 @@ public class DailyPermitPackage extends BaseAuditEntity {
             joinColumns = @JoinColumn(name = "daily_permit_package_id"),
             inverseJoinColumns = @JoinColumn(name = "loto_id")
     )
+    @BatchSize(size = 50)
     private Set<Loto> lotos = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<EnergizedWorkPermit> energizedWorkPermits = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<ExcavationPermit> excavationPermits = new HashSet<>();
 
     @OneToMany(mappedBy = "dailyPermitPackage", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<VentingPermit> ventingPermits = new HashSet<>();
 
     String companyName;

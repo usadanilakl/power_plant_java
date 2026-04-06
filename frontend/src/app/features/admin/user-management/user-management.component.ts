@@ -42,6 +42,9 @@ interface UserForm {
             [(ngModel)]="searchQuery"
           />
           <button class="btn create" (click)="openCreateForm()">+ New User</button>
+          <button class="btn seed" (click)="seedPlantUsers()" [disabled]="isSeeding">
+            {{ isSeeding ? 'Seeding...' : 'Seed Plant Users' }}
+          </button>
         </div>
 
         <!-- Create/Edit Form -->
@@ -270,6 +273,7 @@ interface UserForm {
     .btn.edit { background: #2d5aa0; }
     .btn.deny { background: #c0392b; }
     .btn.cancel { background: #555; }
+    .btn.seed { background: #e67e22; }
     .btn:hover { opacity: 0.85; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -300,6 +304,7 @@ export class UserManagementComponent implements OnInit {
   editingUser: UserDto | null = null;
   isLoading = false;
   isSubmitting = false;
+  isSeeding = false;
   errorMessage = '';
   successMessage = '';
 
@@ -414,6 +419,24 @@ export class UserManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  seedPlantUsers(): void {
+    if (!confirm('Seed 27 plant users? Existing users will be skipped.')) return;
+    this.clearMessages();
+    this.isSeeding = true;
+    this.userService.seedPlantUsers().subscribe({
+      next: (res) => {
+        const data = res.responseData;
+        this.successMessage = res.message || `Created ${data?.created?.length ?? 0}, skipped ${data?.skipped?.length ?? 0}`;
+        this.isSeeding = false;
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.errorMessage = err.error?.message || 'Failed to seed users';
+        this.isSeeding = false;
+      }
+    });
   }
 
   confirmDelete(user: UserDto): void {

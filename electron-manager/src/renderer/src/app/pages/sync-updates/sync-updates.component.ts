@@ -688,6 +688,7 @@ export class SyncUpdatesComponent implements OnInit, OnDestroy {
       }
 
       // Step 2: Electron handles shutdown → DB + files sync → restart
+      this.syncInProgress = false; // reset so executeSync doesn't skip
       this.executeSync(['db', 'files']);
     } catch (err: any) {
       this.syncProgress = { phase: 'error', statusMessage: 'Smart resync failed: ' + (err?.message || err), progressPercent: 0 };

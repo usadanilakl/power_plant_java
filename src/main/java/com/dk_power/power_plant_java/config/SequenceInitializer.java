@@ -6,8 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.io.FileInputStream;
+import java.sql.Connection;
 import java.util.List;
 import java.util.Properties;
 
@@ -30,6 +32,16 @@ public class SequenceInitializer {
     private static final String MACHINE_ID_FILE = "./machine-id.properties";
 
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
+
+    private boolean isPostgres() {
+        try (Connection conn = dataSource.getConnection()) {
+            String product = conn.getMetaData().getDatabaseProductName();
+            return product != null && product.toLowerCase().contains("postgresql");
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @PostConstruct
     public void ensureSequenceConsistency() {
@@ -39,13 +51,15 @@ public class SequenceInitializer {
                 return;
             }
 
+            boolean postgres = isPostgres();
             long rangeStart = deviceNumber * DEVICE_ID_MULTIPLIER;
             long rangeEnd = rangeStart + DEVICE_ID_MULTIPLIER;
 
             // Find all user tables that have an ID column (skip system/audit tables)
+            // CURRENT_SCHEMA works on both H2 (PUBLIC) and PostgreSQL (public)
             List<String> tables = jdbcTemplate.queryForList(
                 "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-                "WHERE COLUMN_NAME = 'ID' AND TABLE_SCHEMA = 'PUBLIC' " +
+                "WHERE COLUMN_NAME = 'ID' AND TABLE_SCHEMA = CURRENT_SCHEMA " +
                 "AND TABLE_NAME NOT LIKE '%_AUD' AND TABLE_NAME != 'REVINFO'",
                 String.class
             );
@@ -58,8 +72,10 @@ public class SequenceInitializer {
             long maxSuffix = 0;
             for (String table : tables) {
                 try {
+                    // PostgreSQL is case-sensitive with quoted identifiers — use as-is
+                    String quotedTable = postgres ? "\"" + table + "\"" : "\"" + table + "\"";
                     Long tablMax = jdbcTemplate.queryForObject(
-                        "SELECT MAX(MOD(ID, ?)) FROM \"" + table + "\" WHERE ID >= ? AND ID < ?",
+                        "SELECT MAX(MOD(ID, ?)) FROM " + quotedTable + " WHERE ID >= ? AND ID < ?",
                         Long.class,
                         DEVICE_ID_MULTIPLIER, rangeStart, rangeEnd
                     );
@@ -76,10 +92,9 @@ public class SequenceInitializer {
                 return;
             }
 
-            // Get current sequence value
-            Long currentSeqVal = jdbcTemplate.queryForObject(
-                "SELECT NEXT VALUE FOR id_seq", Long.class
-            );
+            // Get current sequence value — dialect-aware
+            String nextValSql = postgres ? "SELECT nextval('id_seq')" : "SELECT NEXT VALUE FOR id_seq";
+            Long currentSeqVal = jdbcTemplate.queryForObject(nextValSql, Long.class);
 
             if (currentSeqVal != null && currentSeqVal <= maxSuffix) {
                 long newStart = maxSuffix + 1;

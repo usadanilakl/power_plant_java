@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -88,6 +89,43 @@ public class NgFieldListItemController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to update field list item: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/change-status/{status}")
+    public ResponseEntity<NgApiResponse<FieldListItemDto>> changeStatus(
+            @PathVariable Long id, @PathVariable String status) {
+        try {
+            FieldListItemDto saved = service.changeStatus(id, status);
+            return ResponseEntity.ok(new NgApiResponse<>(saved, "Status changed to " + status));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to change status: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<NgApiResponse<PermitAttachment>> uploadAttachment(
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            PermitAttachment att = service.uploadAttachment(id, body.get("fileName"),
+                    body.get("contentType"), body.get("base64Content"));
+            return ResponseEntity.ok(new NgApiResponse<>(att, "Attachment uploaded"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to upload attachment: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<NgApiResponse<Void>> deleteAttachment(
+            @PathVariable Long id, @PathVariable Long attachmentId) {
+        try {
+            service.deleteAttachment(id, attachmentId);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Attachment deleted"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to delete attachment: " + e.getMessage()));
         }
     }
 

@@ -39,7 +39,10 @@ public class WorkRequestRestController {
             @RequestParam(defaultValue = "50") int pageSize) {
         Page<WorkRequest> entityPage = workRequestService.getRepo().findAll(
                 PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "id")));
-        Page<NgWorkRequestDto> dtoPage = entityPage.map(workRequestMapper::convertToNgDto);
+        // Batch-convert: 2 queries for JHA+attachments instead of 2*N
+        List<NgWorkRequestDto> batchDtos = workRequestMapper.convertToNgDtos(entityPage.getContent());
+        Page<NgWorkRequestDto> dtoPage = new org.springframework.data.domain.PageImpl<>(
+                batchDtos, entityPage.getPageable(), entityPage.getTotalElements());
         return ResponseEntity.ok(new NgApiResponse<>(dtoPage, "Successfully fetched work requests"));
     }
 
@@ -113,7 +116,10 @@ public class WorkRequestRestController {
             Page<WorkRequest> entityPage = workRequestService.complexSearchWithPagination(
                     workRequestService.getRepo(), criteria,
                     PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy)), andLogic);
-            Page<NgWorkRequestDto> dtoPage = entityPage.map(workRequestMapper::convertToNgDto);
+            // Batch-convert: 2 queries for JHA+attachments instead of 2*N
+            List<NgWorkRequestDto> batchDtos = workRequestMapper.convertToNgDtos(entityPage.getContent());
+            Page<NgWorkRequestDto> dtoPage = new org.springframework.data.domain.PageImpl<>(
+                    batchDtos, entityPage.getPageable(), entityPage.getTotalElements());
             return ResponseEntity.ok(new NgApiResponse<>(dtoPage, "Search completed"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Search failed: " + e.getMessage()));

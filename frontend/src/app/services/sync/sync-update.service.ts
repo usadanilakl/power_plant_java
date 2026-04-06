@@ -57,9 +57,12 @@ export class SyncUpdateService {
 
   private eventSource: EventSource | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10; // Increased from 5
-  private baseReconnectDelay = 1000; // 1 second base delay
-  private maxReconnectDelay = 60000; // Max 60 seconds between attempts
+  private maxReconnectAttempts = 10;
+  private baseReconnectDelay = 1000;
+  private maxReconnectDelay = 60000;
+
+  /** Unique ID for this browser tab — server uses it to evict stale emitters on reconnect */
+  private readonly clientId = crypto.randomUUID();
 
   // Connection state
   private connectionStateSubject = new BehaviorSubject<'connected' | 'disconnected' | 'connecting'>('disconnected');
@@ -120,7 +123,7 @@ export class SyncUpdateService {
     }
 
     this.connectionStateSubject.next('connecting');
-    const url = `${environment.baseApiUrl}/api/sync-updates/stream`;
+    const url = `${environment.baseApiUrl}/api/sync-updates/stream?clientId=${this.clientId}`;
 
     try {
       this.eventSource = new EventSource(url);

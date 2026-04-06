@@ -60,9 +60,7 @@ public class CentralSyncService {
     private final AtomicBoolean receiving = new AtomicBoolean(false);
     private volatile boolean serverAvailable = false;
 
-    // When receive backlog exceeds this, skip incremental receive and recommend full resync
     private volatile boolean backlogTooLarge = false;
-    private static final long BACKLOG_THRESHOLD = 5000;
 
     // Sync metrics
     private final AtomicLong totalChangesSent = new AtomicLong(0);
@@ -212,14 +210,6 @@ public class CentralSyncService {
             long pendingCount = getPendingChangeCountFromServer();
             if (pendingCount < 0) {
                 throw new RuntimeException("Server unreachable");
-            }
-            if (pendingCount > BACKLOG_THRESHOLD) {
-                backlogTooLarge = true;
-                log.warn("server_sync.receive.skipped reason=large_backlog pending={} threshold={}. Full resync recommended.",
-                    pendingCount, BACKLOG_THRESHOLD);
-                result.setSuccess(true);
-                result.setErrorMessage("Backlog too large (" + pendingCount + ") — full resync recommended");
-                return result;
             }
             backlogTooLarge = false;
 

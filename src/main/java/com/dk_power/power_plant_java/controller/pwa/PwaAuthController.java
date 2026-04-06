@@ -120,6 +120,30 @@ public class PwaAuthController {
         return info;
     }
 
+    @PostMapping("/lookup")
+    public ResponseEntity<?> lookup(@RequestBody LookupRequest req) {
+        if (req.credential() == null || req.credential().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("status", "INVALID", "message", "Credential is required"));
+        }
+
+        User user = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(req.credential().trim());
+        if (user == null) {
+            user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(req.credential().trim());
+        }
+
+        if (user == null) {
+            return ResponseEntity.ok(Map.of("status", "NOT_FOUND"));
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "FOUND");
+        response.put("isActive", Boolean.TRUE.equals(user.getIsActive()));
+        response.put("name", user.getName() != null ? user.getName() : "");
+        response.put("email", user.getEmail() != null ? user.getEmail() : "");
+        return ResponseEntity.ok(response);
+    }
+
     public record LoginRequest(String email, String password) {}
     public record RefreshRequest(String token) {}
+    public record LookupRequest(String credential) {}
 }

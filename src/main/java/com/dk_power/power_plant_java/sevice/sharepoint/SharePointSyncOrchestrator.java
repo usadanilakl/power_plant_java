@@ -33,8 +33,10 @@ public class SharePointSyncOrchestrator {
 
     private final Map<String, Long> lastSyncTimes = new ConcurrentHashMap<>();
     private final Map<String, SyncResult> lastResults = new ConcurrentHashMap<>();
-    // Tracks the last successful sync completion time per entity type (for incremental fetch)
+    // Tracks the last successful sync completion time per entity type (for incremental fetch).
+    // Persisted to file so restarts don't trigger a full 7-day fetch.
     private final Map<String, Instant> lastSuccessfulSyncAt = new ConcurrentHashMap<>();
+    private static final String LAST_SYNC_FILE = "./sp-last-sync.properties";
 
     // Client sync exchange sets this flag to pause SharePoint sync.
     // Prevents H2 table-level lock contention between SP writes and client sync saves.
@@ -59,6 +61,7 @@ public class SharePointSyncOrchestrator {
             syncables.size(),
             syncables.stream().map(SharePointSyncable::getEntityTypeName)
                 .collect(Collectors.joining(", ")));
+        loadLastSyncTimes();
     }
 
     /**
@@ -145,6 +148,7 @@ public class SharePointSyncOrchestrator {
                 if (remoteDtos == null || remoteDtos.isEmpty()) {
                     log.debug("[SP Orchestrator] No modified {} items from SharePoint", type);
                     lastSuccessfulSyncAt.put(type, Instant.now());
+                    saveLastSyncTimes();
                     return result;
                 }
                 log.debug("[SP Orchestrator] Fetched {} {} items from SharePoint{}",
@@ -275,5 +279,36 @@ public class SharePointSyncOrchestrator {
         if (seconds < 60) return seconds + "s ago";
         if (seconds < 3600) return (seconds / 60) + "m ago";
         return (seconds / 3600) + "h ago";
+    }
+
+    private void loadLastSyncTimes() {
+        java.io.File file = new java.io.File(LAST_SYNC_FILE);
+        if (!file.exists()) return;
+        try (java.io.InputStream in = new java.io.FileInputStream(file)) {
+            java.util.Properties props = new java.util.Properties();
+            props.load(in);
+            for (String key : props.stringPropertyNames()) {
+                try {
+                    lastSuccessfulSyncAt.put(key, Instant.parse(props.getProperty(key)));
+                } catch (Exception e) {
+                    log.debug("Could not parse last sync time for {}: {}", key, e.getMessage());
+                }
+            }
+            log.info("[SP Orchestrator] Loaded last sync times for {} entity types from {}", lastSuccessfulSyncAt.size(), LAST_SYNC_FILE);
+        } catch (Exception e) {
+            log.warn("[SP Orchestrator] Could not load last sync times: {}", e.getMessage());
+        }
+    }
+
+    private void saveLastSyncTimes() {
+        java.util.Properties props = new java.util.Properties();
+        for (var entry : lastSuccessfulSyncAt.entrySet()) {
+            props.setProperty(entry.getKey(), entry.getValue().toString());
+        }
+        try (java.io.OutputStream out = new java.io.FileOutputStream(LAST_SYNC_FILE)) {
+            props.store(out, "SP orchestrator last successful sync times");
+        } catch (Exception e) {
+            log.debug("Could not save last sync times: {}", e.getMessage());
+        }
     }
 }

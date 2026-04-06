@@ -96,6 +96,34 @@
   background-color: var(--accent-color-hover);
 }
 
+.login-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background-color: rgba(33, 150, 243, 0.15);
+  border-bottom: 1px solid rgba(33, 150, 243, 0.3);
+  color: var(--primary-text);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.banner-login-btn {
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border: none;
+  padding: 4px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.banner-login-btn:hover {
+  background-color: var(--accent-color-hover);
+}
+
 .message-badge {
   background: #4caf50;
   color: white;

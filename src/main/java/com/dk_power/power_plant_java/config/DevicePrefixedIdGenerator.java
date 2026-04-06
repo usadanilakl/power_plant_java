@@ -54,7 +54,8 @@ public class DevicePrefixedIdGenerator implements IdentifierGenerator {
             private long result;
 
             public void execute(Connection connection) throws SQLException {
-                try (PreparedStatement ps = connection.prepareStatement("SELECT NEXT VALUE FOR id_seq");
+                String sequenceSql = resolveSequenceSql(connection);
+                try (PreparedStatement ps = connection.prepareStatement(sequenceSql);
                      ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         result = rs.getLong(1);
@@ -98,6 +99,27 @@ public class DevicePrefixedIdGenerator implements IdentifierGenerator {
             log.info("Device number for ID generation: {}", cachedDeviceNumber);
             return cachedDeviceNumber;
         }
+    }
+
+    // Cache the resolved sequence SQL — detected once from connection metadata
+    private static volatile String cachedSequenceSql = null;
+
+    /**
+     * Resolve the correct sequence next-value SQL for the current database dialect.
+     * H2 uses "SELECT NEXT VALUE FOR id_seq", PostgreSQL uses "SELECT nextval('id_seq')".
+     */
+    private String resolveSequenceSql(Connection connection) throws SQLException {
+        if (cachedSequenceSql != null) {
+            return cachedSequenceSql;
+        }
+        String dbProduct = connection.getMetaData().getDatabaseProductName();
+        if (dbProduct != null && dbProduct.toLowerCase().contains("postgresql")) {
+            cachedSequenceSql = "SELECT nextval('id_seq')";
+        } else {
+            cachedSequenceSql = "SELECT NEXT VALUE FOR id_seq";
+        }
+        log.info("Database dialect detected: {} → sequence SQL: {}", dbProduct, cachedSequenceSql);
+        return cachedSequenceSql;
     }
 
     private static final long FALLBACK_DEVICE_NUMBER = 99L;

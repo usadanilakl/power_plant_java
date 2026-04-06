@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.time.Instant;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class DataIntegrityService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
     @Value("${data.integrity.soft-delete-retention-days:90}")
     private int softDeleteRetentionDays;
@@ -233,9 +236,13 @@ public class DataIntegrityService {
 
     private boolean hasPrimaryKey(String tableName) {
         try {
-            return jdbcTemplate.execute((java.sql.Connection conn) -> {
+            return jdbcTemplate.execute((Connection conn) -> {
                 DatabaseMetaData metaData = conn.getMetaData();
+                // Try both cases — H2 uses uppercase, PostgreSQL uses lowercase
                 try (ResultSet rs = metaData.getPrimaryKeys(null, null, tableName.toUpperCase())) {
+                    if (rs.next()) return true;
+                }
+                try (ResultSet rs = metaData.getPrimaryKeys(null, null, tableName.toLowerCase())) {
                     return rs.next();
                 }
             });
@@ -309,13 +316,30 @@ public class DataIntegrityService {
     }
 
     private int removeDuplicates(String tableName, String col1, String col2) {
-        // H2 syntax: use _ROWID_ pseudo-column to identify rows for deletion
-        // Keep the row with the smallest _ROWID_ for each unique combination
-        String sql = String.format(
-            "DELETE FROM %s WHERE _ROWID_ NOT IN (SELECT MIN(_ROWID_) FROM %s GROUP BY %s, %s)",
-            tableName, tableName, col1, col2
-        );
+        String sql;
+        if (isPostgres()) {
+            // PostgreSQL: use ctid pseudo-column to identify rows for deletion
+            sql = String.format(
+                "DELETE FROM %s WHERE ctid NOT IN (SELECT MIN(ctid) FROM %s GROUP BY %s, %s)",
+                tableName, tableName, col1, col2
+            );
+        } else {
+            // H2: use _ROWID_ pseudo-column to identify rows for deletion
+            sql = String.format(
+                "DELETE FROM %s WHERE _ROWID_ NOT IN (SELECT MIN(_ROWID_) FROM %s GROUP BY %s, %s)",
+                tableName, tableName, col1, col2
+            );
+        }
         return jdbcTemplate.update(sql);
+    }
+
+    private boolean isPostgres() {
+        try (Connection conn = dataSource.getConnection()) {
+            String product = conn.getMetaData().getDatabaseProductName();
+            return product != null && product.toLowerCase().contains("postgresql");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**

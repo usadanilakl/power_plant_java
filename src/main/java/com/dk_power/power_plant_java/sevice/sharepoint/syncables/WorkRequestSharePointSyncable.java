@@ -276,14 +276,18 @@ public class WorkRequestSharePointSyncable implements SharePointSyncable<WorkReq
 
         if (existing == null && localUuidMatch != null) {
             existing = localUuidMatch;
-            if (!Objects.equals(existing.getSharepointId(), spId)) {
+            boolean wasAlreadyBound = Objects.equals(existing.getSharepointId(), spId);
+            if (!wasAlreadyBound) {
                 existing.setSharepointId(spId);
+                workRequestRepo.save(existing);
+                log.info("[WR Syncable] Bound orphan/local WR id={} localUuid={} to SharePoint ID={}",
+                    existing.getId(), remote.getLocalUuid(), spId);
             }
-            log.info("[WR Syncable] Bound orphan/local WR id={} localUuid={} to SharePoint ID={}",
-                existing.getId(), remote.getLocalUuid(), spId);
-            // This row existed before SharePoint binding, so late clients may never
-            // have received a CREATE marker. Repair it after this transaction commits.
-            return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true, true);
+            // Update snapshot so this item is recognized as "already processed" next cycle.
+            // Without this, every sync cycle re-detects it as changed and re-binds.
+            fieldMergeService.updateSnapshot(ENTITY_TYPE, spId, spValues);
+            // Only repair create history on first bind, not every cycle.
+            return new WorkRequestSyncDecision(EntitySyncOutcome.UPDATED, existing.getId(), true, !wasAlreadyBound);
         } else if (existing != null && localUuidMatch != null
                 && !existing.getId().equals(localUuidMatch.getId())) {
             workRequestMergeService.mergeDuplicateIntoCanonical(

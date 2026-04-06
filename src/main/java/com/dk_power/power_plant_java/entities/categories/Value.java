@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
 
 @Entity
@@ -16,6 +17,7 @@ import org.hibernate.annotations.Where;
 @Setter
 @Table(name = "val_table")
 @Where(clause = "deleted IS NOT TRUE")
+@BatchSize(size = 50)
 @EntityListeners(FieldChangeEntityListener.class)
 public class Value extends BaseAuditEntity implements Referenceable {
     public Value(String name) {

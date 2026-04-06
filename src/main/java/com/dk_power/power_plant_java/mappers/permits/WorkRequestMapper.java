@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import java.util.*;
+
 @Component
 @RequiredArgsConstructor
 public class WorkRequestMapper implements BaseMapper {
@@ -140,6 +142,36 @@ public class WorkRequestMapper implements BaseMapper {
     public NgWorkRequestDto convertToNgDto(WorkRequest entity) {
         if (entity == null) return null;
 
+        // Single-entity path: use EXISTS/COUNT instead of loading full collections
+        boolean hasJha = jhaRepo.existsByWorkRequestId(entity.getId());
+        long attachmentCount = permitAttachmentRepo.countByEntityTypeAndEntityId("WorkRequest", entity.getId());
+        return convertToNgDto(entity, hasJha, (int) attachmentCount);
+    }
+
+    /**
+     * Batch-optimized: converts a list of WorkRequests using only 2 batch queries
+     * for JHA existence and attachment counts, instead of 2N individual queries.
+     */
+    public List<NgWorkRequestDto> convertToNgDtos(List<WorkRequest> entities) {
+        if (entities == null || entities.isEmpty()) return List.of();
+
+        List<Long> ids = entities.stream().map(WorkRequest::getId).toList();
+
+        // 1 query: which WR ids have at least one JHA?
+        Set<Long> idsWithJha = jhaRepo.findWorkRequestIdsWithJha(ids);
+
+        // 1 query: attachment counts grouped by entity id
+        Map<Long, Integer> attachmentCounts = new HashMap<>();
+        permitAttachmentRepo.countByEntityTypeGroupedByEntityId("WorkRequest", ids)
+            .forEach(row -> attachmentCounts.put((Long) row[0], ((Number) row[1]).intValue()));
+
+        return entities.stream()
+            .map(e -> convertToNgDto(e, idsWithJha.contains(e.getId()), attachmentCounts.getOrDefault(e.getId(), 0)))
+            .toList();
+    }
+
+    /** Core DTO mapping — no extra queries, all derived data passed in. */
+    private NgWorkRequestDto convertToNgDto(WorkRequest entity, boolean hasJha, int attachmentCount) {
         NgWorkRequestDto dto = new NgWorkRequestDto();
 
         dto.setId(entity.getId());
@@ -161,14 +193,11 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setSharepointId(entity.getSharepointId());
         dto.setLocalUuid(entity.getLocalUuid());
         if(entity.getPermitStatus()!=null && entity.getPermitStatus().getName()!=null)dto.setStatus(entity.getPermitStatus().getName());
-        dto.setHasJha(!jhaRepo.findByWorkRequestId(entity.getId()).isEmpty());
-        dto.setAttachmentCount(permitAttachmentRepo.findByEntityTypeAndEntityId("WorkRequest", entity.getId()).size());
+        dto.setHasJha(hasJha);
+        dto.setAttachmentCount(attachmentCount);
 
         if (entity.getWorkArea() != null) {
             dto.setWorkArea(workAreaMapper.convertToDto(entity.getWorkArea()));
-        } else if (entity.getLocation() != null && !entity.getLocation().isEmpty()) {
-            workAreaRepo.findFirstByNameIgnoreCase(entity.getLocation())
-                .ifPresent(wa -> dto.setWorkArea(workAreaMapper.convertToDto(wa)));
         }
         if (entity.getWorkCategory() != null) {
             dto.setWorkCategory(valueService.valueToDto(entity.getWorkCategory()));

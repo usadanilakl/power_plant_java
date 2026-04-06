@@ -346,23 +346,21 @@ public class FullResyncService {
      * @return result with send status; if send succeeds, full resync is triggered async
      */
     public ResyncResult smartResync() {
-        log.info("smart_resync.start — sending local changes before full resync");
+        log.info("smart_resync.start");
 
-        // Step 1: Send all local pending changes to the hub
-        try {
-            CentralSyncService.SyncResult sendResult = centralSyncService.sendToServer();
-            if (!sendResult.isSuccess() && sendResult.getChangesSent() == 0
-                    && centralSyncService.getPendingChangeCount() > 0) {
-                String msg = "Failed to send local changes to hub: " + sendResult.getErrorMessage()
-                    + ". Aborting resync to prevent data loss.";
-                log.error("smart_resync.aborted reason=send_failed: {}", msg);
-                return new ResyncResult(false, msg, null);
+        // Step 1: Send local pending changes to hub (only if there are any)
+        long pending = centralSyncService.getPendingChangeCount();
+        if (pending > 0) {
+            try {
+                CentralSyncService.SyncResult sendResult = centralSyncService.sendToServer();
+                log.info("smart_resync.send_complete sent={} pending_was={}", sendResult.getChangesSent(), pending);
+            } catch (Exception e) {
+                log.warn("smart_resync.send_failed (continuing anyway): {}", e.getMessage());
+                // Don't abort — the full DB resync will overwrite local data anyway.
+                // Unsent changes are lost, but that's the user's choice when clicking Smart Resync.
             }
-            log.info("smart_resync.send_complete sent={}", sendResult.getChangesSent());
-        } catch (Exception e) {
-            String msg = "Failed to send local changes: " + e.getMessage();
-            log.error("smart_resync.aborted reason=send_error: {}", msg);
-            return new ResyncResult(false, msg, null);
+        } else {
+            log.info("smart_resync.no_pending_changes — skipping send");
         }
 
         // Step 2: Notify hub to mark all changes as synced (fire-and-forget)
@@ -380,17 +378,15 @@ public class FullResyncService {
      * and the client doesn't need to wait for it.
      */
     private void notifyHubAllSynced() {
-        Thread.ofVirtual().name("hub-mark-synced").start(() -> {
-            try {
-                String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/mark-all-synced";
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("X-Machine-Id", syncConfig.getMachineId());
-                restTemplate.postForEntity(url, new HttpEntity<>(headers), Map.class);
-                log.info("Hub notified — all changes marked as synced for {}", syncConfig.getMachineId());
-            } catch (Exception e) {
-                log.warn("Failed to notify hub (non-fatal): {}", e.getMessage());
-            }
-        });
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/mark-all-synced";
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+            restTemplate.postForEntity(url, new HttpEntity<>(headers), Map.class);
+            log.info("Hub notified — all changes marked as synced for {}", syncConfig.getMachineId());
+        } catch (Exception e) {
+            log.warn("Failed to notify hub (non-fatal): {}", e.getMessage());
+        }
     }
 
     public ResyncResult performFullResync(boolean skipDeletionCheck) {

@@ -83,7 +83,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     }
 
     public List<NgWorkRequestDto> getAllNgDtosByStatus(String status) {
-        return getAllByStatus(status).stream().map(workRequestMapper::convertToNgDto).toList();
+        return workRequestMapper.convertToNgDtos(getAllByStatus(status));
     }
 
     public NgWorkRequestDto getNgDtoById(Long id) {

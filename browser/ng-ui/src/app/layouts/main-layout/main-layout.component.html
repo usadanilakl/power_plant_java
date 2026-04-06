@@ -35,6 +35,13 @@
     </div>
   </header>
 
+  @if (!isLoggedIn() && serverStatus.isOnline()) {
+    <div class="login-banner">
+      <span>Sign in to access permits, messages, and more.</span>
+      <button class="banner-login-btn" (click)="login()">Sign In</button>
+    </div>
+  }
+
   <div class="content-wrapper">
     @if(isSideMenuEnabled()){
       <div class="overlay" #overlay [class.active]="isMobileView && isMenuVisible" (click)="closeMenu()"></div>

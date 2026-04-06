@@ -50,7 +50,21 @@ export class RfFieldListApiService {
     );
   }
 
+  changeStatus(id: number, status: string): Observable<SpringApiResponse<FieldListItemDto>> {
+    return this.http.post<SpringApiResponse<FieldListItemDto>>(`${this.apiUrl}/${id}/change-status/${status}`, {}).pipe(
+      tap(res => { if (res.responseData) this.itemUpdatedSubject.next(FieldListItemDto.fromJson(res.responseData)); })
+    );
+  }
+
   getAttachments(id: number): Observable<SpringApiResponse<any[]>> {
     return this.http.get<SpringApiResponse<any[]>>(`${this.apiUrl}/${id}/attachments`);
+  }
+
+  uploadAttachment(id: number, file: { fileName: string; contentType: string; base64Content: string }): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/${id}/attachments`, file);
+  }
+
+  deleteAttachment(id: number, attachmentId: number): Observable<SpringApiResponse<void>> {
+    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}/attachments/${attachmentId}`);
   }
 }

@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -127,8 +129,64 @@ public class NgUserController {
     @GetMapping("/roles")
     public ResponseEntity<?> getAvailableRoles() {
         return ResponseEntity.ok(Map.of(
-            "roles", new String[]{"ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR"}
+            "roles", new String[]{"ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT"}
         ));
+    }
+
+    @PostMapping("/seed-plant-users")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> seedPlantUsers() {
+        try {
+            String[][] plantUsers = {
+                {"Adam", "Bunker"}, {"Andrew", "Stroud"}, {"Andy", "Gorelik"},
+                {"Anthony", "Stein-Rojas"}, {"Austin", "Ouellette"}, {"Brandon", "Barrow"},
+                {"Cory", "Fuhrmann"}, {"Danil", "Klokov"}, {"Dustin", "Lelak"},
+                {"Dustin", "Sero"}, {"Geovanny", "Martinez"}, {"Heather", "Sincak"},
+                {"John", "Noble"}, {"Juan", "Silva"}, {"Justin", "Wandahovich"},
+                {"Ken", "Bassett"}, {"Kody", "Ziegler"}, {"Matt", "Wrightsman"},
+                {"Rigo", "Garcia"}, {"Ryan", "Sedler"}, {"Scott", "Freese"},
+                {"Sherrie", "Geslak"}, {"Sidney", "Bazemore"}, {"Stuart", "Owens"},
+                {"Tyler", "Johnson"}, {"William", "Genz"}, {"Yevhen", "Mykhailenko"}
+            };
+
+            List<String> created = new ArrayList<>();
+            List<String> skipped = new ArrayList<>();
+
+            for (String[] entry : plantUsers) {
+                String firstName = entry[0];
+                String lastName = entry[1];
+                String windowsUsername = (firstName.substring(0, 1) + lastName).toLowerCase();
+                String email = windowsUsername + "@jpowerusa.com";
+
+                if (userRepo.existsByEmail(email) || userRepo.existsByWindowsUsername(windowsUsername)) {
+                    skipped.add(firstName + " " + lastName);
+                    continue;
+                }
+
+                User user = User.builder()
+                    .username(windowsUsername)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .name(firstName + " " + lastName)
+                    .email(email)
+                    .role("ROLE_PLANT")
+                    .password(passwordEncoder.encode("changeme"))
+                    .isActive(true)
+                    .windowsUsername(windowsUsername)
+                    .build();
+
+                userRepo.save(user);
+                created.add(firstName + " " + lastName);
+            }
+
+            log.info("Plant user seed: created={}, skipped={}", created.size(), skipped.size());
+            return ResponseEntity.ok(new NgApiResponse<>(
+                Map.of("created", created, "skipped", skipped),
+                "Seeded " + created.size() + " users, skipped " + skipped.size() + " existing"
+            ));
+        } catch (Exception e) {
+            log.error("Plant user seed failed", e);
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
 
     public record CreateUserRequest(

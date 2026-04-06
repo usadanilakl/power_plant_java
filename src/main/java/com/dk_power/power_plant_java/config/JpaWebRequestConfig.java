@@ -31,6 +31,7 @@ public class JpaWebRequestConfig implements WebMvcConfigurer {
 
         registry.addWebRequestInterceptor(interceptor)
             .addPathPatterns("/**")
-            .excludePathPatterns("/api/sync/sse/**");
+            .excludePathPatterns("/api/sync/sse/**")
+            .excludePathPatterns("/api/sync-updates/**");
     }
 }

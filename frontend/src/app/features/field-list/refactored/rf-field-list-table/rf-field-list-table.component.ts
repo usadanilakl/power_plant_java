@@ -14,6 +14,8 @@ import { TableControlsService } from '../../../../shared/table/refactored/servic
 import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
 import { RfFieldListStateService } from '../services/rf-field-list-state.service';
 import { RfFieldListApiService } from '../services/rf-field-list-api.service';
+import { RfFieldListContextMenuService } from '../services/rf-field-list-context-menu.service';
+import { RfFieldListTableClickService } from '../services/rf-field-list-table-click.service';
 import { FieldListItemDto } from '../../../../models/field-list/field-list-item.model';
 import { Column } from '../../../../models/column.model';
 
@@ -36,7 +38,7 @@ interface Attachment {
     TableDragService,
     TableResizeService,
     TableSyncService,
-    TableClickService,
+    { provide: TableClickService, useClass: RfFieldListTableClickService },
     TableControlsService,
     TableDataService,
   ],

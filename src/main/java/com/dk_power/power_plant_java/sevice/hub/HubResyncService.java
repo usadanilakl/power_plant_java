@@ -179,9 +179,14 @@ public class HubResyncService {
 
     /**
      * Create an H2 database backup of the hub's own production database.
-     * Thread-safe with caching.
+     * Thread-safe with caching. Only works when hub runs on H2.
      */
     public Path createH2Backup() throws Exception {
+        if (isPostgres()) {
+            throw new UnsupportedOperationException(
+                "H2 backup not available — hub is running on PostgreSQL. Use JSON ZIP export instead.");
+        }
+
         backupLock.lock();
         try {
             if (isCachedBackupValid()) {
@@ -216,6 +221,35 @@ public class HubResyncService {
     public byte[] getLatestH2Backup() throws Exception {
         Path backupPath = createH2Backup();
         return Files.readAllBytes(backupPath);
+    }
+
+    /**
+     * Check if the hub is running on PostgreSQL.
+     */
+    public boolean isPostgres() {
+        return datasourceUrl != null && datasourceUrl.startsWith("jdbc:postgresql:");
+    }
+
+    /**
+     * Get the appropriate database backup for client cold resync.
+     * Returns H2 backup when running on H2, JSON ZIP when running on PostgreSQL.
+     */
+    public byte[] getClientResyncBackup() throws Exception {
+        if (isPostgres()) {
+            log.info("Hub on PostgreSQL — serving JSON ZIP for client cold resync");
+            return exportDatabaseZip();
+        } else {
+            log.info("Hub on H2 — serving H2 backup for client cold resync");
+            return getLatestH2Backup();
+        }
+    }
+
+    /**
+     * Get the backup format type for clients to know how to process the download.
+     * @return "json-zip" when hub runs PostgreSQL, "h2-backup" when hub runs H2
+     */
+    public String getBackupFormat() {
+        return isPostgres() ? "json-zip" : "h2-backup";
     }
 
     @Transactional(readOnly = true)

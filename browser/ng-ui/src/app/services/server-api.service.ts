@@ -362,6 +362,24 @@ export class ServerApiService {
 
   // ============ PWA Auth ============
 
+  lookupUser(credential: string): Observable<{ status: string; isActive?: boolean; name?: string; email?: string }> {
+    return this.http.post<{ status: string; isActive?: boolean; name?: string; email?: string }>(
+      `${this.baseUrl}/api/pwa/auth/lookup`, { credential }
+    ).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
+  forgotPassword(credential: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/api/auth/forgot-password`, { email: credential }
+    ).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
   pwaLogin(email: string, password: string): Observable<PwaLoginResponse> {
     return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
       timeout(10000),

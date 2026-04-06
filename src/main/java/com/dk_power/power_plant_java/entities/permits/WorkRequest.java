@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Where;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.List;
 @Getter
 @Setter
 @Where(clause = "deleted IS NOT TRUE")
+@BatchSize(size = 50)
 public class WorkRequest extends BasePermitEntity {
 
     private String dateOfWorkToBePerformed;

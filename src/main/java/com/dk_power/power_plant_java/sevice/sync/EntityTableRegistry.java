@@ -81,6 +81,9 @@ public class EntityTableRegistry {
         // Fire Impairment
         Map.entry("FireImpairment", "fire_impairment"),
 
+        // Field Lists
+        Map.entry("FieldListItem", "field_list_item"),
+
         // Permits - additional
         Map.entry("JobLog", "job_log"),
         Map.entry("EnergizedWorkPermit", "energized_work_permit"),
@@ -142,6 +145,7 @@ public class EntityTableRegistry {
         "ExcavationPermit",
         "VentingPermit",
         "FireImpairment",
+        "FieldListItem",
         "PrintableForm",
         "FormContainer",
         "Flow",

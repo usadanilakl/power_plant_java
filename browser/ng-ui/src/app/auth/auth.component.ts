@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ServerApiService } from '../services/server-api.service';
 import { UserSetupService } from '../services/user-setup.service';
@@ -8,6 +8,8 @@ import { ServerStatusService } from '../services/server-status.service';
 import { CommonModule } from '@angular/common';
 import { SignatureInputComponent } from '../shared/input-fields/signature-input/signature-input.component';
 import { switchMap } from 'rxjs';
+
+type AuthStep = 'identify' | 'signin' | 'register' | 'pending_approval' | 'offline_choice';
 
 @Component({
   selector: 'app-auth',
@@ -23,29 +25,40 @@ export class AuthComponent implements OnInit {
   private userSetupService = inject(UserSetupService);
   serverStatus = inject(ServerStatusService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
-  mode: 'signin' | 'signup' = 'signin';
+  step: AuthStep = 'identify';
+  identifyForm!: FormGroup;
   loginForm!: FormGroup;
   signupForm!: FormGroup;
   isLoading = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
+  // Stored from lookup
+  lookedUpEmail = '';
+  lookedUpName = '';
+  private returnUrl = '/home';
+
   ngOnInit(): void {
-    // If already logged in, redirect to home
     if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/home']);
+      this.router.navigate([this.returnUrl]);
       return;
     }
 
     const localData = this.userSetupService.getUserData();
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/home';
 
-    // If user has local data but token expired, default to sign-in
-    // If no local data at all, default to sign-up (first visit)
-    this.mode = localData ? 'signin' : 'signup';
+    if (this.route.snapshot.queryParams['reason'] === 'login_required') {
+      this.errorMessage = 'Please sign in to access this feature.';
+    }
+
+    this.identifyForm = this.fb.group({
+      credential: [localData?.email ?? '', [Validators.required]]
+    });
 
     this.loginForm = this.fb.group({
-      email: [localData?.email ?? '', [Validators.required, Validators.email]],
+      email: ['', [Validators.required]],
       password: ['', [Validators.required]]
     });
 
@@ -59,10 +72,46 @@ export class AuthComponent implements OnInit {
     });
   }
 
-  switchMode(mode: 'signin' | 'signup'): void {
-    this.mode = mode;
+  onLookup(): void {
+    if (this.identifyForm.invalid) return;
+
+    const credential = this.identifyForm.value.credential.trim();
+    if (!credential) return;
+
+    if (!this.serverStatus.isOnline()) {
+      this.lookedUpEmail = credential;
+      this.step = 'offline_choice';
+      return;
+    }
+
+    this.isLoading = true;
     this.errorMessage = null;
-    this.successMessage = null;
+
+    this.serverApi.lookupUser(credential).subscribe({
+      next: (result) => {
+        this.isLoading = false;
+        if (result.status === 'FOUND') {
+          this.lookedUpEmail = result.email || credential;
+          this.lookedUpName = result.name || '';
+          if (result.isActive) {
+            this.loginForm.patchValue({ email: this.lookedUpEmail });
+            this.step = 'signin';
+          } else {
+            this.step = 'pending_approval';
+          }
+        } else {
+          // NOT_FOUND — go to registration
+          this.signupForm.patchValue({ email: credential });
+          this.step = 'register';
+        }
+      },
+      error: () => {
+        this.isLoading = false;
+        // Lookup failed (server error) — fall back to offline choice
+        this.lookedUpEmail = credential;
+        this.step = 'offline_choice';
+      }
+    });
   }
 
   onSignIn(): void {
@@ -76,7 +125,7 @@ export class AuthComponent implements OnInit {
       next: () => {
         this.isLoading = false;
         this.authService.syncLocalUserData();
-        this.router.navigate(['/home']);
+        this.router.navigate([this.returnUrl]);
       },
       error: (err) => {
         this.isLoading = false;
@@ -94,11 +143,9 @@ export class AuthComponent implements OnInit {
     const existingData = this.userSetupService.getUserData();
     const pwaUserUuid = existingData?.uuid ?? crypto.randomUUID();
 
-    // Save user data locally first
     this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: false });
 
     if (!this.serverStatus.isOnline()) {
-      // Server offline — save locally, store password for retry, navigate to home
       this.serverStatus.setPendingPassword(password);
       this.isLoading = false;
       this.successMessage = 'Info saved locally. Server registration will complete automatically when online.';
@@ -112,7 +159,6 @@ export class AuthComponent implements OnInit {
           throw new Error(result.message);
         }
         this.userSetupService.saveUserData({ name, email, phone, company, signature: signature ?? undefined, registeredOnServer: true });
-        // Upload signature if present
         if (signature) {
           this.serverApi.uploadSignatureByUuid(pwaUserUuid, signature).subscribe({
             error: (err: any) => console.error('[Auth] Signature upload failed:', err)
@@ -124,18 +170,54 @@ export class AuthComponent implements OnInit {
       next: () => {
         this.isLoading = false;
         this.authService.syncLocalUserData();
-        this.router.navigate(['/home']);
+        this.router.navigate([this.returnUrl]);
       },
       error: (err) => {
         this.isLoading = false;
         if (err?.message?.includes('not yet approved')) {
-          this.successMessage = 'Account registered! Please wait for admin approval before signing in.';
+          this.step = 'pending_approval';
           this.errorMessage = null;
-          this.mode = 'signin';
         } else {
           this.errorMessage = err?.message || 'Registration failed. Please try again.';
         }
       }
     });
+  }
+
+  onForgotPassword(): void {
+    const email = this.lookedUpEmail || this.loginForm.value.email;
+    if (!email) {
+      this.errorMessage = 'No email to send reset link to.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = null;
+    this.serverApi.forgotPassword(email).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        this.successMessage = res.message || 'If an account with that email exists, a reset link has been sent.';
+      },
+      error: () => {
+        this.isLoading = false;
+        this.errorMessage = 'Failed to send reset link. Please try again.';
+      }
+    });
+  }
+
+  goBack(): void {
+    this.step = 'identify';
+    this.errorMessage = null;
+    this.successMessage = null;
+  }
+
+  chooseSignIn(): void {
+    this.loginForm.patchValue({ email: this.lookedUpEmail });
+    this.step = 'signin';
+  }
+
+  chooseRegister(): void {
+    this.signupForm.patchValue({ email: this.lookedUpEmail });
+    this.step = 'register';
   }
 }

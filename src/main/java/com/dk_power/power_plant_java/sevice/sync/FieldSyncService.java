@@ -529,11 +529,10 @@ public class FieldSyncService {
                         }
                     }
 
-                    // Merge duplicates created by independent clients.
-                    // Guard with AtomicBoolean: during cold resync many batches commit concurrently,
-                    // and concurrent REQUIRES_NEW merge transactions cause H2 table lock timeouts.
-                    // Only one merge runs at a time; others skip — next sync cycle picks up remaining dupes.
-                    if (mergeInProgress.compareAndSet(false, true)) {
+                    // Merge duplicates — hub only. Clients receive merge results via sync.
+                    // Running dedup on both sides causes conflicting decisions (hub keeps A,
+                    // client keeps B → both delete the other's pick).
+                    if (syncConfig.isHubMode() && mergeInProgress.compareAndSet(false, true)) {
                         try {
                             categoryValueMergeService.mergeIfDuplicatesExist();
                             workRequestMergeService.mergeIfDuplicatesExist();
