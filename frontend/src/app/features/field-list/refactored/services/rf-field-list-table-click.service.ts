@@ -12,6 +12,9 @@ export class RfFieldListTableClickService extends TableClickService {
   }
 
   protected override handleRowDoubleClick(item: any, event: MouseEvent): void {
+    // Let base class set dataService.rowDoubleClicked signal (drives table output)
+    super.handleRowDoubleClick(item, event);
+    // Also emit through our Subject for the page to open detail dialog
     this.contextMenuService.viewDetails$.next(item);
   }
 }

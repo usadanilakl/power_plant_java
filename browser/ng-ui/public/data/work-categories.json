@@ -1,37 +1,37 @@
 [ {
-  "name" : "Energized",
-  "id" : 11000018404
+  "id" : 11000018404,
+  "name" : "Energized"
 }, {
-  "name" : "I&C",
-  "id" : 11000018405
+  "id" : 11000018405,
+  "name" : "I&C"
 }, {
-  "name" : "Rigging",
-  "id" : 11000018406
+  "id" : 11000018406,
+  "name" : "Rigging"
 }, {
-  "name" : "Cleaning",
-  "id" : 11000018407
+  "id" : 11000018407,
+  "name" : "Cleaning"
 }, {
-  "name" : "Insulation",
-  "id" : 11000018400
+  "id" : 11000018400,
+  "name" : "Insulation"
 }, {
-  "name" : "Inspection",
-  "id" : 11000018401
+  "id" : 11000018401,
+  "name" : "Inspection"
 }, {
-  "name" : "Mechanical",
-  "id" : 11000018402
+  "id" : 11000018402,
+  "name" : "Mechanical"
 }, {
-  "name" : "Electrical",
-  "id" : 11000018403
+  "id" : 11000018403,
+  "name" : "Electrical"
 }, {
-  "name" : "Civil",
-  "id" : 11000018408
+  "id" : 11000018408,
+  "name" : "Civil"
 }, {
-  "name" : "Operations",
-  "id" : 11000018409
+  "id" : 11000018409,
+  "name" : "Operations"
 }, {
-  "name" : "Welding / Hot Work",
-  "id" : 11000018410
+  "id" : 11000018410,
+  "name" : "Welding / Hot Work"
 }, {
-  "name" : "Scaffolding",
-  "id" : 11000018399
+  "id" : 11000018399,
+  "name" : "Scaffolding"
 } ]
