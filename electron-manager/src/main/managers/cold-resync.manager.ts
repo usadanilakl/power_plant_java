@@ -70,9 +70,7 @@ export class ColdResyncManager {
     return this.getDirSize(this.uploadsDir);
   }
 
-  /** Download and extract/stage database backup.
-   *  Detects backup format from hub: "h2-backup" extracts .mv.db directly,
-   *  "json-zip" saves to sync-import/ for Spring Boot's JsonResyncImporter. */
+  /** Download and extract H2 database only */
   public async syncDatabase(
     serverUrl: string,
     machineId: string,
@@ -83,18 +81,6 @@ export class ColdResyncManager {
 
     try {
       this.ensureDirectories();
-
-      // Check what format the hub will serve
-      let backupFormat = 'h2-backup';
-      try {
-        const formatInfo = await this.httpGetJson<{ format: string }>(
-          `${serverUrl}/api/resync/database/backup-format`, headers
-        );
-        backupFormat = formatInfo?.format || 'h2-backup';
-        console.log(`Hub backup format: ${backupFormat}`);
-      } catch {
-        console.log('Could not detect backup format, assuming h2-backup');
-      }
 
       onProgress('Downloading database...', 0);
       const backupZipPath = path.join(this.dbDir, 'backup_cold.zip');
@@ -109,25 +95,11 @@ export class ColdResyncManager {
       );
 
       const zipStat = fs.statSync(backupZipPath);
-      console.log(`Backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB), format=${backupFormat}`);
+      console.log(`H2 backup ZIP downloaded: ${zipStat.size} bytes (${(zipStat.size / 1024 / 1024).toFixed(1)} MB)`);
 
-      if (backupFormat === 'json-zip') {
-        // Hub is on PostgreSQL — save JSON ZIP for Spring Boot's JsonResyncImporter
-        onProgress('Staging JSON import for Spring Boot...', 70);
-        const syncImportDir = path.join(this.workingDir, 'sync-import');
-        if (!fs.existsSync(syncImportDir)) {
-          fs.mkdirSync(syncImportDir, { recursive: true });
-        }
-        const destPath = path.join(syncImportDir, 'resync-data.zip');
-        fs.copyFileSync(backupZipPath, destPath);
-        try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
-        console.log(`JSON ZIP staged for Spring Boot import at: ${destPath}`);
-      } else {
-        // Hub is on H2 — extract .mv.db directly (existing flow)
-        onProgress('Extracting database...', 70);
-        this.extractDatabase(backupZipPath);
-        try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
-      }
+      onProgress('Extracting database...', 70);
+      this.extractDatabase(backupZipPath);
+      try { fs.unlinkSync(backupZipPath); } catch { /* ignore */ }
 
       this.persistSyncStatus();
       onProgress('Database synced', 100);

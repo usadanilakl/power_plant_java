@@ -32,18 +32,6 @@ public class H2ToPostgresMigrationService {
     @Value("${h2.migration.db-path:./db/proddb}")
     private String h2DbPath;
 
-    private static final List<String[]> JOIN_TABLES = List.of(
-        new String[]{"eq_loto_point", "eq_id", "loto_point_id"},
-        new String[]{"file_point", "point_id", "file_id"},
-        new String[]{"loto_standard_loto_point", "loto_standard_id", "loto_point_id"},
-        new String[]{"loto_standard_groups", "loto_standard_id", "value_id"},
-        new String[]{"ht_equipment", "ht_id", "eq_id"},
-        new String[]{"ht_pid", "ht_id", "pid_id"},
-        new String[]{"breaker_eq", "br_id", "eq_id"},
-        new String[]{"permit_equipment", "permit_id", "equipment_id"},
-        new String[]{"daily_permit_package_lotos", "daily_permit_package_id", "loto_id"}
-    );
-
     /**
      * Check if an H2 database file exists for migration.
      */
@@ -120,10 +108,36 @@ public class H2ToPostgresMigrationService {
 
             Map<String, String> tableErrors = new LinkedHashMap<>();
 
-            // Migrate entity tables in sync order
-            for (String entityType : entityTableRegistry.getSyncOrder()) {
-                String tableName = entityTableRegistry.getTableName(entityType);
+            // Discover ALL user tables from H2 using JDBC metadata (works in read-only mode)
+            List<String> h2Tables = new ArrayList<>();
+            DatabaseMetaData h2Meta = h2Conn.getMetaData();
+            try (ResultSet rs = h2Meta.getTables(null, "PUBLIC", "%", new String[]{"TABLE"})) {
+                while (rs.next()) {
+                    h2Tables.add(rs.getString("TABLE_NAME").toLowerCase());
+                }
+            }
+            if (h2Tables.isEmpty()) {
+                // Fallback: try without schema filter
+                try (ResultSet rs = h2Meta.getTables(null, null, "%", new String[]{"TABLE"})) {
+                    while (rs.next()) {
+                        String schema = rs.getString("TABLE_SCHEMA");
+                        if (schema == null || "PUBLIC".equalsIgnoreCase(schema)) {
+                            h2Tables.add(rs.getString("TABLE_NAME").toLowerCase());
+                        }
+                    }
+                }
+            }
+            log.info("Found {} tables in H2 database", h2Tables.size());
+
+            // Migrate all tables — try each one against PG
+            for (String tableName : h2Tables) {
                 try {
+                    // Check if table exists in PG
+                    List<String> pgCols = getTargetColumns(tableName);
+                    if (pgCols.isEmpty()) {
+                        log.debug("Skipping {} — not in PostgreSQL", tableName);
+                        continue;
+                    }
                     int[] counts = migrateTable(h2Conn, tableName);
                     tableCounts.put(tableName, counts[0]);
                     totalMigrated += counts[0];
@@ -135,33 +149,6 @@ public class H2ToPostgresMigrationService {
                     tableCounts.put(tableName, -1);
                     tableErrors.put(tableName, e.getMessage());
                 }
-            }
-
-            // Migrate join tables
-            for (String[] jt : JOIN_TABLES) {
-                try {
-                    int count = migrateJoinTable(h2Conn, jt[0], jt[1], jt[2]);
-                    tableCounts.put(jt[0], count);
-                    totalMigrated += count;
-                } catch (Exception e) {
-                    log.warn("Could not migrate join table {}: {}", jt[0], e.getMessage());
-                    tableCounts.put(jt[0], -1);
-                    tableErrors.put(jt[0], e.getMessage());
-                }
-            }
-
-            // Migrate field_change table
-            try {
-                int[] fcCounts = migrateTable(h2Conn, "field_change");
-                tableCounts.put("field_change", fcCounts[0]);
-                totalMigrated += fcCounts[0];
-                if (fcCounts[1] > 0) {
-                    tableErrors.put("field_change", fcCounts[1] + " rows failed");
-                }
-            } catch (Exception e) {
-                log.warn("Could not migrate field_change: {}", e.getMessage());
-                tableCounts.put("field_change", -1);
-                tableErrors.put("field_change", e.getMessage());
             }
 
             long elapsed = System.currentTimeMillis() - startTime;
@@ -248,10 +235,10 @@ public class H2ToPostgresMigrationService {
             if (!unmatchedPg.isEmpty()) log.warn("Table {} — PG columns not in H2: {}", tableName, unmatchedPg);
         }
 
-        // Insert into PG
+        // Insert into PG — ON CONFLICT DO NOTHING handles duplicates from concurrent pollers
         String colList = String.join(", ", validColumns);
         String placeholders = String.join(", ", Collections.nCopies(validColumns.size(), "?"));
-        String insertSql = "INSERT INTO " + tableName + " (" + colList + ") VALUES (" + placeholders + ")";
+        String insertSql = "INSERT INTO " + tableName + " (" + colList + ") VALUES (" + placeholders + ") ON CONFLICT DO NOTHING";
 
         int inserted = 0;
         int failed = 0;
@@ -307,16 +294,17 @@ public class H2ToPostgresMigrationService {
     }
 
     private void clearAllTables() {
-        // TRUNCATE CASCADE handles FK constraints without needing superuser
-        for (String[] jt : JOIN_TABLES) {
-            try { jdbcTemplate.execute("TRUNCATE TABLE " + jt[0] + " CASCADE"); } catch (Exception ignored) {}
+        // Get ALL PG tables and truncate them
+        try {
+            List<String> pgTables = jdbcTemplate.queryForList(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'", String.class);
+            for (String table : pgTables) {
+                try { jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE"); } catch (Exception ignored) {}
+            }
+            log.info("Cleared {} PostgreSQL tables before migration", pgTables.size());
+        } catch (Exception e) {
+            log.warn("Could not clear all tables: {}", e.getMessage());
         }
-        try { jdbcTemplate.execute("TRUNCATE TABLE field_change CASCADE"); } catch (Exception ignored) {}
-        for (String entityType : entityTableRegistry.getSyncOrder()) {
-            String tableName = entityTableRegistry.getTableName(entityType);
-            try { jdbcTemplate.execute("TRUNCATE TABLE " + tableName + " CASCADE"); } catch (Exception ignored) {}
-        }
-        log.info("Cleared all PostgreSQL tables before migration");
     }
 
     private void disableForeignKeys() {
@@ -397,26 +385,15 @@ public class H2ToPostgresMigrationService {
         String h2Url = "jdbc:h2:file:" + h2DbPath + ";ACCESS_MODE_DATA=r;DB_CLOSE_ON_EXIT=TRUE";
 
         try (Connection h2Conn = DriverManager.getConnection(h2Url, "sa", "password")) {
-            // Entity tables
-            for (String entityType : entityTableRegistry.getSyncOrder()) {
-                String tableName = entityTableRegistry.getTableName(entityType);
+            // Get all PG tables
+            List<String> pgTables = jdbcTemplate.queryForList(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename", String.class);
+
+            for (String tableName : pgTables) {
                 long h2Count = countH2Table(h2Conn, tableName.toUpperCase());
                 long pgCount = countPgTable(tableName);
                 report.addRow(tableName, h2Count, pgCount);
             }
-
-            // Join tables
-            for (String[] jt : JOIN_TABLES) {
-                long h2Count = countH2Table(h2Conn, jt[0].toUpperCase());
-                long pgCount = countPgTable(jt[0]);
-                report.addRow(jt[0], h2Count, pgCount);
-            }
-
-            // field_change
-            long fcH2 = countH2Table(h2Conn, "FIELD_CHANGE");
-            long fcPg = countPgTable("field_change");
-            report.addRow("field_change", fcH2, fcPg);
-
         } catch (Exception e) {
             log.error("Comparison failed: {}", e.getMessage());
             report.setError(e.getMessage());

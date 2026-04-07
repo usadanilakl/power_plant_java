@@ -99,37 +99,27 @@ public class HubResyncController {
 
     @GetMapping("/database/h2-backup")
     public ResponseEntity<Resource> downloadH2Backup() {
-        log.info("Database backup requested for client cold resync (format={})", resyncService.getBackupFormat());
+        log.info("Database backup requested for client cold resync");
         sharePointSyncOrchestrator.setClientSyncInProgress(true);
         try {
-            // Create backup to file, then stream it — never loads entire ZIP into memory.
-            java.nio.file.Path backupPath = resyncService.createH2Backup();
-            String format = resyncService.getBackupFormat();
+            // Always returns an H2 backup ZIP — generates from PG if needed
+            java.nio.file.Path backupPath = resyncService.getClientResyncBackup();
             long size = java.nio.file.Files.size(backupPath);
-            log.info("Backup complete, format={}, size={} bytes, streaming from {}", format, size, backupPath);
+            log.info("Backup ready, size={} bytes, streaming from {}", size, backupPath);
 
             return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=hub_backup.zip")
-                .header("X-Backup-Format", format)
+                .header("X-Backup-Format", "h2-backup")
                 .contentLength(size)
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(new org.springframework.core.io.InputStreamResource(
                     java.nio.file.Files.newInputStream(backupPath)));
         } catch (Exception e) {
-            log.error("Failed to create backup: {}", e.getMessage());
+            log.error("Failed to create backup: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } finally {
             sharePointSyncOrchestrator.setClientSyncInProgress(false);
         }
-    }
-
-    /**
-     * Returns the backup format the hub will serve for cold resync.
-     * Clients can call this to decide how to process the backup.
-     */
-    @GetMapping("/database/backup-format")
-    public ResponseEntity<Map<String, String>> getBackupFormat() {
-        return ResponseEntity.ok(Map.of("format", resyncService.getBackupFormat()));
     }
 
     // ==================== File Manifests ====================

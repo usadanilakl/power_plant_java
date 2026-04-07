@@ -18,11 +18,10 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -232,24 +231,201 @@ public class HubResyncService {
 
     /**
      * Get the appropriate database backup for client cold resync.
-     * Returns H2 backup when running on H2, JSON ZIP when running on PostgreSQL.
+     * Always returns an H2 backup ZIP — when running on PG, generates an H2 file from PG data.
      */
-    public byte[] getClientResyncBackup() throws Exception {
+    public Path getClientResyncBackup() throws Exception {
         if (isPostgres()) {
-            log.info("Hub on PostgreSQL — serving JSON ZIP for client cold resync");
-            return exportDatabaseZip();
+            log.info("Hub on PostgreSQL — generating H2 backup from PG data for client cold resync");
+            return createH2FromPostgres();
         } else {
-            log.info("Hub on H2 — serving H2 backup for client cold resync");
-            return getLatestH2Backup();
+            log.info("Hub on H2 — serving direct H2 backup for client cold resync");
+            return createH2Backup();
         }
     }
 
     /**
-     * Get the backup format type for clients to know how to process the download.
-     * @return "json-zip" when hub runs PostgreSQL, "h2-backup" when hub runs H2
+     * Generate an H2 database file from PostgreSQL data, then BACKUP TO zip.
+     * Creates a temporary H2 DB, copies all PG tables into it, and produces a backup ZIP.
+     * Thread-safe with caching (same TTL as regular H2 backup).
      */
-    public String getBackupFormat() {
-        return isPostgres() ? "json-zip" : "h2-backup";
+    private Path createH2FromPostgres() throws Exception {
+        backupLock.lock();
+        try {
+            if (isCachedBackupValid()) {
+                log.debug("Using cached PG→H2 backup: {}", cachedBackupPath);
+                return cachedBackupPath;
+            }
+
+            Path backupDir = Paths.get(backupStoragePath).toAbsolutePath().normalize();
+            Files.createDirectories(backupDir);
+
+            // Create temp H2 database
+            Path tempDbDir = backupDir.resolve("temp_h2");
+            Files.createDirectories(tempDbDir);
+            String tempDbPath = tempDbDir.resolve("clientdb").toString();
+            String h2Url = "jdbc:h2:file:" + tempDbPath + ";DB_CLOSE_ON_EXIT=TRUE";
+
+            long startTime = System.currentTimeMillis();
+
+            try (Connection h2Conn = DriverManager.getConnection(h2Url, "sa", "password")) {
+                // Create the id_seq sequence in H2
+                try (Statement stmt = h2Conn.createStatement()) {
+                    stmt.execute("CREATE SEQUENCE IF NOT EXISTS id_seq START WITH 1 INCREMENT BY 1 MAXVALUE 999999999 CYCLE");
+                }
+
+                // Get all PG tables
+                List<String> pgTables;
+                try (Connection pgConn = DriverManager.getConnection(datasourceUrl, datasourceUsername, datasourcePassword)) {
+                    pgTables = new ArrayList<>();
+                    try (ResultSet rs = pgConn.getMetaData().getTables(null, "public", "%", new String[]{"TABLE"})) {
+                        while (rs.next()) {
+                            pgTables.add(rs.getString("TABLE_NAME"));
+                        }
+                    }
+                }
+
+                log.info("Generating H2 from PG: {} tables to copy", pgTables.size());
+
+                int totalCopied = 0;
+                try (Connection pgConn = DriverManager.getConnection(datasourceUrl, datasourceUsername, datasourcePassword)) {
+                    for (String tableName : pgTables) {
+                        try {
+                            int count = copyTablePgToH2(pgConn, h2Conn, tableName);
+                            totalCopied += count;
+                        } catch (Exception e) {
+                            log.debug("Could not copy table {} to H2: {}", tableName, e.getMessage());
+                        }
+                    }
+                }
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                log.info("Copied {} records from PG to temp H2 in {}ms", totalCopied, elapsed);
+
+                // Create H2 backup ZIP
+                String backupFileName = "hub_backup_" + System.currentTimeMillis() + ".zip";
+                Path backupPath = backupDir.resolve(backupFileName);
+                try (Statement stmt = h2Conn.createStatement()) {
+                    stmt.execute("BACKUP TO '" + backupPath.toString().replace('\\', '/') + "'");
+                }
+
+                log.info("H2 backup from PG created at: {} ({}ms total)", backupPath, System.currentTimeMillis() - startTime);
+
+                cachedBackupPath = backupPath;
+                cachedBackupTime = Instant.now();
+                cleanupOldBackups(backupDir, backupPath);
+
+                // Clean up temp H2 files
+                try {
+                    Files.deleteIfExists(Path.of(tempDbPath + ".mv.db"));
+                    Files.deleteIfExists(Path.of(tempDbPath + ".trace.db"));
+                } catch (Exception ignored) {}
+
+                return backupPath;
+            }
+        } finally {
+            backupLock.unlock();
+        }
+    }
+
+    /**
+     * Copy a single table from PG to H2.
+     */
+    private int copyTablePgToH2(Connection pgConn, Connection h2Conn, String tableName) throws SQLException {
+        // Get PG columns
+        List<String> columns = new ArrayList<>();
+        List<Integer> columnTypes = new ArrayList<>();
+        try (PreparedStatement ps = pgConn.prepareStatement("SELECT * FROM " + tableName + " LIMIT 0");
+             ResultSet rs = ps.executeQuery()) {
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                columns.add(meta.getColumnName(i));
+                columnTypes.add(meta.getColumnType(i));
+            }
+        }
+        if (columns.isEmpty()) return 0;
+
+        // Create table in H2 (auto-detect types from data)
+        // Use SELECT to create — simpler than building CREATE TABLE DDL
+        // First try: if table exists in H2 already, skip creation
+        boolean tableExists = false;
+        try (ResultSet rs = h2Conn.getMetaData().getTables(null, null, tableName.toUpperCase(), null)) {
+            tableExists = rs.next();
+        }
+
+        if (!tableExists) {
+            // Build CREATE TABLE from PG metadata
+            StringBuilder createSql = new StringBuilder("CREATE TABLE IF NOT EXISTS ");
+            createSql.append(tableName.toUpperCase()).append(" (");
+            try (PreparedStatement ps = pgConn.prepareStatement("SELECT * FROM " + tableName + " LIMIT 0");
+                 ResultSet rs = ps.executeQuery()) {
+                java.sql.ResultSetMetaData meta = rs.getMetaData();
+                for (int i = 1; i <= meta.getColumnCount(); i++) {
+                    if (i > 1) createSql.append(", ");
+                    String colName = meta.getColumnName(i).toUpperCase();
+                    String h2Type = pgTypeToH2(meta.getColumnTypeName(i), meta.getColumnDisplaySize(i));
+                    createSql.append(colName).append(" ").append(h2Type);
+                }
+            }
+            createSql.append(")");
+            try (Statement stmt = h2Conn.createStatement()) {
+                stmt.execute(createSql.toString());
+            }
+        }
+
+        // Read all rows from PG
+        String colList = String.join(", ", columns);
+        String placeholders = String.join(", ", Collections.nCopies(columns.size(), "?"));
+        String insertSql = "INSERT INTO " + tableName.toUpperCase() + " (" +
+            columns.stream().map(String::toUpperCase).collect(Collectors.joining(", ")) +
+            ") VALUES (" + placeholders + ")";
+
+        int count = 0;
+        try (PreparedStatement pgPs = pgConn.prepareStatement("SELECT " + colList + " FROM " + tableName);
+             ResultSet rs = pgPs.executeQuery()) {
+
+            h2Conn.setAutoCommit(false);
+            try (PreparedStatement h2Ps = h2Conn.prepareStatement(insertSql)) {
+                while (rs.next()) {
+                    for (int i = 0; i < columns.size(); i++) {
+                        h2Ps.setObject(i + 1, rs.getObject(i + 1));
+                    }
+                    h2Ps.addBatch();
+                    count++;
+                    if (count % 1000 == 0) {
+                        h2Ps.executeBatch();
+                    }
+                }
+                h2Ps.executeBatch();
+            }
+            h2Conn.commit();
+            h2Conn.setAutoCommit(true);
+        }
+
+        return count;
+    }
+
+    /**
+     * Map PostgreSQL type names to H2 compatible types.
+     */
+    private String pgTypeToH2(String pgType, int size) {
+        return switch (pgType.toLowerCase()) {
+            case "int8", "bigint", "bigserial" -> "BIGINT";
+            case "int4", "integer", "serial" -> "INTEGER";
+            case "int2", "smallint" -> "SMALLINT";
+            case "float8", "double precision" -> "DOUBLE";
+            case "float4", "real" -> "REAL";
+            case "numeric", "decimal" -> "DECIMAL";
+            case "bool", "boolean" -> "BOOLEAN";
+            case "text" -> "TEXT";
+            case "varchar", "character varying" -> size > 0 && size < 10485760 ? "VARCHAR(" + size + ")" : "TEXT";
+            case "timestamp", "timestamptz", "timestamp with time zone", "timestamp without time zone" -> "TIMESTAMP";
+            case "date" -> "DATE";
+            case "time", "timetz" -> "TIME";
+            case "bytea" -> "BLOB";
+            case "uuid" -> "VARCHAR(36)";
+            case "jsonb", "json" -> "TEXT";
+            default -> "TEXT";
+        };
     }
 
     @Transactional(readOnly = true)
