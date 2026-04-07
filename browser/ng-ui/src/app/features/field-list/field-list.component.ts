@@ -264,7 +264,7 @@ interface OpenItem {
     :host { display: block; height: 100%; overflow-y: auto; overflow-x: hidden; }
     .action-selector { display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
     .action-title { font-size: 1.6rem; font-weight: 700; margin: 0 0 0.25rem; }
-    .action-subtitle { font-size: 1rem; color: var(--secondary-text, #888); margin: 0 0 2rem; }
+    .action-subtitle { font-size: 1rem; color: var(--secondary-text); margin: 0 0 2rem; }
     .action-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; max-width: 600px; }
     .action-card { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 1.2rem 0.75rem;
       background: var(--card-background); border: 2px solid var(--border-color);
@@ -274,7 +274,7 @@ interface OpenItem {
     .card-winterization { border-color: #2196f3; } .card-open { border-color: var(--accent-color); }
     .card-icon { width: 36px; height: 36px; }
     .action-card-label { font-size: 1rem; font-weight: 600; text-align: center; }
-    .action-card-desc { font-size: 0.8rem; color: var(--secondary-text, #888); text-align: center; }
+    .action-card-desc { font-size: 0.8rem; color: var(--secondary-text); text-align: center; }
     .form-wrapper { max-width: 600px; margin: 0 auto; padding: 0 16px 16px; box-sizing: border-box; width: 100%; }
     .form-wrapper ::ng-deep form { box-sizing: border-box; max-width: 100%; }
     .form-wrapper ::ng-deep input, .form-wrapper ::ng-deep select,
@@ -286,7 +286,7 @@ interface OpenItem {
     .header-title { font-size: 16px; font-weight: 600; }
     .filter-tabs { display: flex; gap: 4px; margin-left: auto; }
     .filter-tabs button { padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 4px;
-      background: var(--card-background); cursor: pointer; font-size: 12px; font-family: inherit; }
+      background: var(--card-background); cursor: pointer; font-size: 12px; font-family: inherit; color: var(--primary-text); }
     .filter-tabs button.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
     .loading-row { display: flex; align-items: center; gap: 12px; padding: 24px; justify-content: center; color: var(--secondary-text); }
     .items-table { display: flex; flex-direction: column; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
@@ -294,17 +294,18 @@ interface OpenItem {
     .table-header { background: var(--secondary-background); font-size: 11px; font-weight: 600; text-transform: uppercase;
       color: var(--secondary-text); border-bottom: 1px solid var(--border-color); }
     .table-row { border: none; border-bottom: 1px solid var(--border-color); background: var(--card-background);
-      cursor: pointer; font-family: inherit; font-size: 13px; text-align: left; padding: 10px 12px; }
-    .table-row:hover { background: var(--hover-background, rgba(0,0,0,0.04)); }
+      cursor: pointer; font-family: inherit; font-size: 13px; text-align: left; padding: 10px 12px;
+      color: var(--primary-text); }
+    .table-row:hover { background: var(--secondary-background); }
     .table-row:last-child { border-bottom: none; }
     .col-title, .col-location { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .type-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
-    .type-badge[data-type="Insulation Removal"] { background: #fff3e0; color: #e65100; }
-    .type-badge[data-type="Leaks"] { background: #ffebee; color: #c62828; }
-    .type-badge[data-type="Winterization"] { background: #e3f2fd; color: #1565c0; }
+    .type-badge[data-type="Insulation Removal"] { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
+    .type-badge[data-type="Leaks"] { background: rgba(244, 67, 54, 0.15); color: #f44336; }
+    .type-badge[data-type="Winterization"] { background: rgba(33, 150, 243, 0.15); color: #42a5f5; }
     .status-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
-    .status-badge[data-status="Open"] { background: #fff3e0; color: #e65100; }
-    .status-badge[data-status="In Progress"] { background: #e3f2fd; color: #1565c0; }
+    .status-badge[data-status="Open"] { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
+    .status-badge[data-status="In Progress"] { background: rgba(33, 150, 243, 0.15); color: #42a5f5; }
     .items-count { text-align: right; font-size: 12px; color: var(--secondary-text); padding: 8px 0; }
     .local-section { margin-top: 16px; }
     .local-header { font-size: 13px; font-weight: 600; color: var(--secondary-text); margin: 0 0 8px; }
@@ -312,49 +313,49 @@ interface OpenItem {
     .empty-history { padding: 32px; text-align: center; color: var(--secondary-text); }
     .history-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px;
       border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-background);
-      cursor: pointer; text-align: left; font-family: inherit; }
+      cursor: pointer; text-align: left; font-family: inherit; color: var(--primary-text); }
     .history-item:hover { border-color: var(--accent-color); }
     .history-item-header { display: flex; justify-content: space-between; align-items: center; }
     .history-item-type { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--accent-color); }
     .history-item-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--secondary-background); }
-    .not-submitted { background: var(--error-bg, #f8d7da); color: var(--error-text, #721c24); }
+    .not-submitted { background: var(--error-bg); color: var(--error-text); }
     .history-item-title { font-size: 15px; font-weight: 500; }
-    .detail-card { background: var(--primary-background, #fff); border-radius: 16px; padding: 24px;
-      max-width: 500px; width: 90vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .detail-card { background: var(--primary-background); border-radius: 16px; padding: 24px;
+      max-width: 500px; width: 90vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
     .detail-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .detail-close { margin-left: auto; background: none; border: none; font-size: 24px; cursor: pointer; }
+    .detail-close { margin-left: auto; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--primary-text); }
     .detail-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
     .detail-fields { display: flex; flex-direction: column; gap: 8px; }
-    .detail-field { font-size: 14px; }
+    .detail-field { font-size: 14px; color: var(--primary-text); }
     .detail-field strong { color: var(--secondary-text); display: inline-block; min-width: 80px; }
     .detail-notes { background: var(--secondary-background); padding: 10px 12px; border-radius: 6px;
       white-space: pre-wrap; font-size: 13px; margin-top: 4px; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
       align-items: center; justify-content: center; z-index: 9999; }
-    .overlay-card { background: var(--primary-background, #fff); border-radius: 16px; padding: 32px;
-      text-align: center; min-width: 280px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .overlay-card { background: var(--primary-background); border-radius: 16px; padding: 32px;
+      text-align: center; min-width: 280px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
     .overlay-card.success .overlay-icon { color: #4caf50; }
     .overlay-card.error .overlay-icon { color: #f44336; }
     .overlay-icon { font-size: 48px; display: block; margin-bottom: 12px; }
     .overlay-text { font-size: 16px; margin: 0 0 16px; }
     .overlay-btn { padding: 10px 32px; background: var(--accent-color); color: white; border: none;
       border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; }
-    .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color, #ccc);
-      border-top-color: var(--accent-color); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color);
+      border-top-color: var(--accent-color); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .area-fab { position: fixed; bottom: 16px; right: 16px; padding: 10px 16px; background: var(--accent-color);
       color: white; border: none; border-radius: 24px; font-size: 13px; font-family: inherit; cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 100; white-space: nowrap; }
     .area-fab:hover { opacity: 0.9; }
     .area-popup { position: fixed; bottom: 0; left: 0; right: 0; max-height: 40vh; overflow-y: auto;
-      background: var(--primary-background, #fff); border-top: 2px solid var(--accent-color);
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.15); z-index: 100; padding: 12px 16px; border-radius: 16px 16px 0 0; }
+      background: var(--primary-background); border-top: 2px solid var(--accent-color);
+      box-shadow: 0 -4px 20px rgba(0,0,0,.15); z-index: 100; padding: 12px 16px; border-radius: 16px 16px 0 0; }
     .area-popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .area-popup-title { font-size: 14px; font-weight: 600; }
     .area-popup-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--secondary-text); }
     .area-popup-loading, .area-popup-empty { font-size: 13px; color: var(--secondary-text); padding: 8px 0; }
     .area-popup-list { display: flex; flex-direction: column; gap: 6px; }
-    .area-popup-item { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; }
+    .area-popup-item { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; color: var(--primary-text); }
     .area-popup-item:hover { border-color: var(--accent-color); }
     .area-popup-item-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
     .area-popup-item-meta { display: flex; gap: 10px; font-size: 12px; color: var(--secondary-text); align-items: center; }
@@ -475,7 +476,7 @@ export class FieldListComponent implements OnInit {
   // ====================== Open items ======================
 
   private loadOpenItems(): void {
-    if (!this.authService.isLoggedIn() || !this.serverStatus.isOnline()) {
+    if (!this.authService.isLoggedIn()) {
       this.openItems.set([]);
       return;
     }

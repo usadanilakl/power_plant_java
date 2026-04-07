@@ -28,6 +28,9 @@ export class DailyPermitPackageComponent {
   reissueScope: string = '';
   reissueDate: string = '';
   reissueLocation: string = '';
+  // Reissue processed WR context
+  reissueProcessedWrId: number | null = null;
+  reissueSourcePackageId: number | null = null;
 
   constructor() {
     const workRequestId = this.route.snapshot.paramMap.get('workRequestId');
@@ -35,7 +38,14 @@ export class DailyPermitPackageComponent {
     const packageId = this.route.snapshot.queryParamMap.get('packageId');
     const reissueFromWr = this.route.snapshot.queryParamMap.get('reissueFromWr');
 
-    if (reissueFromWr) {
+    const reissueProcessedWr = this.route.snapshot.queryParamMap.get('reissueProcessedWr');
+
+    if (reissueProcessedWr) {
+      // Reissue from processed WR — package is known, show date/time picker
+      this.reissueProcessedWrId = +reissueProcessedWr;
+      const srcPkgId = this.route.snapshot.queryParamMap.get('sourcePackageId');
+      this.reissueSourcePackageId = srcPkgId ? +srcPkgId : null;
+    } else if (reissueFromWr) {
       // Reissue from WR context menu — don't create a package yet, let user pick source
       this.reissueFromWrId = +reissueFromWr;
       this.reissueScope = this.route.snapshot.queryParamMap.get('scope') || '';

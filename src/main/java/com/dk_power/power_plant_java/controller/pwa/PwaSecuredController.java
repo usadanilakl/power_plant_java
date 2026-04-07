@@ -156,7 +156,7 @@ public class PwaSecuredController {
         profile.put("email", user.getEmail());
         profile.put("phone", user.getPhone());
         profile.put("company", user.getCompany());
-        profile.put("role", user.getRole());
+        profile.put("roles", user.getRoles());
         profile.put("permissionLevel", user.getPermissionLevel() != null ? user.getPermissionLevel() : "NONE");
         profile.put("isActive", Boolean.TRUE.equals(user.getIsActive()));
         profile.put("hasSignature", user.getSignaturePath() != null);

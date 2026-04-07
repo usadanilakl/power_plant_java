@@ -97,6 +97,9 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   @Input() reissueInitialScope: string = '';
   @Input() reissueInitialDate: string = '';
   @Input() reissueInitialLocation: string = '';
+  // Reissue from processed WR inputs
+  @Input() reissueProcessedWrId: number | null = null;
+  @Input() reissueSourcePackageId: number | null = null;
 
   // Reissue-from-WR dialog state
   isReissueFromWrOpen = false;
@@ -105,6 +108,12 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
   reissueWrLocation = '';
   reissueWrSearchResults = signal<any[]>([]);
   reissueWrSearching = false;
+
+  // Reissue processed WR dialog state
+  isReissueProcessedWrOpen = false;
+  reissueProcessedWrAlsoReissueWr = false;
+  reissueProcessedWrDate = new Date().toISOString().split('T')[0];
+  reissueProcessedWrTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   // Reissue from package builder (two-step: date/time → select)
   reissueDate = new Date().toISOString().split('T')[0];
@@ -346,8 +355,12 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeHeaderCollapseMode();
+    // If navigated from processed WR "Reissue", open date/time picker
+    if (this.reissueProcessedWrId && this.reissueSourcePackageId) {
+      this.isReissueProcessedWrOpen = true;
+    }
     // If navigated from WR context menu "Reissue", open the reissue dialog
-    if (this.reissueFromWrId) {
+    else if (this.reissueFromWrId) {
       this.reissueWrScope = this.reissueInitialScope;
       this.reissueWrDate = this.reissueInitialDate;
       this.reissueWrLocation = this.reissueInitialLocation;
@@ -408,6 +421,54 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
       },
       error: err => console.error('Reissue from WR failed:', err)
     });
+  }
+
+  confirmReissueProcessedWr(): void {
+    if (!this.reissueSourcePackageId) return;
+    const body = { date: this.reissueProcessedWrDate, time: this.reissueProcessedWrTime };
+
+    if (this.reissueProcessedWrAlsoReissueWr && this.reissueProcessedWrId) {
+      // Reissue package AND re-attach the WR
+      this.http.post<any>(
+        `/ng/daily-permit-packages/reissue-from/${this.reissueSourcePackageId}/for-wr/${this.reissueProcessedWrId}`,
+        body
+      ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: res => {
+          if (res?.responseData) {
+            const newPkg = new DailyPermitPackageDto(res.responseData);
+            this.popupWindowService.openOrFocus(
+              `${window.location.origin}/app/permit-builder/daily-packages?packageId=${newPkg.id}&mode=popup`
+            );
+            this.workRequestStateService.refreshWorkRequest(
+              this.reissueProcessedWrId!,
+              'Package reissued with work request'
+            );
+          }
+          this.isReissueProcessedWrOpen = false;
+          this.router.navigate(['/permit-builder/work-requests']);
+        },
+        error: err => console.error('Reissue processed WR failed:', err)
+      });
+    } else {
+      // Reissue package only (WR stays on the original package)
+      const bodyWithSkip = { ...body, skipWorkRequests: 'true' };
+      this.http.post<any>(
+        `/ng/daily-permit-packages/${this.reissueSourcePackageId}/reissue`,
+        bodyWithSkip
+      ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: res => {
+          if (res?.responseData) {
+            const newPkg = new DailyPermitPackageDto(res.responseData);
+            this.popupWindowService.openOrFocus(
+              `${window.location.origin}/app/permit-builder/daily-packages?packageId=${newPkg.id}&mode=popup`
+            );
+          }
+          this.isReissueProcessedWrOpen = false;
+          this.router.navigate(['/permit-builder/work-requests']);
+        },
+        error: err => console.error('Reissue package failed:', err)
+      });
+    }
   }
 
   onFieldChange(field: keyof DailyPermitPackageDto, value: any): void {

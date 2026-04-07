@@ -208,7 +208,7 @@ public class AuthController {
         profile.put("lastName", user.getLastName());
         profile.put("name", user.getName());
         profile.put("email", user.getEmail());
-        profile.put("role", user.getRole());
+        profile.put("roles", user.getRoles());
         profile.put("isActive", user.getIsActive());
         profile.put("lastLoginDate", user.getLastLoginDate() != null ? user.getLastLoginDate().toString() : null);
         profile.put("windowsUsername", user.getWindowsUsername());
@@ -384,7 +384,7 @@ public class AuthController {
         response.put("id", userDetails.getId());
         response.put("name", userDetails.getName());
         response.put("email", userDetails.getUsername());
-        response.put("role", user != null ? user.getRole() : "");
+        response.put("roles", user != null ? user.getRoles() : java.util.List.of());
         response.put("isActive", user != null ? user.getIsActive() : true);
         return response;
     }

@@ -31,34 +31,40 @@ export class EquipmentDataService {
   private lotoPoints = signal<PwaLotoPointEntry[]>([]);
   private workAreas = signal<PwaWorkAreaEntry[]>([]);
   private locations = signal<PwaLocationEntry[]>([]);
-  private loaded = signal(false);
+  private loadAttempted = false;
+  private serverLoaded = false;
 
   loadAll(): void {
-    if (this.loaded()) return;
+    if (this.loadAttempted && this.serverLoaded) return;
+    this.loadAttempted = true;
     this.loadLotoPoints();
     this.loadWorkAreas();
     this.loadLocations();
-    this.loaded.set(true);
+  }
+
+  /** Retry fetching from server (e.g. when server comes online later) */
+  retryFromServer(): void {
+    if (this.serverLoaded) return;
+    this.loadLotoPoints();
+    this.loadWorkAreas();
+    this.loadLocations();
   }
 
   private loadLotoPoints(): void {
-    // Try server, fallback to static JSON, fallback to localStorage
     this.serverApi.getLotoPoints().subscribe({
       next: points => {
-        this.lotoPoints.set(points);
-        localStorage.setItem('pwa_loto_points', JSON.stringify(points));
+        if (points && points.length > 0) {
+          this.lotoPoints.set(points);
+          localStorage.setItem('pwa_loto_points', JSON.stringify(points));
+          this.serverLoaded = true;
+        }
       },
       error: () => {
-        this.http.get<PwaLotoPointEntry[]>('data/loto-points.json').subscribe({
-          next: points => {
-            this.lotoPoints.set(points);
-            localStorage.setItem('pwa_loto_points', JSON.stringify(points));
-          },
-          error: () => {
-            const cached = localStorage.getItem('pwa_loto_points');
-            if (cached) this.lotoPoints.set(JSON.parse(cached));
-          }
-        });
+        // Only use fallbacks if we have no data yet
+        if (this.lotoPoints().length === 0) {
+          this.loadFromFallback<PwaLotoPointEntry[]>('data/loto-points.json', 'pwa_loto_points',
+            points => this.lotoPoints.set(points));
+        }
       }
     });
   }
@@ -66,25 +72,21 @@ export class EquipmentDataService {
   private loadWorkAreas(): void {
     this.serverApi.getWorkAreas().subscribe({
       next: (areas: any[]) => {
-        const mapped: PwaWorkAreaEntry[] = areas.map(a => ({
-          id: a.id,
-          name: a.name,
-          locationIds: a.locationIds || []
-        }));
-        this.workAreas.set(mapped);
-        localStorage.setItem('pwa_work_areas_ext', JSON.stringify(mapped));
+        if (areas && areas.length > 0) {
+          const mapped: PwaWorkAreaEntry[] = areas.map(a => ({
+            id: a.id,
+            name: a.name,
+            locationIds: a.locationIds || []
+          }));
+          this.workAreas.set(mapped);
+          localStorage.setItem('pwa_work_areas_ext', JSON.stringify(mapped));
+        }
       },
       error: () => {
-        this.http.get<PwaWorkAreaEntry[]>('data/work-areas.json').subscribe({
-          next: areas => {
-            this.workAreas.set(areas);
-            localStorage.setItem('pwa_work_areas_ext', JSON.stringify(areas));
-          },
-          error: () => {
-            const cached = localStorage.getItem('pwa_work_areas_ext');
-            if (cached) this.workAreas.set(JSON.parse(cached));
-          }
-        });
+        if (this.workAreas().length === 0) {
+          this.loadFromFallback<PwaWorkAreaEntry[]>('data/work-areas.json', 'pwa_work_areas_ext',
+            areas => this.workAreas.set(areas));
+        }
       }
     });
   }
@@ -92,22 +94,40 @@ export class EquipmentDataService {
   private loadLocations(): void {
     this.serverApi.getLocations().subscribe({
       next: locations => {
-        this.locations.set(locations);
-        localStorage.setItem('pwa_locations', JSON.stringify(locations));
+        if (locations && locations.length > 0) {
+          this.locations.set(locations);
+          localStorage.setItem('pwa_locations', JSON.stringify(locations));
+        }
       },
       error: () => {
-        this.http.get<PwaLocationEntry[]>('data/locations.json').subscribe({
-          next: locations => {
-            this.locations.set(locations);
-            localStorage.setItem('pwa_locations', JSON.stringify(locations));
-          },
-          error: () => {
-            const cached = localStorage.getItem('pwa_locations');
-            if (cached) this.locations.set(JSON.parse(cached));
-          }
-        });
+        if (this.locations().length === 0) {
+          this.loadFromFallback<PwaLocationEntry[]>('data/locations.json', 'pwa_locations',
+            locations => this.locations.set(locations));
+        }
       }
     });
+  }
+
+  /** Static JSON → localStorage fallback chain */
+  private loadFromFallback<T>(jsonPath: string, cacheKey: string, setter: (data: T) => void): void {
+    this.http.get<T>(jsonPath).subscribe({
+      next: data => {
+        if (data && (Array.isArray(data) ? data.length > 0 : true)) {
+          setter(data);
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } else {
+          this.loadFromCache(cacheKey, setter);
+        }
+      },
+      error: () => this.loadFromCache(cacheKey, setter)
+    });
+  }
+
+  private loadFromCache<T>(cacheKey: string, setter: (data: T) => void): void {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try { setter(JSON.parse(cached)); } catch { /* ignore */ }
+    }
   }
 
   getPointsForWorkArea(workAreaId: number): PwaLotoPointEntry[] {
@@ -145,7 +165,6 @@ export class EquipmentDataService {
       lp.specificLocation ?? '',
       lp.eqType ?? ''
     ].join(' ').toLowerCase();
-    // Every token must be found somewhere in the combined text (AND logic)
     return tokens.every(token => searchable.includes(token));
   }
 

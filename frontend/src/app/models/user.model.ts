@@ -6,6 +6,7 @@ export interface UserModel {
   lastName: string;
   email: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   windowsUsername: string;
   permissionLevel: string;
@@ -19,6 +20,7 @@ export class UserDto implements UserModel {
   lastName: string;
   email: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   windowsUsername: string;
   permissionLevel: string;
@@ -31,6 +33,7 @@ export class UserDto implements UserModel {
     this.lastName = data.lastName ?? '';
     this.email = data.email ?? '';
     this.role = data.role ?? '';
+    this.roles = data.roles ?? [];
     this.isActive = data.isActive ?? true;
     this.windowsUsername = data.windowsUsername ?? '';
     this.permissionLevel = data.permissionLevel ?? '';
@@ -44,7 +47,7 @@ export class UserDto implements UserModel {
       firstName: this.firstName,
       lastName: this.lastName,
       email: this.email,
-      role: this.role,
+      roles: this.roles,
       isActive: this.isActive,
       windowsUsername: this.windowsUsername,
       permissionLevel: this.permissionLevel
@@ -61,6 +64,7 @@ export class UserDto implements UserModel {
       lastName: json.lastName ?? '',
       email: json.email ?? '',
       role: json.role ?? '',
+      roles: json.roles ?? [],
       isActive: json.isActive ?? true,
       windowsUsername: json.windowsUsername ?? '',
       permissionLevel: json.permissionLevel ?? ''

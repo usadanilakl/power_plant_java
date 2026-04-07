@@ -32,7 +32,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
-                .claim("role", user.getRole())
+                .claim("roles", user.getRoles())
                 .claim("permissionLevel", user.getPermissionLevel())
                 .claim("pwaUserUuid", user.getPwaUserUuid())
                 .issuedAt(now)

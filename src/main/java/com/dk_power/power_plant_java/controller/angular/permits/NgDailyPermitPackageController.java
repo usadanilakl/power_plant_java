@@ -190,7 +190,8 @@ public class NgDailyPermitPackageController {
         try {
             String date = body != null ? body.get("date") : null;
             String time = body != null ? body.get("time") : null;
-            DailyPermitPackageDto result = ngDailyPermitPackageService.reissuePackageToNewPackage(sourceId, date, time);
+            boolean skipWorkRequests = body != null && "true".equals(body.get("skipWorkRequests"));
+            DailyPermitPackageDto result = ngDailyPermitPackageService.reissuePackageToNewPackage(sourceId, date, time, skipWorkRequests);
             return ResponseEntity.ok(new NgApiResponse<>(result, "Package reissued successfully"));
         } catch (Exception e) {
             e.printStackTrace();

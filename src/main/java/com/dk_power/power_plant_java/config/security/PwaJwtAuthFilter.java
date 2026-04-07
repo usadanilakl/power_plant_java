@@ -67,7 +67,9 @@ public class PwaJwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            var authorities = Set.of(new SimpleGrantedAuthority(user.getRole()));
+            var authorities = user.getRoles().stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(java.util.stream.Collectors.toSet());
             var userDetails = new CustomUserDetails(user, authorities);
             var authToken = new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authToken);

@@ -211,7 +211,7 @@ public class AccessAdminController {
         }
 
         List<User> pwaUsers = userRepo.findAll().stream()
-                .filter(u -> "PWA_USER".equals(u.getRole()))
+                .filter(u -> u.hasRole("PWA_USER"))
                 .toList();
 
         return ResponseEntity.ok(pwaUsers.stream().map(u -> {

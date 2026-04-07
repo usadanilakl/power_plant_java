@@ -38,7 +38,11 @@ public class NgUserController {
         try {
             Page<User> users = userRepo.findAll(
                 PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "name")));
-            Page<UserDto> dtos = users.map(u -> mapper.convert(u, UserDto.class));
+            Page<UserDto> dtos = users.map(u -> {
+                UserDto dto = mapper.convert(u, UserDto.class);
+                dto.setRoles(u.getRoles());
+                return dto;
+            });
             return ResponseEntity.ok(new NgApiResponse<>(dtos, "Users retrieved successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
@@ -50,6 +54,7 @@ public class NgUserController {
         return userRepo.findById(id)
             .map(u -> {
                 UserDto dto = mapper.convert(u, UserDto.class);
+                dto.setRoles(u.getRoles());
                 return ResponseEntity.ok(new NgApiResponse<>(dto, "User retrieved"));
             })
             .orElse(ResponseEntity.notFound().build());
@@ -63,13 +68,14 @@ public class NgUserController {
                     new NgApiResponse<>(null, "Email already exists"));
             }
 
+            String rolesStr = request.roles() != null ? String.join(",", request.roles()) : "";
             User user = User.builder()
                 .username(request.username())
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .name(request.firstName() + " " + request.lastName())
                 .email(request.email())
-                .role(request.role())
+                .role(rolesStr)
                 .password(passwordEncoder.encode(request.password()))
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
@@ -97,7 +103,7 @@ public class NgUserController {
                 }
                 if (request.username() != null) user.setUsername(request.username());
                 if (request.email() != null) user.setEmail(request.email());
-                if (request.role() != null) user.setRole(request.role());
+                if (request.roles() != null) user.setRoles(request.roles());
                 if (request.isActive() != null) user.setIsActive(request.isActive());
                 if (request.windowsUsername() != null) user.setWindowsUsername(request.windowsUsername());
                 if (request.password() != null && !request.password().isBlank()) {
@@ -191,12 +197,12 @@ public class NgUserController {
 
     public record CreateUserRequest(
         String username, String firstName, String lastName,
-        String email, String role, String password, String windowsUsername
+        String email, List<String> roles, String password, String windowsUsername
     ) {}
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
-        String email, String role, String password, Boolean isActive, String windowsUsername,
+        String email, List<String> roles, String password, Boolean isActive, String windowsUsername,
         String permissionLevel
     ) {}
 }

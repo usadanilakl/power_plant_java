@@ -498,6 +498,10 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     }
 
     public DailyPermitPackageDto reissuePackageToNewPackage(Long sourcePackageId, String date, String time) {
+        return reissuePackageToNewPackage(sourcePackageId, date, time, false);
+    }
+
+    public DailyPermitPackageDto reissuePackageToNewPackage(Long sourcePackageId, String date, String time, boolean skipWorkRequests) {
         DailyPermitPackage source = getEntityById(String.valueOf(sourcePackageId));
 
         String reissueDate = (date != null && !date.isBlank()) ? date : source.getDate();
@@ -518,9 +522,11 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         newPackage.setPackageStatus(buildingStatus);
 
         newPackage = dailyPermitPackageRepo.saveAndFlush(newPackage);
-        // Add work requests after package is persisted
-        for (WorkRequest wr : source.getWorkRequests()) {
-            newPackage.addWorkRequest(wr);
+        // Add work requests after package is persisted (unless skipped)
+        if (!skipWorkRequests) {
+            for (WorkRequest wr : source.getWorkRequests()) {
+                newPackage.addWorkRequest(wr);
+            }
         }
         copyPermitsFromSource(source, newPackage, reissueDate, reissueTime);
 

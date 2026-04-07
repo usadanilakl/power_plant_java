@@ -115,7 +115,7 @@ public class PwaAuthController {
         info.put("id", user.getId());
         info.put("name", user.getName());
         info.put("email", user.getEmail());
-        info.put("role", user.getRole());
+        info.put("roles", user.getRoles());
         info.put("permissionLevel", user.getPermissionLevel() != null ? user.getPermissionLevel() : PermissionLevel.NONE);
         return info;
     }

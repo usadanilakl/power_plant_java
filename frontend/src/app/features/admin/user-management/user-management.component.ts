@@ -11,7 +11,7 @@ interface UserForm {
   firstName: string;
   lastName: string;
   email: string;
-  role: string;
+  roles: string[];
   password: string;
   windowsUsername: string;
   isActive: boolean;
@@ -73,11 +73,13 @@ interface UserForm {
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Role</label>
-                <select [(ngModel)]="form.role" name="role" required>
-                  <option value="" disabled>Select role</option>
-                  <option *ngFor="let r of roles" [value]="r">{{ formatRole(r) }}</option>
-                </select>
+                <label>Roles</label>
+                <div class="roles-checkboxes">
+                  <label *ngFor="let r of roles" class="role-checkbox">
+                    <input type="checkbox" [checked]="form.roles.includes(r)" (change)="toggleRole(r, $event)" />
+                    {{ formatRole(r) }}
+                  </label>
+                </div>
               </div>
               <div class="form-group">
                 <label>{{ editingUser ? 'New Password (leave blank to keep)' : 'Password' }}</label>
@@ -133,7 +135,7 @@ interface UserForm {
             <tr *ngFor="let user of filteredUsers">
               <td>{{ user.name }}</td>
               <td>{{ user.email }}</td>
-              <td><span class="badge" [ngClass]="getRoleBadgeClass(user.role)">{{ formatRole(user.role) }}</span></td>
+              <td><span *ngFor="let r of user.roles" class="badge" [ngClass]="getRoleBadgeClass(r)" style="margin-right:4px">{{ formatRole(r) }}</span></td>
               <td><span class="badge" [ngClass]="getPermissionBadgeClass(user.permissionLevel)">{{ user.permissionLevel || 'NONE' }}</span></td>
               <td><span class="badge" [ngClass]="user.isActive ? 'badge-active' : 'badge-inactive'">{{ user.isActive ? 'Active' : 'Inactive' }}</span></td>
               <td>{{ user.windowsUsername }}</td>
@@ -274,6 +276,12 @@ interface UserForm {
     .btn.deny { background: #c0392b; }
     .btn.cancel { background: #555; }
     .btn.seed { background: #e67e22; }
+    .roles-checkboxes { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+    .role-checkbox {
+      display: flex; align-items: center; gap: 4px;
+      color: #ddd; font-size: 12px; cursor: pointer;
+    }
+    .role-checkbox input[type="checkbox"] { width: 14px; height: 14px; }
     .btn:hover { opacity: 0.85; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -371,7 +379,7 @@ export class UserManagementComponent implements OnInit {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      role: user.role,
+      roles: user.roles ?? [],
       password: '',
       windowsUsername: user.windowsUsername,
       isActive: user.isActive,
@@ -459,10 +467,19 @@ export class UserManagementComponent implements OnInit {
     return 'badge-inactive';
   }
 
+  toggleRole(role: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      if (!this.form.roles.includes(role)) this.form.roles.push(role);
+    } else {
+      this.form.roles = this.form.roles.filter(r => r !== role);
+    }
+  }
+
   private emptyForm(): UserForm {
     return {
       username: '', firstName: '', lastName: '',
-      email: '', role: '', password: '',
+      email: '', roles: [], password: '',
       windowsUsername: '', isActive: true, permissionLevel: ''
     };
   }

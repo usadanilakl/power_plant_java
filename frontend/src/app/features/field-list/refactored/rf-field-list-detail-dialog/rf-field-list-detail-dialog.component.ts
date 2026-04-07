@@ -19,7 +19,7 @@ interface Attachment {
   standalone: true,
   imports: [CommonModule, RfPopupProjectionComponent],
   template: `
-    <app-rf-popup-projection (close)="close.emit()">
+    <app-rf-popup-projection [isOpen]="true" (close)="close.emit()">
       <div class="detail-dialog">
         <div class="detail-header">
           <div class="detail-type-badge">{{ item().listTypeName }}</div>

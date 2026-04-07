@@ -66,6 +66,7 @@
                 <button class="status-btn activate" (click)="currentDailyPermitPackageService.activatePackage()">Resume</button>
               }
             }
+            <button class="status-btn" style="background:#2d5aa0;" (click)="reusePermitsPopupOpen()">Reissue</button>
           }
         </div>
       </div>
@@ -176,6 +177,7 @@
         </div>
         <div class="package-action-list">
           <button class="action-button action-button-primary" (click)="onSubmitPackage()" [disabled]="!currentPackage().name || isReadOnly()">Save Package</button>
+          <button class="action-button" (click)="reusePermitsPopupOpen()" [disabled]="currentPackage().id===0">Reissue Package</button>
           <button class="action-button" (click)="openRedTagProgress()" [disabled]="currentPackage().id===0">Build in Red Tag</button>
           @if(currentPackage().activationSnapshotJson){
             <button class="action-button" (click)="isSnapshotPopupOpen = true">View Snapshot</button>
@@ -827,6 +829,41 @@
     } @else if (!reissueWrSearching) {
       <p class="reissue-hint">No packages found. Adjust scope or date and search again.</p>
     }
+  </div>
+</app-popup-projection>
+
+<!-- Reissue from processed WR (date/time picker) -->
+<app-popup-projection
+  [title]="'Reissue Package from Work Request'"
+  [isOpen]="isReissueProcessedWrOpen"
+  [size]="'medium'"
+  (close)="isReissueProcessedWrOpen = false">
+  <div class="reissue-dialog">
+    <p class="reissue-hint">This will create a new package from the package associated with the selected work request.</p>
+    <div class="reissue-fields">
+      <div class="reissue-field">
+        <label>Date</label>
+        <input type="date" [(ngModel)]="reissueProcessedWrDate" />
+      </div>
+      <div class="reissue-field">
+        <label>Time</label>
+        <input type="time" [(ngModel)]="reissueProcessedWrTime" />
+      </div>
+    </div>
+    <div class="reissue-checkbox">
+      <label>
+        <input type="checkbox" [(ngModel)]="reissueProcessedWrAlsoReissueWr" />
+        Also reissue the Work Request (attach to new package)
+      </label>
+    </div>
+    <div class="workflow-actions">
+      <button class="status-btn activate" (click)="confirmReissueProcessedWr()">
+        Reissue Package
+      </button>
+      <button class="status-btn" style="background:#6c757d;" (click)="isReissueProcessedWrOpen = false">
+        Cancel
+      </button>
+    </div>
   </div>
 </app-popup-projection>
 

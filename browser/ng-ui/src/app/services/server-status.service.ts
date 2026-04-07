@@ -4,6 +4,7 @@ import { BehaviorSubject, interval, switchMap, distinctUntilChanged, filter, tak
 import { ServerApiService } from './server-api.service';
 import { UserSetupService } from './user-setup.service';
 import { AuthService } from '../auth/auth.service';
+import { EquipmentDataService } from './equipment-data.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +13,7 @@ export class ServerStatusService {
   private serverApi = inject(ServerApiService);
   private userSetupService = inject(UserSetupService);
   private authService = inject(AuthService);
+  private equipmentData = inject(EquipmentDataService);
   private destroyRef = inject(DestroyRef);
 
   private isOnlineSubject = new BehaviorSubject<boolean>(false);
@@ -50,7 +52,10 @@ export class ServerStatusService {
       distinctUntilChanged(),
       filter(online => online),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.retryPendingRegistration());
+    ).subscribe(() => {
+      this.retryPendingRegistration();
+      this.equipmentData.retryFromServer();
+    });
   }
 
   checkNow(): void {

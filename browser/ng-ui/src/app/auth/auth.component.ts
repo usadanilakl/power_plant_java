@@ -78,15 +78,10 @@ export class AuthComponent implements OnInit {
     const credential = this.identifyForm.value.credential.trim();
     if (!credential) return;
 
-    if (!this.serverStatus.isOnline()) {
-      this.lookedUpEmail = credential;
-      this.step = 'offline_choice';
-      return;
-    }
-
     this.isLoading = true;
     this.errorMessage = null;
 
+    // Always attempt lookup — don't gate on serverStatus which may be stale
     this.serverApi.lookupUser(credential).subscribe({
       next: (result) => {
         this.isLoading = false;
@@ -107,7 +102,7 @@ export class AuthComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
-        // Lookup failed (server error) — fall back to offline choice
+        // Lookup failed (server unreachable) — fall back to offline choice
         this.lookedUpEmail = credential;
         this.step = 'offline_choice';
       }

@@ -19,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Auto-authenticates requests from localhost using the OS username.
@@ -84,9 +85,18 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Only auto-auth users with ROLE_PLANT or ROLE_ADMIN
+        if (!user.hasRole("ROLE_PLANT") && !user.hasRole("ROLE_ADMIN")) {
+            log.debug("Desktop auto-auth: user '{}' has neither ROLE_PLANT nor ROLE_ADMIN, skipping", user.getName());
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Create authentication token
         try {
-            Set<SimpleGrantedAuthority> authorities = Set.of(new SimpleGrantedAuthority(user.getRole()));
+            Set<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toSet());
             CustomUserDetails userDetails = new CustomUserDetails(user, authorities);
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
@@ -111,11 +121,7 @@ public class DesktopAutoAuthFilter extends OncePerRequestFilter {
         }
         cachedUser = userRepo.findFirstByWindowsUsernameOrderByIdAsc(windowsUsername);
         if (cachedUser == null) {
-            cachedUser = userRepo.findFirstByRoleAndIsActiveTrue("ROLE_ADMIN");
-            if (cachedUser != null) {
-                log.info("No user with windowsUsername='{}', falling back to admin: {}",
-                         windowsUsername, cachedUser.getEmail());
-            }
+            log.debug("Desktop auto-auth: no user with windowsUsername='{}'", windowsUsername);
         }
         cachedWindowsUsername = windowsUsername;
         cacheTimestamp = now;

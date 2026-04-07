@@ -60,7 +60,7 @@ import { RfFieldListApiService } from '../services/rf-field-list-api.service';
           </app-rf-field-list-table>
 
           @if (stateService.isFormOpen()) {
-            <app-rf-popup-projection (close)="stateService.isFormOpen.set(false)">
+            <app-rf-popup-projection [isOpen]="true" (close)="stateService.isFormOpen.set(false)">
               <app-rf-field-list-form></app-rf-field-list-form>
             </app-rf-popup-projection>
           }

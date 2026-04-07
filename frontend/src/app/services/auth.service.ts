@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   accessLevel?: 'RESTRICTED' | 'PENDING' | 'FULL';
 }
@@ -21,6 +22,7 @@ export interface UserProfile {
   name: string;
   email: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   lastLoginDate: string | null;
   windowsUsername: string;
@@ -162,7 +164,8 @@ export class AuthService {
   }
 
   isAdmin(): boolean {
-    return this.currentUser?.role === 'ROLE_ADMIN';
+    const roles = this.currentUser?.roles ?? [];
+    return roles.includes('ROLE_ADMIN');
   }
 
   hasFullAccess(): boolean {

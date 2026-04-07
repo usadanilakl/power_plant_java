@@ -186,6 +186,18 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   private handleReissue(item: WorkRequestDto): void {
     if (!item?.id) return;
 
+    // If WR is already processed (has a package), use the direct package reissue flow
+    if (item.dailyPermitPackageId) {
+      this.router.navigate(['/permit-builder/daily-packages'], {
+        queryParams: {
+          reissueProcessedWr: item.id,
+          sourcePackageId: item.dailyPermitPackageId,
+        }
+      });
+      this.closeContextMenu();
+      return;
+    }
+
     let previousDay = '';
     if (item.dateOfWorkToBePerformed) {
       previousDay = this.getPreviousDay(item.dateOfWorkToBePerformed);

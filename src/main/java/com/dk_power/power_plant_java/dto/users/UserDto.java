@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -20,6 +21,7 @@ public class UserDto extends BaseDto {
     private String lastName;
     private String email;
     private String role;
+    private List<String> roles;
     private Boolean isActive;
     private LocalDateTime lastLoginDate;
     private String windowsUsername;

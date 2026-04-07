@@ -153,8 +153,10 @@ public class NgFieldListItemService {
 
     public void softDelete(Long id) {
         repo.findById(id).ifPresent(entity -> {
+            log.info("[FieldList] Soft-deleting item id={} title={}", id, entity.getTitle());
             entity.setDeleted(true);
             repo.save(entity);
+            log.info("[FieldList] Soft-delete saved for id={}", id);
         });
     }
 

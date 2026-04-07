@@ -32,6 +32,7 @@ public class UserMapper implements BaseMapper {
         if (entity.getFirstName() != null) dto.setFirstName(entity.getFirstName());
         if (entity.getLastName() != null) dto.setLastName(entity.getLastName());
         if (entity.getRole() != null) dto.setRole(entity.getRole());
+        dto.setRoles(entity.getRoles());
         if (entity.getIsActive() != null) dto.setIsActive(entity.getIsActive());
         if (entity.getLastLoginDate() != null) dto.setLastLoginDate(entity.getLastLoginDate());
 //        if (entity.getDateCreated() != null) dto.setCreatedAt(entity.getCreatedAt());

@@ -41,8 +41,7 @@ public class MessagingUserContextService {
 
     public void requireAdmin() {
         User user = getCurrentUserRequired();
-        String role = user.getRole();
-        if (role == null || (!"ROLE_ADMIN".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role))) {
+        if (!user.hasRole("ROLE_ADMIN") && !user.hasRole("ADMIN")) {
             throw new SecurityException("Admin access is required");
         }
     }

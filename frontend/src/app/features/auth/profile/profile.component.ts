@@ -35,7 +35,7 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
               <div class="identity">
                 <h2>{{ profile.name }}</h2>
                 <div class="badges">
-                  <span class="role-badge">{{ formatRole(profile.role) }}</span>
+                  <span class="role-badge" *ngFor="let r of (profile.roles || [])">{{ formatRole(r) }}</span>
                   <span class="access-badge" [ngClass]="accessLevelClass" *ngIf="accessLevel">{{ accessLevelLabel }}</span>
                 </div>
               </div>

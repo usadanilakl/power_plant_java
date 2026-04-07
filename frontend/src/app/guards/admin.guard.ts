@@ -13,7 +13,7 @@ export const adminGuard: CanActivateFn = (route, state) => {
     switchMap(() => authService.currentUser$),
     take(1),
     map(user => {
-      if (user && user.role === 'ROLE_ADMIN') return true;
+      if (user && user.roles?.includes('ROLE_ADMIN')) return true;
       router.navigate(['/home']);
       return false;
     })
