@@ -275,6 +275,7 @@ export interface SpProvisionSingleResult {
   success: boolean;
   alreadyExisted?: boolean;
   fieldsAdded?: string[];
+  fieldsIndexed?: string[];
   message?: string;
   error?: string;
 }

@@ -25,9 +25,14 @@ import {
                   [disabled]="loading.spProvision || spListStatuses.length === 0 || getMissingListCount() === 0">
             Create All Missing ({{ getMissingListCount() }})
           </button>
+          <button class="update-all-btn" (click)="updateAllLists()"
+                  [disabled]="loading.spProvision || spListStatuses.length === 0 || getExistingListCount() === 0">
+            Update All ({{ getExistingListCount() }})
+          </button>
         </div>
 
         <div class="error" *ngIf="errors.spProvision">{{ errors.spProvision }}</div>
+        <div class="success-msg" *ngIf="spLastMessage">{{ spLastMessage }}</div>
 
         <div class="sp-list-grid" *ngIf="spListStatuses.length > 0">
           <div class="sp-list-card" *ngFor="let list of spListStatuses"
@@ -49,6 +54,12 @@ import {
                       (click)="provisionSingleList(list.title)"
                       [disabled]="spProvisioningList === list.title">
                 {{ spProvisioningList === list.title ? 'Creating...' : 'Create List' }}
+              </button>
+              <button *ngIf="list.exists"
+                      class="update-btn"
+                      (click)="provisionSingleList(list.title)"
+                      [disabled]="spProvisioningList === list.title">
+                {{ spProvisioningList === list.title ? 'Updating...' : 'Update' }}
               </button>
               <a *ngIf="list.exists"
                  class="nav-btn sp-open-btn"
@@ -80,6 +91,7 @@ import {
     .action-btn { background-color: #007bff; color: white; }
     .action-btn:hover:not(:disabled) { background-color: #0056b3; }
     .error { background-color: #f8d7da; color: #721c24; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
+    .success-msg { background-color: #d4edda; color: #155724; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
     .badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 13px; background-color: #e9ecef; color: #333; }
     .badge.success { background-color: #d4edda; color: #155724; }
     .badge.warning { background-color: #fff3cd; color: #856404; }
@@ -97,6 +109,10 @@ import {
     .nav-btn:hover { background-color: #218838; }
     .sp-open-btn { background-color: #17a2b8; padding: 6px 14px; font-size: 13px; border-radius: 4px; text-decoration: none; color: white; }
     .sp-open-btn:hover { background-color: #138496; }
+    .update-btn { background-color: #6f42c1; color: white; }
+    .update-btn:hover:not(:disabled) { background-color: #5a32a3; }
+    .update-all-btn { background-color: #6f42c1; color: white; }
+    .update-all-btn:hover:not(:disabled) { background-color: #5a32a3; }
   `]
 })
 export class AdminSharepointComponent {
@@ -110,6 +126,7 @@ export class AdminSharepointComponent {
 
   spListStatuses: SpListStatus[] = [];
   spProvisioningList: string = '';
+  spLastMessage: string = '';
 
   constructor(private adminService: AdminFunctionalitiesService) {}
 
@@ -139,6 +156,7 @@ export class AdminSharepointComponent {
         if (result.success) {
           const entry = this.spListStatuses.find(s => s.title === title);
           if (entry) entry.exists = true;
+          if (result.message) this.spLastMessage = `${title}: ${result.message}`;
         } else {
           this.errors.spProvision = `${title}: ${result.error}`;
         }
@@ -170,6 +188,28 @@ export class AdminSharepointComponent {
 
   getMissingListCount(): number {
     return this.spListStatuses.filter(s => !s.exists).length;
+  }
+
+  getExistingListCount(): number {
+    return this.spListStatuses.filter(s => s.exists).length;
+  }
+
+  updateAllLists() {
+    if (!confirm('Update all existing SharePoint lists? This adds missing fields and indexes. Existing data is not affected.')) return;
+
+    this.loading.spProvision = true;
+    this.errors.spProvision = '';
+
+    this.adminService.provisionAllSharePointLists().subscribe({
+      next: () => {
+        this.loading.spProvision = false;
+        this.checkSpListStatuses();
+      },
+      error: (error) => {
+        this.errors.spProvision = error.error?.message || error.message || 'Failed to update lists';
+        this.loading.spProvision = false;
+      }
+    });
   }
 
   getSharePointListUrl(title: string): string {

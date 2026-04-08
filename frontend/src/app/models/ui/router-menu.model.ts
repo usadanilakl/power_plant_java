@@ -111,7 +111,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/log/correspondence', label: 'Correspondence', icon: 'mail', iconColor: '#FFA726' },
             { route: '/log/messaging', label: 'Messages', icon: 'chat', iconColor: '#66BB6A' },
             { route: '/instrumentation', label: 'Instruments', icon: 'speed', iconColor: '#AB47BC' },
-            { route: '/field-lists', label: 'Field Lists', icon: 'checklist_rtl', iconColor: '#26A69A' }
+            { route: '/field-lists', label: 'Field Lists', icon: 'checklist_rtl', iconColor: '#26A69A' },
+            { route: '/etapro', label: 'EtaPro Trends', icon: 'trending_up', iconColor: '#42A5F5' }
         ]
     },
     {

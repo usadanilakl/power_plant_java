@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.hub.HubClientInfo;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.hub.HubEntityComparisonService;
+import com.dk_power.power_plant_java.sevice.hub.H2ToPostgresMigrationService;
 import com.dk_power.power_plant_java.sevice.hub.HubFieldChangeQueryService;
 import com.dk_power.power_plant_java.sevice.hub.HubSseService;
 import com.dk_power.power_plant_java.sevice.hub.HubSyncService;
@@ -54,6 +55,14 @@ public class HubSyncController {
             @RequestHeader(value = "X-Device-Number", required = false) Integer deviceNumber,
             @RequestBody SyncRequest request,
             HttpServletRequest httpRequest) {
+
+        if (H2ToPostgresMigrationService.migrationInProgress.get()) {
+            log.warn("Rejecting sync from {} — migration in progress", machineId);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(HubSyncService.SyncResponse.builder()
+                .success(false)
+                .errorMessage("Hub migration in progress, retry later")
+                .build());
+        }
 
         if (request.changes != null && request.changes.size() > MAX_BATCH_SIZE) {
             log.warn("Batch size {} exceeds limit {} from {}", request.changes.size(), MAX_BATCH_SIZE, machineId);

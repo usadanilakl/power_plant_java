@@ -345,6 +345,10 @@ public class NgAdminFunctionalitiesController {
     public ResponseEntity<NgApiResponse<H2ToPostgresMigrationService.MigrationReport>> compareMigration() {
         try {
             var report = migrationService.compareSourceAndTarget();
+            if (report.getError() != null) {
+                return ResponseEntity.status(500)
+                    .body(new NgApiResponse<>(report, "Comparison failed: " + report.getError()));
+            }
             String message = report.getTotalDeviations() == 0
                 ? "All tables match (" + report.getTotalPgRecords() + " records)"
                 : report.getTotalDeviations() + " table(s) have deviations";

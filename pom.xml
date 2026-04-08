@@ -15,6 +15,7 @@
     <description>power_plant_java</description>
     <properties>
         <java.version>21</java.version>
+        <skipTests>true</skipTests>
 <!--        <maven.compiler.source>21</maven.compiler.source>-->
 <!--        <maven.compiler.target>21</maven.compiler.target>-->
     </properties>
@@ -231,7 +232,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <!-- Default true (skip tests), override with -DskipTests=false to run -->
+                    <skipTests>${skipTests}</skipTests>
                 </configuration>
             </plugin>
             <plugin>

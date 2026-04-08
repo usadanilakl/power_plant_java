@@ -1,0 +1,97 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { RfPopupProjectionComponent } from '../../../shared/popup-projection/rf-popup-projection.component';
+import { TrendWindowComponent } from '../../../shared/trend-chart/trend-window.component';
+import { EtaProStateService } from '../services/etapro-state.service';
+import { EtaProTrendAdapterService } from '../services/etapro-trend-adapter.service';
+import { EtaProDashboardComponent } from '../etapro-dashboard/etapro-dashboard.component';
+import { EtaProPointsComponent } from '../etapro-points/etapro-points.component';
+import { EtaProReadingsComponent } from '../etapro-readings/etapro-readings.component';
+
+@Component({
+  selector: 'app-etapro-page',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MainLayoutComponent,
+    RouterMenuComponent,
+    RfPopupProjectionComponent,
+    TrendWindowComponent,
+    EtaProDashboardComponent,
+    EtaProPointsComponent,
+    EtaProReadingsComponent,
+  ],
+  template: `
+    <app-main-layout>
+      <ng-container header>
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </ng-container>
+      <ng-container main-content>
+        <div class="etapro-content">
+          <div class="tab-bar">
+            <button [class.active]="stateService.activeTab() === 'dashboard'"
+                    (click)="stateService.activeTab.set('dashboard')">Dashboard</button>
+            <button [class.active]="stateService.activeTab() === 'points'"
+                    (click)="stateService.activeTab.set('points')">Points</button>
+            <button [class.active]="stateService.activeTab() === 'readings'"
+                    (click)="stateService.activeTab.set('readings')">Readings</button>
+          </div>
+
+          <div class="tab-content">
+            @switch (stateService.activeTab()) {
+              @case ('dashboard') {
+                <app-etapro-dashboard></app-etapro-dashboard>
+              }
+              @case ('points') {
+                <app-etapro-points></app-etapro-points>
+              }
+              @case ('readings') {
+                <app-etapro-readings></app-etapro-readings>
+              }
+            }
+          </div>
+
+          @if (stateService.isTrendOpen()) {
+            <app-rf-popup-projection [isOpen]="true" (close)="stateService.closeTrend()">
+              <app-trend-window
+                [adapter]="trendAdapter"
+                [seriesIds]="stateService.trendPointIds()"
+                [initialPreset]="'1h'">
+              </app-trend-window>
+            </app-rf-popup-projection>
+          }
+        </div>
+      </ng-container>
+    </app-main-layout>
+  `,
+  styles: [`
+    :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    .etapro-content {
+      display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: hidden;
+    }
+    .tab-bar {
+      display: flex; gap: 4px; flex-shrink: 0; margin-bottom: 8px;
+    }
+    .tab-bar button {
+      padding: 8px 20px; border: 1px solid var(--border-color); border-radius: 4px 4px 0 0;
+      background: var(--card-background); color: var(--primary-text); cursor: pointer; font-size: 13px;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-bar button.active {
+      background: var(--accent-color); color: var(--header-text);
+      border-color: var(--accent-color); border-bottom-color: var(--accent-color);
+    }
+    .tab-bar button:hover:not(.active) { background: var(--hover-background); }
+    .tab-content {
+      flex: 1; min-height: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .tab-content > * { flex: 1; min-height: 0; }
+  `]
+})
+export class EtaProPageComponent {
+  stateService = inject(EtaProStateService);
+  trendAdapter = inject(EtaProTrendAdapterService);
+}

@@ -24,11 +24,57 @@ Automatically creates SharePoint lists with the correct columns for all permit t
 | Excavation Permits | PwaId, Date, Time, LocationOfWork, IssuedTo, Supervisor, JobLocation, SupervisorPhone, ExcavationDescription (note), WorkOrder, LocationPipingMarked (bool), FacilityName, CompetentPerson, SoilType, ExcavationDepth/Width, ProtectiveSystemType, Status | Text + 1 Note + 1 Boolean |
 | Venting Permits | PwaId, Date, Time, LocationOfWork, IssuedTo, PlantName, SystemName, RequestingIndividual, Purpose (note), TimeCommence, TimeConclude, GasType, LEL, UEL, CalculatedVolume, Pressure, GasIndicatorModel/Serial, CalibrationDate, Status | Text + 1 Note |
 
+## Additional Lists
+
+| List | Fields | Types |
+|------|--------|-------|
+| Instrumentation | PwaId, Tag Number, Description, Vendor, Location, Type, CurrentStatus, LastUpdatedDate/Time/By, LastComment (note) | Text + 1 Note |
+| Instrumentation Log | PwaId, Tag Number, InstrumentId (lookup→Instrumentation.ID), Description, Status, Date, Time, Name, Comment (note) | Text + 1 Lookup + 1 Note |
+| Field Lists | PwaId, ListType, Status, Location, SpecificLocation, Notes (note), DateObserved, EquipmentTag, SubmitterName/Email/Phone | Text + 1 Note |
+
 ## Field Type Kinds
 
 - `2` = Text (single line, 255 chars)
 - `3` = Note (multi-line text)
+- `7` = Lookup (reference to another list)
 - `8` = Boolean (Yes/No)
+
+## Column Indexing
+
+The provisioner automatically indexes columns on each list to prevent the SharePoint 5,000-item list view threshold error.
+
+### How It Works
+
+- Runs after field creation via `ensureIndexes()` — idempotent, skips already-indexed columns
+- **NOTE** fields (multi-line text) cannot be indexed — skipped automatically
+- **LOOKUP** fields are auto-indexed by SharePoint — skipped
+- **TEXT** and **BOOLEAN** fields are indexed in priority order:
+  1. **Built-in `Modified`** column — always indexed first (critical for incremental sync queries)
+  2. **High priority**: `PwaId`, `Status`, `CurrentStatus` — most commonly filtered
+  3. **Medium priority**: Date fields (`Date`, `DateOfWork`, `TimeSubmitted`, etc.)
+  4. **Low priority**: All remaining TEXT/BOOLEAN fields
+- Maximum **20 indexes per list** (SharePoint limit) — if reached, logs a warning and stops
+
+### API Used
+
+```
+MERGE /_api/web/lists/getbytitle('{listTitle}')/fields/getbyinternalnameortitle('{fieldName}')
+Body: {"Indexed": true}
+```
+
+Check if indexed:
+```
+GET /_api/web/lists/getbytitle('{listTitle}')/fields/getbyinternalnameortitle('{fieldName}')?$select=Indexed
+```
+
+## Safe Re-Run Behavior
+
+The provisioner is fully **idempotent** — safe to run on existing lists with data:
+- **Lists**: checks `listExists()` before creating — existing lists are not recreated
+- **Fields**: checks `fieldExists()` before adding — existing fields are skipped
+- **Indexes**: checks `isFieldIndexed()` before indexing — already-indexed columns are skipped
+- **Data**: never deletes, modifies, or reads list items — only schema operations
+- Running on an existing list will add any **new** fields and indexes defined in code but missing from SharePoint
 
 ## Default View Fix
 
@@ -43,7 +89,7 @@ This ensures columns are visible when opening the list in SharePoint.
 ## Files
 
 - `sevice/sharepoint/SharePointListProvisioner.java` — list definitions + provision logic
-- `sevice/sharepoint/SharePointCertificateAccess.java` — REST API calls (createList, addFieldToList, addFieldToDefaultView)
+- `sevice/sharepoint/SharePointCertificateAccess.java` — REST API calls (createList, addFieldToList, addFieldToDefaultView, indexField, isFieldIndexed)
 - `controller/angular/permits/NgSharePointProvisioningController.java` — REST endpoints
 
 ## API Endpoints

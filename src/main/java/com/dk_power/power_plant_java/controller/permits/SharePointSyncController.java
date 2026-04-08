@@ -107,23 +107,43 @@ public class SharePointSyncController {
 
     @PostMapping("/sync/{entityType}")
     public ResponseEntity<NgApiResponse<SyncResult>> syncEntityType(@PathVariable String entityType) {
+        // Fast-fail at the HTTP layer if sync is paused (e.g. during migration)
+        if (orchestrator.isClientSyncInProgress()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new NgApiResponse<>(null, "Sync paused — try again shortly"));
+        }
+
         // If not hub mode and hub is online, proxy the request to hub
         if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) {
-            SyncResult proxyResult = proxyToHub(entityType);
-            if (proxyResult != null) {
-                String msg = String.format("%s sync (via hub): created=%d, updated=%d, autoClosed=%d, skipped=%d, failed=%d",
-                    entityType, proxyResult.getCreated(), proxyResult.getUpdated(),
-                    proxyResult.getAutoClosed(), proxyResult.getSkipped(), proxyResult.getFailed());
-                return ResponseEntity.ok(new NgApiResponse<>(proxyResult, msg));
+            try {
+                SyncResult proxyResult = proxyToHub(entityType);
+                if (proxyResult != null) {
+                    String msg = String.format("%s sync (via hub): created=%d, updated=%d, autoClosed=%d, skipped=%d, failed=%d",
+                        entityType, proxyResult.getCreated(), proxyResult.getUpdated(),
+                        proxyResult.getAutoClosed(), proxyResult.getSkipped(), proxyResult.getFailed());
+                    return ResponseEntity.ok(new NgApiResponse<>(proxyResult, msg));
+                }
+                // proxyResult == null only on transport failure — fall through to local sync
+                log.warn("[SP Sync] Hub unreachable for {}, falling back to local sync", entityType);
+            } catch (HubRejectedException e) {
+                // Hub explicitly rejected (e.g. 503 during migration) — do NOT fall back to local.
+                // The hub's decision is authoritative; propagate as 503 to the caller.
+                return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new NgApiResponse<>(null, e.getMessage()));
             }
-            // Hub proxy failed — fall through to local sync
-            log.warn("[SP Sync] Hub proxy failed for {}, falling back to local sync", entityType);
         }
 
         SyncResult result = orchestrator.syncEntityType(entityType);
-        if (result.getErrorMessage() != null && result.getErrorMessage().startsWith("Unknown entity type")) {
-            return ResponseEntity.badRequest()
-                .body(new NgApiResponse<>(result, result.getErrorMessage()));
+        String errorMsg = result.getErrorMessage();
+        if (errorMsg != null) {
+            if (errorMsg.startsWith("Unknown entity type")) {
+                return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(result, errorMsg));
+            }
+            if (errorMsg.startsWith("Sync paused")) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new NgApiResponse<>(result, errorMsg));
+            }
         }
         String message = String.format("%s sync: created=%d, updated=%d, autoClosed=%d, skipped=%d, failed=%d",
             entityType, result.getCreated(), result.getUpdated(),
@@ -135,12 +155,25 @@ public class SharePointSyncController {
     public ResponseEntity<NgApiResponse<List<SyncResult>>> syncAll() {
         List<String> types = orchestrator.getRegisteredEntityTypes();
 
+        // Fast-fail at the HTTP layer if local sync is paused (e.g. during migration)
+        if (orchestrator.isClientSyncInProgress()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new NgApiResponse<>(null, "Sync paused — try again shortly"));
+        }
+
         // If not hub mode and hub is online, proxy all to hub
         if (!syncConfig.isHubMode() && centralSyncService.isServerAvailable()) {
-            List<SyncResult> results = types.stream().map(type -> {
-                SyncResult proxyResult = proxyToHub(type);
-                return proxyResult != null ? proxyResult : orchestrator.syncEntityType(type);
-            }).toList();
+            List<SyncResult> results = new java.util.ArrayList<>();
+            for (String type : types) {
+                try {
+                    SyncResult proxyResult = proxyToHub(type);
+                    results.add(proxyResult != null ? proxyResult : orchestrator.syncEntityType(type));
+                } catch (HubRejectedException e) {
+                    // Hub rejected — propagate as 503 for the whole batch, do NOT fall back locally
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(new NgApiResponse<>(null, e.getMessage()));
+                }
+            }
             return ResponseEntity.ok(new NgApiResponse<>(results, "Synced " + types.size() + " entity types via hub"));
         }
 
@@ -180,30 +213,52 @@ public class SharePointSyncController {
     }
 
     /**
-     * Proxy a sync request to the hub. Returns null if the proxy fails.
+     * Thrown when the hub explicitly rejects a sync request (e.g. 503 during migration).
+     * Callers MUST NOT fall back to local sync on this exception — the hub's rejection is authoritative.
+     */
+    public static class HubRejectedException extends RuntimeException {
+        public HubRejectedException(String message) { super(message); }
+    }
+
+    /**
+     * Proxy a sync request to the hub.
+     * @return SyncResult on success, or null on transport failure (connection refused, timeout, DNS).
+     * @throws HubRejectedException if the hub responded with 4xx/5xx — caller must propagate, not fall back.
      */
     @SuppressWarnings("unchecked")
     private SyncResult proxyToHub(String entityType) {
+        String hubUrl = syncConfig.getSyncServerUrl() + "/api/sharepoint-sync/sync/" + entityType;
+        log.info("[SP Sync] Proxying {} sync to hub: {}", entityType, hubUrl);
+        ResponseEntity<NgApiResponse> response;
         try {
-            String hubUrl = syncConfig.getSyncServerUrl() + "/api/sharepoint-sync/sync/" + entityType;
-            log.info("[SP Sync] Proxying {} sync to hub: {}", entityType, hubUrl);
-            ResponseEntity<NgApiResponse> response = restTemplate.postForEntity(hubUrl, null, NgApiResponse.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Object data = response.getBody().getResponseData();
-                if (data instanceof Map) {
-                    Map<String, Object> map = (Map<String, Object>) data;
-                    SyncResult result = new SyncResult();
-                    result.setCreated(toInt(map.get("created")));
-                    result.setUpdated(toInt(map.get("updated")));
-                    result.setAutoClosed(toInt(map.get("autoClosed")));
-                    result.setSkipped(toInt(map.get("skipped")));
-                    result.setFailed(toInt(map.get("failed")));
-                    result.setErrorMessage((String) map.get("errorMessage"));
-                    return result;
-                }
-            }
+            response = restTemplate.postForEntity(hubUrl, null, NgApiResponse.class);
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // Hub returned 4xx/5xx — authoritative rejection, do NOT fall back
+            String body = e.getResponseBodyAsString();
+            log.warn("[SP Sync] Hub rejected {} sync: {} {}", entityType, e.getStatusCode(), body);
+            throw new HubRejectedException("Hub rejected sync: " + e.getStatusCode() + " " + body);
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Transport failure (connection refused, timeout) — safe to fall back to local
+            log.warn("[SP Sync] Hub unreachable for {}: {}", entityType, e.getMessage());
+            return null;
         } catch (Exception e) {
             log.warn("[SP Sync] Hub proxy failed for {}: {}", entityType, e.getMessage());
+            return null;
+        }
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            Object data = response.getBody().getResponseData();
+            if (data instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) data;
+                SyncResult result = new SyncResult();
+                result.setCreated(toInt(map.get("created")));
+                result.setUpdated(toInt(map.get("updated")));
+                result.setAutoClosed(toInt(map.get("autoClosed")));
+                result.setSkipped(toInt(map.get("skipped")));
+                result.setFailed(toInt(map.get("failed")));
+                result.setErrorMessage((String) map.get("errorMessage"));
+                return result;
+            }
         }
         return null;
     }

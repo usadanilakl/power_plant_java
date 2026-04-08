@@ -67,7 +67,11 @@
       "Read(//c/Users/usada/my_projects/dk_power_plant/spring-boot/**)",
       "Bash(xargs -I {} basename {})",
       "Read(//c/Users/usada/Downloads/**)",
-      "Read(//c/Users/usada/my_projects/**)"
+      "Read(//c/Users/usada/my_projects/**)",
+      "Bash(mvn -DskipTests=false -Dtest='H2ToPostgresMigrationServiceTest,H2ToPostgresMigrationServiceSequenceTest,SharePointSyncOrchestratorDrainTest' test-compile surefire:test)",
+      "Bash(mvn -DskipTests=false -Dtest='H2ToPostgresMigrationServiceTest,H2ToPostgresMigrationServiceSequenceTest,SharePointSyncOrchestratorDrainTest,SharePointSyncControllerProxyTest' test-compile surefire:test)",
+      "Bash(mvn surefire:test -Dtest=EtaProScraperServiceCsvTest -DskipTests=false -Dsurefire.skip=false)",
+      "Bash(mvn test:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java",

@@ -56,11 +56,11 @@ public class SequenceInitializer {
             long rangeEnd = rangeStart + DEVICE_ID_MULTIPLIER;
 
             // Find all user tables that have an ID column (skip system/audit tables)
-            // CURRENT_SCHEMA works on both H2 (PUBLIC) and PostgreSQL (public)
+            // Use UPPER() for case-insensitive match: H2 stores names uppercase, PG lowercase
             List<String> tables = jdbcTemplate.queryForList(
                 "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-                "WHERE COLUMN_NAME = 'ID' AND TABLE_SCHEMA = CURRENT_SCHEMA " +
-                "AND TABLE_NAME NOT LIKE '%_AUD' AND TABLE_NAME != 'REVINFO'",
+                "WHERE UPPER(COLUMN_NAME) = 'ID' AND TABLE_SCHEMA = CURRENT_SCHEMA " +
+                "AND UPPER(TABLE_NAME) NOT LIKE '%_AUD' AND UPPER(TABLE_NAME) <> 'REVINFO'",
                 String.class
             );
 

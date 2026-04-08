@@ -9,7 +9,6 @@ import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
-import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.file.ReferenceObjectService;
@@ -39,7 +38,6 @@ import java.util.List;
 public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
-    private final EtaProService etaProService;
     private final DefaultValueGeneratorService defaultValueGeneratorService;
     private final NgFileService fileService;
     private final ReferenceObjectService referenceObjectService;

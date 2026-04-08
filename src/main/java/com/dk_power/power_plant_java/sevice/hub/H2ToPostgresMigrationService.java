@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.hub;
 
+import com.dk_power.power_plant_java.sevice.sharepoint.SharePointSyncOrchestrator;
 import com.dk_power.power_plant_java.sevice.sync.EntityTableRegistry;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,14 @@ public class H2ToPostgresMigrationService {
 
     private final JdbcTemplate jdbcTemplate;
     private final EntityTableRegistry entityTableRegistry;
+    private final SharePointSyncOrchestrator sharePointSyncOrchestrator;
+
+    /**
+     * Global migration lock — when true, all client write paths must reject incoming changes.
+     * Checked by HubSyncController.exchange() to block client→hub sync during migration.
+     */
+    public static final java.util.concurrent.atomic.AtomicBoolean migrationInProgress =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Value("${h2.migration.db-path:./db/proddb}")
     private String h2DbPath;
@@ -92,13 +101,31 @@ public class H2ToPostgresMigrationService {
                 + ". Add 'postgres' to active profiles first.");
             return result;
         }
-        if (status.getTargetRecordCount() > 0) {
-            log.info("PostgreSQL has {} existing records — clearing before migration", status.getTargetRecordCount());
-            clearAllTables();
+        // Acquire global lock BEFORE any destructive action
+        if (!migrationInProgress.compareAndSet(false, true)) {
+            result.setSuccess(false);
+            result.setError("Another migration is already in progress");
+            return result;
+        }
+        sharePointSyncOrchestrator.setClientSyncInProgress(true);
+
+        // Drain in-flight SharePoint syncs before touching tables.
+        // The flag above prevents new syncs; this waits for active ones to finish.
+        if (!sharePointSyncOrchestrator.waitForActiveSyncsToDrain(60_000)) {
+            sharePointSyncOrchestrator.setClientSyncInProgress(false);
+            migrationInProgress.set(false);
+            result.setSuccess(false);
+            result.setError("Timed out waiting for in-flight SharePoint syncs to drain");
+            return result;
         }
 
         String h2Url = "jdbc:h2:file:" + h2DbPath + ";ACCESS_MODE_DATA=r;DB_CLOSE_ON_EXIT=TRUE";
 
+        // Now safe to do destructive operations — clients are blocked, SP sync is drained
+        if (status.getTargetRecordCount() > 0) {
+            log.info("PostgreSQL has {} existing records — clearing before migration", status.getTargetRecordCount());
+            clearAllTables();
+        }
         disableForeignKeys();
         try (Connection h2Conn = DriverManager.getConnection(h2Url, "sa", "password")) {
             log.info("Connected to H2 database at {}", h2DbPath);
@@ -151,13 +178,35 @@ public class H2ToPostgresMigrationService {
                 }
             }
 
+            // Reset sequences so post-migration inserts don't collide with imported IDs
+            // This is critical — if it fails, mark migration as failed
+            String sequenceError = null;
+            try {
+                resetSequences();
+            } catch (Exception e) {
+                sequenceError = "Sequence reset failed: " + e.getMessage();
+                log.error(sequenceError, e);
+            }
+
             long elapsed = System.currentTimeMillis() - startTime;
-            result.setSuccess(true);
+            boolean success = tableErrors.isEmpty() && sequenceError == null;
+            result.setSuccess(success);
             result.setTotalRecords(totalMigrated);
             result.setTableCounts(tableCounts);
             result.setTableErrors(tableErrors);
             result.setElapsedMs(elapsed);
-            log.info("Migration complete: {} total records in {}ms", totalMigrated, elapsed);
+            if (success) {
+                log.info("Migration complete: {} total records in {}ms", totalMigrated, elapsed);
+            } else {
+                StringBuilder err = new StringBuilder();
+                if (!tableErrors.isEmpty()) err.append(tableErrors.size()).append(" tables had errors");
+                if (sequenceError != null) {
+                    if (err.length() > 0) err.append("; ");
+                    err.append(sequenceError);
+                }
+                result.setError(err.toString());
+                log.warn("Migration completed with errors in {}ms: {}", elapsed, err);
+            }
 
         } catch (Exception e) {
             log.error("Migration failed: {}", e.getMessage(), e);
@@ -165,6 +214,8 @@ public class H2ToPostgresMigrationService {
             result.setError(e.getMessage());
         } finally {
             enableForeignKeys();
+            sharePointSyncOrchestrator.setClientSyncInProgress(false);
+            migrationInProgress.set(false);
         }
 
         return result;
@@ -262,35 +313,107 @@ public class H2ToPostgresMigrationService {
         return new int[]{inserted, failed};
     }
 
-    private int migrateJoinTable(Connection h2Conn, String tableName, String col1, String col2) throws SQLException {
-        String h2TableName = tableName.toUpperCase();
-        String h2Col1 = col1.toUpperCase();
-        String h2Col2 = col2.toUpperCase();
+    /**
+     * Reset PostgreSQL sequences after migration so next inserts don't collide with imported IDs.
+     *
+     * Two cases handled:
+     * 1. id_seq (DevicePrefixedIdGenerator): finds max(MOD(id, 1B)) across all tables for this device,
+     *    restarts id_seq above that value.
+     * 2. IDENTITY columns (e.g., hub_stored_backups): resets each table's identity to MAX(id)+1.
+     */
+    private static final long DEVICE_ID_MULTIPLIER = 1_000_000_000L;
+    private static final long FALLBACK_DEVICE_NUMBER = 99L;
 
-        List<long[]> rows = new ArrayList<>();
-        try (Statement stmt = h2Conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT " + h2Col1 + ", " + h2Col2 + " FROM " + h2TableName)) {
-            while (rs.next()) {
-                rows.add(new long[]{rs.getLong(1), rs.getLong(2)});
-            }
-        } catch (SQLException e) {
-            log.debug("Join table {} not found in H2: {}", h2TableName, e.getMessage());
-            return 0;
+    /**
+     * @throws RuntimeException if any sequence reset fails — this MUST be propagated
+     * because leaving sequences in a bad state causes ID collisions on the next insert.
+     */
+    private void resetSequences() {
+        // 1. Reset id_seq based on device prefix
+        // Mirror DevicePrefixedIdGenerator: fall back to device 99 if machine-id.properties missing
+        long deviceNumber = readDeviceNumber();
+        if (deviceNumber < 0 || deviceNumber > 99) {
+            log.warn("device.number not configured — using fallback device {} for sequence reset", FALLBACK_DEVICE_NUMBER);
+            deviceNumber = FALLBACK_DEVICE_NUMBER;
         }
+        long rangeStart = deviceNumber * DEVICE_ID_MULTIPLIER;
+        long rangeEnd = rangeStart + DEVICE_ID_MULTIPLIER;
+        long maxSuffix = 0;
 
-        if (rows.isEmpty()) return 0;
+        List<String> tables = jdbcTemplate.queryForList(
+            "SELECT table_name FROM information_schema.columns " +
+            "WHERE LOWER(column_name) = 'id' AND table_schema = CURRENT_SCHEMA " +
+            "AND LOWER(table_name) NOT LIKE '%_aud' AND LOWER(table_name) <> 'revinfo'",
+            String.class);
 
-        String insertSql = "INSERT INTO " + tableName + " (" + col1 + ", " + col2 + ") VALUES (?, ?)";
-        int inserted = 0;
-        for (long[] row : rows) {
+        for (String table : tables) {
             try {
-                jdbcTemplate.update(insertSql, row[0], row[1]);
-                inserted++;
+                Long tMax = jdbcTemplate.queryForObject(
+                    "SELECT MAX(MOD(id, ?)) FROM " + table + " WHERE id >= ? AND id < ?",
+                    Long.class, DEVICE_ID_MULTIPLIER, rangeStart, rangeEnd);
+                if (tMax != null && tMax > maxSuffix) maxSuffix = tMax;
             } catch (Exception e) {
-                log.trace("Failed to insert into {}: {}", tableName, e.getMessage());
+                // Per-table read failure is non-fatal — table might not have numeric id
+                log.debug("Could not read id from {}: {}", table, e.getMessage());
             }
         }
-        return inserted;
+
+        // Always restart id_seq, even if maxSuffix is 0 — ensures it's at a known state
+        long newStart = Math.max(maxSuffix + 1, 1);
+        jdbcTemplate.execute("ALTER SEQUENCE id_seq RESTART WITH " + newStart);
+        log.info("Reset id_seq to {} (device {} max suffix {})", newStart, deviceNumber, maxSuffix);
+
+        // 2. Reset IDENTITY column sequences (auto-generated by PG for SERIAL/BIGSERIAL)
+        // pg_class/pg_depend are PG-specific — skip this step on non-PG dialects
+        List<Map<String, Object>> identitySeqs;
+        try {
+            identitySeqs = jdbcTemplate.queryForList(
+                "SELECT s.relname AS seq_name, t.relname AS table_name, a.attname AS column_name " +
+                "FROM pg_class s " +
+                "JOIN pg_depend d ON d.objid = s.oid " +
+                "JOIN pg_class t ON t.oid = d.refobjid " +
+                "JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid " +
+                "WHERE s.relkind = 'S' AND d.deptype = 'a'");
+        } catch (Exception e) {
+            log.debug("Identity sequence discovery skipped (non-PostgreSQL dialect): {}", e.getMessage());
+            return;
+        }
+
+        List<String> failedSeqs = new ArrayList<>();
+        for (Map<String, Object> row : identitySeqs) {
+            String seqName = (String) row.get("seq_name");
+            String tableName = (String) row.get("table_name");
+            String colName = (String) row.get("column_name");
+            if ("id_seq".equals(seqName)) continue; // already handled above
+            try {
+                Long maxId = jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(MAX(" + colName + "), 0) FROM " + tableName, Long.class);
+                long restart = (maxId != null ? maxId : 0L) + 1;
+                jdbcTemplate.execute("ALTER SEQUENCE " + seqName + " RESTART WITH " + restart);
+                log.info("Reset sequence {} to {} (table {})", seqName, restart, tableName);
+            } catch (Exception e) {
+                log.error("Failed to reset sequence {}: {}", seqName, e.getMessage());
+                failedSeqs.add(seqName);
+            }
+        }
+
+        if (!failedSeqs.isEmpty()) {
+            throw new RuntimeException("Failed to reset " + failedSeqs.size() +
+                " sequences: " + String.join(", ", failedSeqs));
+        }
+    }
+
+    private long readDeviceNumber() {
+        java.io.File file = new java.io.File("./machine-id.properties");
+        if (!file.exists()) return -1;
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+            java.util.Properties props = new java.util.Properties();
+            props.load(fis);
+            String val = props.getProperty("device.number");
+            return val != null ? Long.parseLong(val.trim()) : -1;
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private void clearAllTables() {
@@ -385,11 +508,18 @@ public class H2ToPostgresMigrationService {
         String h2Url = "jdbc:h2:file:" + h2DbPath + ";ACCESS_MODE_DATA=r;DB_CLOSE_ON_EXIT=TRUE";
 
         try (Connection h2Conn = DriverManager.getConnection(h2Url, "sa", "password")) {
-            // Get all PG tables
-            List<String> pgTables = jdbcTemplate.queryForList(
-                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename", String.class);
+            // Get all PG tables (lowercase)
+            Set<String> allTables = new TreeSet<>(jdbcTemplate.queryForList(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'", String.class));
 
-            for (String tableName : pgTables) {
+            // Get all H2 tables (lowercase) so we don't miss tables that exist in H2 but not PG
+            try (ResultSet rs = h2Conn.getMetaData().getTables(null, "PUBLIC", "%", new String[]{"TABLE"})) {
+                while (rs.next()) {
+                    allTables.add(rs.getString("TABLE_NAME").toLowerCase());
+                }
+            }
+
+            for (String tableName : allTables) {
                 long h2Count = countH2Table(h2Conn, tableName.toUpperCase());
                 long pgCount = countPgTable(tableName);
                 report.addRow(tableName, h2Count, pgCount);

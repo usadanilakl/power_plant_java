@@ -209,6 +209,35 @@ public class SharePointCertificateAccess implements SharePointAccess {
         }
     }
 
+    // ====================== Indexing ======================
+
+    public boolean isFieldIndexed(String listTitle, String fieldName) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle
+                + "')/fields/getbyinternalnameortitle('" + fieldName + "')?$select=Indexed";
+        try {
+            ResponseEntity<String> response = sendGetRequest(endpoint);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode indexed = root.has("Indexed") ? root.path("Indexed") : root.path("d").path("Indexed");
+            return indexed.asBoolean(false);
+        } catch (Exception e) {
+            log.debug("[SharePoint] Could not check index status for '{}' on '{}': {}", fieldName, listTitle, e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean indexField(String listTitle, String fieldName) {
+        String endpoint = "/_api/web/lists/getbytitle('" + listTitle
+                + "')/fields/getbyinternalnameortitle('" + fieldName + "')";
+        try {
+            sendMergeRequest(endpoint, "{\"Indexed\":true}");
+            log.debug("[SharePoint] Indexed field '{}' on list '{}'", fieldName, listTitle);
+            return true;
+        } catch (Exception e) {
+            log.warn("[SharePoint] Failed to index field '{}' on list '{}': {}", fieldName, listTitle, e.getMessage());
+            return false;
+        }
+    }
+
     // ====================== Generic list methods (used by adapters) ======================
 
     public List<JsonNode> getListItems(String listTitle) {

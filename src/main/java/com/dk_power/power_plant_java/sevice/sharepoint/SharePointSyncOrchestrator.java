@@ -42,8 +42,42 @@ public class SharePointSyncOrchestrator {
     // Prevents H2 table-level lock contention between SP writes and client sync saves.
     private volatile boolean clientSyncInProgress = false;
 
+    // Tracks in-flight SP item processing — used as a drain barrier when migration
+    // needs to ensure no SP writes are mid-flight before truncating tables.
+    private final java.util.concurrent.atomic.AtomicInteger activeSyncCount =
+        new java.util.concurrent.atomic.AtomicInteger(0);
+
     public void setClientSyncInProgress(boolean inProgress) {
         this.clientSyncInProgress = inProgress;
+    }
+
+    public boolean isClientSyncInProgress() {
+        return clientSyncInProgress;
+    }
+
+    /**
+     * Block until all in-flight SharePoint sync operations have completed.
+     * Returns false if the timeout is exceeded.
+     *
+     * Callers should set clientSyncInProgress=true BEFORE calling this so new
+     * operations are rejected and the count can drain to zero.
+     */
+    public boolean waitForActiveSyncsToDrain(long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (activeSyncCount.get() > 0) {
+            if (System.currentTimeMillis() >= deadline) {
+                log.warn("[SP Orchestrator] Drain timeout — {} active syncs still running", activeSyncCount.get());
+                return false;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        log.info("[SP Orchestrator] All active syncs drained");
+        return true;
     }
 
     public SharePointSyncOrchestrator(
@@ -112,8 +146,13 @@ public class SharePointSyncOrchestrator {
 
     /**
      * Manual sync for a specific entity type. Bypasses interval check.
+     * Rejected if a hub-wide pause is active (e.g. during migration).
      */
     public SyncResult syncEntityType(String entityTypeName) {
+        if (clientSyncInProgress) {
+            log.warn("[SP Orchestrator] Manual sync for {} rejected — clientSyncInProgress", entityTypeName);
+            return SyncResult.error("Sync paused — try again shortly");
+        }
         SharePointSyncable<?> syncable = findSyncable(entityTypeName);
         if (syncable == null) {
             return SyncResult.error("Unknown entity type: " + entityTypeName);
@@ -136,6 +175,18 @@ public class SharePointSyncOrchestrator {
 
         Instant lastSync = lastSuccessfulSyncAt.get(type);
 
+        // Register this sync as in-flight BEFORE re-checking the pause flag.
+        // This closes the race with the drain barrier: if the flag flips between
+        // the caller's check and our increment, we'll see it here and bail out
+        // without the drain barrier ever missing us.
+        activeSyncCount.incrementAndGet();
+        if (clientSyncInProgress) {
+            activeSyncCount.decrementAndGet();
+            log.warn("[SP Orchestrator] {} sync aborted — clientSyncInProgress set after registration", type);
+            result.setErrorMessage("Sync paused — try again shortly");
+            return result;
+        }
+        try {
         try (LoggingContext.Scope ignored = LoggingContext.openSyncScope("sharepoint." + type, syncConfig.getMachineId())) {
             try {
                 // Always use incremental fetch. On first run (no lastSync), use 7 days ago
@@ -212,6 +263,9 @@ public class SharePointSyncOrchestrator {
         }
 
         return result;
+        } finally {
+            activeSyncCount.decrementAndGet();
+        }
     }
 
     /** Get sync status for all entity types. */

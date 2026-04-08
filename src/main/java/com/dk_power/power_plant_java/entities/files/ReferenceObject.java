@@ -59,7 +59,7 @@ public class ReferenceObject {
     private String characteristics;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "\"references\"", columnDefinition = "TEXT")
     private String references;
 
     private static final ObjectMapper mapper = new ObjectMapper();

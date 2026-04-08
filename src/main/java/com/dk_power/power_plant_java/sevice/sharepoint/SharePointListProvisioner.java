@@ -62,13 +62,15 @@ public class SharePointListProvisioner {
             }
 
             List<String> addedFields = ensureFields(def);
+            List<String> indexedFields = ensureIndexes(def);
 
-            log.info("[SP-Provision] {} list '{}' with {} ensured fields",
-                    alreadyExisted ? "Updated" : "Created", def.title, addedFields.size());
+            log.info("[SP-Provision] {} list '{}' with {} new fields, {} new indexes",
+                    alreadyExisted ? "Updated" : "Created", def.title, addedFields.size(), indexedFields.size());
             result.put("success", true);
             result.put("alreadyExisted", alreadyExisted);
             result.put("fieldsAdded", addedFields);
-            result.put("message", (alreadyExisted ? "Updated" : "Created") + " with " + addedFields.size() + " new fields");
+            result.put("fieldsIndexed", indexedFields);
+            result.put("message", (alreadyExisted ? "Updated" : "Created") + " with " + addedFields.size() + " new fields, " + indexedFields.size() + " new indexes");
         } catch (Exception e) {
             log.error("[SP-Provision] Failed to provision '{}': {}", def.title, e.getMessage());
             result.put("success", false);
@@ -88,11 +90,13 @@ public class SharePointListProvisioner {
             try {
                 if (spAccess.listExists(def.title)) {
                     List<String> addedFields = ensureFields(def);
-                    log.info("[SP-Provision] Updated list '{}' with {} new fields", def.title, addedFields.size());
+                    List<String> indexedFields = ensureIndexes(def);
+                    log.info("[SP-Provision] Updated list '{}' with {} new fields, {} new indexes", def.title, addedFields.size(), indexedFields.size());
                     updated.add(def.title);
                 } else {
                     spAccess.createList(def.title);
                     ensureFields(def);
+                    ensureIndexes(def);
                     log.info("[SP-Provision] Created list '{}' with {} fields", def.title, def.fields.size());
                     created.add(def.title);
                 }
@@ -193,6 +197,79 @@ public class SharePointListProvisioner {
                         text("EquipmentTag"),
                         text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"))
         );
+    }
+
+    // ====================== Indexing ======================
+
+    private static final int MAX_INDEXES_PER_LIST = 20;
+
+    // High-priority fields to index first (most commonly filtered/sorted)
+    private static final List<String> HIGH_PRIORITY_FIELDS = List.of(
+            "PwaId", "Status", "CurrentStatus"
+    );
+
+    // Medium-priority: date-related fields (commonly used in range queries)
+    private static final List<String> MEDIUM_PRIORITY_FIELDS = List.of(
+            "Date", "DateOfWork", "DateObserved", "TimeSubmitted",
+            "LastUpdatedDate", "RequesterDate", "CalibrationDate"
+    );
+
+    private List<String> ensureIndexes(ListDefinition def) {
+        List<String> newlyIndexed = new ArrayList<>();
+
+        // Collect indexable fields: TEXT and BOOLEAN only (NOTE can't be indexed, LOOKUP is auto-indexed)
+        List<FieldDef> indexable = def.fields.stream()
+                .filter(f -> f.typeKind == TEXT || f.typeKind == BOOLEAN)
+                .toList();
+
+        // Sort by priority: high → medium → rest
+        List<FieldDef> sorted = new ArrayList<>(indexable);
+        sorted.sort(Comparator.comparingInt(f -> priority(f.name)));
+
+        // Count existing indexes once upfront to avoid repeated API calls
+        int existingCount = 0;
+        boolean modifiedIndexed = spAccess.isFieldIndexed(def.title, "Modified");
+        if (modifiedIndexed) existingCount++;
+
+        Set<String> alreadyIndexed = new HashSet<>();
+        for (FieldDef f : sorted) {
+            if (spAccess.isFieldIndexed(def.title, f.name)) {
+                alreadyIndexed.add(f.name);
+                existingCount++;
+            }
+        }
+
+        // Index the built-in Modified column first (best for incremental sync)
+        if (!modifiedIndexed && existingCount < MAX_INDEXES_PER_LIST) {
+            if (spAccess.indexField(def.title, "Modified")) {
+                newlyIndexed.add("Modified");
+                existingCount++;
+            }
+        }
+
+        // Index custom fields in priority order
+        for (FieldDef field : sorted) {
+            if (existingCount >= MAX_INDEXES_PER_LIST) {
+                log.warn("[SP-Provision] Index limit ({}) reached for '{}', skipping remaining fields",
+                        MAX_INDEXES_PER_LIST, def.title);
+                break;
+            }
+            if (alreadyIndexed.contains(field.name)) {
+                continue;
+            }
+            if (spAccess.indexField(def.title, field.name)) {
+                newlyIndexed.add(field.name);
+                existingCount++;
+            }
+        }
+
+        return newlyIndexed;
+    }
+
+    private int priority(String fieldName) {
+        if (HIGH_PRIORITY_FIELDS.contains(fieldName)) return 0;
+        if (MEDIUM_PRIORITY_FIELDS.contains(fieldName)) return 1;
+        return 2;
     }
 
     // ====================== Helpers ======================
