@@ -1,12 +1,25 @@
 # EtaPro Data Scraper
 
 ## Overview
-Automated data collection from EtaPro historian via its Excel COM add-in extension. Since direct database access is not available, the system uses COM (Component Object Model) automation to drive Excel, trigger EtaPro data refresh, and scrape the results into the application database. A full Angular UI — live dashboard, points management, historical table, and multi-series trend charts — is built on top of the scraped data.
+Automated data collection from EtaPro historian via its Excel COM add-in extension. Since direct database access is not available, the system uses COM (Component Object Model) automation to drive Excel, trigger EtaPro data refresh, and scrape the results into the application database.
 
-**Key design: persistent Excel process.** Excel and the EtaPro add-in stay open between scrapes, eliminating the ~30s startup overhead per cycle. Java communicates with the PowerShell script via signal files. This enables semi-real-time monitoring with ~15-30s refresh cycles.
+The architecture is **job-based**: every scrape is initiated from the app, not from EtaPro. Users select points and either start a continuous **Live** subscription or submit a **History** job for a specific date range. A single worker thread interleaves live cycles and history batches against one shared Excel process.
 
-## Feature Flag
-Entirely gated by `etapro.enabled` (default `false`). Both the Spring service and REST controller use `@ConditionalOnProperty` so nothing is loaded until the flag is flipped on. The UI route remains present but shows empty state until the backend is active.
+## Feature Flag & Profile Separation
+
+EtaPro is **desktop-only**. The hub runs headless on a Linux-style server with no Excel, no PowerShell, and no Windows COM — EtaPro cannot work there.
+
+Separation is enforced at the **configuration level**:
+- All EtaPro beans use `@ConditionalOnProperty(name = "etapro.enabled")` — nothing loads unless the flag is on
+- `application-hub.properties` hardcodes `etapro.enabled=false` — even if another config layer tries to enable it, the hub profile override wins
+- `application.properties` defaults `etapro.enabled=false` — the feature is off unless an operator explicitly turns it on per device
+
+To enable on a specific desktop:
+1. Ensure the device is NOT using the `hub` profile
+2. Set `etapro.enabled=true` in either a `device-configs/<device>.properties` file or the main `application.properties`
+3. Restart the Java app
+
+**Operational safety note**: never set `etapro.enabled=true` in a device config that runs with `hub` or `server` profiles active. The hub property override will defeat it, but the safest practice is to keep EtaPro-related config out of hub devices entirely.
 
 ## Architecture
 
@@ -14,273 +27,379 @@ Entirely gated by `etapro.enabled` (default `false`). Both the Spring service an
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Angular Frontend (frontend/src/app/features/etapro)                 │
 │                                                                      │
-│  Dashboard ─┐   Points ─┐   Readings ─┐   Trend Chart ─┐             │
-│  (live cards)│  (CRUD)  │  (history) │  (ECharts popup)│            │
-│             ▼           ▼            ▼                 ▼             │
-│        ┌──────────────────────────────────────────┐                  │
-│        │  EtaProStateService + EtaProApiService   │                  │
-│        │  (polling, signals, trend adapter)        │                  │
-│        └──────────────────┬───────────────────────┘                  │
-│                           │ HTTP / 5s polling                        │
-└───────────────────────────┼──────────────────────────────────────────┘
-                            │
-┌───────────────────────────┼──────────────────────────────────────────┐
-│  Power Plant Java Backend │                                          │
-│                           ▼                                          │
-│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────┐      │
-│  │ NgEtaPro     │───▶│ EtaPro       │───▶│ EtaPro            │      │
-│  │ Controller   │    │ Point/Reading│    │ ScraperService    │      │
-│  │ /ng/etapro/* │    │ Services     │    │                   │      │
-│  └──────────────┘    └──────────────┘    └──────┬────────────┘      │
-│                                                  │                   │
-│                                         Signal files (JSON)          │
-│                                        etapro/signal/                │
-│                                      request.json ──▶                │
-│                                      ◀── response.json               │
-│                                                  │                   │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────┴────────────┐      │
-│  │ EtaProPoint  │    │ EtaProReading│    │ PowerShell        │      │
-│  │ (config)     │    │ (time-series)│    │ (persistent loop) │      │
-│  │ DB table     │    │ DB table     │    │                   │      │
-│  └──────────────┘    └──────────────┘    └──────┬────────────┘      │
-│                                                  │                   │
-└──────────────────────────────────────────────────┼───────────────────┘
-                                                   │
-                                            Excel stays open
-                                            (COM, not visible)
-                                                   │
-                                          ┌────────┴────────┐
-                                          │  Excel + EtaPro │
-                                          │  Add-in         │
-                                          │  (template.xlsm)│
-                                          └─────────────────┘
+│  Live tab ─┐    History tab ─┐    Points tab ─┐                      │
+│            ▼                  ▼                ▼                     │
+│        ┌──────────────────────────────────────┐                      │
+│        │  EtaProStateService + EtaProApi      │                      │
+│        │  (signals, polling, trend adapter)    │                     │
+│        └──────────────┬───────────────────────┘                      │
+│                       │ HTTP                                         │
+└───────────────────────┼──────────────────────────────────────────────┘
+                        │
+┌───────────────────────┼──────────────────────────────────────────────┐
+│  Backend (Spring Boot)│                                              │
+│                       ▼                                              │
+│  ┌───────────────────────┐                                           │
+│  │ NgEtaProController    │  Points · Jobs · Live · Readings          │
+│  └────────┬──────────────┘                                           │
+│           │                                                          │
+│  ┌────────▼─────────────┐    ┌──────────────────┐                    │
+│  │ EtaProHistoryJob     │    │ EtaProLiveService│                    │
+│  │ Service              │    │ (in-memory       │                    │
+│  │ (DB-backed jobs,     │    │  subscription)   │                    │
+│  │  batch planning)     │    └────────┬─────────┘                    │
+│  └────────┬─────────────┘             │                              │
+│           │                           │                              │
+│           └───────────┬───────────────┘                              │
+│                       │ reads pending work                           │
+│                       ▼                                              │
+│           ┌───────────────────────────┐                              │
+│           │ EtaProScrapeWorker        │  single thread; interleave   │
+│           │ (loop)                    │  live priority + history     │
+│           └───────────┬───────────────┘                              │
+│                       │ executeBatch(template, points, start, end)   │
+│                       ▼                                              │
+│           ┌───────────────────────────┐                              │
+│           │ EtaProScraperEngine       │  signal files → CSV → DB     │
+│           │ (low-level primitive)     │                              │
+│           └───────────┬───────────────┘                              │
+│                       │                                              │
+└───────────────────────┼──────────────────────────────────────────────┘
+                        │ etapro/signal/request.json + response.json
+                        ▼
+            ┌───────────────────────────┐
+            │ PowerShell (persistent)   │
+            │ Excel.Application         │
+            │ ├── template-live.xlsx    │  20 slots × 1 row × 3-sec
+            │ └── template-history.xlsx │  20 slots × 28,800 rows × 3-sec
+            └───────────────────────────┘
 ```
 
-## Data Flow
+## Key constants
 
-1. **Start** — User clicks "Start Process" (or app auto-starts). PowerShell launches, opens Excel + template once
-2. **Trigger** — User clicks "Scrape" or scheduled job fires
-3. **Signal** — Java writes `request.json` (pointIds, timeRange, outputPath) to signal directory
-4. **Refresh** — PowerShell detects request, updates Excel cells, triggers EtaPro recalculation
-5. **Export** — Script exports Data sheet to CSV, writes `response.json`
-6. **Ingest** — Java reads response, parses CSV, deduplicates, saves to DB
-7. **Serve** — Angular frontend polls `/readings/latest` for live dashboard
+- `MAX_POINTS_PER_LIVE_BATCH = 100` — live template has 100 column-layout slots
+- `MAX_POINTS_PER_HISTORY_BATCH = 20` — history template has 20 pivot-column slots
+- `etapro.live.interval.ms = 3000` — minimum delay between live cycles
+- `etapro.scrape.timeout.seconds = 120` — per-batch timeout (Excel refresh + CSV export)
+- `etapro.job.retention.days = 90` — completed jobs deleted after this
 
-### Signal Protocol
+## Worker loop
+
+```
+loop:
+  if liveService.isActive() AND (now - lastLiveTickStart) >= liveIntervalMs:
+    runLiveCycle()             // all subscribed points, batched 20 at a time
+    lastLiveTickStart = now
+    continue
+
+  if pending or running history job AND has remaining batches:
+    runHistoryBatch()           // one (day-slice × point-group) batch
+    continue
+
+  sleep(idleSleepMs)
+```
+
+- Live has time-based priority: every 3 seconds (configurable) it runs ahead of any history batch
+- Between live ticks, history batches fill the gaps
+- A long history batch (e.g., 28K-row recalc) may delay the next live tick — acceptable trade-off
+- Single worker thread, no parallelism (Excel COM is serial)
+
+## Job model
+
+`EtaProScrapeJob` is the persistent record of a scrape request:
+
+| Field | Description |
+|-------|-------------|
+| `mode` | `HISTORY` or `LIVE` |
+| `status` | `PENDING` → `RUNNING` → `COMPLETE` / `FAILED` / `CANCELLED` |
+| `rangeStart`, `rangeEnd` | Time window (HISTORY only; null for LIVE) |
+| `pointIds` | Requested points (any number; auto-batched) |
+| `batchesTotal` | `ceil(points/20) × ceil(days)` |
+| `batchesCompleted` | Updated as worker advances |
+| `readingsImported` | Cumulative deduped count |
+| `errorMessage` | Set on FAILED |
+
+### Batch planning
+
+For a job with 25 points × 3 days:
+- Point groups: `[P1..P20]` and `[P21..P25]`
+- Day slices: `[day1, day2, day3]`
+- Plan order: `(day1, group1) → (day1, group2) → (day2, group1) → (day2, group2) → (day3, group1) → (day3, group2)` = **6 batches**
+
+### Restart behavior
+
+On startup, any job left in `RUNNING` state (Java crashed mid-job) is reaped to `FAILED` with message "Job orphaned by application restart — please retry". User decides whether to resubmit. No auto-resume.
+
+## Live mode
+
+`EtaProLiveService` holds an in-memory singleton subscription. Only one live subscription exists at a time; starting a new one replaces the old. State is **not persisted** — restarts clear it and require explicit restart from the UI.
+
+Each live cycle:
+1. Read subscribed point IDs
+2. Split into 20-point chunks
+3. For each chunk, call `engine.executeBatch(LIVE, chunk, now-15s, now)`
+4. Update last-cycle-at timestamp
+5. Frontend polls `/live/status` and `/readings/latest` every 3 sec
+
+If the user subscribes to >20 points, each cycle runs N/20 batches sequentially. Example: 25 points → 2 batches → ~6 sec per cycle.
+
+## Templates
+
+Two manually-created Excel files with **different structures**:
+
+### `template-live.xlsx` — column layout, 100 slots, GetEPCurrent
+- **Data sheet only** — no Config sheet
+- **Column A** rows 1-100: empty cells for point IDs (script writes per request)
+- **Column B** rows 1-100: pre-inserted formulas:
+  ```
+  =@GetEPCurrent(1, A{row}, Source, 192.168.190.85)
+  ```
+- Each formula returns **one current value** for the point in its row
+- No time range, no historian query — just "value right now"
+- Script writes point IDs to A1:A100, calls `Application.Calculate()` to force refresh, reads A+B columns, exports flat CSV with `now()` stamped as timestamp
+
+### `template-history.xlsx` — pivot layout, 20 slots, array formulas
+- **Config sheet**: A1=`StartTime`, B1=*(empty)*, A2=`EndTime`, B2=*(empty)*
+- **Data sheet**: A1=`Timestamp`, B1:U1 = empty (20 point slots)
+- **Array formulas** sized for 24-hour windows at 3-sec interval = **28,800 rows**
+  - Inserted via EtaPro `Insert Function → Array Functions → Calculated Values`
+  - Each value column references its row 1 cell as the Point parameter
+  - Column A is the timestamp array (Include timestamp = TRUE)
+  - All formulas reference `Config!B1`/`Config!B2` for time range
+- One day-window per batch — script updates Config!B1/B2 to slide the window
+- Auto-recalculates when Config cells change; script waits via `CalculateUntilAsyncQueriesDone()`
+
+The script writes point IDs dynamically per request — points are NOT pre-assigned in either template.
+
+## Signal protocol
 
 ```
 Java                              PowerShell (persistent loop)
  │                                     │
  ├─ write request.json ──────────────▶ │ detects file, removes it
- │                                     ├─ update Config cells
- │                                     ├─ CalculateFull / Run macro
- │                                     ├─ export CSV
- │  ◀── write response.json ──────────┤
- ├─ read response, delete it           │
- ├─ parse CSV, dedup, save to DB       │
- │                                     │ (loop: sleep 500ms, check again)
- ...                                  ...
+ │  { template, startDate, endDate,    ├─ dispatch by template field:
+ │    pointIds, outputPath }           │
+ │                                     │   ── live ────────────────────
+ │                                     │   ├─ write A1:A100 (point IDs)
+ │                                     │   ├─ Application.Calculate()
+ │                                     │   ├─ stamp timestamp = now()
+ │                                     │   ├─ export flat CSV (PointId,Time,Value,Quality)
  │                                     │
- ├─ write shutdown ───────────────────▶│ exits loop, closes Excel
+ │                                     │   ── history ─────────────────
+ │                                     │   ├─ write Config!B1/B2 (time range)
+ │                                     │   ├─ write B1:U1 (point headers)
+ │                                     │   ├─ CalculateUntilAsyncQueriesDone()
+ │                                     │   ├─ export pivot CSV (Timestamp,P1,P2,...)
+ │                                     │
+ │  ◀── write response.json ──────────┤   { status: "complete", lineCount }
+ ├─ read response, parse CSV           │
+ ├─ dedup, save to eta_pro_reading     │
+ │                                     │ (loop: poll request.json again)
+ ...                                  ...
 ```
 
-## Entities
+The Java CSV parser auto-detects the format by inspecting the first header cell:
+- `PointId` → flat format (live) — uses script-stamped timestamp
+- `Timestamp`/`Time` → pivot format (history) — uses EtaPro-provided timestamps
 
-### EtaProPoint (configuration)
-Stores the list of EtaPro point IDs the user wants to track.
+## REST API
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | Long | Auto-generated |
-| pointId | String | EtaPro point identifier (e.g., "1GT1.MW") |
-| description | String | Human-readable description |
-| unit | String | Engineering unit (MW, degF, PSI, etc.) |
-| category | String | Grouping category (Turbine, HRSG, BOP, etc.) |
-| active | Boolean | Whether to include in scrapes |
-
-### EtaProReading (time-series data)
-Stores scraped data points. Indexed on (pointId, timestamp) for fast queries and dedup.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | Long | Auto-generated |
-| pointId | String | EtaPro point identifier |
-| timestamp | LocalDateTime | Reading timestamp from EtaPro |
-| value | Double | Numeric reading value |
-| quality | String | Data quality flag (Good, Bad, etc.) |
-| scrapeSessionId | String | Groups readings from same scrape run |
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| **Process** | | |
-| POST | /ng/etapro/process/start | Start persistent Excel/scraper process |
-| POST | /ng/etapro/process/stop | Stop the scraper process gracefully |
+| Method | Path | Purpose |
+|--------|------|---------|
 | **Points** | | |
-| GET | /ng/etapro/points | List all configured points |
-| GET | /ng/etapro/points/active | List active points only |
-| GET | /ng/etapro/points/category/{cat} | List points by category |
-| POST | /ng/etapro/points | Add a new point to track |
-| PUT | /ng/etapro/points | Update a point |
-| DELETE | /ng/etapro/points/{id} | Soft-delete a point |
-| **Scraping** | | |
-| POST | /ng/etapro/scrape | Trigger a scrape (params: startTime, endTime) |
-| GET | /ng/etapro/scrape/status | Process running, scrape in progress, last status |
+| GET | `/ng/etapro/points` | Master list |
+| GET | `/ng/etapro/points/active` | Active points only |
+| POST | `/ng/etapro/points` | Create |
+| PUT | `/ng/etapro/points` | Update |
+| DELETE | `/ng/etapro/points/{id}` | Soft-delete |
+| **History jobs** | | |
+| POST | `/ng/etapro/jobs` | Submit job — body `{ pointIds, rangeStart, rangeEnd }` |
+| GET | `/ng/etapro/jobs` | List recent (paginated) |
+| GET | `/ng/etapro/jobs/{id}` | Status + progress |
+| DELETE | `/ng/etapro/jobs/{id}` | Cancel |
+| **Live mode** | | |
+| POST | `/ng/etapro/live/start` | Body `{ pointIds }` |
+| POST | `/ng/etapro/live/stop` | Clear subscription |
+| GET | `/ng/etapro/live/status` | Active flag, points, last cycle time |
 | **Readings** | | |
-| GET | /ng/etapro/readings | Get readings (params: pointId, startTime, endTime) |
-| GET | /ng/etapro/readings/latest | Latest reading per point (for live dashboard) |
-| GET | /ng/etapro/readings/paginated | Paginated readings |
-| GET | /ng/etapro/readings/session/{id} | Readings from a specific scrape session |
+| GET | `/ng/etapro/readings?pointId=&startTime=&endTime=` | Time range |
+| GET | `/ng/etapro/readings/latest` | Latest per point |
 
-## Configuration Properties
+## Configuration
 
 ```properties
-# EtaPro Scraper — persistent Excel COM automation
+# Master flag — off by default; enable per-device
 etapro.enabled=false
-etapro.excel.template.path=${user.dir}/etapro/template.xlsm
+
+# Templates (manual creation per setup-guide.md)
+etapro.live.template.path=${user.dir}/etapro/template-live.xlsx
+etapro.history.template.path=${user.dir}/etapro/template-history.xlsx
+
+# Runtime directories (auto-created)
 etapro.output.path=${user.dir}/etapro/output
-etapro.script.path=${user.dir}/scripts/etapro-scrape.ps1
 etapro.signal.path=${user.dir}/etapro/signal
+
+# PowerShell script (shipped with repo)
+etapro.script.path=${user.dir}/scripts/etapro-scrape.ps1
+
+# Per-batch timeout
 etapro.scrape.timeout.seconds=120
 
-# Scheduled scraping (fixed-delay: next run starts N ms after previous finishes)
-etapro.schedule.interval.ms=60000
-etapro.schedule.initial-delay.ms=30000
-etapro.schedule.window.minutes=5
+# Live mode minimum interval between cycles
+etapro.live.interval.ms=3000
+
+# Worker loop idle sleep
+etapro.worker.idle-sleep.ms=200
+
+# Job retention (cleanup deletes terminal jobs older than this)
+etapro.job.retention.days=90
+etapro.job.cleanup.cron=0 0 3 * * ?
 ```
-
-## Semi-Real-Time Monitoring
-
-With the persistent process model:
-- **Scrape cycle: ~15-30s** (no Excel startup, just cell update + recalc + export)
-- **Schedule interval: 60s** (configurable, can go lower)
-- **Overlap window: 5 min** with dedup (prevents missed readings at boundaries)
-- **Total lag: ~30-90s** from plant data to screen
-- **Frontend polls** `/readings/latest` every 5-10s for live dashboard
-
-## Deduplication
-
-Overlapping scrape windows (e.g., every 60s scraping last 5 min) produce duplicate readings. The scraper checks `existsByPointIdAndTimestamp()` before inserting, so only new readings are saved. The DB index on `(pointId, timestamp)` makes this check fast.
 
 ## Frontend UI
 
-Route: **`/etapro`** — reachable from the header menu (**Log → EtaPro Trends**) and the home page (**Log card group → EtaPro Trends** tile).
+Route: **`/etapro`** — reachable from header menu (Log → EtaPro Trends) and home page.
 
-The page is a single component (`EtaProPageComponent`) with three tabs backed by a shared `EtaProStateService` (signals + BehaviorSubjects):
+### Tab 1: Live
+- Multi-select point picker (disabled while active)
+- Start Live / Stop Live buttons
+- Status bar showing engine state + last cycle time
+- Split view (when active):
+  - **Left**: Latest-values table — one row per subscribed point, marked stale if reading is >10s old
+  - **Right**: Rolling 60-second trend chart, populated by accumulating new readings client-side
 
-### Dashboard tab (`EtaProDashboardComponent`)
-- Grid of reading cards grouped by point category
-- Auto-polls `/ng/etapro/readings/latest` every 5 seconds
-- Each card shows: point ID, latest value + unit, timestamp, quality badge, description
-- Color-coded freshness: green (<2 min), yellow (<5 min), red (>5 min)
-- Scraper status bar at top with Start / Stop / Scrape Now buttons
-- **Click any card → opens a trend popup** for that single point
+### Tab 2: History
+- Multi-select point picker + datetime range
+- Live hint shows the computed batch count (e.g., "25 points × 3 day(s) = 6 batches")
+- Submit button creates a PENDING job
+- Active jobs list with progress bars, status badges, cancel buttons
+- Click `Load` on a COMPLETE job → viewer panel opens with split view (table + trend) for that job's data
 
-### Points tab (`EtaProPointsComponent`)
-- Reuses shared `TableComponent` with columns from `EtaProMapperService.toPointTableColumns()`
-- Reuses shared `RfReactiveFormComponent` in a popup for add/edit with fields from `toPointFormFields()`
-- Double-click row to edit; multi-select to trend
-- **"Trend Selected" button** opens the trend popup with all selected points on one chart
+### Tab 3: Points
+- Master list CRUD (unchanged from previous version)
 
-### Readings tab (`EtaProReadingsComponent`)
-- Reuses shared `TableComponent` with columns from `toReadingTableColumns()`
-- Filters: point dropdown, from/to date-time inputs, Search button
-- When a point is selected: uses `GET /readings` (non-paginated, all rows)
-- When no point selected: uses `GET /readings/paginated` with a 500-row cap
+## Deduplication
 
-### Trend Chart (shared, not EtaPro-specific)
+The engine checks `existsByPointIdAndReadingTime` before inserting each row. Live cycles produce overlapping readings; history batches deduplicate against any data already pulled (e.g., from a previous job over the same range). The DB index on `(pointId, readingTime)` makes this fast.
 
-Lives in `shared/trend-chart/` and is intentionally decoupled from EtaPro so other features can reuse it.
+## Electron Packaging
 
-- **`TrendChartComponent`** — pure ECharts wrapper. Inputs: `series: TrendSeries[]`, `title`, `showLegend`, `showZoom`. Knows nothing about where the data came from.
-  - Multi Y-axis support: auto-groups series by `unit` (e.g., MW / °F / PSI each get their own axis, max 4)
-  - LTTB downsampling for performance with large datasets
-  - Zoom (inside + slider), pan, crosshair tooltip with all-series values
-- **`TrendWindowComponent`** — wraps the chart with controls. Inputs: `adapter: TrendDataAdapter`, `seriesIds: string[]`, `title`, `initialPreset`.
-  - Time range presets: 1h / 4h / 24h / 7d / custom
-  - Refresh button, loading state, error state
-- **`TrendDataAdapter`** interface — each feature provides its own adapter to feed data into the trend window:
-  ```typescript
-  interface TrendDataAdapter {
-    readonly sourceName: string;
-    fetchSeries(request: TrendSeriesRequest): Observable<TrendSeries[]>;
-    fetchAvailableSeries(): Observable<{ id, label, unit?, category? }[]>;
-  }
-  ```
-- **`EtaProTrendAdapterService`** — EtaPro's implementation. Fetches point metadata once, then calls `GET /readings` for each requested point in parallel (`forkJoin`), maps results into `TrendSeries[]` with correct labels and units.
+EtaPro's PowerShell script and Excel templates are shipped with the desktop Electron installer and auto-provisioned into the managed working directory on first launch.
 
-### Dependencies
-Frontend adds **`echarts`** (only `LineChart`, `Grid`, `Legend`, `Tooltip`, `DataZoom`, `Toolbox`, `Title` modules registered) and **`ngx-echarts`** (peer dep). Bundle impact is minimal since we register only the modules we use.
+### Bundle layout
 
-### Reusability for other features
-To trend instrument logs, field-list data, or PJM prices later, create a new adapter implementing `TrendDataAdapter`. No changes needed to `TrendChartComponent` / `TrendWindowComponent`. Example: `InstrumentLogTrendAdapterService implements TrendDataAdapter`.
+```
+electron-manager/
+└── etapro-defaults/                  ← committed (mostly)
+    ├── README.md                     ← committed
+    ├── .gitignore                    ← committed (ignores *.xlsx and *.xlsm)
+    ├── etapro-scrape.ps1             ← committed
+    ├── template-live.xlsx            ← GITIGNORED — operators drop in before building
+    └── template-history.xlsx         ← GITIGNORED — operators drop in before building
+```
 
-## File Structure
+Templates are **not checked into git** because they contain plant-specific configuration (historian IP, source name, point IDs in formulas). Each plant's build operator drops their own templates into `etapro-defaults/` before running `npm run package`.
 
-### Runtime / deployment files
+### electron-builder config
+
+In [electron-manager/package.json](../../../electron-manager/package.json):
+
+```json
+{
+  "from": "etapro-defaults",
+  "to": "etapro-defaults",
+  "filter": ["etapro-scrape.ps1", "*.xlsx"]
+}
+```
+
+This ends up in the packaged installer under `resources/etapro-defaults/`.
+
+### Provisioning on startup
+
+In [electron-manager/src/main/paths.ts](../../../electron-manager/src/main/paths.ts), the function `provisionEtaProDefaults()` runs during Electron's `onReady()` handler, right after `provisionDefaultConfigs()`. It:
+
+1. Creates `<workingDir>/scripts/`, `<workingDir>/etapro/`, `<workingDir>/etapro/output/`, `<workingDir>/etapro/signal/`
+2. **Always** copies `etapro-scrape.ps1` → `<workingDir>/scripts/etapro-scrape.ps1` — the script is treated as code, so updates apply on every launch
+3. **Only if missing**, copies `template-live.xlsx` → `<workingDir>/etapro/template-live.xlsx` — user customizations are preserved
+4. Same policy for `template-history.xlsx`
+
+Missing templates in the bundle are logged as warnings but don't block startup — Java's `EtaProScraperEngine.init()` handles the missing-file case with its own validation warnings.
+
+### Working directory paths
+
+| Mode | Working dir (JAR cwd) |
+|------|-----------------------|
+| Dev | `electron-manager/managed_apps/pid/` |
+| Packaged | `%PROGRAMDATA%/DK Power Manager/managed_apps/pid/` |
+
+Since `spring-boot.manager.ts` sets `cwd = workingDir` when spawning the JAR, Java's `${user.dir}` resolves to this path, and the default `etapro.*.path` properties pick up the provisioned files automatically. No env vars or explicit path overrides needed.
+
+### Division of responsibilities
+
+**Electron** is a **delivery vehicle** only — it ships resources, launches the JAR, and gets out of the way:
+1. Bundle the `.ps1` + templates in the installer
+2. On first launch, copy them into the managed working directory
+3. Launch the JAR with `cwd = workingDir`
+4. Done — never interacts with EtaPro at runtime
+
+**Java** owns the runtime:
+- Spawns the PowerShell process via `ProcessBuilder`
+- Communicates with it via signal files
+- Parses CSV, deduplicates, saves to DB
+- Orchestrates the worker loop (live + history interleave)
+
+This keeps dev mode (`mvn spring-boot:run` without Electron) fully functional — drop templates into `./etapro/` and the script into `./scripts/` manually, and the same Java code runs identically.
+
+## File structure
+
 ```
 power_plant_java/
 ├── etapro/
-│   ├── template.xlsm          # Excel template with EtaPro add-in config (manual setup)
-│   ├── output/                # CSV output directory (auto-created)
-│   └── signal/                # Signal file directory (auto-created)
-│       ├── request.json       # Java → PowerShell (transient)
-│       ├── response.json      # PowerShell → Java (transient)
-│       ├── scraper.pid        # PID file while process is running
-│       └── shutdown           # Graceful shutdown signal
-└── scripts/
-    └── etapro-scrape.ps1      # PowerShell persistent COM automation script
-```
+│   ├── template-live.xlsx           # 20 slots × few rows × 3-sec interval
+│   ├── template-history.xlsx        # 20 slots × 28,800 rows × 3-sec interval
+│   ├── output/                       # CSV staging
+│   └── signal/                       # request.json + response.json
+├── scripts/
+│   └── etapro-scrape.ps1            # persistent dual-template script
+└── src/main/java/com/dk_power/power_plant_java/
+    ├── entities/etapro/
+    │   ├── EtaProPoint.java
+    │   ├── EtaProReading.java
+    │   └── EtaProScrapeJob.java     # NEW
+    ├── repository/etapro/
+    │   ├── EtaProPointRepo.java
+    │   ├── EtaProReadingRepo.java
+    │   └── EtaProScrapeJobRepo.java # NEW
+    ├── dto/etapro/
+    │   ├── EtaProPointDto.java
+    │   ├── EtaProReadingDto.java
+    │   └── EtaProScrapeJobDto.java  # NEW
+    ├── sevice/etapro/
+    │   ├── EtaProPointService.java + impl
+    │   ├── EtaProReadingService.java + impl
+    │   ├── EtaProScraperEngine.java # was EtaProScraperService — now low-level only
+    │   ├── EtaProHistoryJobService.java  # NEW: job lifecycle + batch planning
+    │   ├── EtaProLiveService.java   # NEW: in-memory live subscription
+    │   ├── EtaProScrapeWorker.java  # NEW: single-thread interleave loop
+    │   └── EtaProJobCleanupTask.java # NEW: 90-day retention
+    └── controller/angular/etapro/
+        └── NgEtaProController.java  # rewritten — points, jobs, live, readings
 
-### Backend (Spring Boot)
-```
-src/main/java/com/dk_power/power_plant_java/
-├── entities/etapro/
-│   ├── EtaProPoint.java               # @Entity extends BaseAuditEntity
-│   └── EtaProReading.java             # @Entity extends BaseIdEntity, indexed (pointId, timestamp)
-├── repository/etapro/
-│   ├── EtaProPointRepo.java
-│   └── EtaProReadingRepo.java         # includes existsByPointIdAndTimestamp for dedup
-├── dto/etapro/
-│   ├── EtaProPointDto.java
-│   └── EtaProReadingDto.java
-├── mappers/etapro/
-│   └── EtaProMapper.java              # thin BaseMapper wrapper around ModelMapper
-├── sevice/etapro/
-│   ├── EtaProPointService.java + impl/EtaProPointServiceImpl.java
-│   ├── EtaProReadingService.java + impl/EtaProReadingServiceImpl.java
-│   └── EtaProScraperService.java      # orchestrates PowerShell process + signal files
-└── controller/angular/etapro/
-    └── NgEtaProController.java        # /ng/etapro/* REST endpoints
-```
-
-### Frontend (Angular)
-```
 frontend/src/app/
-├── models/
-│   ├── etapro/
-│   │   ├── etapro-point.model.ts      # EtaProPointDto extends BaseDto
-│   │   └── etapro-reading.model.ts    # EtaProReadingDto extends BaseDto
-│   └── trend/
-│       └── trend-series.model.ts      # TrendSeries, TrendPoint, TrendDataAdapter (SHARED)
-├── shared/trend-chart/                # Reusable for any time-series feature
-│   ├── trend-chart.component.ts       # Pure ECharts renderer (multi-axis, zoom, tooltip)
-│   └── trend-window.component.ts      # Adapter-driven wrapper with range presets
+├── models/etapro/
+│   ├── etapro-point.model.ts
+│   ├── etapro-reading.model.ts
+│   └── etapro-scrape-job.model.ts   # NEW
 ├── features/etapro/
-│   ├── etapro-page/etapro-page.component.ts        # Tab container + trend popup
-│   ├── etapro-dashboard/etapro-dashboard.component.ts  # Live cards grid
-│   ├── etapro-points/etapro-points.component.ts    # Points CRUD (reuses TableComponent)
-│   ├── etapro-readings/etapro-readings.component.ts  # History table with filters
+│   ├── etapro-page/                 # Live / History / Points tabs
+│   ├── etapro-live/                 # NEW: live tab
+│   ├── etapro-history/              # NEW: history tab
+│   ├── etapro-points/               # unchanged
 │   └── services/
-│       ├── etapro-api.service.ts              # HTTP client for /ng/etapro/*
-│       ├── etapro-state.service.ts            # BehaviorSubjects + signals + polling
-│       ├── etapro-mapper.service.ts           # toPointTableColumns, toPointFormFields, toReadingTableColumns
-│       └── etapro-trend-adapter.service.ts    # implements TrendDataAdapter
+│       ├── etapro-api.service.ts    # rewritten
+│       ├── etapro-state.service.ts  # rewritten
+│       ├── etapro-mapper.service.ts # unchanged
+│       └── etapro-trend-adapter.service.ts
 └── routes/
-    └── etapro.routes.ts               # /etapro route (registered in app.routes.ts)
+    └── etapro.routes.ts
 ```
-
-### Navigation entry points
-- [router-menu.model.ts](frontend/src/app/models/ui/router-menu.model.ts) — added to Log group (`/etapro`, `trending_up` icon)
-- [navigation-card.model.ts](frontend/src/app/models/ui/navigation-card.model.ts) — home page card in Log group

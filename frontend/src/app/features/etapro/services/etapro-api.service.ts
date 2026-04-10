@@ -6,18 +6,23 @@ import { SpringApiResponse } from '../../../models/api/spring-api-response.model
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 import { EtaProReadingDto } from '../../../models/etapro/etapro-reading.model';
+import { EtaProScrapeJobDto } from '../../../models/etapro/etapro-scrape-job.model';
 
-export interface ScrapeResult {
-  success: boolean;
-  message: string;
-  sessionId: string | null;
-  readingCount: number;
+export interface LiveStatus {
+  active: boolean;
+  pointIds?: string[];
+  startedAt?: string;
+  lastCycleAt?: string;
+  lastCycleCount?: number;
+  processRunning?: boolean;
+  engineStatus?: string;
 }
 
-export interface ScrapeStatus {
-  processRunning: boolean;
-  scrapeInProgress: boolean;
-  lastStatus: string;
+export interface PointImportResult {
+  added: number;
+  skipped: number;
+  errorCount: number;
+  errors: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -42,10 +47,6 @@ export class EtaProApiService {
     return this.http.get<SpringApiResponse<EtaProPointDto[]>>(`${this.apiUrl}/points/active`);
   }
 
-  getPointsByCategory(category: string): Observable<SpringApiResponse<EtaProPointDto[]>> {
-    return this.http.get<SpringApiResponse<EtaProPointDto[]>>(`${this.apiUrl}/points/category/${category}`);
-  }
-
   createPoint(dto: EtaProPointDto): Observable<SpringApiResponse<EtaProPointDto>> {
     return this.http.post<SpringApiResponse<EtaProPointDto>>(`${this.apiUrl}/points`, dto.toJson()).pipe(
       tap(res => { if (res.responseData) this.pointUpdatedSubject.next(EtaProPointDto.fromJson(res.responseData)); })
@@ -68,31 +69,56 @@ export class EtaProApiService {
     );
   }
 
-  // ── Process control ────────────────────────────────────────
-
-  startProcess(): Observable<SpringApiResponse<any>> {
-    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/process/start`, {});
-  }
-
-  stopProcess(): Observable<SpringApiResponse<string>> {
-    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/process/stop`, {});
-  }
-
-  // ── Scraping ───────────────────────────────────────────────
-
-  triggerScrape(startTime: string, endTime: string): Observable<SpringApiResponse<ScrapeResult>> {
-    return this.http.post<SpringApiResponse<ScrapeResult>>(
-      `${this.apiUrl}/scrape?startTime=${startTime}&endTime=${endTime}`, {}
+  importPoints(file: File): Observable<SpringApiResponse<PointImportResult>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<SpringApiResponse<PointImportResult>>(
+      `${this.apiUrl}/points/import`, formData
     );
   }
 
-  getScrapeStatus(): Observable<SpringApiResponse<ScrapeStatus>> {
-    return this.http.get<SpringApiResponse<ScrapeStatus>>(`${this.apiUrl}/scrape/status`);
+  // ── History jobs ───────────────────────────────────────────
+
+  submitHistoryJob(pointIds: string[], rangeStart: string, rangeEnd: string):
+      Observable<SpringApiResponse<EtaProScrapeJobDto>> {
+    return this.http.post<SpringApiResponse<EtaProScrapeJobDto>>(
+      `${this.apiUrl}/jobs`, { pointIds, rangeStart, rangeEnd }
+    );
+  }
+
+  listJobs(page = 1, pageSize = 20):
+      Observable<SpringPaginatedResponse<EtaProScrapeJobDto>> {
+    return this.http.get<SpringPaginatedResponse<EtaProScrapeJobDto>>(
+      `${this.apiUrl}/jobs?page=${page}&pageSize=${pageSize}`
+    );
+  }
+
+  getJob(id: number): Observable<SpringApiResponse<EtaProScrapeJobDto>> {
+    return this.http.get<SpringApiResponse<EtaProScrapeJobDto>>(`${this.apiUrl}/jobs/${id}`);
+  }
+
+  cancelJob(id: number): Observable<SpringApiResponse<string>> {
+    return this.http.delete<SpringApiResponse<string>>(`${this.apiUrl}/jobs/${id}`);
+  }
+
+  // ── Live ───────────────────────────────────────────────────
+
+  startLive(pointIds: string[]): Observable<SpringApiResponse<LiveStatus>> {
+    return this.http.post<SpringApiResponse<LiveStatus>>(`${this.apiUrl}/live/start`, { pointIds });
+  }
+
+  stopLive(): Observable<SpringApiResponse<LiveStatus>> {
+    return this.http.post<SpringApiResponse<LiveStatus>>(`${this.apiUrl}/live/stop`, {});
+  }
+
+  getLiveStatus(): Observable<SpringApiResponse<LiveStatus>> {
+    return this.http.get<SpringApiResponse<LiveStatus>>(`${this.apiUrl}/live/status`);
   }
 
   // ── Readings ───────────────────────────────────────────────
 
-  getReadings(pointId: string, startTime: string, endTime: string): Observable<SpringApiResponse<EtaProReadingDto[]>> {
+  getReadings(pointId: string, startTime: string, endTime: string):
+      Observable<SpringApiResponse<EtaProReadingDto[]>> {
     return this.http.get<SpringApiResponse<EtaProReadingDto[]>>(
       `${this.apiUrl}/readings?pointId=${pointId}&startTime=${startTime}&endTime=${endTime}`
     );
@@ -100,23 +126,5 @@ export class EtaProApiService {
 
   getLatestReadings(): Observable<SpringApiResponse<EtaProReadingDto[]>> {
     return this.http.get<SpringApiResponse<EtaProReadingDto[]>>(`${this.apiUrl}/readings/latest`);
-  }
-
-  getReadingsPaginated(params: {
-    pointId?: string;
-    startTime?: string;
-    endTime?: string;
-    page?: number;
-    pageSize?: number;
-  }): Observable<SpringPaginatedResponse<EtaProReadingDto>> {
-    const queryParts: string[] = [];
-    if (params.pointId) queryParts.push(`pointId=${params.pointId}`);
-    if (params.startTime) queryParts.push(`startTime=${params.startTime}`);
-    if (params.endTime) queryParts.push(`endTime=${params.endTime}`);
-    queryParts.push(`page=${params.page || 1}`);
-    queryParts.push(`pageSize=${params.pageSize || 50}`);
-    return this.http.get<SpringPaginatedResponse<EtaProReadingDto>>(
-      `${this.apiUrl}/readings/paginated?${queryParts.join('&')}`
-    );
   }
 }

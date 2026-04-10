@@ -61,19 +61,27 @@
           <!-- Interactive Image -->
           <div class="large-image-container">
             @if (currentImageUrl()) {
-              <app-interactive-image
-                [imageUrl]="currentImageUrl()"
-                [shapesInput]="currentShapes()"
-                [preset]="mode()"
-                [hoveredShapeId]="externalHoveredShapeId()"
-                [highlightedShapeIds]="highlightedShapeIds()"
-                (shapeHovered)="onShapeHovered($event)"
-                (shapeClicked)="onShapeClicked($event)"
-                (shapeDoubleClicked)="onShapeDoubleClicked($event)"
-                (shapeRightClicked)="onShapeRightClicked($event)"
-                (shapeUpdated)="onShapeUpdated($event)"
-                (shapeDrawn)="onShapeDrawn($event)"
-              ></app-interactive-image>
+              @if (isRasterImage()) {
+                <app-interactive-image
+                  [imageUrl]="currentImageUrl()"
+                  [shapesInput]="currentShapes()"
+                  [preset]="mode()"
+                  [hoveredShapeId]="externalHoveredShapeId()"
+                  [highlightedShapeIds]="highlightedShapeIds()"
+                  (shapeHovered)="onShapeHovered($event)"
+                  (shapeClicked)="onShapeClicked($event)"
+                  (shapeDoubleClicked)="onShapeDoubleClicked($event)"
+                  (shapeRightClicked)="onShapeRightClicked($event)"
+                  (shapeUpdated)="onShapeUpdated($event)"
+                  (shapeDrawn)="onShapeDrawn($event)"
+                ></app-interactive-image>
+              } @else {
+                <!-- Non-raster file: delegate to the generic viewer host (pdf/other) -->
+                <app-rf-file-viewer-host
+                  [fileLink]="currentImageUrl()"
+                  [extension]="currentExtension()"
+                ></app-rf-file-viewer-host>
+              }
             } @else {
               <div class="no-image-message">No image available</div>
             }

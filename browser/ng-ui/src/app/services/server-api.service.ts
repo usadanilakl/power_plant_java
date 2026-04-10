@@ -382,7 +382,7 @@ export class ServerApiService {
 
   pwaLogin(email: string, password: string): Observable<PwaLoginResponse> {
     return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
-      timeout(10000),
+      timeout(30000),
       catchError(this.handleError)
     );
   }
@@ -738,7 +738,10 @@ export class ServerApiService {
     } else {
       errorMessage = `Server error: ${error.status} - ${error.message}`;
     }
-    console.error('[ServerAPI]', errorMessage);
+    // Only log unexpected errors — suppress noise from expected fallback failures
+    if (error.status !== 0 && error.status !== 404 && !errorMessage.includes('Timeout')) {
+      console.warn('[ServerAPI]', errorMessage);
+    }
     return throwError(() => new Error(errorMessage));
   }
 }

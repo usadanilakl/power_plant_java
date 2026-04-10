@@ -8,14 +8,7 @@
     <!-- Error message -->
     <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-    <!-- Server offline warning -->
-    @if (!serverStatus.isOnline() && step !== 'offline_choice') {
-      <div class="offline-warning">
-        Server is offline. Some features may be limited.
-      </div>
-    }
-
-    <!-- Step 1: Identify — enter email or username -->
+    <!-- Step 1: Identify -->
     @if (step === 'identify') {
       <p class="subtitle">Enter your email or username to get started</p>
       <form [formGroup]="identifyForm" (ngSubmit)="onLookup()">
@@ -32,7 +25,7 @@
       </form>
     }
 
-    <!-- Step 2a: Sign In — user found and active -->
+    <!-- Step 2a: Sign In -->
     @if (step === 'signin') {
       <p class="subtitle">Welcome back{{ lookedUpName ? ', ' + lookedUpName : '' }}</p>
       <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
@@ -45,12 +38,9 @@
           <label for="login-password">Password</label>
           <input id="login-password" type="password" formControlName="password"
                  placeholder="Enter your password" autofocus>
-          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error-text">
-            Password is required.
-          </div>
         </div>
 
-        <button type="submit" [disabled]="loginForm.invalid || isLoading || !serverStatus.isOnline()">
+        <button type="submit" [disabled]="loginForm.invalid || isLoading">
           <span *ngIf="!isLoading">Sign In</span>
           <span *ngIf="isLoading" class="spinner"></span>
         </button>
@@ -72,7 +62,7 @@
       <button (click)="goBack()">Try a different account</button>
     }
 
-    <!-- Step 2c: Register — user not found -->
+    <!-- Step 2c: Register -->
     @if (step === 'register') {
       <p class="subtitle">Create a new account</p>
       <form [formGroup]="signupForm" (ngSubmit)="onSignUp()">
@@ -129,21 +119,6 @@
         </button>
       </form>
 
-      <div class="auth-links">
-        <a (click)="goBack()" class="link">Back</a>
-      </div>
-    }
-
-    <!-- Offline Choice — can't determine if user exists -->
-    @if (step === 'offline_choice') {
-      <div class="offline-warning">
-        Server is offline. We can't check if you have an account.
-      </div>
-      <p class="subtitle">Choose an option:</p>
-      <div class="choice-buttons">
-        <button (click)="chooseSignIn()" class="choice-btn">I have an account — Sign In</button>
-        <button (click)="chooseRegister()" class="choice-btn">I'm new — Register</button>
-      </div>
       <div class="auth-links">
         <a (click)="goBack()" class="link">Back</a>
       </div>

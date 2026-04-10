@@ -14,11 +14,11 @@ import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategy;
+import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategyRegistry;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.sevice.file.TrashService;
 import com.dk_power.power_plant_java.util.FileUtil;
-import com.dk_power.power_plant_java.util.PdfConverter;
-import com.dk_power.power_plant_java.util.RenamedMultipartFile;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +40,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,6 +62,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
     private final TrashService trashService;
+    private final UploadStrategyRegistry uploadStrategyRegistry;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -73,6 +76,47 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
      * to the actual filesystem path using the profile-specific filesRootPath.
      * Strips the first path component (baseLink) and resolves the remainder against filesRootPath.
      */
+    /**
+     * Compute the SHA-256 of a FileObject's canonical source file on disk.
+     * The "canonical source" is the file at {@code fileObject.getExtension()} —
+     * i.e. for a PDF upload that's the pdf, for a direct png upload that's the png.
+     * Must be called AFTER {@link #applyUploadResult} has populated the extension.
+     *
+     * Returns null if the source file can't be read — callers should still save the
+     * entity; the hash will be filled in next time the file is (re)uploaded.
+     */
+    private String computeSourceHash(FileObject fileObject) {
+        try {
+            String sourceExt = fileObject.getExtension();
+            if (sourceExt == null || sourceExt.isBlank()) return null;
+            String sourceLink = fileObject.buildFileLink(sourceExt);
+            if (sourceLink == null) return null;
+            Path sourcePath = resolveToFileSystem(sourceLink);
+            if (!Files.exists(sourcePath)) return null;
+            return computeSha256(Files.readAllBytes(sourcePath));
+        } catch (IOException e) {
+            logger.warn("Failed to compute source hash for FileObject #{}: {}",
+                    fileObject.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * SHA-256 hex of the given bytes. Used to set {@code FileObject.fileHash}
+     * on the canonical source file so sync can detect content changes.
+     */
+    private String computeSha256(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(data);
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+
     private Path resolveToFileSystem(String pathWithBaseLink) {
         String normalized = pathWithBaseLink.replace("\\", "/");
         int firstSlash = normalized.indexOf('/');
@@ -189,33 +233,6 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
-    public List<String> separateAndUploadPdfFileWithConversion(MultipartFile file, String fileLink, boolean override) throws IOException {
-        if (!Objects.requireNonNull(file.getOriginalFilename()).endsWith(".pdf")) {
-            throw new RuntimeException("File must be a PDF");
-        }
-        Path fileLinkPath = Paths.get(fileLink);
-        Path parentPath = fileLinkPath.getParent();
-        String fileName = FileUtil.getNameFromPathWithoutExtension(fileLinkPath.getFileName().toString());
-        String pdfPath = parentPath != null ? parentPath.toString() : "";
-        String jpgPath = pdfPath.replaceAll("pdf", "jpg");
-        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file, fileName);
-
-        List<String> fileLinks = new ArrayList<>();
-        for (File pdf : files) {
-            try {
-                fileLinks.add(uploadFile(pdf, pdfPath, override));
-                File jpg = PdfConverter.convertPdfToJpg(pdf);
-                uploadFile(jpg, jpgPath, override);
-                Files.delete(pdf.toPath());
-                Files.delete(jpg.toPath());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        return fileLinks;
-    }
-
     public FileDto create(FileIdDto fileDto) {
         meterRegistry.counter("files.createdDto").increment();
         FileObject entity = convertIdDtoToEntity(fileDto);
@@ -248,68 +265,85 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         if (originalFilename == null) {
             throw new RuntimeException("Original filename is null");
         }
-        String fileExtension = FileUtil.getFileExtension(originalFilename);
-        String fileName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
-        FileObject fileObject = convertIdDtoToEntity(fileDto);
-        fileObject.setBaseLink(filesRelativePath);
-        fileObject.setExtension(fileExtension);
-        String fileLink = fileObject.buildFileLink();
-        String folder = fileObject.buildFolder();
+        String fileExtension = FileUtil.getFileExtension(originalFilename).toLowerCase();
+        uploadStrategyRegistry.validate(fileExtension);
 
-        MultipartFile renamedFile = new RenamedMultipartFile(file, fileName + "." + fileExtension);
-        List<String> strings = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, override);
+        String baseName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
+        // Template entity carries the target metadata (fileType, vendor, name, etc.)
+        FileObject template = convertIdDtoToEntity(fileDto);
+        template.setBaseLink(filesRelativePath);
+
+        if (template.getFileType() == null || template.getVendor() == null) {
+            throw new RuntimeException("fileType and vendor are required");
+        }
+
+        UploadStrategy.UploadTarget target = new UploadStrategy.UploadTarget(
+                baseName,
+                template.getFileType().getName(),
+                template.getVendor().getName()
+        );
+        UploadStrategy strategy = uploadStrategyRegistry.get(fileExtension);
+        List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, override);
 
         List<FileDto> fileDtos = new ArrayList<>();
-        if (strings.size() == 1) {
-            String path = strings.get(0);
-            String nameFromPath = FileUtil.getNameFromPath(path);
-            fileObject.setExtension(FileUtil.getFileExtension(path));
-            fileObject.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
-            fileObject.buildFolder();
-            fileObject.buildFileLink();
-            fileObject.addExtension("pdf");
-            fileObject.addExtension("jpg");
-            FileObject save = save(fileObject);
-            fileDtos.add(toDto(save));
+        if (uploaded.size() == 1) {
+            UploadStrategy.UploadedFile u = uploaded.get(0);
+            applyUploadResult(template, u);
+            template.setFileHash(computeSourceHash(template));
+            fileDtos.add(toDto(save(template)));
         } else {
-            for (String path : strings) {
-                String nameFromPath = FileUtil.getNameFromPath(path);
+            for (UploadStrategy.UploadedFile u : uploaded) {
                 FileObject newFile = new FileObject();
-                newFile.setName(fileObject.getName());
-                newFile.setFileType(fileObject.getFileType());
-                newFile.setVendor(fileObject.getVendor());
+                newFile.setName(template.getName());
+                newFile.setFileType(template.getFileType());
+                newFile.setVendor(template.getVendor());
+                newFile.setSystem(template.getSystem());
                 newFile.setBaseLink(filesRelativePath);
-                newFile.setExtension(FileUtil.getFileExtension(path));
-                newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
-                newFile.buildFolder();
-                newFile.buildFileLink();
-                newFile.addExtension("pdf");
-                newFile.addExtension("jpg");
-                FileObject save = save(newFile);
-                fileDtos.add(toDto(save));
+                applyUploadResult(newFile, u);
+                newFile.setFileHash(computeSourceHash(newFile));
+                fileDtos.add(toDto(save(newFile)));
             }
         }
         return fileDtos;
     }
 
     /**
-     * Process multiple PDF files at once.
-     * All files share the same fileType and vendor.
-     * File number is derived from the original filename (without extension).
-     * File name uses sharedFileName if provided, otherwise uses original filename.
+     * Apply the on-disk outcome of an upload to a FileObject: sets fileNumber,
+     * primary extension, all extensions, folder, and fileLink.
+     *
+     * The {@code extensions} CSV is REPLACED with the upload's authoritative list
+     * (not merged). This prevents stale formats from a previous upload leaking
+     * through — e.g. overriding an old PDF with a PNG must not leave "pdf,jpg,png"
+     * in the field, otherwise {@link FileObject#getFileLink()} would still resolve
+     * to the old pdf path.
      */
-    public List<FileDto> processMultiplePdfFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
+    private void applyUploadResult(FileObject fileObject, UploadStrategy.UploadedFile uploaded) {
+        fileObject.setFileNumber(uploaded.fileNumber());
+        fileObject.setExtension(uploaded.sourceExtension());
+        fileObject.setExtensions(String.join(",", uploaded.allExtensions()));
+        fileObject.buildFolder();
+        fileObject.buildFileLink();
+    }
+
+    /**
+     * Process multiple files at once. All files share the same fileType and vendor.
+     * File number is derived from each original filename (without extension). File
+     * name uses {@code sharedFileName} if provided, otherwise the original filename.
+     *
+     * Accepts any extension on the whitelist; per-file handling is dispatched via
+     * {@link UploadStrategyRegistry} — PDFs go through the page-split strategy,
+     * everything else through direct upload.
+     */
+    public List<FileDto> processMultipleFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
         if (files == null || files.isEmpty()) {
             throw new RuntimeException("No files provided");
         }
 
-        // Get the Value entities for fileType and vendor
         var fileType = valueRepo.findById(fileTypeId)
                 .orElseThrow(() -> new RuntimeException("File type not found with id: " + fileTypeId));
         var vendor = valueRepo.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
 
-        // Determine if we should use a shared file name
         boolean useSharedName = sharedFileName != null && !sharedFileName.trim().isEmpty();
         String effectiveSharedName = useSharedName ? sharedFileName.trim() : null;
 
@@ -322,70 +356,55 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 continue;
             }
 
-            // Extract file name without extension to use as fileNumber (always from original filename)
+            String extension = FileUtil.getFileExtension(originalFilename).toLowerCase();
+            uploadStrategyRegistry.validate(extension);
+
             String fileNameWithoutExtension = FileUtil.getNameFromPathWithoutExtension(originalFilename);
-            // Use shared name for "name" field if provided, otherwise use original filename
             String effectiveName = useSharedName ? effectiveSharedName : fileNameWithoutExtension;
 
-            // Create new FileObject
-            FileObject fileObject = new FileObject();
-            fileObject.setName(effectiveName);
-            fileObject.setFileNumber(fileNameWithoutExtension);
-            fileObject.setFileType(fileType);
-            fileObject.setVendor(vendor);
-            fileObject.setBaseLink(filesRelativePath);
-            fileObject.setExtension("pdf");
+            UploadStrategy.UploadTarget target = new UploadStrategy.UploadTarget(
+                    fileNameWithoutExtension,
+                    fileType.getName(),
+                    vendor.getName()
+            );
+            UploadStrategy strategy = uploadStrategyRegistry.get(extension);
+            List<UploadStrategy.UploadedFile> uploaded = strategy.upload(file, target, false);
 
-            // Build paths
-            String fileLink = fileObject.buildFileLink();
-            fileObject.buildFolder();
-
-            // Rename the file to use the extracted name
-            MultipartFile renamedFile = new RenamedMultipartFile(file, fileNameWithoutExtension + ".pdf");
-
-            // Process the file (convert to jpg, etc.)
-            List<String> processedPaths = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, false);
-
-            // For single-page PDFs, update the existing fileObject
-            // For multi-page PDFs, create separate FileObjects for each page
-            if (processedPaths.size() == 1) {
-                String path = processedPaths.get(0);
-                String nameFromPath = FileUtil.getNameFromPath(path);
-                fileObject.setExtension(FileUtil.getFileExtension(path));
-                fileObject.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
-                fileObject.buildFolder();
-                fileObject.buildFileLink();
-                fileObject.addExtension("pdf");
-                fileObject.addExtension("jpg");
-                FileObject saved = save(fileObject);
-                uploadedFiles.add(toDto(saved));
+            if (uploaded.size() == 1) {
+                FileObject fileObject = new FileObject();
+                fileObject.setName(effectiveName);
+                fileObject.setFileType(fileType);
+                fileObject.setVendor(vendor);
+                fileObject.setBaseLink(filesRelativePath);
+                applyUploadResult(fileObject, uploaded.get(0));
+                fileObject.setFileHash(computeSourceHash(fileObject));
+                uploadedFiles.add(toDto(save(fileObject)));
             } else {
-                // Multi-page PDF - create separate entries for each page
-                for (String path : processedPaths) {
-                    String nameFromPath = FileUtil.getNameFromPath(path);
+                for (UploadStrategy.UploadedFile u : uploaded) {
                     FileObject newFile = new FileObject();
-                    newFile.setName(fileNameWithoutExtension);
+                    // Honor sharedFileName for every split page, not just single-page uploads
+                    newFile.setName(effectiveName);
                     newFile.setFileType(fileType);
                     newFile.setVendor(vendor);
                     newFile.setBaseLink(filesRelativePath);
-                    newFile.setExtension(FileUtil.getFileExtension(path));
-                    newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
-                    newFile.buildFolder();
-                    newFile.buildFileLink();
-                    newFile.addExtension("pdf");
-                    newFile.addExtension("jpg");
-                    FileObject saved = save(newFile);
-                    uploadedFiles.add(toDto(saved));
+                    applyUploadResult(newFile, u);
+                    newFile.setFileHash(computeSourceHash(newFile));
+                    uploadedFiles.add(toDto(save(newFile)));
                 }
             }
 
-            logger.info("Processed file: {} -> {} file objects", originalFilename,
-                    processedPaths.size() == 1 ? 1 : processedPaths.size());
+            logger.info("Processed file: {} -> {} file objects", originalFilename, uploaded.size());
         }
 
         logger.info("Multi-upload completed: {} files uploaded, {} file objects created",
                 files.size(), uploadedFiles.size());
         return uploadedFiles;
+    }
+
+    /** @deprecated use {@link #processMultipleFiles(List, Long, Long, String)} — kept for source compat. */
+    @Deprecated
+    public List<FileDto> processMultiplePdfFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
+        return processMultipleFiles(files, fileTypeId, vendorId, sharedFileName);
     }
 
     public FileDto updateFileObject(FileIdDto file) {
@@ -535,6 +554,11 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     public List<FileDto> getByFileType(String fileType) {
         return fileRepo.findByFileType_Name(fileType).stream().map(this::toDto).toList();
+    }
+
+    /** Distinct fileType names actually used by FileObjects in the database. */
+    public List<String> getDistinctFileTypeNames() {
+        return fileRepo.getDistinctFileTypeNames();
     }
 
     public List<FileDto> getByFileType(com.dk_power.power_plant_java.entities.categories.Value fileType) {

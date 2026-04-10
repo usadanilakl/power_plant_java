@@ -177,23 +177,3 @@ button:disabled {
   color: var(--accent-color);
   text-decoration: underline;
 }
-
-.choice-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.choice-btn {
-  background-color: var(--primary-background);
-  border: 1px solid var(--border-color);
-  color: var(--primary-text);
-  font-size: 0.9rem;
-}
-
-.choice-btn:hover:not(:disabled) {
-  background-color: var(--accent-color);
-  color: var(--header-text);
-  border-color: var(--accent-color);
-}

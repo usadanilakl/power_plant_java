@@ -17,30 +17,14 @@
   <div class="file-type-controls">
     <label class="controls-label">File Type:</label>
     <div class="file-type-buttons">
-      <button
-        class="type-button"
-        [class.active]="selectedType() === 'pid'"
-        (click)="loadFiles('pid')"
-        [disabled]="isLoading()"
-      >PID</button>
-      <button
-        class="type-button"
-        [class.active]="selectedType() === 'elect'"
-        (click)="loadFiles('elect')"
-        [disabled]="isLoading()"
-      >Electrical</button>
-      <button
-        class="type-button"
-        [class.active]="selectedType() === 'ht panel'"
-        (click)="loadFiles('ht panel')"
-        [disabled]="isLoading()"
-      >Heat Trace</button>
-      <button
-        class="type-button"
-        [class.active]="selectedType() === 'iso'"
-        (click)="loadFiles('iso')"
-        [disabled]="isLoading()"
-      >Isometrics</button>
+      @for (type of fileTypes(); track type) {
+        <button
+          class="type-button"
+          [class.active]="selectedType() === type"
+          (click)="loadFiles(type)"
+          [disabled]="isLoading()"
+        >{{ type }}</button>
+      }
     </div>
   </div>
 

@@ -13,7 +13,7 @@ interface TestStep {
   error?: string;
 }
 
-type FlowType = 'permits' | 'files';
+type FlowType = 'permits' | 'files' | 'file-detailed';
 
 @Component({
   selector: 'app-e2e-test-page',
@@ -58,6 +58,9 @@ type FlowType = 'permits' | 'files';
             </button>
             <button class="flow-tab" [class.active]="selectedFlow === 'files'" (click)="selectFlow('files')" [disabled]="isRunning">
               File &amp; LOTO Flow
+            </button>
+            <button class="flow-tab" [class.active]="selectedFlow === 'file-detailed'" (click)="selectFlow('file-detailed')" [disabled]="isRunning">
+              File Flow
             </button>
           </div>
 
@@ -226,8 +229,40 @@ export class E2eTestPageComponent implements OnInit {
     { name: 'Verify Sync: File & LOTO Points', status: 'pending' },
   ];
 
+  // ==================== File Flow (detailed) State ====================
+  // Exercises §3.1 (fileHash sync), §3.2 (whitelist + non-PDF strategy),
+  // §3.3 (dynamic file types), and the override-extension replacement fix.
+  private fdFileTypeId: number | null = null;
+  private fdVendorId: number | null = null;
+  private fdAllowedExtensions: string[] = [];
+  private fdPdfFileId: string | null = null;        // becomes PNG after step 7
+  private fdPngFileId: string | null = null;        // direct-upload PNG
+  private fdManualFileId: string | null = null;     // file with new dynamic type
+  private fdHashAfterPdfA: string | null = null;
+  private fdHashAfterPdfB: string | null = null;
+  private fdHashAfterOverrideToPng: string | null = null;
+  private fdHashAfterMetaUpdate: string | null = null;
+  private fdHashPng: string | null = null;
+
+  fileDetailedSteps: TestStep[] = [
+    { name: 'Get allowed extensions (whitelist endpoint)', status: 'pending' },
+    { name: 'Upload PDF (sample variant A) — capture hash', status: 'pending' },
+    { name: 'Assert fileHash populated (§3.1 fix)', status: 'pending' },
+    { name: 'Upload PNG (DirectUploadStrategy) — assert hash populated', status: 'pending' },
+    { name: 'Reject disallowed extension (.txt)', status: 'pending' },
+    { name: 'Override-upload PDF→PDF (variant B) — assert hash CHANGED', status: 'pending' },
+    { name: 'Override PDF→PNG — assert extensions REPLACED (not merged)', status: 'pending' },
+    { name: 'Metadata-only update — assert hash UNCHANGED', status: 'pending' },
+    { name: 'Wait for Sync', status: 'pending' },
+    { name: 'Verify Sync: file hashes match across instances', status: 'pending' },
+    { name: 'Soft-delete + trash listing', status: 'pending' },
+    { name: 'Dynamic file type — create + upload with new type', status: 'pending' },
+  ];
+
   get currentSteps(): TestStep[] {
-    return this.selectedFlow === 'permits' ? this.permitSteps : this.fileSteps;
+    if (this.selectedFlow === 'permits') return this.permitSteps;
+    if (this.selectedFlow === 'files') return this.fileSteps;
+    return this.fileDetailedSteps;
   }
 
   async ngOnInit(): Promise<void> {
@@ -259,11 +294,17 @@ export class E2eTestPageComponent implements OnInit {
     if (this.selectedFlow === 'permits') {
       this.createdWrId = this.createdJobId = this.createdPackageId = null;
       this.createdSafeWorkId = this.createdHotWorkId = this.createdConfinedSpaceId = null;
-    } else {
+    } else if (this.selectedFlow === 'files') {
       this.fileTypeId = this.vendorId = null;
       this.createdFileId = this.createdFileName = null;
       this.createdEq1Id = this.createdEq2Id = null;
       this.createdLp1Id = this.createdLp2Id = null;
+    } else {
+      this.fdFileTypeId = this.fdVendorId = null;
+      this.fdAllowedExtensions = [];
+      this.fdPdfFileId = this.fdPngFileId = this.fdManualFileId = null;
+      this.fdHashAfterPdfA = this.fdHashAfterPdfB = null;
+      this.fdHashAfterOverrideToPng = this.fdHashAfterMetaUpdate = this.fdHashPng = null;
     }
     this.regenerateRunId();
   }
@@ -271,8 +312,15 @@ export class E2eTestPageComponent implements OnInit {
   canRunStep(index: number): boolean {
     const steps = this.currentSteps;
     if (index === 0) return true;
-    // Sync steps depend on last creation step, not the step right before
-    const lastCreationIdx = steps.length - 3; // wait + verify are last 2
+    if (this.selectedFlow === 'file-detailed') {
+      // Wait at 8, Verify at 9. Verify depends on the last update step (7),
+      // not on the wait. Steps 10 and 11 are independent post-verify checks.
+      if (index === 9) return steps[7].status === 'success';
+      return steps[index - 1].status === 'success';
+    }
+    // Permits / File & LOTO: wait + verify are the last 2 steps; verify depends
+    // on the last creation step (steps.length - 3), not on the wait.
+    const lastCreationIdx = steps.length - 3;
     if (index >= steps.length - 2) return steps[lastCreationIdx].status === 'success';
     return steps[index - 1].status === 'success';
   }
@@ -303,8 +351,10 @@ export class E2eTestPageComponent implements OnInit {
     try {
       if (this.selectedFlow === 'permits') {
         await this.runPermitStep(index, step);
-      } else {
+      } else if (this.selectedFlow === 'files') {
         await this.runFileStep(index, step);
+      } else {
+        await this.runFileDetailedStep(index, step);
       }
       const currentStatus = step.status as string;
       if (currentStatus === 'running') step.status = 'success';
@@ -660,6 +710,320 @@ export class E2eTestPageComponent implements OnInit {
     }
 
     this.setVerifyResult(step, diffs, remoteUrl);
+  }
+
+  // ==================== FILE FLOW (DETAILED) ====================
+  // Covers the file-specific functionality added in plan §3.1–§3.4 and the
+  // review fix for stale extensions on override. Independent of the LOTO flow.
+
+  private async runFileDetailedStep(index: number, step: TestStep): Promise<void> {
+    switch (index) {
+      case 0:  await this.fdGetAllowedExtensions(step); break;
+      case 1:  await this.fdUploadPdf(step); break;
+      case 2:  await this.fdAssertPdfHash(step); break;
+      case 3:  await this.fdUploadPng(step); break;
+      case 4:  await this.fdRejectDisallowed(step); break;
+      case 5:  await this.fdOverrideSameExtension(step); break;
+      case 6:  await this.fdOverrideDifferentExtension(step); break;
+      case 7:  await this.fdMetadataOnlyUpdate(step); break;
+      case 8:  await this.stepWaitForSync(step); break;
+      case 9:  await this.fdVerifySync(step); break;
+      case 10: await this.fdSoftDeleteAndTrash(step); break;
+      case 11: await this.fdDynamicFileType(step); break;
+    }
+  }
+
+  private async fdEnsureRefData(): Promise<void> {
+    if (!this.fdFileTypeId) {
+      const ftRes = await firstValueFrom(this.api.createValue('File Type', 'PID'));
+      this.fdFileTypeId = ftRes.responseData?.id;
+      if (!this.fdFileTypeId) throw new Error('Failed to create/get File Type "PID"');
+    }
+    if (!this.fdVendorId) {
+      const vRes = await firstValueFrom(this.api.createValue('Vendor', 'E2E-FileFlow'));
+      this.fdVendorId = vRes.responseData?.id;
+      if (!this.fdVendorId) throw new Error('Failed to create/get Vendor "E2E-FileFlow"');
+    }
+  }
+
+  private async fdGetAllowedExtensions(step: TestStep): Promise<void> {
+    const res = await firstValueFrom(this.api.getAllowedExtensions());
+    const exts = res.responseData ?? [];
+    this.fdAllowedExtensions = exts;
+    if (exts.length === 0) throw new Error('Whitelist endpoint returned empty list');
+    const must = ['pdf', 'png'];
+    const missing = must.filter(m => !exts.includes(m));
+    if (missing.length > 0) throw new Error(`Whitelist missing required entries: ${missing.join(', ')}`);
+    step.result = `Allowed (${exts.length}): ${exts.join(', ')}`;
+  }
+
+  private async fdUploadPdf(step: TestStep): Promise<void> {
+    await this.fdEnsureRefData();
+    const pdfBlob = await firstValueFrom(this.api.getSamplePdf('a'));
+    const fileName = `E2E-FD-PDF-${this.runId.slice(-6)}.pdf`;
+    const res = await firstValueFrom(this.api.uploadFile(pdfBlob, fileName, this.fdFileTypeId!, this.fdVendorId!));
+    const uploaded = res.responseData;
+    if (!uploaded || uploaded.length === 0) throw new Error('Upload returned no files');
+    this.fdPdfFileId = String(uploaded[0].id);
+    step.result = `PDF uploaded: ID=${this.fdPdfFileId}, name="${uploaded[0].name}", fileLink="${uploaded[0].fileLink}", extensions="${uploaded[0].extensions}"`;
+  }
+
+  private async fdAssertPdfHash(step: TestStep): Promise<void> {
+    if (!this.fdPdfFileId) throw new Error('No PDF file ID');
+    const res = await firstValueFrom(this.api.getFileHash(this.fdPdfFileId));
+    const hash = res.responseData;
+    if (!hash) throw new Error('fileHash is null/empty — §3.1 fix not applied to PDF upload path');
+    if (hash.length !== 64) throw new Error(`Expected 64-char SHA-256, got "${hash}" (len=${hash.length})`);
+    this.fdHashAfterPdfA = hash;
+    step.result = `fileHash after PDF variant A upload: ${hash.slice(0, 16)}…`;
+  }
+
+  private async fdUploadPng(step: TestStep): Promise<void> {
+    await this.fdEnsureRefData();
+    const pngBlob = await firstValueFrom(this.api.getSamplePng());
+    const fileName = `E2E-FD-PNG-${this.runId.slice(-6)}.png`;
+    const res = await firstValueFrom(this.api.uploadFile(pngBlob, fileName, this.fdFileTypeId!, this.fdVendorId!));
+    const uploaded = res.responseData;
+    if (!uploaded || uploaded.length === 0) throw new Error('PNG upload returned no files');
+    this.fdPngFileId = String(uploaded[0].id);
+    const exts: string = uploaded[0].extensions ?? '';
+    if (!exts.includes('png')) {
+      throw new Error(`PNG file extensions does not include 'png': "${exts}" — DirectUploadStrategy may not have run`);
+    }
+    if (exts.includes('pdf') || exts.includes('jpg')) {
+      throw new Error(`PNG upload incorrectly produced pdf/jpg derivatives: "${exts}"`);
+    }
+    const hashRes = await firstValueFrom(this.api.getFileHash(this.fdPngFileId));
+    const hash = hashRes.responseData;
+    if (!hash) throw new Error('PNG fileHash is null — §3.1 hash bug not applied to non-PDF path');
+    this.fdHashPng = hash;
+    step.result = `PNG uploaded: ID=${this.fdPngFileId}, extensions="${exts}", hash=${hash.slice(0, 16)}…`;
+  }
+
+  private async fdRejectDisallowed(step: TestStep): Promise<void> {
+    await this.fdEnsureRefData();
+    const txtBlob = new Blob(['this is not allowed'], { type: 'text/plain' });
+    try {
+      await firstValueFrom(this.api.uploadFile(txtBlob, `E2E-FD-evil-${this.runId.slice(-6)}.txt`,
+        this.fdFileTypeId!, this.fdVendorId!));
+    } catch (e: any) {
+      const msg = e?.error?.message || e?.message || '';
+      step.result = `Server correctly rejected .txt upload: ${msg.slice(0, 200)}`;
+      return;
+    }
+    throw new Error('Server accepted a .txt upload — extension whitelist not enforced');
+  }
+
+  private async fdOverrideSameExtension(step: TestStep): Promise<void> {
+    if (!this.fdPdfFileId) throw new Error('No PDF file ID from step 2');
+    if (!this.fdHashAfterPdfA) throw new Error('Missing baseline hash from step 3');
+
+    // Fetch the existing FileObject so we can build a complete FileIdDto.
+    const fileRes = await firstValueFrom(this.api.getFile(this.fdPdfFileId));
+    const file = fileRes.responseData;
+    if (!file) throw new Error('PDF file not found');
+
+    const fileIdDto = this.toFileIdDto(file);
+    const pdfBlobB = await firstValueFrom(this.api.getSamplePdf('b'));
+    const fileName = `${this.fdRawFileNumber(file)}.pdf`;
+    await firstValueFrom(this.api.overrideUploadFile(fileIdDto, pdfBlobB, fileName));
+
+    const hashRes = await firstValueFrom(this.api.getFileHash(this.fdPdfFileId));
+    const hashB = hashRes.responseData;
+    if (!hashB) throw new Error('fileHash is null after override — bytes were not re-hashed');
+    if (hashB === this.fdHashAfterPdfA) {
+      throw new Error(`fileHash unchanged (${hashB.slice(0, 16)}…) — override of same-extension content was NOT detected. This is the §3.1 bug.`);
+    }
+    this.fdHashAfterPdfB = hashB;
+    step.result = `Hash changed: A=${this.fdHashAfterPdfA.slice(0, 16)}… → B=${hashB.slice(0, 16)}… (override detected)`;
+  }
+
+  private async fdOverrideDifferentExtension(step: TestStep): Promise<void> {
+    if (!this.fdPdfFileId) throw new Error('No file ID');
+
+    const fileRes = await firstValueFrom(this.api.getFile(this.fdPdfFileId));
+    const file = fileRes.responseData;
+    if (!file) throw new Error('File not found');
+    const beforeExts: string = file.extensions ?? '';
+
+    const fileIdDto = this.toFileIdDto(file);
+    const pngBlob = await firstValueFrom(this.api.getSamplePng());
+    const fileName = `${this.fdRawFileNumber(file)}.png`;
+    await firstValueFrom(this.api.overrideUploadFile(fileIdDto, pngBlob, fileName));
+
+    const afterRes = await firstValueFrom(this.api.getFile(this.fdPdfFileId));
+    const after = afterRes.responseData;
+    const afterExts: string = after?.extensions ?? '';
+
+    // The fix: extensions must be REPLACED, not merged. After the swap the
+    // field should contain only "png" — not the union "pdf,jpg,png".
+    if (afterExts.includes('pdf') || afterExts.includes('jpg')) {
+      throw new Error(`extensions still contains pdf/jpg after PNG override: "${afterExts}". Stale-extensions fix regressed.`);
+    }
+    if (!afterExts.includes('png')) {
+      throw new Error(`extensions does not include 'png' after PNG override: "${afterExts}"`);
+    }
+    if (!after.fileLink || !after.fileLink.toLowerCase().endsWith('.png')) {
+      throw new Error(`fileLink does not point to a .png after override: "${after.fileLink}"`);
+    }
+
+    const hashRes = await firstValueFrom(this.api.getFileHash(this.fdPdfFileId));
+    const hash = hashRes.responseData;
+    if (!hash) throw new Error('fileHash is null after PNG override');
+    this.fdHashAfterOverrideToPng = hash;
+    step.result = `Override OK: extensions "${beforeExts}" → "${afterExts}", fileLink="${after.fileLink}", hash=${hash.slice(0, 16)}…`;
+  }
+
+  private async fdMetadataOnlyUpdate(step: TestStep): Promise<void> {
+    if (!this.fdPdfFileId) throw new Error('No file ID');
+    if (!this.fdHashAfterOverrideToPng) throw new Error('Missing hash from step 7');
+
+    const fileRes = await firstValueFrom(this.api.getFile(this.fdPdfFileId));
+    const file = fileRes.responseData;
+    if (!file) throw new Error('File not found');
+
+    const fileIdDto = this.toFileIdDto(file);
+    fileIdDto.docNum = `E2E-DOC-${this.runId.slice(-6)}`; // change a benign field
+    await firstValueFrom(this.api.updateFileMetadata(fileIdDto));
+
+    const hashRes = await firstValueFrom(this.api.getFileHash(this.fdPdfFileId));
+    const hash = hashRes.responseData;
+    if (hash !== this.fdHashAfterOverrideToPng) {
+      throw new Error(`fileHash changed on metadata-only update: was ${this.fdHashAfterOverrideToPng?.slice(0, 16)}…, now ${hash?.slice(0, 16)}… (expected unchanged)`);
+    }
+    this.fdHashAfterMetaUpdate = hash;
+    step.result = `Metadata updated; hash unchanged (${hash?.slice(0, 16)}…)`;
+  }
+
+  private async fdVerifySync(step: TestStep): Promise<void> {
+    if (!this.fdPdfFileId || !this.fdPngFileId) throw new Error('Missing file IDs');
+    const remoteUrl = this.getRemoteUrl();
+    if (!remoteUrl) throw new Error('No remote URL configured');
+    this.log('info', `  Verifying file sync against: ${remoteUrl}`);
+    const diffs: string[] = [];
+
+    // File 1: the swapped one (now PNG, hash = fdHashAfterMetaUpdate)
+    try {
+      const remoteFile = (await firstValueFrom(
+        this.api.getFileFromRemote(remoteUrl, this.fdPdfFileId))).responseData;
+      const localFile = (await firstValueFrom(this.api.getFile(this.fdPdfFileId))).responseData;
+      if (!remoteFile) {
+        diffs.push(`File ${this.fdPdfFileId} (swapped): NOT FOUND on remote`);
+      } else {
+        this.compareFields(diffs, 'SwappedFile', localFile, remoteFile, ['name', 'fileLink', 'extensions']);
+      }
+      const remoteHash = (await firstValueFrom(
+        this.api.getFileHashFromRemote(remoteUrl, this.fdPdfFileId))).responseData;
+      if (remoteHash !== this.fdHashAfterMetaUpdate) {
+        diffs.push(`SwappedFile.fileHash: local="${this.fdHashAfterMetaUpdate?.slice(0, 16)}…" remote="${(remoteHash ?? '').slice(0, 16)}…" — peer did NOT receive override bytes`);
+      }
+    } catch (e: any) {
+      diffs.push(`SwappedFile fetch failed: ${e?.message || 'unknown'}`);
+    }
+
+    // File 2: the direct PNG upload
+    try {
+      const remoteFile = (await firstValueFrom(
+        this.api.getFileFromRemote(remoteUrl, this.fdPngFileId))).responseData;
+      const localFile = (await firstValueFrom(this.api.getFile(this.fdPngFileId))).responseData;
+      if (!remoteFile) {
+        diffs.push(`PNG file ${this.fdPngFileId}: NOT FOUND on remote`);
+      } else {
+        this.compareFields(diffs, 'PngFile', localFile, remoteFile, ['name', 'fileLink', 'extensions']);
+      }
+      const remoteHash = (await firstValueFrom(
+        this.api.getFileHashFromRemote(remoteUrl, this.fdPngFileId))).responseData;
+      if (remoteHash !== this.fdHashPng) {
+        diffs.push(`PngFile.fileHash: local="${this.fdHashPng?.slice(0, 16)}…" remote="${(remoteHash ?? '').slice(0, 16)}…"`);
+      }
+    } catch (e: any) {
+      diffs.push(`PngFile fetch failed: ${e?.message || 'unknown'}`);
+    }
+
+    this.setVerifyResult(step, diffs, remoteUrl);
+  }
+
+  private async fdSoftDeleteAndTrash(step: TestStep): Promise<void> {
+    if (!this.fdPngFileId) throw new Error('No PNG file ID');
+    const targetId = this.fdPngFileId;
+
+    await firstValueFrom(this.api.deleteFile(targetId));
+
+    // Should no longer be findable through the normal endpoint.
+    let stillVisible = false;
+    try {
+      const res = await firstValueFrom(this.api.getFile(targetId));
+      if (res?.responseData) stillVisible = true;
+    } catch { /* expected: not found / 404 */ }
+    if (stillVisible) throw new Error(`File ${targetId} still visible after delete`);
+
+    // Trash listing should be reachable (and ideally include something).
+    try {
+      const trashRes = await firstValueFrom(this.api.listTrash());
+      const trashCount = trashRes.responseData?.length ?? 0;
+      step.result = `Deleted ID=${targetId}; trash listing reachable (${trashCount} entries)`;
+    } catch (e: any) {
+      // Some deployments may not expose the trash listing — soft warn rather than fail.
+      step.status = 'warn';
+      step.result = `Deleted ID=${targetId}; trash listing call failed: ${e?.message || 'unknown'}`;
+    }
+  }
+
+  private async fdDynamicFileType(step: TestStep): Promise<void> {
+    // 1. Create a new fileType Value (the §3.3 backend assumption)
+    const ftRes = await firstValueFrom(this.api.createValue('File Type', 'Manual'));
+    const manualTypeId = ftRes.responseData?.id;
+    if (!manualTypeId) throw new Error('Failed to create File Type "Manual"');
+    if (!this.fdVendorId) await this.fdEnsureRefData();
+
+    // 2. Upload a file with that new type
+    const pdfBlob = await firstValueFrom(this.api.getSamplePdf('a'));
+    const fileName = `E2E-FD-Manual-${this.runId.slice(-6)}.pdf`;
+    const res = await firstValueFrom(this.api.uploadFile(pdfBlob, fileName, manualTypeId, this.fdVendorId!));
+    const uploaded = res.responseData;
+    if (!uploaded || uploaded.length === 0) throw new Error('Manual upload returned no files');
+    this.fdManualFileId = String(uploaded[0].id);
+
+    // 3. Read it back and assert the fileType name
+    const fetched = (await firstValueFrom(this.api.getFile(this.fdManualFileId))).responseData;
+    const fetchedTypeName = fetched?.fileType?.name;
+    if (fetchedTypeName !== 'Manual') {
+      throw new Error(`Uploaded file has fileType "${fetchedTypeName}", expected "Manual"`);
+    }
+    step.result = `New file type "Manual" (id=${manualTypeId}) accepted; uploaded file ID=${this.fdManualFileId}`;
+  }
+
+  /** Build a FileIdDto-shaped payload from a fetched FileDto. */
+  private toFileIdDto(file: any): any {
+    return {
+      id: file.id,
+      name: file.name,
+      fileType: file.fileType?.id,
+      vendor: file.vendor?.id,
+      system: file.system?.id ?? null,
+      fileNumber: file.fileNumber,           // already an array on FileDto
+      extension: file.extension,
+      extensions: file.extensions,
+      baseLink: file.baseLink,
+      docNum: file.docNum,
+      isVerified: file.isVerified ?? false,
+    };
+  }
+
+  /** Reconstruct the raw filename base (no extension) from a FileDto. */
+  private fdRawFileNumber(file: any): string {
+    if (Array.isArray(file.fileNumber) && file.fileNumber.length > 0) {
+      return String(file.fileNumber[0]);
+    }
+    if (typeof file.fileNumber === 'string' && file.fileNumber) {
+      return file.fileNumber;
+    }
+    // Last resort: derive from fileLink
+    const link: string = file.fileLink ?? '';
+    const slash = Math.max(link.lastIndexOf('/'), link.lastIndexOf('\\'));
+    const tail = link.substring(slash + 1);
+    const dot = tail.lastIndexOf('.');
+    return dot > 0 ? tail.substring(0, dot) : tail;
   }
 
   // ==================== Shared Steps ====================

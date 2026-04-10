@@ -93,6 +93,18 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
 
     private Boolean isVerified = false;
 
+    /**
+     * SHA-256 hash of the canonical source file only (the originally-uploaded file —
+     * the PDF in the pdf→jpg flow, the sole uploaded file otherwise).
+     * Derived files (e.g. jpg pages split from a PDF) are NOT hashed.
+     *
+     * Used by {@code FileObjectSyncHandler} to detect content changes when the
+     * extension stays the same (e.g. an "override file" upload). Without this,
+     * content-change detection degenerates to watching {@code extensions}, which
+     * only catches add/remove of an extension.
+     */
+    private String fileHash;
+
 
 
     public static final List<String> lightDto = List.of(

@@ -1,0 +1,8 @@
+# Templates contain plant-specific configuration (historian IP, source name,
+# point IDs) — keep them out of git. Operators drop them in before building.
+# See README.md for details.
+*.xlsx
+*.xlsm
+
+# But don't ignore the README itself
+!README.md

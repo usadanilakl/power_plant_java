@@ -2,6 +2,8 @@
 
 This guide covers the manual steps required to set up the EtaPro Excel scraper on a workstation that has the EtaPro Excel add-in installed.
 
+The scraper uses **two Excel templates** (Live and History) — both with the same structure but different time windows. Templates have 20 generic point slots that the app fills in dynamically per request.
+
 ---
 
 ## Prerequisites
@@ -15,452 +17,340 @@ This guide covers the manual steps required to set up the EtaPro Excel scraper o
 
 ### Verify COM + Excel are ready
 
-Before creating the template, run this in PowerShell to confirm COM automation works:
-
 ```powershell
 $excel = New-Object -ComObject Excel.Application; $excel.Version; $excel.Quit()
 ```
 
-If it prints a version number (e.g., `16.0`), you're good to go. If it errors with "Cannot create object" or "Class not registered," Excel isn't installed or its COM registration is broken — run an Office Repair from Add/Remove Programs.
+If it prints a version number (e.g., `16.0`), you're good. If it errors, run an Office Repair from Add/Remove Programs.
+
+---
+
+## Who This Guide Is For
+
+This guide is written from two perspectives:
+
+1. **Build operator** preparing a desktop installer for the plant — creates the templates once, drops them into `electron-manager/etapro-defaults/`, and ships them via `npm run package`. End users then get a turnkey install.
+2. **Developer or solo user** running the backend directly with `mvn spring-boot:run` — creates templates in their project's local `etapro/` directory.
+
+If you're using the packaged desktop Electron installer, **you do NOT need to follow most of this guide** — the templates and script are provisioned automatically into `%PROGRAMDATA%/DK Power Manager/managed_apps/pid/etapro/` on first launch. You only need Step 2 and Step 3 if you're preparing a fresh build or if the templates got lost.
 
 ---
 
 ## Step 1: Create the Working Directory
 
-Create the `etapro/` folder in the project root (next to `db/`, `uploads/`, etc.):
+**For developers running backend directly:**
 
+```powershell
+# From the power_plant_java root
+New-Item -ItemType Directory -Force -Path "etapro\output"
+New-Item -ItemType Directory -Force -Path "etapro\signal"
+```
+
+Final layout:
 ```
 power_plant_java/
 └── etapro/
-    ├── template.xlsm    (you will create this)
-    └── output/           (auto-created by the script)
+    ├── template-live.xlsx       (you create — Step 2)
+    ├── template-history.xlsx    (you create — Step 3)
+    ├── output/                   (auto-managed)
+    └── signal/                   (auto-managed)
 ```
 
-```powershell
-# Run from the power_plant_java root directory
-New-Item -ItemType Directory -Force -Path "etapro\output"
-```
+**For build operators preparing an Electron installer**: skip to Step 2 — the Electron startup code will create these directories automatically in `%PROGRAMDATA%/DK Power Manager/managed_apps/pid/`.
 
 ---
 
-## Step 2: Create the Excel Template
+## Step 2: Create the Live Template
 
-This is the most important manual step. The template is a macro-enabled workbook (`.xlsm`) that uses the EtaPro Excel add-in to pull data.
+The live template is optimized for fetching **current values** of up to **100 points** as fast as possible. It uses EtaPro's `GetEPCurrent` function — one cell per value, no time range, no array formulas.
 
-### 2a. Create a New Workbook
+### 2a. Create the workbook
 
 1. Open Excel
-2. Save as **Macro-Enabled Workbook** (`.xlsm`) to `etapro/template.xlsm`
+2. Save as **Excel Workbook** (`.xlsx`) to `etapro/template-live.xlsx`
 
-### 2b. Set Up the "Config" Sheet
+> The templates do not contain any macros — the scraper uses Excel's built-in recalculation via COM automation, not VBA. A plain `.xlsx` avoids the "enable macros" security prompt and works in environments that restrict `.xlsm` files.
 
-Create a sheet named **Config** with this layout:
+### 2b. Set up the "Data" sheet
 
-| Cell | Content | Purpose |
-|------|---------|---------|
-| A1 | `StartTime` (label) | |
-| B1 | *(empty — script will write start time here)* | Start of query range |
-| A2 | `EndTime` (label) | |
-| B2 | *(empty — script will write end time here)* | End of query range |
-| A3 | `Status` (label) | |
-| B3 | `Ready` | Script checks this cell for completion |
+Rename the default sheet to **Data**. Layout:
 
-### 2c. Set Up the "Points" Sheet
+| | A | B |
+|---|---|---|
+| **1** | *(empty — script writes point ID here)* | `=@GetEPCurrent(1, A1, Source, 192.168.190.85)` |
+| **2** | *(empty)* | `=@GetEPCurrent(1, A2, Source, 192.168.190.85)` |
+| **3** | *(empty)* | `=@GetEPCurrent(1, A3, Source, 192.168.190.85)` |
+| **...** | *(empty)* | *(formula referencing its row's column A)* |
+| **100** | *(empty)* | `=@GetEPCurrent(1, A100, Source, 192.168.190.85)` |
 
-Create a sheet named **Points** with this layout:
+- **Column A** holds point IDs — the script writes these per request
+- **Column B** holds the `GetEPCurrent` formula for each row, referencing its own row's column A
+- All 100 rows in column B should have the formula pre-inserted; column A starts empty
+- No Config sheet, no array formulas, no time range
 
-| Column A | Column B |
-|----------|----------|
-| Point ID | *(header)* |
-| 1GT1.MW | *(empty — EtaPro data will populate here)* |
-| 1GT1.EXHAUST_TEMP | |
-| 1HRSG.MAIN_STEAM_PRESS | |
-| ... | |
+### 2c. Insert the formulas
 
-- Column A: EtaPro point IDs (one per row, starting from A2)
-- The script will write point IDs here from the database before each scrape
-- EtaPro add-in formulas in columns B onward will reference these point IDs
+You have 100 cells to fill in column B with similar formulas. Fastest way:
 
-### 2d. Set Up the "Data" Sheet
+1. Type the formula into **B1** exactly:
+   ```
+   =@GetEPCurrent(1,A1,Source,192.168.190.85)
+   ```
+   (Replace the IP and `Source` parameter with whatever your plant uses — these are EtaPro-specific arguments.)
+2. Press Enter — the cell will show `#N/A` or similar because A1 is empty (no point ID yet)
+3. Click B1, then drag the fill handle (small square in the bottom-right corner) down to **B100**
+4. Excel auto-adjusts each formula to reference its own row's column A: B2 will reference A2, B3 will reference A3, etc.
+5. Verify by clicking B50 — the formula should read `=@GetEPCurrent(1,A50,Source,192.168.190.85)`
 
-Create a sheet named **Data** where EtaPro populates the actual time-series data:
+### 2d. Test manually
 
-| A | B | C | D | E |
-|---|---|---|---|---|
-| Timestamp | Point1 | Point2 | Point3 | ... |
-| *(EtaPro fills this)* | | | | |
+1. Type a real point ID into **A1** (e.g., `1GT1.MW`)
+2. Press F9 (or Formulas → Calculate Now) to force a refresh
+3. B1 should show the current value of that point
+4. Type more point IDs into A2, A3, etc. and recalculate — column B should update accordingly
+5. Clear A1 — B1 should go back to `#N/A` or empty
 
-The exact layout depends on your EtaPro add-in version. Common patterns:
+> **Note**: `GetEPCurrent` does NOT auto-refresh as new data arrives — it only updates when Excel recalculates. The script forces this with `Application.Calculate()` on every live cycle.
 
-**Pattern A — Time in rows, points in columns:**
-- Row 1: Headers (point IDs)
-- Column A: Timestamps
-- Cells: Values
+If everything works, save and close.
 
-**Pattern B — Flat table:**
-- Column A: Point ID
-- Column B: Timestamp
-- Column C: Value
-- Column D: Quality
+### 2e. Why 100 points instead of array formulas?
 
-### 2e. Add EtaPro Formulas
+`GetEPCurrent` returns a single instantaneous value rather than a time series. This makes it:
+- **Fast** — no historian time-range query, just "what's the current value of X?"
+- **Simple** — no array formulas, no Config sheet, no time-range cells
+- **Bulk-friendly** — can fit 100 cells in one recalc with no perceptible slowdown
 
-This step depends on your specific EtaPro Excel add-in version. Common approaches:
-
-**If using EtaPro `GETHISTDATA` function:**
-```excel
-=GETHISTDATA(Points!A2, Config!B1, Config!B2, "AVG", "1h")
-```
-- Parameters: PointID, StartTime, EndTime, Aggregation, Interval
-- Place this formula in the Data sheet, referencing the Config and Points sheets
-
-**If using EtaPro ribbon commands:**
-- Configure the add-in to read from the Config sheet for time ranges
-- Set up a data retrieval template that pulls all points listed in the Points sheet
-
-**Consult your EtaPro documentation** for the exact function syntax and ribbon commands available in your version.
-
-### 2f. Add the VBA Refresh Macro
-
-Press `Alt+F11` to open the VBA editor, insert a new module, and paste:
-
-```vba
-' Module: EtaProScraper
-Option Explicit
-
-Public Sub RefreshAndExport()
-    Dim wsConfig As Worksheet
-    Dim wsData As Worksheet
-    Dim outputPath As String
-    Dim maxWaitSeconds As Long
-    Dim waited As Long
-
-    Set wsConfig = ThisWorkbook.Sheets("Config")
-    Set wsData = ThisWorkbook.Sheets("Data")
-
-    ' Mark as processing
-    wsConfig.Range("B3").Value = "Processing"
-
-    ' Trigger EtaPro refresh
-    ' Option 1: If EtaPro uses CalculateFull
-    Application.CalculateFull
-
-    ' Option 2: If EtaPro has a named macro/ribbon command, use:
-    ' Application.Run "EtaPro.Refresh"
-    ' or
-    ' Application.CommandBars("EtaPro").Controls("Refresh").Execute
-
-    ' Wait for data to populate (check a known data cell)
-    maxWaitSeconds = 120
-    waited = 0
-    Do While IsEmpty(wsData.Range("A2")) And waited < maxWaitSeconds
-        Application.Wait Now + TimeValue("00:00:02")
-        waited = waited + 2
-        DoEvents
-    Loop
-
-    ' Check if data loaded
-    If IsEmpty(wsData.Range("A2")) Then
-        wsConfig.Range("B3").Value = "Error: Timeout waiting for data"
-        Exit Sub
-    End If
-
-    ' Build output path from command-line argument or default
-    outputPath = Environ("ETAPRO_OUTPUT_PATH")
-    If outputPath = "" Then
-        outputPath = ThisWorkbook.Path & "\output\etapro_data.csv"
-    End If
-
-    ' Export Data sheet to CSV
-    ExportSheetToCSV wsData, outputPath
-
-    ' Mark as complete
-    wsConfig.Range("B3").Value = "Complete"
-End Sub
-
-Private Sub ExportSheetToCSV(ws As Worksheet, filePath As String)
-    Dim lastRow As Long
-    Dim lastCol As Long
-    Dim row As Long
-    Dim col As Long
-    Dim line As String
-    Dim fileNum As Integer
-
-    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).row
-    lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
-
-    fileNum = FreeFile
-    Open filePath For Output As #fileNum
-
-    For row = 1 To lastRow
-        line = ""
-        For col = 1 To lastCol
-            If col > 1 Then line = line & ","
-            Dim cellVal As String
-            cellVal = CStr(ws.Cells(row, col).Value)
-            ' Escape commas and quotes
-            If InStr(cellVal, ",") > 0 Or InStr(cellVal, """") > 0 Then
-                cellVal = """" & Replace(cellVal, """", """""") & """"
-            End If
-            line = line & cellVal
-        Next col
-        Print #fileNum, line
-    Next row
-
-    Close #fileNum
-End Sub
-```
-
-### 2g. Test the Template Manually
-
-1. Open `template.xlsm`
-2. In the Config sheet, set B1 = yesterday's date, B2 = today's date
-3. In the Points sheet, enter a few known point IDs
-4. Run the `RefreshAndExport` macro (`Alt+F8` → `RefreshAndExport` → Run)
-5. Verify CSV output appears in `etapro/output/etapro_data.csv`
-6. Verify the data looks correct
+The trade-off: live mode only stores **the value at refresh time** (with the script stamping `now()` as the timestamp). The rolling trend chart on the Live tab is built client-side by accumulating these snapshots over time.
 
 ---
 
-## Step 3: Configure the PowerShell Script
+## Step 3: Create the History Template
 
-The script is at `scripts/etapro-scrape.ps1` (already provided by the app). It runs as a **persistent process** — Excel stays open between scrapes for fast refresh cycles.
+The history template has the **same structure** but a much larger time window: **20 slots × 28,800 rows × 3-second interval = 1 day per batch**.
 
-### Test manually first:
+### 3a. Copy and resize
+
+1. Copy `template-live.xlsx` → `template-history.xlsx`
+2. Open the new file
+3. **Resize the array formulas** to span 28,800 rows:
+   - Delete the existing array formulas
+   - Re-insert them with **Output cell** ranges of `A2:A28801` for column A and `B2:B28801`, `C2:C28801`, etc. for value columns
+   - Same time-range parameters (`Config!B1`/`Config!B2`)
+   - Same interval (3 seconds)
+4. The array formula in column A is for timestamps with **Include timestamp = TRUE**
+5. Each value column has **Include timestamp = FALSE**
+
+### 3b. Test with a 1-day window
+
+1. Type a point ID into B1
+2. Set Config!B1 = 24 hours ago, Config!B2 = now
+3. EtaPro should fill A2:A28801 with timestamps and B2:B28801 with values
+4. **This may take 30-60 seconds** on first load — expected. Subsequent refreshes are faster.
+
+If the load is too slow or Excel struggles, consider dropping to 10 point slots (1 day × 10 points × 28,800 = 288K cells) or reducing the row count.
+
+> **⚠ Note on size**: 20 columns × 28,800 rows = **576,000 cells of array formulas**. This is at the upper end of what Excel handles smoothly. Test with your actual EtaPro server first; if responsiveness suffers, halve the slot count.
+
+---
+
+## Step 3½: Build the Electron Installer
+
+**Only applies if you're building a desktop installer for the plant. Skip this step if you're running the backend directly.**
+
+Once both templates are finished and tested manually, just save them in the project root's `etapro/` folder:
+
+```
+power_plant_java/
+├── etapro/
+│   ├── template-live.xlsx       ← you created this in Step 2
+│   └── template-history.xlsx    ← you created this in Step 3
+├── scripts/
+│   └── etapro-scrape.ps1       ← shipped with the repo
+└── electron-manager/
+    └── etapro-defaults/         ← auto-populated by the build
+```
+
+Then build the installer as usual:
 
 ```powershell
-# Start the persistent scraper
+cd electron-manager
+npm run package
+```
+
+The `prepackage` hook automatically runs `scripts/sync-etapro-defaults.js`, which copies the PS script and any templates from the project root into `electron-manager/etapro-defaults/`. If templates are missing, it logs a warning but continues — the build still works, just without templates.
+
+On first launch, the installed desktop app will:
+1. Create `%PROGRAMDATA%\DK Power Manager\managed_apps\pid\scripts\etapro-scrape.ps1` (always refreshed from bundle)
+2. Create `%PROGRAMDATA%\DK Power Manager\managed_apps\pid\etapro\template-live.xlsx` (only if missing)
+3. Create `%PROGRAMDATA%\DK Power Manager\managed_apps\pid\etapro\template-history.xlsx` (only if missing)
+4. Create empty `output/` and `signal/` directories
+
+End users don't need to do anything with templates manually unless they want to customize them — any edits they make in the working directory are preserved across updates.
+
+---
+
+## Step 4: Verify the PowerShell Script
+
+The script `scripts/etapro-scrape.ps1` is shipped with the repo. It accepts both templates as parameters and switches between them based on each request.
+
+### Test manually:
+
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts/etapro-scrape.ps1 `
-    -templatePath "etapro/template.xlsm" `
+    -liveTemplatePath "etapro/template-live.xlsx" `
+    -historyTemplatePath "etapro/template-history.xlsx" `
     -signalDir "etapro/signal"
 ```
 
-The script will:
-1. Open Excel and the template (once)
+The script should:
+1. Open both templates
 2. Print "Ready. Waiting for requests..."
-3. Poll `etapro/signal/request.json` every 500ms
+3. Poll `etapro/signal/request.json`
 
-### Test a scrape request:
+### Test a request manually:
 
-In a separate terminal, create a request file:
-
+In another terminal:
 ```powershell
 @'
 {
-  "startDate": "2026-04-06T00:00:00",
-  "endDate": "2026-04-07T00:00:00",
-  "pointIds": "1GT1.MW,1GT1.EXHAUST_TEMP",
-  "outputPath": "C:/path/to/power_plant_java/etapro/output/etapro_data.csv"
+  "template": "live",
+  "startDate": "2026-04-09T10:00:00",
+  "endDate": "2026-04-09T10:00:15",
+  "pointIds": "1GT1.MW",
+  "outputPath": "C:/full/path/to/etapro/output/etapro_data.csv"
 }
 '@ | Out-File -FilePath "etapro/signal/request.json" -Encoding UTF8
 ```
 
 Check:
-- Script detects the request and processes it
-- CSV file appears in `etapro/output/`
-- `etapro/signal/response.json` shows `"status": "complete"`
+- `etapro/output/etapro_data.csv` appears
+- `etapro/signal/response.json` contains `"status": "complete"`
 
 ### Stop the script:
-
 ```powershell
-# Graceful shutdown
 "shutdown" | Out-File -FilePath "etapro/signal/shutdown"
 ```
-
-Or just Ctrl+C in the terminal.
 
 ### Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| COM error "Cannot create object" | Excel not installed or not registered. Run `regsvr32 "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE" /RegServer` |
-| EtaPro add-in not loading | Open Excel manually first, ensure add-in is enabled under File → Options → Add-Ins → COM Add-ins |
-| Data cells stay empty | EtaPro add-in may need authentication or network access to the historian server |
-| Orphan Excel process | Script crashed before cleanup. Kill via `Stop-Process -Name EXCEL -Force` |
-| Execution policy error | Run PowerShell as admin: `Set-ExecutionPolicy RemoteSigned` or use `-ExecutionPolicy Bypass` flag |
-| Script exits immediately | Check the template path is correct and the file exists |
+| COM error "Cannot create object" | Office Repair from Add/Remove Programs |
+| EtaPro add-in not loading | Open Excel manually, ensure add-in is enabled in File → Options → Add-Ins → COM Add-ins |
+| Data cells stay empty | Verify EtaPro server is reachable; check that the array formulas were inserted (not regular formulas) |
+| Orphan Excel process | `Stop-Process -Name EXCEL -Force` |
+| Script exits immediately | Check that both template paths exist |
+| `CalculateUntilAsyncQueriesDone` not supported | Older Excel — script falls back to `CalculateFull` + 2-sec sleep |
 
 ---
 
-## Step 4: Configure Application Properties
+## Step 5: Configure Application Properties
 
-Add to `application.properties` (or `application-prod.properties`):
+Add to `application.properties` (or your device-specific config):
 
 ```properties
 # EtaPro Scraper — persistent Excel COM automation
 etapro.enabled=true
-etapro.excel.template.path=${user.dir}/etapro/template.xlsm
+etapro.live.template.path=${user.dir}/etapro/template-live.xlsx
+etapro.history.template.path=${user.dir}/etapro/template-history.xlsx
 etapro.output.path=${user.dir}/etapro/output
-etapro.script.path=${user.dir}/scripts/etapro-scrape.ps1
 etapro.signal.path=${user.dir}/etapro/signal
+etapro.script.path=${user.dir}/scripts/etapro-scrape.ps1
+
+# Per-batch timeout for Excel refresh
 etapro.scrape.timeout.seconds=120
 
-# Scheduled scraping (fixed-delay: next run starts N ms after previous finishes)
-etapro.schedule.interval.ms=60000
-etapro.schedule.initial-delay.ms=30000
-etapro.schedule.window.minutes=5
+# Live mode minimum interval between cycles
+etapro.live.interval.ms=3000
+
+# Job retention
+etapro.job.retention.days=90
 ```
 
----
-
-## Step 5: Open the EtaPro UI
-
-After restarting the Java app with `etapro.enabled=true`, navigate to the EtaPro page:
-
-- **Header menu** → **Log** → **EtaPro Trends**
-- **Home page** → **Log** card group → **EtaPro Trends** tile
-- Or type the URL directly: `http://localhost:8082/etapro`
-
-You'll see a three-tab layout: **Dashboard** / **Points** / **Readings**.
+Restart the Java app after enabling the flag.
 
 ---
 
-## Step 6: Add Points via the UI
+## Step 6: Open the EtaPro UI
 
-1. Click the **Points** tab
-2. Click **+ Add Point** in the toolbar
-3. Fill in the form:
-   - **Point ID** — EtaPro point identifier (e.g., `1GT1.MW`) — required
-   - **Description** — human-readable description (e.g., `Gas Turbine 1 MW Output`)
-   - **Unit** — engineering unit (`MW`, `degF`, `PSI`, etc.)
-   - **Category** — grouping for dashboard layout (`Turbine`, `HRSG`, `BOP`, etc.)
-   - **Active** — check to include in scrapes (default on)
-4. Click **Create**
+After restart:
+- Header menu → **Log → EtaPro Trends**
+- Or home page → Log card → **EtaPro Trends**
+- Or directly: `http://localhost:8082/etapro`
 
-Repeat for each point you want to track. The scraper will push all active points to the Excel template before each scrape.
-
-### Bulk add via API (optional)
-If you have many points to add at once:
-
-```bash
-curl -X POST http://localhost:8082/ng/etapro/points \
-  -H "Content-Type: application/json" \
-  -d '{"pointId": "1GT1.MW", "description": "Gas Turbine 1 - Megawatts", "unit": "MW", "category": "Turbine", "active": true}'
-```
+You'll see three tabs: **Live / History / Points**.
 
 ---
 
-## Step 7: Start the Scraper and Run Your First Scrape
+## Step 7: Add Points (Master List)
 
-1. Go to the **Dashboard** tab
-2. The status bar at the top shows the scraper state (gray dot = idle, green = running, orange pulsing = busy)
-3. Click **Start Scraper** — this launches PowerShell which opens Excel in the background and loads the template
-4. Wait ~5-10 seconds for Excel + EtaPro add-in to fully load
-5. Click **Scrape Now** to trigger a scrape of the last 5 minutes
-6. Reading cards should appear, grouped by category, each showing the latest value
+Go to the **Points** tab and add each EtaPro point you want available for selection:
 
-The first scrape proves the end-to-end flow works. After that, the scheduler takes over (if enabled) and keeps the dashboard fresh automatically.
+- **Point ID** — exact EtaPro identifier (e.g., `1GT1.MW`)
+- **Description** — human-readable
+- **Unit** — `MW`, `degF`, `PSI`, etc.
+- **Category** — for grouping (`Turbine`, `HRSG`, etc.)
+- **Active** — visible in pickers when checked
 
-### What's happening under the hood
-1. Java ensures the persistent PowerShell process is running (auto-starts if needed)
-2. Java writes `etapro/signal/request.json` with point IDs and time range
-3. PowerShell detects the file, writes params into Excel cells, triggers the EtaPro refresh
-4. EtaPro add-in pulls data from the historian into the Data sheet
-5. Script exports the Data sheet to `etapro/output/etapro_data.csv`, writes `response.json`
-6. Java parses the CSV, deduplicates against existing readings, saves new rows
-7. Dashboard auto-refreshes (polls `/readings/latest` every 5s)
+This list is the master pool. The scraper doesn't touch it directly — it's just what the Live and History tabs let you choose from.
 
 ---
 
-## Step 8: Semi-Real-Time Monitoring
+## Step 8: Try Live Mode
 
-The scheduled scraper runs automatically every 60 seconds (configurable) and scrapes the last 5 minutes with overlap. Duplicates are automatically skipped via DB index lookup on `(pointId, timestamp)`.
+1. Go to the **Live** tab
+2. Multi-select up to 20 points from the picker
+3. Click **Start Live**
+4. Within ~3 seconds you should see:
+   - Status dot turns green and pulses
+   - Latest-values table populates with one row per point
+   - Trend chart starts accumulating points
+5. Each row gets a fresh value every ~3 seconds. If a row goes stale (>10s old), it dims.
+6. Click **Stop Live** when done
 
-### Adjust scrape frequency
-
-```properties
-# Every 60 seconds after previous scrape finishes (default, safe)
-etapro.schedule.interval.ms=60000
-
-# Scrape window: last 5 minutes (overlap ensures no gaps)
-etapro.schedule.window.minutes=5
-```
-
-Shorter intervals for faster refresh:
-- `60000` (60s) — safe default, ~1 min lag
-- `30000` (30s) — aggressive, ~30-60s lag
-- `15000` (15s) — very fast, may stress EtaPro server
-
-### Dashboard freshness colors
-Each reading card has a colored left border:
-- **Green** — fresh (< 2 min old)
-- **Yellow** — stale (2-5 min old)
-- **Red** — old (> 5 min old)
-
-If cards turn yellow or red, the scraper has stopped or is lagging. Check the status bar and PowerShell output.
+If you select more than 20 points, the cycle takes longer (each 20-point batch sequentially). Example: 25 points → ~6 sec per cycle.
 
 ---
 
-## Step 9: View Trends
+## Step 9: Submit a History Job
 
-The EtaPro page includes multi-series trend charts powered by ECharts.
+1. Go to the **History** tab
+2. Multi-select points
+3. Pick a date range (defaults to last 24h)
+4. The hint shows expected batch count (e.g., "25 points × 3 day(s) = 6 batches")
+5. Click **Submit Job**
+6. The job appears in the list with `PENDING` status
+7. The worker picks it up between live cycles (or immediately if no live subscription)
+8. Watch the progress bar fill up
+9. When status goes to `COMPLETE`, click **Load** to view data in the viewer:
+   - Left: data table (first 200 rows)
+   - Right: trend chart for all loaded readings
+10. Click **Close** to dismiss the viewer
 
-### Single-point trend
-On the **Dashboard**, click any reading card to open a trend popup for that point. Default range is 1h.
+### Cancelling
 
-### Multi-point trend
-1. Go to the **Points** tab
-2. Select multiple rows (ctrl-click or shift-click)
-3. Click **Trend Selected (N)** in the toolbar
-4. All selected points render on one chart. Points with different units get separate Y axes (max 4).
+While a job is `PENDING` or `RUNNING`, click **Cancel**. The current batch finishes, then the worker checks the cancel flag and stops. The job moves to `CANCELLED` state.
 
-### Trend window controls
-- **Time presets**: 1h / 4h / 24h / 7d / custom date-time range
-- **Refresh** button reloads data for the current range
-- **Zoom**: scroll or drag the slider at the bottom
-- **Pan**: click and drag inside the chart
-- **Hover**: crosshair tooltip shows all series values at that time
-- **Legend**: click any series name to show/hide it
+### Live + History interleaving
 
----
-
-## Step 10: Query Historical Readings
-
-The **Readings** tab lets you browse stored data:
-1. Select a point from the dropdown (or leave "All Points")
-2. Set a date range with the From/To inputs (defaults to last 24h)
-3. Click **Search**
-
-If a specific point is chosen, all matching rows are returned. If "All Points" is chosen, results are capped at 500 rows for performance.
+Per architecture decision, **live runs first** when its tick is due. History batches fill the gaps. So if live is active, history jobs progress slower but live stays responsive. If you have no live subscription, history runs continuously.
 
 ---
 
-## Step 11: Stop the Scraper
+## Step 10: Job retention
 
-From the **Dashboard** tab, click **Stop** in the status bar. This gracefully closes Excel and the PowerShell process.
+Completed/failed/cancelled jobs are automatically deleted after 90 days (configurable via `etapro.job.retention.days`). Cleanup runs daily at 03:00 (`etapro.job.cleanup.cron`).
 
-The process also stops automatically when the Java app shuts down (`@PreDestroy`).
-
-### API equivalent
-
-```bash
-curl -X POST http://localhost:8082/ng/etapro/process/stop
-```
+Readings (`eta_pro_reading`) are kept indefinitely. Add manual cleanup if you need it.
 
 ---
 
-## EtaPro Point ID Reference
+## Restart behavior
 
-Common EtaPro point naming conventions (verify with your plant's configuration):
+If the Java app crashes or restarts mid-job:
+- Any `RUNNING` history jobs are marked `FAILED` on startup with message "Job orphaned by application restart — please retry"
+- Live subscriptions are cleared (in-memory only, not persisted)
+- The worker thread restarts cleanly and picks up any remaining `PENDING` jobs
 
-| Pattern | Example | Description |
-|---------|---------|-------------|
-| `{Unit}{System}.{Param}` | `1GT1.MW` | Gas Turbine 1 output |
-| `{Unit}{System}.{Param}` | `1HRSG.MAIN_STEAM_TEMP` | HRSG main steam temperature |
-| `{Tag}` | `TI-1234` | Instrument tag number |
-
-To find available point IDs:
-1. Open EtaPro desktop client
-2. Browse the point tree
-3. Note the full point path/ID
-4. Add to the app via the Points management UI
-
----
-
-## Data Retention
-
-By default, all scraped readings are kept indefinitely. To manage storage:
-
-- Use the app's soft-delete on old readings
-- Or set up a scheduled cleanup (future enhancement)
-- Each scrape session is tagged with a `scrapeSessionId` (UUID) for traceability
+You'll need to manually re-submit any failed jobs and restart live mode from the UI.

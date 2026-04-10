@@ -8,6 +8,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileService } from './file.service';
 import { EquipmentService } from './equipment.service';
 import { RfLotoPointApiService } from '../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { RfFileApiService } from '../features/files/refactored/services/rf-file-api.service';
+import { SyncUpdateService } from './sync/sync-update.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +18,8 @@ export class CurrentFileService {
     private fileService = inject(FileService);
     private equipmentService = inject(EquipmentService);
     private lotoPointApiService = inject(RfLotoPointApiService);
+    private fileApiService = inject(RfFileApiService);
+    private syncUpdateService = inject(SyncUpdateService);
     private destroyRef = inject(DestroyRef);
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
@@ -34,12 +38,16 @@ export class CurrentFileService {
 
     private equipmentNotSelectedByDefault = [];
 
-    fileTypes = [
-      'pid',
-      'elect',
-      'ht panel',
-      'iso'
-    ]
+    /**
+     * File types loaded dynamically from the actual FileObject data via
+     * GET /ng/files/distinct-types. This returns every fileType.name that has at
+     * least one FileObject, so it matches what the table column filter shows.
+     */
+    private fileTypesSubject = new BehaviorSubject<string[]>([]);
+    fileTypes$ = this.fileTypesSubject.asObservable();
+    get fileTypes(): string[] {
+      return this.fileTypesSubject.getValue();
+    }
 
     private fileMapByTypeSubject = new BehaviorSubject<Map<string, FileDto[]>>(new Map());
     fileMapByType$ = this.fileMapByTypeSubject.asObservable();
@@ -53,9 +61,36 @@ export class CurrentFileService {
     isProcessingFile = signal(false);
     
     constructor() {
-      this.loadAllFilesByType();
+      // Load file types from the actual data (distinct fileType.name values
+      // across all FileObjects), NOT from the Value category table — the latter
+      // only contains a subset of entries and misses types created directly on
+      // FileObjects.
+      this.loadDistinctFileTypes();
+
+      // Refresh the type list when FileObject entities change via sync (a new
+      // file with a previously-unseen fileType may have arrived).
+      this.syncUpdateService.getEntityTypeUpdates$('FileObject').pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(() => this.loadDistinctFileTypes());
+
       this.subscribeToEquipmentUpdates();
       this.subscribeToLotoPointUpdates();
+    }
+
+    /** Fetch distinct fileType names from the data and trigger file loading
+     *  if the list has changed. */
+    private loadDistinctFileTypes(): void {
+      this.fileApiService.getDistinctFileTypes().pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map(res => res.responseData ?? [])
+      ).subscribe(types => {
+        const current = this.fileTypesSubject.getValue();
+        const changed = types.length !== current.length
+          || types.some((t, i) => t !== current[i]);
+        if (!changed && current.length > 0) return;
+        this.fileTypesSubject.next(types);
+        this.loadAllFilesByType();
+      });
     }
 
     /**
@@ -152,12 +187,18 @@ export class CurrentFileService {
     }
   
     private loadAllFilesByType(): void {
-      const fileObservables = this.fileTypes.map(type =>
+      const types = this.fileTypes;
+      if (types.length === 0) {
+        this.fileMapByTypeSubject.next(new Map());
+        this.filesLoadedSubject.next(true);
+        return;
+      }
+      const fileObservables = types.map(type =>
         this.fileService.getByFileType(type).pipe(
           map(response => ({ type, files: response.responseData }))
         )
       );
-    
+
       forkJoin(fileObservables).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe(results => {
@@ -267,12 +308,15 @@ export class CurrentFileService {
      * Public method to allow other services to trigger file list updates
      */
     updateMapByType(type: string, file: FileDto): void {
-      const partualType = this.fileTypes.find(t => type.toLowerCase().includes(t.toLowerCase()));
+      const types = this.fileTypes;
+      const matchedType = types.find(t => type.toLowerCase().includes(t.toLowerCase()));
 
-      // Always try to update the map with the file
-      // Use the matched partial type if found, otherwise use 'pid' as fallback
-      // This ensures files with non-standard types still appear somewhere in the UI
-      const targetType = partualType || 'pid';
+      // Prefer a matching known type; if none match, fall back to the first available
+      // type so the file still shows up somewhere. If no types are loaded yet, bail.
+      const targetType = matchedType || types[0];
+      if (!targetType) {
+        return;
+      }
 
       const currentFilesByType = this.getFilesByType(targetType);
       const updatedFilesByType = currentFilesByType.filter(f => f.id !== file.id);

@@ -195,3 +195,91 @@ function copyDirRecursive(src: string, dest: string): void {
     }
   }
 }
+
+// ── EtaPro defaults ────────────────────────────────────────────────
+//
+// EtaPro is a desktop-only feature (hub has no Excel/COM). We ship a
+// PowerShell scraper script and two Excel templates via extraResources,
+// then provision them into the working directory on first launch.
+//
+// The Java backend reads the script from <workingDir>/scripts/ and the
+// templates from <workingDir>/etapro/ — paths are relative to the cwd
+// that spring-boot.manager.ts uses when spawning the JAR.
+
+/** Get the path to bundled etapro-defaults (read-only source). */
+function getEtaProDefaultsPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'etapro-defaults');
+  }
+  // Dev: dist/main/main/ → up 3 → electron-manager/etapro-defaults
+  return path.resolve(__dirname, '..', '..', '..', 'etapro-defaults');
+}
+
+/**
+ * Provision the EtaPro PowerShell script and Excel templates into the working directory.
+ *
+ * - `etapro-scrape.ps1` → `<workingDir>/scripts/etapro-scrape.ps1` (ALWAYS overwritten —
+ *   it's code, updates should apply on every launch)
+ * - `template-live.xlsx` → `<workingDir>/etapro/template-live.xlsx` (copy only if missing,
+ *   to preserve any customizations the user made)
+ * - `template-history.xlsx` → `<workingDir>/etapro/template-history.xlsx` (same)
+ * - Creates empty `<workingDir>/etapro/output/` and `<workingDir>/etapro/signal/` dirs
+ *
+ * If the source directory is missing entirely, or if templates are missing from the bundle,
+ * this function logs a warning and continues — Java will handle the missing-file case with
+ * its own startup validation in EtaProScraperEngine.init().
+ *
+ * Call once at startup after ensureWorkingDir().
+ */
+export function provisionEtaProDefaults(): void {
+  const sourceDir = getEtaProDefaultsPath();
+  const workingDir = getWorkingDir();
+
+  // Target directories (always create, even if source is missing)
+  const scriptsDir = path.join(workingDir, 'scripts');
+  const etaproDir = path.join(workingDir, 'etapro');
+  const outputDir = path.join(etaproDir, 'output');
+  const signalDir = path.join(etaproDir, 'signal');
+  for (const d of [scriptsDir, etaproDir, outputDir, signalDir]) {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+  }
+
+  if (!fs.existsSync(sourceDir)) {
+    console.warn('[EtaPro] Defaults directory missing, skipping provisioning:', sourceDir);
+    return;
+  }
+
+  // 1. Script — always overwrite
+  const scriptSource = path.join(sourceDir, 'etapro-scrape.ps1');
+  const scriptTarget = path.join(scriptsDir, 'etapro-scrape.ps1');
+  if (fs.existsSync(scriptSource)) {
+    try {
+      fs.copyFileSync(scriptSource, scriptTarget);
+      console.log('[EtaPro] Provisioned scraper script:', scriptTarget);
+    } catch (err: any) {
+      console.warn('[EtaPro] Failed to copy scraper script:', err.message);
+    }
+  } else {
+    console.warn('[EtaPro] Script not found in bundle:', scriptSource);
+  }
+
+  // 2. Templates — copy only if missing (preserve user edits)
+  for (const name of ['template-live.xlsx', 'template-history.xlsx']) {
+    const src = path.join(sourceDir, name);
+    const dst = path.join(etaproDir, name);
+    if (!fs.existsSync(src)) {
+      console.warn(`[EtaPro] Template ${name} not in bundle — user must provide it manually`);
+      continue;
+    }
+    if (fs.existsSync(dst)) {
+      // Preserve user customizations
+      continue;
+    }
+    try {
+      fs.copyFileSync(src, dst);
+      console.log('[EtaPro] Provisioned template:', dst);
+    } catch (err: any) {
+      console.warn(`[EtaPro] Failed to copy ${name}:`, err.message);
+    }
+  }
+}

@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
 import { SignatureInputComponent } from '../shared/input-fields/signature-input/signature-input.component';
 import { switchMap } from 'rxjs';
 
-type AuthStep = 'identify' | 'signin' | 'register' | 'pending_approval' | 'offline_choice';
+type AuthStep = 'identify' | 'signin' | 'register' | 'pending_approval';
 
 @Component({
   selector: 'app-auth',
@@ -35,14 +35,13 @@ export class AuthComponent implements OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
-  // Stored from lookup
   lookedUpEmail = '';
   lookedUpName = '';
   private returnUrl = '/home';
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
-      this.router.navigate([this.returnUrl]);
+      this.router.navigate(['/home']);
       return;
     }
 
@@ -81,30 +80,29 @@ export class AuthComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = null;
 
-    // Always attempt lookup — don't gate on serverStatus which may be stale
     this.serverApi.lookupUser(credential).subscribe({
       next: (result) => {
         this.isLoading = false;
         if (result.status === 'FOUND') {
           this.lookedUpEmail = result.email || credential;
           this.lookedUpName = result.name || '';
+          this.loginForm.patchValue({ email: this.lookedUpEmail });
           if (result.isActive) {
-            this.loginForm.patchValue({ email: this.lookedUpEmail });
             this.step = 'signin';
           } else {
             this.step = 'pending_approval';
           }
         } else {
-          // NOT_FOUND — go to registration
           this.signupForm.patchValue({ email: credential });
           this.step = 'register';
         }
       },
       error: () => {
         this.isLoading = false;
-        // Lookup failed (server unreachable) — fall back to offline choice
+        // Server unreachable — fall back to signin with what they typed
         this.lookedUpEmail = credential;
-        this.step = 'offline_choice';
+        this.loginForm.patchValue({ email: credential });
+        this.step = 'signin';
       }
     });
   }
@@ -124,7 +122,14 @@ export class AuthComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.errorMessage = err?.message || 'Invalid email or password.';
+        const msg = err?.message || '';
+        if (msg.includes('Timeout') || msg.includes('unreachable')) {
+          this.errorMessage = 'Server is slow or unreachable. Please try again.';
+        } else if (msg.includes('Bad credentials') || msg.includes('INVALID_CREDENTIALS')) {
+          this.errorMessage = 'Invalid email or password.';
+        } else {
+          this.errorMessage = 'Sign in failed. Please try again.';
+        }
       }
     });
   }
@@ -144,7 +149,7 @@ export class AuthComponent implements OnInit {
       this.serverStatus.setPendingPassword(password);
       this.isLoading = false;
       this.successMessage = 'Info saved locally. Server registration will complete automatically when online.';
-      setTimeout(() => this.router.navigate(['/home']), 1500);
+      setTimeout(() => this.router.navigate([this.returnUrl]), 1500);
       return;
     }
 
@@ -204,15 +209,5 @@ export class AuthComponent implements OnInit {
     this.step = 'identify';
     this.errorMessage = null;
     this.successMessage = null;
-  }
-
-  chooseSignIn(): void {
-    this.loginForm.patchValue({ email: this.lookedUpEmail });
-    this.step = 'signin';
-  }
-
-  chooseRegister(): void {
-    this.signupForm.patchValue({ email: this.lookedUpEmail });
-    this.step = 'register';
   }
 }

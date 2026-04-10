@@ -7,6 +7,7 @@ import {
   CarouselImage,
 } from '../rf-image-carousel/rf-image-carousel.component';
 import { InteractiveImageComponent } from '../interactive-image/interactive-image.component';
+import { RfFileViewerHostComponent } from '../../../../features/files/refactored/rf-file-viewer-host/rf-file-viewer-host.component';
 import { RfShape } from '../models/fr-shape.model';
 import { INTERACTIVE_IMAGE_PRESETS } from '../models/interactive-image-config.model';
 import { EquipmentMapperService } from '../../../../features/equipment/refactored/services/equipment-mapper.service';
@@ -56,6 +57,7 @@ export interface ViewerConfig {
     CommonModule,
     RfImageCarouselComponent,
     InteractiveImageComponent,
+    RfFileViewerHostComponent,
     LotoPointDisplayTableComponent,
   ],
   templateUrl: './rf-unified-image-viewer.component.html',
@@ -232,6 +234,27 @@ export class RfUnifiedImageViewerComponent {
     }
 
     return '';
+  });
+
+  /**
+   * Extension of the current file URL (lowercase, no dot). Empty if none.
+   * Used to decide between the built-in raster viewer and the generic file host.
+   */
+  currentExtension = computed(() => {
+    const url = this.currentImageUrl();
+    if (!url) return '';
+    const dot = url.lastIndexOf('.');
+    if (dot < 0) return '';
+    return url.substring(dot + 1).toLowerCase();
+  });
+
+  /**
+   * True when the current URL is a raster image this component can render directly.
+   * Non-raster (e.g. PDF) falls back to {@code RfFileViewerHostComponent}.
+   */
+  isRasterImage = computed(() => {
+    const ext = this.currentExtension();
+    return ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'webp'].includes(ext);
   });
 
   /**

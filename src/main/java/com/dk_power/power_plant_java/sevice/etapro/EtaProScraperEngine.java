@@ -1,0 +1,468 @@
+package com.dk_power.power_plant_java.sevice.etapro;
+
+import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
+import com.dk_power.power_plant_java.repository.etapro.EtaProReadingRepo;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * Low-level primitive that executes a single scrape batch against the EtaPro Excel add-in.
+ *
+ * <p>A "batch" = a request for up to 20 points over a bounded time range, processed
+ * via the persistent PowerShell scraper through signal files.
+ *
+ * <p>This class is intentionally dumb:
+ * <ul>
+ *   <li>Manages PowerShell process lifecycle (start/stop/health)</li>
+ *   <li>Serializes requests to {@code signal/request.json}</li>
+ *   <li>Waits for {@code signal/response.json}</li>
+ *   <li>Parses resulting CSV (pivot or flat format)</li>
+ *   <li>Deduplicates + saves to {@code eta_pro_reading}</li>
+ * </ul>
+ *
+ * <p>It knows nothing about jobs, schedules, live subscriptions, or batching policy.
+ * Higher layers ({@link EtaProScrapeWorker}) orchestrate.
+ *
+ * <p>Thread-safety: the public {@link #executeBatch} method is {@code synchronized}
+ * because the underlying PowerShell process can only handle one request at a time.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@ConditionalOnProperty(name = "etapro.enabled", havingValue = "true", matchIfMissing = false)
+public class EtaProScraperEngine {
+
+    /**
+     * Max points per history batch — matches the 20 slots in the history template
+     * (pivot-layout Data sheet with array formulas B1:U1).
+     */
+    public static final int MAX_POINTS_PER_HISTORY_BATCH = 20;
+
+    /**
+     * Max points per live batch — matches the 100 slots in the live template
+     * (column-layout Data sheet with GetEPCurrent formulas in rows 1-100).
+     */
+    public static final int MAX_POINTS_PER_LIVE_BATCH = 100;
+
+    private final EtaProReadingRepo etaProReadingRepo;
+    private final ObjectMapper objectMapper;
+
+    @Value("${etapro.live.template.path:${user.dir}/etapro/template-live.xlsx}")
+    private String liveTemplatePath;
+
+    @Value("${etapro.history.template.path:${user.dir}/etapro/template-history.xlsx}")
+    private String historyTemplatePath;
+
+    @Value("${etapro.output.path:${user.dir}/etapro/output}")
+    private String outputPath;
+
+    @Value("${etapro.script.path:${user.dir}/scripts/etapro-scrape.ps1}")
+    private String scriptPath;
+
+    @Value("${etapro.signal.path:${user.dir}/etapro/signal}")
+    private String signalPath;
+
+    @Value("${etapro.scrape.timeout.seconds:120}")
+    private int timeoutSeconds;
+
+    private Process scraperProcess;
+    private final AtomicBoolean processRunning = new AtomicBoolean(false);
+    private final AtomicReference<String> lastStatus = new AtomicReference<>("idle");
+    private final AtomicReference<LocalDateTime> lastScrapeAt = new AtomicReference<>(null);
+
+    // ── Accessors ─────────────────────────────────────────────
+
+    public String getLastStatus() {
+        return lastStatus.get();
+    }
+
+    public LocalDateTime getLastScrapeAt() {
+        return lastScrapeAt.get();
+    }
+
+    public boolean isProcessRunning() {
+        return processRunning.get() && scraperProcess != null && scraperProcess.isAlive();
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────
+
+    @PostConstruct
+    public void init() {
+        try {
+            Files.createDirectories(Paths.get(signalPath));
+            Files.createDirectories(Paths.get(outputPath));
+        } catch (IOException e) {
+            log.warn("[EtaPro] Could not create directories: {}", e.getMessage());
+        }
+        validatePrerequisites();
+    }
+
+    private void validatePrerequisites() {
+        boolean ok = true;
+
+        Path live = Paths.get(liveTemplatePath);
+        if (!Files.exists(live)) {
+            log.warn("[EtaPro] \u26a0 Live template NOT FOUND at: {}", live.toAbsolutePath());
+            ok = false;
+        }
+
+        Path history = Paths.get(historyTemplatePath);
+        if (!Files.exists(history)) {
+            log.warn("[EtaPro] \u26a0 History template NOT FOUND at: {}", history.toAbsolutePath());
+            ok = false;
+        }
+
+        Path script = Paths.get(scriptPath);
+        if (!Files.exists(script)) {
+            log.warn("[EtaPro] \u26a0 PowerShell script NOT FOUND at: {}", script.toAbsolutePath());
+            ok = false;
+        }
+
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (!os.contains("win")) {
+            log.warn("[EtaPro] \u26a0 Not running on Windows (detected: {}) — COM automation is Windows-only",
+                    System.getProperty("os.name"));
+            ok = false;
+        }
+
+        if (ok) {
+            log.info("[EtaPro] Prerequisites OK. Live: {}, History: {}", liveTemplatePath, historyTemplatePath);
+        } else {
+            log.warn("[EtaPro] \u26a0 EtaPro is ENABLED but prerequisites are missing. Scrapes will fail until fixed.");
+        }
+    }
+
+    public synchronized boolean startProcess() {
+        if (isProcessRunning()) return true;
+
+        try {
+            Path signalDir = Paths.get(signalPath);
+            Files.createDirectories(signalDir);
+            Files.deleteIfExists(signalDir.resolve("request.json"));
+            Files.deleteIfExists(signalDir.resolve("response.json"));
+            Files.deleteIfExists(signalDir.resolve("shutdown"));
+
+            ProcessBuilder pb = new ProcessBuilder(
+                    "powershell", "-ExecutionPolicy", "Bypass",
+                    "-File", scriptPath,
+                    "-liveTemplatePath", liveTemplatePath,
+                    "-historyTemplatePath", historyTemplatePath,
+                    "-signalDir", signalPath
+            );
+            pb.redirectErrorStream(true);
+            pb.inheritIO();
+
+            log.info("[EtaPro] Starting persistent scraper process...");
+            scraperProcess = pb.start();
+            processRunning.set(true);
+            lastStatus.set("process started, loading Excel");
+
+            Thread.sleep(3000);
+            if (!scraperProcess.isAlive()) {
+                processRunning.set(false);
+                lastStatus.set("error: process exited immediately (exit " + scraperProcess.exitValue() + ")");
+                return false;
+            }
+
+            lastStatus.set("process running");
+            return true;
+
+        } catch (Exception e) {
+            processRunning.set(false);
+            lastStatus.set("error: " + e.getMessage());
+            log.error("[EtaPro] Failed to start scraper process", e);
+            return false;
+        }
+    }
+
+    @PreDestroy
+    public synchronized void stopProcess() {
+        if (scraperProcess == null) return;
+        try {
+            Files.writeString(Paths.get(signalPath, "shutdown"), "shutdown");
+            boolean exited = scraperProcess.waitFor(15, TimeUnit.SECONDS);
+            if (!exited) scraperProcess.destroyForcibly();
+        } catch (Exception e) {
+            log.warn("[EtaPro] Error stopping process: {}", e.getMessage());
+            if (scraperProcess != null) scraperProcess.destroyForcibly();
+        } finally {
+            processRunning.set(false);
+            scraperProcess = null;
+            lastStatus.set("stopped");
+        }
+    }
+
+    // ── Core primitive ────────────────────────────────────────
+
+    /**
+     * Template selector — matches the {@code template} field sent to the PowerShell script.
+     */
+    public enum Template {
+        LIVE("live"),
+        HISTORY("history");
+
+        private final String signalName;
+        Template(String signalName) { this.signalName = signalName; }
+        public String signalName() { return signalName; }
+    }
+
+    public static class BatchResult {
+        public final boolean success;
+        public final String message;
+        public final int scrapedCount;
+        public final int importedCount;
+        public final String sessionId;
+
+        public BatchResult(boolean success, String message, int scrapedCount, int importedCount, String sessionId) {
+            this.success = success;
+            this.message = message;
+            this.scrapedCount = scrapedCount;
+            this.importedCount = importedCount;
+            this.sessionId = sessionId;
+        }
+
+        public static BatchResult failure(String message, String sessionId) {
+            return new BatchResult(false, message, 0, 0, sessionId);
+        }
+    }
+
+    /**
+     * Execute a single scrape batch. Auto-starts the PowerShell process if needed.
+     *
+     * @param template which Excel template to use
+     * @param pointIds up to {@link #MAX_POINTS_PER_HISTORY_BATCH} (history) or
+     *                 {@link #MAX_POINTS_PER_LIVE_BATCH} (live) point IDs
+     * @param start    inclusive window start
+     * @param end      inclusive window end
+     */
+    @Transactional
+    public synchronized BatchResult executeBatch(Template template, List<String> pointIds,
+                                                 LocalDateTime start, LocalDateTime end) {
+        String sessionId = UUID.randomUUID().toString();
+
+        if (pointIds == null || pointIds.isEmpty()) {
+            return BatchResult.failure("No points in batch", sessionId);
+        }
+        int cap = (template == Template.LIVE) ? MAX_POINTS_PER_LIVE_BATCH : MAX_POINTS_PER_HISTORY_BATCH;
+        if (pointIds.size() > cap) {
+            return BatchResult.failure("Batch exceeds max " + cap + " points for " + template, sessionId);
+        }
+
+        try {
+            if (!isProcessRunning()) {
+                if (!startProcess()) {
+                    return BatchResult.failure("Could not start scraper process: " + lastStatus.get(), sessionId);
+                }
+                Thread.sleep(5000); // first-load grace period
+            }
+
+            lastStatus.set("sending request (" + template.signalName() + ", " + pointIds.size() + " points)");
+
+            DateTimeFormatter fmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+            Map<String, Object> request = new LinkedHashMap<>();
+            request.put("template", template.signalName());
+            request.put("startDate", start.format(fmt));
+            request.put("endDate", end.format(fmt));
+            request.put("pointIds", String.join(",", pointIds));
+            Path csvOutput = Paths.get(outputPath, "etapro_data.csv");
+            request.put("outputPath", csvOutput.toAbsolutePath().toString());
+
+            Path requestFile = Paths.get(signalPath, "request.json");
+            Path responseFile = Paths.get(signalPath, "response.json");
+            Files.deleteIfExists(responseFile);
+
+            Files.writeString(requestFile, objectMapper.writeValueAsString(request));
+
+            // Wait for response
+            long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000L);
+            while (System.currentTimeMillis() < deadline) {
+                if (Files.exists(responseFile)) break;
+                if (!scraperProcess.isAlive()) {
+                    processRunning.set(false);
+                    return BatchResult.failure("Scraper process died unexpectedly", sessionId);
+                }
+                Thread.sleep(200);
+            }
+
+            if (!Files.exists(responseFile)) {
+                return BatchResult.failure("Scraper timeout after " + timeoutSeconds + "s", sessionId);
+            }
+
+            String responseJson = Files.readString(responseFile);
+            Files.deleteIfExists(responseFile);
+            JsonNode response = objectMapper.readTree(responseJson);
+
+            String status = response.path("status").asText("error");
+            String message = response.path("message").asText("");
+
+            if (!"complete".equals(status)) {
+                return BatchResult.failure("Scraper error: " + message, sessionId);
+            }
+
+            if (!Files.exists(csvOutput)) {
+                return BatchResult.failure("Output CSV not found at " + csvOutput, sessionId);
+            }
+
+            List<EtaProReading> readings = parseCsv(csvOutput, sessionId);
+
+            // Dedup
+            List<EtaProReading> newReadings = new ArrayList<>();
+            for (EtaProReading r : readings) {
+                if (r.getPointId() != null && r.getReadingTime() != null
+                        && !etaProReadingRepo.existsByPointIdAndReadingTime(r.getPointId(), r.getReadingTime())) {
+                    newReadings.add(r);
+                }
+            }
+
+            etaProReadingRepo.saveAll(newReadings);
+
+            lastScrapeAt.set(LocalDateTime.now());
+            String msg = newReadings.size() + "/" + readings.size() + " imported";
+            lastStatus.set(msg);
+            log.debug("[EtaPro] Batch {} ({}, {} pts): {}", sessionId, template.signalName(), pointIds.size(), msg);
+
+            return new BatchResult(true, msg, readings.size(), newReadings.size(), sessionId);
+
+        } catch (Exception e) {
+            lastStatus.set("error: " + e.getMessage());
+            log.error("[EtaPro] Batch failed", e);
+            return BatchResult.failure("Batch failed: " + e.getMessage(), sessionId);
+        }
+    }
+
+    // ── CSV Parsing ───────────────────────────────────────────
+
+    List<EtaProReading> parseCsv(Path csvPath, String sessionId) throws IOException {
+        List<EtaProReading> readings = new ArrayList<>();
+        List<String> lines = Files.readAllLines(csvPath);
+        if (lines.isEmpty()) return readings;
+
+        String[] headers = parseCsvLine(lines.get(0).trim());
+
+        if (headers.length >= 4 && headers[0].equalsIgnoreCase("PointId")) {
+            parseFlatFormat(lines, sessionId, readings);
+        } else if (headers.length >= 2 && (headers[0].equalsIgnoreCase("Timestamp") || headers[0].equalsIgnoreCase("Time"))) {
+            parsePivotFormat(lines, headers, sessionId, readings);
+        } else {
+            log.warn("[EtaPro] Unknown CSV format. Header: {}", String.join(",", headers));
+            parseFlatFormat(lines, sessionId, readings);
+        }
+
+        return readings;
+    }
+
+    private void parseFlatFormat(List<String> lines, String sessionId, List<EtaProReading> readings) {
+        for (int i = 1; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) continue;
+            String[] cols = parseCsvLine(line);
+            if (cols.length < 3) continue;
+            try {
+                EtaProReading r = new EtaProReading();
+                r.setPointId(cols[0].trim());
+                r.setReadingTime(parseTimestamp(cols[1].trim()));
+                r.setReadingValue(parseDouble(cols[2].trim()));
+                r.setQuality(cols.length > 3 ? cols[3].trim() : "Good");
+                r.setScrapeSessionId(sessionId);
+                readings.add(r);
+            } catch (Exception e) {
+                log.warn("[EtaPro] Skipping row {}: {}", i + 1, e.getMessage());
+            }
+        }
+    }
+
+    private void parsePivotFormat(List<String> lines, String[] headers, String sessionId, List<EtaProReading> readings) {
+        for (int i = 1; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) continue;
+            String[] cols = parseCsvLine(line);
+            if (cols.length < 2) continue;
+            try {
+                LocalDateTime ts = parseTimestamp(cols[0].trim());
+                for (int col = 1; col < cols.length && col < headers.length; col++) {
+                    String valueStr = cols[col].trim();
+                    if (valueStr.isEmpty()) continue;
+                    String pointId = headers[col].trim();
+                    if (pointId.isEmpty()) continue;
+                    EtaProReading r = new EtaProReading();
+                    r.setPointId(pointId);
+                    r.setReadingTime(ts);
+                    r.setReadingValue(parseDouble(valueStr));
+                    r.setQuality("Good");
+                    r.setScrapeSessionId(sessionId);
+                    readings.add(r);
+                }
+            } catch (Exception e) {
+                log.warn("[EtaPro] Skipping row {}: {}", i + 1, e.getMessage());
+            }
+        }
+    }
+
+    private LocalDateTime parseTimestamp(String s) {
+        DateTimeFormatter[] formatters = {
+                DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss"),
+                DateTimeFormatter.ofPattern("MM/dd/yyyy h:mm:ss a"),
+                DateTimeFormatter.ofPattern("M/d/yyyy H:mm:ss"),
+                DateTimeFormatter.ofPattern("M/d/yyyy h:mm:ss a")
+        };
+        for (DateTimeFormatter fmt : formatters) {
+            try { return LocalDateTime.parse(s, fmt); } catch (DateTimeParseException ignored) {}
+        }
+        throw new DateTimeParseException("Cannot parse timestamp: " + s, s, 0);
+    }
+
+    private Double parseDouble(String s) {
+        if (s == null || s.isEmpty() || s.equalsIgnoreCase("NaN") || s.equalsIgnoreCase("N/A")) return null;
+        return Double.parseDouble(s);
+    }
+
+    private String[] parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        boolean inQuotes = false;
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                fields.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        fields.add(current.toString());
+        return fields.toArray(new String[0]);
+    }
+}

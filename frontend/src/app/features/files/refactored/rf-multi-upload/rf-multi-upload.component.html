@@ -67,13 +67,16 @@
         @if (selectedFiles().length === 0) {
           <div class="drop-zone-content">
             <span class="drop-icon">📄</span>
-            <p>Drag & drop PDF files here</p>
+            <p>Drag & drop files here</p>
+            @if (allowedExtensions().length > 0) {
+              <p class="drop-hint">Allowed: {{ allowedExtensions().join(', ') }}</p>
+            }
             <p class="drop-hint">or</p>
             <label class="browse-btn">
               Browse Files
               <input
                 type="file"
-                accept=".pdf"
+                [attr.accept]="acceptAttr()"
                 multiple
                 (change)="onFileSelect($event)"
                 hidden
@@ -88,7 +91,7 @@
                 + Add More
                 <input
                   type="file"
-                  accept=".pdf"
+                  [attr.accept]="acceptAttr()"
                   multiple
                   (change)="onFileSelect($event)"
                   hidden

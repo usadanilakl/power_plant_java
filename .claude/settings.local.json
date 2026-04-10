@@ -71,7 +71,10 @@
       "Bash(mvn -DskipTests=false -Dtest='H2ToPostgresMigrationServiceTest,H2ToPostgresMigrationServiceSequenceTest,SharePointSyncOrchestratorDrainTest' test-compile surefire:test)",
       "Bash(mvn -DskipTests=false -Dtest='H2ToPostgresMigrationServiceTest,H2ToPostgresMigrationServiceSequenceTest,SharePointSyncOrchestratorDrainTest,SharePointSyncControllerProxyTest' test-compile surefire:test)",
       "Bash(mvn surefire:test -Dtest=EtaProScraperServiceCsvTest -DskipTests=false -Dsurefire.skip=false)",
-      "Bash(mvn test:*)"
+      "Bash(mvn test:*)",
+      "Bash(awk 'NR==270,NR==320' \"C:/Users/usada/.claude/projects/c--Users-usada-my-projects-power-plant-java/7ab7b226-a177-4ca6-87d6-d108e147ff30/tool-results/b64zym3my.txt\")",
+      "Bash(tee /tmp/full-test.log)",
+      "Read(//tmp/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\usada\\my_projects\\power_plant_java",

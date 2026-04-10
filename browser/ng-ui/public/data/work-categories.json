@@ -1,1 +1,37 @@
-[ ]
+[ {
+  "name" : "Cleaning",
+  "id" : 2000000148
+}, {
+  "name" : "Civil",
+  "id" : 2000000150
+}, {
+  "name" : "I&C",
+  "id" : 2000000144
+}, {
+  "name" : "Rigging",
+  "id" : 2000000146
+}, {
+  "name" : "Operations",
+  "id" : 2000000152
+}, {
+  "name" : "Welding / Hot Work",
+  "id" : 2000000154
+}, {
+  "name" : "Scaffolding",
+  "id" : 2000000132
+}, {
+  "name" : "Insulation",
+  "id" : 2000000134
+}, {
+  "name" : "Electrical",
+  "id" : 2000000140
+}, {
+  "name" : "Energized",
+  "id" : 2000000142
+}, {
+  "name" : "Inspection",
+  "id" : 2000000136
+}, {
+  "name" : "Mechanical",
+  "id" : 2000000138
+} ]

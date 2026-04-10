@@ -13,12 +13,12 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pure unit tests for {@link EtaProScraperService#parseCsv(Path, String)}.
- * The parser has no injected dependencies, so we instantiate the service with nulls.
+ * Pure unit tests for {@link EtaProScraperEngine#parseCsv(Path, String)}.
+ * The parser has no injected dependencies, so we instantiate the engine with nulls.
  */
 class EtaProScraperServiceCsvTest {
 
-    private EtaProScraperService service;
+    private EtaProScraperEngine service;
 
     @TempDir
     Path tempDir;
@@ -26,7 +26,7 @@ class EtaProScraperServiceCsvTest {
     @BeforeEach
     void setUp() {
         // Parser doesn't touch the injected services — null is safe.
-        service = new EtaProScraperService(null, null, null);
+        service = new EtaProScraperEngine(null, null);
     }
 
     // ── Flat format ─────────────────────────────────────────────────

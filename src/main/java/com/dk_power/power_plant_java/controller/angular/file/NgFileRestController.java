@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.file.upload.UploadStrategyRegistry;
 import com.dk_power.power_plant_java.sevice.file.TrashService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
@@ -30,6 +31,7 @@ import java.util.*;
 public class NgFileRestController {
     private final NgFileService ngFileService;
     private final TrashService trashService;
+    private final UploadStrategyRegistry uploadStrategyRegistry;
     private final Logger log = LoggerFactory.getLogger(NgFileRestController.class);
     @Value("${files.root.path}")
     private String rootPath;
@@ -211,6 +213,19 @@ public class NgFileRestController {
         }
     }
 
+    @GetMapping("/allowed-extensions")
+    public ResponseEntity<NgApiResponse<List<String>>> getAllowedExtensions() {
+        return ResponseEntity.ok(new NgApiResponse<>(uploadStrategyRegistry.allowedExtensions(),
+                "Allowed extensions retrieved"));
+    }
+
+    /** Distinct fileType names actually used by FileObjects in the database. */
+    @GetMapping("/distinct-types")
+    public ResponseEntity<NgApiResponse<List<String>>> getDistinctFileTypes() {
+        return ResponseEntity.ok(new NgApiResponse<>(ngFileService.getDistinctFileTypeNames(),
+                "Distinct file types retrieved"));
+    }
+
     @GetMapping("/by-type/{fileType}")
     public ResponseEntity<NgApiResponse<List<FileDto>>> getByFileType(@PathVariable String fileType) {
         try {
@@ -240,16 +255,17 @@ public class NgFileRestController {
                         .body(new NgApiResponse<>(null, "No files provided"));
             }
 
-            // Validate all files are PDFs
+            // Per-file extension validation is done inside processMultipleFiles via
+            // UploadStrategyRegistry; we just surface a clean up-front error if anything
+            // has no filename at all.
             for (MultipartFile file : files) {
-                String filename = file.getOriginalFilename();
-                if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
+                if (file.getOriginalFilename() == null) {
                     return ResponseEntity.badRequest()
-                            .body(new NgApiResponse<>(null, "Only PDF files are allowed. Invalid file: " + filename));
+                            .body(new NgApiResponse<>(null, "File with no original filename rejected"));
                 }
             }
 
-            List<FileDto> uploadedFiles = ngFileService.processMultiplePdfFiles(files, fileTypeId, vendorId, sharedFileName);
+            List<FileDto> uploadedFiles = ngFileService.processMultipleFiles(files, fileTypeId, vendorId, sharedFileName);
             return ResponseEntity.ok(new NgApiResponse<>(uploadedFiles,
                     "Successfully uploaded " + uploadedFiles.size() + " files", LocalDateTime.now()));
         } catch (Exception e) {

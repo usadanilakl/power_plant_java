@@ -137,6 +137,20 @@ export class RfFileApiService {
     );
   }
 
+  /** Server-configured list of allowed upload extensions (lowercase, no dots). */
+  getAllowedExtensions(): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(
+      `${this.apiUrl}/allowed-extensions`
+    );
+  }
+
+  /** Distinct fileType names actually used by FileObjects in the database. */
+  getDistinctFileTypes(): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(
+      `${this.apiUrl}/distinct-types`
+    );
+  }
+
   /**
    * Upload multiple PDF files at once
    * All files share the same fileType and vendor

@@ -100,6 +100,68 @@ export class E2eTestService {
     return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/ng/files/${fileId}`);
   }
 
+  // ==================== Files: extended (File Flow) ====================
+
+  /** Server-configured upload extension whitelist (lowercase, no dots). */
+  getAllowedExtensions(): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(`${this.baseUrl}/ng/files/allowed-extensions`);
+  }
+
+  /** Fetch a generated sample PDF (variant 'a' or 'b' produces different bytes). */
+  getSamplePdf(variant: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/ng/config/e2e-test-assets/sample-pdf/${encodeURIComponent(variant)}`,
+      { responseType: 'blob' });
+  }
+
+  /** Fetch a generated sample PNG. */
+  getSamplePng(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/ng/config/e2e-test-assets/sample-png`,
+      { responseType: 'blob' });
+  }
+
+  /**
+   * Override-upload to an existing FileObject. Sends fileDto + new file via PUT
+   * /ng/files with overrideFile=true. The backend's processPidFile picks the
+   * upload strategy by extension, so this works for both same-extension swaps
+   * (PDF → PDF) and cross-extension swaps (PDF → PNG).
+   */
+  overrideUploadFile(fileIdDto: any, file: Blob, fileName: string): Observable<SpringApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('fileDto', new Blob([JSON.stringify(fileIdDto)], { type: 'application/json' }));
+    formData.append('file', file, fileName);
+    formData.append('overrideFile', 'true');
+    return this.http.put<SpringApiResponse<any>>(`${this.baseUrl}/ng/files`, formData);
+  }
+
+  /** Metadata-only update (no file). Routes to NgFileService.updateFileObject. */
+  updateFileMetadata(fileIdDto: any): Observable<SpringApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('fileDto', new Blob([JSON.stringify(fileIdDto)], { type: 'application/json' }));
+    return this.http.put<SpringApiResponse<any>>(`${this.baseUrl}/ng/files`, formData);
+  }
+
+  /** Delete a file (routes through trash + soft-delete). */
+  deleteFile(fileId: string): Observable<SpringApiResponse<any>> {
+    return this.http.delete<SpringApiResponse<any>>(`${this.baseUrl}/ng/files/${fileId}`);
+  }
+
+  /** List files currently in trash. */
+  listTrash(): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(`${this.baseUrl}/ng/files/trash`);
+  }
+
+  /** Read a file's raw fileHash from the local instance (test-mode endpoint). */
+  getFileHash(fileId: string): Observable<SpringApiResponse<string>> {
+    return this.http.get<SpringApiResponse<string>>(
+      `${this.baseUrl}/ng/config/e2e-verify/file-hash/${fileId}`);
+  }
+
+  /** Read a file's raw fileHash from a remote instance via the public verify endpoint. */
+  getFileHashFromRemote(remoteBaseUrl: string, fileId: string): Observable<SpringApiResponse<string>> {
+    return this.http.get<SpringApiResponse<string>>(
+      `${remoteBaseUrl}/ng/config/e2e-verify/file-hash/${fileId}`);
+  }
+
   // ==================== Equipment (shapes on files) ====================
 
   createEquipment(payload: any): Observable<SpringApiResponse<any>> {

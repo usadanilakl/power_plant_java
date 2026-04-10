@@ -1,17 +1,40 @@
-import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TableComponent } from '../../../shared/table/refactored/table.component';
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { RfPopupProjectionComponent } from '../../../shared/popup-projection/rf-popup-projection.component';
+import { TableSearchService } from '../../../shared/table/refactored/services/table-search.service';
+import { TableStateService } from '../../../shared/table/refactored/services/table-state.service';
+import { TableSelectionService } from '../../../shared/table/refactored/services/table-selection.service';
+import { TableSortService } from '../../../shared/table/refactored/services/table-sort.service';
+import { TableDragService } from '../../../shared/table/refactored/services/table-drag.service';
+import { TableResizeService } from '../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../shared/table/refactored/services/table-sync.service';
+import { TableClickService } from '../../../shared/table/refactored/services/table-click.service';
+import { TableControlsService } from '../../../shared/table/refactored/services/table-controls.service';
+import { TableDataService } from '../../../shared/table/refactored/services/table-data.service';
 import { EtaProStateService } from '../services/etapro-state.service';
 import { EtaProMapperService } from '../services/etapro-mapper.service';
+import { EtaProApiService, PointImportResult } from '../services/etapro-api.service';
 import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 
 @Component({
   selector: 'app-etapro-points',
   standalone: true,
   imports: [CommonModule, TableComponent, RfReactiveFormComponent, RfPopupProjectionComponent],
+  providers: [
+    TableSearchService,
+    TableStateService,
+    TableSelectionService,
+    TableSortService,
+    TableDragService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    TableDataService,
+  ],
   template: `
     <div class="points-container">
       <div class="toolbar">
@@ -20,9 +43,19 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
           <button class="btn" (click)="onTrendSelected()" [disabled]="selectedRows().length === 0">
             Trend Selected ({{ selectedRows().length }})
           </button>
+          <button class="btn" (click)="onImportClick()" [disabled]="importing()">
+            {{ importing() ? 'Importing...' : 'Import from File' }}
+          </button>
           <button class="btn btn-new" (click)="stateService.openNewPointForm()">+ Add Point</button>
         </div>
       </div>
+
+      <!-- Hidden file input triggered by the Import button -->
+      <input #fileInput
+             type="file"
+             accept=".xlsx,.xlsm,.csv"
+             style="display: none"
+             (change)="onFileSelected($event)">
 
       <app-table
         [tableId]="'etapro-points-table'"
@@ -32,6 +65,7 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
         (selectedItemsEvent)="onSelectedItems($event)">
       </app-table>
 
+      <!-- Point edit/create form -->
       @if (stateService.isPointFormOpen()) {
         <app-rf-popup-projection [isOpen]="true" (close)="stateService.isPointFormOpen.set(false)">
           <div class="form-container">
@@ -46,6 +80,40 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
             @if (stateService.selectedPoint()?.id) {
               <button class="btn btn-delete" (click)="onDelete()">Delete</button>
             }
+          </div>
+        </app-rf-popup-projection>
+      }
+
+      <!-- Import result dialog -->
+      @if (importResult(); as r) {
+        <app-rf-popup-projection [isOpen]="true" (close)="importResult.set(null)">
+          <div class="import-result">
+            <h3>Import Complete</h3>
+            <div class="result-grid">
+              <div class="result-stat added">
+                <span class="label">Added</span>
+                <span class="value">{{ r.added }}</span>
+              </div>
+              <div class="result-stat skipped">
+                <span class="label">Skipped (existing)</span>
+                <span class="value">{{ r.skipped }}</span>
+              </div>
+              <div class="result-stat errors" [class.has-errors]="r.errorCount > 0">
+                <span class="label">Errors</span>
+                <span class="value">{{ r.errorCount }}</span>
+              </div>
+            </div>
+            @if (r.errors && r.errors.length > 0) {
+              <details class="error-list">
+                <summary>Show errors ({{ r.errors.length }})</summary>
+                <ul>
+                  @for (err of r.errors; track err) {
+                    <li>{{ err }}</li>
+                  }
+                </ul>
+              </details>
+            }
+            <button class="btn btn-new" (click)="importResult.set(null)">Close</button>
           </div>
         </app-rf-popup-projection>
       }
@@ -73,17 +141,42 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
     .form-container { padding: 16px; min-width: 400px; }
     .form-container h3 { margin: 0 0 12px; font-size: 16px; }
     app-table { flex: 1; min-height: 0; overflow: hidden; }
+
+    .import-result { padding: 20px; min-width: 420px; max-width: 600px; }
+    .import-result h3 { margin: 0 0 16px; font-size: 16px; }
+    .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .result-stat {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);
+    }
+    .result-stat .label { font-size: 11px; color: var(--secondary-text); text-transform: uppercase; }
+    .result-stat .value { font-size: 24px; font-weight: 700; }
+    .result-stat.added .value { color: #4caf50; }
+    .result-stat.skipped .value { color: #888; }
+    .result-stat.errors .value { color: #888; }
+    .result-stat.errors.has-errors .value { color: #f44336; }
+    .error-list { margin-bottom: 16px; }
+    .error-list summary { cursor: pointer; font-size: 12px; color: var(--secondary-text); padding: 6px 0; }
+    .error-list ul { max-height: 200px; overflow: auto; padding-left: 20px; margin: 8px 0;
+      font-size: 12px; color: #c62828; background: var(--hover-background); border-radius: 4px; padding: 8px 8px 8px 24px; }
+    .error-list li { margin-bottom: 4px; }
   `]
 })
 export class EtaProPointsComponent implements OnInit {
   stateService = inject(EtaProStateService);
   private mapperService = inject(EtaProMapperService);
+  private apiService = inject(EtaProApiService);
+  private destroyRef = inject(DestroyRef);
 
   @ViewChild('pointForm') pointForm!: RfReactiveFormComponent;
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   points = toSignal(this.stateService.allPoints$, { initialValue: [] as EtaProPointDto[] });
   columns = signal(this.mapperService.toPointTableColumns());
   selectedRows = signal<EtaProPointDto[]>([]);
+
+  importing = signal(false);
+  importResult = signal<PointImportResult | null>(null);
 
   formFields = computed(() => {
     const point = this.stateService.selectedPoint() || new EtaProPointDto();
@@ -128,5 +221,38 @@ export class EtaProPointsComponent implements OnInit {
       this.stateService.deletePoint(point.id);
       this.stateService.isPointFormOpen.set(false);
     }
+  }
+
+  // ── Import ─────────────────────────────────────────────────
+
+  onImportClick(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Reset the input so the same file can be selected again
+    input.value = '';
+    if (!file) return;
+
+    this.importing.set(true);
+    this.apiService.importPoints(file).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: res => {
+        this.importing.set(false);
+        if (res.responseData) {
+          this.importResult.set(res.responseData);
+          // Refresh the point list so newly added rows appear
+          this.stateService.loadPoints();
+        }
+      },
+      error: err => {
+        this.importing.set(false);
+        const msg = err?.error?.message || err?.message || 'Unknown error';
+        alert('Import failed: ' + msg);
+      }
+    });
   }
 }

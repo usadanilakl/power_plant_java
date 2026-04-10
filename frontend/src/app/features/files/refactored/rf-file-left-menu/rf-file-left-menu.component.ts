@@ -36,7 +36,10 @@ export class RfFileLeftMenuComponent implements OnInit{
 
   currentRoute = signal("");
 
-  selectedType = signal<string>("pid");
+  /** Available file types, loaded dynamically from CurrentFileService. */
+  fileTypes = signal<string[]>([]);
+  /** Currently selected tab. Starts empty and is set to the first available type on load. */
+  selectedType = signal<string>("");
 
 
 constructor(
@@ -47,7 +50,18 @@ constructor(
 ) { }
 
   ngOnInit(): void {
-    
+
+    // Keep our tab list in sync with the dynamic file types. When the list
+    // first resolves (or changes), auto-select the first type if none chosen.
+    this.currentFileService.fileTypes$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(types => {
+      this.fileTypes.set(types);
+      if (!this.selectedType() && types.length > 0) {
+        this.selectedType.set(types[0]);
+      }
+    });
+
     this.currentFileService.filesLoaded$.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
@@ -92,10 +106,19 @@ constructor(
   }
 
 
-  loadFiles(type: string = 'pid'): void {
-    this.selectedType.set(type);
-    const criteria = type === 'pid' ? 'vendor' : 'fileType';
-    const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
+  loadFiles(type?: string): void {
+    const effectiveType = type ?? this.selectedType() ?? this.fileTypes()[0];
+    if (!effectiveType) {
+      this.menuItems.set([]);
+      return;
+    }
+    this.selectedType.set(effectiveType);
+    // PID files are traditionally grouped by vendor; other types group by fileType.
+    const criteria = effectiveType.toLowerCase() === 'pid' ? 'vendor' : 'fileType';
+    const nestedItems = this.createListOfNestedItems(
+      this.currentFileService.getFilesByType(effectiveType),
+      criteria
+    );
     this.menuItems.set(nestedItems);
   }
 
