@@ -1,0 +1,77 @@
+<div class="create-card" [class.is-counterpart]="isCounterpart()" [class.is-saved]="card().status === 'saved'" [class.is-error]="card().status === 'error'" [class.is-selected]="card().isSelected">
+  <!-- Header -->
+  <div class="card-header">
+    <label class="card-select" *ngIf="isDraft">
+      <input type="checkbox" [checked]="card().isSelected" (change)="selectionToggled.emit()" />
+    </label>
+    <span class="card-title">{{ isCounterpart() ? 'Counterpart' : 'Card #' + (cardIndex() + 1) }}</span>
+    <span class="card-status" [ngClass]="statusClass" *ngIf="card().status !== 'draft'">{{ statusLabel }}</span>
+    <span class="card-error" *ngIf="card().errorMessage">{{ card().errorMessage }}</span>
+    <button class="btn-remove" (click)="remove.emit()" title="Remove card" *ngIf="isDraft">&times;</button>
+  </div>
+
+  <!-- Form Body -->
+  <div class="card-body" [class.disabled]="!isDraft">
+    <div class="field-row">
+      <label>Tag Number</label>
+      <input type="text" [(ngModel)]="tagNumber" (ngModelChange)="onFieldChange()" [disabled]="!isDraft" placeholder="e.g. 01-VCND-377" />
+    </div>
+
+    <div class="field-row">
+      <label>Description</label>
+      <input type="text" [(ngModel)]="description" (ngModelChange)="onFieldChange()" [disabled]="!isDraft" placeholder="Description" />
+    </div>
+
+    <div class="field-row">
+      <label>Location</label>
+      <app-rf-value-select
+        [categoryAlias]="'location'"
+        [label]="''"
+        [ngModel]="locationId()"
+        (valueSelected)="onLocationSelected($event)"
+      />
+    </div>
+
+    <div class="field-row">
+      <label>Specific Location</label>
+      <input type="text" [(ngModel)]="specificLocation" (ngModelChange)="onFieldChange()" [disabled]="!isDraft" placeholder="Specific location" />
+    </div>
+
+    <div class="field-row">
+      <label>Normal Position</label>
+      <app-rf-value-select
+        [categoryAlias]="'normPos'"
+        [label]="''"
+        [ngModel]="normPosId()"
+        (valueSelected)="onNormPosSelected($event)"
+      />
+    </div>
+
+    <div class="field-row">
+      <label>Isolated Position</label>
+      <app-rf-value-select
+        [categoryAlias]="'isoPos'"
+        [label]="''"
+        [ngModel]="isoPosId()"
+        (valueSelected)="onIsoPosSelected($event)"
+      />
+    </div>
+
+    <div class="field-row characteristics-row">
+      <label>Characteristics</label>
+      <app-characteristics-editor
+        [label]="''"
+        [ngModel]="characteristicsJson()"
+        (ngModelChange)="onCharacteristicsChanged($event)"
+      ></app-characteristics-editor>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="card-footer" *ngIf="isDraft">
+    <button class="btn-counterpart" *ngIf="canGenerateCounterpart" (click)="generateCounterpart.emit()">
+      Generate Counterpart
+    </button>
+    <button class="btn-save" (click)="saveCard.emit()">Save</button>
+  </div>
+</div>

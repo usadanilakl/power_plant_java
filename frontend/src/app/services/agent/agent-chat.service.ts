@@ -1,4 +1,5 @@
 import { Injectable, signal, computed, inject, Injector } from '@angular/core';
+import { Subject } from 'rxjs';
 import { AgentService, AgentChatResponse } from './agent.service';
 import { AgentCreationFlowService } from './agent-creation-flow.service';
 import { SpeechService } from './speech.service';
@@ -6,7 +7,7 @@ import { SpeechService } from './speech.service';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'creation_flow' | 'matching_jobs' | 'error';
+  type: 'text' | 'search_results' | 'confirmation_required' | 'action_completed' | 'creation_flow' | 'matching_jobs' | 'bulk_cards' | 'error';
   data?: Record<string, any>;
   confirmationId?: string;
   pendingAction?: {
@@ -37,6 +38,9 @@ export class AgentChatService {
   isLoading = signal(false);
   isOpen = signal(false);
   isAvailable = signal(false);
+
+  /** Emits bulk card data from AI generation for the bulk create dialog */
+  bulkCardsGenerated$ = new Subject<any[]>();
 
   // Track which message is currently being spoken (for UI highlight)
   currentSpeakingMessageTimestamp = signal<Date | null>(null);
@@ -187,6 +191,12 @@ export class AgentChatService {
     // Handle creation flow — delegate to the state machine
     if (response.type === 'creation_flow' && response.data) {
       this.creationFlowService.startFlow(response.data);
+      return;
+    }
+
+    // Handle bulk card generation — emit to bulk create dialog
+    if (response.type === 'bulk_cards' && response.data?.['cards']) {
+      this.bulkCardsGenerated$.next(response.data['cards'] as any[]);
       return;
     }
 

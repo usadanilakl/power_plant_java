@@ -61,6 +61,7 @@ public class EtaProScrapeWorker {
     private volatile Long currentJobId;
     private volatile List<BatchPlan> currentPlan;
     private volatile int currentBatchIndex;
+    private volatile int consecutiveFailures;
 
     @PostConstruct
     public void start() {
@@ -145,8 +146,17 @@ public class EtaProScrapeWorker {
             BatchResult result = engine.executeBatch(Template.LIVE, chunk, start, end);
             if (result.success) {
                 totalImported += result.importedCount;
+                consecutiveFailures = 0;
             } else {
                 log.warn("[EtaPro] Live batch failed: {}", result.message);
+                consecutiveFailures++;
+                // Back off on repeated failures to avoid hammering a dead process
+                if (consecutiveFailures > 3) {
+                    long backoffMs = Math.min(consecutiveFailures * 2000L, 30_000L);
+                    log.warn("[EtaPro] {} consecutive failures, backing off {}ms", consecutiveFailures, backoffMs);
+                    try { Thread.sleep(backoffMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return; }
+                }
+                return; // Don't process remaining chunks if one failed
             }
         }
 

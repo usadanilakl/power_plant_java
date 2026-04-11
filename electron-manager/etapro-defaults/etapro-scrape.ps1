@@ -62,12 +62,16 @@ function WriteResponse {
         [string]$signalDir,
         [string]$status,
         [string]$message,
-        [int]$lineCount = 0
+        $rawLineCount = 0
     )
+    # Safely extract a plain number — COM output leaks can make this an Object[]
+    $lc = 0
+    try { $lc = [int]"$rawLineCount" } catch { $lc = 0 }
+
     $resp = @{
         status = $status
         message = $message
-        lineCount = $lineCount
+        lineCount = $lc
         timestamp = (Get-Date -Format "o")
     } | ConvertTo-Json
     # Use UTF8NoBOM — PowerShell 5.1's [System.Text.Encoding]::UTF8 emits a BOM
@@ -76,9 +80,12 @@ function WriteResponse {
     [System.IO.File]::WriteAllText("$signalDir\response.json", $resp, $utf8NoBom)
 }
 
+# Track last live point list so we only rewrite cells when the subscription changes
+$script:lastLivePointIds = ""
+
 # ── LIVE template processor ─────────────────────────────────────
 # Layout: column A = point IDs, column B = =@GetEPCurrent(1, A{row}, Source, 192.168.190.85)
-# Strategy: write point IDs to A1:A{N}, blank A{N+1}:A100, force recalc, read A+B, stamp now() as timestamp.
+# Strategy: write points to column A ONLY when the list changes. Every cycle just recalculates.
 function ProcessLiveRequest {
     param(
         [object]$workbook,
@@ -90,21 +97,23 @@ function ProcessLiveRequest {
     $points = @()
     if ($request.pointIds) { $points = @($request.pointIds -split ",") }
     $count = [Math]::Min($points.Length, $LIVE_MAX_POINTS)
+    $currentPointIds = $request.pointIds
 
-    # Clear all 100 slots first to wipe any leftover points from a prior request
-    $wsData.Range("A1:A$LIVE_MAX_POINTS").ClearContents()
-
-    # Write the requested point IDs into column A
-    for ($i = 0; $i -lt $count; $i++) {
-        $wsData.Cells($i + 1, 1).Value2 = $points[$i].Trim()
+    # Only rewrite column A if the point list changed since last cycle
+    if ($currentPointIds -ne $script:lastLivePointIds) {
+        Write-Host "[EtaPro] Point list changed, updating column A ($count points)"
+        [void]$wsData.Range("A1:A$LIVE_MAX_POINTS").ClearContents()
+        for ($i = 0; $i -lt $count; $i++) {
+            $wsData.Cells($i + 1, 1).Value2 = $points[$i].Trim()
+        }
+        $script:lastLivePointIds = $currentPointIds
     }
 
-    # Force recalculation — GetEPCurrent does not auto-refresh
-    $workbook.Application.Calculate()
+    # Recalculate to refresh GetEPCurrent values
+    [void]$workbook.Application.Calculate()
     try {
-        $workbook.Application.CalculateUntilAsyncQueriesDone()
+        [void]$workbook.Application.CalculateUntilAsyncQueriesDone()
     } catch {
-        # Older Excel versions don't have this — fall back to a short sleep
         Start-Sleep -Milliseconds 500
     }
 
@@ -158,7 +167,7 @@ function ProcessHistoryRequest {
     if ($request.pointIds) { $points = @($request.pointIds -split ",") }
 
     # Clear the 20 header slots
-    $wsData.Range("B1:U1").ClearContents()
+    [void]$wsData.Range("B1:U1").ClearContents()
     for ($i = 0; $i -lt $points.Length -and $i -lt $HISTORY_MAX_POINTS; $i++) {
         $wsData.Cells(1, $i + 2).Value2 = $points[$i].Trim()
     }
@@ -170,9 +179,9 @@ function ProcessHistoryRequest {
 
     # 3. Wait for async historian queries to finish
     try {
-        $workbook.Application.CalculateUntilAsyncQueriesDone()
+        [void]$workbook.Application.CalculateUntilAsyncQueriesDone()
     } catch {
-        $workbook.Application.CalculateFull()
+        [void]$workbook.Application.CalculateFull()
         Start-Sleep -Seconds 2
     }
 
@@ -241,17 +250,66 @@ $liveWb = $null
 $historyWb = $null
 
 try {
-    Write-Host "[EtaPro] Starting Excel COM..."
-    $excel = New-Object -ComObject Excel.Application
-    $excel.Visible = $false
+    # Launch Excel the INTERACTIVE way — open the live template as if the user
+    # double-clicked it. This ensures all add-ins (including EtaPro XLL) load
+    # in their normal interactive context. COM-created Excel.Application does NOT
+    # load XLL add-ins the same way, causing #NAME? errors on EtaPro functions.
+    Write-Host "[EtaPro] Launching Excel interactively with live template..."
+    Start-Process -FilePath $liveTemplatePath
+
+    # Wait for Excel to fully start and the EtaPro add-in to connect to the historian.
+    # This is the slow path — only happens once per scraper session.
+    Write-Host "[EtaPro] Waiting for Excel + EtaPro add-in to initialize..."
+    $waitMax = 30
+    $waited = 0
+    $excel = $null
+    while ($waited -lt $waitMax) {
+        Start-Sleep -Seconds 2
+        $waited += 2
+        try {
+            $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+            if ($excel -and $excel.Workbooks.Count -gt 0) {
+                $wbCount = $excel.Workbooks.Count
+                Write-Host "[EtaPro] Attached to Excel (waited ${waited}s, $wbCount workbook(s))"
+                break
+            }
+        } catch {
+            # Excel not ready yet
+            Write-Host "[EtaPro] Waiting... (${waited}s)"
+        }
+    }
+
+    if ($null -eq $excel) {
+        throw "Failed to attach to Excel after ${waitMax}s. Is Excel installed?"
+    }
+
+    # Suppress UI prompts now that we have a handle
     $excel.DisplayAlerts = $false
-    $excel.AskToUpdateLinks = $false
 
-    Write-Host "[EtaPro] Opening live template..."
-    $liveWb = $excel.Workbooks.Open($liveTemplatePath)
+    # Find the live workbook (the one we just opened)
+    $liveWb = $null
+    $liveFileName = [System.IO.Path]::GetFileName($liveTemplatePath)
+    foreach ($wb in $excel.Workbooks) {
+        if ($wb.Name -eq $liveFileName) {
+            $liveWb = $wb
+            break
+        }
+    }
+    if ($null -eq $liveWb) {
+        throw "Could not find live workbook '$liveFileName' in the running Excel instance"
+    }
+    Write-Host "[EtaPro] Live workbook: $($liveWb.Name)"
 
-    Write-Host "[EtaPro] Opening history template..."
+    # Now open the history template in the same interactive Excel instance
+    Write-Host "[EtaPro] Opening history template in same Excel..."
     $historyWb = $excel.Workbooks.Open($historyTemplatePath)
+    Write-Host "[EtaPro] History workbook: $($historyWb.Name)"
+
+    # Give add-in a moment to recognize the new workbook
+    Start-Sleep -Seconds 3
+
+    # Minimize — we don't need the window taking up space
+    try { $excel.WindowState = -4140 } catch {} # xlMinimized = -4140
 
     Write-Host "[EtaPro] Ready. Waiting for requests..."
 
@@ -286,16 +344,16 @@ try {
         Write-Host "[EtaPro] Request: template=$templateName, points=$pointCount"
 
         try {
-            $lineCount = 0
+            $result = $null
             if ($templateName -eq "live") {
-                $lineCount = ProcessLiveRequest $liveWb $request
+                $result = ProcessLiveRequest $liveWb $request
             } elseif ($templateName -eq "history") {
-                $lineCount = ProcessHistoryRequest $historyWb $request
+                $result = ProcessHistoryRequest $historyWb $request
             } else {
                 throw "Unknown template: $templateName (expected 'live' or 'history')"
             }
-            Write-Host "[EtaPro] Done: $lineCount rows"
-            WriteResponse $signalDir "complete" "Exported $lineCount rows" $lineCount
+            Write-Host "[EtaPro] Done: $result"
+            WriteResponse $signalDir "complete" "Exported rows" $result
         } catch {
             Write-Host "[EtaPro] ERROR: $($_.Exception.Message)"
             WriteResponse $signalDir "error" $_.Exception.Message

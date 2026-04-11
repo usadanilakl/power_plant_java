@@ -3,7 +3,10 @@
     <label>{{ label() }}</label>
   </div>
   <div class="dropdown-input" (click)="!isDisabled() && toggleDropdown($event)" [class.disabled]="isDisabled()">
-    {{ selectedDisplay() }}
+    <span class="selected-text">{{ selectedDisplay() }}</span>
+    @if (internalValue() !== null && internalValue() !== undefined && !isDisabled()) {
+      <span class="clear-btn" (click)="clearSelection($event)" title="Clear selection">&times;</span>
+    }
   </div>
 </div>
 

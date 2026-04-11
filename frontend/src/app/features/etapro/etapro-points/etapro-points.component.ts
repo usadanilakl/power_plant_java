@@ -1,19 +1,10 @@
-import { Component, DestroyRef, ElementRef, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { TableComponent } from '../../../shared/table/refactored/table.component';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+// EtaProPointPickerComponent handles its own data loading + table services
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { RfPopupProjectionComponent } from '../../../shared/popup-projection/rf-popup-projection.component';
-import { TableSearchService } from '../../../shared/table/refactored/services/table-search.service';
-import { TableStateService } from '../../../shared/table/refactored/services/table-state.service';
-import { TableSelectionService } from '../../../shared/table/refactored/services/table-selection.service';
-import { TableSortService } from '../../../shared/table/refactored/services/table-sort.service';
-import { TableDragService } from '../../../shared/table/refactored/services/table-drag.service';
-import { TableResizeService } from '../../../shared/table/refactored/services/table-resize.service';
-import { TableSyncService } from '../../../shared/table/refactored/services/table-sync.service';
-import { TableClickService } from '../../../shared/table/refactored/services/table-click.service';
-import { TableControlsService } from '../../../shared/table/refactored/services/table-controls.service';
-import { TableDataService } from '../../../shared/table/refactored/services/table-data.service';
+import { EtaProPointPickerComponent } from '../etapro-point-picker/etapro-point-picker.component';
 import { EtaProStateService } from '../services/etapro-state.service';
 import { EtaProMapperService } from '../services/etapro-mapper.service';
 import { EtaProApiService, PointImportResult } from '../services/etapro-api.service';
@@ -22,23 +13,11 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 @Component({
   selector: 'app-etapro-points',
   standalone: true,
-  imports: [CommonModule, TableComponent, RfReactiveFormComponent, RfPopupProjectionComponent],
-  providers: [
-    TableSearchService,
-    TableStateService,
-    TableSelectionService,
-    TableSortService,
-    TableDragService,
-    TableResizeService,
-    TableSyncService,
-    TableClickService,
-    TableControlsService,
-    TableDataService,
-  ],
+  imports: [CommonModule, EtaProPointPickerComponent, RfReactiveFormComponent, RfPopupProjectionComponent],
   template: `
     <div class="points-container">
       <div class="toolbar">
-        <span class="count">{{ points().length }} points configured</span>
+        <span class="count">{{ selectedRows().length }} selected</span>
         <div class="toolbar-actions">
           <button class="btn" (click)="onTrendSelected()" [disabled]="selectedRows().length === 0">
             Trend Selected ({{ selectedRows().length }})
@@ -57,36 +36,32 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
              style="display: none"
              (change)="onFileSelected($event)">
 
-      <app-table
-        [tableId]="'etapro-points-table'"
-        [items]="points()"
-        [columns]="columns()"
+      <app-etapro-point-picker
         (rowDoubleClicked)="onRowClick($event)"
         (selectedItemsEvent)="onSelectedItems($event)">
-      </app-table>
+      </app-etapro-point-picker>
 
-      <!-- Point edit/create form -->
-      @if (stateService.isPointFormOpen()) {
-        <app-rf-popup-projection [isOpen]="true" (close)="stateService.isPointFormOpen.set(false)">
-          <div class="form-container">
-            <h3>{{ stateService.selectedPoint()?.id ? 'Edit Point' : 'New Point' }}</h3>
-            <app-rf-reactive-form
-              #pointForm
-              [fields]="formFields()"
-              [showSubmitButton]="true"
-              [submitButtonText]="stateService.selectedPoint()?.id ? 'Update' : 'Create'"
-              (formSubmit)="onFormSubmit($event)">
-            </app-rf-reactive-form>
-            @if (stateService.selectedPoint()?.id) {
-              <button class="btn btn-delete" (click)="onDelete()">Delete</button>
-            }
-          </div>
-        </app-rf-popup-projection>
-      }
+      <!-- Point edit/create form — use [isOpen] binding (not @if) so the popup
+           can manage its own DOM lifecycle and the close button works reliably -->
+      <app-rf-popup-projection [isOpen]="stateService.isPointFormOpen()" (close)="stateService.isPointFormOpen.set(false)">
+        <div class="form-container">
+          <h3>{{ stateService.selectedPoint()?.id ? 'Edit Point' : 'New Point' }}</h3>
+          <app-rf-reactive-form
+            #pointForm
+            [fields]="formFields()"
+            [showSubmitButton]="true"
+            [submitButtonText]="stateService.selectedPoint()?.id ? 'Update' : 'Create'"
+            (formSubmit)="onFormSubmit($event)">
+          </app-rf-reactive-form>
+          @if (stateService.selectedPoint()?.id) {
+            <button class="btn btn-delete" (click)="onDelete()">Delete</button>
+          }
+        </div>
+      </app-rf-popup-projection>
 
       <!-- Import result dialog -->
-      @if (importResult(); as r) {
-        <app-rf-popup-projection [isOpen]="true" (close)="importResult.set(null)">
+      <app-rf-popup-projection [isOpen]="!!importResult()" (close)="importResult.set(null)">
+        @if (importResult(); as r) {
           <div class="import-result">
             <h3>Import Complete</h3>
             <div class="result-grid">
@@ -115,8 +90,8 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
             }
             <button class="btn btn-new" (click)="importResult.set(null)">Close</button>
           </div>
-        </app-rf-popup-projection>
-      }
+        }
+      </app-rf-popup-projection>
     </div>
   `,
   styles: [`
@@ -162,7 +137,7 @@ import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
     .error-list li { margin-bottom: 4px; }
   `]
 })
-export class EtaProPointsComponent implements OnInit {
+export class EtaProPointsComponent {
   stateService = inject(EtaProStateService);
   private mapperService = inject(EtaProMapperService);
   private apiService = inject(EtaProApiService);
@@ -171,8 +146,6 @@ export class EtaProPointsComponent implements OnInit {
   @ViewChild('pointForm') pointForm!: RfReactiveFormComponent;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
-  points = toSignal(this.stateService.allPoints$, { initialValue: [] as EtaProPointDto[] });
-  columns = signal(this.mapperService.toPointTableColumns());
   selectedRows = signal<EtaProPointDto[]>([]);
 
   importing = signal(false);
@@ -182,10 +155,6 @@ export class EtaProPointsComponent implements OnInit {
     const point = this.stateService.selectedPoint() || new EtaProPointDto();
     return this.mapperService.toPointFormFields(point);
   });
-
-  ngOnInit(): void {
-    this.stateService.loadPoints();
-  }
 
   onRowClick(item: any): void {
     this.stateService.editPoint(EtaProPointDto.fromJson(item));

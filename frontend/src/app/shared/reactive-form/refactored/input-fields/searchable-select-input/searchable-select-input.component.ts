@@ -53,7 +53,7 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   filteredOptions = signal<any[]>([]);
   searchTerm = signal<string>('');
   searchMode = signal<'and' | 'or'>('and');
-  private internalValue = signal<any>(null);
+  internalValue = signal<any>(null);
   isDisabled = signal<boolean>(false);
   private optionsSubscription: Subscription | null = null;
 
@@ -209,6 +209,15 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
     if (Array.isArray(opts)) {
       this.filteredOptions.set(opts as any[]);
     }
+  }
+
+  clearSelection(event: MouseEvent): void {
+    event.stopPropagation();
+    this.internalValue.set(null);
+    this.onChange(null);
+    this.onTouched();
+    this.valueChange.emit(null);
+    this.closeDropdown();
   }
 
   // ---- User interactions ----

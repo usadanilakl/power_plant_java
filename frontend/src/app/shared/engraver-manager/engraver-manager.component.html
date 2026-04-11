@@ -46,6 +46,7 @@
 
         <div class="batch-info">
           <p><strong>Total Tags:</strong> {{ modalService.totalItems() }}</p>
+          <button class="btn btn-bulk-create" (click)="openBulkCreate()">+ Bulk Create</button>
         </div>
 
         <!-- Tag Size Selector -->
@@ -125,7 +126,11 @@
                 {{ batch.status | titlecase }}
               </span>
             }
-            @if (anyItemHasCounterpart()) {
+            <label class="counterpart-toggle">
+              <input type="checkbox" [checked]="saveToSource()" (change)="saveToSource.set(!saveToSource())" />
+              Save to Source
+            </label>
+            @if (saveToSource() && anyItemHasCounterpart()) {
               <label class="counterpart-toggle">
                 <input type="checkbox" [checked]="syncCounterpart()" (change)="syncCounterpart.set(!syncCounterpart())" />
                 Sync Counterpart

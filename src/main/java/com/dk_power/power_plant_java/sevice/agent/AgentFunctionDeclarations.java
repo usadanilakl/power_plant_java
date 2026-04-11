@@ -257,6 +257,47 @@ public class AgentFunctionDeclarations {
                     .build())
             .build();
 
+    // ========== BULK GENERATION FUNCTION ==========
+
+    public static final FunctionDeclaration GENERATE_LOTO_BULK = FunctionDeclaration.builder()
+            .name("generateLotoBulkCards")
+            .description("Generate multiple LOTO point card data for bulk creation. " +
+                    "Use when the user says something like 'generate 5 loto points for condensate system'. " +
+                    "Returns card data (tag numbers, descriptions, positions) that the user can review and edit before saving. " +
+                    "IMPORTANT: Only call this when the message starts with [BULK_CREATE].")
+            .parameters(Schema.builder()
+                    .type(Type.Known.OBJECT)
+                    .properties(Map.of(
+                            "quantity", Schema.builder()
+                                    .type(Type.Known.INTEGER)
+                                    .description("Number of LOTO points to generate")
+                                    .build(),
+                            "system", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Plant system (e.g. 'Condensate', 'Feedwater', 'Steam', 'Cooling Water')")
+                                    .build(),
+                            "equipmentTypes", Schema.builder()
+                                    .type(Type.Known.ARRAY)
+                                    .items(Schema.builder().type(Type.Known.STRING).build())
+                                    .description("Equipment types to generate (e.g. 'Manual Valve', 'Motor Operated Valve', 'Circuit Breaker')")
+                                    .build(),
+                            "unit", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Plant unit: '01' or '02' (default '01')")
+                                    .build(),
+                            "voltage", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("Voltage rating if electrical equipment (e.g. '480V', '4160V')")
+                                    .build(),
+                            "location", Schema.builder()
+                                    .type(Type.Known.STRING)
+                                    .description("General location area (e.g. 'Turbine Hall', 'Boiler Area')")
+                                    .build()
+                    ))
+                    .required(List.of("quantity"))
+                    .build())
+            .build();
+
     // ========== TEACHING FUNCTION ==========
 
     public static final FunctionDeclaration GET_APP_HELP = FunctionDeclaration.builder()
@@ -280,7 +321,7 @@ public class AgentFunctionDeclarations {
                         SEARCH_FILES, SEARCH_LOTO_POINTS, SEARCH_PERMITS,
                         CREATE_LOTO_POINT, CREATE_LOTO_STANDARD, CREATE_DAILY_PERMIT_PACKAGE,
                         ASSIST_LOTO_POINT_CREATION, ASSIST_WORK_REQUEST_CREATION,
-                        FIND_MATCHING_JOBS, GET_APP_HELP
+                        FIND_MATCHING_JOBS, GENERATE_LOTO_BULK, GET_APP_HELP
                 ))
                 .build());
     }

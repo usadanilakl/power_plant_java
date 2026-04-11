@@ -1,4 +1,4 @@
-import { Component, inject, computed, effect, signal } from '@angular/core';
+import { Component, inject, computed, effect, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EngraverModalService } from './engraver-modal.service';
@@ -10,6 +10,7 @@ import { RfLotoPointApiService } from '../../features/loto-points/refactored/ser
 import { LotoPointCounterpartService, SyncableField } from '../../features/loto-points/refactored/services/loto-point-counterpart.service';
 import { LotoPointDto } from '../../models/loto/loto-point.model';
 import { RfValueService } from '../../features/values/refactored/services/rf-value.service';
+import { LotoPointBulkCreateService } from '../../features/loto-points/refactored/services/loto-point-bulk-create.service';
 
 @Component({
   selector: 'app-engraver-manager',
@@ -24,6 +25,7 @@ export class EngraverManagerComponent {
   private lotoPointApi = inject(RfLotoPointApiService);
   private counterpartService = inject(LotoPointCounterpartService);
   private valueService = inject(RfValueService);
+  private bulkCreateService = inject(LotoPointBulkCreateService);
 
   isTemplateManagerOpen = signal(false);
   statusMessage = '';
@@ -32,6 +34,7 @@ export class EngraverManagerComponent {
 
   // Click-to-edit state
   editingCell = signal<{ itemId: number; field: string } | null>(null);
+  saveToSource = signal(false);
   syncCounterpart = signal(true);
   savingItems = signal<Set<number>>(new Set());
   savedItems = signal<Set<number>>(new Set());
@@ -44,6 +47,8 @@ export class EngraverManagerComponent {
     return Math.round((this.modalService.completedBatches() / total) * 100);
   });
 
+  private destroyRef = inject(DestroyRef);
+
   constructor() {
     // Load templates once when modal becomes visible
     effect(() => {
@@ -54,6 +59,13 @@ export class EngraverManagerComponent {
       }
       if (!visible) {
         this.templatesLoaded = false;
+      }
+    });
+
+    // When bulk create saves items from engraver context, add them to the queue
+    this.bulkCreateService.savedItems$.subscribe(savedDtos => {
+      if (this.bulkCreateService.sourceContext() === 'engraver') {
+        this.modalService.addItems(savedDtos);
       }
     });
   }
@@ -241,7 +253,9 @@ export class EngraverManagerComponent {
     if (newValue === oldValue) return;
 
     this.modalService.updateItemField(item.id!, field, newValue);
-    this.saveItem(new LotoPointDto({ ...item, [field]: newValue }), [field as SyncableField]);
+    if (this.saveToSource()) {
+      this.saveItem(new LotoPointDto({ ...item, [field]: newValue }), [field as SyncableField]);
+    }
   }
 
   onCharacteristicCellBlur(item: LotoPointDto, charName: string, newValue: string): void {
@@ -266,7 +280,9 @@ export class EngraverManagerComponent {
     }
     const newJson = JSON.stringify(updatedChars);
     this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
-    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
+    if (this.saveToSource()) {
+      this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
+    }
   }
 
   onCellKeydown(event: KeyboardEvent, item: LotoPointDto, field: string): void {
@@ -289,7 +305,9 @@ export class EngraverManagerComponent {
 
   onCharacteristicsChanged(item: LotoPointDto, newJson: string): void {
     this.modalService.updateItemCharacteristicsJson(item.id!, newJson);
-    this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
+    if (this.saveToSource()) {
+      this.saveItem(new LotoPointDto({ ...item, characteristicsJson: newJson }), ['characteristicsJson']);
+    }
   }
 
   /**
@@ -352,6 +370,13 @@ export class EngraverManagerComponent {
         this.lotoPointApi.saveLotoPoint(counterpart).subscribe();
       }
     });
+  }
+
+  /**
+   * Opens the bulk create dialog from engraver context.
+   */
+  openBulkCreate(): void {
+    this.bulkCreateService.open('engraver');
   }
 
   /**

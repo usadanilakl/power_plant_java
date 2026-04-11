@@ -140,6 +140,14 @@ export class EngraverModalService {
   }
 
   /**
+   * Adds new items to the existing queue (appends to allItems).
+   * Used when bulk-created LOTO points should be added to the engraver.
+   */
+  addItems(newItems: LotoPointDto[]): void {
+    this.allItems.update(existing => [...existing, ...newItems]);
+  }
+
+  /**
    * Creates batches from the items using current batch size.
    */
   private createBatches(items: LotoPointDto[]): EngraverBatchItem[] {

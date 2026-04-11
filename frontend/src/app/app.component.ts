@@ -14,6 +14,7 @@ import { QaDialogComponent } from "./shared/qa/qa-dialog/qa-dialog.component";
 import { WrDetailDialogComponent } from "./shared/wr-detail-dialog/wr-detail-dialog.component";
 import { AttachmentDialogComponent } from "./shared/attachment-dialog/attachment-dialog.component";
 import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-dialog.component";
+import { LotoPointBulkCreateDialogComponent } from "./features/loto-points/refactored/loto-point-bulk-create/loto-point-bulk-create-dialog.component";
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ import { ProcessWrDialogComponent } from "./shared/process-wr-dialog/process-wr-
     QrScannerComponent,
     BradyPrinterManagerComponent,
     EngraverManagerComponent,
+    LotoPointBulkCreateDialogComponent,
     WizardDialogComponent,
     CommentsDialogComponent,
     CorrespondenceDialogComponent,

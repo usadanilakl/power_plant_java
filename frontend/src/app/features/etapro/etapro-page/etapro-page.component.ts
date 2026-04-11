@@ -53,15 +53,13 @@ import { EtaProPointsComponent } from '../etapro-points/etapro-points.component'
             }
           </div>
 
-          @if (stateService.isTrendOpen()) {
-            <app-rf-popup-projection [isOpen]="true" (close)="stateService.closeTrend()">
-              <app-trend-window
-                [adapter]="trendAdapter"
-                [seriesIds]="stateService.trendPointIds()"
-                [initialPreset]="'1h'">
-              </app-trend-window>
-            </app-rf-popup-projection>
-          }
+          <app-rf-popup-projection [isOpen]="stateService.isTrendOpen()" (close)="stateService.closeTrend()">
+            <app-trend-window
+              [adapter]="trendAdapter"
+              [seriesIds]="stateService.trendPointIds()"
+              [initialPreset]="'1h'">
+            </app-trend-window>
+          </app-rf-popup-projection>
         </div>
       </ng-container>
     </app-main-layout>

@@ -8,6 +8,7 @@ import { PopupProjectionComponent } from "../popup-projection/popup-projection.c
 import { RfLotoPointApiService } from '../../features/loto-points/refactored/services/rf-loto-point-api.service';
 import { LotoPointCounterpartService, SyncableField } from '../../features/loto-points/refactored/services/loto-point-counterpart.service';
 import { LotoPointDto } from '../../models/loto/loto-point.model';
+import { LotoPointBulkCreateService } from '../../features/loto-points/refactored/services/loto-point-bulk-create.service';
 
 @Component({
   selector: 'app-brady-printer-manager',
@@ -23,6 +24,7 @@ export class BradyPrinterManagerComponent {
   private readonly bradySdkService = inject(BradySdkService);
   private readonly lotoPointApi = inject(RfLotoPointApiService);
   private readonly counterpartService = inject(LotoPointCounterpartService);
+  private readonly bulkCreateService = inject(LotoPointBulkCreateService);
 
   state = toSignal(this.bradySdkService.state$);
   withQr = signal(false);
@@ -47,6 +49,20 @@ export class BradyPrinterManagerComponent {
   isAutoPrinting = signal(false);
 
   constructor() {
+    // When bulk create saves items from printer context, add them to the queue
+    this.bulkCreateService.savedItems$.subscribe(savedDtos => {
+      if (this.bulkCreateService.sourceContext() === 'printer') {
+        const newItems = savedDtos.map(dto => ({
+          line1: dto.tagNumber || '',
+          line2: dto.description || '',
+          withQr: true,
+          sourceLotoPointId: dto.id,
+          sourceLotoPoint: dto,
+        }));
+        this.bradyPrinterModalService.addToQueue(newItems);
+      }
+    });
+
     // Effect to handle visibility changes and initialize when opened
     effect(() => {
       if (this.bradyPrinterModalService.isVisible()) {
@@ -133,6 +149,10 @@ export class BradyPrinterManagerComponent {
 
   close(): void {
     this.bradyPrinterModalService.close();
+  }
+
+  openBulkCreate(): void {
+    this.bulkCreateService.open('printer');
   }
 
   scanForPrinters(): void {

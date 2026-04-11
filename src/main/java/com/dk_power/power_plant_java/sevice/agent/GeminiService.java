@@ -231,6 +231,15 @@ public class GeminiService {
 
         AgentChatResponse chatResponse = new AgentChatResponse();
         chatResponse.setSessionId(sessionId);
+
+        // Bulk card generation uses a different response type
+        if ("generateLotoBulkCards".equals(funcName)) {
+            chatResponse.setType("bulk_cards");
+            chatResponse.setMessage((String) result.getOrDefault("message", "Generated LOTO point cards"));
+            chatResponse.setData(result);
+            return chatResponse;
+        }
+
         chatResponse.setType("creation_flow");
         String wizardMessage = switch (funcName) {
             case "assistLotoPointCreation" -> "I'll help you create a LOTO point. Here's what I gathered from your request:";

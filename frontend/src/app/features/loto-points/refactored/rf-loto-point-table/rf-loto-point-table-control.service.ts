@@ -9,6 +9,7 @@ import { BradyPrinterModalService } from "../../../../shared/brady-printer-manag
 import { EngraverModalService } from "../../../../shared/engraver-manager/engraver-modal.service";
 import { ExportDialogService } from "../../../../shared/export-dialog/export-dialog.service";
 import { ExcelService } from "../../../../services/excel.service";
+import { LotoPointBulkCreateService } from "../services/loto-point-bulk-create.service";
 
 @Injectable()
 export class LotoPointTableControlService extends TableControlsService  {
@@ -18,6 +19,7 @@ export class LotoPointTableControlService extends TableControlsService  {
     private engraverModalService = inject(EngraverModalService);
     private exportDialogService = inject(ExportDialogService);
     private excelService = inject(ExcelService);
+    private bulkCreateService = inject(LotoPointBulkCreateService);
 
     constructor(){
         super();
@@ -32,6 +34,13 @@ export class LotoPointTableControlService extends TableControlsService  {
             icon: 'add_box',
             guideId: 'create-loto-point:create-button',
             guideMessage: 'Click this button to create a new LOTO point',
+          },
+          {
+            name: 'Bulk Create',
+            action: () => this.bulkCreateService.open('table'),
+            color: 'accent' as ButtonColor,
+            icon: 'playlist_add',
+            tooltip: 'Create multiple LOTO points at once',
           },
           {
             name: 'Export to Excel',

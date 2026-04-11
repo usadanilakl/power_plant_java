@@ -5,6 +5,9 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramConnection;
 import com.dk_power.power_plant_java.entities.diagrams.DiagramPlacement;
 import com.dk_power.power_plant_java.entities.equipment.*;
+import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
+import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
+import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
@@ -41,6 +44,9 @@ import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentLogSyncService;
 import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentSyncService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
+import com.dk_power.power_plant_java.sevice.etapro.EtaProScrapeJobService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -109,7 +115,11 @@ public class ServiceFacade {
             @Lazy TaskService taskService,
             // Diagrams
             @Lazy NgDiagramPlacementService ngDiagramPlacementService,
-            @Lazy NgDiagramConnectionService ngDiagramConnectionService
+            @Lazy NgDiagramConnectionService ngDiagramConnectionService,
+            // EtaPro
+            @Lazy EtaProPointService etaProPointService,
+            @Lazy EtaProReadingService etaProReadingService,
+            @Lazy EtaProScrapeJobService etaProScrapeJobService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -165,6 +175,10 @@ public class ServiceFacade {
         // Diagrams
         serviceMap.put(DiagramPlacement.class.getSimpleName(), ngDiagramPlacementService);
         serviceMap.put(DiagramConnection.class.getSimpleName(), ngDiagramConnectionService);
+        // EtaPro
+        serviceMap.put(EtaProPoint.class.getSimpleName(), etaProPointService);
+        serviceMap.put(EtaProReading.class.getSimpleName(), etaProReadingService);
+        serviceMap.put(EtaProScrapeJob.class.getSimpleName(), etaProScrapeJobService);
     }
 
     public SyncableService getService(String entityClass) {

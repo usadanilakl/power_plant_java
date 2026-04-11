@@ -97,6 +97,21 @@ export class BradyPrinterModalService {
     return queue[index] || null;
   }
 
+  /**
+   * Adds new items to the existing print queue.
+   * Used when bulk-created LOTO points should be added to the printer.
+   */
+  addToQueue(newItems: PrintLabelData[]): void {
+    const existing = this.printQueue();
+    const nextId = existing.length > 0 ? Math.max(...existing.map(i => i.id)) + 1 : 0;
+    const newQueue: PrintQueueItem[] = newItems.map((item, index) => ({
+      ...item,
+      id: nextId + index,
+      status: 'pending' as const,
+    }));
+    this.printQueue.update(q => [...q, ...newQueue]);
+  }
+
   close(): void {
     this.isVisible.set(false);
     this.labelData.set(null);

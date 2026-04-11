@@ -4,6 +4,7 @@ import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
+import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { EtaProPointDto } from '../../../models/etapro/etapro-point.model';
 import { EtaProReadingDto } from '../../../models/etapro/etapro-reading.model';
 import { EtaProScrapeJobDto } from '../../../models/etapro/etapro-scrape-job.model';
@@ -66,6 +67,32 @@ export class EtaProApiService {
   deletePoint(id: number): Observable<SpringApiResponse<string>> {
     return this.http.delete<SpringApiResponse<string>>(`${this.apiUrl}/points/${id}`).pipe(
       tap(() => this.pointDeletedSubject.next(id))
+    );
+  }
+
+  // ── Paginated / Search ─────────────────────────────────────
+
+  getPointsPaginated(page: number = 1, pageSize: number = 50):
+      Observable<SpringPaginatedResponse<EtaProPointDto>> {
+    return this.http.get<SpringPaginatedResponse<EtaProPointDto>>(
+      `${this.apiUrl}/points/paginated?page=${page}&pageSize=${pageSize}`
+    );
+  }
+
+  searchPoints(criteria: SearchCriteria, pageSize: number = 50):
+      Observable<SpringPaginatedResponse<EtaProPointDto>> {
+    const page = criteria.page ?? 1;
+    return this.http.post<SpringPaginatedResponse<EtaProPointDto>>(
+      `${this.apiUrl}/points/search?page=${page}&pageSize=${pageSize}`,
+      criteria
+    );
+  }
+
+  getPointUniqueValues(column: string, criteria: SearchCriteria, page: number = 1, pageSize: number = 50):
+      Observable<SpringPaginatedResponse<string>> {
+    return this.http.post<SpringPaginatedResponse<string>>(
+      `${this.apiUrl}/points/unique-values?column=${column}&page=${page}&pageSize=${pageSize}`,
+      criteria
     );
   }
 

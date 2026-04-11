@@ -71,7 +71,8 @@ public class AgentActionExecutor {
 
     public boolean isWizardAssist(String functionName) {
         return "assistLotoPointCreation".equals(functionName)
-                || "assistWorkRequestCreation".equals(functionName);
+                || "assistWorkRequestCreation".equals(functionName)
+                || "generateLotoBulkCards".equals(functionName);
     }
 
     public boolean isCreateAction(String functionName) {
@@ -83,6 +84,7 @@ public class AgentActionExecutor {
             return switch (functionName) {
                 case "assistLotoPointCreation" -> assistLotoPointCreation(args);
                 case "assistWorkRequestCreation" -> assistWorkRequestCreation(args);
+                case "generateLotoBulkCards" -> generateLotoBulkCards(args);
                 default -> Map.of("error", "Unknown wizard assist function: " + functionName);
             };
         } catch (Exception e) {
@@ -243,6 +245,84 @@ public class AgentActionExecutor {
         result.put("companyName", created.getCompanyName());
         result.put("permitNumber", created.getPermitNumber() != null ? created.getPermitNumber() : "");
         result.put("success", true);
+        return result;
+    }
+
+    // ========== BULK GENERATION ==========
+
+    private Map<String, Object> generateLotoBulkCards(Map<String, Object> args) {
+        int quantity = args.get("quantity") != null ? ((Number) args.get("quantity")).intValue() : 1;
+        String system = (String) args.getOrDefault("system", "");
+        @SuppressWarnings("unchecked")
+        List<String> eqTypes = args.get("equipmentTypes") != null
+                ? (List<String>) args.get("equipmentTypes")
+                : List.of("Manual Valve");
+        String unit = (String) args.getOrDefault("unit", "01");
+        String voltage = (String) args.getOrDefault("voltage", null);
+        String location = (String) args.getOrDefault("location", null);
+
+        // Equipment type code mapping
+        Map<String, String> typeCodeMap = Map.ofEntries(
+                Map.entry("Manual Valve", "V"),
+                Map.entry("Motor Operated Valve", "MOV"),
+                Map.entry("Air Operated Valve", "AOV"),
+                Map.entry("Circuit Breaker", "CB"),
+                Map.entry("Disconnect Switch", "DS"),
+                Map.entry("Control Switch", "CS"),
+                Map.entry("Hand Valve", "HV"),
+                Map.entry("Check Valve", "CKV"),
+                Map.entry("Relief Valve", "RV"),
+                Map.entry("Pump", "PMP"),
+                Map.entry("Fan", "FAN"),
+                Map.entry("Motor", "MTR")
+        );
+
+        // System abbreviation mapping
+        Map<String, String> systemAbbrMap = Map.of(
+                "Condensate", "CND",
+                "Feedwater", "FW",
+                "Steam", "STM",
+                "Cooling Water", "CW",
+                "Auxiliary Steam", "AUX STM",
+                "Boiler", "BLR",
+                "Turbine", "TURB",
+                "Compressed Air", "CA",
+                "Service Water", "SW",
+                "Fuel Oil", "FO"
+        );
+
+        String sysAbbr = systemAbbrMap.getOrDefault(system, system.toUpperCase().substring(0, Math.min(3, system.length())));
+
+        List<Map<String, Object>> cards = new ArrayList<>();
+        int counter = 1;
+
+        for (int i = 0; i < quantity; i++) {
+            String eqType = eqTypes.get(i % eqTypes.size());
+            String typeCode = typeCodeMap.getOrDefault(eqType, eqType.substring(0, Math.min(2, eqType.length())).toUpperCase());
+
+            String tagNumber = String.format("%s-%s-%s-%04d", unit, sysAbbr, typeCode, counter++);
+            String description = sysAbbr + " " + eqType.toUpperCase();
+
+            Map<String, Object> card = new LinkedHashMap<>();
+            card.put("tagNumber", tagNumber);
+            card.put("description", description);
+            if (location != null) card.put("specificLocation", location);
+
+            // Add characteristics for electrical equipment
+            if (voltage != null && (eqType.contains("Breaker") || eqType.contains("Switch")
+                    || eqType.contains("Motor") || eqType.contains("Disconnect"))) {
+                card.put("characteristicsJson",
+                        "[{\"characteristicId\":0,\"name\":\"Voltage\",\"value\":\"" + voltage + "\"}]");
+            }
+
+            cards.add(card);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("type", "bulk_cards");
+        result.put("cards", cards);
+        result.put("totalCount", cards.size());
+        result.put("message", "Generated " + cards.size() + " LOTO point cards for " + system);
         return result;
     }
 

@@ -181,7 +181,9 @@ public class EtaProScraperEngine {
             processRunning.set(true);
             lastStatus.set("process started, loading Excel");
 
-            Thread.sleep(3000);
+            // Interactive launch takes longer — Excel starts, loads add-ins,
+            // connects to historian, then the script attaches via GetActiveObject.
+            Thread.sleep(10000);
             if (!scraperProcess.isAlive()) {
                 processRunning.set(false);
                 lastStatus.set("error: process exited immediately (exit " + scraperProcess.exitValue() + ")");
@@ -201,18 +203,61 @@ public class EtaProScraperEngine {
 
     @PreDestroy
     public synchronized void stopProcess() {
-        if (scraperProcess == null) return;
         try {
-            Files.writeString(Paths.get(signalPath, "shutdown"), "shutdown");
-            boolean exited = scraperProcess.waitFor(15, TimeUnit.SECONDS);
-            if (!exited) scraperProcess.destroyForcibly();
-        } catch (Exception e) {
-            log.warn("[EtaPro] Error stopping process: {}", e.getMessage());
-            if (scraperProcess != null) scraperProcess.destroyForcibly();
+            // 1. Try graceful shutdown via signal file
+            if (scraperProcess != null && scraperProcess.isAlive()) {
+                try {
+                    Files.writeString(Paths.get(signalPath, "shutdown"), "shutdown");
+                    boolean exited = scraperProcess.waitFor(10, TimeUnit.SECONDS);
+                    if (!exited) {
+                        log.warn("[EtaPro] Graceful shutdown timed out, force-killing PowerShell");
+                        scraperProcess.destroyForcibly();
+                    }
+                } catch (Exception e) {
+                    log.warn("[EtaPro] Error during graceful shutdown: {}", e.getMessage());
+                    scraperProcess.destroyForcibly();
+                }
+            }
         } finally {
-            processRunning.set(false);
             scraperProcess = null;
-            lastStatus.set("stopped");
+            processRunning.set(false);
+        }
+
+        // 2. Kill any orphaned Excel process that the script left behind.
+        //    This is the safety net — if PowerShell crashed without running its
+        //    finally{} block, Excel stays alive invisible and locks the template files.
+        killOrphanedExcel();
+        lastStatus.set("stopped");
+    }
+
+    /**
+     * Detect COM errors that indicate Excel is dead and cannot recover without a restart.
+     */
+    private boolean isComFatalError(String message) {
+        if (message == null) return false;
+        return message.contains("RPC_E_DISCONNECTED")
+                || message.contains("RPC_E_CALL_REJECTED")
+                || message.contains("0x800706BA")  // RPC server unavailable
+                || message.contains("0x80010108")  // object disconnected
+                || message.contains("0x80010001")  // call rejected
+                || message.contains("DISP_E_BADINDEX");
+    }
+
+    /**
+     * Kill any invisible Excel process. Called on shutdown and on COM errors
+     * (RPC_E_DISCONNECTED, RPC server unavailable) to clean up before restart.
+     */
+    private void killOrphanedExcel() {
+        try {
+            ProcessBuilder kill = new ProcessBuilder(
+                    "taskkill", "/F", "/IM", "EXCEL.EXE");
+            kill.redirectErrorStream(true);
+            Process p = kill.start();
+            p.waitFor(5, TimeUnit.SECONDS);
+            // Ignore exit code — 128 means "no such process" which is fine
+            log.info("[EtaPro] taskkill EXCEL.EXE completed (exit {})", p.exitValue());
+        } catch (Exception e) {
+            log.warn("[EtaPro] Failed to kill Excel: {}", e.getMessage());
         }
     }
 
@@ -277,7 +322,7 @@ public class EtaProScraperEngine {
                 if (!startProcess()) {
                     return BatchResult.failure("Could not start scraper process: " + lastStatus.get(), sessionId);
                 }
-                Thread.sleep(5000); // first-load grace period
+                Thread.sleep(15000); // first-load grace: interactive Excel + add-in init
             }
 
             lastStatus.set("sending request (" + template.signalName() + ", " + pointIds.size() + " points)");
@@ -314,12 +359,24 @@ public class EtaProScraperEngine {
 
             String responseJson = Files.readString(responseFile);
             Files.deleteIfExists(responseFile);
+            // Strip UTF-8 BOM if present — PowerShell 5.1 emits it even with
+            // [System.Text.UTF8Encoding]::new($false) in some environments.
+            if (responseJson.length() > 0 && responseJson.charAt(0) == '\uFEFF') {
+                responseJson = responseJson.substring(1);
+            }
             JsonNode response = objectMapper.readTree(responseJson);
 
             String status = response.path("status").asText("error");
             String message = response.path("message").asText("");
 
             if (!"complete".equals(status)) {
+                // Detect fatal COM errors that mean Excel is dead — kill and restart
+                if (isComFatalError(message)) {
+                    log.warn("[EtaPro] COM fatal error detected, killing process for restart: {}", message);
+                    stopProcess();
+                    // Give OS time to release file locks
+                    Thread.sleep(2000);
+                }
                 return BatchResult.failure("Scraper error: " + message, sessionId);
             }
 
@@ -360,6 +417,12 @@ public class EtaProScraperEngine {
         List<EtaProReading> readings = new ArrayList<>();
         List<String> lines = Files.readAllLines(csvPath);
         if (lines.isEmpty()) return readings;
+
+        // Strip UTF-8 BOM from first line if present (PowerShell 5.1 issue)
+        String firstLine = lines.get(0);
+        if (firstLine.length() > 0 && firstLine.charAt(0) == '\uFEFF') {
+            lines.set(0, firstLine.substring(1));
+        }
 
         String[] headers = parseCsvLine(lines.get(0).trim());
 

@@ -1,20 +1,22 @@
 package com.dk_power.power_plant_java.controller.angular.etapro;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.etapro.EtaProPointDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProReadingDto;
 import com.dk_power.power_plant_java.dto.etapro.EtaProScrapeJobDto;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
+import com.dk_power.power_plant_java.sevice.angular.etapro.NgEtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProHistoryJobService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProLiveService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProPointImportService;
-import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScraperEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,7 +34,7 @@ import java.util.Map;
 @ConditionalOnProperty(name = "etapro.enabled", havingValue = "true", matchIfMissing = false)
 public class NgEtaProController {
 
-    private final EtaProPointService etaProPointService;
+    private final NgEtaProPointService ngEtaProPointService;
     private final EtaProReadingService etaProReadingService;
     private final EtaProHistoryJobService historyJobService;
     private final EtaProLiveService liveService;
@@ -43,30 +45,30 @@ public class NgEtaProController {
 
     @GetMapping("/points")
     public ResponseEntity<NgApiResponse<List<EtaProPointDto>>> getAllPoints() {
-        return ResponseEntity.ok(new NgApiResponse<>(etaProPointService.getAllDtos(), "Points retrieved"));
+        return ResponseEntity.ok(new NgApiResponse<>(ngEtaProPointService.getAllDtos(), "Points retrieved"));
     }
 
     @GetMapping("/points/{id}")
     public ResponseEntity<NgApiResponse<EtaProPointDto>> getPointById(@PathVariable Long id) {
-        return ResponseEntity.ok(new NgApiResponse<>(etaProPointService.getDtoById(id), "Point retrieved"));
+        return ResponseEntity.ok(new NgApiResponse<>(ngEtaProPointService.getDtoById(id), "Point retrieved"));
     }
 
     @GetMapping("/points/active")
     public ResponseEntity<NgApiResponse<List<EtaProPointDto>>> getActivePoints() {
-        List<EtaProPointDto> points = etaProPointService.getActivePoints()
-                .stream().map(etaProPointService::convertToDto).toList();
+        List<EtaProPointDto> points = ngEtaProPointService.getActivePoints()
+                .stream().map(ngEtaProPointService::toDto).toList();
         return ResponseEntity.ok(new NgApiResponse<>(points, "Active points retrieved"));
     }
 
     @PostMapping("/points")
     public ResponseEntity<NgApiResponse<EtaProPointDto>> createPoint(@RequestBody EtaProPointDto dto) {
-        EtaProPoint saved = etaProPointService.save(dto);
-        return ResponseEntity.ok(new NgApiResponse<>(etaProPointService.convertToDto(saved), "Point created"));
+        EtaProPoint saved = ngEtaProPointService.save(dto);
+        return ResponseEntity.ok(new NgApiResponse<>(ngEtaProPointService.toDto(saved), "Point created"));
     }
 
     @PutMapping("/points")
     public ResponseEntity<NgApiResponse<EtaProPointDto>> updatePoint(@RequestBody EtaProPointDto dto) {
-        EtaProPoint existing = etaProPointService.getEntityById(dto.getId());
+        EtaProPoint existing = ngEtaProPointService.getEntityById(dto.getId());
         if (existing == null) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Point not found"));
         }
@@ -75,14 +77,59 @@ public class NgEtaProController {
         if (dto.getUnit() != null) existing.setUnit(dto.getUnit());
         if (dto.getCategory() != null) existing.setCategory(dto.getCategory());
         if (dto.getActive() != null) existing.setActive(dto.getActive());
-        EtaProPoint saved = etaProPointService.save(existing);
-        return ResponseEntity.ok(new NgApiResponse<>(etaProPointService.convertToDto(saved), "Point updated"));
+        EtaProPoint saved = ngEtaProPointService.save(existing);
+        return ResponseEntity.ok(new NgApiResponse<>(ngEtaProPointService.toDto(saved), "Point updated"));
     }
 
     @DeleteMapping("/points/{id}")
     public ResponseEntity<NgApiResponse<String>> deletePoint(@PathVariable Long id) {
-        etaProPointService.softDelete(id);
+        ngEtaProPointService.softDelete(id);
         return ResponseEntity.ok(new NgApiResponse<>("Deleted", "Point soft-deleted"));
+    }
+
+    @GetMapping("/points/paginated")
+    public ResponseEntity<NgApiResponse<Page<EtaProPointDto>>> getPaginatedPoints(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<EtaProPointDto> result = ngEtaProPointService.getAll(page - 1, pageSize);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(result, "Points retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/points/search")
+    public ResponseEntity<NgApiResponse<Page<EtaProPointDto>>> searchPoints(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "pointId";
+            String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
+            Page<EtaProPointDto> searchResults = ngEtaProPointService.complexSearch(
+                    criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                    .body(new NgApiResponse<>(searchResults, "Search completed"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/points/unique-values")
+    public ResponseEntity<NgApiResponse<Page<String>>> getUniqueColumnValues(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam String column,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<String> values = ngEtaProPointService.getFilteredUniqueValues(
+                    column, criteria, page - 1, pageSize, true);
+            return ResponseEntity.ok(new NgApiResponse<>(values, "Unique values retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
 
     /**
@@ -161,6 +208,8 @@ public class NgEtaProController {
     @PostMapping("/live/stop")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> stopLive() {
         liveService.stop();
+        // Kill the Excel/PowerShell process — no point keeping it alive with no subscription
+        engine.stopProcess();
         return ResponseEntity.ok(new NgApiResponse<>(liveStatusMap(), "Live subscription stopped"));
     }
 

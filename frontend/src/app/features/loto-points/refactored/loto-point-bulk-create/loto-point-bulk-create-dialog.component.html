@@ -1,0 +1,140 @@
+<app-rf-popup-projection
+  [isOpen]="bulkCreateService.isVisible()"
+  [title]="'Bulk Create LOTO Points'"
+  [size]="'xlarge'"
+  [fullHeight]="true"
+  [zIndex]="12000"
+  (close)="bulkCreateService.close()"
+>
+  <!-- AI Prompt Bar -->
+  <div class="ai-prompt-bar">
+    <input
+      type="text"
+      class="ai-input"
+      placeholder="Describe LOTO points to generate (e.g. '5 manual valves for condensate system, unit 01')..."
+      [ngModel]="aiPrompt()"
+      (ngModelChange)="aiPrompt.set($event)"
+      (keydown.enter)="askAi()"
+      [disabled]="aiGenerating()"
+    />
+    @if (speechService.sttSupported()) {
+      <button
+        class="btn-mic"
+        [class.recording]="speechService.isRecording()"
+        (click)="toggleVoiceInput()"
+        [title]="speechService.isRecording() ? 'Stop recording' : 'Voice input'"
+      >
+        {{ speechService.isRecording() ? '&#9632;' : '&#127908;' }}
+      </button>
+    }
+    <button class="btn-ai" (click)="askAi()" [disabled]="aiGenerating() || !aiPrompt()">
+      {{ aiGenerating() ? 'Generating...' : 'AI Generate' }}
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn-action btn-accent" (click)="bulkCreateService.addCard()">+ Add Card</button>
+      <button class="btn-action" (click)="bulkCreateService.selectAll()">Select All</button>
+      <button class="btn-action" (click)="bulkCreateService.deselectAll()">Deselect</button>
+      <button class="btn-action" [class.active]="bulkCreateService.showBulkEdit()" (click)="bulkCreateService.showBulkEdit.set(!bulkCreateService.showBulkEdit())">
+        Bulk Edit
+      </button>
+    </div>
+    <div class="toolbar-right">
+      @if (bulkCreateService.sourceContext() === 'table') {
+        <button class="btn-action btn-secondary" (click)="saveAndEngrave()" [disabled]="bulkCreateService.isSaving() || !bulkCreateService.hasDrafts()">
+          Save & Engrave
+        </button>
+        <button class="btn-action btn-secondary" (click)="saveAndPrint()" [disabled]="bulkCreateService.isSaving() || !bulkCreateService.hasDrafts()">
+          Save & Print
+        </button>
+      }
+      <button class="btn-action" (click)="bulkCreateService.saveSelected()" [disabled]="bulkCreateService.isSaving() || bulkCreateService.selectedCards().length === 0">
+        Save Selected
+      </button>
+      <button class="btn-action btn-primary" (click)="bulkCreateService.saveAll()" [disabled]="bulkCreateService.isSaving() || !bulkCreateService.hasDrafts()">
+        {{ bulkCreateService.isSaving() ? 'Saving...' : 'Save All' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Bulk Edit Panel -->
+  @if (bulkCreateService.showBulkEdit()) {
+    <div class="bulk-edit-panel">
+      <div class="bulk-edit-header">
+        <span>Bulk Edit — fill fields and apply to cards</span>
+        <button class="btn-clear" (click)="clearBulkEdit()">Clear</button>
+      </div>
+      <div class="bulk-edit-fields">
+        <div class="be-field">
+          <label>Tag Number</label>
+          <input type="text" [(ngModel)]="bulkTagNumber" placeholder="Tag number" />
+        </div>
+        <div class="be-field">
+          <label>Description</label>
+          <input type="text" [(ngModel)]="bulkDescription" placeholder="Description" />
+        </div>
+        <div class="be-field">
+          <label>Location</label>
+          <app-rf-value-select [categoryAlias]="'location'" [label]="''" [ngModel]="bulkLocationId" (valueSelected)="onBulkLocationSelected($event)" />
+        </div>
+        <div class="be-field">
+          <label>Specific Location</label>
+          <input type="text" [(ngModel)]="bulkSpecificLocation" placeholder="Specific location" />
+        </div>
+        <div class="be-field">
+          <label>Normal Position</label>
+          <app-rf-value-select [categoryAlias]="'normPos'" [label]="''" [ngModel]="bulkNormPosId" (valueSelected)="onBulkNormPosSelected($event)" />
+        </div>
+        <div class="be-field">
+          <label>Isolated Position</label>
+          <app-rf-value-select [categoryAlias]="'isoPos'" [label]="''" [ngModel]="bulkIsoPosId" (valueSelected)="onBulkIsoPosSelected($event)" />
+        </div>
+        <div class="be-field be-characteristics">
+          <label>Characteristics</label>
+          <app-characteristics-editor [label]="''" [(ngModel)]="bulkCharacteristicsJson"></app-characteristics-editor>
+        </div>
+      </div>
+      <div class="bulk-edit-actions">
+        <button class="btn-action btn-primary" (click)="applyBulkEdit('all')" [disabled]="!bulkCreateService.hasDrafts()">Apply to All</button>
+        <button class="btn-action btn-accent" (click)="applyBulkEdit('selected')" [disabled]="bulkCreateService.selectedCards().length === 0">Apply to Selected</button>
+      </div>
+    </div>
+  }
+
+  <!-- Cards -->
+  <div class="cards-container">
+    @if (bulkCreateService.cards().length === 0) {
+      <div class="empty-state">
+        <p>No cards yet. Click <strong>+ Add Card</strong> or use <strong>AI Generate</strong> to get started.</p>
+      </div>
+    }
+    @for (row of cardRows; track row.primary.uid) {
+      <div class="card-row" [class.has-counterpart]="!!row.counterpart">
+        <app-loto-point-create-card
+          [card]="row.primary"
+          [cardIndex]="getCardIndex(row.primary.uid)"
+          [isCounterpart]="false"
+          (cardChanged)="bulkCreateService.updateCard(row.primary.uid, $event)"
+          (remove)="bulkCreateService.removeCard(row.primary.uid)"
+          (selectionToggled)="bulkCreateService.toggleSelection(row.primary.uid)"
+          (generateCounterpart)="bulkCreateService.generateCounterpart(row.primary.uid)"
+          (saveCard)="bulkCreateService.saveCard(row.primary.uid)"
+        />
+        @if (row.counterpart) {
+          <app-loto-point-create-card
+            [card]="row.counterpart"
+            [cardIndex]="getCardIndex(row.counterpart.uid)"
+            [isCounterpart]="true"
+            (cardChanged)="bulkCreateService.updateCard(row.counterpart.uid, $event)"
+            (remove)="bulkCreateService.removeCard(row.counterpart.uid)"
+            (selectionToggled)="bulkCreateService.toggleSelection(row.counterpart.uid)"
+            (saveCard)="bulkCreateService.saveCard(row.counterpart.uid)"
+          />
+        }
+      </div>
+    }
+  </div>
+</app-rf-popup-projection>

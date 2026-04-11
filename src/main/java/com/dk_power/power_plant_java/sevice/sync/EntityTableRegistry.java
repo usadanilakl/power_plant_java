@@ -96,7 +96,12 @@ public class EntityTableRegistry {
 
         // Scheduler
         Map.entry("Flow", "flow"),
-        Map.entry("Task", "task")
+        Map.entry("Task", "task"),
+
+        // EtaPro
+        Map.entry("EtaProPoint", "eta_pro_point"),
+        Map.entry("EtaProReading", "eta_pro_reading"),
+        Map.entry("EtaProScrapeJob", "eta_pro_scrape_job")
     );
 
     /**
@@ -127,6 +132,9 @@ public class EntityTableRegistry {
         "HtBreaker",
         "Instrument",
         "InstrumentLog",
+        "EtaProPoint",
+        "EtaProReading",
+        "EtaProScrapeJob",
         "EspDevice",
         "LedStrip",
         "WorkAreaMapShape",
