@@ -564,6 +564,10 @@ export class WorkAreaMapSelectComponent implements ControlValueAccessor, OnInit,
     this.applyTransform();
   }
 
+  onImageLoaded(): void {
+    this.fitToContainer();
+  }
+
   /** Scale the image so it fills the container width on overlay open */
   private fitToContainer(): void {
     const container = this.mapContainer?.nativeElement;

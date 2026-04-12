@@ -67,7 +67,8 @@
               [src]="imageUrl()"
               alt="Plant Map"
               class="map-image"
-              draggable="false" />
+              draggable="false"
+              (load)="onImageLoaded()" />
 
             @for (shape of shapes(); track shape.entry.id) {
               <div
@@ -75,7 +76,6 @@
                 [class.selected]="selectedShape() === shape"
                 [ngStyle]="getShapeBorderStyle(shape, selectedShape() === shape)"
                 (click)="selectShape(shape); $event.stopPropagation()">
-                <span class="shape-tooltip" [ngStyle]="getTooltipStyle()">{{ getDisplayName(shape) }}</span>
               </div>
             }
           </div>

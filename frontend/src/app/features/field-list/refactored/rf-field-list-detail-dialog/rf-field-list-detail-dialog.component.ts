@@ -245,7 +245,16 @@ export class RfFieldListDetailDialogComponent implements OnInit {
       this.loadingAttachments.set(true);
       this.apiService.getAttachments(id).subscribe({
         next: res => {
-          this.attachments.set(res.responseData || []);
+          // Deduplicate by fileName (PWA + SP sync can create duplicates)
+          const raw: Attachment[] = res.responseData || [];
+          const seen = new Set<string>();
+          const deduped = raw.filter(a => {
+            const key = a.fileName || String(a.id);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          this.attachments.set(deduped);
           this.loadingAttachments.set(false);
         },
         error: () => this.loadingAttachments.set(false)

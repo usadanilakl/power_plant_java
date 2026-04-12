@@ -161,10 +161,10 @@ export class RfFieldListPageComponent implements OnInit {
     this.stateService.allItems$.subscribe(i => items = i).unsubscribe();
     if (items.length === 0) return;
 
-    // Load attachments for all items
+    // Load attachments — only first image per item for speed
     const attachmentResults = await Promise.all(
       items.map(item =>
-        item.id
+        item.id && item.attachmentCount > 0
           ? firstValueFrom(this.apiService.getAttachments(item.id)).catch(() => ({ responseData: [] as any[] }))
           : Promise.resolve({ responseData: [] as any[] })
       )
@@ -182,6 +182,12 @@ export class RfFieldListPageComponent implements OnInit {
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
         h1 { font-size: 18px; margin-bottom: 4px; }
+        .toolbar { position: sticky; top: 0; background: white; padding: 8px 0 12px; z-index: 10;
+          display: flex; gap: 8px; border-bottom: 1px solid #ddd; margin-bottom: 16px; }
+        .toolbar button { padding: 8px 20px; border: 1px solid #ccc; border-radius: 4px;
+          cursor: pointer; font-size: 14px; background: white; }
+        .toolbar .btn-print { background: #1976d2; color: white; border-color: #1976d2; }
+        .toolbar .btn-print:hover { background: #1565c0; }
         .print-date { font-size: 12px; color: #888; margin-bottom: 16px; }
         .item { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin-bottom: 20px; page-break-inside: avoid; }
         .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -195,23 +201,44 @@ export class RfFieldListPageComponent implements OnInit {
         .item-notes { background: #f5f5f5; padding: 10px 12px; border-radius: 4px; margin-top: 10px;
           white-space: pre-wrap; font-size: 13px; border-left: 3px solid #1976d2; }
         .item-images { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-        .item-images img { max-width: 280px; max-height: 210px; border-radius: 4px; border: 1px solid #ddd; }
-        .no-print-btn { position: fixed; top: 10px; right: 10px; padding: 8px 20px; background: #1976d2;
-          color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; z-index: 100; }
-        .no-print-btn:hover { background: #1565c0; }
+        .item-images img { max-width: 200px; max-height: 150px; border-radius: 4px; border: 1px solid #ddd; }
+        .loading-images { font-size: 12px; color: #888; margin-top: 8px; }
         @media print {
           .item { break-inside: avoid; }
-          .no-print-btn { display: none; }
-          .item-images img { max-width: 240px; max-height: 180px; }
+          .toolbar { display: none; }
+          .item-images img { max-width: 180px; max-height: 140px; }
         }
-      </style></head><body>
-      <button class="no-print-btn" onclick="window.print()">Print</button>
+      </style>
+      <script>
+        function emailReport() {
+          var subject = encodeURIComponent(document.title);
+          var body = encodeURIComponent('Please find the attached Field Lists report.\\n\\nTo attach: use Print / Save PDF first, then attach the saved PDF to this email.');
+          var recipient = prompt('Enter recipient email address:', '');
+          if (recipient) {
+            window.location.href = 'mailto:' + encodeURIComponent(recipient) + '?subject=' + subject + '&body=' + body;
+          }
+        }
+      </script>
+      </head><body>
+      <div class="toolbar">
+        <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
+        <button onclick="emailReport()">Email</button>
+        <button onclick="window.close()">Close</button>
+      </div>
       <h1>Field Lists — ${this.escapeHtml(listType)} (${items.length} items)</h1>
       <div class="print-date">Printed: ${dateStr}</div>`;
 
     items.forEach((item: FieldListItemDto, i: number) => {
       const attachments = (attachmentResults[i] as any)?.responseData || [];
-      const images = attachments.filter((a: any) => a.contentType?.startsWith('image/'));
+      // Deduplicate by fileName to avoid duplicates from PWA + SP sync
+      const seen = new Set<string>();
+      const images = attachments.filter((a: any) => {
+        if (!a.contentType?.startsWith('image/')) return false;
+        const key = a.fileName || a.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       html += `<div class="item">
         <div class="item-header">
@@ -234,7 +261,7 @@ export class RfFieldListPageComponent implements OnInit {
         html += `<div class="item-images">`;
         images.forEach((img: any) => {
           const src = img.base64Content?.startsWith('data:') ? img.base64Content : `data:${img.contentType};base64,${img.base64Content}`;
-          html += `<img src="${src}" alt="${this.escapeHtml(img.fileName)}">`;
+          html += `<img src="${src}" alt="${this.escapeHtml(img.fileName)}" loading="lazy">`;
         });
         html += `</div>`;
       }
@@ -245,7 +272,7 @@ export class RfFieldListPageComponent implements OnInit {
     html += `</body></html>`;
     printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.onload = () => printWindow.print();
+    // Don't auto-trigger print — user reviews preview first, then clicks Print button
   }
 
   private escapeHtml(text: string): string {
