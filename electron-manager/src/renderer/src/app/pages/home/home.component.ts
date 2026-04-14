@@ -244,6 +244,8 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
     .widget-wrapper {
       position: relative;
       border-radius: 14px;
+      display: flex;
+      flex-direction: column;
     }
 
     .widget-wrapper.span-2 {

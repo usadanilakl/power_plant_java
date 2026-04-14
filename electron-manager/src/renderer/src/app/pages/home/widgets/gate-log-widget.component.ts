@@ -35,6 +35,8 @@ import { GateLogStatus } from '../../../services/electron.service';
     }
     .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
     .feature-card.no-navigate { pointer-events: none; }
+    :host { flex: 1; display: flex; flex-direction: column; }
+    .feature-card { flex: 1; }
     .feature-icon { font-size: 28px; }
     .feature-info h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
     .feature-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
