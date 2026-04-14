@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { GridsterModule, GridsterConfig, GridsterItem, GridType, CompactType, DisplayGrid } from 'angular-gridster2';
 import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
 import { DashboardLayoutService, WidgetPlacement, WidgetId, WIDGET_REGISTRY, LayoutPreset } from '../../services/dashboard-layout.service';
 import { FireImpairmentWidgetComponent } from './widgets/fire-impairment-widget.component';
@@ -12,16 +13,25 @@ import { PermitsWidgetComponent } from './widgets/permits-widget.component';
 import { ExternalLinksWidgetComponent } from './widgets/external-links-widget.component';
 import { ContactsWidgetComponent } from './widgets/contacts-widget.component';
 import { PagingWidgetComponent } from './widgets/paging-widget.component';
+import { ClockWidgetComponent } from './widgets/clock-widget.component';
+import { NotesWidgetComponent } from './widgets/notes-widget.component';
 import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.component';
+
+interface DashboardGridsterItem extends GridsterItem {
+  widgetId: WidgetId;
+  visible: boolean;
+  settings?: Record<string, any>;
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [
-    CommonModule, RouterModule,
+    CommonModule, RouterModule, GridsterModule,
     FireImpairmentWidgetComponent, GateLogWidgetComponent, WeatherWidgetComponent,
     PjmWidgetComponent, PermitsWidgetComponent, ExternalLinksWidgetComponent,
-    ContactsWidgetComponent, PagingWidgetComponent, DashboardEditToolbarComponent,
+    ContactsWidgetComponent, PagingWidgetComponent, ClockWidgetComponent,
+    NotesWidgetComponent, DashboardEditToolbarComponent,
   ],
   template: `
     <div class="home">
@@ -73,7 +83,7 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
 
       <!-- Edit toolbar -->
       <app-dashboard-edit-toolbar *ngIf="editMode"
-        [draft]="draftLayout"
+        [draft]="draftItems"
         [presets]="presets"
         [currentPresetName]="draftPresetName"
         (applyPreset)="applyPreset($event)"
@@ -81,66 +91,67 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
         (done)="saveDraft()"
         (cancel)="cancelEdit()" />
 
-      <!-- Feature cards grid -->
-      <div class="features-grid" [class.edit-mode]="editMode">
-        <ng-container *ngFor="let widget of visibleWidgets; trackBy: trackWidget">
-          <div class="widget-wrapper"
-               [class.span-2]="widget.colSpan === 2"
-               [class.dragging]="dragSourceId === widget.widgetId"
-               [class.drag-over]="dragOverId === widget.widgetId"
-               [attr.data-widget-id]="widget.widgetId"
-               (dragover)="editMode ? onDragOver($event, widget.widgetId) : null"
-               (drop)="editMode ? onDrop($event, widget.widgetId) : null"
-               (dragleave)="onDragLeave()">
-
-            <!-- Edit controls -->
-            <div class="widget-edit-controls" *ngIf="editMode">
-              <span class="drag-handle material-icons"
-                    draggable="true"
-                    (dragstart)="onDragStart($event, widget.widgetId)"
-                    (dragend)="onDragEnd()">drag_indicator</span>
-              <div class="widget-ctrl-group">
-                <button class="widget-ctrl-btn" *ngIf="canResize(widget.widgetId)"
-                        (click)="toggleSpan(widget.widgetId)"
-                        [title]="widget.colSpan === 2 ? 'Shrink to 1 column' : 'Expand to 2 columns'">
-                  <span class="material-icons">{{ widget.colSpan === 2 ? 'unfold_less' : 'unfold_more' }}</span>
-                </button>
-                <button class="widget-ctrl-btn" (click)="hideWidget(widget.widgetId)" title="Hide widget">
-                  <span class="material-icons">visibility_off</span>
-                </button>
-              </div>
+      <!-- Gridster dashboard -->
+      <gridster [options]="gridsterOptions">
+        <gridster-item *ngFor="let item of visibleItems; trackBy: trackItem" [item]="item"
+                       [style.font-size]="getScale(item) + 'em'">
+          <!-- Edit overlay -->
+          <div class="widget-edit-overlay" *ngIf="editMode">
+            <div class="scale-controls">
+              <button class="widget-ctrl-btn" (click)="decreaseScale(item.widgetId)" title="Decrease text size">
+                <span class="material-icons">text_decrease</span>
+              </button>
+              <button class="widget-ctrl-btn" (click)="increaseScale(item.widgetId)" title="Increase text size">
+                <span class="material-icons">text_increase</span>
+              </button>
             </div>
-
-            <!-- Widget content -->
-            <ng-container [ngSwitch]="widget.widgetId">
-              <app-fire-impairment-widget *ngSwitchCase="'fire-impairment'"
-                [status]="status" [activeImpairmentCount]="activeImpairmentCount" [editMode]="editMode" />
-              <app-gate-log-widget *ngSwitchCase="'gate-log'"
-                [peopleCount]="gateLogPeopleCount" [gateSourceCount]="gateSourceCount"
-                [onlocSourceCount]="onlocSourceCount" [lastUpdateLabel]="gateLogLastUpdateLabel"
-                [gateLogStatus]="gateLogStatus" [editMode]="editMode" />
-              <app-weather-widget *ngSwitchCase="'weather'"
-                [weatherStatus]="weatherStatus" [perryStatus]="perryStatus" [weatherForecast]="weatherForecast"
-                [lightningLevel]="lightningLevel" [lightningLabel]="lightningLabel"
-                [perryLightningLevel]="perryLightningLevel" [forecastDesc]="forecastDesc" [editMode]="editMode" />
-              <app-pjm-widget *ngSwitchCase="'pjm'"
-                [pjmStatus]="pjmStatus" [pjmPolling]="pjmPolling" [editMode]="editMode" />
-              <app-permits-widget *ngSwitchCase="'permits'"
-                [status]="status" [activeWorkRequestCount]="activeWorkRequestCount"
-                [newWorkRequestCount]="newWorkRequestCount" [editMode]="editMode" />
-              <app-external-links-widget *ngSwitchCase="'external-links'" [editMode]="editMode" />
-              <app-contacts-widget *ngSwitchCase="'contacts'" />
-              <app-paging-widget *ngSwitchCase="'paging-system'" />
-            </ng-container>
+            <button class="widget-ctrl-btn hide-btn" (click)="hideWidget(item.widgetId)" title="Hide widget">
+              <span class="material-icons">visibility_off</span>
+            </button>
           </div>
-        </ng-container>
-      </div>
+
+          <!-- Widget content -->
+          <ng-container [ngSwitch]="item.widgetId">
+            <app-fire-impairment-widget *ngSwitchCase="'fire-impairment'"
+              [status]="status" [activeImpairmentCount]="activeImpairmentCount"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-gate-log-widget *ngSwitchCase="'gate-log'"
+              [peopleCount]="gateLogPeopleCount" [gateSourceCount]="gateSourceCount"
+              [onlocSourceCount]="onlocSourceCount" [lastUpdateLabel]="gateLogLastUpdateLabel"
+              [gateLogStatus]="gateLogStatus" [recentPeople]="recentGateLogPeople"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-weather-widget *ngSwitchCase="'weather'"
+              [weatherStatus]="weatherStatus" [perryStatus]="perryStatus" [weatherForecast]="weatherForecast"
+              [lightningLevel]="lightningLevel" [lightningLabel]="lightningLabel"
+              [perryLightningLevel]="perryLightningLevel" [forecastDesc]="forecastDesc"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-pjm-widget *ngSwitchCase="'pjm'"
+              [pjmStatus]="pjmStatus" [pjmPolling]="pjmPolling"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-permits-widget *ngSwitchCase="'permits'"
+              [status]="status" [activeWorkRequestCount]="activeWorkRequestCount"
+              [newWorkRequestCount]="newWorkRequestCount"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-external-links-widget *ngSwitchCase="'external-links'"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-contacts-widget *ngSwitchCase="'contacts'" />
+            <app-paging-widget *ngSwitchCase="'paging-system'" />
+            <app-clock-widget *ngSwitchCase="'clock'"
+              [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
+            <app-notes-widget *ngSwitchCase="'notes'"
+              [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
+          </ng-container>
+        </gridster-item>
+      </gridster>
     </div>
   `,
   styles: [`
     .home {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .dashboard-header {
@@ -157,12 +168,7 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
       margin: 0;
     }
 
-    .customize-btn {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
+    .customize-btn { display: flex; align-items: center; gap: 4px; }
     .btn-icon { font-size: 16px; }
 
     /* Spring Boot Panel */
@@ -171,7 +177,7 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
       border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 20px;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
 
     .sb-panel-header {
@@ -182,36 +188,12 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
       gap: 12px;
     }
 
-    .sb-title-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .sb-title-row { display: flex; align-items: center; gap: 10px; }
+    .sb-title-row h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0; }
 
-    .sb-title-row h2 {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0;
-    }
-
-    .sb-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .sb-dot.running {
-      background-color: var(--accent-success);
-      box-shadow: 0 0 8px var(--accent-success);
-    }
-
-    .sb-dot.starting, .sb-dot.stopping {
-      background-color: var(--accent-warning);
-      animation: pulse 1.5s infinite;
-    }
-
+    .sb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .sb-dot.running { background-color: var(--accent-success); box-shadow: 0 0 8px var(--accent-success); }
+    .sb-dot.starting, .sb-dot.stopping { background-color: var(--accent-warning); animation: pulse 1.5s infinite; }
     .sb-dot.stopped { background-color: var(--text-muted); }
     .sb-dot.error { background-color: var(--accent-error); }
 
@@ -219,12 +201,8 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
     .btn-sm { padding: 6px 12px; font-size: 12px; }
 
     .sb-details {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border-color);
+      display: flex; gap: 20px; flex-wrap: wrap;
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);
     }
 
     .detail-item { font-size: 13px; color: var(--text-secondary); }
@@ -233,100 +211,56 @@ import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.componen
     .health-unhealthy { color: var(--accent-error); }
     .health-unknown { color: var(--text-muted); }
 
-    /* Features Grid */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+    /* Gridster overrides */
+    :host ::ng-deep gridster {
+      background: transparent !important;
+      flex: 1;
     }
 
-    /* Widget wrapper */
-    .widget-wrapper {
-      position: relative;
-      border-radius: 14px;
-      display: flex;
-      flex-direction: column;
+    :host ::ng-deep gridster-item {
+      border-radius: 12px;
+      overflow: visible;
+      background: transparent !important;
     }
 
-    .widget-wrapper.span-2 {
-      grid-column: span 2;
+    :host ::ng-deep gridster-item > * {
+      height: 100%;
+      width: 100%;
     }
 
-    @media (max-width: 640px) {
-      .widget-wrapper.span-2 { grid-column: span 1; }
+    :host ::ng-deep .gridster-item-resizable-handler {
+      opacity: 0;
+      transition: opacity 150ms;
     }
 
-    /* Edit mode */
-    .features-grid.edit-mode .widget-wrapper {
-      border: 2px dashed var(--border-color);
-      padding: 2px;
-      transition: border-color 150ms;
+    :host ::ng-deep gridster-item:hover .gridster-item-resizable-handler {
+      opacity: 0.5;
     }
 
-    .widget-edit-controls {
+    /* Widget edit overlay */
+    .widget-edit-overlay {
       position: absolute;
       top: 6px;
       left: 6px;
       right: 6px;
+      z-index: 10;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      z-index: 10;
       pointer-events: none;
     }
 
-    .widget-edit-controls > * {
-      pointer-events: auto;
-    }
-
-    .drag-handle {
-      cursor: grab;
-      color: var(--text-muted);
-      font-size: 20px;
-      padding: 2px;
-      border-radius: 4px;
-      background: var(--bg-card);
-      opacity: 0.8;
-      transition: opacity 150ms, color 150ms;
-    }
-
-    .drag-handle:hover { opacity: 1; color: var(--text-primary); }
-    .drag-handle:active { cursor: grabbing; }
-
-    .widget-ctrl-group {
-      display: flex;
-      gap: 4px;
-    }
+    .widget-edit-overlay > * { pointer-events: auto; }
+    .scale-controls { display: flex; gap: 2px; }
 
     .widget-ctrl-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: none;
-      background: var(--bg-card);
-      color: var(--text-muted);
-      cursor: pointer;
-      opacity: 0.8;
-      transition: opacity 150ms, color 150ms, background-color 150ms;
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; border: none;
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer;
+      opacity: 0.8; transition: opacity 150ms, color 150ms, background-color 150ms;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
-
-    .widget-ctrl-btn:hover {
-      opacity: 1;
-      color: var(--text-primary);
-      background: var(--bg-secondary);
-    }
-
+    .widget-ctrl-btn:hover { opacity: 1; color: var(--text-primary); background: var(--bg-secondary); }
     .widget-ctrl-btn .material-icons { font-size: 18px; }
-
-    /* Drag-and-drop */
-    .widget-wrapper.dragging { opacity: 0.4; }
-    .widget-wrapper.drag-over {
-      border-color: var(--accent-primary) !important;
-      background: rgba(59, 130, 246, 0.06);
-    }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -357,12 +291,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Layout
   editMode = false;
-  draftLayout: WidgetPlacement[] = [];
+  draftItems: DashboardGridsterItem[] = [];
   presets: LayoutPreset[] = [];
-
-  // Drag-and-drop
-  dragSourceId: WidgetId | null = null;
-  dragOverId: WidgetId | null = null;
+  gridsterOptions: GridsterConfig = {};
 
   constructor(
     private electronService: ElectronService,
@@ -370,132 +301,155 @@ export class HomeComponent implements OnInit, OnDestroy {
     private layoutService: DashboardLayoutService,
   ) {
     this.presets = this.layoutService.getPresets();
+    this.initGridsterOptions();
   }
 
-  get visibleWidgets(): WidgetPlacement[] {
-    const source = this.editMode ? this.draftLayout : this.layoutService.layout();
-    return source.filter(w => w.visible);
+  private initGridsterOptions(): void {
+    this.gridsterOptions = {
+      gridType: GridType.VerticalFixed,
+      compactType: CompactType.CompactUp,
+      margin: 8,
+      outerMargin: false,
+      fixedRowHeight: 200,
+      minCols: 3,
+      maxCols: 3,
+      minRows: 1,
+      maxRows: 100,
+      pushItems: true,
+      draggable: { enabled: false },
+      resizable: { enabled: false },
+      displayGrid: DisplayGrid.None,
+    };
+  }
+
+  private setEditGridsterOptions(): void {
+    this.gridsterOptions = {
+      ...this.gridsterOptions,
+      draggable: { enabled: true },
+      resizable: { enabled: true },
+      displayGrid: DisplayGrid.OnDragAndResize,
+    };
+  }
+
+  private setViewGridsterOptions(): void {
+    this.gridsterOptions = {
+      ...this.gridsterOptions,
+      draggable: { enabled: false },
+      resizable: { enabled: false },
+      displayGrid: DisplayGrid.None,
+    };
+  }
+
+  get visibleItems(): DashboardGridsterItem[] {
+    if (this.editMode) {
+      return this.draftItems.filter(i => i.visible);
+    }
+    return this.toGridsterItems(this.layoutService.layout().filter(w => w.visible));
   }
 
   get draftPresetName(): string {
     if (!this.editMode) return this.layoutService.currentPresetName();
-    // Check if draft matches any preset
+    const draft = this.draftItems.map(i => this.toPlacement(i));
     for (const preset of this.presets) {
-      if (this.layoutsMatch(this.draftLayout, preset.widgets)) return preset.name;
+      if (this.layoutsMatch(draft, preset.widgets)) return preset.name;
     }
     return 'Custom';
   }
 
-  trackWidget(_index: number, widget: WidgetPlacement): WidgetId {
-    return widget.widgetId;
+  trackItem(_index: number, item: DashboardGridsterItem): WidgetId {
+    return item.widgetId;
   }
 
   // --- Edit mode ---
 
   enterEditMode(): void {
     this.editMode = true;
-    this.draftLayout = this.layoutService.startEditing();
+    this.draftItems = this.toGridsterItems(this.layoutService.startEditing());
+    this.setEditGridsterOptions();
   }
 
   saveDraft(): void {
-    this.layoutService.save(this.draftLayout);
+    this.layoutService.save(this.draftItems.map(i => this.toPlacement(i)));
     this.editMode = false;
-    this.draftLayout = [];
+    this.draftItems = [];
+    this.setViewGridsterOptions();
   }
 
   cancelEdit(): void {
     this.editMode = false;
-    this.draftLayout = [];
+    this.draftItems = [];
+    this.setViewGridsterOptions();
   }
 
   applyPreset(name: string): void {
     const preset = this.presets.find(p => p.name === name);
     if (preset) {
-      this.draftLayout = structuredClone(preset.widgets);
+      this.draftItems = this.toGridsterItems(structuredClone(preset.widgets));
     }
   }
 
   hideWidget(widgetId: WidgetId): void {
-    const w = this.draftLayout.find(w => w.widgetId === widgetId);
-    if (w) w.visible = false;
+    const item = this.draftItems.find(i => i.widgetId === widgetId);
+    if (item) item.visible = false;
   }
 
   restoreWidget(widgetId: WidgetId): void {
-    const w = this.draftLayout.find(w => w.widgetId === widgetId);
-    if (w) w.visible = true;
-  }
-
-  // --- Span toggle ---
-
-  canResize(widgetId: WidgetId): boolean {
-    const def = this.layoutService.getWidgetDefinition(widgetId);
-    return !!def && def.allowedColSpans.length > 1;
-  }
-
-  toggleSpan(widgetId: WidgetId): void {
-    const w = this.draftLayout.find(w => w.widgetId === widgetId);
-    if (!w) return;
-    const def = this.layoutService.getWidgetDefinition(widgetId);
-    if (!def) return;
-    w.colSpan = w.colSpan === 1 && def.allowedColSpans.includes(2) ? 2 : 1;
-  }
-
-  // --- Drag-and-drop ---
-
-  onDragStart(event: DragEvent, widgetId: WidgetId): void {
-    this.dragSourceId = widgetId;
-    event.dataTransfer?.setData('text/plain', widgetId);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
+    const item = this.draftItems.find(i => i.widgetId === widgetId);
+    if (item) {
+      item.visible = true;
+      // Place at bottom
+      const maxY = this.draftItems
+        .filter(i => i.visible && i.widgetId !== widgetId)
+        .reduce((max, i) => Math.max(max, i.y + i.rows), 0);
+      item.x = 0;
+      item.y = maxY;
     }
   }
 
-  onDragOver(event: DragEvent, widgetId: WidgetId): void {
-    event.preventDefault();
-    if (!this.dragSourceId || this.dragSourceId === widgetId) {
-      this.dragOverId = null;
-      return;
-    }
-    this.dragOverId = widgetId;
+  // --- Content scale ---
+
+  getScale(item: DashboardGridsterItem): number {
+    return item.settings?.['contentScale'] ?? 1;
   }
 
-  onDragLeave(): void {
-    this.dragOverId = null;
+  increaseScale(widgetId: WidgetId): void {
+    const item = this.draftItems.find(i => i.widgetId === widgetId);
+    if (!item) return;
+    if (!item.settings) item.settings = {};
+    const current = item.settings['contentScale'] ?? 1;
+    item.settings['contentScale'] = Math.min(current + 0.1, 1.5);
   }
 
-  onDrop(event: DragEvent, targetId: WidgetId): void {
-    event.preventDefault();
-    const sourceId = event.dataTransfer?.getData('text/plain') as WidgetId;
-    if (!sourceId || sourceId === targetId) {
-      this.clearDrag();
-      return;
-    }
-
-    // Remove source from its current position
-    const sourceIndex = this.draftLayout.findIndex(w => w.widgetId === sourceId);
-    if (sourceIndex === -1) { this.clearDrag(); return; }
-    const [removed] = this.draftLayout.splice(sourceIndex, 1);
-
-    // Insert at target's current position (source takes target's slot, target shifts)
-    const targetIndex = this.draftLayout.findIndex(w => w.widgetId === targetId);
-    this.draftLayout.splice(targetIndex, 0, removed);
-
-    this.clearDrag();
+  decreaseScale(widgetId: WidgetId): void {
+    const item = this.draftItems.find(i => i.widgetId === widgetId);
+    if (!item) return;
+    if (!item.settings) item.settings = {};
+    const current = item.settings['contentScale'] ?? 1;
+    item.settings['contentScale'] = Math.max(current - 0.1, 0.7);
   }
 
-  onDragEnd(): void {
-    this.clearDrag();
+  // --- Helpers ---
+
+  private toGridsterItems(placements: WidgetPlacement[]): DashboardGridsterItem[] {
+    return placements.map(w => ({
+      x: w.x, y: w.y, cols: w.cols, rows: w.rows,
+      widgetId: w.widgetId, visible: w.visible, settings: w.settings,
+    }));
   }
 
-  private clearDrag(): void {
-    this.dragSourceId = null;
-    this.dragOverId = null;
+  private toPlacement(item: DashboardGridsterItem): WidgetPlacement {
+    return {
+      widgetId: item.widgetId, visible: item.visible,
+      x: item.x, y: item.y, cols: item.cols, rows: item.rows,
+      settings: item.settings,
+    };
   }
 
   private layoutsMatch(a: WidgetPlacement[], b: WidgetPlacement[]): boolean {
     if (a.length !== b.length) return false;
     return a.every((w, i) =>
-      w.widgetId === b[i].widgetId && w.visible === b[i].visible && w.colSpan === b[i].colSpan
+      w.widgetId === b[i].widgetId && w.visible === b[i].visible &&
+      w.x === b[i].x && w.y === b[i].y && w.cols === b[i].cols && w.rows === b[i].rows
     );
   }
 
@@ -512,64 +466,44 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
 
     this.loadWeatherStatus();
-    this.unsubWeather = this.electronService.onWeatherStatusChange((s) => {
-      this.weatherStatus = s;
-    });
+    this.unsubWeather = this.electronService.onWeatherStatusChange((s) => { this.weatherStatus = s; });
 
     this.loadWeatherForecast();
-    this.unsubForecast = this.electronService.onWeatherForecastChange((f) => {
-      this.weatherForecast = f;
-    });
+    this.unsubForecast = this.electronService.onWeatherForecastChange((f) => { this.weatherForecast = f; });
 
     this.loadPerryStatus();
-    this.unsubPerry = this.electronService.onPerryStatusChange((s) => {
-      this.perryStatus = s;
-    });
+    this.unsubPerry = this.electronService.onPerryStatusChange((s) => { this.perryStatus = s; });
 
     this.loadPjmStatus();
-    this.unsubPjm = this.electronService.onPjmStatusChange((s) => {
-      this.pjmStatus = s;
-    });
+    this.unsubPjm = this.electronService.onPjmStatusChange((s) => { this.pjmStatus = s; });
 
     this.loadGateLogData();
-    this.unsubGateLog = this.electronService.onGateLogPeopleUpdated(() => {
-      this.loadGateLogData();
-    });
+    this.unsubGateLog = this.electronService.onGateLogPeopleUpdated(() => { this.loadGateLogData(); });
 
     this.unsubSync = this.electronService.onSyncEntityUpdated((entityType) => {
-      if (entityType === 'FireImpairment') {
-        this.loadFireImpCount();
-      }
+      if (entityType === 'FireImpairment') { this.loadFireImpCount(); }
     });
   }
 
   private async loadWeatherStatus(): Promise<void> {
     try {
       const result = await this.electronService.getWeatherStatus();
-      if (result.success && result.data) {
-        this.weatherStatus = result.data;
-      }
+      if (result.success && result.data) this.weatherStatus = result.data;
     } catch {}
   }
 
   private async loadWeatherForecast(): Promise<void> {
     try {
       const result = await this.electronService.getWeatherForecast();
-      if (result.success && result.data) {
-        this.weatherForecast = result.data;
-      }
+      if (result.success && result.data) this.weatherForecast = result.data;
     } catch {}
   }
 
   private async loadPjmStatus(): Promise<void> {
     try {
       const result = await this.electronService.getPjmStatus() as any;
-      if (result.success && result.data) {
-        this.pjmStatus = result.data;
-      }
-      if (result.polling != null) {
-        this.pjmPolling = result.polling;
-      }
+      if (result.success && result.data) this.pjmStatus = result.data;
+      if (result.polling != null) this.pjmPolling = result.polling;
     } catch {}
   }
 
@@ -606,9 +540,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async loadFireImpCount(): Promise<void> {
     try {
       const result = await this.electronService.fireImpCount();
-      if (result.success) {
-        this.activeImpairmentCount = result.data ?? 0;
-      }
+      if (result.success) this.activeImpairmentCount = result.data ?? 0;
     } catch {}
   }
 
@@ -625,9 +557,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async loadPerryStatus(): Promise<void> {
     try {
       const result = await this.electronService.getPerryStatus();
-      if (result.success && result.data) {
-        this.perryStatus = result.data;
-      }
+      if (result.success && result.data) this.perryStatus = result.data;
     } catch {}
   }
 
@@ -637,12 +567,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.electronService.gateLogGetPeople(),
         this.electronService.gateLogGetStatus(),
       ]);
-      if (peopleResult.success && peopleResult.data) {
-        this.gateLogPeople = peopleResult.data;
-      }
-      if (statusResult.success && statusResult.data) {
-        this.gateLogStatus = statusResult.data;
-      }
+      if (peopleResult.success && peopleResult.data) this.gateLogPeople = peopleResult.data;
+      if (statusResult.success && statusResult.data) this.gateLogStatus = statusResult.data;
     } catch {}
   }
 
@@ -654,48 +580,32 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  get gateLogPeopleCount(): number {
-    return this.filteredGateLogPeople.length;
-  }
-
-  get gateSourceCount(): number {
-    return this.filteredGateLogPeople.filter(p => p.source === 'gate').length;
-  }
-
-  get onlocSourceCount(): number {
-    return this.filteredGateLogPeople.filter(p => p.source === 'onlocation').length;
-  }
+  get gateLogPeopleCount(): number { return this.filteredGateLogPeople.length; }
+  get recentGateLogPeople(): GateLogEntry[] { return this.filteredGateLogPeople; }
+  get gateSourceCount(): number { return this.filteredGateLogPeople.filter(p => p.source === 'gate').length; }
+  get onlocSourceCount(): number { return this.filteredGateLogPeople.filter(p => p.source === 'onlocation').length; }
 
   get gateLogLastUpdateLabel(): string {
     if (!this.gateLogStatus?.lastUpdate) return '';
     const update = new Date(this.gateLogStatus.lastUpdate);
-    const now = new Date();
-    const diffMin = Math.floor((now.getTime() - update.getTime()) / 60000);
+    const diffMin = Math.floor((Date.now() - update.getTime()) / 60000);
     if (diffMin < 1) return 'just now';
     if (diffMin < 60) return `${diffMin}m ago`;
-    const diffH = Math.floor(diffMin / 60);
-    return `${diffH}h ago`;
+    return `${Math.floor(diffMin / 60)}h ago`;
   }
 
   private parseCheckIn(checkIn: string): Date {
     const parts = checkIn.match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)/);
     if (!parts) return new Date(0);
-    return new Date(
-      parseInt(parts[3]),
-      parseInt(parts[1]) - 1,
-      parseInt(parts[2]),
-      parseInt(parts[4]),
-      parseInt(parts[5]),
-      parseInt(parts[6])
-    );
+    return new Date(+parts[3], +parts[1] - 1, +parts[2], +parts[4], +parts[5], +parts[6]);
   }
 
   get perryLightningLevel(): string {
     if (!this.perryStatus || this.perryStatus.status !== 'available') return '';
-    const status = this.perryStatus.lightningStatus;
-    if (status === 'Lightning Alarm') return 'danger';
-    if (status === 'Lightning Watch') return 'caution';
-    if (status === 'All Clear') return 'safe';
+    const s = this.perryStatus.lightningStatus;
+    if (s === 'Lightning Alarm') return 'danger';
+    if (s === 'Lightning Watch') return 'caution';
+    if (s === 'All Clear') return 'safe';
     return '';
   }
 
@@ -726,23 +636,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     return `${s}s`;
   }
 
-  async start(): Promise<void> {
-    await this.electronService.startApp();
-  }
-
-  async stop(): Promise<void> {
-    await this.electronService.stopApp();
-  }
-
-  async restart(): Promise<void> {
-    await this.electronService.restartApp();
-  }
-
-  openPidApp(): void {
-    this.router.navigate(['/pid-app']);
-  }
-
-  async openInBrowser(): Promise<void> {
-    await this.electronService.openAppUrl();
-  }
+  async start(): Promise<void> { await this.electronService.startApp(); }
+  async stop(): Promise<void> { await this.electronService.stopApp(); }
+  async restart(): Promise<void> { await this.electronService.restartApp(); }
+  openPidApp(): void { this.router.navigate(['/pid-app']); }
+  async openInBrowser(): Promise<void> { await this.electronService.openAppUrl(); }
 }

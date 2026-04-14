@@ -39,10 +39,11 @@ import { AppStatus, APP_DISPLAY_NAME } from '../../../services/electron.service'
       display: flex; flex-direction: column; gap: 12px; padding: 20px;
       background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
       text-decoration: none; color: inherit; transition: all var(--transition-normal);
+      overflow-y: auto;
     }
     .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    :host { flex: 1; display: flex; flex-direction: column; }
-    .feature-card { flex: 1; }
+    :host { display: block; height: 100%; }
+    .feature-card { height: 100%; box-sizing: border-box; }
     .feature-icon { font-size: 28px; }
     .feature-info h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
     .feature-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
@@ -75,5 +76,7 @@ export class PermitsWidgetComponent {
   @Input() activeWorkRequestCount: number | null = null;
   @Input() newWorkRequestCount: number | null = null;
   @Input() editMode = false;
+  @Input() cols = 1;
+  @Input() rows = 1;
   appName = APP_DISPLAY_NAME;
 }

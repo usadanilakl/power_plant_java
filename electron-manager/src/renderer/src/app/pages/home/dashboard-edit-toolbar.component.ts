@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WidgetPlacement, WidgetDefinition, LayoutPreset, WidgetId, WIDGET_REGISTRY } from '../../services/dashboard-layout.service';
+import { WidgetDefinition, LayoutPreset, WidgetId, WIDGET_REGISTRY } from '../../services/dashboard-layout.service';
 
 @Component({
   selector: 'app-dashboard-edit-toolbar',
@@ -28,6 +28,10 @@ import { WidgetPlacement, WidgetDefinition, LayoutPreset, WidgetId, WIDGET_REGIS
           <button class="btn btn-ghost btn-sm" (click)="cancel.emit()">Cancel</button>
         </div>
       </div>
+      <div class="toolbar-hint">
+        <span class="material-icons hint-icon">info_outline</span>
+        Drag to reposition, resize from edges, hide with the eye button
+      </div>
       <div class="hidden-tray" *ngIf="hiddenWidgets.length > 0">
         <span class="tray-label">Hidden:</span>
         <button class="hidden-chip" *ngFor="let hw of hiddenWidgets" (click)="restoreWidget.emit(hw.id)">
@@ -47,64 +51,43 @@ import { WidgetPlacement, WidgetDefinition, LayoutPreset, WidgetId, WIDGET_REGIS
       margin-bottom: 16px;
     }
     .toolbar-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
     }
-    .toolbar-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .toolbar-left { display: flex; align-items: center; gap: 8px; }
     .toolbar-icon { font-size: 20px; color: var(--accent-primary); }
     .toolbar-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
     .preset-name { font-size: 12px; color: var(--text-muted); }
     .toolbar-actions { display: flex; align-items: center; gap: 8px; }
     .preset-select {
-      background-color: var(--bg-secondary);
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 5px 8px;
-      font-size: 12px;
-      cursor: pointer;
-      outline: none;
+      background-color: var(--bg-secondary); color: var(--text-primary);
+      border: 1px solid var(--border-color); border-radius: 6px;
+      padding: 5px 8px; font-size: 12px; cursor: pointer; outline: none;
     }
     .preset-select:focus { border-color: var(--accent-primary); }
     .btn-sm { padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
     .btn-icon { font-size: 16px; }
     .btn-ghost {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      border-radius: 6px;
-      cursor: pointer;
+      background: transparent; border: 1px solid var(--border-color);
+      color: var(--text-secondary); border-radius: 6px; cursor: pointer;
     }
     .btn-ghost:hover { border-color: var(--text-muted); color: var(--text-primary); }
+    .toolbar-hint {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 8px; font-size: 11px; color: var(--text-muted);
+    }
+    .hint-icon { font-size: 14px; }
     .hidden-tray {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border-color);
-      flex-wrap: wrap;
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid var(--border-color); flex-wrap: wrap;
     }
     .tray-label { font-size: 12px; color: var(--text-muted); }
     .hidden-chip {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 16px;
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 150ms;
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 16px;
+      background-color: var(--bg-secondary); border: 1px solid var(--border-color);
+      color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 150ms;
     }
     .hidden-chip:hover { border-color: var(--accent-primary); color: var(--text-primary); }
     .chip-icon { font-size: 16px; }
@@ -112,7 +95,7 @@ import { WidgetPlacement, WidgetDefinition, LayoutPreset, WidgetId, WIDGET_REGIS
   `]
 })
 export class DashboardEditToolbarComponent {
-  @Input() draft: WidgetPlacement[] = [];
+  @Input() draft: { widgetId: WidgetId; visible: boolean }[] = [];
   @Input() presets: LayoutPreset[] = [];
   @Input() currentPresetName = 'Custom';
   @Output() applyPreset = new EventEmitter<string>();

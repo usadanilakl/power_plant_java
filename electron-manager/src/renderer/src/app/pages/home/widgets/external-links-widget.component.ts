@@ -52,10 +52,11 @@ import { ElectronService } from '../../../services/electron.service';
       display: flex; flex-direction: column; gap: 12px; padding: 20px;
       background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
       text-decoration: none; color: inherit; transition: all var(--transition-normal);
+      overflow-y: auto;
     }
     .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    :host { flex: 1; display: flex; flex-direction: column; }
-    .feature-card { flex: 1; }
+    :host { display: block; height: 100%; }
+    .feature-card { height: 100%; box-sizing: border-box; }
     .feature-icon { font-size: 28px; }
     .feature-info h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
     .feature-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
@@ -75,6 +76,8 @@ import { ElectronService } from '../../../services/electron.service';
 })
 export class ExternalLinksWidgetComponent {
   @Input() editMode = false;
+  @Input() cols = 1;
+  @Input() rows = 1;
 
   private readonly externalLinks: Record<string, string> = {
     'toi': 'https://jpowerusa.sharepoint.com/sites/JG/External/Forms/AllItems.aspx?id=%2Fsites%2FJG%2FExternal%2F60%20%2D%20Operations%2F60%2E11%20TIO%2DTMOD&viewid=88b99ea1%2D77a0%2D4798%2Dbc16%2D64e9eec8fa6a',
