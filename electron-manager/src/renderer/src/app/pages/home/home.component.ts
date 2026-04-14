@@ -3,16 +3,36 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { DashboardLayoutService, WidgetPlacement, WidgetId, WIDGET_REGISTRY, LayoutPreset } from '../../services/dashboard-layout.service';
+import { FireImpairmentWidgetComponent } from './widgets/fire-impairment-widget.component';
+import { GateLogWidgetComponent } from './widgets/gate-log-widget.component';
+import { WeatherWidgetComponent } from './widgets/weather-widget.component';
+import { PjmWidgetComponent } from './widgets/pjm-widget.component';
+import { PermitsWidgetComponent } from './widgets/permits-widget.component';
+import { ExternalLinksWidgetComponent } from './widgets/external-links-widget.component';
+import { ContactsWidgetComponent } from './widgets/contacts-widget.component';
+import { PagingWidgetComponent } from './widgets/paging-widget.component';
+import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [
+    CommonModule, RouterModule,
+    FireImpairmentWidgetComponent, GateLogWidgetComponent, WeatherWidgetComponent,
+    PjmWidgetComponent, PermitsWidgetComponent, ExternalLinksWidgetComponent,
+    ContactsWidgetComponent, PagingWidgetComponent, DashboardEditToolbarComponent,
+  ],
   template: `
     <div class="home">
-      <h1 class="page-title">Dashboard</h1>
+      <div class="dashboard-header">
+        <h1 class="page-title">Dashboard</h1>
+        <button class="btn btn-secondary btn-sm customize-btn" (click)="enterEditMode()" *ngIf="!editMode">
+          <span class="material-icons btn-icon">edit</span> Customize
+        </button>
+      </div>
 
-      <!-- Spring Boot quick controls -->
+      <!-- Spring Boot quick controls — fixed, not customizable -->
       <div class="sb-panel">
         <div class="sb-panel-header">
           <div class="sb-title-row">
@@ -51,241 +71,69 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
         </div>
       </div>
 
-      <!-- Feature overview cards -->
-      <div class="features-grid">
-        <a class="feature-card" routerLink="/fire-impairment">
-          <div class="feature-icon"><span class="material-icons" style="color: #ef4444">local_fire_department</span></div>
-          <div class="feature-info">
-            <h3>Fire Impairment</h3>
-            <p class="feature-desc">Manage fire protection impairments</p>
-            <div class="imp-count" *ngIf="activeImpairmentCount !== null && activeImpairmentCount > 0">
-              <span class="count-badge">{{ activeImpairmentCount }}</span>
-              active impairment{{ activeImpairmentCount !== 1 ? 's' : '' }}
-            </div>
-          </div>
-          <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
-            {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
-          </span>
-        </a>
+      <!-- Edit toolbar -->
+      <app-dashboard-edit-toolbar *ngIf="editMode"
+        [draft]="draftLayout"
+        [presets]="presets"
+        [currentPresetName]="draftPresetName"
+        (applyPreset)="applyPreset($event)"
+        (restoreWidget)="restoreWidget($event)"
+        (done)="saveDraft()"
+        (cancel)="cancelEdit()" />
 
-        <a class="feature-card" routerLink="/gate-log">
-          <div class="feature-icon"><span class="material-icons" style="color: #06b6d4">badge</span></div>
-          <div class="feature-info">
-            <h3>Gate Log</h3>
-            <p class="feature-desc">Monitor site access and personnel</p>
-            <div class="gate-snippets" *ngIf="gateLogPeopleCount > 0">
-              <div class="gate-count-row">
-                <span class="gate-total">{{ gateLogPeopleCount }} on site</span>
-                <span class="gate-breakdown">({{ gateSourceCount }} gate / {{ onlocSourceCount }} OnLoc)</span>
-              </div>
-              <span class="gate-update" *ngIf="gateLogStatus?.lastUpdate">Updated {{ gateLogLastUpdateLabel }}</span>
-            </div>
-            <div class="gate-snippets" *ngIf="gateLogPeopleCount === 0 && gateLogStatus?.lastUpdate">
-              <span class="gate-update">No entries (12h) &middot; Updated {{ gateLogLastUpdateLabel }}</span>
-            </div>
-          </div>
-          <span class="feature-status available">Independent</span>
-        </a>
+      <!-- Feature cards grid -->
+      <div class="features-grid" [class.edit-mode]="editMode">
+        <ng-container *ngFor="let widget of visibleWidgets; trackBy: trackWidget">
+          <div class="widget-wrapper"
+               [class.span-2]="widget.colSpan === 2"
+               [class.dragging]="dragSourceId === widget.widgetId"
+               [class.drag-over]="dragOverId === widget.widgetId"
+               [attr.data-widget-id]="widget.widgetId"
+               (dragover)="editMode ? onDragOver($event, widget.widgetId) : null"
+               (drop)="editMode ? onDrop($event, widget.widgetId) : null"
+               (dragleave)="onDragLeave()">
 
-        <a class="feature-card" routerLink="/weather">
-          <div class="feature-icon"><span class="material-icons" style="color: #f59e0b">thunderstorm</span></div>
-          <div class="feature-info">
-            <h3>Weather</h3>
-            <p class="feature-desc">Lightning and weather monitoring</p>
-            <div class="weather-snippets" *ngIf="weatherStatus?.status === 'available' || perryStatus?.status === 'available' || weatherForecast?.status === 'available'">
-              <div class="lightning-snippet" *ngIf="weatherStatus?.status === 'available' && weatherStatus?.lightningDistance">
-                <span class="lightning-badge" [class]="lightningLevel">{{ weatherStatus?.lightningDistance }} {{ weatherStatus?.unit || 'mi' }}</span>
-                WB: {{ lightningLabel }}
-              </div>
-              <div class="lightning-snippet" *ngIf="perryStatus?.status === 'available' && perryStatus?.lightningDistance">
-                <span class="lightning-badge" [class]="perryLightningLevel">{{ perryStatus?.lightningDistance }}</span>
-                Perry: {{ perryStatus?.lightningStatus }}
-                <span class="perry-timer-badge" *ngIf="perryStatus?.lightningTimer">{{ perryStatus!.lightningTimer }}</span>
-              </div>
-              <div class="temp-snippet" *ngIf="weatherForecast?.status === 'available'">
-                {{ weatherForecast!.current.temperature | number:'1.0-0' }}&deg;F &middot; {{ forecastDesc }}
+            <!-- Edit controls -->
+            <div class="widget-edit-controls" *ngIf="editMode">
+              <span class="drag-handle material-icons"
+                    draggable="true"
+                    (dragstart)="onDragStart($event, widget.widgetId)"
+                    (dragend)="onDragEnd()">drag_indicator</span>
+              <div class="widget-ctrl-group">
+                <button class="widget-ctrl-btn" *ngIf="canResize(widget.widgetId)"
+                        (click)="toggleSpan(widget.widgetId)"
+                        [title]="widget.colSpan === 2 ? 'Shrink to 1 column' : 'Expand to 2 columns'">
+                  <span class="material-icons">{{ widget.colSpan === 2 ? 'unfold_less' : 'unfold_more' }}</span>
+                </button>
+                <button class="widget-ctrl-btn" (click)="hideWidget(widget.widgetId)" title="Hide widget">
+                  <span class="material-icons">visibility_off</span>
+                </button>
               </div>
             </div>
-            <div class="lightning-snippet loading" *ngIf="weatherStatus?.status === 'loading' && !weatherForecast">
-              Loading...
-            </div>
-          </div>
-          <span class="feature-status available">Independent</span>
-        </a>
 
-        <a class="feature-card" routerLink="/pjm">
-          <div class="feature-icon"><span class="material-icons" style="color: #eab308">bolt</span></div>
-          <div class="feature-info">
-            <h3>PJM</h3>
-            <p class="feature-desc">Grid pricing and power data</p>
-            <div class="pjm-snippet" *ngIf="pjmStatus?.unit1?.status === 'available' || pjmStatus?.unit2?.status === 'available'">
-              <div class="pjm-unit-row" *ngIf="pjmStatus?.unit1?.status === 'available'">
-                <span class="pjm-unit-label">U1</span>
-                <span class="pjm-price" [class.price-positive]="(pjmStatus?.unit1?.lmpPrice ?? 0) >= 0"
-                      [class.price-negative]="(pjmStatus?.unit1?.lmpPrice ?? 0) < 0">
-                  \${{ pjmStatus?.unit1?.lmpPrice?.toFixed(2) }}
-                </span>
-              </div>
-              <div class="pjm-unit-row" *ngIf="pjmStatus?.unit2?.status === 'available'">
-                <span class="pjm-unit-label">U2</span>
-                <span class="pjm-price" [class.price-positive]="(pjmStatus?.unit2?.lmpPrice ?? 0) >= 0"
-                      [class.price-negative]="(pjmStatus?.unit2?.lmpPrice ?? 0) < 0">
-                  \${{ pjmStatus?.unit2?.lmpPrice?.toFixed(2) }}
-                </span>
-              </div>
-              <span class="pjm-unit">$/MWh</span>
-            </div>
-            <div class="pjm-evo-row" *ngIf="pjmStatus?.unit1Evolution">
-              <span class="pjm-evo-dot" [class]="pjmStatus!.unit1Evolution!.status"></span>
-              <span class="pjm-evo-label">U1</span>
-              <span class="pjm-evo-msg">{{ pjmStatus!.unit1Evolution!.message }}</span>
-            </div>
-            <div class="pjm-evo-row" *ngIf="pjmStatus?.unit2Evolution">
-              <span class="pjm-evo-dot" [class]="pjmStatus!.unit2Evolution!.status"></span>
-              <span class="pjm-evo-label">U2</span>
-              <span class="pjm-evo-msg">{{ pjmStatus!.unit2Evolution!.message }}</span>
-            </div>
-            <div class="pjm-snippet muted" *ngIf="pjmStatus?.unit1?.status !== 'available' && pjmStatus?.unit2?.status !== 'available' && !pjmPolling">
-              Polling disabled
-            </div>
-            <div class="pjm-snippet muted" *ngIf="(pjmStatus?.unit1?.status === 'loading' || pjmStatus?.unit2?.status === 'loading') && pjmPolling && pjmStatus?.unit1?.status !== 'available' && pjmStatus?.unit2?.status !== 'available'">
-              Loading...
-            </div>
-            <div class="pjm-snippet error-text" *ngIf="pjmStatus?.unit1?.status === 'error' && pjmStatus?.unit2?.status === 'error'">
-              Error
-            </div>
+            <!-- Widget content -->
+            <ng-container [ngSwitch]="widget.widgetId">
+              <app-fire-impairment-widget *ngSwitchCase="'fire-impairment'"
+                [status]="status" [activeImpairmentCount]="activeImpairmentCount" [editMode]="editMode" />
+              <app-gate-log-widget *ngSwitchCase="'gate-log'"
+                [peopleCount]="gateLogPeopleCount" [gateSourceCount]="gateSourceCount"
+                [onlocSourceCount]="onlocSourceCount" [lastUpdateLabel]="gateLogLastUpdateLabel"
+                [gateLogStatus]="gateLogStatus" [editMode]="editMode" />
+              <app-weather-widget *ngSwitchCase="'weather'"
+                [weatherStatus]="weatherStatus" [perryStatus]="perryStatus" [weatherForecast]="weatherForecast"
+                [lightningLevel]="lightningLevel" [lightningLabel]="lightningLabel"
+                [perryLightningLevel]="perryLightningLevel" [forecastDesc]="forecastDesc" [editMode]="editMode" />
+              <app-pjm-widget *ngSwitchCase="'pjm'"
+                [pjmStatus]="pjmStatus" [pjmPolling]="pjmPolling" [editMode]="editMode" />
+              <app-permits-widget *ngSwitchCase="'permits'"
+                [status]="status" [activeWorkRequestCount]="activeWorkRequestCount"
+                [newWorkRequestCount]="newWorkRequestCount" [editMode]="editMode" />
+              <app-external-links-widget *ngSwitchCase="'external-links'" [editMode]="editMode" />
+              <app-contacts-widget *ngSwitchCase="'contacts'" />
+              <app-paging-widget *ngSwitchCase="'paging-system'" />
+            </ng-container>
           </div>
-          <span class="feature-status available">Independent</span>
-        </a>
-
-        <div class="feature-card permits-card" [class.disabled]="status.state !== 'running'">
-          <div class="feature-icon"><span class="material-icons" style="color: #8b5cf6">assignment</span></div>
-          <div class="feature-info">
-            <h3>Permits</h3>
-            <p class="feature-desc">Work requests, LOTOs, permits</p>
-          </div>
-          <div class="permit-items">
-            <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'loto/loto' }">
-              <span>Active LOTOs</span>
-              <span class="item-placeholder">--</span>
-            </a>
-            <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'permit-builder/work-requests' }">
-              <span>Work Requests</span>
-              <span class="wr-counts">
-                <span class="count-badge active-badge" *ngIf="activeWorkRequestCount !== null && activeWorkRequestCount > 0"
-                      title="Active">{{ activeWorkRequestCount }}</span>
-                <span class="count-badge new-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0"
-                      title="New">{{ newWorkRequestCount }}<span class="new-dot">*</span></span>
-              </span>
-            </a>
-          </div>
-          <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
-            {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
-          </span>
-        </div>
-
-        <div class="feature-card external-links-card">
-          <div class="feature-icon"><span class="material-icons" style="color: #3b82f6">open_in_new</span></div>
-          <div class="feature-info">
-            <h3>External Links</h3>
-            <p class="feature-desc">SharePoint, Maximo, and other tools</p>
-          </div>
-          <div class="ext-links">
-            <a class="ext-link" (click)="openLink('toi')">
-              <span class="material-icons ext-link-icon">description</span>
-              <span>TOI</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-            <a class="ext-link" (click)="openLink('work-requests')">
-              <span class="material-icons ext-link-icon">table_chart</span>
-              <span>Work Requests</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-            <a class="ext-link" (click)="openLink('maximo')">
-              <span class="material-icons ext-link-icon">engineering</span>
-              <span>Maximo</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-            <a class="ext-link" (click)="openLink('permits')">
-              <span class="material-icons ext-link-icon">security</span>
-              <span>Permits</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-            <a class="ext-link" (click)="openLink('turnover-sheet')">
-              <span class="material-icons ext-link-icon">swap_horiz</span>
-              <span>Turn Over Sheet</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-            <a class="ext-link" (click)="openLink('emergency-contacts')">
-              <span class="material-icons ext-link-icon">contact_phone</span>
-              <span>Emergency Contacts</span>
-              <span class="material-icons ext-arrow">open_in_new</span>
-            </a>
-          </div>
-        </div>
-
-        <div class="feature-card info-card">
-          <div class="feature-icon"><span class="material-icons" style="color: #10b981">contacts</span></div>
-          <div class="feature-info">
-            <h3>Contacts</h3>
-            <p class="feature-desc">Plant contact information</p>
-          </div>
-          <div class="info-items">
-            <div class="info-row">
-              <span class="material-icons info-icon">location_on</span>
-              <span>2465 South Brandon Road, Elwood, IL 60421</span>
-            </div>
-            <div class="info-row">
-              <span class="material-icons info-icon">phone</span>
-              <span class="info-label">Control Room:</span>
-              <span>(779) 242-6148, (779) 242-6151</span>
-            </div>
-            <div class="info-row">
-              <span class="material-icons info-icon">smartphone</span>
-              <span class="info-label">Cell:</span>
-              <span>(815) 839-3330</span>
-            </div>
-            <div class="info-row">
-              <span class="material-icons info-icon">settings_input_antenna</span>
-              <span class="info-label">Radio:</span>
-              <span>Channel 1 (JPWR-1)</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="feature-card info-card">
-          <div class="feature-icon"><span class="material-icons" style="color: #f97316">campaign</span></div>
-          <div class="feature-info">
-            <h3>Paging System</h3>
-            <p class="feature-desc">PA system extension numbers</p>
-          </div>
-          <div class="info-items">
-            <div class="info-row paging-row">
-              <span>Admin Building</span>
-              <span class="paging-ext">6165</span>
-            </div>
-            <div class="info-row paging-row">
-              <span>Plant Only</span>
-              <span class="paging-ext">6162</span>
-            </div>
-            <div class="info-row paging-row">
-              <span>Admin and Plant</span>
-              <span class="paging-ext">6170</span>
-            </div>
-            <div class="info-row paging-row">
-              <span>North Gate</span>
-              <span class="paging-ext">6166</span>
-            </div>
-            <div class="info-row paging-row">
-              <span>South Gate</span>
-              <span class="paging-ext">6164</span>
-            </div>
-            <div class="info-row paging-row">
-              <span>To Open Gate/Door</span>
-              <span class="paging-ext">#9</span>
-            </div>
-          </div>
-        </div>
+        </ng-container>
       </div>
     </div>
   `,
@@ -295,12 +143,27 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
       margin: 0 auto;
     }
 
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
     .page-title {
       font-size: 22px;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 20px;
+      margin: 0;
     }
+
+    .customize-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-icon { font-size: 16px; }
 
     /* Spring Boot Panel */
     .sb-panel {
@@ -349,23 +212,11 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
       animation: pulse 1.5s infinite;
     }
 
-    .sb-dot.stopped {
-      background-color: var(--text-muted);
-    }
+    .sb-dot.stopped { background-color: var(--text-muted); }
+    .sb-dot.error { background-color: var(--accent-error); }
 
-    .sb-dot.error {
-      background-color: var(--accent-error);
-    }
-
-    .sb-controls {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 12px;
-    }
+    .sb-controls { display: flex; gap: 8px; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
 
     .sb-details {
       display: flex;
@@ -376,15 +227,8 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
       border-top: 1px solid var(--border-color);
     }
 
-    .detail-item {
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-
-    .detail-item.error {
-      color: var(--accent-error);
-    }
-
+    .detail-item { font-size: 13px; color: var(--text-secondary); }
+    .detail-item.error { color: var(--accent-error); }
     .health-healthy { color: var(--accent-success); }
     .health-unhealthy { color: var(--accent-error); }
     .health-unknown { color: var(--text-muted); }
@@ -396,380 +240,90 @@ import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeathe
       gap: 16px;
     }
 
-    .feature-card {
+    /* Widget wrapper */
+    .widget-wrapper {
+      position: relative;
+      border-radius: 14px;
+    }
+
+    .widget-wrapper.span-2 {
+      grid-column: span 2;
+    }
+
+    @media (max-width: 640px) {
+      .widget-wrapper.span-2 { grid-column: span 1; }
+    }
+
+    /* Edit mode */
+    .features-grid.edit-mode .widget-wrapper {
+      border: 2px dashed var(--border-color);
+      padding: 2px;
+      transition: border-color 150ms;
+    }
+
+    .widget-edit-controls {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      right: 6px;
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 20px;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      text-decoration: none;
-      color: inherit;
-      transition: all var(--transition-normal);
-      cursor: pointer;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
+      pointer-events: none;
     }
 
-    .feature-card:hover {
-      border-color: var(--accent-primary);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
+    .widget-edit-controls > * {
+      pointer-events: auto;
     }
 
-    .feature-icon {
-      font-size: 28px;
-    }
-
-    .feature-info h3 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0;
-    }
-
-    .feature-desc {
-      font-size: 12px;
+    .drag-handle {
+      cursor: grab;
       color: var(--text-muted);
-      margin: 4px 0 0;
+      font-size: 20px;
+      padding: 2px;
+      border-radius: 4px;
+      background: var(--bg-card);
+      opacity: 0.8;
+      transition: opacity 150ms, color 150ms;
     }
 
-    .feature-status {
-      font-size: 11px;
-      color: var(--accent-success);
-    }
+    .drag-handle:hover { opacity: 1; color: var(--text-primary); }
+    .drag-handle:active { cursor: grabbing; }
 
-    .feature-status.requires-sb {
-      color: var(--text-muted);
-    }
-
-    .feature-status.available {
-      color: var(--accent-success);
-    }
-
-    .imp-count {
-      font-size: 12px;
-      color: var(--accent-warning);
-      margin-top: 4px;
+    .widget-ctrl-group {
       display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .count-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      font-size: 11px;
-      font-weight: 700;
-      color: #fff;
-      background-color: var(--accent-warning);
-    }
-
-    .weather-snippets {
-      margin-top: 4px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .lightning-snippet {
-      font-size: 12px;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .lightning-snippet.loading {
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .temp-snippet {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .lightning-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .lightning-badge.safe { background-color: var(--accent-success); }
-    .lightning-badge.caution { background-color: var(--accent-warning); }
-    .lightning-badge.danger { background-color: var(--accent-error); }
-
-    .perry-timer-badge {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent-error);
-      margin-left: 2px;
-    }
-
-    .gate-snippets {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-
-    .gate-count-row {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-    }
-
-    .gate-total {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .gate-breakdown {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .gate-update {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-      display: block;
-    }
-
-    .pjm-snippet {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-      display: flex;
-      align-items: baseline;
       gap: 4px;
     }
 
-    .pjm-snippet.muted { color: var(--text-muted); }
-    .pjm-snippet.error-text { color: var(--accent-error); }
-
-    .pjm-unit-row {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-    }
-
-    .pjm-unit-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 600;
-      min-width: 20px;
-    }
-
-    .pjm-price {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .pjm-price.price-positive { color: var(--accent-success); }
-    .pjm-price.price-negative { color: var(--accent-error); }
-
-    .pjm-unit {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .pjm-evo-row {
+    .widget-ctrl-btn {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 4px;
-      font-size: 11px;
-    }
-
-    .pjm-evo-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .pjm-evo-dot.online { background-color: var(--accent-success); }
-    .pjm-evo-dot.offline { background-color: var(--accent-error); }
-    .pjm-evo-dot.unknown { background-color: var(--text-muted); }
-
-    .pjm-evo-label {
-      font-weight: 600;
-      color: var(--text-muted);
-      min-width: 20px;
-    }
-
-    .pjm-evo-msg {
-      color: var(--text-secondary);
-    }
-
-    .permits-card {
-      cursor: default;
-    }
-
-    .permits-card.disabled .permit-item {
-      pointer-events: none;
-      opacity: 0.4;
-    }
-
-    .permit-items {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-top: 4px;
-    }
-
-    .permit-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 10px;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
       border-radius: 6px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      text-decoration: none;
+      border: none;
+      background: var(--bg-card);
+      color: var(--text-muted);
       cursor: pointer;
-      transition: background-color 150ms;
+      opacity: 0.8;
+      transition: opacity 150ms, color 150ms, background-color 150ms;
     }
 
-    .permit-item:hover {
-      background-color: var(--bg-secondary);
-    }
-
-    .item-placeholder {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .wr-counts {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .count-badge.new-badge {
-      background-color: var(--accent-warning);
-      position: relative;
-    }
-
-    .count-badge.active-badge {
-      background-color: var(--accent-primary);
-    }
-
-    .new-dot {
-      position: absolute;
-      top: -3px;
-      right: -3px;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--accent-warning);
-    }
-
-    .external-links-card {
-      cursor: default;
-    }
-
-    .ext-links {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-top: 4px;
-    }
-
-    .ext-link {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      text-decoration: none;
-      cursor: pointer;
-      transition: background-color 150ms;
-    }
-
-    .ext-link:hover {
-      background-color: var(--bg-secondary);
-      color: var(--text-primary);
-    }
-
-    .ext-link-icon {
-      font-size: 18px;
-      color: var(--text-muted);
-    }
-
-    .ext-arrow {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-left: auto;
-      opacity: 0;
-      transition: opacity 150ms;
-    }
-
-    .ext-link:hover .ext-arrow {
+    .widget-ctrl-btn:hover {
       opacity: 1;
-    }
-
-    .info-card {
-      cursor: default;
-    }
-
-    .info-card:hover {
-      transform: none;
-    }
-
-    .info-items {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .info-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      padding: 4px 0;
-    }
-
-    .info-icon {
-      font-size: 16px;
-      color: var(--text-muted);
-      flex-shrink: 0;
-    }
-
-    .info-label {
-      font-weight: 600;
       color: var(--text-primary);
-      white-space: nowrap;
+      background: var(--bg-secondary);
     }
 
-    .paging-row {
-      justify-content: space-between;
-      padding: 6px 10px;
-      border-radius: 6px;
-    }
+    .widget-ctrl-btn .material-icons { font-size: 18px; }
 
-    .paging-row:hover {
-      background-color: var(--bg-secondary);
-    }
-
-    .paging-ext {
-      font-weight: 700;
-      font-family: monospace;
-      font-size: 14px;
-      color: var(--text-primary);
+    /* Drag-and-drop */
+    .widget-wrapper.dragging { opacity: 0.4; }
+    .widget-wrapper.drag-over {
+      border-color: var(--accent-primary) !important;
+      background: rgba(59, 130, 246, 0.06);
     }
 
     @keyframes pulse {
@@ -799,7 +353,151 @@ export class HomeComponent implements OnInit, OnDestroy {
   private unsubGateLog?: () => void;
   private unsubSync?: () => void;
 
-  constructor(private electronService: ElectronService, private router: Router) {}
+  // Layout
+  editMode = false;
+  draftLayout: WidgetPlacement[] = [];
+  presets: LayoutPreset[] = [];
+
+  // Drag-and-drop
+  dragSourceId: WidgetId | null = null;
+  dragOverId: WidgetId | null = null;
+
+  constructor(
+    private electronService: ElectronService,
+    private router: Router,
+    private layoutService: DashboardLayoutService,
+  ) {
+    this.presets = this.layoutService.getPresets();
+  }
+
+  get visibleWidgets(): WidgetPlacement[] {
+    const source = this.editMode ? this.draftLayout : this.layoutService.layout();
+    return source.filter(w => w.visible);
+  }
+
+  get draftPresetName(): string {
+    if (!this.editMode) return this.layoutService.currentPresetName();
+    // Check if draft matches any preset
+    for (const preset of this.presets) {
+      if (this.layoutsMatch(this.draftLayout, preset.widgets)) return preset.name;
+    }
+    return 'Custom';
+  }
+
+  trackWidget(_index: number, widget: WidgetPlacement): WidgetId {
+    return widget.widgetId;
+  }
+
+  // --- Edit mode ---
+
+  enterEditMode(): void {
+    this.editMode = true;
+    this.draftLayout = this.layoutService.startEditing();
+  }
+
+  saveDraft(): void {
+    this.layoutService.save(this.draftLayout);
+    this.editMode = false;
+    this.draftLayout = [];
+  }
+
+  cancelEdit(): void {
+    this.editMode = false;
+    this.draftLayout = [];
+  }
+
+  applyPreset(name: string): void {
+    const preset = this.presets.find(p => p.name === name);
+    if (preset) {
+      this.draftLayout = structuredClone(preset.widgets);
+    }
+  }
+
+  hideWidget(widgetId: WidgetId): void {
+    const w = this.draftLayout.find(w => w.widgetId === widgetId);
+    if (w) w.visible = false;
+  }
+
+  restoreWidget(widgetId: WidgetId): void {
+    const w = this.draftLayout.find(w => w.widgetId === widgetId);
+    if (w) w.visible = true;
+  }
+
+  // --- Span toggle ---
+
+  canResize(widgetId: WidgetId): boolean {
+    const def = this.layoutService.getWidgetDefinition(widgetId);
+    return !!def && def.allowedColSpans.length > 1;
+  }
+
+  toggleSpan(widgetId: WidgetId): void {
+    const w = this.draftLayout.find(w => w.widgetId === widgetId);
+    if (!w) return;
+    const def = this.layoutService.getWidgetDefinition(widgetId);
+    if (!def) return;
+    w.colSpan = w.colSpan === 1 && def.allowedColSpans.includes(2) ? 2 : 1;
+  }
+
+  // --- Drag-and-drop ---
+
+  onDragStart(event: DragEvent, widgetId: WidgetId): void {
+    this.dragSourceId = widgetId;
+    event.dataTransfer?.setData('text/plain', widgetId);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onDragOver(event: DragEvent, widgetId: WidgetId): void {
+    event.preventDefault();
+    if (!this.dragSourceId || this.dragSourceId === widgetId) {
+      this.dragOverId = null;
+      return;
+    }
+    this.dragOverId = widgetId;
+  }
+
+  onDragLeave(): void {
+    this.dragOverId = null;
+  }
+
+  onDrop(event: DragEvent, targetId: WidgetId): void {
+    event.preventDefault();
+    const sourceId = event.dataTransfer?.getData('text/plain') as WidgetId;
+    if (!sourceId || sourceId === targetId) {
+      this.clearDrag();
+      return;
+    }
+
+    // Remove source from its current position
+    const sourceIndex = this.draftLayout.findIndex(w => w.widgetId === sourceId);
+    if (sourceIndex === -1) { this.clearDrag(); return; }
+    const [removed] = this.draftLayout.splice(sourceIndex, 1);
+
+    // Insert at target's current position (source takes target's slot, target shifts)
+    const targetIndex = this.draftLayout.findIndex(w => w.widgetId === targetId);
+    this.draftLayout.splice(targetIndex, 0, removed);
+
+    this.clearDrag();
+  }
+
+  onDragEnd(): void {
+    this.clearDrag();
+  }
+
+  private clearDrag(): void {
+    this.dragSourceId = null;
+    this.dragOverId = null;
+  }
+
+  private layoutsMatch(a: WidgetPlacement[], b: WidgetPlacement[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((w, i) =>
+      w.widgetId === b[i].widgetId && w.visible === b[i].visible && w.colSpan === b[i].colSpan
+    );
+  }
+
+  // === Data loading (unchanged) ===
 
   ngOnInit(): void {
     this.sub = this.electronService.appStatus$.subscribe(s => {
@@ -836,7 +534,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.loadGateLogData();
     });
 
-    // Auto-refresh counts when sync applies changes from another client
     this.unsubSync = this.electronService.onSyncEntityUpdated((entityType) => {
       if (entityType === 'FireImpairment') {
         this.loadFireImpCount();
@@ -1045,21 +742,5 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async openInBrowser(): Promise<void> {
     await this.electronService.openAppUrl();
-  }
-
-  private readonly externalLinks: Record<string, string> = {
-    'toi': 'https://jpowerusa.sharepoint.com/sites/JG/External/Forms/AllItems.aspx?id=%2Fsites%2FJG%2FExternal%2F60%20%2D%20Operations%2F60%2E11%20TIO%2DTMOD&viewid=88b99ea1%2D77a0%2D4798%2Dbc16%2D64e9eec8fa6a',
-    'work-requests': 'https://jpowerusa.sharepoint.com/sites/JG/Lists/Work%20Requests/AllItems.aspx?env=WebViewList',
-    'maximo': '',
-    'permits': 'https://jpowerusa.sharepoint.com/sites/JG/SitePages/Confined-Spaces.aspx',
-    'turnover-sheet': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B0645E9F2-2CEB-4351-901C-D70C70FF775A%7D&file=Turnover%20With%20Gads(right%20click-open-open%20in%20app%20f9%20to%20refresh)new2%20-%20Copy.xlsm&action=default&mobileredirect=true',
-    'emergency-contacts': 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true'
-  };
-
-  openLink(key: string): void {
-    const url = this.externalLinks[key];
-    if (url) {
-      this.electronService.openExternal(url);
-    }
   }
 }
