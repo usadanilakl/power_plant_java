@@ -222,6 +222,9 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   private resizeStartCanvas = { x: 0, y: 0 };
   private marqueeStart = { x: 0, y: 0 };
   private marqueeEnd = { x: 0, y: 0 };
+  private isDraggingWaypoint = false;
+  private draggedWaypointConnectionId: number | null = null;
+  private draggedWaypointIndex = -1;
   private animFrameId = 0;
   private backgroundImage: HTMLImageElement | null = null;
   private backgroundImageUrlLoaded: string | null = null;
@@ -688,6 +691,37 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
           }
         }
       } else {
+        // Check waypoint hit on already-selected connection first
+        const selectedConn = this.shapeManager.singleSelectedConnection?.();
+        if (selectedConn) {
+          const wpHit = this.renderService.hitTestWaypoint(
+            selectedConn, this.shapeManager.shapes(), coords.x, coords.y
+          );
+          if (wpHit) {
+            if (wpHit.type === 'waypoint') {
+              // Start dragging existing waypoint
+              this.isDraggingWaypoint = true;
+              this.draggedWaypointConnectionId = selectedConn.id;
+              this.draggedWaypointIndex = wpHit.index;
+              this.dragStartCanvas = { x: coords.x, y: coords.y };
+            } else {
+              // Insert new waypoint at midpoint position
+              const wps = [...(selectedConn.waypoints || [])];
+              // segmentIndex is relative to the full path (anchor + waypoints + anchor),
+              // so the insertion index into the waypoints array is segmentIndex (since index 0 in path = source anchor)
+              const insertIdx = wpHit.segmentIndex;
+              wps.splice(insertIdx, 0, { x: wpHit.x, y: wpHit.y });
+              this.shapeManager.updateConnection(selectedConn.id, { waypoints: wps });
+              // Immediately start dragging the new waypoint
+              this.isDraggingWaypoint = true;
+              this.draggedWaypointConnectionId = selectedConn.id;
+              this.draggedWaypointIndex = insertIdx;
+              this.dragStartCanvas = { x: coords.x, y: coords.y };
+            }
+            return;
+          }
+        }
+
         const hitConnection = this.renderService.hitTestConnection(
           this.shapeManager.connections(),
           this.shapeManager.shapes(),
@@ -737,6 +771,19 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       this.connectionService.updateConnection(coords.x, coords.y);
       this.hoveredAnchor = this.renderService.hitTestAnchor(this.shapeManager.shapes(), coords.x, coords.y);
       this.requestRender();
+      return;
+    }
+
+    // Waypoint dragging
+    if (this.isDraggingWaypoint && this.draggedWaypointConnectionId != null) {
+      const conn = this.shapeManager.connections().find(c => c.id === this.draggedWaypointConnectionId);
+      if (conn?.waypoints) {
+        const wps = [...conn.waypoints];
+        const snapped = this.gridService.snapPosition(coords.x, coords.y);
+        wps[this.draggedWaypointIndex] = { x: snapped.x, y: snapped.y };
+        this.shapeManager.updateConnection(conn.id, { waypoints: wps });
+        this.requestRender();
+      }
       return;
     }
 
@@ -894,13 +941,16 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
-    if (this.isDragging || this.isResizing || this.isRotating) {
+    if (this.isDragging || this.isResizing || this.isRotating || this.isDraggingWaypoint) {
       this.stateService.markDirty();
     }
 
     this.isDragging = false;
     this.isResizing = false;
     this.isRotating = false;
+    this.isDraggingWaypoint = false;
+    this.draggedWaypointConnectionId = null;
+    this.draggedWaypointIndex = -1;
     this.resizeHandle = null;
     this.resizeStartShape = null;
     this.dragStartShapes.clear();
@@ -929,9 +979,27 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   onDoubleClick(event: MouseEvent): void {
-    if (!this.simState.isSimulating()) return;
-
     const coords = this.getCanvasCoords(event);
+
+    // Waypoint removal: double-click on a waypoint to delete it (editor mode only)
+    if (!this.simState.isSimulating()) {
+      const selectedConn = this.shapeManager.singleSelectedConnection?.();
+      if (selectedConn?.waypoints?.length) {
+        const wpHit = this.renderService.hitTestWaypoint(
+          selectedConn, this.shapeManager.shapes(), coords.x, coords.y
+        );
+        if (wpHit?.type === 'waypoint') {
+          const wps = [...selectedConn.waypoints];
+          wps.splice(wpHit.index, 1);
+          this.shapeManager.updateConnection(selectedConn.id, { waypoints: wps.length ? wps : undefined });
+          this.stateService.markDirty();
+          this.requestRender();
+        }
+      }
+      return;
+    }
+
+    // Simulation mode: toggle valve/pump on double-click
     const hit = this.renderService.hitTestShape(this.shapeManager.shapes(), coords.x, coords.y);
     if (!hit) return;
 
@@ -948,6 +1016,25 @@ export class DiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy 
     // Toggle pump
     if (state.role === 'pump') {
       this.simState.updateNodeParams(hit.id, { pumpRunning: !state.params.pumpRunning });
+      this.requestRender();
+    }
+
+    // Toggle selector valve (A ↔ B)
+    if (state.role === 'selector-valve') {
+      const newPort = state.params.selectedPort === 'A' ? 'B' : 'A';
+      this.simState.updateNodeParams(hit.id, { selectedPort: newPort });
+      this.requestRender();
+    }
+
+    // Toggle heater
+    if (state.role === 'heater') {
+      this.simState.updateNodeParams(hit.id, { heaterRunning: !state.params.heaterRunning });
+      this.requestRender();
+    }
+
+    // Toggle vapor extractor
+    if (state.role === 'vapor-extractor') {
+      this.simState.updateNodeParams(hit.id, { extractorRunning: !state.params.extractorRunning });
       this.requestRender();
     }
   }

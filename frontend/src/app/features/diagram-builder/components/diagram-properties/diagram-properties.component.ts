@@ -293,6 +293,24 @@ import { SimEquipmentApiService } from '../../services/sim-equipment-api.service
             <input type="number" [ngModel]="shapeManager.singleSelectedConnection()!.lineWidth || 2" [min]="1" [max]="20"
               (ngModelChange)="updateConnection(shapeManager.singleSelectedConnection()!.id, { lineWidth: $event })" />
           </label>
+
+          <h4>Port Assignment</h4>
+          <label>Source Port
+            <select [ngModel]="shapeManager.singleSelectedConnection()!.sourcePort || ''"
+              (ngModelChange)="updateConnection(shapeManager.singleSelectedConnection()!.id, { sourcePort: $event || undefined })">
+              <option value="">Default</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+            </select>
+          </label>
+          <label>Target Port
+            <select [ngModel]="shapeManager.singleSelectedConnection()!.targetPort || ''"
+              (ngModelChange)="updateConnection(shapeManager.singleSelectedConnection()!.id, { targetPort: $event || undefined })">
+              <option value="">Default</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+            </select>
+          </label>
         </div>
       } @else if (shapeManager.selectedShapes().length > 1) {
         <p class="info">{{ shapeManager.selectedShapes().length }} shapes selected</p>

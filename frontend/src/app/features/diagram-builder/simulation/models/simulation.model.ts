@@ -22,13 +22,16 @@ export interface SimEdgeState {
   isFlowing: boolean;
 }
 
+/** Ambient temperature — used as initial state for all nodes. */
+export const DEFAULT_AMBIENT_TEMP = 70;
+
 export function defaultNodeState(shapeId: number, role: SimRole): SimNodeState {
   return {
     shapeId,
     role,
     params: defaultSimParams(role),
     pressure: 0,
-    temperature: 0,
+    temperature: DEFAULT_AMBIENT_TEMP,
     flowRate: 0,
     isFlowing: false,
     warnings: [],

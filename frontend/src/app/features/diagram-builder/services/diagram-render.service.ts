@@ -213,7 +213,7 @@ export class DiagramRenderService {
     } else {
       // L-shaped routing
       ctx.moveTo(sourcePoint.x, sourcePoint.y);
-      if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+      if (this.isHorizontalAfterRotation(source, conn.sourceAnchor)) {
         ctx.lineTo(targetPoint.x, sourcePoint.y);
         ctx.lineTo(targetPoint.x, targetPoint.y);
       } else {
@@ -256,7 +256,7 @@ export class DiagramRenderService {
       ctx.lineTo(targetPoint.x, targetPoint.y);
     } else {
       ctx.moveTo(sourcePoint.x, sourcePoint.y);
-      if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+      if (this.isHorizontalAfterRotation(source, conn.sourceAnchor)) {
         ctx.lineTo(targetPoint.x, sourcePoint.y);
         ctx.lineTo(targetPoint.x, targetPoint.y);
       } else {
@@ -296,13 +296,21 @@ export class DiagramRenderService {
   }
 
   getAnchorPoint(shape: DiagramPlacement, anchor: string): { x: number; y: number } {
+    const cx = shape.x + shape.width / 2;
+    const cy = shape.y + shape.height / 2;
+    let dx: number, dy: number;
     switch (anchor) {
-      case 'top':    return { x: shape.x + shape.width / 2, y: shape.y };
-      case 'bottom': return { x: shape.x + shape.width / 2, y: shape.y + shape.height };
-      case 'left':   return { x: shape.x, y: shape.y + shape.height / 2 };
-      case 'right':  return { x: shape.x + shape.width, y: shape.y + shape.height / 2 };
-      default:       return { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 };
+      case 'top':    dx = 0; dy = -shape.height / 2; break;
+      case 'bottom': dx = 0; dy =  shape.height / 2; break;
+      case 'left':   dx = -shape.width / 2; dy = 0; break;
+      case 'right':  dx =  shape.width / 2; dy = 0; break;
+      default:       dx = 0; dy = 0; break;
     }
+    const rad = ((shape.rotation ?? 0) * Math.PI) / 180;
+    return {
+      x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+      y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+    };
   }
 
   getAllAnchors(shape: DiagramPlacement): AnchorPoint[] {
@@ -492,6 +500,57 @@ export class DiagramRenderService {
     return null;
   }
 
+  /**
+   * Hit-test waypoints and midpoints on a selected connection.
+   * Returns: { type: 'waypoint', index } for existing waypoints (index into conn.waypoints),
+   *          { type: 'midpoint', segmentIndex } for midpoints between path segments,
+   *          null if no hit.
+   */
+  hitTestWaypoint(
+    conn: DiagramConnection,
+    shapes: DiagramPlacement[],
+    canvasX: number,
+    canvasY: number,
+    threshold = 10
+  ): { type: 'waypoint'; index: number } | { type: 'midpoint'; segmentIndex: number; x: number; y: number } | null {
+    const source = shapes.find(s => s.id === conn.sourcePlacementId);
+    const target = shapes.find(s => s.id === conn.targetPlacementId);
+    if (!source || !target) return null;
+
+    const sp = this.getAnchorPoint(source, conn.sourceAnchor);
+    const tp = this.getAnchorPoint(target, conn.targetAnchor);
+
+    // Build full path points
+    const points: { x: number; y: number }[] = [sp];
+    if (conn.waypoints?.length) {
+      points.push(...conn.waypoints);
+    } else if (this.isHorizontalAfterRotation(source, conn.sourceAnchor)) {
+      points.push({ x: tp.x, y: sp.y });
+    } else {
+      points.push({ x: sp.x, y: tp.y });
+    }
+    points.push(tp);
+
+    // Check existing waypoints first (higher priority)
+    if (conn.waypoints?.length) {
+      for (let i = 0; i < conn.waypoints.length; i++) {
+        const wp = conn.waypoints[i];
+        const dist = Math.sqrt((canvasX - wp.x) ** 2 + (canvasY - wp.y) ** 2);
+        if (dist <= threshold) return { type: 'waypoint', index: i };
+      }
+    }
+
+    // Check midpoints of each segment
+    for (let i = 0; i < points.length - 1; i++) {
+      const mx = (points[i].x + points[i + 1].x) / 2;
+      const my = (points[i].y + points[i + 1].y) / 2;
+      const dist = Math.sqrt((canvasX - mx) ** 2 + (canvasY - my) ** 2);
+      if (dist <= threshold) return { type: 'midpoint', segmentIndex: i, x: mx, y: my };
+    }
+
+    return null;
+  }
+
   hitTestConnection(
     connections: DiagramConnection[],
     shapes: DiagramPlacement[],
@@ -508,7 +567,7 @@ export class DiagramRenderService {
       const points = [this.getAnchorPoint(source, conn.sourceAnchor)];
       if (conn.waypoints?.length) {
         points.push(...conn.waypoints);
-      } else if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+      } else if (this.isHorizontalAfterRotation(source, conn.sourceAnchor)) {
         const targetPoint = this.getAnchorPoint(target, conn.targetAnchor);
         points.push({ x: targetPoint.x, y: points[0].y });
       } else {
@@ -543,5 +602,15 @@ export class DiagramRenderService {
     const projX = a.x + t * dx;
     const projY = a.y + t * dy;
     return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+  }
+
+  private isHorizontalAfterRotation(shape: DiagramPlacement, anchor: string): boolean {
+    const rad = ((shape.rotation ?? 0) * Math.PI) / 180;
+    const isOrigH = anchor === 'left' || anchor === 'right';
+    const baseX = isOrigH ? 1 : 0;
+    const baseY = isOrigH ? 0 : 1;
+    const rotX = baseX * Math.cos(rad) - baseY * Math.sin(rad);
+    const rotY = baseX * Math.sin(rad) + baseY * Math.cos(rad);
+    return Math.abs(rotX) > Math.abs(rotY);
   }
 }

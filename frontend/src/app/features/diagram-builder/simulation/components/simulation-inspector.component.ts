@@ -146,6 +146,10 @@ import { SimRole } from '../../models/sim-equipment.model';
               <input type="number" [ngModel]="state.params.sourcePressure"
                 (ngModelChange)="updateParam('sourcePressure', $event)" />
             </label>
+            <label>Fluid Temp (F)
+              <input type="number" [ngModel]="state.params.vesselTemperature ?? 70"
+                (ngModelChange)="updateParam('vesselTemperature', $event)" />
+            </label>
           </div>
         }
 
@@ -183,6 +187,135 @@ import { SimRole } from '../../models/sim-equipment.model';
             <label>Friction
               <input type="number" [ngModel]="state.params.frictionFactor" step="0.1"
                 (ngModelChange)="updateParam('frictionFactor', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'three-way-valve') {
+          <div class="param-section">
+            <h4>3-Way Valve</h4>
+            <label>Position
+              <input type="range" min="0" max="100" step="1"
+                [ngModel]="state.params.threeWayPosition ?? 50"
+                (ngModelChange)="updateParam('threeWayPosition', $event)" />
+            </label>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+              <span style="color: #4fc3f7;">◀ A: {{ 100 - (state.params.threeWayPosition ?? 50) }}%</span>
+              <span style="color: #ff9800;">B: {{ state.params.threeWayPosition ?? 50 }}% ▶</span>
+            </div>
+          </div>
+        }
+
+        @if (state.role === 'selector-valve') {
+          <div class="param-section">
+            <h4>Selector Valve</h4>
+            <div class="valve-buttons">
+              <button [class.active]="state.params.selectedPort === 'A'"
+                [class.green]="state.params.selectedPort === 'A'"
+                (click)="updateParam('selectedPort', 'A')">Port A</button>
+              <button [class.active]="state.params.selectedPort === 'B'"
+                [class.green]="state.params.selectedPort === 'B'"
+                (click)="updateParam('selectedPort', 'B')">Port B</button>
+            </div>
+          </div>
+        }
+
+        @if (state.role === 'pressure-regulator') {
+          <div class="param-section">
+            <h4>Pressure Regulator</h4>
+            <label>Setpoint PSI
+              <input type="number" [ngModel]="state.params.setpointPressure"
+                (ngModelChange)="updateParam('setpointPressure', $event)" />
+            </label>
+            <label>Max Flow
+              <input type="number" [ngModel]="state.params.regulatorMaxFlow"
+                (ngModelChange)="updateParam('regulatorMaxFlow', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'filter') {
+          <div class="param-section">
+            <h4>Filter</h4>
+            <label>Delta P
+              <input type="number" [ngModel]="state.params.filterDeltaP"
+                (ngModelChange)="updateParam('filterDeltaP', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'bearing') {
+          <div class="param-section">
+            <h4>Bearing</h4>
+            <label>Required Flow
+              <input type="number" [ngModel]="state.params.bearingFlowRequired"
+                (ngModelChange)="updateParam('bearingFlowRequired', $event)" />
+            </label>
+            <label>Bearing Temp (F)
+              <input type="number" [ngModel]="state.params.bearingTemp ?? 200"
+                (ngModelChange)="updateParam('bearingTemp', $event)" />
+            </label>
+            <label>Heat Transfer
+              <input type="number" [ngModel]="state.params.heatTransferCoeff ?? 0.3" step="0.05" min="0" max="1"
+                (ngModelChange)="updateParam('heatTransferCoeff', $event)" />
+            </label>
+            <label>Max Oil Temp (F)
+              <input type="number" [ngModel]="state.params.bearingMaxTemp"
+                (ngModelChange)="updateParam('bearingMaxTemp', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'heater') {
+          <div class="param-section">
+            <h4>Heater</h4>
+            <button class="pump-toggle"
+              [class.running]="state.params.heaterRunning"
+              (click)="updateParam('heaterRunning', !state.params.heaterRunning)">
+              {{ state.params.heaterRunning ? 'Turn Off' : 'Turn On' }}
+            </button>
+            <label>Delta T (F)
+              <input type="number" [ngModel]="state.params.heaterDeltaT"
+                (ngModelChange)="updateParam('heaterDeltaT', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'vapor-extractor') {
+          <div class="param-section">
+            <h4>Vapor Extractor</h4>
+            <button class="pump-toggle"
+              [class.running]="state.params.extractorRunning"
+              (click)="updateParam('extractorRunning', !state.params.extractorRunning)">
+              {{ state.params.extractorRunning ? 'Stop' : 'Start' }}
+            </button>
+            <label>Pressure Reduction
+              <input type="number" [ngModel]="state.params.extractorPressureReduction" step="0.5"
+                (ngModelChange)="updateParam('extractorPressureReduction', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'heat-exchanger') {
+          <div class="param-section">
+            <h4>Heat Exchanger</h4>
+            <label>Effectiveness
+              <input type="number" [ngModel]="state.params.hxEffectiveness ?? 0.7" step="0.05" min="0" max="1"
+                (ngModelChange)="updateParam('hxEffectiveness', $event)" />
+            </label>
+          </div>
+        }
+
+        @if (state.role === 'accumulator') {
+          <div class="param-section">
+            <h4>Accumulator</h4>
+            <label>Set Pressure
+              <input type="number" [ngModel]="state.params.accumulatorSetPressure ?? 50"
+                (ngModelChange)="updateParam('accumulatorSetPressure', $event)" />
+            </label>
+            <label>Damping Rate
+              <input type="number" [ngModel]="state.params.accumulatorDamping ?? 0.3" step="0.05" min="0" max="1"
+                (ngModelChange)="updateParam('accumulatorDamping', $event)" />
             </label>
           </div>
         }
@@ -291,7 +424,11 @@ export class SimulationInspectorComponent {
 
   nodeState = signal<SimNodeState | null>(null);
 
-  roles: SimRole[] = ['source', 'sink', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe'];
+  roles: SimRole[] = [
+    'source', 'sink', 'valve', 'pump', 'vessel', 'instrument', 'motor', 'junction', 'pipe',
+    'three-way-valve', 'selector-valve', 'pressure-regulator', 'filter', 'bearing',
+    'heater', 'vapor-extractor', 'heat-exchanger', 'accumulator',
+  ];
 
   constructor() {
     effect((onCleanup) => {

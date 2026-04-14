@@ -36,6 +36,7 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
 
     private static final String FEEDWATER_TEST_NAME = "Seed - Boiler Drum Feedwater Control Test";
     private static final String SEAL_OIL_TEST_NAME = "Seed - Generator Seal Oil System";
+    private static final String LUBE_OIL_TEST_NAME = "Seed - Lube Oil System";
     private static final String CV_PATH = "M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 5,15 A 15,15 0 0 1 35,15 Z";
     private static final String PUMP_PATH = "M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 0,15 L 5,15 L 5,25 L 0,25 Z M 35,15 L 40,15 L 40,25 L 35,25 Z M 10,20 L 30,20 M 25,15 L 30,20 L 25,25";
     private static final String MANUAL_VALVE_PATH = "M 0,20 L 20,10 L 20,30 Z M 40,20 L 20,10 L 20,30 Z M 20,10 L 20,0 M 14,0 L 26,0";
@@ -376,6 +377,274 @@ public class NgDiagramService implements NgCrudService<Diagram, DiagramDto, Diag
         c.add(connection(34, 29, 5, "top", "bottom", "CE Seal Supply", 4, 8, 0.02, 0));
 
         return c;
+    }
+
+    // ─── Lube Oil System Seeder ───
+
+    public DiagramDto seedLubeOilScenario() {
+        Diagram diagram = repo.findByNameContainingIgnoreCase(LUBE_OIL_TEST_NAME).stream()
+            .filter(item -> LUBE_OIL_TEST_NAME.equalsIgnoreCase(item.getName()))
+            .findFirst()
+            .orElseGet(Diagram::new);
+
+        diagram.setName(LUBE_OIL_TEST_NAME);
+        diagram.setDescription("Lube oil system: tank → 2 pumps → selector valve picks cooler A or B → 3-way temp control valve → accumulator → filter → pressure regulator → 7 bearings. Vapor extractors on tank. Oil heater for cold starts.");
+        diagram.setCanvasWidth(3200);
+        diagram.setCanvasHeight(1800);
+        diagram.setGridSize(20);
+        diagram.setShapesJson(buildLubeOilJson());
+        diagram.setConnectionsJson("");
+
+        Diagram saved = repo.save(diagram);
+        return mapper.convertToDto(saved);
+    }
+
+    private String buildLubeOilJson() {
+        try {
+            Map<String, Object> envelope = new LinkedHashMap<>();
+            envelope.put("schemaVersion", 1);
+            envelope.put("placements", buildLubeOilPlacements());
+            envelope.put("connections", buildLubeOilConnections());
+            return objectMapper.writeValueAsString(envelope);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to build lube oil scenario JSON", e);
+        }
+    }
+
+    private List<Map<String, Object>> buildLubeOilPlacements() {
+        List<Map<String, Object>> p = new ArrayList<>();
+        // Layout: left-to-right flow. Y center ~600.
+        // ══════ COL 1 (x~100): Tank, vapor extractors, heater ══════
+
+        p.add(symbolPlacement(1, "Lube Oil Tank", "Main lube oil reservoir. Oil returns by gravity from bearings.", "vessel",
+            json(mapOf("schemaVersion", 1, "volume", 5000, "currentLevel", 75, "minLevel", 25, "maxPressure", 15, "sourcePressure", 5, "vesselTemperature", 120)),
+            100, 450, 200, 250, "tank", TANK_PATH, "#80deea"));
+
+        p.add(symbolPlacement(2, "Vapor Extractor A", "Extracts oil vapor from tank headspace.", "vapor-extractor",
+            json(mapOf("schemaVersion", 1, "extractorRunning", true, "extractorPressureReduction", 2)),
+            60, 300, 60, 60, "vapor-extractor", VAPOR_EXTRACTOR_PATH, "#66bb6a"));
+
+        p.add(symbolPlacement(3, "Vapor Extractor B", "Standby vapor extractor.", "vapor-extractor",
+            json(mapOf("schemaVersion", 1, "extractorRunning", false, "extractorPressureReduction", 2)),
+            280, 300, 60, 60, "vapor-extractor", VAPOR_EXTRACTOR_PATH, "#66bb6a"));
+
+        p.add(symbolPlacement(4, "Oil Heater", "Electric immersion heater for cold starts.", "heater",
+            json(mapOf("schemaVersion", 1, "heaterRunning", false, "heaterDeltaT", 50)),
+            140, 780, 120, 80, "heat-exchanger", HEAT_EXCHANGER_PATH, "#ff8a65"));
+
+        // ══════ COL 2 (x~500): Pumps ══════
+
+        p.add(symbolPlacement(5, "LO Pump A", "Main lube oil pump. AC driven, normally running.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", true, "pumpDeltaP", 80, "pumpEfficiency", 0.88, "maxFlow", 2000, "minInletPressure", 1)),
+            500, 480, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
+
+        p.add(symbolPlacement(6, "LO Pump B", "Standby lube oil pump. DC driven.", "pump",
+            json(mapOf("schemaVersion", 1, "pumpRunning", false, "pumpDeltaP", 75, "pumpEfficiency", 0.82, "maxFlow", 1800, "minInletPressure", 1)),
+            500, 660, 90, 90, "centrifugal-pump", PUMP_PATH, "#ffb74d"));
+
+        p.add(circlePlacement(7, "Pump Header", "junction",
+            json(mapOf("schemaVersion", 1)),
+            700, 580, 24, 24, "#ffffff"));
+
+        // ══════ COL 3 (x~900): 3-way TCV splits cooler vs bypass ══════
+
+        p.add(symbolPlacement(8, "3-Way Temp CV", "Splits oil: port A through coolers, port B bypasses coolers.", "three-way-valve",
+            json(mapOf("schemaVersion", 1, "threeWayPosition", 70)),
+            900, 560, 80, 80, "three-way-valve", "M 0,20 L 20,10 L 20,30 Z M 40,20 L 20,10 L 20,30 Z M 20,10 L 20,0 M 20,30 L 20,40", "#ff9800"));
+
+        // ══════ COL 3.5 (x~1100): Duplex valve + coolers (on port A path) ══════
+
+        p.add(symbolPlacement(9, "Duplex Valve", "Selector valve on cooler path: picks cooler A or B.", "selector-valve",
+            json(mapOf("schemaVersion", 1, "selectedPort", "A")),
+            1100, 340, 70, 70, "three-way-valve", "M 0,20 L 20,10 L 20,30 Z M 40,20 L 20,10 L 20,30 Z M 20,10 L 20,0 M 20,30 L 20,40", "#e91e63"));
+
+        p.add(symbolPlacement(10, "Oil Cooler A", "Shell-and-tube oil cooler. Oil on shell (primary), CW on tube (secondary).", "heat-exchanger",
+            json(mapOf("schemaVersion", 1, "hxEffectiveness", 0.7)),
+            1320, 220, 120, 80, "heat-exchanger", HEAT_EXCHANGER_PATH, "#4fc3f7"));
+
+        p.add(symbolPlacement(11, "Oil Cooler B", "Shell-and-tube oil cooler. Standby.", "heat-exchanger",
+            json(mapOf("schemaVersion", 1, "hxEffectiveness", 0.7)),
+            1320, 430, 120, 80, "heat-exchanger", HEAT_EXCHANGER_PATH, "#4fc3f7"));
+
+        p.add(symbolPlacement(12, "CW Valve A", "Manual valve for cooling water to cooler A.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            1500, 230, 50, 40, "manual-valve", MANUAL_VALVE_PATH, "#29b6f6"));
+
+        p.add(symbolPlacement(13, "CW Valve B", "Manual valve for cooling water to cooler B.", "valve",
+            json(mapOf("schemaVersion", 1, "valvePosition", "open")),
+            1500, 440, 50, 40, "manual-valve", MANUAL_VALVE_PATH, "#29b6f6"));
+
+        p.add(rectPlacement(14, "CW Supply", "Cooling water supply.", "source",
+            json(mapOf("schemaVersion", 1, "sourcePressure", 60, "sourceTemperature", 75, "sourceFlowRate", 5000)),
+            1620, 340, 80, 40, "#29b6f6"));
+
+        // Cooler outlet merge junction
+        p.add(circlePlacement(15, "Cooler Outlet", "junction",
+            json(mapOf("schemaVersion", 1)),
+            1500, 350, 20, 20, "#ffffff"));
+
+        // ══════ COL 4 (x~1600): Merge junction (cooled + bypass) ══════
+
+        p.add(circlePlacement(16, "Oil Merge", "junction",
+            json(mapOf("schemaVersion", 1)),
+            1600, 580, 24, 24, "#ffffff"));
+
+        // ══════ COL 5 (x~1750+): Accumulator, filter, pressure reg ══════
+
+        p.add(symbolPlacement(17, "Accumulator", "Lube oil accumulator. Pressure dampener — absorbs/supplies pressure transients.", "accumulator",
+            json(mapOf("schemaVersion", 1, "accumulatorSetPressure", 40, "accumulatorDamping", 0.3)),
+            1750, 520, 100, 140, "vertical-vessel", VERTICAL_VESSEL_PATH, "#b39ddb"));
+
+        p.add(symbolPlacement(18, "Oil Filter", "Duplex oil filter.", "filter",
+            json(mapOf("schemaVersion", 1, "filterDeltaP", 5)),
+            1940, 560, 70, 70, "filter", FILTER_PATH, "#b0bec5"));
+
+        p.add(symbolPlacement(19, "Pressure Regulator", "Maintains constant bearing header pressure.", "pressure-regulator",
+            json(mapOf("schemaVersion", 1, "setpointPressure", 25, "regulatorMaxFlow", 2000)),
+            2100, 560, 70, 70, "cv", CV_PATH, "#00bcd4"));
+
+        // ══════ COL 6 (x~2350): Bearing header + 7 bearings ══════
+
+        p.add(circlePlacement(20, "Bearing Header", "junction",
+            json(mapOf("schemaVersion", 1)),
+            2350, 580, 30, 30, "#ffffff"));
+
+        p.add(symbolPlacement(21, "Bearing #1", "Turbine thrust bearing.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 120, "bearingMaxTemp", 180, "bearingTemp", 210, "heatTransferCoeff", 0.3)),
+            2550, 80, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(22, "Bearing #2", "Turbine journal bearing - HP.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 150, "bearingMaxTemp", 180, "bearingTemp", 195, "heatTransferCoeff", 0.25)),
+            2550, 220, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(23, "Bearing #3", "Turbine journal bearing - IP/LP.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 140, "bearingMaxTemp", 175, "bearingTemp", 190, "heatTransferCoeff", 0.25)),
+            2550, 360, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(24, "Bearing #4", "Turbine journal bearing - LP.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 140, "bearingMaxTemp", 175, "bearingTemp", 190, "heatTransferCoeff", 0.25)),
+            2550, 500, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(25, "Bearing #5", "Generator bearing - turbine end.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 200, "bearingMaxTemp", 185, "bearingTemp", 220, "heatTransferCoeff", 0.35)),
+            2550, 640, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(26, "Bearing #6", "Generator bearing - collector end.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 200, "bearingMaxTemp", 185, "bearingTemp", 220, "heatTransferCoeff", 0.35)),
+            2550, 780, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        p.add(symbolPlacement(27, "Bearing #7", "Exciter bearing.", "bearing",
+            json(mapOf("schemaVersion", 1, "bearingFlowRequired", 80, "bearingMaxTemp", 170, "bearingTemp", 180, "heatTransferCoeff", 0.2)),
+            2550, 920, 80, 60, "bearing-housing", BEARING_PATH, "#a1887f"));
+
+        // Drain return
+        p.add(circlePlacement(28, "Drain Header", "junction",
+            json(mapOf("schemaVersion", 1)),
+            2850, 580, 30, 30, "#ffffff"));
+
+        // CW drain (secondary side exits from coolers)
+        p.add(rectPlacement(29, "CW Drain", "Cooling water return.", "sink",
+            json(mapOf("schemaVersion", 1)),
+            1320, 120, 80, 30, "#29b6f6"));
+
+        return p;
+    }
+
+    private List<Map<String, Object>> buildLubeOilConnections() {
+        List<Map<String, Object>> c = new ArrayList<>();
+
+        // ─── Tank to vapor extractors (vapor extractors don't pull flow, they reduce pressure) ───
+        c.add(connection(1, 1, 2, "top", "bottom", "Vapor A", 2, 3, 0, 0));
+        c.add(connection(2, 1, 3, "top", "bottom", "Vapor B", 2, 3, 0, 0));
+
+        // ─── Tank through heater (inline, recirculation) ───
+        c.add(connection(3, 1, 4, "bottom", "left", "Heater In", 6, 5, 0.02, 0));
+        c.add(connection(4, 4, 1, "right", "bottom", "Heater Out", 6, 5, 0.02, 0));
+
+        // ─── Tank to pumps ───
+        c.add(connection(5, 1, 5, "right", "left", "Pump A Suction", 10, 15, 0.02, 0));
+        c.add(connection(6, 1, 6, "right", "left", "Pump B Suction", 10, 15, 0.02, 0));
+
+        // ─── Pumps to header ───
+        c.add(connection(7, 5, 7, "right", "left", "Pump A Discharge", 8, 8, 0.02, 0));
+        c.add(connection(8, 6, 7, "right", "bottom", "Pump B Discharge", 8, 8, 0.02, 0));
+
+        // ─── Header to 3-way temp control valve ───
+        c.add(connection(9, 7, 8, "right", "left", "To 3-Way TCV", 8, 10, 0.02, 0));
+
+        // ─── 3-way TCV: port A → cooler path, port B → bypass ───
+        c.add(portConnection(10, 8, 9, "top", "left", "A", null, "To Coolers", 8, 8, 0.02, 0));
+        c.add(portConnection(11, 8, 16, "bottom", "top", "B", null, "Bypass", 8, 12, 0.02, 0));
+
+        // ─── Duplex selector valve: port A → cooler A primary, port B → cooler B primary ───
+        c.add(portConnection(12, 9, 10, "top", "left", "A", "primary", "Oil to Cooler A", 8, 6, 0.02, 0));
+        c.add(portConnection(13, 9, 11, "bottom", "left", "B", "primary", "Oil to Cooler B", 8, 6, 0.02, 0));
+
+        // ─── CW supply → valves → coolers (secondary/tube side) ───
+        c.add(connection(14, 14, 12, "left", "right", "CW to Valve A", 6, 5, 0.01, 0));
+        c.add(connection(15, 14, 13, "left", "right", "CW to Valve B", 6, 5, 0.01, 0));
+        c.add(portConnection(16, 12, 10, "left", "top", null, "secondary", "CW to Cooler A", 6, 3, 0.01, 0));
+        c.add(portConnection(17, 13, 11, "left", "top", null, "secondary", "CW to Cooler B", 6, 3, 0.01, 0));
+
+        // ─── Cooler oil outlets (primary side) merge ───
+        c.add(portConnection(18, 10, 15, "right", "top", "primary", null, "Cooled Oil A", 8, 4, 0.02, 0));
+        c.add(portConnection(19, 11, 15, "right", "bottom", "primary", null, "Cooled Oil B", 8, 4, 0.02, 0));
+
+        // ─── CW drain from coolers (secondary side) ───
+        c.add(portConnection(20, 10, 29, "top", "bottom", "secondary", null, "CW Drain A", 6, 3, 0.01, 0));
+        c.add(portConnection(21, 11, 29, "top", "bottom", "secondary", null, "CW Drain B", 6, 3, 0.01, 0));
+
+        // ─── Cooler oil merge to oil merge (joins with bypass) ───
+        c.add(connection(22, 15, 16, "right", "left", "Cooled Oil", 8, 8, 0.02, 0));
+
+        // ─── Oil merge → accumulator → filter → pressure reg → bearing header ───
+        c.add(connection(23, 16, 17, "right", "left", "To Accumulator", 8, 10, 0.02, 0));
+        c.add(connection(24, 17, 18, "right", "left", "To Filter", 8, 6, 0.02, 0));
+        c.add(connection(25, 18, 19, "right", "left", "To Pressure Reg", 8, 6, 0.02, 0));
+        c.add(connection(26, 19, 20, "right", "left", "To Bearing Header", 8, 10, 0.02, 0));
+
+        // ─── Bearing header to individual bearings ───
+        c.add(connection(27, 20, 21, "top", "left", "To Brg #1", 4, 20, 0.02, 0));
+        c.add(connection(28, 20, 22, "top", "left", "To Brg #2", 4, 18, 0.02, 0));
+        c.add(connection(29, 20, 23, "top", "left", "To Brg #3", 4, 15, 0.02, 0));
+        c.add(connection(30, 20, 24, "left", "left", "To Brg #4", 4, 10, 0.02, 0));
+        c.add(connection(31, 20, 25, "bottom", "left", "To Brg #5", 4, 10, 0.02, 0));
+        c.add(connection(32, 20, 26, "bottom", "left", "To Brg #6", 4, 15, 0.02, 0));
+        c.add(connection(33, 20, 27, "bottom", "left", "To Brg #7", 4, 18, 0.02, 0));
+
+        // ─── Bearings to drain header ───
+        c.add(connection(34, 21, 28, "right", "top", "Brg #1 Drain", 4, 20, 0.01, 0));
+        c.add(connection(35, 22, 28, "right", "top", "Brg #2 Drain", 4, 18, 0.01, 0));
+        c.add(connection(36, 23, 28, "right", "top", "Brg #3 Drain", 4, 15, 0.01, 0));
+        c.add(connection(37, 24, 28, "right", "left", "Brg #4 Drain", 4, 10, 0.01, 0));
+        c.add(connection(38, 25, 28, "right", "bottom", "Brg #5 Drain", 4, 10, 0.01, 0));
+        c.add(connection(39, 26, 28, "right", "bottom", "Brg #6 Drain", 4, 15, 0.01, 0));
+        c.add(connection(40, 27, 28, "right", "bottom", "Brg #7 Drain", 4, 18, 0.01, 0));
+
+        // ─── Drain header back to tank ───
+        c.add(connection(41, 28, 1, "bottom", "bottom", "Return to Tank", 10, 60, 0.01, 0));
+
+        return c;
+    }
+
+    private Map<String, Object> portConnection(
+        int id,
+        int sourcePlacementId,
+        int targetPlacementId,
+        String sourceAnchor,
+        String targetAnchor,
+        String sourcePort,
+        String targetPort,
+        String pipeName,
+        int diameter,
+        int length,
+        double frictionFactor,
+        double insulationFactor
+    ) {
+        Map<String, Object> item = connection(id, sourcePlacementId, targetPlacementId, sourceAnchor, targetAnchor, pipeName, diameter, length, frictionFactor, insulationFactor);
+        if (sourcePort != null) item.put("sourcePort", sourcePort);
+        if (targetPort != null) item.put("targetPort", targetPort);
+        return item;
     }
 
     // ─── Feedwater Scenario Builders ───

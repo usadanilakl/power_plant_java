@@ -13,6 +13,9 @@ export interface DiagramConnectionDto {
   sourceAnchor?: string;
   targetAnchor?: string;
 
+  sourcePort?: string;
+  targetPort?: string;
+
   pipeTemplateId?: number;
   pipeName?: string;
   pipeParamsJson?: string;
@@ -42,6 +45,8 @@ export function dtoToConnection(dto: DiagramConnectionDto): DiagramConnection {
     targetPlacementId: dto.targetPlacementLocalId ?? 0,
     sourceAnchor: (dto.sourceAnchor ?? 'right') as AnchorPosition,
     targetAnchor: (dto.targetAnchor ?? 'left') as AnchorPosition,
+    sourcePort: dto.sourcePort,
+    targetPort: dto.targetPort,
     pipeTemplateId: dto.pipeTemplateId,
     pipeName: dto.pipeName,
     pipeParamsJson: dto.pipeParamsJson,
@@ -61,6 +66,8 @@ export function connectionToDto(c: DiagramConnection, diagramId?: number): Diagr
     targetPlacementLocalId: c.targetPlacementId,
     sourceAnchor: c.sourceAnchor,
     targetAnchor: c.targetAnchor,
+    sourcePort: c.sourcePort,
+    targetPort: c.targetPort,
     pipeTemplateId: c.pipeTemplateId,
     pipeName: c.pipeName,
     pipeParamsJson: c.pipeParamsJson,

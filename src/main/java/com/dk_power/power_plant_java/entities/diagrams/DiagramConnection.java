@@ -29,6 +29,10 @@ public class DiagramConnection extends BaseAuditEntity {
     private String sourceAnchor;
     private String targetAnchor;
 
+    // Multi-port support (e.g., 3-way valve port A/B)
+    private String sourcePort;
+    private String targetPort;
+
     // Pipe template provenance
     private Long pipeTemplateId;
     private String pipeName;

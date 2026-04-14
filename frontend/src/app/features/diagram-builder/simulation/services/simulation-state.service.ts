@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { DiagramPlacement, DiagramConnection } from '../../models/diagram-placement.model';
-import { SimEdgeState, SimNodeState, defaultNodeState } from '../models/simulation.model';
+import { SimEdgeState, SimNodeState, defaultNodeState, DEFAULT_AMBIENT_TEMP } from '../models/simulation.model';
 import { SimNode, SimEdge } from '../models/sim-graph.model';
 import { SimParams, SimRole } from '../../models/sim-equipment.model';
 import { SimGraphBuilderService } from './sim-graph-builder.service';
@@ -49,7 +49,7 @@ export class SimulationStateService {
     this.edgeSubjects.clear();
     for (const edge of this.edges.values()) {
       const edgeState: SimEdgeState = {
-        connectionId: edge.id, flowRate: 0, pressure: 0, temperature: 0, isFlowing: false,
+        connectionId: edge.id, flowRate: 0, pressure: 0, temperature: DEFAULT_AMBIENT_TEMP, isFlowing: false,
       };
       this._edgeStates.set(edge.id, edgeState);
       this.edgeSubjects.set(edge.id, new BehaviorSubject(edgeState));

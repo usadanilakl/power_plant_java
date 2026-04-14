@@ -22,4 +22,6 @@ export interface SimEdge {
   sourceNodeId: number;
   targetNodeId: number;
   pipeParams: SimParams;   // parsed pipeParamsJson
+  sourcePort?: string;     // multi-port support (e.g., 'A', 'B')
+  targetPort?: string;
 }

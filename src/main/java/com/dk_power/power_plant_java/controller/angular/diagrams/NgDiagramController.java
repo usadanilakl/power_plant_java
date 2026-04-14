@@ -94,6 +94,18 @@ public class NgDiagramController {
         }
     }
 
+    @PostMapping("/seed/lube-oil-system")
+    public ResponseEntity<NgApiResponse<DiagramDto>> seedLubeOilSystem() {
+        try {
+            DiagramDto seeded = service.seedLubeOilScenario();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(new NgApiResponse<>(seeded, "Lube oil system diagram seeded successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NgApiResponse<DiagramDto>> update(@PathVariable String id, @RequestBody DiagramDto dto) {
         try {

@@ -1,10 +1,24 @@
 [ {
   "id" : 21002,
-  "tagNumber" : "01-PMP-LOS001-JG dk-test",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
+  "tagNumber" : "LOTONODATA219",
+  "description" : "LV SWGR 11 BREAKER CONTROL WITH VERY LONG DESCRIPTION FOR TESTING ENGRAVER",
   "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "HEATER-DRYER",
-  "locationId" : 6053
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 21003,
+  "tagNumber" : "LOTONODATA221.",
+  "description" : "LV SWGR 21 BREAKER CONTROL",
+  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR2",
+  "eqType" : "",
+  "locationId" : null
+}, {
+  "id" : 21004,
+  "tagNumber" : "LOTONODATA220",
+  "description" : "LV SWGR BREAKER TEST CABINET",
+  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR3",
+  "eqType" : "",
+  "locationId" : null
 }, {
   "id" : 21005,
   "tagNumber" : "00-FGS-CMP-01A",
@@ -14,8 +28,8 @@
   "locationId" : 23707
 }, {
   "id" : 21006,
-  "tagNumber" : "01BFJ01-MD",
-  "description" : "M-U1 480V AC FEED TO RECTIFIER PANEL",
+  "tagNumber" : "01BFJ01",
+  "description" : "U1 480V AC FEED TO RECTIFIER PANEL",
   "specificLocation" : " TCP , 01BFJ01, 5L",
   "eqType" : "",
   "locationId" : null
@@ -28,8 +42,8 @@
   "locationId" : 23707
 }, {
   "id" : 21008,
-  "tagNumber" : "02BFJ01-MD",
-  "description" : "M-U2 480V AC FEED TO RECTIFIER PANEL",
+  "tagNumber" : "02BFJ01",
+  "description" : "U2 480V AC FEED TO RECTIFIER PANEL",
   "specificLocation" : " TCP",
   "eqType" : "",
   "locationId" : null
@@ -31817,8 +31831,8 @@
   "id" : 25549,
   "tagNumber" : "01-HPL-1111-01",
   "description" : "HTT-1610/HTT-1611/HTT-1612/HTT-1613/HTT-1614/HTT-1615/HTT-1616/",
-  "specificLocation" : "HRSG UPPER WEST, 01-HTT-HPL-111, BR:01(1/3)",
-  "eqType" : "Breaker 480VAC",
+  "specificLocation" : "HRSG UPPER WEST BR:01(1/3)",
+  "eqType" : "",
   "locationId" : null
 }, {
   "id" : 25550,
@@ -50966,6 +50980,13 @@
   "eqType" : "",
   "locationId" : null
 }, {
+  "id" : 28285,
+  "tagNumber" : "01-VCND190",
+  "description" : "01-FIT-CND231B ISO (CND DISCH FLOW)",
+  "specificLocation" : "CONDENSATE CORNER",
+  "eqType" : "Manual Valve",
+  "locationId" : 5906
+}, {
   "id" : 28286,
   "tagNumber" : "02-ARM-IV-906B",
   "description" : "PRESSURE GAUGE ISO",
@@ -61380,7 +61401,7 @@
   "description" : "HPS HEADER PIT-HPS121B ROOT ISO",
   "specificLocation" : "ST BUILDING WEST- LOWER",
   "eqType" : "Manual Valve",
-  "locationId" : 17302
+  "locationId" : 6053
 }, {
   "id" : 29774,
   "tagNumber" : "02-VHPS103",
@@ -61689,6 +61710,13 @@
   "specificLocation" : "SAMPLE PANEL",
   "eqType" : "Manual Valve",
   "locationId" : 10906
+}, {
+  "id" : 29818,
+  "tagNumber" : "02-VCND190",
+  "description" : "02-FIT-CND231B ISO (CND DISCH FLOW)",
+  "specificLocation" : "CONDENSATE CORNER",
+  "eqType" : "Manual Valve",
+  "locationId" : 5906
 }, {
   "id" : 29819,
   "tagNumber" : "01-VSMP130F",
@@ -83341,87 +83369,10 @@
   "eqType" : "Manual Valve",
   "locationId" : 10907
 }, {
-  "id" : 1000011706,
-  "tagNumber" : "02-PCV-SMP800",
-  "description" : "asdfasdf",
-  "specificLocation" : "",
-  "eqType" : "PRV",
-  "locationId" : 5904
-}, {
-  "id" : 1000011720,
-  "tagNumber" : "01-test-001",
-  "description" : "test description",
-  "specificLocation" : "test location",
-  "eqType" : "Pump",
-  "locationId" : 5904
-}, {
-  "id" : 1000011721,
-  "tagNumber" : "02-test-001",
-  "description" : "test description",
-  "specificLocation" : "test location",
-  "eqType" : "Pump",
-  "locationId" : 5904
-}, {
-  "id" : 1000011734,
-  "tagNumber" : "01-PMP-LOS001-JG dk-test22",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
-  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "PRV",
-  "locationId" : 5904
-}, {
-  "id" : 1000011736,
-  "tagNumber" : "02-PMP-LOS001-JG dk-test",
-  "description" : "LV SWGR 11 BREAKER CONTROL",
-  "specificLocation" : " HRSG1 PDC 125VDC BUS, BR1",
-  "eqType" : "PRV",
-  "locationId" : 5904
-}, {
-  "id" : 1000011750,
-  "tagNumber" : "asdfasd",
-  "description" : "asdfasdf",
-  "specificLocation" : "sdf",
-  "eqType" : "PRV",
-  "locationId" : 5906
-}, {
-  "id" : 2000000169,
-  "tagNumber" : "ZE-1771760902877",
-  "description" : "Zero Energy Equipment",
-  "specificLocation" : "",
-  "eqType" : "Control Panel",
-  "locationId" : 2000000093
-}, {
-  "id" : 2000000171,
-  "tagNumber" : "00-full309",
-  "description" : "Full form test LOTO Point 1771760843309",
-  "specificLocation" : "Building A, Floor 2, Room 205",
-  "eqType" : "Manual Valve",
-  "locationId" : 2000000093
-}, {
-  "id" : 2000042479,
-  "tagNumber" : "01--V-0003",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
-}, {
-  "id" : 2000042480,
-  "tagNumber" : "01--V-0001",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
-}, {
-  "id" : 2000042481,
-  "tagNumber" : "test007",
-  "description" : "Test Description",
-  "specificLocation" : "Specific location",
-  "eqType" : "",
-  "locationId" : 2000014976
-}, {
-  "id" : 2000042482,
-  "tagNumber" : "01--V-0002",
-  "description" : " MANUAL VALVE",
-  "specificLocation" : "",
-  "eqType" : "",
-  "locationId" : null
+  "id" : 5000014301,
+  "tagNumber" : "02MPV01AA702",
+  "description" : "L/O SUPPLY PRESSURE REGULATOR",
+  "specificLocation" : "LUBE OIL TANK",
+  "eqType" : "Air Operated Valve",
+  "locationId" : 17302
 } ]

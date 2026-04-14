@@ -38,7 +38,7 @@ export class ConnectionGraphic extends Container {
     this.pathPoints = [sp];
     if (conn.waypoints && conn.waypoints.length > 0) {
       this.pathPoints.push(...conn.waypoints);
-    } else if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+    } else if (isHorizontalAfterRotation(source, conn.sourceAnchor)) {
       this.pathPoints.push({ x: tp.x, y: sp.y });
     } else {
       this.pathPoints.push({ x: sp.x, y: tp.y });
@@ -85,7 +85,37 @@ export class ConnectionGraphic extends Container {
       this.selectionGraphics.lineTo(this.pathPoints[i].x, this.pathPoints[i].y);
     }
     this.selectionGraphics.stroke({ color: '#4fc3f7', width: 4 });
+
+    // Draw waypoint handles (existing waypoints = circles, midpoints = "+" indicators)
+    this.drawWaypointHandles(this.selectionGraphics);
     this.selectionGraphics.visible = true;
+  }
+
+  private drawWaypointHandles(g: Graphics): void {
+    const r = 5;
+
+    // Existing waypoints — draggable circles (skip first and last which are anchors)
+    for (let i = 1; i < this.pathPoints.length - 1; i++) {
+      const p = this.pathPoints[i];
+      g.circle(p.x, p.y, r);
+      g.fill('#4fc3f7');
+      g.circle(p.x, p.y, r);
+      g.stroke({ color: '#ffffff', width: 1.5 });
+    }
+
+    // Midpoint "+" indicators — click to insert new waypoint
+    for (let i = 0; i < this.pathPoints.length - 1; i++) {
+      const a = this.pathPoints[i];
+      const b = this.pathPoints[i + 1];
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const s = 4;
+      g.moveTo(mx - s, my);
+      g.lineTo(mx + s, my);
+      g.moveTo(mx, my - s);
+      g.lineTo(mx, my + s);
+      g.stroke({ color: '#ffffff', width: 1.5 });
+    }
   }
 
   private drawArrowhead(point: { x: number; y: number }, anchor: string, color: string): void {
@@ -110,11 +140,29 @@ export class ConnectionGraphic extends Container {
 }
 
 export function getAnchorPoint(shape: DiagramPlacement, anchor: string): { x: number; y: number } {
+  const cx = shape.x + shape.width / 2;
+  const cy = shape.y + shape.height / 2;
+  let dx: number, dy: number;
   switch (anchor) {
-    case 'top':    return { x: shape.x + shape.width / 2, y: shape.y };
-    case 'bottom': return { x: shape.x + shape.width / 2, y: shape.y + shape.height };
-    case 'left':   return { x: shape.x, y: shape.y + shape.height / 2 };
-    case 'right':  return { x: shape.x + shape.width, y: shape.y + shape.height / 2 };
-    default:       return { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 };
+    case 'top':    dx = 0; dy = -shape.height / 2; break;
+    case 'bottom': dx = 0; dy =  shape.height / 2; break;
+    case 'left':   dx = -shape.width / 2; dy = 0; break;
+    case 'right':  dx =  shape.width / 2; dy = 0; break;
+    default:       dx = 0; dy = 0; break;
   }
+  const rad = ((shape.rotation ?? 0) * Math.PI) / 180;
+  return {
+    x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+    y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+  };
+}
+
+export function isHorizontalAfterRotation(shape: DiagramPlacement, anchor: string): boolean {
+  const rad = ((shape.rotation ?? 0) * Math.PI) / 180;
+  const isOrigH = anchor === 'left' || anchor === 'right';
+  const baseX = isOrigH ? 1 : 0;
+  const baseY = isOrigH ? 0 : 1;
+  const rotX = baseX * Math.cos(rad) - baseY * Math.sin(rad);
+  const rotY = baseX * Math.sin(rad) + baseY * Math.cos(rad);
+  return Math.abs(rotX) > Math.abs(rotY);
 }

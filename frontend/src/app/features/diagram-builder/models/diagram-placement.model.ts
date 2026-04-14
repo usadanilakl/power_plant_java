@@ -73,6 +73,10 @@ export interface DiagramConnection {
   pipeName?: string;
   pipeParamsJson?: string;
 
+  // Multi-port support (e.g., 3-way valve port A/B)
+  sourcePort?: string;
+  targetPort?: string;
+
   waypoints?: { x: number; y: number }[];
   lineStyle?: 'solid' | 'dashed';
   lineWidth?: number;

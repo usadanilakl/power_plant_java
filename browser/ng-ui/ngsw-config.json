@@ -22,7 +22,8 @@
       "updateMode": "prefetch",
       "resources": {
         "files": [
-          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)",
+          "!/data/**"
         ]
       }
     }
@@ -34,7 +35,10 @@
         "/permits/data/work-areas.json",
         "/permits/data/work-area-shapes.json",
         "/permits/data/work-categories.json",
-        "/permits/data/default-instruments.json"
+        "/permits/data/default-instruments.json",
+        "/permits/data/locations.json",
+        "/permits/data/loto-points.json",
+        "/permits/data/field-list-types.json"
       ],
       "cacheConfig": {
         "maxSize": 20,

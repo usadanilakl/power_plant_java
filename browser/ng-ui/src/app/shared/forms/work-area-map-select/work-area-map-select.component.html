@@ -46,7 +46,7 @@
             } @else {
               <div class="selected-panel-name">
                 {{ selectedShape()!.areaNames[0] }}
-                @if (selectedShape()!.areas[0]?.isConfinedSpace) {
+                @if (selectedShape()!.areas[0].isConfinedSpace) {
                   <span class="cs-badge">Confined Space</span>
                 }
               </div>
@@ -124,7 +124,7 @@
           } @else {
             <div class="selected-panel-name">
               {{ selectedShape()!.areaNames[0] }}
-              @if (selectedShape()!.areas[0]?.isConfinedSpace) {
+              @if (selectedShape()!.areas[0].isConfinedSpace) {
                 <span class="cs-badge">Confined Space</span>
               }
             </div>

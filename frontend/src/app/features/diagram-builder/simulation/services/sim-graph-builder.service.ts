@@ -48,6 +48,8 @@ export class SimGraphBuilderService {
         pipeParams: conn.pipeParamsJson
           ? parseSimParams(conn.pipeParamsJson)
           : { schemaVersion: 1 },
+        sourcePort: conn.sourcePort,
+        targetPort: conn.targetPort,
       };
       edges.set(conn.id, edge);
 

@@ -6,6 +6,15 @@ import { valveStrategy } from './valve.strategy';
 import { pumpStrategy } from './pump.strategy';
 import { vesselStrategy } from './vessel.strategy';
 import { passthroughStrategy } from './passthrough.strategy';
+import { threeWayValveStrategy } from './three-way-valve.strategy';
+import { selectorValveStrategy } from './selector-valve.strategy';
+import { pressureRegulatorStrategy } from './pressure-regulator.strategy';
+import { filterStrategy } from './filter.strategy';
+import { bearingStrategy } from './bearing.strategy';
+import { heaterStrategy } from './heater.strategy';
+import { vaporExtractorStrategy } from './vapor-extractor.strategy';
+import { heatExchangerStrategy } from './heat-exchanger.strategy';
+import { accumulatorStrategy } from './accumulator.strategy';
 
 const STRATEGIES: Record<SimRole, RoleStrategy> = {
   source: sourceStrategy,
@@ -17,6 +26,15 @@ const STRATEGIES: Record<SimRole, RoleStrategy> = {
   junction: passthroughStrategy,
   instrument: passthroughStrategy,
   motor: passthroughStrategy,
+  'three-way-valve': threeWayValveStrategy,
+  'selector-valve': selectorValveStrategy,
+  'pressure-regulator': pressureRegulatorStrategy,
+  filter: filterStrategy,
+  bearing: bearingStrategy,
+  heater: heaterStrategy,
+  'vapor-extractor': vaporExtractorStrategy,
+  'heat-exchanger': heatExchangerStrategy,
+  accumulator: accumulatorStrategy,
 };
 
 export function getStrategy(role: SimRole): RoleStrategy {

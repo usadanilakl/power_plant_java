@@ -20,7 +20,17 @@ export const vesselStrategy: RoleStrategy = {
       currentState.params.maxPressure ?? LARGE_DEMAND,
       (currentState.params.sourcePressure ?? 15) * Math.max(0.05, currentLevel / 100),
     );
-    const temperature = input.upstreamEdges.length ? avgInTemp : (previousState.temperature || AMBIENT_TEMP);
+
+    // Thermal mass: mix incoming oil temperature with stored fluid temperature.
+    // vesselTemperature tracks the bulk fluid temp across ticks.
+    // Thermal mass: mix incoming flow with stored volume. That's it.
+    const prevVesselTemp = previousState.params.vesselTemperature || previousState.temperature || AMBIENT_TEMP;
+    const inFlowVolume = totalInFlow * dtHours;
+    const nextVesselTemp = (storedUnits + inFlowVolume > 0.01)
+      ? (storedUnits * prevVesselTemp + inFlowVolume * avgInTemp) / (storedUnits + inFlowVolume)
+      : prevVesselTemp;
+
+    const temperature = nextVesselTemp;
 
     const nextStoredUnits = Math.max(0, storedUnits + (totalInFlow - outFlow) * dtHours);
     const nextLevel = clampPercent((nextStoredUnits / volume) * 100);
@@ -37,7 +47,7 @@ export const vesselStrategy: RoleStrategy = {
       pressure,
       temperature,
       warnings,
-      paramUpdates: { currentLevel: nextLevel },
+      paramUpdates: { currentLevel: nextLevel, vesselTemperature: nextVesselTemp },
     };
   },
 

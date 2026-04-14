@@ -99,13 +99,20 @@ export class SimulationEngineService {
         return 0;
       }
 
-      const childDemand = node.downstreamEdgeIds.reduce((sum: number, edgeId: number) => {
+      // Build per-port demand breakdown for multi-port strategies
+      const demandByPort: Record<string, number> = {};
+      let childDemand = 0;
+      for (const edgeId of node.downstreamEdgeIds) {
         const edge = edges.get(edgeId);
-        return sum + (edge ? desiredDemand(edge.targetNodeId) : 0);
-      }, 0);
+        if (!edge) continue;
+        const edgeDemand = desiredDemand(edge.targetNodeId);
+        childDemand += edgeDemand;
+        const portKey = edge.sourcePort ?? '';
+        demandByPort[portKey] = (demandByPort[portKey] ?? 0) + edgeDemand;
+      }
 
       const strategy = getStrategy(node.role);
-      const demand = strategy.computeDemand(node, state, childDemand);
+      const demand = strategy.computeDemand(node, state, childDemand, demandByPort);
 
       demandPath.delete(nodeId);
       demandCache.set(nodeId, demand);
@@ -134,6 +141,26 @@ export class SimulationEngineService {
       const avgInTemp = this.weightedAvgTemp(upstreamEdges);
       const wantedFlow = demandCache.get(nodeId) ?? 0;
 
+      // Build per-port upstream aggregates for multi-circuit equipment
+      const inFlowByPort: Record<string, { flow: number; temp: number; pressure: number }> = {};
+      for (const edgeId of node.upstreamEdgeIds) {
+        const edge = edges.get(edgeId);
+        const edgeState = edgeStates.get(edgeId);
+        if (!edge || !edgeState) continue;
+        const portKey = edge.targetPort ?? '';
+        const existing = inFlowByPort[portKey];
+        if (existing) {
+          const totalPortFlow = existing.flow + edgeState.flowRate;
+          existing.temp = totalPortFlow > FLOW_EPSILON
+            ? (existing.temp * existing.flow + edgeState.temperature * edgeState.flowRate) / totalPortFlow
+            : existing.temp;
+          existing.pressure = (existing.pressure + edgeState.pressure) / 2;
+          existing.flow = totalPortFlow;
+        } else {
+          inFlowByPort[portKey] = { flow: edgeState.flowRate, temp: edgeState.temperature, pressure: edgeState.pressure };
+        }
+      }
+
       const strategy = getStrategy(node.role);
       const result = strategy.compute({
         node,
@@ -145,6 +172,7 @@ export class SimulationEngineService {
         avgInTemp,
         wantedFlow,
         dtHours,
+        inFlowByPort,
       });
 
       // Apply param updates (e.g., vessel level)
@@ -162,7 +190,7 @@ export class SimulationEngineService {
         warnings: result.warnings,
       });
 
-      // Distribute flow to downstream edges proportionally
+      // Distribute flow to downstream edges — port-aware if strategy provides portFlowDistribution
       const childWeights = node.downstreamEdgeIds.map((edgeId: number) => {
         const edge = edges.get(edgeId);
         const childDem = edge ? (demandCache.get(edge.targetNodeId) ?? 0) : 0;
@@ -173,15 +201,28 @@ export class SimulationEngineService {
       for (const item of childWeights) {
         const edge = edges.get(item.edgeId);
         if (!edge) continue;
-        const ratio = totalChildDemand > 0
-          ? item.demand / totalChildDemand
-          : 1 / Math.max(1, childWeights.length);
+
+        let ratio: number;
+        if (result.portFlowDistribution && edge.sourcePort) {
+          // Port-aware: use the fraction assigned to this edge's port
+          ratio = result.portFlowDistribution[edge.sourcePort] ?? 0;
+        } else {
+          // Default: proportional by demand
+          ratio = totalChildDemand > 0
+            ? item.demand / totalChildDemand
+            : 1 / Math.max(1, childWeights.length);
+        }
+
+        // Per-port temperature: heat exchangers output different temps per circuit
+        const edgeTemp = (result.portTemperatures && edge.sourcePort)
+          ? (result.portTemperatures[edge.sourcePort] ?? result.temperature)
+          : result.temperature;
 
         const baseEdge: SimEdgeState = {
           connectionId: edge.id,
           flowRate: result.outFlow * ratio,
           pressure: result.pressure,
-          temperature: result.temperature,
+          temperature: edgeTemp,
           isFlowing: result.outFlow * ratio > FLOW_EPSILON,
         };
         edgeStates.set(edge.id, this.applyPipeEffects(baseEdge, edge));
@@ -201,6 +242,9 @@ export class SimulationEngineService {
       }
     }
 
+    // Post-step: vapor extractors reduce upstream vessel pressure
+    this.applyVaporExtractorEffects(nodes, edges, nextStates);
+
     return { nodes: nextStates, edges: edgeStates };
   }
 
@@ -210,7 +254,10 @@ export class SimulationEngineService {
     const length = Math.max(0, params.length ?? 0);
     const frictionFactor = Math.max(0, params.frictionFactor ?? 0);
     const insulationFactor = Math.max(0, params.insulationFactor ?? 0);
-    const pressureDrop = frictionFactor * length * Math.pow(sourceState.flowRate, 2) / Math.pow(diameter, 5);
+    // Scale factor keeps pressure drops reasonable across typical sim flow/diameter ranges.
+    // Without it, Q²/D⁵ produces unrealistically large drops at normal flow rates.
+    const FRICTION_SCALE = 1e-4;
+    const pressureDrop = FRICTION_SCALE * frictionFactor * length * Math.pow(sourceState.flowRate, 2) / Math.pow(diameter, 5);
     const heatLoss = insulationFactor * length * Math.max(0, sourceState.temperature - AMBIENT_TEMP);
 
     return {
@@ -226,5 +273,36 @@ export class SimulationEngineService {
       return upstreams.length ? upstreams[0].temperature : AMBIENT_TEMP;
     }
     return upstreams.reduce((sum, edge) => sum + edge.temperature * edge.flowRate, 0) / totalFlow;
+  }
+
+  /**
+   * Post-step: running vapor extractors reduce pressure on their upstream vessels.
+   * For each running vapor-extractor, find the directly connected upstream node.
+   * If it's a vessel, reduce its output pressure by extractorPressureReduction.
+   */
+  private applyVaporExtractorEffects(
+    nodes: Map<number, SimNode>,
+    edges: Map<number, SimEdge>,
+    states: Map<number, SimNodeState>
+  ): void {
+    for (const node of nodes.values()) {
+      if (node.role !== 'vapor-extractor') continue;
+      const state = states.get(node.id);
+      if (!state || !(state.params.extractorRunning ?? false)) continue;
+
+      const reduction = state.params.extractorPressureReduction ?? 2;
+
+      // Find upstream vessels and reduce their pressure
+      for (const edgeId of node.upstreamEdgeIds) {
+        const edge = edges.get(edgeId);
+        if (!edge) continue;
+        const upstreamNode = nodes.get(edge.sourceNodeId);
+        const upstreamState = states.get(edge.sourceNodeId);
+        if (!upstreamNode || !upstreamState) continue;
+        if (upstreamNode.role === 'vessel') {
+          upstreamState.pressure = Math.max(0, upstreamState.pressure - reduction);
+        }
+      }
+    }
   }
 }

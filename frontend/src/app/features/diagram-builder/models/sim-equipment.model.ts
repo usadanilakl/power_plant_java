@@ -1,6 +1,8 @@
 // --- Enums (literal unions) ---
 
-export type SimRole = 'source' | 'sink' | 'valve' | 'pump' | 'pipe' | 'vessel' | 'junction' | 'instrument' | 'motor';
+export type SimRole = 'source' | 'sink' | 'valve' | 'pump' | 'pipe' | 'vessel' | 'junction' | 'instrument' | 'motor'
+  | 'three-way-valve' | 'selector-valve' | 'pressure-regulator' | 'filter' | 'bearing'
+  | 'heater' | 'vapor-extractor' | 'heat-exchanger' | 'accumulator';
 export type SourceEntityType = 'Equipment' | 'LotoPoint';
 export type ValvePosition = 'open' | 'closed' | 'throttled';
 export type MeasuredProperty = 'pressure' | 'temperature' | 'flow';
@@ -46,6 +48,43 @@ export interface SimParams {
   // Motor
   running?: boolean;
   power?: number;
+
+  // Three-way valve
+  threeWayPosition?: number;  // 0-100: 0 = all to port A, 100 = all to port B
+
+  // Selector valve
+  selectedPort?: string;      // 'A' or 'B'
+
+  // Pressure regulator
+  setpointPressure?: number;
+  regulatorMaxFlow?: number;
+
+  // Filter
+  filterDeltaP?: number;
+
+  // Bearing
+  bearingFlowRequired?: number;
+  bearingMaxTemp?: number;
+  bearingTemp?: number;
+  heatTransferCoeff?: number;
+
+  // Accumulator
+  accumulatorSetPressure?: number;
+  accumulatorDamping?: number;
+
+  // Heat exchanger
+  hxEffectiveness?: number;
+
+  // Vessel thermal
+  vesselTemperature?: number;
+
+  // Heater
+  heaterRunning?: boolean;
+  heaterDeltaT?: number;
+
+  // Vapor extractor
+  extractorRunning?: boolean;
+  extractorPressureReduction?: number;
 }
 
 // --- DTO (matches backend SimEquipmentDto) ---
@@ -96,6 +135,15 @@ export function normalizeSimRole(role: string | null | undefined): SimRole {
     case 'vessel': return 'vessel';
     case 'instrument': return 'instrument';
     case 'motor': return 'motor';
+    case 'three-way-valve': return 'three-way-valve';
+    case 'selector-valve': return 'selector-valve';
+    case 'pressure-regulator': return 'pressure-regulator';
+    case 'filter': return 'filter';
+    case 'bearing': return 'bearing';
+    case 'heater': return 'heater';
+    case 'vapor-extractor': return 'vapor-extractor';
+    case 'heat-exchanger': return 'heat-exchanger';
+    case 'accumulator': return 'accumulator';
     case 'junction':
     default:
       return 'junction';
@@ -159,6 +207,40 @@ export function defaultSimParams(role: SimRole): SimParams {
       base.running = true;
       base.power = 500;
       break;
+    case 'three-way-valve':
+      base.threeWayPosition = 50;
+      break;
+    case 'selector-valve':
+      base.selectedPort = 'A';
+      break;
+    case 'pressure-regulator':
+      base.setpointPressure = 50;
+      base.regulatorMaxFlow = 10000;
+      break;
+    case 'filter':
+      base.filterDeltaP = 5;
+      break;
+    case 'bearing':
+      base.bearingFlowRequired = 100;
+      base.bearingMaxTemp = 180;
+      base.bearingTemp = 200;
+      base.heatTransferCoeff = 0.3;
+      break;
+    case 'heater':
+      base.heaterRunning = false;
+      base.heaterDeltaT = 50;
+      break;
+    case 'vapor-extractor':
+      base.extractorRunning = true;
+      base.extractorPressureReduction = 2;
+      break;
+    case 'accumulator':
+      base.accumulatorSetPressure = 50;
+      base.accumulatorDamping = 0.3;
+      break;
+    case 'heat-exchanger':
+      base.hxEffectiveness = 0.7;
+      break;
   }
   return base;
 }
@@ -179,7 +261,7 @@ export const SYMBOL_ROLE_MAP: Record<string, SimRole> = {
   'vertical-pump': 'pump',
   'positive-displacement-pump': 'pump',
   'compressor': 'pump',
-  'heat-exchanger': 'vessel',
+  'heat-exchanger': 'heat-exchanger',
   'horizontal-vessel': 'vessel',
   'vertical-vessel': 'vessel',
   'tank': 'vessel',
@@ -196,14 +278,17 @@ export const SYMBOL_ROLE_MAP: Record<string, SimRole> = {
   // Rotating equipment
   'generator-body': 'vessel',
   'shaft-seal': 'vessel',
-  'bearing-housing': 'junction',
+  'bearing-housing': 'bearing',
   'exciter': 'junction',
   'drain-pot': 'vessel',
   'float-trap': 'valve',
   'vacuum-pump': 'pump',
   'detraining-tank': 'vessel',
-  'vapor-extractor': 'pump',
-  'filter': 'junction',
+  'vapor-extractor': 'vapor-extractor',
+  'filter': 'filter',
   'seal-drain-tray': 'vessel',
   'vacuum-tank-horizontal': 'vessel',
+  'expansion-tank': 'vessel',
+  'three-way-valve': 'three-way-valve',
+  'square-tank': 'vessel',
 };

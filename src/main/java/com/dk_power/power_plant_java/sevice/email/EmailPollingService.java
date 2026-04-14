@@ -63,7 +63,7 @@ public class EmailPollingService {
      * Runs every 10 minutes by default (configurable via email.poll.interval).
      * Only the hub polls — clients receive data via sync.
      */
-    @Scheduled(fixedDelayString = "${email.poll.interval:600000}") // 10 minutes default
+    @Scheduled(fixedDelayString = "${email.poll.interval:600000}", initialDelay = 30_000) // 10 minutes default, 30s startup delay
     public void pollForNewResponses() {
         if (!syncConfig.isHubMode()) return;
         long start = System.currentTimeMillis();

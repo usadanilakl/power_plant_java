@@ -446,6 +446,39 @@ export class PIDSymbolsService {
       height: 40,
       originalWidth: 60,
       originalHeight: 40
+    },
+    {
+      id: 'expansion-tank',
+      name: 'Expansion / Accumulator Tank',
+      category: 'vessel',
+      // Vertical cylinder with domed top (gas charge), bladder/diaphragm wavy line, bottom fluid connection
+      svgPath: 'M 10,8 a 10,6 0 0,1 20,0 M 10,8 L 10,42 M 30,8 L 30,42 M 10,42 a 10,4 0 0,0 20,0 M 10,25 Q 15,21 20,25 Q 25,29 30,25 M 20,46 L 20,54 M 16,2 L 24,2 M 20,2 L 20,8',
+      width: 40,
+      height: 54,
+      originalWidth: 40,
+      originalHeight: 54
+    },
+    {
+      id: 'three-way-valve',
+      name: '3-Way Valve',
+      category: 'valve',
+      // Two opposing triangles (inline flow) with a third triangle branching downward from center
+      svgPath: 'M 0,0 L 20,10 L 0,20 Z M 40,0 L 20,10 L 40,20 Z M 10,10 L 20,30 L 30,10 Z M 20,30 L 20,40',
+      width: 40,
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 40
+    },
+    {
+      id: 'square-tank',
+      name: 'Square Tank',
+      category: 'vessel',
+      // Rectangular flat-walled tank with support legs and side connections
+      svgPath: 'M 6,6 L 34,6 L 34,36 L 6,36 Z M 10,36 L 10,42 M 30,36 L 30,42 M 0,20 L 6,20 M 34,20 L 40,20',
+      width: 40,
+      height: 42,
+      originalWidth: 40,
+      originalHeight: 42
     }
   ];
   

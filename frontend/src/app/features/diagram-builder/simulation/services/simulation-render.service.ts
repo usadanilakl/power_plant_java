@@ -127,6 +127,23 @@ export class SimulationRenderService {
       case 'vessel': return;
       case 'source': color = '#2196f3'; alpha = 0.1; break;
       case 'sink': color = '#9c27b0'; alpha = 0.1; break;
+      case 'three-way-valve': color = '#ff9800'; alpha = 0.15; break;
+      case 'selector-valve':
+        color = state.params.selectedPort === 'A' ? '#2196f3' : '#e91e63';
+        alpha = 0.15; break;
+      case 'pressure-regulator': color = '#00bcd4'; alpha = 0.15; break;
+      case 'filter': color = '#8bc34a'; alpha = 0.1; break;
+      case 'bearing':
+        color = state.warnings?.length ? '#f44336' : '#4caf50';
+        alpha = 0.15; break;
+      case 'heater':
+        color = state.params.heaterRunning ? '#ff5722' : '#666666';
+        alpha = state.params.heaterRunning ? 0.2 : 0.25; break;
+      case 'vapor-extractor':
+        color = state.params.extractorRunning ? '#66bb6a' : '#666666';
+        alpha = 0.15; break;
+      case 'heat-exchanger': color = '#4fc3f7'; alpha = 0.15; break;
+      case 'accumulator': color = '#b39ddb'; alpha = 0.15; break;
       default: return;
     }
     if (!color) return;
@@ -222,7 +239,7 @@ export class SimulationRenderService {
     }
 
     ctx.beginPath();
-    this.traceConnectionPath(ctx, sp, tp, conn);
+    this.traceConnectionPath(ctx, sp, tp, conn, source);
     ctx.stroke();
     ctx.restore();
   }
@@ -366,7 +383,7 @@ export class SimulationRenderService {
     ctx.setLineDash([8 / scale, 12 / scale]);
     ctx.lineDashOffset = -this.animationOffset / scale;
     ctx.beginPath();
-    this.traceConnectionPath(ctx, sp, tp, conn);
+    this.traceConnectionPath(ctx, sp, tp, conn, source);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
@@ -438,7 +455,8 @@ export class SimulationRenderService {
     ctx: CanvasRenderingContext2D,
     sp: { x: number; y: number },
     tp: { x: number; y: number },
-    conn: DiagramConnection
+    conn: DiagramConnection,
+    sourceShape?: DiagramPlacement
   ): void {
     if (conn.waypoints && conn.waypoints.length > 0) {
       ctx.moveTo(sp.x, sp.y);
@@ -446,7 +464,10 @@ export class SimulationRenderService {
       ctx.lineTo(tp.x, tp.y);
     } else {
       ctx.moveTo(sp.x, sp.y);
-      if (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right') {
+      const isHoriz = sourceShape
+        ? this.isHorizontalAfterRotation(sourceShape, conn.sourceAnchor)
+        : (conn.sourceAnchor === 'left' || conn.sourceAnchor === 'right');
+      if (isHoriz) {
         ctx.lineTo(tp.x, sp.y);
         ctx.lineTo(tp.x, tp.y);
       } else {
@@ -477,5 +498,15 @@ export class SimulationRenderService {
     this.cachedConnections = [];
     this.cachedNodeStates = [];
     this.cachedEdgeStates = [];
+  }
+
+  private isHorizontalAfterRotation(shape: DiagramPlacement, anchor: string): boolean {
+    const rad = ((shape.rotation ?? 0) * Math.PI) / 180;
+    const isOrigH = anchor === 'left' || anchor === 'right';
+    const baseX = isOrigH ? 1 : 0;
+    const baseY = isOrigH ? 0 : 1;
+    const rotX = baseX * Math.cos(rad) - baseY * Math.sin(rad);
+    const rotY = baseX * Math.sin(rad) + baseY * Math.cos(rad);
+    return Math.abs(rotX) > Math.abs(rotY);
   }
 }

@@ -1,259 +1,333 @@
 [ {
-  "id" : 8000013602,
-  "name" : ""
-}, {
-  "id" : 8000013604,
-  "name" : ""
-}, {
-  "id" : 8000013609,
-  "name" : ""
-}, {
-  "id" : 8000018143,
-  "name" : ""
-}, {
-  "id" : 8000018239,
-  "name" : ""
+  "id" : 3000018849,
+  "name" : "Plant main Gas yard ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018272,
-  "name" : "U2 CCW ACHE (UPPER)"
+  "name" : "U2 CCW ACHE (UPPER)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018273,
-  "name" : "Ammonia Tank Storage Area "
+  "name" : "Ammonia Tank Storage Area ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018275,
-  "name" : "Spare GSU Area"
+  "name" : "Spare GSU Area",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018277,
-  "name" : "Gravel LOT GSU/Ammonia Tank area "
+  "name" : "Gravel LOT GSU/Ammonia Tank area ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018279,
-  "name" : "U2 Northside CCW Ache Gravel lot "
+  "name" : "U2 Northside CCW Ache Gravel lot ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018281,
-  "name" : "U2 Sample panel building "
+  "name" : "U2 Sample panel building ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018283,
-  "name" : "Aux boiler "
+  "name" : "Aux boiler ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018285,
-  "name" : "Unit 2 HRSG lower (Heat Recovery Steam Generator)"
+  "name" : "Unit 2 HRSG lower (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018287,
-  "name" : "Unit 2 ECA compreesor Area "
+  "name" : "Unit 2 ECA compreesor Area ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018291,
-  "name" : "U2 BFP area ground level "
+  "name" : "U2 BFP area ground level ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018292,
-  "name" : "U2 BFP enclosures "
+  "name" : "U2 BFP enclosures ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018302,
-  "name" : "U1 Sample panel building "
+  "name" : "U1 Sample panel building ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018305,
-  "name" : "U1 CCW ACHE (UPPER)"
+  "name" : "U1 CCW ACHE (UPPER)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018308,
-  "name" : "Plant Fuel gas yard "
+  "name" : "Plant Fuel gas yard ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018309,
-  "name" : "Fuel gas compressor skid "
+  "name" : "Fuel gas compressor skid ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018310,
-  "name" : "Regulation Station "
+  "name" : "Regulation Station ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018311,
-  "name" : "Fuel gas metering skid "
+  "name" : "Fuel gas metering skid ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018316,
-  "name" : "U2 St drains pit area (Below grade)"
+  "name" : "U2 St drains pit area (Below grade)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018318,
-  "name" : "Unit 2 TCP building "
+  "name" : "Unit 2 TCP building ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018319,
-  "name" : "Unit 1 TCP building "
+  "name" : "Unit 1 TCP building ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018321,
-  "name" : "Unit 2 SCR Skid (AFCU)"
+  "name" : "Unit 2 SCR Skid (AFCU)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018323,
-  "name" : "Unit 1 SCR Skid (AFCU)"
+  "name" : "Unit 1 SCR Skid (AFCU)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018326,
-  "name" : "Unit 1 ACC MCC "
+  "name" : "Unit 1 ACC MCC ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018327,
-  "name" : "Unit 2 ACC MCC "
+  "name" : "Unit 2 ACC MCC ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018329,
-  "name" : "Control Room "
+  "name" : "Control Room ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000018332,
-  "name" : "Northside Demin/Service water Tank "
+  "name" : "Northside Demin/Service water Tank ",
+  "locationIds" : [ ]
 }, {
   "id" : 8000019550,
-  "name" : "Unit 1 Gas Turbine Enclosure ( combustor)"
+  "name" : "Unit 1 Gas Turbine Enclosure ( combustor)",
+  "locationIds" : [ ]
 }, {
   "id" : 8000019551,
-  "name" : "Unit 2 Gas Turbine enclosure ( combustor) "
+  "name" : "Unit 2 Gas Turbine enclosure ( combustor) ",
+  "locationIds" : [ ]
+}, {
+  "id" : 8000019872,
+  "name" : "Unit 1 Performance heater ",
+  "locationIds" : [ 10907 ]
 }, {
   "id" : 11000018078,
-  "name" : "U2 CRT/DA Tank"
+  "name" : "U2 CRT/DA Tank",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018079,
-  "name" : "U2 CRT/DA Area "
+  "name" : "U2 CRT/DA Area ",
+  "locationIds" : [ 5602, 5906 ]
 }, {
   "id" : 11000018080,
-  "name" : "Unit 1 ACC Upper"
+  "name" : "Unit 1 ACC Upper",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018084,
-  "name" : "U2 ACC Upper"
+  "name" : "U2 ACC Upper",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018086,
-  "name" : "Unit 1 Stack "
+  "name" : "Unit 1 Stack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018087,
-  "name" : "Unit 1 Stack "
+  "name" : "Unit 1 Stack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018089,
-  "name" : "Unit 2 Stack "
+  "name" : "Unit 2 Stack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018090,
-  "name" : "Unit 2 Stack "
+  "name" : "Unit 2 Stack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018174,
-  "name" : "Unit 1 HRSG lower (Heat Recovery Steam Generator)"
+  "name" : "Unit 1 HRSG lower (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018176,
-  "name" : "Unit 1 HRSG Penthouse (Heat Recovery Steam Generator)"
+  "name" : "Unit 1 HRSG Penthouse (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018177,
-  "name" : "Unit 2 HRSG Penthouse (Heat Recovery Steam Generator)"
+  "name" : "Unit 2 HRSG Penthouse (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018180,
-  "name" : "Unit 2 HRSG LP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 2 HRSG LP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018181,
-  "name" : "Unit 1 HRSG LP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 1 HRSG LP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018183,
-  "name" : "Unit 2 HRSG IP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 2 HRSG IP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018184,
-  "name" : "Unit 1 HRSG IP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 1 HRSG IP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018185,
-  "name" : "Unit 2 HRSG HP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 2 HRSG HP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018186,
-  "name" : "Unit 1 HRSG HP Drum (Heat Recovery Steam Generator)"
+  "name" : "Unit 1 HRSG HP Drum (Heat Recovery Steam Generator)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018188,
-  "name" : "Northside Gravel area next to GSU/Ammonia storage tank area"
+  "name" : "Northside Gravel area next to GSU/Ammonia storage tank area",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018190,
-  "name" : "Instrument Air compressor Skid Area"
+  "name" : "Instrument Air compressor Skid Area",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018192,
-  "name" : "U2 inlet filter house "
+  "name" : "U2 inlet filter house ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018193,
-  "name" : "U1 inlet filter house "
+  "name" : "U1 inlet filter house ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018196,
-  "name" : "U2 1st level pipe rack "
+  "name" : "U2 1st level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018197,
-  "name" : "U2 2nd level pipe rack "
+  "name" : "U2 2nd level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018198,
-  "name" : "U2 3rd level pipe rack "
+  "name" : "U2 3rd level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018201,
-  "name" : "U1 1st level pipe rack "
+  "name" : "U1 1st level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018202,
-  "name" : "U1 2nd level pipe rack "
+  "name" : "U1 2nd level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018203,
-  "name" : "U1 3rd level pipe rack "
+  "name" : "U1 3rd level pipe rack ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018204,
-  "name" : "U1 BFP area ground level "
+  "name" : "U1 BFP area ground level ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018205,
-  "name" : "U1 BFP enclosures "
+  "name" : "U1 BFP enclosures ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018207,
-  "name" : "Unit 1 GAS Turbine Enclosure "
+  "name" : "Unit 1 GAS Turbine Enclosure ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018208,
-  "name" : "Unit 2 GAS Turbine Enclosure "
+  "name" : "Unit 2 GAS Turbine Enclosure ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018210,
-  "name" : "U2 GT Exhaust "
+  "name" : "U2 GT Exhaust ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018211,
-  "name" : "U1 GT Exhaust "
+  "name" : "U1 GT Exhaust ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018212,
-  "name" : "Unit 1 GAS Turbine Enclosure (Tear Drop)"
+  "name" : "Unit 1 GAS Turbine Enclosure (Tear Drop)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018213,
-  "name" : "Unit 2 GAS Turbine Enclosure (Tear Drop)"
+  "name" : "Unit 2 GAS Turbine Enclosure (Tear Drop)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018215,
-  "name" : "Unit 1 Turbine Building "
+  "name" : "Unit 1 Turbine Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018217,
-  "name" : "Unit 2 Turbine Building "
+  "name" : "Unit 2 Turbine Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018220,
-  "name" : "Unit 1 Steam turbine west side Ground floor "
+  "name" : "Unit 1 Steam turbine west side Ground floor ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018221,
-  "name" : "Unit 2 Steam turbine west side Ground floor "
+  "name" : "Unit 2 Steam turbine west side Ground floor ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018224,
-  "name" : "Fire pump house "
+  "name" : "Fire pump house ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018226,
-  "name" : "Service water tank "
+  "name" : "Service water tank ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018228,
-  "name" : "Demin water tank "
+  "name" : "Demin water tank ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018230,
-  "name" : "RO building or water plant building"
+  "name" : "RO building or water plant building",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018232,
-  "name" : "shop"
+  "name" : "shop",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018234,
-  "name" : "EDG area Emergency diesel generator area"
+  "name" : "EDG area Emergency diesel generator area",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018236,
-  "name" : "U2 Steam turbine Exhaust duct area (STED)"
+  "name" : "U2 Steam turbine Exhaust duct area (STED)",
+  "locationIds" : [ 20503 ]
 }, {
   "id" : 11000018303,
-  "name" : "Unit 2 GSU (Generator Step up Unit)"
+  "name" : "Unit 2 GSU (Generator Step up Unit)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018305,
-  "name" : "Unit 1 GSU (Generator Step up Unit)"
+  "name" : "Unit 1 GSU (Generator Step up Unit)",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018308,
-  "name" : "Unit 2 Excitation Building "
+  "name" : "Unit 2 Excitation Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018309,
-  "name" : "Unit 1 Excitation Building "
+  "name" : "Unit 1 Excitation Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018312,
-  "name" : "Unit 2 SFC Building "
+  "name" : "Unit 2 SFC Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018313,
-  "name" : "Unit 1 SFC Building "
+  "name" : "Unit 1 SFC Building ",
+  "locationIds" : [ ]
 }, {
   "id" : 11000018316,
-  "name" : "Hydrogen storage tank area "
+  "name" : "Hydrogen storage tank area ",
+  "locationIds" : [ ]
 } ]

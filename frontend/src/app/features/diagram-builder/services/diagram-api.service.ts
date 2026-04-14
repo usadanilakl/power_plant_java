@@ -34,6 +34,10 @@ export class DiagramApiService {
     return this.http.post<SpringApiResponse<DiagramDto>>(`${this.baseUrl}/seed/seal-oil-system`, {});
   }
 
+  seedLubeOilSystem(): Observable<SpringApiResponse<DiagramDto>> {
+    return this.http.post<SpringApiResponse<DiagramDto>>(`${this.baseUrl}/seed/lube-oil-system`, {});
+  }
+
   update(id: number, dto: DiagramDto): Observable<SpringApiResponse<DiagramDto>> {
     return this.http.put<SpringApiResponse<DiagramDto>>(`${this.baseUrl}/${id}`, dto);
   }

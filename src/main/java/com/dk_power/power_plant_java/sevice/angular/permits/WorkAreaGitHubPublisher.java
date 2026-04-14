@@ -220,7 +220,7 @@ public class WorkAreaGitHubPublisher {
     }
 
     private String buildAreasJson() throws IOException {
-        List<Map<String, Object>> areas = workAreaRepo.findAll().stream()
+        List<Map<String, Object>> areas = workAreaRepo.findAllWithLocations().stream()
                 .map(area -> {
                     java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
                     map.put("id", area.getId());

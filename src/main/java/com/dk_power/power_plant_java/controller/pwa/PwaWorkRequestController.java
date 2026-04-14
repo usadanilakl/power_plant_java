@@ -162,7 +162,7 @@ public class PwaWorkRequestController {
     @GetMapping("/work-areas")
     public ResponseEntity<NgApiResponse<List<Map<String, Object>>>> getWorkAreas() {
         try {
-            List<Map<String, Object>> areas = workAreaRepo.findAll().stream()
+            List<Map<String, Object>> areas = workAreaRepo.findAllWithLocations().stream()
                     .map(wa -> {
                         Map<String, Object> map = new java.util.HashMap<>();
                         map.put("id", wa.getId());

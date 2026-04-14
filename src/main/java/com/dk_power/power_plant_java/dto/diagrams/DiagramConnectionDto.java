@@ -22,6 +22,9 @@ public class DiagramConnectionDto extends BaseDto {
     private String sourceAnchor;
     private String targetAnchor;
 
+    private String sourcePort;
+    private String targetPort;
+
     private Long pipeTemplateId;
     private String pipeName;
     private String pipeParamsJson;

@@ -74,6 +74,7 @@ export class BaseDiagramSprite extends Container {
       this.labelText.text = p.label;
       (this.labelText.style as TextStyle).fill = p.color || '#ffffff';
       this.labelText.position.set(p.width / 2, p.height + 2);
+      this.labelText.rotation = -((p.rotation ?? 0) * Math.PI) / 180;
       this.labelText.visible = true;
     } else if (this.labelText) {
       this.labelText.visible = false;

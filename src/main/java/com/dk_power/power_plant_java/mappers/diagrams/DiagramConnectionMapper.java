@@ -28,6 +28,8 @@ public class DiagramConnectionMapper implements BaseMapper {
         if (entity.getTargetPlacementLocalId() != null) dto.setTargetPlacementLocalId(entity.getTargetPlacementLocalId());
         if (entity.getSourceAnchor() != null) dto.setSourceAnchor(entity.getSourceAnchor());
         if (entity.getTargetAnchor() != null) dto.setTargetAnchor(entity.getTargetAnchor());
+        if (entity.getSourcePort() != null) dto.setSourcePort(entity.getSourcePort());
+        if (entity.getTargetPort() != null) dto.setTargetPort(entity.getTargetPort());
         if (entity.getPipeTemplateId() != null) dto.setPipeTemplateId(entity.getPipeTemplateId());
         if (entity.getPipeName() != null) dto.setPipeName(entity.getPipeName());
         if (entity.getPipeParamsJson() != null) dto.setPipeParamsJson(entity.getPipeParamsJson());
@@ -49,6 +51,8 @@ public class DiagramConnectionMapper implements BaseMapper {
         if (dto.getTargetPlacementLocalId() != null) entity.setTargetPlacementLocalId(dto.getTargetPlacementLocalId());
         if (dto.getSourceAnchor() != null) entity.setSourceAnchor(dto.getSourceAnchor());
         if (dto.getTargetAnchor() != null) entity.setTargetAnchor(dto.getTargetAnchor());
+        if (dto.getSourcePort() != null) entity.setSourcePort(dto.getSourcePort());
+        if (dto.getTargetPort() != null) entity.setTargetPort(dto.getTargetPort());
         if (dto.getPipeTemplateId() != null) entity.setPipeTemplateId(dto.getPipeTemplateId());
         if (dto.getPipeName() != null) entity.setPipeName(dto.getPipeName());
         if (dto.getPipeParamsJson() != null) entity.setPipeParamsJson(dto.getPipeParamsJson());
@@ -72,6 +76,8 @@ public class DiagramConnectionMapper implements BaseMapper {
         if (dto.getTargetPlacementLocalId() != null) entity.setTargetPlacementLocalId(dto.getTargetPlacementLocalId());
         if (dto.getSourceAnchor() != null) entity.setSourceAnchor(dto.getSourceAnchor());
         if (dto.getTargetAnchor() != null) entity.setTargetAnchor(dto.getTargetAnchor());
+        if (dto.getSourcePort() != null) entity.setSourcePort(dto.getSourcePort());
+        if (dto.getTargetPort() != null) entity.setTargetPort(dto.getTargetPort());
         if (dto.getPipeTemplateId() != null) entity.setPipeTemplateId(dto.getPipeTemplateId());
         if (dto.getPipeName() != null) entity.setPipeName(dto.getPipeName());
         if (dto.getPipeParamsJson() != null) entity.setPipeParamsJson(dto.getPipeParamsJson());
