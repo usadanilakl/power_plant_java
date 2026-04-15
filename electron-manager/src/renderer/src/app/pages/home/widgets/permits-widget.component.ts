@@ -8,42 +8,69 @@ import { AppStatus, APP_DISPLAY_NAME } from '../../../services/electron.service'
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="feature-card permits-card" [class.disabled]="status.state !== 'running'">
-      <div class="feature-icon"><span class="material-icons" style="color: #8b5cf6">assignment</span></div>
-      <div class="feature-info">
-        <h3>Permits</h3>
-        <p class="feature-desc">Work requests, LOTOs, permits</p>
-      </div>
-      <div class="permit-items" *ngIf="!editMode">
-        <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'loto/loto' }">
-          <span>Active LOTOs</span>
-          <span class="item-placeholder">--</span>
-        </a>
-        <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'permit-builder/work-requests' }">
-          <span>Work Requests</span>
-          <span class="wr-counts">
-            <span class="count-badge active-badge" *ngIf="activeWorkRequestCount !== null && activeWorkRequestCount > 0"
-                  title="Active">{{ activeWorkRequestCount }}</span>
-            <span class="count-badge new-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0"
-                  title="New">{{ newWorkRequestCount }}<span class="new-dot">*</span></span>
-          </span>
-        </a>
-      </div>
-      <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
-        {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
-      </span>
+    <div class="feature-card permits-card" [class.disabled]="status.state !== 'running'"
+         [class.compact]="isCompact">
+
+      <!-- COMPACT (1x1) -->
+      <ng-container *ngIf="isCompact">
+        <div class="compact-header">
+          <span class="material-icons compact-icon" style="color: #8b5cf6">assignment</span>
+          <h3>Permits</h3>
+        </div>
+        <div class="compact-counts" *ngIf="activeWorkRequestCount || newWorkRequestCount">
+          <span class="count-badge active-badge" *ngIf="activeWorkRequestCount">{{ activeWorkRequestCount }}</span>
+          <span class="count-badge new-badge" *ngIf="newWorkRequestCount">{{ newWorkRequestCount }}*</span>
+          <span class="count-label">WRs</span>
+        </div>
+        <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
+          {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
+        </span>
+      </ng-container>
+
+      <!-- STANDARD (2x1+) -->
+      <ng-container *ngIf="!isCompact">
+        <div class="feature-icon"><span class="material-icons" style="color: #8b5cf6">assignment</span></div>
+        <div class="feature-info">
+          <h3>Permits</h3>
+          <p class="feature-desc">Work requests, LOTOs, permits</p>
+        </div>
+        <div class="permit-items" *ngIf="!editMode">
+          <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'loto/loto' }">
+            <span>Active LOTOs</span>
+            <span class="item-placeholder">--</span>
+          </a>
+          <a class="permit-item" [routerLink]="['/pid-app']" [queryParams]="{ path: 'permit-builder/work-requests' }">
+            <span>Work Requests</span>
+            <span class="wr-counts">
+              <span class="count-badge active-badge" *ngIf="activeWorkRequestCount !== null && activeWorkRequestCount > 0"
+                    title="Active">{{ activeWorkRequestCount }}</span>
+              <span class="count-badge new-badge" *ngIf="newWorkRequestCount !== null && newWorkRequestCount > 0"
+                    title="New">{{ newWorkRequestCount }}<span class="new-dot">*</span></span>
+            </span>
+          </a>
+        </div>
+        <span class="feature-status" [class.requires-sb]="status.state !== 'running'">
+          {{ status.state === 'running' ? 'Available' : 'Requires ' + appName }}
+        </span>
+      </ng-container>
     </div>
   `,
   styles: [`
     .feature-card {
-      display: flex; flex-direction: column; gap: 12px; padding: 20px;
+      display: flex; flex-direction: column; gap: 10px; padding: 20px;
       background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
-      text-decoration: none; color: inherit; transition: all var(--transition-normal);
-      overflow-y: auto;
+      color: inherit; transition: all var(--transition-normal);
+      overflow-y: auto; height: 100%; box-sizing: border-box;
     }
     .feature-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
     :host { display: block; height: 100%; }
-    .feature-card { height: 100%; box-sizing: border-box; }
+
+    .compact-header { display: flex; align-items: center; gap: 6px; }
+    .compact-icon { font-size: 20px; }
+    .compact-header h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .compact-counts { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+    .count-label { font-size: 11px; color: var(--text-muted); }
+
     .feature-icon { font-size: 28px; }
     .feature-info h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
     .feature-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
@@ -79,4 +106,6 @@ export class PermitsWidgetComponent {
   @Input() cols = 1;
   @Input() rows = 1;
   appName = APP_DISPLAY_NAME;
+
+  get isCompact(): boolean { return this.cols === 1 && this.rows === 1; }
 }

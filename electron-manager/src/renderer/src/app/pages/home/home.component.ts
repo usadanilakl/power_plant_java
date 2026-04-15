@@ -93,9 +93,8 @@ interface DashboardGridsterItem extends GridsterItem {
 
       <!-- Gridster dashboard -->
       <gridster [options]="gridsterOptions">
-        <gridster-item *ngFor="let item of visibleItems; trackBy: trackItem" [item]="item"
-                       [style.font-size]="getScale(item) + 'em'">
-          <!-- Edit overlay -->
+        <gridster-item *ngFor="let item of visibleItems; trackBy: trackItem" [item]="item">
+          <!-- Edit overlay (outside zoom wrapper so controls stay normal size) -->
           <div class="widget-edit-overlay" *ngIf="editMode">
             <div class="scale-controls">
               <button class="widget-ctrl-btn" (click)="decreaseScale(item.widgetId)" title="Decrease text size">
@@ -110,7 +109,8 @@ interface DashboardGridsterItem extends GridsterItem {
             </button>
           </div>
 
-          <!-- Widget content -->
+          <!-- Scaled content wrapper -->
+          <div class="widget-scale-wrapper" [style.zoom]="getScale(item)">
           <ng-container [ngSwitch]="item.widgetId">
             <app-fire-impairment-widget *ngSwitchCase="'fire-impairment'"
               [status]="status" [activeImpairmentCount]="activeImpairmentCount"
@@ -141,6 +141,7 @@ interface DashboardGridsterItem extends GridsterItem {
             <app-notes-widget *ngSwitchCase="'notes'"
               [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
           </ng-container>
+          </div>
         </gridster-item>
       </gridster>
     </div>
@@ -251,6 +252,7 @@ interface DashboardGridsterItem extends GridsterItem {
 
     .widget-edit-overlay > * { pointer-events: auto; }
     .scale-controls { display: flex; gap: 2px; }
+    .widget-scale-wrapper { height: 100%; width: 100%; }
 
     .widget-ctrl-btn {
       display: flex; align-items: center; justify-content: center;
