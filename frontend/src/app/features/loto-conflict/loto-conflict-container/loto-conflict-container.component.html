@@ -1,0 +1,67 @@
+<app-main-layout
+  [isSideMenuEnabled]="false"
+  [isBottomMenuEnabled]="false"
+  [mainContentPadding]="false"
+>
+  <ng-container header>
+    <div class="header-row">
+      <app-router-menu [layout]="'row'"></app-router-menu>
+      @if (state.activeConflictType()) {
+        <div class="progress-section">
+          <span class="progress-label">
+            {{ state.activeConflictTypeLabel() }}:
+            {{ state.resolvedCount() }} / {{ state.activeConflictCount() }} resolved
+          </span>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="state.progress()"
+            class="progress-bar"
+          ></mat-progress-bar>
+        </div>
+      }
+    </div>
+  </ng-container>
+
+  <ng-container main-content>
+    <div class="conflict-container" [class.resizing]="isResizing()">
+      <!-- Left Panel -->
+      <div
+        class="left-panel"
+        [style.width.px]="state.leftPanelWidth()"
+      >
+        <app-loto-conflict-left-panel
+          (summaryRefreshRequested)="loadSummary()"
+        ></app-loto-conflict-left-panel>
+      </div>
+
+      <!-- Resizable Divider -->
+      <div
+        class="divider"
+        [class.resizing]="isResizing()"
+        (mousedown)="onDividerMouseDown($event)"
+      >
+        <div class="divider-handle"></div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <app-loto-conflict-right-panel></app-loto-conflict-right-panel>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>
+
+<!-- Floating Merge Dialog -->
+@if (state.isMergeDialogOpen()) {
+  <app-rf-floating-window
+    [windowId]="'conflict-merge'"
+    [initialPosition]="{ x: 100, y: 100 }"
+    [initialSize]="{ width: 900, height: 600 }"
+  >
+    <div window-header class="merge-window-header">
+      <span class="merge-window-title">Merge Duplicates</span>
+      <button class="merge-window-close" (click)="state.closeMergeDialog()">✕</button>
+    </div>
+    <app-loto-conflict-merge></app-loto-conflict-merge>
+  </app-rf-floating-window>
+}

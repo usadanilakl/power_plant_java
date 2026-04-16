@@ -1,0 +1,94 @@
+@if (isLoading) {
+  <div class="loading-state">Loading point data...</div>
+} @else if (errorMessage) {
+  <div class="error-state">{{ errorMessage }}</div>
+} @else if (points.length >= 2) {
+  <div class="merge-container">
+    <!-- Header: Select which to keep -->
+    <div class="merge-header">
+      <div class="keep-selector">
+        <span class="keep-label">Keep:</span>
+        <mat-radio-group [(ngModel)]="keepIndex">
+          @for (pe of points; track pe.index) {
+            <mat-radio-button [value]="pe.index" class="keep-radio">
+              Point {{ pe.label }} (ID: {{ pe.point.id }})
+            </mat-radio-button>
+          }
+        </mat-radio-group>
+      </div>
+      <div class="merge-summary">
+        {{ points.length }} duplicates — keeping 1, removing {{ points.length - 1 }}
+      </div>
+    </div>
+
+    <!-- Side-by-side comparison (N columns) -->
+    <div class="comparison-table">
+      <div class="comparison-header" [style.grid-template-columns]="gridColumns">
+        <div class="field-label">Field</div>
+        @for (pe of points; track pe.index) {
+          <div class="field-value" [class.keep]="keepIndex === pe.index">
+            Point {{ pe.label }}
+            @if (keepIndex === pe.index) {
+              <mat-icon class="keep-icon" matTooltip="Will be kept">check_circle</mat-icon>
+            } @else {
+              <mat-icon class="remove-icon" matTooltip="Will be removed">delete_outline</mat-icon>
+            }
+          </div>
+        }
+        <div class="diff-col"></div>
+      </div>
+
+      @for (field of comparisonFields; track field.key) {
+        <div class="comparison-row" [class.differs]="field.hasDifference" [style.grid-template-columns]="gridColumns">
+          <div class="field-label">{{ field.label }}</div>
+          @for (val of field.values; track $index) {
+            <div
+              class="field-value"
+              [class.keep]="keepIndex === $index"
+              [class.has-value]="val !== '(none)'"
+            >
+              {{ val }}
+            </div>
+          }
+          <div class="diff-col">
+            @if (field.hasDifference) {
+              <mat-icon class="diff-icon" matTooltip="Values differ">warning</mat-icon>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Merge info -->
+    <div class="merge-info">
+      <mat-icon>info</mat-icon>
+      <span>
+        All removed points' equipment, LOTO standards, counterparts, zero energy,
+        and characteristics will be transferred to the kept point. Removed points
+        will be soft-deleted.
+      </span>
+    </div>
+
+    <!-- Actions -->
+    <div class="merge-actions">
+      <button mat-stroked-button (click)="cancel()">Cancel</button>
+      <button
+        mat-raised-button
+        color="warn"
+        (click)="merge()"
+        [disabled]="isMerging"
+      >
+        @if (isMerging) {
+          Merging...
+        } @else {
+          <ng-container>
+            <mat-icon>merge_type</mat-icon>
+            Merge All into Point {{ points[keepIndex]?.label }}
+          </ng-container>
+        }
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="error-state">Unable to load point data for comparison.</div>
+}

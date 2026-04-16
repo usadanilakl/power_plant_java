@@ -1,0 +1,55 @@
+<div class="right-panel-layout">
+  <!-- Image Viewer -->
+  <div class="image-section">
+    @if (state.currentFile()) {
+      <!-- Image toolbar -->
+      <div class="image-toolbar">
+        <button
+          class="toolbar-btn"
+          [class.active]="isEditMode()"
+          (click)="toggleEditMode()"
+          matTooltip="Toggle shape repositioning"
+        >
+          <mat-icon>{{ isEditMode() ? 'lock_open' : 'open_with' }}</mat-icon>
+          <span>{{ isEditMode() ? 'Editing Shapes' : 'Move Shapes' }}</span>
+        </button>
+        @if (highlightedShapeIds().length > 0) {
+          <button
+            class="toolbar-btn warn"
+            (click)="resetShapePositions()"
+            matTooltip="Move this point's shapes to center of image (use when shapes are off-screen)"
+          >
+            <mat-icon>center_focus_strong</mat-icon>
+            <span>Reset Position</span>
+          </button>
+        }
+      </div>
+
+      <app-interactive-image
+        [imageUrl]="imageUrl()"
+        [imageName]="state.currentFile()?.name"
+        [shapesInput]="shapes()"
+        [highlightedShapeIds]="highlightedShapeIds()"
+        [selectedShapeIdInput]="selectedShapeId()"
+        [preset]="activePreset()"
+        (shapeClicked)="onShapeClicked($event)"
+        (shapeUpdated)="onShapeUpdated($event)"
+      ></app-interactive-image>
+    } @else if (state.selectedPoint()) {
+      <div class="no-file-message">
+        <span>No associated file found for this LOTO point</span>
+      </div>
+    } @else {
+      <div class="placeholder-message">
+        <span>Select a conflict item from the left panel</span>
+      </div>
+    }
+  </div>
+
+  <!-- Conflict Detail Panel -->
+  @if (state.selectedPoint()) {
+    <div class="detail-section">
+      <app-loto-conflict-detail></app-loto-conflict-detail>
+    </div>
+  }
+</div>

@@ -1,0 +1,174 @@
+<!-- Conflict Type Selector -->
+@if (!state.activeConflictType()) {
+  <div class="type-selector">
+    <div class="panel-header">
+      <span class="panel-title">Conflict Types</span>
+    </div>
+    <div class="type-list">
+      @for (entry of getConflictTypes(); track entry.type) {
+        <button
+          class="type-card"
+          [class.has-conflicts]="entry.count > 0"
+          (click)="selectConflictType(entry.type)"
+          [disabled]="entry.count === 0"
+        >
+          <mat-icon class="type-icon">{{ entry.icon }}</mat-icon>
+          <div class="type-info">
+            <span class="type-label">{{ entry.label }}</span>
+            <span class="type-count" [class.zero]="entry.count === 0">
+              {{ entry.count }} items
+            </span>
+          </div>
+          <mat-icon class="arrow-icon">chevron_right</mat-icon>
+        </button>
+      }
+    </div>
+    @if (state.conflictSummary(); as summary) {
+      <div class="total-bar">
+        Total conflicts: {{ summary.totalConflictCount }}
+      </div>
+    }
+  </div>
+} @else {
+  <!-- Conflict Points List -->
+  <div class="points-list">
+    <div class="panel-header">
+      <button class="back-btn" (click)="goBack()" matTooltip="Back to types">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <span class="panel-title">{{ state.activeConflictTypeLabel() }}</span>
+      <span class="count-badge">{{ state.totalConflictPoints() }}</span>
+      <button
+        class="filter-toggle-btn"
+        [class.active]="isFilterExpanded() || hasActiveFilters"
+        (click)="toggleFilters()"
+        matTooltip="Toggle filters"
+      >
+        <mat-icon>filter_list</mat-icon>
+      </button>
+    </div>
+
+    <!-- Filter Bar -->
+    @if (isFilterExpanded()) {
+      <div class="filter-bar">
+        <div class="filter-row">
+          <input
+            class="filter-input"
+            placeholder="Tag Number"
+            [ngModel]="filterTagNumber()"
+            (ngModelChange)="filterTagNumber.set($event)"
+          />
+          <input
+            class="filter-input"
+            placeholder="Description"
+            [ngModel]="filterDescription()"
+            (ngModelChange)="filterDescription.set($event)"
+          />
+        </div>
+        <div class="filter-row">
+          <input
+            class="filter-input"
+            placeholder="Unit"
+            [ngModel]="filterUnit()"
+            (ngModelChange)="filterUnit.set($event)"
+          />
+        </div>
+        <div class="filter-row">
+          <select
+            class="filter-select"
+            [ngModel]="filterEqType()"
+            (ngModelChange)="filterEqType.set($event)"
+          >
+            <option [ngValue]="null">All Equipment Types</option>
+            @for (eqType of equipmentTypes; track eqType.id) {
+              <option [ngValue]="eqType.id">{{ eqType.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter-row">
+          <select
+            class="filter-select"
+            [ngModel]="filterLocation()"
+            (ngModelChange)="filterLocation.set($event)"
+          >
+            <option [ngValue]="null">All Locations</option>
+            @for (loc of locations; track loc.id) {
+              <option [ngValue]="loc.id">{{ loc.name }}</option>
+            }
+          </select>
+        </div>
+        @if (hasActiveFilters) {
+          <button class="clear-filters-btn" (click)="clearFilters()">
+            <mat-icon>clear</mat-icon> Clear filters
+          </button>
+        }
+      </div>
+    }
+
+    <div class="list-content">
+      <!-- Duplicate Tag Groups -->
+      @if (state.activeConflictType() === 'DUPLICATE_TAG') {
+        @for (group of filteredDuplicateGroups(); track group.normalizedTag) {
+          <div
+            class="duplicate-group"
+            [class.selected]="state.selectedDuplicateGroup()?.normalizedTag === group.normalizedTag"
+            (click)="selectDuplicateGroup(group)"
+          >
+            <div class="group-header">
+              <mat-icon>content_copy</mat-icon>
+              <span class="group-tag">{{ group.normalizedTag }}</span>
+              <span class="group-count">{{ group.points.length }} duplicates</span>
+            </div>
+            <div class="group-items">
+              @for (point of group.points; track point.id) {
+                <div
+                  class="point-item compact"
+                  [class.selected]="state.selectedPoint()?.id === point.id"
+                  (click)="selectPoint(point); $event.stopPropagation()"
+                >
+                  <span class="tag">{{ point.tagNumber }}</span>
+                  <span class="desc">{{ point.description }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        @if (filteredDuplicateGroups().length === 0 && state.duplicateGroups().length > 0) {
+          <div class="empty-filter-message">No matches for current filters</div>
+        }
+      } @else {
+        <!-- Regular Conflict Points List -->
+        @for (point of filteredPoints(); track point.id) {
+          <div
+            class="point-item"
+            [class.selected]="state.selectedPoint()?.id === point.id"
+            (click)="selectPoint(point)"
+          >
+            <div class="point-main">
+              <span class="tag">{{ point.tagNumber || '(no tag)' }}</span>
+              <span class="desc">{{ point.description || '(no description)' }}</span>
+            </div>
+            <div class="point-meta">
+              @if (point.specificLocation) {
+                <span class="meta-item">{{ point.specificLocation }}</span>
+              }
+              @if (point.unit) {
+                <span class="meta-item">{{ point.unit }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (filteredPoints().length === 0 && state.conflictPoints().length > 0) {
+          <div class="empty-filter-message">No matches for current filters</div>
+        }
+
+        @if (hasMore) {
+          <button class="load-more-btn" (click)="loadMore()">
+            Load More...
+          </button>
+        }
+      }
+    </div>
+  </div>
+}

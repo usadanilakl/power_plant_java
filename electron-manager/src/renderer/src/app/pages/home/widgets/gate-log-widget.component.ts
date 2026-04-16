@@ -89,13 +89,12 @@ type SizeTier = 'compact' | 'standard' | 'large';
                   <span class="ph-source">Src</span>
                 </div>
                 <div class="people-body">
-                  <div class="people-row" *ngFor="let p of recentPeople.slice(0, maxDisplay)">
+                  <div class="people-row" *ngFor="let p of recentPeople">
                     <span class="pr-name">{{ p.name }}</span>
                     <span class="pr-company">{{ p.company }}</span>
                     <span class="pr-source" [class]="p.source">{{ p.source === 'gate' ? 'Gate' : 'OnLoc' }}</span>
                   </div>
                 </div>
-                <span class="more-label" *ngIf="recentPeople.length > maxDisplay">+{{ recentPeople.length - maxDisplay }} more</span>
               </div>
             </div>
           </div>

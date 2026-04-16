@@ -9,6 +9,7 @@ import { EspDeviceListComponent } from '../features/esp/esp-device-list/esp-devi
 import { RfLotoStandardPageComponent } from '../features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-page.component';
 import { LotoBuilderContainerComponent } from '../features/loto-standard/refactored/loto-builder/loto-builder-container.component';
 import { LotoSideMenuComponent } from '../features/loto/loto-side-menu/loto-side-menu.component';
+import { LotoConflictContainerComponent } from '../features/loto-conflict/loto-conflict-container/loto-conflict-container.component';
 
 export const LOTO_ROUTES: Routes = [
   {
@@ -35,5 +36,9 @@ export const LOTO_ROUTES: Routes = [
   {
     path: 'loto-builder',
     component: LotoBuilderContainerComponent
+  },
+  {
+    path: 'loto-conflicts',
+    component: LotoConflictContainerComponent
   }
 ];

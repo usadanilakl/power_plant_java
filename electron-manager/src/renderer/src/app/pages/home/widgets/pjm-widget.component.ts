@@ -327,7 +327,10 @@ export class PjmWidgetComponent implements OnInit {
   }
 
   formatTimestamp(ts: string): string {
-    try { return new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); }
-    catch { return ts; }
+    try {
+      const d = new Date(isNaN(Number(ts)) ? ts : Number(ts));
+      if (isNaN(d.getTime())) return ts;
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } catch { return ts; }
   }
 }

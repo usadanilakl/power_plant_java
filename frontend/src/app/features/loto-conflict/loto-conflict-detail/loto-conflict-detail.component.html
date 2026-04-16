@@ -1,0 +1,113 @@
+@if (point; as p) {
+  <div class="detail-panel">
+    <!-- Point Info Header -->
+    <div class="detail-header">
+      <div class="point-info">
+        <span class="tag-number">{{ p.tagNumber || '(no tag)' }}</span>
+        <span class="description">{{ p.description || '(no description)' }}</span>
+      </div>
+      <div class="point-meta">
+        <mat-chip-set>
+          @if (p.unit) {
+            <mat-chip>{{ p.unit }}</mat-chip>
+          }
+          @if (p.specificLocation) {
+            <mat-chip>{{ p.specificLocation }}</mat-chip>
+          }
+          @if (p.generalLocation) {
+            <mat-chip>{{ p.generalLocation }}</mat-chip>
+          }
+        </mat-chip-set>
+      </div>
+    </div>
+
+    <!-- Conflict-specific Info & Actions -->
+    <div class="detail-body">
+      @switch (conflictType) {
+        @case ('DUPLICATE_TAG') {
+          <div class="conflict-info">
+            <mat-icon class="conflict-icon warn">content_copy</mat-icon>
+            <span>This tag number has duplicates. Review and merge or edit to differentiate.</span>
+          </div>
+          <div class="actions">
+            <button mat-raised-button color="primary" (click)="openMergeDialog()">
+              <mat-icon>merge_type</mat-icon> Merge Duplicates
+            </button>
+            <button mat-stroked-button (click)="openEditForm()">
+              <mat-icon>edit</mat-icon> Edit Tag
+            </button>
+            <button mat-stroked-button (click)="markResolved()" matTooltip="Skip and mark as intentional">
+              <mat-icon>check</mat-icon> Mark OK
+            </button>
+          </div>
+        }
+
+        @case ('NO_EQUIPMENT') {
+          <div class="conflict-info">
+            <mat-icon class="conflict-icon warn">link_off</mat-icon>
+            <span>This LOTO point has no equipment connection. Draw a shape on a PID in the Builder.</span>
+          </div>
+          <div class="actions">
+            <button mat-raised-button color="primary" (click)="openInBuilder()">
+              <mat-icon>open_in_new</mat-icon> Open in Builder
+            </button>
+            <button mat-stroked-button (click)="markResolved()">
+              <mat-icon>check</mat-icon> Mark OK
+            </button>
+          </div>
+        }
+
+        @case ('NO_ZERO_ENERGY') {
+          <div class="conflict-info">
+            <mat-icon class="conflict-icon warn">flash_off</mat-icon>
+            <span>No zero energy method assigned. Open the form to assign one.</span>
+          </div>
+          <div class="actions">
+            <button mat-raised-button color="primary" (click)="openEditForm()">
+              <mat-icon>edit</mat-icon> Assign Zero Energy
+            </button>
+            <button mat-stroked-button (click)="markResolved()">
+              <mat-icon>check</mat-icon> Mark OK
+            </button>
+          </div>
+        }
+
+        @case ('NO_CHARACTERISTICS') {
+          <div class="conflict-info">
+            <mat-icon class="conflict-icon warn">info_outline</mat-icon>
+            <span>No characteristics data. Open the form to add fluid, voltage, pressure, etc.</span>
+          </div>
+          <div class="actions">
+            <button mat-raised-button color="primary" (click)="openEditForm()">
+              <mat-icon>edit</mat-icon> Edit Characteristics
+            </button>
+            <button mat-stroked-button (click)="markResolved()">
+              <mat-icon>check</mat-icon> Mark OK
+            </button>
+          </div>
+        }
+
+        @case ('MISSING_COUNTERPART') {
+          <div class="conflict-info">
+            <mat-icon class="conflict-icon warn">compare_arrows</mat-icon>
+            <span>
+              Tag starts with {{ p.tagNumber?.substring(0, 2) }} but no counterpart is linked.
+              Generate or link the matching unit point.
+            </span>
+          </div>
+          <div class="actions">
+            <button mat-raised-button color="primary" (click)="generateCounterpart()">
+              <mat-icon>add_link</mat-icon> Generate Counterpart
+            </button>
+            <button mat-stroked-button (click)="openDualForm()">
+              <mat-icon>compare_arrows</mat-icon> Open Dual Form
+            </button>
+            <button mat-stroked-button (click)="markResolved()" matTooltip="Not unit-specific">
+              <mat-icon>check</mat-icon> Mark OK
+            </button>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

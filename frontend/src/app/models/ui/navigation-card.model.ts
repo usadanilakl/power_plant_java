@@ -69,6 +69,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Loto Points', description: 'Manage isolation points', icon: 'location_on', route: '/loto-points', color: '#9b59b6' },
       { title: 'LOTO Standards', description: 'View standard procedures', icon: 'description', route: '/loto-standard', color: '#e67e22' },
       { title: 'Loto Builder', description: 'Build LOTO procedures', icon: 'build', route: '/loto-builder', color: '#1abc9c' },
+      { title: 'Loto Conflicts', description: 'Find and resolve LOTO point conflicts', icon: 'warning', route: '/loto-conflicts', color: '#FF7043' },
       { title: 'LOTO Board', description: 'Active LOTO permits and box status', icon: 'dashboard', route: '/permit-builder/loto-board', color: '#EC407A' },
       { title: 'LOTO Usage', description: 'Monitor LOTO usage, jobs, and foremen', icon: 'monitor_heart', route: '/permit-builder/loto-usage', color: '#26C6DA' }
     ]

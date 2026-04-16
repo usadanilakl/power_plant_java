@@ -1,0 +1,86 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.right-panel-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.image-section {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+  background: var(--secondary-background, #f0f2f5);
+}
+
+.detail-section {
+  flex-shrink: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border-top: 2px solid var(--border-color, #dee2e6);
+  background: var(--primary-background, #ffffff);
+}
+
+.image-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  background: var(--primary-background, #ffffff);
+  color: var(--secondary-text, #495057);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--hover-color, rgba(65, 65, 133, 0.15));
+}
+
+.toolbar-btn.active {
+  background: var(--accent-color, #007bff);
+  color: #fff;
+  border-color: var(--accent-color, #007bff);
+}
+
+.toolbar-btn.warn {
+  border-color: #e67e22;
+  color: #e67e22;
+}
+
+.toolbar-btn.warn:hover {
+  background: rgba(230, 126, 34, 0.12);
+}
+
+.toolbar-btn mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.no-file-message,
+.placeholder-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--secondary-text, #495057);
+  font-size: 13px;
+}

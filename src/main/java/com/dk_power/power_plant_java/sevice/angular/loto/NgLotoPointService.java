@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.util.TagNumberDetector.TagMatchType;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
@@ -1312,6 +1313,215 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 lp.getOldId(),
                 lp.getObjectType()
         )).toList();
+    }
+
+    // ── Conflict detection methods ──
+
+    /**
+     * Get summary counts for all conflict types.
+     */
+    public ConflictSummaryDto getConflictSummary() {
+        long duplicateCount = countDuplicateTagPoints();
+        long noEquipment = lotoPointRepo.countWithEmptyEquipment();
+        long noZeroEnergy = lotoPointRepo.countByZeroEnergyIsNull();
+        long noCharacteristics = lotoPointRepo.countWithEmptyCharacteristics();
+        long missingCounterpart = lotoPointRepo.countMissingCounterparts();
+
+        return ConflictSummaryDto.builder()
+                .duplicateTagCount(duplicateCount)
+                .noEquipmentCount(noEquipment)
+                .noZeroEnergyCount(noZeroEnergy)
+                .noCharacteristicsCount(noCharacteristics)
+                .missingCounterpartCount(missingCounterpart)
+                .totalConflictCount(duplicateCount + noEquipment + noZeroEnergy + noCharacteristics + missingCounterpart)
+                .build();
+    }
+
+    /**
+     * Get paginated LOTO points for a specific conflict type.
+     */
+    public Page<LotoPointDto> getConflictsByType(String conflictType, int page, int pageSize) {
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Page<LotoPoint> results = switch (conflictType.toUpperCase()) {
+            case "NO_EQUIPMENT" -> lotoPointRepo.findWithEmptyEquipment(pageable);
+            case "NO_ZERO_ENERGY" -> lotoPointRepo.findByZeroEnergyIsNull(pageable);
+            case "NO_CHARACTERISTICS" -> lotoPointRepo.findWithEmptyCharacteristics(pageable);
+            case "MISSING_COUNTERPART" -> lotoPointRepo.findMissingCounterparts(pageable);
+            case "DUPLICATE_TAG" -> {
+                // For duplicates, get the IDs of all points in duplicate groups, then paginate
+                List<Long> duplicateIds = getDuplicatePointIds();
+                if (duplicateIds.isEmpty()) {
+                    yield Page.empty(pageable);
+                }
+                // Paginate manually from the ID list
+                int start = Math.min(page * pageSize, duplicateIds.size());
+                int end = Math.min(start + pageSize, duplicateIds.size());
+                List<Long> pageIds = duplicateIds.subList(start, end);
+                List<LotoPoint> points = lotoPointRepo.findAllById(pageIds);
+                yield new PageImpl<>(points, pageable, duplicateIds.size());
+            }
+            default -> throw new IllegalArgumentException("Unknown conflict type: " + conflictType);
+        };
+
+        return results.map(this::toDto);
+    }
+
+    /**
+     * Find duplicate tag groups. Normalizes tags by uppercasing and stripping dashes/spaces.
+     * Returns groups of 2+ LOTO points sharing the same normalized tag.
+     */
+    public List<DuplicateGroupDto> getDuplicateTagGroups() {
+        List<LotoPoint> allWithTags = lotoPointRepo.findAllWithTagNumber();
+
+        // Normalize and group: strip dashes, spaces, underscores; uppercase
+        Map<String, List<LotoPoint>> grouped = allWithTags.stream()
+                .collect(Collectors.groupingBy(lp -> normalizeTagNumber(lp.getTagNumber())));
+
+        // Keep only groups with 2+ members
+        return grouped.entrySet().stream()
+                .filter(e -> e.getValue().size() > 1)
+                .map(e -> new DuplicateGroupDto(
+                        e.getKey(),
+                        e.getValue().stream().map(this::toDto).collect(Collectors.toList())
+                ))
+                .sorted(Comparator.comparing(DuplicateGroupDto::getNormalizedTag))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Count total LOTO points that appear in duplicate groups.
+     */
+    private long countDuplicateTagPoints() {
+        List<LotoPoint> allWithTags = lotoPointRepo.findAllWithTagNumber();
+        Map<String, List<LotoPoint>> grouped = allWithTags.stream()
+                .collect(Collectors.groupingBy(lp -> normalizeTagNumber(lp.getTagNumber())));
+        return grouped.values().stream()
+                .filter(list -> list.size() > 1)
+                .mapToLong(List::size)
+                .sum();
+    }
+
+    /**
+     * Get IDs of all LOTO points in duplicate groups.
+     */
+    private List<Long> getDuplicatePointIds() {
+        List<LotoPoint> allWithTags = lotoPointRepo.findAllWithTagNumber();
+        Map<String, List<LotoPoint>> grouped = allWithTags.stream()
+                .collect(Collectors.groupingBy(lp -> normalizeTagNumber(lp.getTagNumber())));
+        return grouped.values().stream()
+                .filter(list -> list.size() > 1)
+                .flatMap(List::stream)
+                .map(LotoPoint::getId)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Normalize a tag number for duplicate detection.
+     * Strips dashes, spaces, underscores and converts to uppercase.
+     */
+    private String normalizeTagNumber(String tagNumber) {
+        if (tagNumber == null) return "";
+        return tagNumber.toUpperCase()
+                .replace("-", "")
+                .replace(" ", "")
+                .replace("_", "");
+    }
+
+    /**
+     * Merge two duplicate LOTO points.
+     * Transfers equipment, standards, and counterpart from removePoint to keepPoint.
+     * Soft-deletes the removed point.
+     */
+    @Transactional
+    public LotoPointDto mergeLotoPoints(Long keepId, Long removeId) {
+        LotoPoint keepPoint = findById(keepId)
+                .orElseThrow(() -> new RuntimeException("Keep point not found: " + keepId));
+        LotoPoint removePoint = findById(removeId)
+                .orElseThrow(() -> new RuntimeException("Remove point not found: " + removeId));
+
+        // Transfer equipment associations from removePoint to keepPoint
+        if (removePoint.getEquipmentList() != null) {
+            for (Equipment equipment : new HashSet<>(removePoint.getEquipmentList())) {
+                equipment.getLotoPoints().remove(removePoint);
+                equipment.addLotoPoint(keepPoint);
+                equipmentService.save(equipment);
+            }
+        }
+
+        // Transfer LOTO standard associations
+        if (removePoint.getLotoStandards() != null) {
+            for (LotoStandard standard : new HashSet<>(removePoint.getLotoStandards())) {
+                standard.getLotoPoints().remove(removePoint);
+                if (!standard.getLotoPoints().contains(keepPoint)) {
+                    standard.getLotoPoints().add(keepPoint);
+                }
+            }
+        }
+
+        // Transfer counterpart if keepPoint doesn't have one
+        if (keepPoint.getCounterpartId() == null && removePoint.getCounterpartId() != null) {
+            Long counterpartId = removePoint.getCounterpartId();
+            keepPoint.setCounterpartId(counterpartId);
+            // Update the counterpart to point to keepPoint
+            LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(counterpartId);
+            if (counterpart != null) {
+                counterpart.setCounterpartId(keepId);
+                lotoPointRepo.save(counterpart);
+            }
+        }
+
+        // Transfer related LOTO point IDs
+        if (removePoint.getRelatedLotoPointIds() != null && !removePoint.getRelatedLotoPointIds().isEmpty()) {
+            Set<Long> keepRelated = keepPoint.getRelatedLotoPointIds();
+            keepRelated.addAll(removePoint.getRelatedLotoPointIds());
+            keepRelated.remove(removeId); // Don't reference the deleted point
+            keepPoint.setRelatedLotoPointIds(keepRelated);
+        }
+
+        // Transfer zero energy if keepPoint doesn't have one
+        if (keepPoint.getZeroEnergy() == null && removePoint.getZeroEnergy() != null) {
+            keepPoint.setZeroEnergy(removePoint.getZeroEnergy());
+            keepPoint.setZeroEnergyMethod(removePoint.getZeroEnergyMethod());
+        }
+
+        // Transfer characteristics if keepPoint doesn't have them
+        if ((keepPoint.getCharacteristicsJson() == null || keepPoint.getCharacteristicsJson().isEmpty())
+                && removePoint.getCharacteristicsJson() != null && !removePoint.getCharacteristicsJson().isEmpty()) {
+            keepPoint.setCharacteristicsJson(removePoint.getCharacteristicsJson());
+        }
+
+        // Save keepPoint
+        lotoPointRepo.save(keepPoint);
+
+        // Unlink removePoint's counterpart before soft-deleting
+        if (removePoint.getCounterpartId() != null) {
+            removePoint.setCounterpartId(null);
+            lotoPointRepo.save(removePoint);
+        }
+
+        // Soft delete the removed point
+        softDelete(removePoint);
+
+        // Flush and return fresh state
+        entityManager.flush();
+        entityManager.clear();
+        LotoPoint result = lotoPointRepo.findByIdWithEquipment(keepId);
+        return toDto(result);
+    }
+
+    /**
+     * Batch merge: merge multiple duplicate points into one keeper.
+     * Calls mergeLotoPoints for each removeId sequentially.
+     */
+    @Transactional
+    public LotoPointDto mergeLotoPointsBatch(Long keepId, List<Long> removeIds) {
+        LotoPointDto result = null;
+        for (Long removeId : removeIds) {
+            if (removeId != null && !removeId.equals(keepId)) {
+                result = mergeLotoPoints(keepId, removeId);
+            }
+        }
+        return result;
     }
 
 }

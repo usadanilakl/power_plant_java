@@ -709,4 +709,62 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     @Query("UPDATE LotoPoint lp SET lp.zeroEnergy.id = :targetId WHERE lp.zeroEnergy.id = :sourceId")
     int reassignZeroEnergy(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
 
+    // ── Conflict detection queries ──
+
+    /**
+     * Find LOTO points with no equipment connections.
+     */
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.equipmentList IS EMPTY")
+    List<LotoPoint> findWithEmptyEquipment();
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.equipmentList IS EMPTY")
+    long countWithEmptyEquipment();
+
+    /**
+     * Find LOTO points with no zero energy.
+     */
+    List<LotoPoint> findByZeroEnergyIsNull();
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.zeroEnergy IS NULL")
+    long countByZeroEnergyIsNull();
+
+    /**
+     * Find LOTO points with no characteristics.
+     */
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.characteristicsJson IS NULL OR lp.characteristicsJson = '' OR lp.characteristicsJson = '[]'")
+    List<LotoPoint> findWithEmptyCharacteristics();
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.characteristicsJson IS NULL OR lp.characteristicsJson = '' OR lp.characteristicsJson = '[]'")
+    long countWithEmptyCharacteristics();
+
+    /**
+     * Find unit-specific LOTO points (tag starts with 01 or 02) with no counterpart linked.
+     */
+    @Query("SELECT lp FROM LotoPoint lp WHERE (lp.tagNumber LIKE '01%' OR lp.tagNumber LIKE '02%') AND lp.counterpartId IS NULL")
+    List<LotoPoint> findMissingCounterparts();
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE (lp.tagNumber LIKE '01%' OR lp.tagNumber LIKE '02%') AND lp.counterpartId IS NULL")
+    long countMissingCounterparts();
+
+    /**
+     * Find all LOTO points with non-null tag numbers for duplicate detection.
+     * Returns id and tagNumber only for efficiency.
+     */
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.tagNumber IS NOT NULL AND lp.tagNumber <> ''")
+    List<LotoPoint> findAllWithTagNumber();
+
+    // ── Paginated conflict queries ──
+
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.equipmentList IS EMPTY")
+    Page<LotoPoint> findWithEmptyEquipment(Pageable pageable);
+
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.zeroEnergy IS NULL")
+    Page<LotoPoint> findByZeroEnergyIsNull(Pageable pageable);
+
+    @Query("SELECT lp FROM LotoPoint lp WHERE lp.characteristicsJson IS NULL OR lp.characteristicsJson = '' OR lp.characteristicsJson = '[]'")
+    Page<LotoPoint> findWithEmptyCharacteristics(Pageable pageable);
+
+    @Query("SELECT lp FROM LotoPoint lp WHERE (lp.tagNumber LIKE '01%' OR lp.tagNumber LIKE '02%') AND lp.counterpartId IS NULL")
+    Page<LotoPoint> findMissingCounterparts(Pageable pageable);
+
 }
