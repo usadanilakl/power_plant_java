@@ -29,7 +29,8 @@ export interface FormField {
     | 'multi-value-select'
     | 'loto-standard-select'
     | 'work-area-select'
-    | 'zero-energy-phrase-builder';
+    | 'zero-energy-phrase-builder'
+    | 'user-select';
   validators?: ValidatorFn[];
   options?: Option[];
   categoryAlias?: string; // For value-select and multi-value-select types
@@ -133,7 +134,8 @@ export interface RfFormField {
     | 'work-area-select'
     | 'comment'
     | 'characteristics-editor'
-    | 'hidden';
+    | 'hidden'
+    | 'user-select';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select, multi-value-select, and characteristics-editor types

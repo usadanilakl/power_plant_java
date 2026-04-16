@@ -27,56 +27,35 @@ const NOTES_STORAGE_KEY = 'dk-widget-notes';
         </div>
       </div>
 
-      <!-- Compact: show first note preview -->
-      <div class="note-preview" *ngIf="cols === 1 && rows === 1 && notes.length > 0">
-        <span class="preview-text">{{ notes[currentIndex].text || 'Empty note' }}</span>
-      </div>
-      <div class="note-preview empty" *ngIf="cols === 1 && rows === 1 && notes.length === 0">
-        <span class="preview-text">Click + to add a note</span>
+      <!-- Note tabs -->
+      <div class="note-tabs" *ngIf="notes.length > 1">
+        <button class="tab-btn" *ngFor="let note of notes; let i = index"
+                [class.active]="i === currentIndex"
+                (click)="currentIndex = i">
+          {{ i + 1 }}
+        </button>
       </div>
 
-      <!-- Expanded: full editor -->
-      <div class="notes-body" *ngIf="cols >= 2 || rows >= 2">
-        <!-- Navigation tabs -->
-        <div class="note-tabs" *ngIf="notes.length > 1">
-          <button class="tab-btn" *ngFor="let note of notes; let i = index"
-                  [class.active]="i === currentIndex"
-                  (click)="currentIndex = i">
-            {{ i + 1 }}
+      <!-- Note editor -->
+      <div class="note-editor" *ngIf="notes.length > 0">
+        <textarea class="note-textarea"
+                  [(ngModel)]="notes[currentIndex].text"
+                  (ngModelChange)="saveNotes()"
+                  placeholder="Type your note here..."
+                  [readonly]="editMode"></textarea>
+        <div class="note-footer">
+          <span class="note-date">{{ formatDate(notes[currentIndex].createdAt) }}</span>
+          <button class="delete-note-btn" (click)="deleteNote(currentIndex)" *ngIf="!editMode">
+            <span class="material-icons">delete_outline</span>
           </button>
         </div>
-
-        <!-- Current note editor -->
-        <div class="note-editor" *ngIf="notes.length > 0">
-          <textarea class="note-textarea"
-                    [(ngModel)]="notes[currentIndex].text"
-                    (ngModelChange)="saveNotes()"
-                    placeholder="Type your note here..."
-                    [readonly]="editMode"></textarea>
-          <div class="note-footer">
-            <span class="note-date">{{ formatDate(notes[currentIndex].createdAt) }}</span>
-            <button class="delete-note-btn" (click)="deleteNote(currentIndex)" *ngIf="!editMode && notes.length > 0">
-              <span class="material-icons">delete_outline</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Empty state -->
-        <div class="empty-state" *ngIf="notes.length === 0">
-          <span class="material-icons empty-icon">sticky_note_2</span>
-          <span>No notes yet</span>
-          <button class="add-first-btn" (click)="addNote()" *ngIf="!editMode">Add Note</button>
-        </div>
       </div>
 
-      <!-- Compact navigation -->
-      <div class="compact-nav" *ngIf="cols === 1 && rows === 1 && notes.length > 1 && !editMode">
-        <button class="nav-btn" (click)="prevNote()" [disabled]="currentIndex === 0">
-          <span class="material-icons">chevron_left</span>
-        </button>
-        <button class="nav-btn" (click)="nextNote()" [disabled]="currentIndex === notes.length - 1">
-          <span class="material-icons">chevron_right</span>
-        </button>
+      <!-- Empty state -->
+      <div class="empty-state" *ngIf="notes.length === 0">
+        <span class="material-icons empty-icon">sticky_note_2</span>
+        <span>No notes yet</span>
+        <button class="add-first-btn" (click)="addNote()" *ngIf="!editMode">Add Note</button>
       </div>
     </div>
   `,

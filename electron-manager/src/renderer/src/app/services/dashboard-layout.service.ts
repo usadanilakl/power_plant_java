@@ -10,7 +10,8 @@ export type WidgetId =
   | 'contacts'
   | 'paging-system'
   | 'clock'
-  | 'notes';
+  | 'notes'
+  | 'personnel';
 
 export interface WidgetDefinition {
   id: WidgetId;
@@ -58,6 +59,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'paging-system', title: 'Paging System', icon: 'campaign', iconColor: '#f97316', description: 'PA system extension numbers', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'clock', title: 'Clock & Timers', icon: 'schedule', iconColor: '#6366f1', description: 'Clock, shift timer, reminders', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'notes', title: 'Notes', icon: 'sticky_note_2', iconColor: '#f59e0b', description: 'Quick notes and reminders', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
+  { id: 'personnel', title: 'Personnel', icon: 'groups', iconColor: '#8b5cf6', description: 'Shift schedule and roster', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
 ];
 
 // 3-column grid, auto-placed top-to-bottom left-to-right
@@ -66,7 +68,8 @@ function buildDefaultPreset(): WidgetPlacement[] {
   const order: WidgetId[] = [
     'fire-impairment', 'gate-log', 'weather',
     'pjm', 'permits', 'external-links',
-    'contacts', 'paging-system', 'clock', 'notes',
+    'contacts', 'paging-system', 'clock',
+    'notes', 'personnel',
   ];
   return order.map((id, i) => ({
     widgetId: id,
@@ -87,9 +90,10 @@ function buildOperationsPreset(): WidgetPlacement[] {
     { widgetId: 'permits', visible: true, x: 0, y: 2, cols: 1, rows: 1 },
     { widgetId: 'clock', visible: true, x: 1, y: 2, cols: 1, rows: 1 },
     { widgetId: 'notes', visible: true, x: 2, y: 2, cols: 1, rows: 1 },
-    { widgetId: 'contacts', visible: false, x: 0, y: 3, cols: 1, rows: 1 },
-    { widgetId: 'external-links', visible: false, x: 1, y: 3, cols: 1, rows: 1 },
-    { widgetId: 'paging-system', visible: false, x: 2, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'personnel', visible: true, x: 0, y: 3, cols: 2, rows: 1 },
+    { widgetId: 'contacts', visible: false, x: 2, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'external-links', visible: false, x: 0, y: 4, cols: 1, rows: 1 },
+    { widgetId: 'paging-system', visible: false, x: 1, y: 4, cols: 1, rows: 1 },
   ];
 }
 
@@ -102,9 +106,10 @@ function buildCompactPreset(): WidgetPlacement[] {
     { widgetId: 'gate-log', visible: true, x: 1, y: 1, cols: 1, rows: 1 },
     { widgetId: 'external-links', visible: true, x: 2, y: 1, cols: 1, rows: 1 },
     { widgetId: 'clock', visible: true, x: 0, y: 2, cols: 1, rows: 1 },
-    { widgetId: 'notes', visible: false, x: 1, y: 2, cols: 1, rows: 1 },
-    { widgetId: 'contacts', visible: false, x: 2, y: 2, cols: 1, rows: 1 },
-    { widgetId: 'paging-system', visible: false, x: 0, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'personnel', visible: true, x: 1, y: 2, cols: 1, rows: 1 },
+    { widgetId: 'notes', visible: false, x: 2, y: 2, cols: 1, rows: 1 },
+    { widgetId: 'contacts', visible: false, x: 0, y: 3, cols: 1, rows: 1 },
+    { widgetId: 'paging-system', visible: false, x: 1, y: 3, cols: 1, rows: 1 },
   ];
 }
 

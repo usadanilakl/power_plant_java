@@ -134,6 +134,7 @@ public class SecurityConfigSpring {
                 .requestMatchers("/api/auth/admin/**").denyAll() // Block non-localhost
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
+                .requestMatchers("/ng/users/all-options").authenticated()
                 .requestMatchers("/ng/users/**").hasRole("ADMIN")
 
                 // Auth endpoints (must be logged in)

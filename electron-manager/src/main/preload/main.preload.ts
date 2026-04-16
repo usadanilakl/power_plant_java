@@ -221,6 +221,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pjmDaFetch: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_FETCH),
   pjmDaRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_REFRESH),
 
+  // Personnel / Schedule
+  personnelGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_STATUS),
+  personnelRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_REFRESH),
+  personnelGetContacts: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_CONTACTS),
+
   // Sync entity updates (broadcast from main when sync applies changes)
   onSyncEntityUpdated: (callback: (entityType: string, entityId: number) => void) => {
     const sub = (_event: Electron.IpcRendererEvent, entityType: string, entityId: number) => callback(entityType, entityId);

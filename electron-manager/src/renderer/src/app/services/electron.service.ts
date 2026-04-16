@@ -261,6 +261,32 @@ export interface PjmDaAward {
   processedAt?: string;
 }
 
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | '';
+
+export interface PersonnelEntry {
+  name: string;
+  group: string;
+  todayShift: ShiftCode;
+  schedule: { date: string; shift: ShiftCode }[];
+}
+
+export interface PersonnelStatus {
+  status: 'available' | 'loading' | 'error';
+  lastUpdate?: string;
+  error?: string;
+  onShiftNow: PersonnelEntry[];
+  allPersonnel: PersonnelEntry[];
+  currentShiftLabel: string;
+}
+
+export interface PersonnelContact {
+  name: string;
+  title?: string;
+  phone?: string;
+  cell?: string;
+  email?: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -371,6 +397,11 @@ interface ElectronAPI {
   // PJM Day-Ahead Awards (read-only — data from SharePoint)
   pjmDaFetch: () => Promise<IpcResult<PjmDaAward[]>>;
   pjmDaRefresh: () => Promise<IpcResult<PjmDaAward[]>>;
+
+  // Personnel
+  personnelGetStatus: () => Promise<IpcResult<PersonnelStatus>>;
+  personnelRefresh: () => Promise<IpcResult<PersonnelStatus>>;
+  personnelGetContacts: () => Promise<IpcResult<PersonnelContact[]>>;
 
   // Print
   printHtml: (html: string, options?: { silent?: boolean }) => Promise<IpcResult>;
@@ -898,6 +929,23 @@ export class ElectronService implements OnDestroy {
   async pjmDaRefresh(): Promise<IpcResult<PjmDaAward[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.pjmDaRefresh();
+  }
+
+  // Personnel
+
+  async personnelGetStatus(): Promise<IpcResult<PersonnelStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelGetStatus();
+  }
+
+  async personnelRefresh(): Promise<IpcResult<PersonnelStatus>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelRefresh();
+  }
+
+  async personnelGetContacts(): Promise<IpcResult<PersonnelContact[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.personnelGetContacts();
   }
 
   // Sync entity updates

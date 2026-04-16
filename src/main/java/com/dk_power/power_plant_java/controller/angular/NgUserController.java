@@ -79,10 +79,14 @@ public class NgUserController {
                 .password(passwordEncoder.encode(request.password()))
                 .isActive(true)
                 .windowsUsername(request.windowsUsername())
+                .phone(request.phone())
+                .company(request.company())
+                .signaturePath(request.signaturePath())
                 .build();
 
             user = userRepo.save(user);
             UserDto dto = mapper.convert(user, UserDto.class);
+            dto.setRoles(user.getRoles());
             log.info("User created: {} ({})", user.getEmail(), user.getRole());
             return ResponseEntity.ok(new NgApiResponse<>(dto, "User created successfully"));
         } catch (Exception e) {
@@ -110,9 +114,13 @@ public class NgUserController {
                     user.setPassword(passwordEncoder.encode(request.password()));
                 }
                 if (request.permissionLevel() != null) user.setPermissionLevel(request.permissionLevel());
+                if (request.phone() != null) user.setPhone(request.phone());
+                if (request.company() != null) user.setCompany(request.company());
+                if (request.signaturePath() != null) user.setSignaturePath(request.signaturePath());
 
                 user = userRepo.save(user);
                 UserDto dto = mapper.convert(user, UserDto.class);
+                dto.setRoles(user.getRoles());
                 log.info("User updated: {}", user.getEmail());
                 return ResponseEntity.ok(new NgApiResponse<>(dto, "User updated successfully"));
             })
@@ -130,6 +138,21 @@ public class NgUserController {
                 return ResponseEntity.ok(new NgApiResponse<Void>(null, "User deactivated successfully"));
             })
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/all-options")
+    public ResponseEntity<NgApiResponse<List<UserDto>>> getAllOptions() {
+        try {
+            List<User> activeUsers = userRepo.findByIsActiveTrue();
+            List<UserDto> dtos = activeUsers.stream().map(u -> {
+                UserDto dto = mapper.convert(u, UserDto.class);
+                dto.setRoles(u.getRoles());
+                return dto;
+            }).toList();
+            return ResponseEntity.ok(new NgApiResponse<>(dtos, "Active users retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
 
     @GetMapping("/roles")
@@ -197,12 +220,13 @@ public class NgUserController {
 
     public record CreateUserRequest(
         String username, String firstName, String lastName,
-        String email, List<String> roles, String password, String windowsUsername
+        String email, List<String> roles, String password, String windowsUsername,
+        String phone, String company, String signaturePath
     ) {}
 
     public record UpdateUserRequest(
         String username, String firstName, String lastName,
         String email, List<String> roles, String password, Boolean isActive, String windowsUsername,
-        String permissionLevel
+        String permissionLevel, String phone, String company, String signaturePath
     ) {}
 }

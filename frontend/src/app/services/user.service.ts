@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { UserDto } from '../models/user.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
@@ -12,6 +12,11 @@ import { SearchCriteria } from '../models/api/search-criteria.model';
 })
 export class UserService {
   private apiUrl = `${environment.apiUrl}/users`;
+
+  /** Broadcast when a user is created or updated */
+  userUpdated$ = new Subject<UserDto>();
+  /** Broadcast when a user is deleted */
+  userDeleted$ = new Subject<number>();
 
   constructor(private http: HttpClient) {}
 
@@ -62,5 +67,10 @@ export class UserService {
 
   seedPlantUsers(): Observable<SpringApiResponse<{ created: string[], skipped: string[] }>> {
     return this.http.post<SpringApiResponse<{ created: string[], skipped: string[] }>>(`${this.apiUrl}/seed-plant-users`, {});
+  }
+
+  /** Get all active users (for user-select dropdowns) */
+  getAllOptions(): Observable<SpringApiResponse<UserDto[]>> {
+    return this.http.get<SpringApiResponse<UserDto[]>>(`${this.apiUrl}/all-options`);
   }
 }

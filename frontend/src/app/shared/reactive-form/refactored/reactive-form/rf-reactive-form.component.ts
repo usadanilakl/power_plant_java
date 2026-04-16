@@ -22,6 +22,7 @@ import { CommentInputComponent } from '../input-fields/comment-input/comment-inp
 import { CharacteristicsEditorComponent } from '../input-fields/characteristics-editor/characteristics-editor.component';
 import { WorkAreaSelectComponent } from '../../../../features/permit-builder/work-area/components/work-area-select/work-area-select.component';
 import { LotoStandardSelectComponent } from '../input-fields/loto-standard-select/loto-standard-select.component';
+import { RfUserSelectComponent } from '../../../../features/users/components/rf-user-select/rf-user-select.component';
 import { WorkAreaDto } from '../../../../models/permits/work-area.model';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
@@ -52,6 +53,7 @@ import { GuideDirective } from '../../../guide/guide.directive';
     CharacteristicsEditorComponent,
     WorkAreaSelectComponent,
     LotoStandardSelectComponent,
+    RfUserSelectComponent,
     GuideDirective,
   ],
   templateUrl: './rf-reactive-form.component.html',
@@ -239,7 +241,7 @@ export class RfReactiveFormComponent {
       fieldList.forEach((field) => {
         const fieldPath = parentPath ? `${parentPath}.${field.name}` : field.name;
 
-        if (field.type === 'select' || field.type === 'value-select' || field.type === 'work-area-select' || field.type === 'zero-energy-phrase-builder') {
+        if (field.type === 'select' || field.type === 'value-select' || field.type === 'work-area-select' || field.type === 'zero-energy-phrase-builder' || field.type === 'user-select') {
           const value = this.formBuilderService.getNestedValue(entity, fieldPath);
           if (value && typeof value === 'object' && value !== null && value.id) {
             // Extract ID from nested object for select fields

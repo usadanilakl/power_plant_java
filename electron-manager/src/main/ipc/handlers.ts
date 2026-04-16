@@ -22,6 +22,8 @@ import { WindowLayoutManager } from '../managers/window-layout.manager';
 import { DaEmailManager } from '../managers/da-email.manager';
 import { VoskManager } from '../managers/vosk.manager';
 import { SyncUpdateManager } from '../managers/sync-update.manager';
+import { SharePointManager } from '../managers/sharepoint.manager';
+import { PersonnelManager } from '../managers/personnel.manager';
 import { DEFAULT_SPRING_BOOT_CONFIG, APP_DISPLAY_NAME } from '../constants';
 import type { WebViewTarget, DeviceConfig, UpdateProgress, ColdResyncProgress, GateLogConfig, StartupAssessment, SyncComponent, SyncOptions, SyncExecuteProgress, ElectronUpdateProgress, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, VoskResult } from '../../shared/types';
 
@@ -41,6 +43,8 @@ export class IpcHandlers {
   private windowLayoutManager: WindowLayoutManager;
   private voskManager: VoskManager;
   private syncUpdateManager: SyncUpdateManager;
+  private sharepointManager: SharePointManager;
+  private personnelManager: PersonnelManager;
   private mainWindow: BrowserWindow;
   private permitsMonitorWindow: BrowserWindow | null = null;
   private lastAssessment: StartupAssessment | null = null;
@@ -129,6 +133,8 @@ export class IpcHandlers {
 
     // Must init after springBoot so we can read the device config's profile
     this.coldResyncManager = new ColdResyncManager(this.springBoot.getDeviceConfigManager());
+    this.sharepointManager = new SharePointManager();
+    this.personnelManager = new PersonnelManager(this.sharepointManager);
 
     // Intercept main-process console output and route to unified log buffer
     this.interceptConsole();
@@ -185,6 +191,7 @@ export class IpcHandlers {
     this.registerPrintHandlers();
     this.registerLayoutHandlers();
     this.registerVoskHandlers();
+    this.registerPersonnelHandlers();
   }
 
   public getSpringBootManager(): SpringBootManager {
@@ -1468,5 +1475,34 @@ export class IpcHandlers {
     this.syncUpdateManager.disconnect();
     this.webview.closeAll();
     await this.springBoot.stop();
+  }
+
+  private registerPersonnelHandlers(): void {
+    ipcMain.handle(events.IPC_PERSONNEL_GET_STATUS, async () => {
+      try {
+        const status = await this.personnelManager.getPersonnelStatus();
+        return { success: true, data: status };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_REFRESH, async () => {
+      try {
+        const status = await this.personnelManager.refresh();
+        return { success: true, data: status };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_PERSONNEL_GET_CONTACTS, async () => {
+      try {
+        const contacts = await this.personnelManager.getContacts();
+        return { success: true, data: contacts };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
   }
 }

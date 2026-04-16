@@ -138,6 +138,11 @@ export const IPC_VOSK_AUDIO_CHUNK = 'vosk:audio-chunk';    // send/on (one-way, 
 export const IPC_VOSK_RESULT = 'vosk:result';              // send/on (main -> renderer)
 export const IPC_VOSK_ERROR = 'vosk:error';                // send/on (main -> renderer)
 
+// Personnel / Schedule (invoke/handle)
+export const IPC_PERSONNEL_GET_STATUS = 'personnel:get-status';
+export const IPC_PERSONNEL_REFRESH = 'personnel:refresh';
+export const IPC_PERSONNEL_GET_CONTACTS = 'personnel:get-contacts';
+
 // General
 export const IPC_GET_APP_VERSION = 'get-app-version';
 export const IPC_QUIT = 'quit';

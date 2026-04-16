@@ -4,7 +4,7 @@ import { PermitsMonitorComponent } from './features/permit-builder/permits-monit
 import { LoginComponent } from './features/auth/login/login.component';
 import { AccessRequestComponent } from './features/auth/access-request/access-request.component';
 import { AdminAccessComponent } from './features/auth/admin-access/admin-access.component';
-import { UserManagementComponent } from './features/admin/user-management/user-management.component';
+import { UserPageComponent } from './features/users/user-page/user-page.component';
 import { ProfileComponent } from './features/auth/profile/profile.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
@@ -44,7 +44,7 @@ export const routes: Routes = [
   { path: 'qr/equipment/:tagNumber', component: QrEquipmentViewerComponent, canActivate: [authGuard] },
 
   // Admin routes
-  { path: 'admin/users', component: UserManagementComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'admin/users', component: UserPageComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/access-management', component: AdminAccessComponent, canActivate: [authGuard, adminGuard] },
 
   // Full-access feature routes (restricted users redirected to /home)

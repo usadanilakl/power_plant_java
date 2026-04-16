@@ -129,6 +129,12 @@
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-value-select>
+        } @case('user-select'){
+        <app-rf-user-select
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-rf-user-select>
         } @case('multi-value-select'){
         <app-rf-multi-value-select
           [categoryAlias]="field.categoryAlias!"

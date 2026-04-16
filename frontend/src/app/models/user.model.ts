@@ -1,6 +1,12 @@
-export interface UserModel {
-  id: number;
-  name: string;
+import { Validators } from '@angular/forms';
+import { BaseDto, BaseModel } from './base/base.model';
+import { Column } from './column.model';
+import { Option } from './option.model';
+import { RfFormField } from './ui/form-field.model';
+
+export type UserFieldName = keyof UserModel;
+
+export interface UserModel extends BaseModel {
   username: string;
   firstName: string;
   lastName: string;
@@ -10,11 +16,12 @@ export interface UserModel {
   isActive: boolean;
   windowsUsername: string;
   permissionLevel: string;
+  phone: string;
+  company: string;
+  signaturePath: string;
 }
 
-export class UserDto implements UserModel {
-  id: number;
-  name: string;
+export class UserDto extends BaseDto implements UserModel {
   username: string;
   firstName: string;
   lastName: string;
@@ -24,10 +31,12 @@ export class UserDto implements UserModel {
   isActive: boolean;
   windowsUsername: string;
   permissionLevel: string;
+  phone: string;
+  company: string;
+  signaturePath: string;
 
   constructor(data: Partial<UserModel> = {}) {
-    this.id = data.id ?? 0;
-    this.name = data.name ?? '';
+    super(data);
     this.username = data.username ?? '';
     this.firstName = data.firstName ?? '';
     this.lastName = data.lastName ?? '';
@@ -37,12 +46,14 @@ export class UserDto implements UserModel {
     this.isActive = data.isActive ?? true;
     this.windowsUsername = data.windowsUsername ?? '';
     this.permissionLevel = data.permissionLevel ?? '';
+    this.phone = data.phone ?? '';
+    this.company = data.company ?? '';
+    this.signaturePath = data.signaturePath ?? '';
   }
 
-  toJson(): any {
+  override toJson(): any {
     return {
-      id: this.id,
-      name: this.name,
+      ...super.toJson(),
       username: this.username,
       firstName: this.firstName,
       lastName: this.lastName,
@@ -50,11 +61,14 @@ export class UserDto implements UserModel {
       roles: this.roles,
       isActive: this.isActive,
       windowsUsername: this.windowsUsername,
-      permissionLevel: this.permissionLevel
+      permissionLevel: this.permissionLevel,
+      phone: this.phone,
+      company: this.company,
+      signaturePath: this.signaturePath,
     };
   }
 
-  static fromJson(json: any): UserDto {
+  static override fromJson(json: any): UserDto {
     if (!json) return new UserDto();
     return new UserDto({
       id: json.id ?? 0,
@@ -67,7 +81,151 @@ export class UserDto implements UserModel {
       roles: json.roles ?? [],
       isActive: json.isActive ?? true,
       windowsUsername: json.windowsUsername ?? '',
-      permissionLevel: json.permissionLevel ?? ''
+      permissionLevel: json.permissionLevel ?? '',
+      phone: json.phone ?? '',
+      company: json.company ?? '',
+      signaturePath: json.signaturePath ?? '',
     });
+  }
+
+  toOption(): Option {
+    return {
+      value: this.id,
+      label: this.name || `${this.firstName} ${this.lastName}`.trim() || this.username,
+    };
+  }
+
+  static toTableColumns(
+    fields: UserFieldName[] = ['name', 'email', 'username', 'role', 'permissionLevel', 'isActive', 'windowsUsername']
+  ): Column[] {
+    const allColumns: { [key in UserFieldName]?: Column } = {
+      name: { id: 'name', header: 'Name', accessorKey: 'name' },
+      email: { id: 'email', header: 'Email', accessorKey: 'email' },
+      username: { id: 'username', header: 'Username', accessorKey: 'username' },
+      role: {
+        id: 'role',
+        header: 'Roles',
+        accessorFn: (item: UserDto) =>
+          (item.roles || []).map(r => r.replace('ROLE_', '')).join(', '),
+      },
+      permissionLevel: { id: 'permissionLevel', header: 'Permission', accessorKey: 'permissionLevel' },
+      isActive: {
+        id: 'isActive',
+        header: 'Active',
+        accessorFn: (item: UserDto) => (item.isActive ? 'Yes' : 'No'),
+        conditionalStyling: (item: any) =>
+          item.isActive
+            ? { 'background-color': '#90EE90' }
+            : { 'background-color': '#FFCCCB' },
+      },
+      windowsUsername: { id: 'windowsUsername', header: 'Windows User', accessorKey: 'windowsUsername' },
+      firstName: { id: 'firstName', header: 'First Name', accessorKey: 'firstName' },
+      lastName: { id: 'lastName', header: 'Last Name', accessorKey: 'lastName' },
+      phone: { id: 'phone', header: 'Phone', accessorKey: 'phone' },
+      company: { id: 'company', header: 'Company', accessorKey: 'company' },
+    };
+
+    return fields
+      .map(f => allColumns[f])
+      .filter((c): c is Column => c != null);
+  }
+
+  static toFormFields(dto: UserDto, options?: { isNew?: boolean }): RfFormField[] {
+    const isNew = options?.isNew ?? (!dto.id || dto.id === 0);
+    const availableRoles: Option[] = [
+      { value: 'ROLE_ADMIN', label: 'Admin' },
+      { value: 'ROLE_EMPLOYEE', label: 'Employee' },
+      { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
+      { value: 'ROLE_PLANT', label: 'Plant' },
+    ];
+
+    const permissionOptions: Option[] = [
+      { value: '', label: 'None' },
+      { value: 'NONE', label: 'NONE' },
+      { value: 'BASIC', label: 'BASIC' },
+      { value: 'OPERATOR', label: 'OPERATOR' },
+    ];
+
+    return [
+      {
+        name: 'firstName',
+        label: 'First Name',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.firstName,
+      },
+      {
+        name: 'lastName',
+        label: 'Last Name',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.lastName,
+      },
+      {
+        name: 'username',
+        label: 'Username',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.username,
+      },
+      {
+        name: 'email',
+        label: 'Email',
+        type: 'text',
+        validators: [Validators.required, Validators.email],
+        initialValue: dto.email,
+      },
+      {
+        name: 'password',
+        label: isNew ? 'Password' : 'New Password (leave blank to keep)',
+        type: 'text',
+        validators: isNew ? [Validators.required] : [],
+        initialValue: '',
+      },
+      {
+        name: 'windowsUsername',
+        label: 'Windows Username',
+        type: 'text',
+        initialValue: dto.windowsUsername,
+      },
+      {
+        name: 'phone',
+        label: 'Phone',
+        type: 'text',
+        initialValue: dto.phone,
+      },
+      {
+        name: 'company',
+        label: 'Company',
+        type: 'text',
+        initialValue: dto.company,
+      },
+      {
+        name: 'roles',
+        label: 'Roles',
+        type: 'checkbox-group',
+        options: availableRoles,
+        initialValue: dto.roles || [],
+      },
+      {
+        name: 'permissionLevel',
+        label: 'Permission Level',
+        type: 'select',
+        options: permissionOptions,
+        initialValue: dto.permissionLevel || '',
+      },
+      {
+        name: 'isActive',
+        label: 'Active',
+        type: 'checkbox',
+        initialValue: dto.isActive,
+      },
+      {
+        name: 'signaturePath',
+        label: 'Signature Path',
+        type: 'text',
+        initialValue: dto.signaturePath,
+      },
+    ];
   }
 }

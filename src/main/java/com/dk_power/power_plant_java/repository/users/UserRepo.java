@@ -42,4 +42,6 @@ public interface UserRepo extends BaseRepository<User> {
     User findFirstByPwaUserUuidOrderByIdAsc(String pwaUserUuid);
 
     boolean existsByWindowsUsername(String windowsUsername);
+
+    java.util.List<User> findByIsActiveTrue();
 }

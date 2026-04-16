@@ -378,3 +378,30 @@ export interface AppSettings {
     fireImpairmentEnabled: boolean;
   };
 }
+
+// Personnel / Schedule
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | '';
+
+export interface PersonnelEntry {
+  name: string;
+  group: string;        // "A", "B", "C"
+  todayShift: ShiftCode;
+  schedule: { date: string; shift: ShiftCode }[]; // next 7 days
+}
+
+export interface PersonnelStatus {
+  status: 'available' | 'loading' | 'error';
+  lastUpdate?: string;
+  error?: string;
+  onShiftNow: PersonnelEntry[];  // people working today (D or N based on current time)
+  allPersonnel: PersonnelEntry[];
+  currentShiftLabel: string;     // "Day Shift" or "Night Shift"
+}
+
+export interface PersonnelContact {
+  name: string;
+  title?: string;
+  phone?: string;
+  cell?: string;
+  email?: string;
+}

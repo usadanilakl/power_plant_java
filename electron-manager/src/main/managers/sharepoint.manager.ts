@@ -61,13 +61,20 @@ export class SharePointManager {
       return;
     }
 
-    // Resolve PFX path (relative to working dir or absolute)
+    // Resolve certificate path — prefer PEM, fall back to PFX
+    const basePath = path.isAbsolute(this.config.pfxPath)
+      ? path.dirname(this.config.pfxPath)
+      : path.join(getWorkingDir(), path.dirname(this.config.pfxPath));
+    const pemPath = path.join(basePath, 'certificate.pem');
     const pfxPath = path.isAbsolute(this.config.pfxPath)
       ? this.config.pfxPath
       : path.join(getWorkingDir(), this.config.pfxPath);
 
-    if (!fs.existsSync(pfxPath)) {
-      console.error('[SharePoint] PFX certificate not found at', pfxPath);
+    // @azure/identity v4+ requires PEM format for certificatePath
+    const certPath = fs.existsSync(pemPath) ? pemPath : pfxPath;
+
+    if (!fs.existsSync(certPath)) {
+      console.error('[SharePoint] Certificate not found at', certPath);
       return;
     }
 
@@ -76,12 +83,12 @@ export class SharePointManager {
         this.config.tenantId,
         this.config.clientId,
         {
-          certificatePath: pfxPath,
+          certificatePath: certPath,
           certificatePassword: this.config.pfxPassword || undefined,
         }
       );
       this.initialized = true;
-      console.log('[SharePoint] Credential initialized (PFX:', pfxPath, ')');
+      console.log('[SharePoint] Credential initialized (cert:', certPath, ')');
     } catch (err: any) {
       console.error('[SharePoint] Failed to create credential:', err.message);
     }
@@ -171,6 +178,93 @@ export class SharePointManager {
         reject(new Error('SharePoint request timed out'));
       });
 
+      req.end();
+    });
+  }
+
+  // ── File Downloads ──────────────────────────────────────────────────────
+
+  /**
+   * Download a file from a SharePoint document library as a Buffer.
+   * @param serverRelativeUrl  e.g., "/sites/JG/Shared Documents/file.xlsx"
+   */
+  public async downloadFile(serverRelativeUrl: string): Promise<Buffer> {
+    const token = await this.ensureToken();
+    // Encode each path segment individually, preserving slashes
+    const encodedPath = serverRelativeUrl.split('/').map(s => encodeURIComponent(s)).join('/');
+    const apiPath = `/_api/web/GetFileByServerRelativeUrl('${encodedPath}')/$value`;
+    const urlObj = new URL(this.config!.siteUrl + apiPath);
+    console.log('[SharePoint] Downloading file:', urlObj.href);
+
+    return new Promise((resolve, reject) => {
+      const options: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        timeout: 60_000,
+      };
+
+      const req = https.request(options, (res) => {
+        if (res.statusCode === 401) {
+          this.cachedToken = null;
+          this.tokenExpiry = 0;
+          reject(new Error('SharePoint returned 401 — token may be expired'));
+          return;
+        }
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          // Follow redirect
+          const location = res.headers.location;
+          if (location) {
+            this.downloadFromUrl(location, token).then(resolve).catch(reject);
+            return;
+          }
+        }
+        if (res.statusCode !== 200) {
+          let body = '';
+          res.on('data', (chunk) => body += chunk);
+          res.on('end', () => reject(new Error(`SharePoint file download returned ${res.statusCode}: ${body.substring(0, 300)}`)));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          console.log(`[SharePoint] Downloaded ${buf.length} bytes`);
+          resolve(buf);
+        });
+      });
+
+      req.on('error', (err) => reject(new Error(`SharePoint file download failed: ${err.message}`)));
+      req.on('timeout', () => { req.destroy(); reject(new Error('SharePoint file download timed out')); });
+      req.end();
+    });
+  }
+
+  private downloadFromUrl(url: string, token: string): Promise<Buffer> {
+    const urlObj = new URL(url);
+    return new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+        timeout: 60_000,
+      }, (res) => {
+        if (res.statusCode !== 200) {
+          let body = '';
+          res.on('data', (chunk) => body += chunk);
+          res.on('end', () => reject(new Error(`Redirect download returned ${res.statusCode}`)));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      req.on('error', (err) => reject(err));
+      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
       req.end();
     });
   }
