@@ -355,6 +355,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Permits', route: '', icon: 'assignment', color: '#8b5cf6', action: 'open-permits-monitor' },
     { label: 'Fire Impairment', route: '/fire-impairment', icon: 'local_fire_department', color: '#ef4444' },
     { label: 'Gate Log', route: '/gate-log', icon: 'badge', color: '#06b6d4' },
+    { label: 'Personnel', route: '/personnel', icon: 'groups', color: '#8b5cf6' },
     { label: 'Weather', route: '/weather', icon: 'thunderstorm', color: '#f59e0b' },
     { label: 'PJM', route: '/pjm', icon: 'bolt', color: '#eab308' },
     { label: 'Logs', route: '/logs', icon: 'terminal', color: '#22c55e' },

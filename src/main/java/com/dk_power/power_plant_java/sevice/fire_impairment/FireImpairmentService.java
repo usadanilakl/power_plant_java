@@ -4,19 +4,60 @@ import com.dk_power.power_plant_java.dto.fire_impairment.FireImpairmentDto;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.fire_impairment.FireImpairmentRepo;
+import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class FireImpairmentService {
+public class FireImpairmentService implements SyncableService<FireImpairment> {
 
     private final FireImpairmentRepo repo;
     private final UniversalMapper mapper;
+
+    @Override
+    public FireImpairment getEntity() { return new FireImpairment(); }
+
+    @Override
+    public FireImpairment getEntityById(Long id) { return repo.findById(id).orElse(null); }
+
+    @Override
+    public List<FireImpairment> getAll() { return repo.findAll(); }
+
+    @Override
+    public FireImpairment save(FireImpairment entity) { return repo.save(entity); }
+
+    @Override
+    public FireImpairment saveAndFlush(FireImpairment entity) { return repo.saveAndFlush(entity); }
+
+    @Override
+    public void deleteById(Long id) { delete(id); }
+
+    @Override
+    public List<FireImpairment> getAllSince(LocalDateTime since) { return repo.findAllByDateModifiedAfter(since); }
+
+    @Override
+    public void processSyncItem(FireImpairment item) { repo.save(item); }
+
+    @Override
+    public void processSyncItems(List<FireImpairment> items) { repo.saveAll(items); }
+
+    @Override
+    public Page<FireImpairment> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable) {
+        return repo.findAllByDateModifiedAfterOrderByDateModifiedAsc(lastSyncTime, pageable);
+    }
+
+    @Override
+    public Page<FireImpairment> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable) {
+        return repo.findAllByDateModifiedBetween(since, until, pageable);
+    }
 
     public List<FireImpairmentDto> getAllActive() {
         return repo.findAllByIsActiveTrueOrderByDateCreatedDesc()
@@ -32,7 +73,7 @@ public class FireImpairmentService {
                 .toList();
     }
 
-    public List<FireImpairmentDto> getAll() {
+    public List<FireImpairmentDto> getAllDtos() {
         return repo.findAllByOrderByDateCreatedDesc()
                 .stream()
                 .map(e -> mapper.convert(e, FireImpairmentDto.class))
@@ -58,7 +99,7 @@ public class FireImpairmentService {
         if (dto.getId() != null) {
             entity = repo.findById(dto.getId())
                     .orElseThrow(() -> new RuntimeException("FireImpairment not found: " + dto.getId()));
-            mapper.convert(dto, FireImpairment.class);
+            mapper.getMapper().map(dto, entity);
         } else {
             entity = mapper.convert(dto, FireImpairment.class);
         }

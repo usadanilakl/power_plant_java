@@ -36,7 +36,7 @@ interface PersonOption {
 
           <div class="section">
             <h3>Location</h3>
-            <select [(ngModel)]="selectedLocation">
+            <select [(ngModel)]="selectedLocation" (ngModelChange)="onLocationChange($event)">
               <option value="">-- Select Location --</option>
               <option *ngFor="let loc of locations" [value]="loc.display">{{ loc.display }}</option>
             </select>
@@ -180,6 +180,7 @@ export class CreateImpairmentDialogComponent implements OnInit {
   locations: Array<{ value: string; display: string }> = [];
   protectionTypes: Array<{ value: string; display: string }> = [];
   selectedLocation = '';
+  selectedLocationValue = '';
   selectedProtection = '';
   loadingEnums = true;
   loadError = '';
@@ -236,6 +237,11 @@ export class CreateImpairmentDialogComponent implements OnInit {
     this.loadingEnums = false;
   }
 
+  onLocationChange(display: string): void {
+    const loc = this.locations.find(l => l.display === display);
+    this.selectedLocationValue = loc?.value || '';
+  }
+
   get canSubmit(): boolean {
     return this.people.some(p => p.selected) && this.selectedLocation !== '';
   }
@@ -247,15 +253,17 @@ export class CreateImpairmentDialogComponent implements OnInit {
       email: selected[0]?.email || '',
       emailCc: selected.map(p => p.email).join(';'),
       clientName: 'Jpower',
-      indexNumber: '3652.35',
+      indexNumber: '003652.35-01',
       streetAddress: '24650 South Brandon Road',
       state: 'Illinois',
       city: 'Elwood',
-      country: 'USA',
+      country: 'United States of America',
       phone: '779-242-6151',
       office: 'Chicago~engchicagocustomerservicedesk@fmglobal.com',
       areaProtected: this.selectedLocation,
-      protectionType: this.selectedProtection
+      protectionType: this.selectedProtection,
+      valveNumber: this.selectedProtection,
+      location: this.selectedLocationValue
     };
     this.submitted.emit(dto);
   }

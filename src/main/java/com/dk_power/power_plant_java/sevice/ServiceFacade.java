@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
+import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
@@ -36,6 +37,7 @@ import com.dk_power.power_plant_java.sevice.angular.scheduler.FlowService;
 import com.dk_power.power_plant_java.sevice.angular.scheduler.TaskService;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.fire_impairment.FireImpairmentService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.file.FileService;
@@ -119,7 +121,9 @@ public class ServiceFacade {
             // EtaPro
             @Lazy EtaProPointService etaProPointService,
             @Lazy EtaProReadingService etaProReadingService,
-            @Lazy EtaProScrapeJobService etaProScrapeJobService
+            @Lazy EtaProScrapeJobService etaProScrapeJobService,
+            // Fire Impairment
+            @Lazy FireImpairmentService fireImpairmentService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -179,6 +183,8 @@ public class ServiceFacade {
         serviceMap.put(EtaProPoint.class.getSimpleName(), etaProPointService);
         serviceMap.put(EtaProReading.class.getSimpleName(), etaProReadingService);
         serviceMap.put(EtaProScrapeJob.class.getSimpleName(), etaProScrapeJobService);
+        // Fire Impairment
+        serviceMap.put(FireImpairment.class.getSimpleName(), fireImpairmentService);
     }
 
     public SyncableService getService(String entityClass) {

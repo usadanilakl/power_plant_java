@@ -31,6 +31,7 @@ interface FireImpairmentItem {
   precautions?: string;
   isActive: boolean;
   url?: string;
+  formDataJson?: string;
   location?: string;
 }
 
@@ -632,7 +633,29 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
     }
 
     console.log('FM Global form data received, updating impairment', this.lastCreatedId);
-    const result = await this.electronService.fireImpUpdate(this.lastCreatedId, data);
+
+    // Separate known DTO fields from extra FM Global form fields
+    const knownFields = new Set([
+      'name', 'email', 'emailCc', 'clientName', 'indexNumber', 'streetAddress',
+      'state', 'city', 'country', 'phone', 'valveNumber', 'areaProtected',
+      'reason', 'office', 'protectionType', 'precautions',
+      'turnsToClose', 'authorizedBy', 'operator',
+      'submissionDate', 'predictedRestorationDate', 'url', 'location'
+    ]);
+    const extraFields: Record<string, string> = {};
+    const dto: Record<string, string> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (knownFields.has(key)) {
+        dto[key] = value;
+      } else if (value) {
+        extraFields[key] = value;
+      }
+    }
+    if (Object.keys(extraFields).length > 0) {
+      dto['formDataJson'] = JSON.stringify(extraFields);
+    }
+
+    const result = await this.electronService.fireImpUpdate(this.lastCreatedId, dto);
     if (!result.success) {
       this.error = result.error || 'Failed to update impairment with FM Global data';
     }
@@ -680,9 +703,18 @@ export class FireImpairmentComponent implements OnInit, OnDestroy {
       name: imp.name || 'Jpower',
       email: imp.email || '',
       emailCc: imp.emailCc || '',
+      clientName: imp.clientName || 'Jpower',
+      indexNumber: imp.indexNumber || '',
+      streetAddress: imp.streetAddress || '',
+      state: imp.state || '',
+      city: imp.city || '',
+      country: imp.country || '',
+      phone: imp.phone || '',
+      valveNumber: imp.valveNumber || '',
       areaProtected: imp.areaProtected || '',
-      protectionType: imp.protectionType || '',
-      reason: imp.reason || ''
+      reason: imp.reason || '',
+      office: imp.office || '',
+      protectionType: imp.protectionType || ''
     };
 
     const result = await this.electronService.fireImpOpenForm(formData);

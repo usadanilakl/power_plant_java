@@ -32,6 +32,9 @@ public class FireImpairment extends BaseIdEntity {
     private String reason;
     private String office;
     private String protectionType;
+    private String turnsToClose;
+    private String authorizedBy;
+    private String operator;
     private String submissionDate;
     private String predictedRestorationDate;
     private String closedDate;
@@ -40,6 +43,9 @@ public class FireImpairment extends BaseIdEntity {
     private String precautions;
     private Boolean isActive = true;
     private String url;
+
+    @Column(columnDefinition = "TEXT")
+    private String formDataJson;
 
     @Enumerated(EnumType.STRING)
     private FireImpairmentLocation location;

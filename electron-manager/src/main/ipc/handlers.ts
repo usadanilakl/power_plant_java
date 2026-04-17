@@ -488,30 +488,21 @@ export class IpcHandlers {
     // Open FM Global form with auto-fill + button interception
     ipcMain.handle(events.IPC_FIRE_IMP_OPEN_FORM, async (_event, formData: Record<string, string>) => {
       try {
+        // open() awaits loadURL which resolves on did-finish-load — landing page is ready
         await this.webview.open('fm-global', 'https://redetag.fmglobal.com');
 
-        // Wait for landing page to load, click Create, then fill form
-        const win = this.webview['windows'].get('fm-global');
-        if (win) {
-          win.window.webContents.once('did-finish-load', async () => {
-            try {
-              // Click "Create New Impairment" button and wait for form page to load
-              await this.webview.clickFmGlobalCreateButton();
+        // Click "Create New Impairment" and wait for form page to load
+        await this.webview.clickFmGlobalCreateButton();
 
-              const fieldsSet = await this.webview.fillFmGlobalForm(formData);
-              console.log(`FM Global form: ${fieldsSet} fields populated`);
+        const fieldsSet = await this.webview.fillFmGlobalForm(formData);
+        console.log(`FM Global form: ${fieldsSet} fields populated`);
 
-              // Intercept Back/Submit buttons — broadcast gathered data to renderer
-              await this.webview.interceptFmGlobalButtons((data) => {
-                if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-                  this.mainWindow.webContents.send(events.IPC_FIRE_IMP_FORM_SUBMITTED, data);
-                }
-              });
-            } catch (err) {
-              console.error('Failed to fill FM Global form:', err);
-            }
-          });
-        }
+        // Intercept Back/Submit buttons — broadcast gathered data to renderer
+        await this.webview.interceptFmGlobalButtons((data) => {
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send(events.IPC_FIRE_IMP_FORM_SUBMITTED, data);
+          }
+        });
 
         return { success: true };
       } catch (error: any) {

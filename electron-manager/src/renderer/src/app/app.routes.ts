@@ -8,6 +8,7 @@ import { LogsComponent } from './pages/logs/logs.component';
 import { SyncUpdatesComponent } from './pages/sync-updates/sync-updates.component';
 import { SettingsComponent } from './pages/settings/settings.component';
 import { SpringBootUiComponent } from './pages/spring-boot-ui/spring-boot-ui.component';
+import { PersonnelComponent } from './pages/personnel/personnel.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -18,6 +19,7 @@ export const routes: Routes = [
   { path: 'pjm', component: PjmComponent },
   { path: 'logs', component: LogsComponent },
   { path: 'sync-updates', component: SyncUpdatesComponent },
+  { path: 'personnel', component: PersonnelComponent },
   { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

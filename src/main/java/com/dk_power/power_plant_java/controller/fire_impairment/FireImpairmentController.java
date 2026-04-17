@@ -22,7 +22,7 @@ public class FireImpairmentController {
 
     @GetMapping
     public ResponseEntity<List<FireImpairmentDto>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+        return ResponseEntity.ok(service.getAllDtos());
     }
 
     @GetMapping("/active")

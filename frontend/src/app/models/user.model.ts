@@ -99,30 +99,32 @@ export class UserDto extends BaseDto implements UserModel {
     fields: UserFieldName[] = ['name', 'email', 'username', 'role', 'permissionLevel', 'isActive', 'windowsUsername']
   ): Column[] {
     const allColumns: { [key in UserFieldName]?: Column } = {
-      name: { id: 'name', header: 'Name', accessorKey: 'name' },
-      email: { id: 'email', header: 'Email', accessorKey: 'email' },
-      username: { id: 'username', header: 'Username', accessorKey: 'username' },
+      name: { id: 'name', header: 'Name', accessorKey: 'name', filterable: true },
+      email: { id: 'email', header: 'Email', accessorKey: 'email', filterable: true },
+      username: { id: 'username', header: 'Username', accessorKey: 'username', filterable: true },
       role: {
         id: 'role',
         header: 'Roles',
+        filterable: true,
         accessorFn: (item: UserDto) =>
           (item.roles || []).map(r => r.replace('ROLE_', '')).join(', '),
       },
-      permissionLevel: { id: 'permissionLevel', header: 'Permission', accessorKey: 'permissionLevel' },
+      permissionLevel: { id: 'permissionLevel', header: 'Permission', accessorKey: 'permissionLevel', filterable: true },
       isActive: {
         id: 'isActive',
         header: 'Active',
+        filterable: true,
         accessorFn: (item: UserDto) => (item.isActive ? 'Yes' : 'No'),
         conditionalStyling: (item: any) =>
           item.isActive
             ? { 'background-color': '#90EE90' }
             : { 'background-color': '#FFCCCB' },
       },
-      windowsUsername: { id: 'windowsUsername', header: 'Windows User', accessorKey: 'windowsUsername' },
-      firstName: { id: 'firstName', header: 'First Name', accessorKey: 'firstName' },
-      lastName: { id: 'lastName', header: 'Last Name', accessorKey: 'lastName' },
-      phone: { id: 'phone', header: 'Phone', accessorKey: 'phone' },
-      company: { id: 'company', header: 'Company', accessorKey: 'company' },
+      windowsUsername: { id: 'windowsUsername', header: 'Windows User', accessorKey: 'windowsUsername', filterable: true },
+      firstName: { id: 'firstName', header: 'First Name', accessorKey: 'firstName', filterable: true },
+      lastName: { id: 'lastName', header: 'Last Name', accessorKey: 'lastName', filterable: true },
+      phone: { id: 'phone', header: 'Phone', accessorKey: 'phone', filterable: true },
+      company: { id: 'company', header: 'Company', accessorKey: 'company', filterable: true },
     };
 
     return fields

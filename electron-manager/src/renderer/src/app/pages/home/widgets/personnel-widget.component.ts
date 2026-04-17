@@ -1,5 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 import { ElectronService, PersonnelStatus, PersonnelEntry } from '../../../services/electron.service';
 
 type SizeTier = 'compact' | 'large';
@@ -15,9 +16,9 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
 @Component({
   selector: 'app-personnel-widget',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
-    <div class="widget-card" [class.compact]="tier === 'compact'">
+    <div class="widget-card" [class.compact]="tier === 'compact'" (click)="navigateToPage($event)">
 
       <!-- COMPACT (1x1) -->
       <ng-container *ngIf="tier === 'compact'">
@@ -90,7 +91,7 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
                   <div class="group-label">{{ group }}</div>
                   <div class="schedule-row" *ngFor="let p of getGroupMembers(group)">
                     <span class="sr-name">{{ p.name }}</span>
-                    <span class="sr-shift" *ngFor="let s of p.schedule"
+                    <span class="sr-shift" *ngFor="let s of getScheduleSlice(p)"
                           [class]="getShiftClass(s.shift)"
                           [title]="getShiftLabel(s.shift)">
                       {{ s.shift || '-' }}
@@ -128,6 +129,7 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
       background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
       color: inherit; height: 100%; box-sizing: border-box; overflow-y: auto;
     }
+    .widget-card { cursor: pointer; }
     .widget-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-md); }
     :host { display: block; height: 100%; }
 
@@ -216,7 +218,7 @@ export class PersonnelWidgetComponent implements OnInit {
 
   status: PersonnelStatus | null = null;
 
-  constructor(private electronService: ElectronService) {}
+  constructor(private electronService: ElectronService, private router: Router) {}
 
   ngOnInit(): void {
     this.load();
@@ -236,7 +238,7 @@ export class PersonnelWidgetComponent implements OnInit {
   get scheduleDays(): string[] {
     const first = this.status?.allPersonnel?.[0];
     if (!first?.schedule?.length) return [];
-    return first.schedule.map(s => {
+    return first.schedule.slice(0, 7).map(s => {
       const d = new Date(s.date + 'T12:00:00');
       return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
     });
@@ -244,6 +246,10 @@ export class PersonnelWidgetComponent implements OnInit {
 
   getGroupMembers(group: string): PersonnelEntry[] {
     return this.status?.allPersonnel?.filter(p => p.group === group) || [];
+  }
+
+  getScheduleSlice(person: PersonnelEntry): { date: string; shift: any }[] {
+    return person.schedule.slice(0, 7);
   }
 
   getShiftLabel(code: string): string { return SHIFT_LABELS[code] || code; }
@@ -270,6 +276,13 @@ export class PersonnelWidgetComponent implements OnInit {
     } catch (err: any) {
       this.status = { status: 'error', error: err.message, onShiftNow: [], allPersonnel: [], currentShiftLabel: '' };
     }
+  }
+
+  navigateToPage(event: Event): void {
+    if (this.editMode) return;
+    // Don't navigate if clicking a button
+    if ((event.target as HTMLElement).closest('button')) return;
+    this.router.navigate(['/personnel']);
   }
 
   openSchedule(): void {

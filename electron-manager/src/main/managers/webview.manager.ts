@@ -375,7 +375,7 @@ export class WebViewManager {
           'streetAddress': 'txtStreetAddress',
           'state': 'txtState',
           'city': 'txtCity',
-          'country': 'txtCountry',
+          'country': 'ddlCountry',
           'phone': 'txtPhone',
           'valveNumber': 'txtValveNumber',
           'areaProtected': 'txtAreaProtected',
@@ -386,6 +386,13 @@ export class WebViewManager {
 
         for (var key in mapping) {
           if (fieldMap[key] && setField(mapping[key], fieldMap[key])) {
+            fieldsSet++;
+          }
+        }
+
+        // Also set valveNumber from protectionType if not already set
+        if (!fieldMap['valveNumber'] && fieldMap['protectionType']) {
+          if (setField('txtValveNumber', fieldMap['protectionType'])) {
             fieldsSet++;
           }
         }
@@ -410,30 +417,50 @@ export class WebViewManager {
       (function() {
         var result = {};
 
-        function getField(id) {
-          var el = document.getElementById(id);
-          if (!el) return '';
+        // Known field mappings (FM Global form ID -> DTO key)
+        var knownFields = {
+          'txtName': 'name',
+          'txtEmail': 'email',
+          'txtEmailCc': 'emailCc',
+          'txtClientName': 'clientName',
+          'txtIndexNumber': 'indexNumber',
+          'txtStreetAddress': 'streetAddress',
+          'txtState': 'state',
+          'txtCity': 'city',
+          'txtCountry': 'country',
+          'txtPhone': 'phone',
+          'txtValveNumber': 'valveNumber',
+          'txtAreaProtected': 'areaProtected',
+          'txtReason': 'reason',
+          'ddlOffice': 'office',
+          'ddlProtectionType': 'protectionType'
+        };
+
+        // Gather known fields
+        for (var formId in knownFields) {
+          var el = document.getElementById(formId);
+          if (!el) continue;
           if (el.tagName === 'SELECT') {
-            return el.options[el.selectedIndex]?.text || '';
+            result[knownFields[formId]] = el.options[el.selectedIndex]?.text || '';
+          } else {
+            result[knownFields[formId]] = el.value || '';
           }
-          return el.value || '';
         }
 
-        result.name = getField('txtName');
-        result.email = getField('txtEmail');
-        result.emailCc = getField('txtEmailCc');
-        result.clientName = getField('txtClientName');
-        result.indexNumber = getField('txtIndexNumber');
-        result.streetAddress = getField('txtStreetAddress');
-        result.state = getField('txtState');
-        result.city = getField('txtCity');
-        result.country = getField('txtCountry');
-        result.phone = getField('txtPhone');
-        result.valveNumber = getField('txtValveNumber');
-        result.areaProtected = getField('txtAreaProtected');
-        result.reason = getField('txtReason');
-        result.office = getField('ddlOffice');
-        result.protectionType = getField('ddlProtectionType');
+        // Dynamically gather ALL remaining inputs, selects, textareas
+        var knownIds = new Set(Object.keys(knownFields));
+        knownIds.add('txtOther'); // handled separately in precautions
+        var allFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="hidden"], select, textarea');
+        allFields.forEach(function(el) {
+          if (!el.id || knownIds.has(el.id)) return;
+          if (el.type === 'checkbox' || el.type === 'radio') return;
+          var key = el.id;
+          if (el.tagName === 'SELECT') {
+            result[key] = el.options[el.selectedIndex]?.text || '';
+          } else {
+            result[key] = el.value || '';
+          }
+        });
 
         // Gather precautions checkboxes
         var checkboxes = document.querySelectorAll('#MainContent_pnlPrecautions input[type="checkbox"]');
@@ -476,38 +503,55 @@ export class WebViewManager {
 
     const webContents = instance.window.webContents;
 
-    // Listen for console messages from the injected script as communication bridge
+    // Listen for button click signals from injected script
     webContents.on('console-message', async (_event, _level, message) => {
-      if (message === '__FM_GLOBAL_BTN_BACK__' || message === '__FM_GLOBAL_BTN_SUBMIT__') {
-        console.log(`[WebView] FM Global button intercepted: ${message}`);
-        try {
-          const data = await this.gatherFmGlobalData();
-          onFormData(data);
-        } catch (err: any) {
-          console.error('[WebView] Failed to gather FM Global data:', err.message);
+      if (message !== '__FM_GLOBAL_BTN_CLICKED__') return;
+
+      console.log('[WebView] FM Global button clicked, gathering form data...');
+      try {
+        // Page is frozen (PostBack blocked) — gather data from main process
+        const data = await this.gatherFmGlobalData();
+        console.log('[WebView] FM Global form data captured:', Object.keys(data).length, 'fields');
+        onFormData(data);
+      } catch (err: any) {
+        console.error('[WebView] Failed to gather FM Global data:', err.message);
+      }
+
+      // Now release the PostBack
+      try {
+        if (!instance.window.isDestroyed()) {
+          await webContents.executeJavaScript('window.__fmGlobalProceed && window.__fmGlobalProceed()');
         }
+      } catch (err: any) {
+        console.error('[WebView] Failed to release PostBack:', err.message);
       }
     });
 
-    // Inject the button interceptors
+    // Inject button interceptors that BLOCK PostBack until main process gathers data
     const script = `
       (function() {
-        function interceptButton(btnId, marker) {
+        function interceptButton(btnId) {
           var btn = document.getElementById(btnId);
           if (!btn) return false;
 
           var originalOnClick = btn.onclick;
           btn.onclick = function(e) {
-            console.log(marker);
-            if (originalOnClick) {
-              setTimeout(function() { originalOnClick.call(btn, e); }, 200);
-            }
+            e.preventDefault();
+            // Signal main process to gather data
+            console.log('__FM_GLOBAL_BTN_CLICKED__');
+            // Main process will call window.__fmGlobalProceed() after gathering
+            window.__fmGlobalProceed = function() {
+              if (originalOnClick) {
+                originalOnClick.call(btn, e);
+              }
+            };
+            return false;
           };
           return true;
         }
 
-        var backOk = interceptButton('btnBack', '__FM_GLOBAL_BTN_BACK__');
-        var submitOk = interceptButton('btnSubmit', '__FM_GLOBAL_BTN_SUBMIT__');
+        var backOk = interceptButton('btnBack');
+        var submitOk = interceptButton('btnSubmit');
         return 'Intercepted: back=' + backOk + ', submit=' + submitOk;
       })();
     `;

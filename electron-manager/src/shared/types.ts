@@ -402,6 +402,8 @@ export interface PersonnelContact {
   name: string;
   title?: string;
   phone?: string;
-  cell?: string;
-  email?: string;
+  secondaryPhone?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
 }
