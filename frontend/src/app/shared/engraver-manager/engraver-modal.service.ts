@@ -9,6 +9,13 @@ export interface EngraverBatchItem {
   errorMessage?: string;
 }
 
+const PREF_KEY = 'engraver-template-prefs';
+
+interface EngraverPrefs {
+  tagSize: string;
+  dataStructure: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -116,7 +123,47 @@ export class EngraverModalService {
   }
 
   /**
-   * Sets data structure and syncs layoutVersion.
+   * Apply initial template selection from localStorage or DB default.
+   * Called after templates are loaded.
+   */
+  applyDefaultSelection(): void {
+    const templates = this.allTemplates();
+    if (templates.length === 0) return;
+
+    // 1. Try localStorage
+    const saved = this.loadPrefs();
+    if (saved) {
+      const hasMatch = templates.some(t => t.tagSize === saved.tagSize && t.dataStructure === saved.dataStructure);
+      if (hasMatch) {
+        this.selectedTagSize.set(saved.tagSize);
+        this.setDataStructure(saved.dataStructure);
+        return;
+      }
+    }
+
+    // 2. Fall back to DB default
+    const defaultTemplate = templates.find(t => t.isDefault);
+    if (defaultTemplate) {
+      this.selectedTagSize.set(defaultTemplate.tagSize);
+      this.setDataStructure(defaultTemplate.dataStructure);
+      return;
+    }
+
+    // 3. Fall back to first template
+    this.selectedTagSize.set(templates[0].tagSize);
+    this.setDataStructure(templates[0].dataStructure);
+  }
+
+  /**
+   * Sets tag size and persists preference.
+   */
+  setTagSize(size: string): void {
+    this.selectedTagSize.set(size);
+    this.persistPrefs();
+  }
+
+  /**
+   * Sets data structure and syncs layoutVersion. Persists preference.
    */
   setDataStructure(ds: string): void {
     this.selectedDataStructure.set(ds);
@@ -124,6 +171,25 @@ export class EngraverModalService {
     if (ds === 'info' && this.selectedCharacteristicNames().length === 0) {
       const available = this.availableCharacteristicNames();
       this.selectedCharacteristicNames.set(available.slice(0, this.maxEngraveCharacteristics));
+    }
+    this.persistPrefs();
+  }
+
+  private persistPrefs(): void {
+    const prefs: EngraverPrefs = {
+      tagSize: this.selectedTagSize(),
+      dataStructure: this.selectedDataStructure(),
+    };
+    localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+  }
+
+  private loadPrefs(): EngraverPrefs | null {
+    const raw = localStorage.getItem(PREF_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
     }
   }
 

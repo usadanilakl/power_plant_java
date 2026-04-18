@@ -28,6 +28,14 @@
     <!-- Step 2a: Sign In -->
     @if (step === 'signin') {
       <p class="subtitle">Welcome back{{ lookedUpName ? ', ' + lookedUpName : '' }}</p>
+
+      <button class="email-login-btn" (click)="onForgotPassword()" [disabled]="isLoading">
+        <span *ngIf="!isLoading">Email Me a Sign-In Link</span>
+        <span *ngIf="isLoading" class="spinner"></span>
+      </button>
+
+      <div class="divider"><span>or sign in with password</span></div>
+
       <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
         <div class="form-group">
           <label for="login-email">Email</label>
@@ -37,17 +45,16 @@
         <div class="form-group">
           <label for="login-password">Password</label>
           <input id="login-password" type="password" formControlName="password"
-                 placeholder="Enter your password" autofocus>
+                 placeholder="Enter your password">
         </div>
 
-        <button type="submit" [disabled]="loginForm.invalid || isLoading">
+        <button type="submit" class="password-login-btn" [disabled]="loginForm.invalid || isLoading">
           <span *ngIf="!isLoading">Sign In</span>
           <span *ngIf="isLoading" class="spinner"></span>
         </button>
       </form>
 
       <div class="auth-links">
-        <a (click)="onForgotPassword()" class="link">Forgot password?</a>
         <a (click)="goBack()" class="link">Use a different account</a>
       </div>
     }

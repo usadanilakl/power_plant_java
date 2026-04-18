@@ -138,6 +138,15 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
         </div>
       </div>
 
+      <!-- Live Weather Stream -->
+      <div class="live-stream-btn-row">
+        <button class="btn btn-live" (click)="openMaxVelocity()">
+          <span class="material-icons">live_tv</span>
+          <span>Max Velocity — Live Weather Radar</span>
+          <span class="live-badge">LIVE</span>
+        </button>
+      </div>
+
       <!-- Controls -->
       <div class="controls-row">
         <button class="btn btn-primary" (click)="refresh()" [disabled]="refreshing">
@@ -518,6 +527,23 @@ const WMO_CODES: Record<number, { desc: string; icon: string }> = {
     }
 
     /* Controls */
+    /* Live stream button */
+    .live-stream-btn-row { margin-bottom: 16px; }
+    .btn-live {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-color);
+      background: var(--bg-card); color: var(--text-primary); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 150ms;
+    }
+    .btn-live:hover { border-color: var(--accent-error); background: var(--bg-card-hover); }
+    .btn-live .material-icons { font-size: 22px; color: var(--accent-error); }
+    .live-badge {
+      font-size: 10px; font-weight: 700; color: #fff; background: var(--accent-error);
+      padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; margin-left: auto;
+      animation: pulse-live 2s infinite;
+    }
+    @keyframes pulse-live { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
     .controls-row {
       display: flex;
       align-items: center;
@@ -707,6 +733,10 @@ export class WeatherComponent implements OnInit, OnDestroy {
 
   openPerryPage(): void {
     this.electronService.openWebView('perry-weather', 'https://app.perryweather.com/');
+  }
+
+  openMaxVelocity(): void {
+    this.electronService.openWebView('weather', 'https://maxvelocitywx.com');
   }
 
   get perryLightningLevel(): string {

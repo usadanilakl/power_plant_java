@@ -160,6 +160,43 @@ button:disabled {
   100% { transform: rotate(360deg); }
 }
 
+.email-login-btn {
+  background-color: var(--accent-color);
+  font-size: 1.05rem;
+  margin-bottom: 0;
+}
+
+.password-login-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text);
+}
+
+.password-login-btn:hover:not(:disabled) {
+  background-color: var(--accent-color-shadow);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.25rem 0;
+  color: var(--secondary-text);
+  font-size: 0.8rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.divider span {
+  padding: 0 0.75rem;
+  white-space: nowrap;
+}
+
 .auth-links {
   display: flex;
   justify-content: space-between;

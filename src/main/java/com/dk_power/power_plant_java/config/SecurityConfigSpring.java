@@ -114,7 +114,8 @@ public class SecurityConfigSpring {
                     "/interact.js-main/**", "/my_styles/**",
                     "/background/**", "/uploads/**",
                     "/favicon.ico", "/assets/**",
-                    "/ng/config/**"
+                    "/ng/config/**",
+                    "/ng/agent/status"
                 ).permitAll()
 
                 // LAN-only endpoints — only internal IPs can access

@@ -48,6 +48,20 @@ export class EngraverApiService {
   }
 
   /**
+   * Process a batch using inline item data (edited in dialog, not saved to DB).
+   */
+  processBatchInline(items: { tagNumber: string; description: string; characteristicsJson: string }[], template: string, openLightBurn = true, withQr = false, layoutVersion = 'standard', characteristicNames: string[] = []): Observable<SpringApiResponse<EngraverBatchResponse>> {
+    let params = `openLightBurn=${openLightBurn}&withQr=${withQr}&template=${encodeURIComponent(template)}&layoutVersion=${layoutVersion}`;
+    if (characteristicNames.length > 0) {
+      params += '&' + characteristicNames.map(n => `characteristicNames=${encodeURIComponent(n)}`).join('&');
+    }
+    return this.http.post<SpringApiResponse<EngraverBatchResponse>>(
+      `${this.apiUrl}/process-batch-inline?${params}`,
+      items
+    );
+  }
+
+  /**
    * Get engraver configuration (batch size, CSV path).
    */
   getConfig(): Observable<SpringApiResponse<EngraverConfigResponse>> {

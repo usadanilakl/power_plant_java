@@ -57,7 +57,7 @@ const TIMERS_STORAGE_KEY = 'dk-widget-timers';
       </button>
 
       <!-- Timers (expanded view) -->
-      <div class="timers-section" *ngIf="rows >= 2 || cols >= 2">
+      <div class="timers-section">
         <div class="timers-header">
           <span class="timers-title">Timers</span>
           <button class="add-timer-btn" (click)="showAddTimer = !showAddTimer" *ngIf="!editMode">
@@ -120,11 +120,6 @@ const TIMERS_STORAGE_KEY = 'dk-widget-timers';
         </div>
       </div>
 
-      <!-- Compact timer count -->
-      <div class="compact-timers" *ngIf="cols === 1 && rows === 1 && timers.length > 0">
-        <span class="material-icons timer-icon" [class.has-expired]="hasExpired">timer</span>
-        {{ activeTimerCount }} active{{ expiredCount > 0 ? ', ' + expiredCount + ' expired' : '' }}
-      </div>
     </div>
   `,
   styles: [`

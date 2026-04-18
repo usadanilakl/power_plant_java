@@ -49,6 +49,9 @@ public class AuthController {
     @Value("${email.graph.from:}")
     private String emailFrom;
 
+    @Value("${app.external-url:}")
+    private String externalUrl;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest,
                                    HttpServletRequest request, HttpServletResponse response) {
@@ -305,24 +308,39 @@ public class AuthController {
             .build();
         passwordResetTokenRepository.save(resetToken);
 
-        // Build reset URL from the request
-        String baseUrl = request.getScheme() + "://" + request.getServerName();
-        int port = request.getServerPort();
-        if ((request.getScheme().equals("http") && port != 80) ||
-            (request.getScheme().equals("https") && port != 443)) {
-            baseUrl += ":" + port;
+        // Build reset URL — use configured external URL if available (hub behind reverse proxy),
+        // otherwise derive from request headers
+        String baseUrl;
+        if (externalUrl != null && !externalUrl.isBlank()) {
+            baseUrl = externalUrl;
+        } else {
+            baseUrl = request.getScheme() + "://" + request.getServerName();
+            int port = request.getServerPort();
+            if ((request.getScheme().equals("http") && port != 80) ||
+                (request.getScheme().equals("https") && port != 443)) {
+                baseUrl += ":" + port;
+            }
         }
-        String resetLink = baseUrl + "/app/reset-password?token=" + token;
+        // If request came from an external app (e.g. ng-ui PWA), send user to that app's
+        // own reset-password page instead of the server UI
+        String origin = request.getHeader("Origin");
+        String resetLink;
+        if (origin != null && !origin.isBlank() && !origin.contains(request.getServerName())) {
+            String appBase = origin.endsWith("/") ? origin + "permits" : origin + "/permits";
+            resetLink = appBase + "/reset-password?token=" + token;
+        } else {
+            resetLink = baseUrl + "/app/reset-password?token=" + token;
+        }
 
         // Send email
         try {
             emailFacadeService.sendEmail(EmailRequest.builder()
                 .to(user.getEmail())
                 .from(emailFrom)
-                .subject("Password Reset - Power Plant Manager")
+                .subject("Sign-In Link - Power Plant Manager")
                 .body("Hello " + user.getName() + ",\n\n"
-                    + "A password reset was requested for your account.\n\n"
-                    + "Click the link below to reset your password:\n"
+                    + "A sign-in link was requested for your account.\n\n"
+                    + "Click the link below to set your password and sign in:\n"
                     + resetLink + "\n\n"
                     + "This link expires in 1 hour.\n\n"
                     + "If you did not request this, please ignore this email.\n")
@@ -376,7 +394,10 @@ public class AuthController {
         passwordResetTokenRepository.save(resetToken);
 
         log.info("security.password.reset.completed user={}", user.getEmail());
-        return ResponseEntity.ok(Map.of("message", "Password has been reset successfully. You can now sign in."));
+        return ResponseEntity.ok(Map.of(
+            "message", "Password has been reset successfully.",
+            "email", user.getEmail()
+        ));
     }
 
     private Map<String, Object> buildUserResponse(CustomUserDetails userDetails, User user) {

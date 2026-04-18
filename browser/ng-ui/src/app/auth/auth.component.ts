@@ -196,7 +196,7 @@ export class AuthComponent implements OnInit {
     this.serverApi.forgotPassword(email).subscribe({
       next: (res) => {
         this.isLoading = false;
-        this.successMessage = res.message || 'If an account with that email exists, a reset link has been sent.';
+        this.successMessage = 'A sign-in link has been sent to your email. Check your inbox.';
       },
       error: () => {
         this.isLoading = false;

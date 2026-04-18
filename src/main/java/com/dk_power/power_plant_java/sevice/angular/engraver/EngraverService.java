@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.angular.engraver;
 
+import com.dk_power.power_plant_java.controller.angular.engraver.EngraverController.EngraverItemData;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -103,6 +104,113 @@ public class EngraverService {
 
         log.info("Generated CSV at: {} with {} items, {} characteristic columns", csvFile.getAbsolutePath(), batch.size(), characteristicNames.size());
         return csvFile.getAbsolutePath();
+    }
+
+    /**
+     * Generates CSV from inline item data (not from DB). Used when engraver dialog edits haven't been saved.
+     */
+    public String generateCsvFromInlineData(List<EngraverItemData> items, boolean withQr) throws IOException {
+        File csvFile = new File(engraverDataPath, csvFilename);
+        csvFile.getParentFile().mkdirs();
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
+            if (includeHeader) {
+                writer.println("tagNumber,oneLineDescription,twoLineDescription1,twoLineDescription2,threeLineDescription1,threeLineDescription2,threeLineDescription3,fourLineDescription1,fourLineDescription2,fourLineDescription3,fourLineDescription4,qrCode");
+            }
+            for (EngraverItemData item : items) {
+                String[] row = mapInlineItemToCsvRow(item, withQr);
+                writer.println(String.join(",", row));
+            }
+        }
+
+        log.info("Generated inline CSV at: {} with {} items", csvFile.getAbsolutePath(), items.size());
+        return csvFile.getAbsolutePath();
+    }
+
+    /**
+     * Generates CSV from inline item data with characteristic columns.
+     */
+    public String generateCsvFromInlineData(List<EngraverItemData> items, boolean withQr, List<String> characteristicNames) throws IOException {
+        if (characteristicNames == null || characteristicNames.isEmpty()) {
+            return generateCsvFromInlineData(items, withQr);
+        }
+
+        File csvFile = new File(engraverDataPath, csvFilename);
+        csvFile.getParentFile().mkdirs();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
+            if (includeHeader) {
+                String baseHeader = "tagNumber,oneLineDescription,twoLineDescription1,twoLineDescription2,threeLineDescription1,threeLineDescription2,threeLineDescription3,fourLineDescription1,fourLineDescription2,fourLineDescription3,fourLineDescription4,qrCode";
+                String extraHeader = characteristicNames.stream().map(this::escapeCsvField).collect(Collectors.joining(","));
+                writer.println(baseHeader + "," + extraHeader);
+            }
+            for (EngraverItemData item : items) {
+                String[] baseRow = mapInlineItemToCsvRow(item, withQr);
+                String[] charValues = getCharacteristicValuesFromJson(item.characteristicsJson(), characteristicNames, objectMapper);
+                String[] fullRow = new String[baseRow.length + charValues.length];
+                System.arraycopy(baseRow, 0, fullRow, 0, baseRow.length);
+                System.arraycopy(charValues, 0, fullRow, baseRow.length, charValues.length);
+                writer.println(String.join(",", fullRow));
+            }
+        }
+
+        log.info("Generated inline CSV at: {} with {} items, {} characteristic columns", csvFile.getAbsolutePath(), items.size(), characteristicNames.size());
+        return csvFile.getAbsolutePath();
+    }
+
+    private String[] mapInlineItemToCsvRow(EngraverItemData item, boolean withQr) {
+        String tagNumber = escapeCsvField(item.tagNumber() != null ? item.tagNumber() : "");
+        String description = item.description() != null ? item.description() : "";
+        String[] lines = splitDescription(description);
+
+        String oneLineDesc = "", twoLine1 = "", twoLine2 = "";
+        String threeLine1 = "", threeLine2 = "", threeLine3 = "";
+        String fourLine1 = "", fourLine2 = "", fourLine3 = "", fourLine4 = "";
+
+        if (lines.length == 1 && lines[0].length() <= 20) {
+            oneLineDesc = escapeCsvField(lines[0]);
+        } else if (lines.length <= 2) {
+            twoLine1 = escapeCsvField(lines[0]);
+            twoLine2 = lines.length > 1 ? escapeCsvField(lines[1]) : "";
+        } else if (lines.length <= 3) {
+            threeLine1 = escapeCsvField(lines[0]);
+            threeLine2 = lines.length > 1 ? escapeCsvField(lines[1]) : "";
+            threeLine3 = lines.length > 2 ? escapeCsvField(lines[2]) : "";
+        } else {
+            fourLine1 = escapeCsvField(lines[0]);
+            fourLine2 = lines.length > 1 ? escapeCsvField(lines[1]) : "";
+            fourLine3 = lines.length > 2 ? escapeCsvField(lines[2]) : "";
+            fourLine4 = lines.length > 3 ? escapeCsvField(lines[3]) : "";
+        }
+
+        String qrCode = withQr ? escapeCsvField(QR_BASE_URL + (item.tagNumber() != null ? item.tagNumber() : "")) : "";
+
+        return new String[]{tagNumber, oneLineDesc, twoLine1, twoLine2, threeLine1, threeLine2, threeLine3, fourLine1, fourLine2, fourLine3, fourLine4, qrCode};
+    }
+
+    private String[] getCharacteristicValuesFromJson(String json, List<String> characteristicNames, ObjectMapper objectMapper) {
+        String[] values = new String[characteristicNames.size()];
+        Arrays.fill(values, "");
+        if (json == null || json.isBlank()) return values;
+
+        try {
+            List<Map<String, Object>> characteristics = objectMapper.readValue(json, new TypeReference<>() {});
+            Map<String, String> charMap = new HashMap<>();
+            for (Map<String, Object> c : characteristics) {
+                String name = (String) c.get("name");
+                String value = (String) c.get("value");
+                if (name != null && value != null) charMap.put(name, value);
+            }
+            for (int i = 0; i < characteristicNames.size(); i++) {
+                String name = characteristicNames.get(i);
+                String val = charMap.get(name);
+                values[i] = escapeCsvField(val != null ? name + ": " + val : "");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse inline characteristicsJson: {}", e.getMessage());
+        }
+        return values;
     }
 
     /**

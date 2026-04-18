@@ -380,6 +380,15 @@ export class ServerApiService {
     );
   }
 
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/api/auth/reset-password`, { token, newPassword }
+    ).pipe(
+      timeout(10000),
+      catchError(this.handleError)
+    );
+  }
+
   pwaLogin(email: string, password: string): Observable<PwaLoginResponse> {
     return this.http.post<PwaLoginResponse>(`${this.baseUrl}/api/pwa/auth/login`, { email, password }).pipe(
       timeout(30000),

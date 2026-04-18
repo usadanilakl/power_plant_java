@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +13,18 @@ import java.util.List;
 public interface EtaProReadingRepo extends BaseRepository<EtaProReading> {
     List<EtaProReading> findByPointIdAndReadingTimeBetweenOrderByReadingTimeAsc(
             String pointId, LocalDateTime start, LocalDateTime end);
+
+    /** Descending order — for scanning recent events first. */
+    List<EtaProReading> findByPointIdAndReadingTimeBetweenOrderByReadingTimeDesc(
+            String pointId, LocalDateTime start, LocalDateTime end);
+
+    /** Projection: only pointId, readingTime, readingValue — avoids loading quality/session columns. */
+    @Query("SELECT r FROM EtaProReading r WHERE r.pointId = :pointId " +
+           "AND r.readingTime BETWEEN :start AND :end ORDER BY r.readingTime ASC")
+    List<EtaProReading> findReadingsForAnalysis(
+            @Param("pointId") String pointId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 
     Page<EtaProReading> findByPointIdOrderByReadingTimeDesc(String pointId, Pageable pageable);
 

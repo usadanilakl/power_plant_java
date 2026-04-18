@@ -21,6 +21,11 @@ export const routes: Routes = [
       canActivate: [standaloneGuard]
     },
     {
+      path: 'reset-password',
+      loadComponent: () => import('./pages/reset-password-page/reset-password-page.component').then(m => m.ResetPasswordPageComponent),
+      canActivate: [standaloneGuard]
+    },
+    {
       path: 'install',
       loadComponent: () => import('./pages/install-app-page/install-app-page.component').then(m => m.InstallAppPageComponent),
       canActivate: [standaloneGuard]

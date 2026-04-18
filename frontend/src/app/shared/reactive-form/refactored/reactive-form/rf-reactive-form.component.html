@@ -132,6 +132,7 @@
         } @case('user-select'){
         <app-rf-user-select
           [label]="field.label"
+          [mode]="field.userSelectMode ?? 'suggest'"
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-user-select>

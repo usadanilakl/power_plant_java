@@ -34,7 +34,7 @@ export class EngraverManagerComponent {
 
   // Click-to-edit state
   editingCell = signal<{ itemId: number; field: string } | null>(null);
-  saveToSource = signal(false);
+  saveToSource = signal(true);
   syncCounterpart = signal(true);
   savingItems = signal<Set<number>>(new Set());
   savedItems = signal<Set<number>>(new Set());
@@ -75,6 +75,7 @@ export class EngraverManagerComponent {
       next: (response) => {
         if (response.responseData) {
           this.modalService.allTemplates.set(response.responseData);
+          this.modalService.applyDefaultSelection();
         }
       },
       error: () => {
@@ -159,8 +160,8 @@ export class EngraverManagerComponent {
    * Process the current batch - generates CSV and opens LightBurn.
    */
   processBatch(): void {
-    const ids = this.modalService.getCurrentBatchIds();
-    if (ids.length === 0) {
+    const batch = this.modalService.currentBatch();
+    if (!batch || batch.items.length === 0) {
       this.errorMessage = 'No items in current batch';
       return;
     }
@@ -178,7 +179,15 @@ export class EngraverManagerComponent {
     const withQr = this.modalService.resolvedTemplate()?.withQr ?? false;
     const layoutVersion = this.modalService.layoutVersion();
     const characteristicNames = layoutVersion === 'info' ? this.modalService.selectedCharacteristicNames() : [];
-    this.engraverApi.processBatch(ids, resolved.filename, true, withQr, layoutVersion, characteristicNames).subscribe({
+
+    // Always send inline data so edited-in-dialog values are used for CSV
+    const inlineItems = batch.items.map(item => ({
+      tagNumber: item.tagNumber || '',
+      description: item.description || '',
+      characteristicsJson: item.characteristicsJson || '',
+    }));
+
+    this.engraverApi.processBatchInline(inlineItems, resolved.filename, true, withQr, layoutVersion, characteristicNames).subscribe({
       next: (response) => {
         if (response.responseData) {
           this.statusMessage = `CSV generated with ${response.responseData.itemCount} items. LightBurn opened.`;
@@ -311,12 +320,10 @@ export class EngraverManagerComponent {
   }
 
   /**
-   * Checks if any item in the current batch has a counterpart.
+   * Checks if any item across all batches has a counterpart.
    */
   anyItemHasCounterpart(): boolean {
-    const batch = this.modalService.currentBatch();
-    if (!batch) return false;
-    return batch.items.some(item => !!item.counterpartId);
+    return this.modalService.allItems().some(item => !!item.counterpartId);
   }
 
   private saveItem(updatedDto: LotoPointDto, changedFields: SyncableField[]): void {

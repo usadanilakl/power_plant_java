@@ -67,6 +67,31 @@ export class WebViewManager {
       });
     }
 
+    // Max Velocity: auto-click the 24/7 STREAM or LIVE NOW link
+    if (target === 'weather' && url.includes('maxvelocitywx.com')) {
+      win.webContents.once('did-finish-load', () => {
+        // Wait a moment for the page to render, then click the live stream link
+        setTimeout(async () => {
+          try {
+            await win.webContents.executeJavaScript(`
+              (function() {
+                // Click the "LIVE NOW" banner link (priority over 24/7 STREAM)
+                const allLinks = document.querySelectorAll('a');
+                for (const a of allLinks) {
+                  if (a.textContent.includes('LIVE NOW')) {
+                    a.click(); return 'clicked: ' + a.textContent.trim().substring(0, 60);
+                  }
+                }
+                return 'no LIVE NOW link found';
+              })()
+            `).then(result => console.log('[WebView] Max Velocity auto-click:', result));
+          } catch (err: any) {
+            console.warn('[WebView] Max Velocity auto-click failed:', err.message);
+          }
+        }, 2000);
+      });
+    }
+
     await win.loadURL(url);
     console.log(`[WebView] ${target} loadURL completed: ${url}`);
   }

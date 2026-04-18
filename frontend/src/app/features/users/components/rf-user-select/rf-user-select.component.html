@@ -1,9 +1,51 @@
-<div class="rf-user-select">
-  <app-searchable-select-input
-    [label]="label()"
-    [options]="options()"
-    [categoryName]="''"
-    #selectInput
-  >
-  </app-searchable-select-input>
-</div>
+@if (mode() === 'strict') {
+  <!-- Strict mode: ID-based select -->
+  <div class="rf-user-select">
+    <app-searchable-select-input
+      [label]="label()"
+      [options]="options()"
+      [categoryName]="''"
+      #selectInput
+    >
+    </app-searchable-select-input>
+  </div>
+} @else {
+  <!-- Suggest mode: text autocomplete -->
+  <div class="rf-user-select">
+    <div class="suggest-container">
+      <div class="label-container">
+        <label>{{ label() }}</label>
+      </div>
+      <div class="suggest-input-wrapper">
+        <input
+          type="text"
+          class="suggest-input"
+          [value]="suggestText()"
+          [disabled]="disabled()"
+          (input)="onSuggestInput($event)"
+          (focus)="onSuggestFocus()"
+          placeholder="Type to search users..."
+          autocomplete="off"
+          #textInput
+        />
+        @if (suggestText()) {
+          <span class="clear-btn" (click)="clearSuggest($event)" title="Clear">&times;</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggest dropdown via CDK Overlay -->
+  <ng-template #suggestDropdown>
+    <div class="suggest-dropdown">
+      @for (option of filteredSuggestions(); track option.value) {
+        <div class="suggest-option" (click)="selectSuggestion(option, $event)">
+          {{ option.label }}
+        </div>
+      }
+      @if (filteredSuggestions().length === 0) {
+        <div class="suggest-no-match">No matching users</div>
+      }
+    </div>
+  </ng-template>
+}

@@ -57,7 +57,7 @@
               <button
                 class="btn selector-btn"
                 [class.active]="modalService.selectedTagSize() === size"
-                (click)="modalService.selectedTagSize.set(size)"
+                (click)="modalService.setTagSize(size)"
               >{{ size }}</button>
             }
           </div>
@@ -130,9 +130,9 @@
               <input type="checkbox" [checked]="saveToSource()" (change)="saveToSource.set(!saveToSource())" />
               Save to Source
             </label>
-            @if (saveToSource() && anyItemHasCounterpart()) {
-              <label class="counterpart-toggle">
-                <input type="checkbox" [checked]="syncCounterpart()" (change)="syncCounterpart.set(!syncCounterpart())" />
+            @if (anyItemHasCounterpart()) {
+              <label class="counterpart-toggle" [class.disabled-toggle]="!saveToSource()">
+                <input type="checkbox" [checked]="syncCounterpart()" (change)="syncCounterpart.set(!syncCounterpart())" [disabled]="!saveToSource()" />
                 Sync Counterpart
               </label>
             }

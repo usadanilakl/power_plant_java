@@ -42,6 +42,9 @@ public class ApiEmailService {
     @Value("${email.graph.from}")
     private String fromEmail;
 
+    @Value("${email.graph.fallback:}")
+    private String fallbackEmail;
+
     private String emailAccessToken;
     private Instant emailTokenExpirationTime;
 
@@ -63,6 +66,20 @@ public class ApiEmailService {
             throw new RuntimeException("ClientCertificateCredential not available for email sending");
         }
 
+        try {
+            sendEmailAs(request, fromEmail);
+        } catch (HttpClientErrorException.NotFound e) {
+            if (hasFallback()) {
+                log.warn("[Email] Primary mailbox {} failed ({}), trying fallback {}",
+                        fromEmail, extractErrorCode(e), fallbackEmail);
+                sendEmailAs(request, fallbackEmail);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private void sendEmailAs(EmailRequest request, String senderEmail) {
         ensureValidToken();
 
         HttpHeaders headers = new HttpHeaders();
@@ -72,9 +89,9 @@ public class ApiEmailService {
         String requestBody = buildRequestBody(request);
         HttpEntity<String> httpRequest = new HttpEntity<>(requestBody, headers);
 
-        String graphApiUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail + "/sendMail";
+        String graphApiUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail + "/sendMail";
 
-        log.debug("[Email] Sending email to {} via Graph API", request.getTo());
+        log.debug("[Email] Sending email to {} via Graph API as {}", request.getTo(), senderEmail);
 
         ResponseEntity<String> response = exchangeWithRetry(
                 graphApiUrl, HttpMethod.POST, httpRequest, String.class);
@@ -85,7 +102,7 @@ public class ApiEmailService {
             throw new RuntimeException("Email API failed: " + response.getBody());
         }
 
-        log.info("[Email] Email sent successfully via Graph API to {}", request.getTo());
+        log.info("[Email] Email sent successfully via Graph API to {} (from {})", request.getTo(), senderEmail);
     }
 
     /**
@@ -98,6 +115,20 @@ public class ApiEmailService {
             throw new RuntimeException("ClientCertificateCredential not available for email sending");
         }
 
+        try {
+            return sendEmailAndGetMetadataAs(request, fromEmail);
+        } catch (HttpClientErrorException.NotFound e) {
+            if (hasFallback()) {
+                log.warn("[Email] Primary mailbox {} failed ({}), trying fallback {}",
+                        fromEmail, extractErrorCode(e), fallbackEmail);
+                return sendEmailAndGetMetadataAs(request, fallbackEmail);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private SentEmailMetadata sendEmailAndGetMetadataAs(EmailRequest request, String senderEmail) {
         ensureValidToken();
 
         HttpHeaders headers = new HttpHeaders();
@@ -106,9 +137,9 @@ public class ApiEmailService {
 
         // Step 1: Create draft message (returns full message object with metadata)
         String draftBody = buildMessageJson(request);
-        String createUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail + "/messages";
+        String createUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail + "/messages";
 
-        log.debug("[Email] Creating draft message for {}", request.getTo());
+        log.debug("[Email] Creating draft message for {} as {}", request.getTo(), senderEmail);
         ResponseEntity<String> draftResponse = exchangeWithRetry(
                 createUrl, HttpMethod.POST, new HttpEntity<>(draftBody, headers), String.class);
 
@@ -133,7 +164,7 @@ public class ApiEmailService {
         }
 
         // Step 2: Send the draft
-        String sendUrl = "https://graph.microsoft.com/v1.0/users/" + fromEmail
+        String sendUrl = "https://graph.microsoft.com/v1.0/users/" + senderEmail
                 + "/messages/" + graphMessageId + "/send";
         ResponseEntity<String> sendResponse = exchangeWithRetry(
                 sendUrl, HttpMethod.POST, new HttpEntity<>(headers), String.class);
@@ -142,7 +173,7 @@ public class ApiEmailService {
             throw new RuntimeException("Failed to send draft email: " + sendResponse.getStatusCode());
         }
 
-        log.info("[Email] Email sent via draft-then-send to {}", request.getTo());
+        log.info("[Email] Email sent via draft-then-send to {} (from {})", request.getTo(), senderEmail);
         return metadata;
     }
 
@@ -155,6 +186,20 @@ public class ApiEmailService {
         private final String graphMessageId;
         private final String internetMessageId;
         private final String conversationId;
+    }
+
+    private boolean hasFallback() {
+        return fallbackEmail != null && !fallbackEmail.isEmpty();
+    }
+
+    private String extractErrorCode(HttpClientErrorException e) {
+        String body = e.getResponseBodyAsString();
+        if (body.contains("\"code\":\"")) {
+            int start = body.indexOf("\"code\":\"") + 8;
+            int end = body.indexOf("\"", start);
+            if (end > start) return body.substring(start, end);
+        }
+        return e.getStatusCode().toString();
     }
 
     /**
@@ -296,6 +341,28 @@ public class ApiEmailService {
             return Collections.emptyList();
         }
 
+        try {
+            return fetchMessagesSince(userEmail, since, pageSize);
+        } catch (HttpClientErrorException.NotFound e) {
+            if (hasFallback()) {
+                log.warn("[Email] Primary mailbox {} failed ({}), trying fallback {}",
+                        userEmail, extractErrorCode(e), fallbackEmail);
+                try {
+                    return fetchMessagesSince(fallbackEmail, since, pageSize);
+                } catch (Exception fallbackEx) {
+                    log.error("[Email] Fallback mailbox also failed", fallbackEx);
+                    return Collections.emptyList();
+                }
+            }
+            log.error("[Email] Error fetching messages", e);
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.error("[Email] Error fetching messages", e);
+            return Collections.emptyList();
+        }
+    }
+
+    private List<GraphEmailMessage> fetchMessagesSince(String mailbox, LocalDateTime since, int pageSize) {
         ensureValidToken();
 
         String sinceFilter = since.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
@@ -306,7 +373,7 @@ public class ApiEmailService {
             "$select=id,subject,body,sender,toRecipients,sentDateTime,receivedDateTime," +
             "internetMessageId,conversationId,isRead,internetMessageHeaders&" +
             "$orderby=receivedDateTime desc",
-            userEmail,
+            mailbox,
             sinceFilter,
             pageSize
         );
@@ -317,20 +384,15 @@ public class ApiEmailService {
 
         HttpEntity<String> httpRequest = new HttpEntity<>(headers);
 
-        log.debug("[Email] Fetching messages since {} from {}", since, userEmail);
+        log.debug("[Email] Fetching messages since {} from {}", since, mailbox);
 
-        try {
-            ResponseEntity<String> response = exchangeWithRetry(
-                graphApiUrl, HttpMethod.GET, httpRequest, String.class);
+        ResponseEntity<String> response = exchangeWithRetry(
+            graphApiUrl, HttpMethod.GET, httpRequest, String.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return parseGraphMessages(response.getBody());
-            } else {
-                log.error("[Email] Failed to fetch messages. Status: {}", response.getStatusCode());
-                return Collections.emptyList();
-            }
-        } catch (Exception e) {
-            log.error("[Email] Error fetching messages", e);
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            return parseGraphMessages(response.getBody());
+        } else {
+            log.error("[Email] Failed to fetch messages. Status: {}", response.getStatusCode());
             return Collections.emptyList();
         }
     }

@@ -241,7 +241,7 @@ export class RfReactiveFormComponent {
       fieldList.forEach((field) => {
         const fieldPath = parentPath ? `${parentPath}.${field.name}` : field.name;
 
-        if (field.type === 'select' || field.type === 'value-select' || field.type === 'work-area-select' || field.type === 'zero-energy-phrase-builder' || field.type === 'user-select') {
+        if (field.type === 'select' || field.type === 'value-select' || field.type === 'work-area-select' || field.type === 'zero-energy-phrase-builder' || (field.type === 'user-select' && field.userSelectMode === 'strict')) {
           const value = this.formBuilderService.getNestedValue(entity, fieldPath);
           if (value && typeof value === 'object' && value !== null && value.id) {
             // Extract ID from nested object for select fields

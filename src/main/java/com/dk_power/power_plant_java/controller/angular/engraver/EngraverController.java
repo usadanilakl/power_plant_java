@@ -76,6 +76,43 @@ public class EngraverController {
     }
 
     /**
+     * Process a batch using inline item data (for edited-in-dialog values that haven't been saved to DB).
+     */
+    @PostMapping("/process-batch-inline")
+    public ResponseEntity<NgApiResponse<EngraverBatchResponse>> processBatchInline(
+            @RequestBody List<EngraverItemData> items,
+            @RequestParam(defaultValue = "true") boolean openLightBurn,
+            @RequestParam(defaultValue = "false") boolean withQr,
+            @RequestParam(required = false) String template,
+            @RequestParam(defaultValue = "standard") String layoutVersion,
+            @RequestParam(required = false) List<String> characteristicNames) {
+        try {
+            if (items == null || items.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "No items provided"));
+            }
+
+            String csvPath = (characteristicNames != null && !characteristicNames.isEmpty())
+                    ? engraverService.generateCsvFromInlineData(items, withQr, characteristicNames)
+                    : engraverService.generateCsvFromInlineData(items, withQr);
+
+            if (openLightBurn && template != null && !template.isBlank()) {
+                templateService.ensureTemplateFileAvailable(template);
+                engraverService.openLightBurn(template);
+            }
+
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    new EngraverBatchResponse(csvPath, items.size(), withQr, "Batch processed successfully"),
+                    "Success"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to process inline engrave batch: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get batch configuration info.
      */
     @GetMapping("/config")
@@ -119,7 +156,13 @@ public class EngraverController {
         }
     }
 
-    // Response DTOs
+    // Request/Response DTOs
+    public record EngraverItemData(
+            String tagNumber,
+            String description,
+            String characteristicsJson
+    ) {}
+
     public record EngraverBatchResponse(
             String csvPath,
             int itemCount,

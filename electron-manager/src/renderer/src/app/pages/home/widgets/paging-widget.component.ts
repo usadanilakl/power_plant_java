@@ -33,7 +33,7 @@ import { Component } from '@angular/core';
         </div>
         <div class="info-row paging-row">
           <span>To Open Gate/Door</span>
-          <span class="paging-ext">#9</span>
+          <span class="paging-ext">9#</span>
         </div>
       </div>
     </div>

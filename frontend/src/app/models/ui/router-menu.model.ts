@@ -113,7 +113,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/log/messaging', label: 'Messages', icon: 'chat', iconColor: '#66BB6A' },
             { route: '/instrumentation', label: 'Instruments', icon: 'speed', iconColor: '#AB47BC' },
             { route: '/field-lists', label: 'Field Lists', icon: 'checklist_rtl', iconColor: '#26A69A' },
-            { route: '/etapro', label: 'EtaPro Trends', icon: 'trending_up', iconColor: '#42A5F5' }
+            { route: '/etapro', label: 'EtaPro Trends', icon: 'trending_up', iconColor: '#42A5F5' },
+            { route: '/etapro-reports', label: 'EtaPro Reports', icon: 'analytics', iconColor: '#9C27B0' }
         ]
     },
     {

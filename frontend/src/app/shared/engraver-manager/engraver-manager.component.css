@@ -977,6 +977,11 @@ tr.item-saved {
   cursor: pointer;
 }
 
+.disabled-toggle {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .batch-header-right {
   display: flex;
   align-items: center;

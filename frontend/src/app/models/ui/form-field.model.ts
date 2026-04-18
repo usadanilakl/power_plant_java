@@ -35,6 +35,7 @@ export interface FormField {
   options?: Option[];
   categoryAlias?: string; // For value-select and multi-value-select types
   canManageValues?: boolean; // For value-select and multi-value-select types
+  userSelectMode?: 'strict' | 'suggest'; // For user-select type: 'strict' = ID-based, 'suggest' = text autocomplete
   initialValue?: any;
   currentValue?: any;
   question?: Question;
@@ -140,6 +141,7 @@ export interface RfFormField {
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select, multi-value-select, and characteristics-editor types
   canManageValues?: boolean; // For value-select and multi-value-select types
+  userSelectMode?: 'strict' | 'suggest'; // For user-select type: 'strict' = ID-based, 'suggest' = text autocomplete
   accept?: string; // For file input - accepted file types
   helperCheckbox?: FieldHelperCheckbox; // Optional checkbox displayed under the field
   tooltip?: string; // Tooltip text shown on hover

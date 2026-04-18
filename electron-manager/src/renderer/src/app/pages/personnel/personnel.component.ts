@@ -98,6 +98,18 @@ const SHIFT_LABELS: Record<string, string> = {
               </tbody>
             </table>
           </div>
+
+          <!-- Legend -->
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> D — Day Shift</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#6366f1"></span> N — Night Shift</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> P — PTO</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> T — Training</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#71717a"></span> U — Unavailable</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#fef08a"></span> Outage Dates</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#bbf7d0"></span> Pay Period Start</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#bfdbfe"></span> Holiday</span>
+          </div>
         </div>
 
         <!-- Loading -->
@@ -299,6 +311,12 @@ const SHIFT_LABELS: Record<string, string> = {
     .td-contact-title { color: var(--text-secondary); }
     .td-contact-phone { color: var(--text-primary); font-family: monospace; white-space: nowrap; }
     .td-contact-email { color: var(--accent-primary); }
+
+    /* Legend */
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; padding: 8px 12px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-swatch { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 
     /* States */
     .empty-state {
