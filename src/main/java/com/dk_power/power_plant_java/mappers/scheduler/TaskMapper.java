@@ -52,6 +52,10 @@ public class TaskMapper implements BaseMapper {
         dto.setTaskType(task.getTaskType() != null ? task.getTaskType().name() : null);
         dto.setDueDate(task.getDueDate());
         dto.setSortOrder(task.getSortOrder());
+        dto.setWarning(task.getWarning());
+        dto.setCaution(task.getCaution());
+        dto.setRequiresSignoff(task.getRequiresSignoff());
+        dto.setExpectedDurationMinutes(task.getExpectedDurationMinutes());
         dto.setDateCreated(task.getDateCreated());
         dto.setDateModified(task.getDateModified());
 
@@ -106,6 +110,10 @@ public class TaskMapper implements BaseMapper {
         if (idDto.getTaskType() != null) task.setTaskType(TaskType.valueOf(idDto.getTaskType()));
         if (idDto.getDueDate() != null) task.setDueDate(idDto.getDueDate());
         if (idDto.getSortOrder() != null) task.setSortOrder(idDto.getSortOrder());
+        if (idDto.getWarning() != null) task.setWarning(idDto.getWarning());
+        if (idDto.getCaution() != null) task.setCaution(idDto.getCaution());
+        if (idDto.getRequiresSignoff() != null) task.setRequiresSignoff(idDto.getRequiresSignoff());
+        if (idDto.getExpectedDurationMinutes() != null) task.setExpectedDurationMinutes(idDto.getExpectedDurationMinutes());
 
         if (idDto.getStatusName() != null) task.setStatusName(idDto.getStatusName());
         if (idDto.getFlowId() != null) task.setFlow(flowService.getEntityById(idDto.getFlowId()));

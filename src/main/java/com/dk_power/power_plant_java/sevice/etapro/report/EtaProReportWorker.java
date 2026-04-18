@@ -111,8 +111,22 @@ public class EtaProReportWorker {
                 params = new ReportParams();
             }
 
+            // Check cancellation before heavy work
+            if (isCancelled(execId)) { markCancelled(execution); return; }
+
+            // Update progress: loading data
+            execution.setProgress(10);
+            executionRepo.save(execution);
+
             // Execute
             EtaProReportEngine.ExecutionResult result = engine.execute(definition, params);
+
+            // Check cancellation after execution
+            if (isCancelled(execId)) { markCancelled(execution); return; }
+
+            // Update progress: saving results
+            execution.setProgress(90);
+            executionRepo.save(execution);
 
             // Persist results
             execution.setStatus(Status.COMPLETE);
@@ -137,6 +151,22 @@ public class EtaProReportWorker {
             }
             executionRepo.save(execution);
         }
+    }
+
+    private boolean isCancelled(Long execId) {
+        return executionRepo.findById(execId)
+                .map(e -> e.getStatus() == Status.CANCELLED)
+                .orElse(true);
+    }
+
+    private void markCancelled(EtaProReportExecution execution) {
+        execution.setStatus(Status.CANCELLED);
+        execution.setCompletedAt(LocalDateTime.now());
+        if (execution.getStartedAt() != null) {
+            execution.setDurationMs(Duration.between(execution.getStartedAt(), execution.getCompletedAt()).toMillis());
+        }
+        executionRepo.save(execution);
+        log.info("[Report] Execution {} cancelled", execution.getId());
     }
 
     private void reapOrphans() {

@@ -77,6 +77,16 @@ public class Task extends BaseAuditEntity {
     private LocalDate dueDate;
     private Integer sortOrder;
 
+    // Procedure/safety metadata — populated from template, editable at runtime
+    @Column(columnDefinition = "TEXT")
+    private String warning;
+
+    @Column(columnDefinition = "TEXT")
+    private String caution;
+
+    private Boolean requiresSignoff;
+    private Integer expectedDurationMinutes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id")
     private TaskTemplate template;

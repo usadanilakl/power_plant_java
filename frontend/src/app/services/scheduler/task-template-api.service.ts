@@ -33,4 +33,26 @@ export class TaskTemplateApiService {
   instantiate(templateId: number, flowId: number): Observable<SpringApiResponse<any>> {
     return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/${templateId}/instantiate`, {flowId});
   }
+
+  importExcel(file: File, templateName?: string): Observable<SpringApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (templateName) formData.append('templateName', templateName);
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/import-excel`, formData);
+  }
+
+  importWord(file: File, templateName?: string): Observable<SpringApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (templateName) formData.append('templateName', templateName);
+    return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/import-word`, formData);
+  }
+
+  exportExcelUrl(templateId: number): string {
+    return `${this.apiUrl}/${templateId}/export-excel`;
+  }
+
+  seedProcedures(): Observable<SpringApiResponse<string[]>> {
+    return this.http.post<SpringApiResponse<string[]>>(`${this.apiUrl}/seed-procedures`, {});
+  }
 }

@@ -134,23 +134,41 @@ public class EtaProReportEngine {
             }
 
             if (mc.getType() == MeasurementType.DURATION) {
-                String endPointId = aliasToPointId.get(mc.getEndPointAlias());
                 LocalDateTime windowEnd = de.getTriggerTime().plusSeconds((long) maxWindowSec);
 
-                List<EtaProReading> windowReadings;
-                if (endPointId.equals(aliasToPointId.get(definition.getTrigger().getAnchorAlias()))) {
-                    // Same point as anchor — filter from cached readings
-                    windowReadings = filterReadingsInRange(anchorReadings, de.getTriggerTime(), windowEnd);
-                } else {
-                    windowReadings = readingRepo.findByPointIdAndReadingTimeBetweenOrderByReadingTimeAsc(
-                            endPointId, de.getTriggerTime(), windowEnd);
+                // Phase 2a: find the actual start time from the start condition
+                // (may differ from trigger time if startPointAlias/condition is configured)
+                LocalDateTime measureStart = de.getTriggerTime();
+                if (mc.getStartPointAlias() != null && mc.getStartComparator() != null) {
+                    String startPointId = aliasToPointId.get(mc.getStartPointAlias());
+                    if (startPointId != null) {
+                        List<EtaProReading> startReadings = getReadingsForAlias(
+                                startPointId, aliasToPointId, definition, anchorReadings,
+                                de.getTriggerTime(), windowEnd);
+                        LocalDateTime startMet = findConditionTime(startReadings, mc.getStartComparator(), mc.getStartValue());
+                        if (startMet != null) {
+                            measureStart = startMet;
+                        }
+                    }
                 }
 
-                // Find when end condition is met
-                LocalDateTime conditionMet = findConditionTime(windowReadings, mc.getEndComparator(), mc.getEndValue());
+                // Phase 2b: find when end condition is met
+                String endPointId = aliasToPointId.get(mc.getEndPointAlias());
+                if (endPointId == null) {
+                    log.warn("[Report] End point alias '{}' not found in bindings, skipping measurement '{}'",
+                            mc.getEndPointAlias(), mc.getLabel());
+                    instance.getMeasurements().put(mc.getLabel(), null);
+                    continue;
+                }
+
+                List<EtaProReading> endReadings = getReadingsForAlias(
+                        endPointId, aliasToPointId, definition, anchorReadings,
+                        measureStart, windowEnd);
+
+                LocalDateTime conditionMet = findConditionTime(endReadings, mc.getEndComparator(), mc.getEndValue());
                 if (conditionMet != null) {
                     endTime = conditionMet;
-                    long durationSec = Duration.between(de.getTriggerTime(), conditionMet).getSeconds();
+                    long durationSec = Duration.between(measureStart, conditionMet).getSeconds();
                     instance.getMeasurements().put(mc.getLabel(), (double) durationSec);
                     instance.setDurationSeconds(durationSec);
                 } else {
@@ -223,6 +241,23 @@ public class EtaProReportEngine {
     }
 
     // ── Helpers ───────────────────────────────────────────────
+
+    /**
+     * Get readings for a point, using the anchor cache if it's the anchor point,
+     * otherwise querying the DB. Avoids duplicate DB hits for the anchor series.
+     */
+    private List<EtaProReading> getReadingsForAlias(String pointId,
+                                                     Map<String, String> aliasToPointId,
+                                                     ReportDefinition definition,
+                                                     List<EtaProReading> anchorReadings,
+                                                     LocalDateTime start, LocalDateTime end) {
+        String anchorPointId = aliasToPointId.get(definition.getTrigger().getAnchorAlias());
+        if (pointId.equals(anchorPointId)) {
+            return filterReadingsInRange(anchorReadings, start, end);
+        } else {
+            return readingRepo.findByPointIdAndReadingTimeBetweenOrderByReadingTimeAsc(pointId, start, end);
+        }
+    }
 
     private List<EtaProReading> filterReadingsInRange(List<EtaProReading> readings,
                                                        LocalDateTime start, LocalDateTime end) {

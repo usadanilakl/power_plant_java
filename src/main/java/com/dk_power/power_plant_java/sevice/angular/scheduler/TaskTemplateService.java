@@ -40,4 +40,10 @@ public class TaskTemplateService implements NgCrudService<TaskTemplate, TaskTemp
 
     @Override
     public Class<TaskTemplate> getEntityClass() { return TaskTemplate.class; }
+
+    @Override
+    public TaskTemplateDto toDto(TaskTemplate entity) {
+        if (entity == null) return null;
+        return mapper.convertToDto(entity);
+    }
 }

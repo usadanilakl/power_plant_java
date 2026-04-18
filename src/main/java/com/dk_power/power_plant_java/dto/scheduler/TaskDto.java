@@ -28,6 +28,11 @@ public class TaskDto extends BaseDto {
     private Integer sortOrder;
     private TaskTemplateDto template;
 
+    private String warning;
+    private String caution;
+    private Boolean requiresSignoff;
+    private Integer expectedDurationMinutes;
+
     private Set<TaskDto> subTasks = new HashSet<>();
     private Set<TaskDto> prerequisites = new HashSet<>();
     private Set<TaskDto> dependents = new HashSet<>();

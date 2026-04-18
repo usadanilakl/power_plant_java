@@ -245,10 +245,33 @@ export class SchedulerStateService {
   }
 
   saveTaskAsTemplate(task: SchedulerTaskDto, templateName: string): void {
-    const stepDefs = task.subTasks.map((s, i) => ({
+    const allTasks = this.allTasks();
+    const steps = allTasks
+      .filter(t => t.parentTaskId === task.id)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    // Build a map from step ID -> stepKey for dependency resolution
+    const idToKey = new Map<number, string>();
+    steps.forEach((s, i) => {
+      idToKey.set(s.id, `step-${String(i + 1).padStart(3, '0')}`);
+    });
+
+    const stepDefs = steps.map((s, i) => ({
+      stepKey: idToKey.get(s.id)!,
       name: s.name,
       description: s.description,
-      sortOrder: s.sortOrder ?? i,
+      sortOrder: i,
+      prerequisiteStepKeys: s.prerequisiteIds
+        .map(pid => idToKey.get(pid))
+        .filter((k): k is string => k !== undefined),
+      references: s.references.map(r => ({
+        referenceType: r.referenceType,
+        referenceId: r.referenceId,
+      })),
+      warning: s.warning || '',
+      caution: s.caution || '',
+      requiresSignoff: s.requiresSignoff || false,
+      expectedDurationMinutes: s.expectedDurationMinutes ?? null,
     }));
     const template = new TaskTemplateDto({
       name: templateName,
@@ -258,6 +281,28 @@ export class SchedulerStateService {
     });
     this.templateApi.create(template.toJson()).subscribe(res => {
       if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  importExcelTemplate(file: File, templateName?: string): void {
+    this.templateApi.importExcel(file, templateName).subscribe(res => {
+      if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  importWordTemplate(file: File, templateName?: string): void {
+    this.templateApi.importWord(file, templateName).subscribe(res => {
+      if (res.responseData) this.loadTemplates();
+    });
+  }
+
+  getExportExcelUrl(templateId: number): string {
+    return this.templateApi.exportExcelUrl(templateId);
+  }
+
+  seedProcedures(): void {
+    this.templateApi.seedProcedures().subscribe(res => {
+      this.loadTemplates();
     });
   }
 

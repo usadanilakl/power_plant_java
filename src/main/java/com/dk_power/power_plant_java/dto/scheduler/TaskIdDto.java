@@ -25,6 +25,11 @@ public class TaskIdDto extends BaseDto {
     private Integer sortOrder;
     private Long templateId;
 
+    private String warning;
+    private String caution;
+    private Boolean requiresSignoff;
+    private Integer expectedDurationMinutes;
+
     private Set<Long> subTaskIds = new HashSet<>();
     private Set<Long> prerequisiteIds = new HashSet<>();
     private Set<Long> referenceIds = new HashSet<>();

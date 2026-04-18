@@ -62,10 +62,11 @@ public class ThresholdCrossingDetector {
                 ? config.getMinGapBetweenEventsSeconds() : 0;
 
         List<DetectedEvent> events = new ArrayList<>();
-        boolean armed = (armThreshold == null); // if no arm threshold, always armed
+        boolean armed = (armThreshold == null);
         LocalDateTime lastEventTime = null;
         boolean wasPastThreshold = false;
         LocalDateTime crossingStartTime = null;
+        boolean eventEmittedForThisCrossing = false;
 
         for (EtaProReading r : readings) {
             if (r.getReadingValue() == null) continue;
@@ -94,20 +95,21 @@ public class ThresholdCrossingDetector {
             }
 
             if (pastThreshold && !wasPastThreshold) {
-                // Just crossed — record the start time
+                // Fresh crossing — record start time, reset emit flag
                 crossingStartTime = time;
+                eventEmittedForThisCrossing = false;
             }
 
-            if (pastThreshold && crossingStartTime != null) {
-                // Check hold duration
+            if (pastThreshold && crossingStartTime != null && !eventEmittedForThisCrossing) {
+                // Check hold duration — value must stay past threshold for holdDurationSec
                 boolean holdSatisfied = true;
                 if (holdDurationSec != null && holdDurationSec > 0) {
                     long held = Duration.between(crossingStartTime, time).getSeconds();
                     holdSatisfied = held >= holdDurationSec;
                 }
 
-                if (holdSatisfied && !wasPastThreshold) {
-                    // Check minimum gap
+                if (holdSatisfied) {
+                    // Check minimum gap between events
                     boolean gapSatisfied = true;
                     if (lastEventTime != null && minGapSec > 0) {
                         long gap = Duration.between(lastEventTime, crossingStartTime).getSeconds();
@@ -117,7 +119,8 @@ public class ThresholdCrossingDetector {
                     if (gapSatisfied) {
                         events.add(new DetectedEvent(crossingStartTime, value));
                         lastEventTime = crossingStartTime;
-                        armed = (armThreshold == null); // re-arm after event
+                        armed = (armThreshold == null);
+                        eventEmittedForThisCrossing = true;
                     }
                 }
             }
@@ -125,6 +128,7 @@ public class ThresholdCrossingDetector {
             wasPastThreshold = pastThreshold;
             if (!pastThreshold) {
                 crossingStartTime = null;
+                eventEmittedForThisCrossing = false;
             }
         }
 

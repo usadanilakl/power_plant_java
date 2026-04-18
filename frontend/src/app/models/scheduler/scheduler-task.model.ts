@@ -32,6 +32,10 @@ export interface SchedulerTaskModel extends BaseModel {
   dependentIds: number[];
   attachments: AttachmentInfo[];
   references: ReferenceInfo[];
+  warning: string;
+  caution: string;
+  requiresSignoff: boolean;
+  expectedDurationMinutes: number | null;
 }
 
 export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
@@ -54,6 +58,10 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
   dependentIds: number[];
   attachments: AttachmentInfo[];
   references: ReferenceInfo[];
+  warning: string;
+  caution: string;
+  requiresSignoff: boolean;
+  expectedDurationMinutes: number | null;
 
   constructor(data: Partial<SchedulerTaskModel> = {}) {
     super(data);
@@ -76,6 +84,10 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
     this.dependentIds = data.dependentIds ?? [];
     this.attachments = data.attachments ?? [];
     this.references = data.references ?? [];
+    this.warning = data.warning ?? '';
+    this.caution = data.caution ?? '';
+    this.requiresSignoff = data.requiresSignoff ?? false;
+    this.expectedDurationMinutes = data.expectedDurationMinutes ?? null;
   }
 
   override toJson(): any {
@@ -96,6 +108,10 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
       prerequisiteIds: this.prerequisiteIds,
       subTaskIds: this.subTasks.map(s => s.id),
       attachmentIds: this.attachments.map(a => a.id),
+      warning: this.warning || null,
+      caution: this.caution || null,
+      requiresSignoff: this.requiresSignoff,
+      expectedDurationMinutes: this.expectedDurationMinutes,
     };
   }
 
@@ -123,6 +139,10 @@ export class SchedulerTaskDto extends BaseDto implements SchedulerTaskModel {
       dependentIds: json.dependents?.map((d: any) => d.id) ?? json.dependentIds ?? [],
       attachments: json.attachments?.map((a: any) => ({id: a.id, name: a.name, fileLink: a.fileLink})) ?? [],
       references: json.references?.map((r: any) => ({id: r.id, referenceType: r.referenceType, referenceId: r.referenceId})) ?? [],
+      warning: json.warning ?? '',
+      caution: json.caution ?? '',
+      requiresSignoff: json.requiresSignoff ?? false,
+      expectedDurationMinutes: json.expectedDurationMinutes ?? null,
     });
   }
 

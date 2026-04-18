@@ -311,9 +311,14 @@ export class EtaProReportsPageComponent implements OnInit {
   // ── Builder actions ─────────────────────────────────────
 
   private buildDefinitionJson(): string {
-    const endAlias = this.endPointAlias || 'anchor';
+    const endAlias = this.endPointAlias?.trim() || 'anchor';
+    const points: any[] = [{ alias: 'anchor', pointId: this.anchorPointId, unit: '' }];
+    // If a separate end-point alias is specified, add it as a second binding
+    if (endAlias !== 'anchor') {
+      points.push({ alias: endAlias, pointId: endAlias, unit: '' });
+    }
     return JSON.stringify({
-      points: [{ alias: 'anchor', pointId: this.anchorPointId, unit: '' }],
+      points,
       trigger: {
         type: 'THRESHOLD_CROSSING',
         anchorAlias: 'anchor',

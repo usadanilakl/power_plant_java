@@ -53,8 +53,21 @@ export class TaskTemplateDto extends BaseDto implements TaskTemplateModel {
   }
 }
 
+export interface StepTemplateReference {
+  referenceType: string;   // Equipment, FileObject, LotoPoint, User, DailyPermitPackage, etc.
+  referenceId: number;
+  label?: string;          // human-readable label for display (e.g. "P&ID Drawing 2A")
+}
+
 export interface StepTemplate {
+  stepKey: string;         // stable identifier for re-imports/versioning (e.g. "step-001")
   name: string;
   description: string;
   sortOrder: number;
+  prerequisiteStepKeys: string[];   // stepKeys this step depends on (empty = depends on previous)
+  references: StepTemplateReference[];  // seeded references copied to live task on instantiation
+  warning: string;         // safety warning text (displayed prominently)
+  caution: string;         // caution text
+  requiresSignoff: boolean;  // step completion requires supervisor signoff
+  expectedDurationMinutes: number | null;  // estimated time for planning
 }

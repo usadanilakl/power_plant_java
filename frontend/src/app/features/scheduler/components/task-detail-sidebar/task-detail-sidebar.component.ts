@@ -31,7 +31,18 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
           <label>Type</label>
           <span class="tag">{{ task.taskLevel }}</span>
           <span class="tag">{{ task.taskType }}</span>
+          <span class="tag tag-duration" *ngIf="task.expectedDurationMinutes">{{ task.expectedDurationMinutes }} min</span>
         </section>
+
+        <div class="safety-banner warning-banner" *ngIf="task.warning">
+          <strong>WARNING:</strong> {{ task.warning }}
+        </div>
+        <div class="safety-banner caution-banner" *ngIf="task.caution">
+          <strong>CAUTION:</strong> {{ task.caution }}
+        </div>
+        <div class="safety-banner signoff-banner" *ngIf="task.requiresSignoff">
+          <strong>SIGNOFF REQUIRED</strong> — This step requires supervisor sign-off before completion.
+        </div>
 
         <section *ngIf="task.assigneeName">
           <label>Assignee</label>
@@ -201,6 +212,14 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
       font-size: 11px; background: #313244; padding: 2px 6px;
       border-radius: 4px; margin-right: 4px;
     }
+    .tag-duration { background: #1e3a5f; color: #7dd3fc; }
+    .safety-banner {
+      padding: 8px 12px; border-radius: 4px; font-size: 12px;
+      margin: 4px 16px;
+    }
+    .warning-banner { background: #451a03; border-left: 3px solid #ef4444; color: #fca5a5; }
+    .caution-banner { background: #451a03; border-left: 3px solid #f59e0b; color: #fde68a; }
+    .signoff-banner { background: #1e1b4b; border-left: 3px solid #8b5cf6; color: #c4b5fd; }
     .item-list { list-style: none; padding: 0; margin: 4px 0; }
     .item-list li {
       font-size: 12px; padding: 4px 0; border-bottom: 1px solid #2a2a3c;
