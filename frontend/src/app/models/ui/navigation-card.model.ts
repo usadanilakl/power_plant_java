@@ -71,7 +71,8 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'Loto Builder', description: 'Build LOTO procedures', icon: 'build', route: '/loto-builder', color: '#1abc9c' },
       { title: 'Loto Conflicts', description: 'Find and resolve LOTO point conflicts', icon: 'warning', route: '/loto-conflicts', color: '#FF7043' },
       { title: 'LOTO Board', description: 'Active LOTO permits and box status', icon: 'dashboard', route: '/permit-builder/loto-board', color: '#EC407A' },
-      { title: 'LOTO Usage', description: 'Monitor LOTO usage, jobs, and foremen', icon: 'monitor_heart', route: '/permit-builder/loto-usage', color: '#26C6DA' }
+      { title: 'LOTO Usage', description: 'Monitor LOTO usage, jobs, and foremen', icon: 'monitor_heart', route: '/permit-builder/loto-usage', color: '#26C6DA' },
+      { title: '3D Models', description: 'Manage 3D-printable LOTO device models', icon: 'view_in_ar', route: '/3d-models', color: '#00ACC1' }
     ]
   },
   {

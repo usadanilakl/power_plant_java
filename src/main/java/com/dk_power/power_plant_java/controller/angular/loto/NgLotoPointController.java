@@ -68,6 +68,17 @@ public class NgLotoPointController {
         }
     }
 
+    /** LOTO points linked to a given 3D model file (FileObject ID). */
+    @GetMapping("/by-model-file/{fileId}")
+    public ResponseEntity<NgApiResponse<List<LotoPointDto>>> getByModelFile(@PathVariable Long fileId) {
+        try {
+            List<LotoPointDto> dtos = ngLotoPointService.findByModelFileId(fileId);
+            return ResponseEntity.ok(new NgApiResponse<>(dtos, "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @PostMapping("/search")
     public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
             @RequestBody SearchCriteria criteria,

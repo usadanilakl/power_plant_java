@@ -136,6 +136,13 @@ type SizeTier = 'compact' | 'standard' | 'large';
           </div>
         </ng-container>
 
+          <!-- Update timestamps -->
+          <div class="update-row">
+            <span class="update-item" *ngIf="weatherStatus?.lastUpdate">WB: {{ formatTime(weatherStatus!.lastUpdate!) }}</span>
+            <span class="update-item" *ngIf="perryStatus?.lastUpdate">Perry: {{ formatTime(perryStatus!.lastUpdate!) }}</span>
+            <span class="update-item" *ngIf="weatherForecast?.lastUpdate">Forecast: {{ formatTime(weatherForecast!.lastUpdate!) }}</span>
+          </div>
+
         <div class="empty-state" *ngIf="!hasAnyData">
           <span class="material-icons empty-state-icon">cloud_off</span>
           <span class="empty-state-title">No Weather Data</span>
@@ -233,6 +240,9 @@ type SizeTier = 'compact' | 'standard' | 'large';
     }
     .hourly-time { font-size: 10px; color: var(--text-muted); }
     .hourly-temp { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+
+    .update-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .update-item { font-size: 9px; color: var(--text-muted); opacity: 0.7; }
   `]
 })
 export class WeatherWidgetComponent {
@@ -271,6 +281,14 @@ export class WeatherWidgetComponent {
       time: this.formatHour(t),
       temp: Math.round(h.temperature[i]).toString(),
     }));
+  }
+
+  formatTime(ts: string): string {
+    try {
+      const d = new Date(isNaN(Number(ts)) ? ts : Number(ts));
+      if (isNaN(d.getTime())) return ts;
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } catch { return ts; }
   }
 
   private formatHour(time: string): string {

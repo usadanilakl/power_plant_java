@@ -49,7 +49,8 @@ export class PersonnelManager {
       const personnel = await this.getPersonnel();
       const now = new Date();
       const hour = now.getHours();
-      const isDayShift = hour >= 6 && hour < 18;
+      // Shift change at 05:00 and 17:00 CT (machines are on-site in CT)
+      const isDayShift = hour >= 5 && hour < 17;
       const currentShiftCode: ShiftCode = isDayShift ? 'D' : 'N';
       const currentShiftLabel = isDayShift ? 'Day Shift' : 'Night Shift';
 

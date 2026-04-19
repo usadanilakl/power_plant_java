@@ -109,6 +109,12 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         return findById(id).map(lotoPointMapper::convertToDto);
     }
 
+    public List<LotoPointDto> findByModelFileId(Long fileId) {
+        return lotoPointRepo.findByModelFile_Id(fileId).stream()
+                .map(lotoPointMapper::convertToDto)
+                .toList();
+    }
+
     public Page<LotoPointDto> complexSearch(String searchString, int page, int size) {
         // Use GLOBAL search with OR logic for cross-field token matching.
         // Each token can match in any column (e.g., "condensate" in system + "pump" in description).

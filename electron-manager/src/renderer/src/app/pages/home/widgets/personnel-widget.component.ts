@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ElectronService, PersonnelStatus, PersonnelEntry } from '../../../services/electron.service';
@@ -72,6 +72,17 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
             <span class="section-label">On Shift Now</span>
             <div class="on-shift-list">
               <div class="person-chip" *ngFor="let p of status!.onShiftNow">
+                <span class="person-group" [class]="'group-' + p.group.toLowerCase()">{{ p.group }}</span>
+                <span class="person-name">{{ p.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Next shift -->
+          <div class="on-shift-section next-shift" *ngIf="nextShiftPeople.length > 0">
+            <span class="section-label">Next Shift — {{ nextShiftLabel }}</span>
+            <div class="on-shift-list">
+              <div class="person-chip dimmed" *ngFor="let p of nextShiftPeople">
                 <span class="person-group" [class]="'group-' + p.group.toLowerCase()">{{ p.group }}</span>
                 <span class="person-name">{{ p.name }}</span>
               </div>
@@ -171,6 +182,8 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
     .group-d { background: #ef4444; }
     .group-relief { background: #8b5cf6; }
     .person-name { color: var(--text-secondary); }
+    .person-chip.dimmed { opacity: 0.6; }
+    .next-shift .section-label { color: var(--text-muted); opacity: 0.8; }
 
     /* Schedule table */
     .roster-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -218,10 +231,59 @@ export class PersonnelWidgetComponent implements OnInit {
 
   status: PersonnelStatus | null = null;
 
+  private shiftTimer?: ReturnType<typeof setTimeout>;
+
   constructor(private electronService: ElectronService, private router: Router) {}
 
   ngOnInit(): void {
     this.load();
+    this.scheduleShiftRefresh();
+  }
+
+  ngOnDestroy(): void {
+    if (this.shiftTimer) clearTimeout(this.shiftTimer);
+  }
+
+  private scheduleShiftRefresh(): void {
+    // Schedule refresh at next shift change: 05:00 or 17:00 local time
+    const now = new Date();
+    const hour = now.getHours();
+    const next = new Date(now);
+    if (hour < 5) {
+      next.setHours(5, 0, 0, 0);
+    } else if (hour < 17) {
+      next.setHours(17, 0, 0, 0);
+    } else {
+      next.setDate(next.getDate() + 1);
+      next.setHours(5, 0, 0, 0);
+    }
+    const ms = next.getTime() - now.getTime();
+    this.shiftTimer = setTimeout(() => {
+      this.refresh();
+      this.scheduleShiftRefresh(); // Schedule the next one
+    }, ms);
+  }
+
+  get nextShiftPeople(): PersonnelEntry[] {
+    if (!this.status?.allPersonnel || !this.status.currentShiftLabel) return [];
+    const isDayNow = this.status.currentShiftLabel === 'Day Shift';
+    const nextCode = isDayNow ? 'N' : 'D';
+
+    if (isDayNow) {
+      // Currently day shift → next shift is tonight's night shift → check today's N people
+      return this.status.allPersonnel.filter(p => p.todayShift === 'N');
+    } else {
+      // Currently night shift → next shift is tomorrow's day shift → check tomorrow's schedule
+      return this.status.allPersonnel.filter(p => {
+        const tomorrow = p.schedule?.[1]; // index 0 = today, 1 = tomorrow
+        return tomorrow?.shift === 'D';
+      });
+    }
+  }
+
+  get nextShiftLabel(): string {
+    if (!this.status?.currentShiftLabel) return '';
+    return this.status.currentShiftLabel === 'Day Shift' ? 'Night Shift' : 'Day Shift';
   }
 
   get tier(): SizeTier {

@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.permits.loto_point;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.fasterxml.jackson.annotation.*;
@@ -58,6 +59,7 @@ public class LotoPointDto extends BaseDto {
     private ValueDto location;
     private ValueDto eqType;
     private Long counterpartId;
+    private FileDto modelFile;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
     private Boolean isProcessed = false;

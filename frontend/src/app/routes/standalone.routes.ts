@@ -22,6 +22,7 @@ import { TrashComponent } from '../features/trash/trash.component';
 import { CvManagerPageComponent } from '../features/values/refactored/components/cv-manager/cv-manager-page.component';
 import { WorkCategoryProfileAdminComponent } from '../features/permit-builder/work-category-profile/work-category-profile-admin.component';
 import { E2eTestPageComponent } from '../pages/e2e-test/e2e-test-page.component';
+import { Model3dPageComponent } from '../features/model-3d/model-3d-page.component';
 
 export const STANDALONE_ROUTES: Routes = [
   { path: 'tag-number', component: TagNumberComponent },
@@ -62,6 +63,8 @@ export const STANDALONE_ROUTES: Routes = [
   { path: 'full-sync-to-server', component: FullSyncToServerComponent },
   // Trash / Recycle Bin
   { path: 'trash', component: TrashComponent },
+  // 3D Model manager
+  { path: '3d-models', component: Model3dPageComponent },
   // E2E Test page (visible only when test.ui.enabled=true on backend)
   { path: 'e2e-test', component: E2eTestPageComponent },
   // Redirects for old bookmarked routes

@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.sevice.angular.scheduler.NgTaskService;
 import com.dk_power.power_plant_java.sevice.angular.scheduler.TaskTemplateService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import org.hibernate.Hibernate;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -62,15 +63,15 @@ public class TaskMapper implements BaseMapper {
         dto.setStatusName(task.getStatusName());
         if (task.getFlow() != null) dto.setFlowId(task.getFlow().getId());
         if (task.getParentTask() != null) dto.setParentTaskId(task.getParentTask().getId());
-        if (task.getAssignee() != null) dto.setAssignee(userService.toDto(task.getAssignee()));
-        if (task.getPriority() != null) dto.setPriority(valueService.convertToDto(task.getPriority()));
-        if (task.getTemplate() != null) dto.setTemplate(taskTemplateService.toDto(task.getTemplate()));
+        try { if (Hibernate.isInitialized(task.getAssignee()) && task.getAssignee() != null) dto.setAssignee(userService.toDto(task.getAssignee())); } catch (Exception ignored) {}
+        try { if (Hibernate.isInitialized(task.getPriority()) && task.getPriority() != null) dto.setPriority(valueService.convertToDto(task.getPriority())); } catch (Exception ignored) {}
+        try { if (Hibernate.isInitialized(task.getTemplate()) && task.getTemplate() != null) dto.setTemplate(taskTemplateService.toDto(task.getTemplate())); } catch (Exception ignored) {}
 
-        dto.setSubTasks(task.getSubTasks().stream().map(this::convertToDto).collect(Collectors.toSet()));
-        dto.setPrerequisites(task.getPrerequisites().stream().map(this::convertToShallowDto).collect(Collectors.toSet()));
-        dto.setDependents(task.getDependents().stream().map(this::convertToShallowDto).collect(Collectors.toSet()));
-        dto.setReferences(task.getReferences().stream().map(this::convertToRefDto).collect(Collectors.toSet()));
-        dto.setAttachments(task.getAttachments().stream().map(fileService::convertToDto).collect(Collectors.toSet()));
+        try { dto.setSubTasks(task.getSubTasks().stream().map(this::convertToDto).collect(Collectors.toSet())); } catch (Exception ignored) {}
+        try { dto.setPrerequisites(task.getPrerequisites().stream().map(this::convertToShallowDto).collect(Collectors.toSet())); } catch (Exception ignored) {}
+        try { dto.setDependents(task.getDependents().stream().map(this::convertToShallowDto).collect(Collectors.toSet())); } catch (Exception ignored) {}
+        try { dto.setReferences(task.getReferences().stream().map(this::convertToRefDto).collect(Collectors.toSet())); } catch (Exception ignored) {}
+        try { dto.setAttachments(task.getAttachments().stream().map(fileService::convertToDto).collect(Collectors.toSet())); } catch (Exception ignored) {}
 
         return dto;
     }

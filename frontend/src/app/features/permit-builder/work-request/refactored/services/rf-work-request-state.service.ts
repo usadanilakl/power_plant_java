@@ -65,8 +65,12 @@ export class RfWorkRequestStateService {
 
     this.processWrDialogService.onComplete$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.reloadData();
+      .subscribe((wrId) => {
+        if (wrId) {
+          this.refreshWorkRequest(wrId);
+        } else {
+          this.reloadData();
+        }
       });
   }
 
@@ -108,7 +112,12 @@ export class RfWorkRequestStateService {
   reloadData(): void {
     this.clearWorkRequests();
     const criteria = this.getCurrentSearchCriteria();
-    if (criteria && (criteria.query || (criteria.filters && Object.keys(criteria.filters).length > 0))) {
+    const hasActiveState = criteria && (
+      criteria.query ||
+      criteria.sortColumn ||
+      (criteria.filters && Object.keys(criteria.filters).length > 0)
+    );
+    if (hasActiveState) {
       this.apiService.searchWorkRequests({ ...criteria, page: 1, pageSize: this.pageSize }, this.pageSize).pipe(
         tap(response => {
           if (response.responseData?.content?.length) {

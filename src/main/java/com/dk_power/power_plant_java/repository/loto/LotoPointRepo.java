@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface LotoPointRepo extends BaseRepository<LotoPoint> {
+    List<LotoPoint> findByModelFile_Id(Long fileId);
     List<LotoPoint> findByDescriptionContaining(String tag);
     List<LotoPoint> findByDescriptionContainingAndDescriptionContaining(String one, String two);
 

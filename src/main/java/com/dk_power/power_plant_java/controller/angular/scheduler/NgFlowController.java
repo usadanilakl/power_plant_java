@@ -19,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/ng/scheduler/flows")
 @RequiredArgsConstructor
+@org.springframework.transaction.annotation.Transactional
 public class NgFlowController {
     private final NgFlowService flowService;
     private final ValueService valueService;

@@ -37,6 +37,7 @@ export class LotoPointIdDto extends BaseDto {
   isLockable: boolean | null;
   isProcessed: boolean | null;
   processingStatus: number | null;
+  modelFileId: number | null;
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
     // console.log('Creating LotoPointIdDto',data);
@@ -73,6 +74,7 @@ export class LotoPointIdDto extends BaseDto {
     this.isLockable = data.isLockable ?? null;
     this.isProcessed = data.isProcessed ?? null;
     this.processingStatus = data.processingStatus ?? null;
+    this.modelFileId = data.modelFileId ?? null;
   }
 
 
@@ -153,6 +155,7 @@ export class LotoPointIdDto extends BaseDto {
       isLockable: this.isLockable,
       isProcessed: this.isProcessed,
       processingStatus: this.processingStatus,
+      modelFileId: this.modelFileId,
     };
   }
 
@@ -195,6 +198,7 @@ export class LotoPointIdDto extends BaseDto {
       isLockable: json.isLockable ?? false,
       isProcessed: json.isProcessed ?? false,
       processingStatus: json.processingStatus ?? null,
+      modelFileId: json.modelFileId ?? null,
     });
   }
 }

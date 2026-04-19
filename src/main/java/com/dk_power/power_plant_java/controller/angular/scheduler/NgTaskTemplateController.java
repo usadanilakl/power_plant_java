@@ -26,6 +26,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/ng/scheduler/task-templates")
 @RequiredArgsConstructor
+@org.springframework.transaction.annotation.Transactional
 public class NgTaskTemplateController {
     private final TaskTemplateService templateService;
     private final ValueService valueService;

@@ -488,6 +488,29 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.unsubSync = this.electronService.onSyncEntityUpdated((entityType) => {
       if (entityType === 'FireImpairment') { this.loadFireImpCount(); }
     });
+
+    // Apply saved auto-polling settings on startup
+    this.applyAutoPollingSettings();
+  }
+
+  private applyAutoPollingSettings(): void {
+    try {
+      const raw = localStorage.getItem('dk-polling-settings');
+      if (!raw) return;
+      const settings = JSON.parse(raw);
+
+      // Gate log: independent of Spring Boot, start immediately
+      if (settings.autoStartGateLog) {
+        this.electronService.gateLogSetAutoRefresh(true, settings.gateLogIntervalMinutes || 15);
+        console.log('[Home] Auto-started gate log polling');
+      }
+
+      // PJM: independent of Spring Boot, start immediately
+      if (settings.autoStartPjm) {
+        this.electronService.pjmSetPolling(true);
+        console.log('[Home] Auto-started PJM polling');
+      }
+    } catch {}
   }
 
   private async loadWeatherStatus(): Promise<void> {

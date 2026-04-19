@@ -127,15 +127,6 @@ export class TableComponent implements OnInit, AfterViewInit {
     const tableId = this.tableId();
     this.dataService.columns.set(columns);
     this.dataService.tableId = tableId;
-    // const searchCriteria = this.localStorageService.getTableFilters(tableId);
-    // console.log('Setting search criteria:', searchCriteria);
-    // if(searchCriteria){
-    //   this.dataService.currentSearchCriteria = searchCriteria;
-    //   if(searchCriteria.filters)this.dataService.columnFilters.set(searchCriteria.filters);
-    //   if(searchCriteria.columnFilterLogic) this.dataService.columnFilterLogic = searchCriteria.columnFilterLogic;
-    //   // if(!this.isTableIsolated()) this.searchService.search();
-    // }
-
   });
   
   private itemsEffect = effect(() => {

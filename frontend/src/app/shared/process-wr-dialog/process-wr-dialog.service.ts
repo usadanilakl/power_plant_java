@@ -6,7 +6,7 @@ export class ProcessWrDialogService {
   private _isVisible = signal(false);
   private _workRequestId = signal(0);
   private _onOpen = new Subject<void>();
-  private _onComplete = new Subject<void>();
+  private _onComplete = new Subject<number>();
 
   isVisible = this._isVisible.asReadonly();
   workRequestId = this._workRequestId.asReadonly();
@@ -24,7 +24,7 @@ export class ProcessWrDialogService {
     this._workRequestId.set(0);
   }
 
-  notifyComplete(): void {
-    this._onComplete.next();
+  notifyComplete(workRequestId?: number): void {
+    this._onComplete.next(workRequestId ?? this._workRequestId());
   }
 }

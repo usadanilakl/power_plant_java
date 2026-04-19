@@ -437,4 +437,18 @@ export class RfLotoPointApiService {
       { text }
     );
   }
+
+  /** LOTO points linked to a given 3D model file (FileObject ID). */
+  getByModelFile(fileId: number): Observable<SpringApiResponse<LotoPointDto[]>> {
+    return this.http.get<SpringApiResponse<LotoPointDto[]>>(
+      `${this.apiUrl}/by-model-file/${fileId}`
+    );
+  }
+
+  /** Find-or-create a Value by category and name. Used for reference data setup. */
+  createValue(category: string, value: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${environment.apiUrl}/values/${encodeURIComponent(category)}/${encodeURIComponent(value)}`, {}
+    );
+  }
 }

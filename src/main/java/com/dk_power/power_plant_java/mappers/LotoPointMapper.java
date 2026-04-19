@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -34,6 +35,7 @@ public class LotoPointMapper implements BaseMapper{
     private final EquipmentService equipmentService;
     private final NgLotoService lotoService;
     private final NgZeroEnergyService zeroEnergyService;
+    private final FileRepo fileRepo;
 
     public LotoPointMapper(ModelMapper modelMapper,
                            @Lazy EquipmentMapper equipmentMapper,
@@ -42,7 +44,8 @@ public class LotoPointMapper implements BaseMapper{
                            @Lazy LotoPointService lotoPointService,
                            @Lazy EquipmentService equipmentService,
                            @Lazy NgLotoService lotoService,
-                           NgZeroEnergyService zeroEnergyService) {
+                           NgZeroEnergyService zeroEnergyService,
+                           FileRepo fileRepo) {
         this.modelMapper = modelMapper;
         this.equipmentMapper = equipmentMapper;
         this.lotoMapper = lotoMapper;
@@ -51,6 +54,7 @@ public class LotoPointMapper implements BaseMapper{
         this.equipmentService = equipmentService;
         this.lotoService = lotoService;
         this.zeroEnergyService = zeroEnergyService;
+        this.fileRepo = fileRepo;
     }
 
     public LotoPointDto convertToDto(LotoPoint entity) {
@@ -126,6 +130,14 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getIsLockable()!=null) dto.setIsLockable(entity.getIsLockable());
         if(entity.getIsProcessed()!=null) dto.setIsProcessed(entity.getIsProcessed());
         if(entity.getProcessingStatus()!=null) dto.setProcessingStatus(valueService.convertToDto(entity.getProcessingStatus()));
+        if(entity.getModelFile()!=null) {
+            FileDto mf = new FileDto();
+            mf.setId(entity.getModelFile().getId());
+            mf.setName(entity.getModelFile().getName());
+            mf.setFileLink(entity.getModelFile().getFileLink());
+            mf.setExtension(entity.getModelFile().getExtension());
+            dto.setModelFile(mf);
+        }
         dto.setObjectType(entity.getObjectType());
         return dto;
     }
@@ -341,6 +353,14 @@ public class LotoPointMapper implements BaseMapper{
             lotoPoint.setEquipmentIds(dto.getEquipmentIdList().stream().map(String::valueOf).collect(Collectors.joining(",")));
         }
 
+        // modelFileId: null = leave unchanged, 0 = explicit clear, >0 = set
+        if (dto.getModelFileId() != null) {
+            if (dto.getModelFileId() > 0) {
+                lotoPoint.setModelFile(fileRepo.findById(dto.getModelFileId()).orElse(null));
+            } else {
+                lotoPoint.setModelFile(null);
+            }
+        }
 
         return lotoPoint;
     }
@@ -380,6 +400,7 @@ public class LotoPointMapper implements BaseMapper{
         if(lotoPoint.getEqType()!=null) dto.setEqType(lotoPoint.getEqType().getId());
         if(lotoPoint.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(lotoPoint.getRelatedLotoPointIds());
         if(lotoPoint.getCounterpartId()!=null) dto.setCounterpartId(lotoPoint.getCounterpartId());
+        if(lotoPoint.getModelFile()!=null) dto.setModelFileId(lotoPoint.getModelFile().getId());
 
         dto.setObjectType(lotoPoint.getObjectType());
         if(lotoPoint.getIsLabeled()!=null) dto.setIsLabeled(lotoPoint.getIsLabeled());

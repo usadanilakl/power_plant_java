@@ -1,5 +1,6 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
+import { FileDto } from '../file/file.model';
 import { LotoDto } from './loto.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
@@ -48,6 +49,7 @@ export interface LotoPointModel extends BaseModel {
   isLockable: boolean | null;
   isProcessed: boolean | null;
   processingStatus: ValueDto | null;
+  modelFile: FileDto | null;
 }
 
 export interface LotoPointFormField {
@@ -91,6 +93,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   isLockable: boolean | null;
   isProcessed: boolean | null;
   processingStatus: ValueDto | null;
+  modelFile: FileDto | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -133,6 +136,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.isLockable = data.isLockable ?? null;
     this.isProcessed = data.isProcessed ?? null;
     this.processingStatus = super.setNestedObjectById(data.processingStatus, new ValueDto());
+    this.modelFile = data.modelFile ? new FileDto(data.modelFile) : null;
   }
 
   // Serialization method
@@ -174,6 +178,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isLockable: this.isLockable ?? false,
       isProcessed: this.isProcessed ?? false,
       processingStatus: this.processingStatus?.toJson() || null,
+      modelFile: this.modelFile?.toJson() ?? null,
     };
   }
 
@@ -239,6 +244,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       processingStatus: json.processingStatus
         ? ValueDto.fromJson(json.processingStatus)
         : null,
+      modelFile: json.modelFile ? FileDto.fromJson(json.modelFile) : null,
     });
   }
 
@@ -479,6 +485,12 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         options: [],
         initialValue: dto.processingStatus?.id || null,
       },
+      modelFile: {
+        name: 'modelFile',
+        label: '3D Model File',
+        type: 'text',
+        initialValue: dto.modelFile?.name || null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -658,6 +670,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         header: 'Status',
         accessorKey: 'processingStatus.name',
       },
+      modelFile: {
+        id: 'modelFile',
+        header: '3D Model',
+        accessorFn: (item: LotoPointDto) => item.modelFile?.name || '',
+      },
     };
 
     return fields.map((fieldName) => allColumns[fieldName]);
@@ -694,6 +711,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'isLockable',
       'isProcessed',
       'processingStatus',
+      'modelFile',
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -741,6 +759,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       eqType: this.eqType?.id || null,
       counterpartId: this.counterpartId || null,
       processingStatus: this.processingStatus?.id || null,
+      modelFileId: this.modelFile?.id || 0,
     });
   }
   toOption(): Option {

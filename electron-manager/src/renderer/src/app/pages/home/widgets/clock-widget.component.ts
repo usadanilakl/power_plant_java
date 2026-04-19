@@ -231,7 +231,7 @@ export class ClockWidgetComponent implements OnInit, OnDestroy {
   private nextTimerId = 1;
   private audioCtx?: AudioContext;
 
-  shiftConfig: ShiftConfig = { dayStart: '06:00', nightStart: '18:00' };
+  shiftConfig: ShiftConfig = { dayStart: '05:00', nightStart: '17:00' };
 
   ngOnInit(): void {
     this.loadShiftConfig();

@@ -237,6 +237,10 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
         accessorFn: (item: DailyPermitPackageDto) => this.getPackageLocation(item),
       },
       ...columns.slice(2),
+      { id: 'swCount', header: 'SW', accessorFn: (item: DailyPermitPackageDto) => `${item.safeWorks?.length ?? 0}`, width: 50 },
+      { id: 'hwCount', header: 'HW', accessorFn: (item: DailyPermitPackageDto) => `${item.hotWorks?.length ?? 0}`, width: 50 },
+      { id: 'csCount', header: 'CS', accessorFn: (item: DailyPermitPackageDto) => `${item.confinedSpaces?.length ?? 0}`, width: 50 },
+      { id: 'lotoCount', header: 'LOTO', accessorFn: (item: DailyPermitPackageDto) => `${item.lotos?.length ?? 0}`, width: 60 },
       {
         id: 'reissueAction',
         header: 'Action',
@@ -394,6 +398,16 @@ export class DailyPermitPackageBuilderComponent implements OnInit {
         this.reissueWrSearching = false;
       }
     });
+  }
+
+  reissueAdjustDate(days: number): void {
+    if (!this.reissueWrDate) {
+      this.reissueWrDate = new Date().toISOString().split('T')[0];
+    }
+    const d = new Date(this.reissueWrDate + 'T12:00:00');
+    d.setDate(d.getDate() + days);
+    this.reissueWrDate = d.toISOString().split('T')[0];
+    this.searchPackagesForReissue();
   }
 
   confirmReissueFromWr(sourcePackage: any): void {

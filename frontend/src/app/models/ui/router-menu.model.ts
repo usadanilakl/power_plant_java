@@ -60,7 +60,8 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/loto-builder', label: 'Loto Builder', icon: 'construction', iconColor: '#42A5F5' },
             { route: '/loto-conflicts', label: 'Loto Conflicts', icon: 'warning', iconColor: '#FF7043' },
             { route: '/permit-builder/loto-board', label: 'LOTO Board', icon: 'dashboard', iconColor: '#EC407A' },
-            { route: '/permit-builder/loto-usage', label: 'LOTO Usage', icon: 'monitor_heart', iconColor: '#26C6DA' }
+            { route: '/permit-builder/loto-usage', label: 'LOTO Usage', icon: 'monitor_heart', iconColor: '#26C6DA' },
+            { route: '/3d-models', label: '3D Models', icon: 'view_in_ar', iconColor: '#00ACC1' }
         ]
     },
     {

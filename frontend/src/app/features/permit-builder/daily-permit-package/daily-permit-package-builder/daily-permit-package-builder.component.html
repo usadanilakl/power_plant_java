@@ -803,19 +803,38 @@
     <div class="reissue-fields">
       <div class="reissue-field">
         <label>Scope (filter)</label>
-        <input type="text" [(ngModel)]="reissueWrScope" placeholder="Work scope..." />
+        <div class="reissue-input-row">
+          <input type="text" [(ngModel)]="reissueWrScope" placeholder="Work scope..." />
+          @if (reissueWrScope) {
+            <button class="reissue-clear-btn" (click)="reissueWrScope = ''; searchPackagesForReissue()" title="Clear scope">✕</button>
+          }
+        </div>
       </div>
       <div class="reissue-field">
         <label>Location (filter)</label>
-        <input type="text" [(ngModel)]="reissueWrLocation" placeholder="Location..." />
+        <div class="reissue-input-row">
+          <input type="text" [(ngModel)]="reissueWrLocation" placeholder="Location..." />
+          @if (reissueWrLocation) {
+            <button class="reissue-clear-btn" (click)="reissueWrLocation = ''; searchPackagesForReissue()" title="Clear location">✕</button>
+          }
+        </div>
       </div>
       <div class="reissue-field">
         <label>Date (filter)</label>
-        <input type="date" [(ngModel)]="reissueWrDate" />
+        <div class="reissue-input-row">
+          <button class="reissue-day-btn" (click)="reissueAdjustDate(-1)" title="Previous day">−</button>
+          <input type="date" [(ngModel)]="reissueWrDate" />
+          <button class="reissue-day-btn" (click)="reissueAdjustDate(1)" title="Next day">+</button>
+        </div>
       </div>
-      <button class="status-btn activate" (click)="searchPackagesForReissue()" [disabled]="reissueWrSearching">
-        {{ reissueWrSearching ? 'Searching...' : 'Search' }}
-      </button>
+      <div class="reissue-actions-row">
+        <button class="status-btn activate" (click)="searchPackagesForReissue()" [disabled]="reissueWrSearching">
+          {{ reissueWrSearching ? 'Searching...' : 'Search' }}
+        </button>
+        @if (reissueWrScope || reissueWrLocation) {
+          <button class="status-btn" (click)="reissueWrScope = ''; reissueWrLocation = ''; searchPackagesForReissue()">Clear Filters</button>
+        }
+      </div>
     </div>
     @if (reissueWrSearchResults().length > 0) {
       <div class="reissue-table">

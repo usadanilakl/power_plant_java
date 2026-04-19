@@ -40,6 +40,7 @@ public class LotoPointIdDto extends BaseDto {
     private Long eqType;
     private Set<Long> relatedLotoPointIds;
     private Long counterpartId;
+    private Long modelFileId;
     private Boolean isLabeled = false;
     private Boolean isLockable = false;
     private Boolean isProcessed = false;

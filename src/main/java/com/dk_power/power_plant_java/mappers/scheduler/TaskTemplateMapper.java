@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.scheduler.TaskTemplateDto;
 import com.dk_power.power_plant_java.entities.scheduler.TaskTemplate;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
@@ -25,11 +26,15 @@ public class TaskTemplateMapper implements BaseMapper {
         dto.setTaskType(entity.getTaskType() != null ? entity.getTaskType().name() : null);
         dto.setStepTemplatesJson(entity.getStepTemplatesJson());
         dto.setDefaultReferenceTypesJson(entity.getDefaultReferenceTypesJson());
-        if (entity.getDefaultPriority() != null) {
-            var pDto = new com.dk_power.power_plant_java.dto.categories.ValueDto();
-            pDto.setId(entity.getDefaultPriority().getId());
-            pDto.setName(entity.getDefaultPriority().getName());
-            dto.setDefaultPriority(pDto);
+        try {
+            if (Hibernate.isInitialized(entity.getDefaultPriority()) && entity.getDefaultPriority() != null) {
+                var pDto = new com.dk_power.power_plant_java.dto.categories.ValueDto();
+                pDto.setId(entity.getDefaultPriority().getId());
+                pDto.setName(entity.getDefaultPriority().getName());
+                dto.setDefaultPriority(pDto);
+            }
+        } catch (Exception ignored) {
+            // Lazy proxy not initialized — skip
         }
         return dto;
     }

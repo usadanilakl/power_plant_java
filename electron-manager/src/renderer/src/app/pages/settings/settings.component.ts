@@ -156,6 +156,70 @@ import {
         </div>
       </div>
 
+      <!-- Data Polling -->
+      <div class="settings-section">
+        <h2 class="section-title">Data Polling</h2>
+        <p class="section-desc">
+          Enable automatic polling to start when the app launches. Only enable on one machine to avoid API rate limits.
+        </p>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">PJM Pricing</span>
+            <span class="setting-desc">Auto-start LMP price polling on launch</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="autoStartPjm" (ngModelChange)="savePollingSettings()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row" *ngIf="autoStartPjm">
+          <div class="setting-info">
+            <span class="setting-label">PJM Poll Interval</span>
+            <span class="setting-desc">How often to fetch pricing data</span>
+          </div>
+          <select class="form-input form-input-sm" [(ngModel)]="pjmIntervalMinutes" (ngModelChange)="savePollingSettings()">
+            <option [ngValue]="1">1 min</option>
+            <option [ngValue]="2">2 min</option>
+            <option [ngValue]="5">5 min</option>
+            <option [ngValue]="10">10 min</option>
+            <option [ngValue]="15">15 min</option>
+            <option [ngValue]="30">30 min</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Gate Log / OnLocation</span>
+            <span class="setting-desc">Auto-start personnel polling on launch</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="autoStartGateLog" (ngModelChange)="savePollingSettings()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row" *ngIf="autoStartGateLog">
+          <div class="setting-info">
+            <span class="setting-label">Gate Log Poll Interval</span>
+            <span class="setting-desc">How often to refresh gate log data</span>
+          </div>
+          <select class="form-input form-input-sm" [(ngModel)]="gateLogIntervalMinutes" (ngModelChange)="savePollingSettings()">
+            <option [ngValue]="5">5 min</option>
+            <option [ngValue]="10">10 min</option>
+            <option [ngValue]="15">15 min</option>
+            <option [ngValue]="30">30 min</option>
+            <option [ngValue]="60">60 min</option>
+          </select>
+        </div>
+
+        <div class="polling-status" *ngIf="pollingSaved">
+          <span class="material-icons" style="font-size: 14px; color: var(--accent-success)">check</span>
+          Settings saved. Will apply on next app launch.
+        </div>
+      </div>
+
       <!-- Application -->
       <div class="settings-section">
         <h2 class="section-title">Application</h2>
@@ -230,6 +294,29 @@ import {
     .setting-desc {
       font-size: 12px;
       color: var(--text-muted);
+    }
+
+    .section-desc { font-size: 12px; color: var(--text-muted); margin: -8px 0 12px; }
+
+    /* Toggle switch */
+    .toggle { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--border-color); border-radius: 22px; transition: 200ms;
+    }
+    .toggle-slider:before {
+      position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+      background-color: var(--text-muted); border-radius: 50%; transition: 200ms;
+    }
+    .toggle input:checked + .toggle-slider { background-color: var(--accent-primary); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(18px); background-color: #fff; }
+
+    .form-input-sm { width: auto; min-width: 100px; padding: 5px 8px; font-size: 12px; }
+
+    .polling-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--accent-success); margin-top: 4px;
     }
 
     /* Device card (configured) */
@@ -485,6 +572,15 @@ export class SettingsComponent implements OnInit {
 
   allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
+  // Polling settings
+  autoStartPjm = false;
+  pjmIntervalMinutes = 5;
+  autoStartGateLog = false;
+  gateLogIntervalMinutes = 15;
+  pollingSaved = false;
+
+  private static readonly POLLING_STORAGE_KEY = 'dk-polling-settings';
+
   constructor(private electronService: ElectronService) {}
 
   async ngOnInit(): Promise<void> {
@@ -495,6 +591,31 @@ export class SettingsComponent implements OnInit {
       this.setupServerUrl = this.deviceConfig.syncServerUrl || this.setupServerUrl;
       this.setupProfile = this.deviceConfig.springProfile || 'prod';
     }
+    this.loadPollingSettings();
+  }
+
+  private loadPollingSettings(): void {
+    try {
+      const raw = localStorage.getItem(SettingsComponent.POLLING_STORAGE_KEY);
+      if (!raw) return;
+      const settings = JSON.parse(raw);
+      this.autoStartPjm = !!settings.autoStartPjm;
+      this.pjmIntervalMinutes = settings.pjmIntervalMinutes || 5;
+      this.autoStartGateLog = !!settings.autoStartGateLog;
+      this.gateLogIntervalMinutes = settings.gateLogIntervalMinutes || 15;
+    } catch {}
+  }
+
+  savePollingSettings(): void {
+    const settings = {
+      autoStartPjm: this.autoStartPjm,
+      pjmIntervalMinutes: this.pjmIntervalMinutes,
+      autoStartGateLog: this.autoStartGateLog,
+      gateLogIntervalMinutes: this.gateLogIntervalMinutes,
+    };
+    localStorage.setItem(SettingsComponent.POLLING_STORAGE_KEY, JSON.stringify(settings));
+    this.pollingSaved = true;
+    setTimeout(() => this.pollingSaved = false, 3000);
   }
 
   async checkServer(): Promise<void> {

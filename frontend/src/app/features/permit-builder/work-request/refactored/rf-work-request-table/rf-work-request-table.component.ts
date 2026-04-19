@@ -148,8 +148,13 @@ export class RfWorkRequestTableComponent implements OnInit {
     ).subscribe();
 
     const initialCriteria = this.initialSearchCriteria();
+    // Restore persisted search/sort state from the singleton state service (survives route navigation)
+    const persistedCriteria = this.stateService.getCurrentSearchCriteria();
     if (initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0))) {
       this.loadInitialDataWithCriteria(initialCriteria);
+    } else if (persistedCriteria && (persistedCriteria.query || persistedCriteria.sortColumn
+        || (persistedCriteria.filters && Object.keys(persistedCriteria.filters).length > 0))) {
+      this.loadInitialDataWithCriteria(persistedCriteria);
     } else {
       this.loadInitialData();
     }
@@ -188,11 +193,21 @@ export class RfWorkRequestTableComponent implements OnInit {
   private loadInitialData(): void {
     if (this.inputItems()) return;
 
+    // Default sort by date of work (newest first) when no user-defined criteria exists
+    const defaultCriteria: SearchCriteria = {
+      type: 'sort',
+      sortColumn: 'dateOfWorkToBePerformed',
+      sortDirection: 'DESC',
+      page: 1,
+      pageSize: 50,
+    };
+    this.stateService.setSearchCriteria(defaultCriteria);
+
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
     this.apiService
-      .getWorkRequests(this.stateService.getCurrentPage(), 50)
+      .searchWorkRequests(defaultCriteria, 50)
       .pipe(
         tap((response) => {
           if (response.responseData?.content && response.responseData.content.length > 0) {

@@ -1,10 +1,10 @@
-<app-main-layout [isSideMenuEnabled]="!isPopupMode()">
+<app-main-layout [isSideMenuEnabled]="!isPopupMode() && hasLeftMenu()">
   @if (!isPopupMode()) {
     <ng-container header>
       <app-router-menu [layout]="'row'"></app-router-menu>
     </ng-container>
   }
-  @if (!isPopupMode()) {
+  @if (!isPopupMode() && hasLeftMenu()) {
     <ng-container left-menu>
       <app-left-menu-outlet></app-left-menu-outlet>
     </ng-container>

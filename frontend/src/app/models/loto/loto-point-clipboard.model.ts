@@ -1,4 +1,5 @@
 import { ValueDto } from '../value.model';
+import { FileDto } from '../file/file.model';
 import { LotoPointModel } from './loto-point.model';
 import { ZeroEnergyModel } from './zero-energy.model';
 
@@ -44,6 +45,7 @@ export class LotoPointClipboardItem implements ILotoPointClipboard {
   isLockable: boolean | null = null;
   isProcessed: boolean | null = null;
   processingStatus: ValueDto | null = null;
+  modelFile: FileDto | null = null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     Object.assign(this, data);

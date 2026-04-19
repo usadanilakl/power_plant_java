@@ -21,12 +21,15 @@ import org.springframework.beans.factory.annotation.Value;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/ng/scheduler/tasks")
 @RequiredArgsConstructor
+@Transactional
 public class NgTaskController {
     private final NgTaskService taskService;
     private final TaskMapper taskMapper;

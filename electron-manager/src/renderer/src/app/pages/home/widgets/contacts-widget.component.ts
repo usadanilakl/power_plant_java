@@ -13,7 +13,7 @@ import { Component } from '@angular/core';
       <div class="info-items">
         <div class="info-row">
           <span class="material-icons info-icon">location_on</span>
-          <span>2465 South Brandon Road, Elwood, IL 60421</span>
+          <span>24650 South Brandon Road, Elwood, IL 60421</span>
         </div>
         <div class="info-row">
           <span class="material-icons info-icon">phone</span>

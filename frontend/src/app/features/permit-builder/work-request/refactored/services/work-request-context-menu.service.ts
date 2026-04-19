@@ -186,32 +186,33 @@ export class WorkRequestContextMenuService extends ContextMenuService {
   private handleReissue(item: WorkRequestDto): void {
     if (!item?.id) return;
 
+    let url: string;
+
     // If WR is already processed (has a package), use the direct package reissue flow
     if (item.dailyPermitPackageId) {
-      this.router.navigate(['/permit-builder/daily-packages'], {
-        queryParams: {
-          reissueProcessedWr: item.id,
-          sourcePackageId: item.dailyPermitPackageId,
-        }
+      const params = new URLSearchParams({
+        reissueProcessedWr: item.id.toString(),
+        sourcePackageId: item.dailyPermitPackageId.toString(),
+        mode: 'popup',
       });
-      this.closeContextMenu();
-      return;
-    }
-
-    let previousDay = '';
-    if (item.dateOfWorkToBePerformed) {
-      previousDay = this.getPreviousDay(item.dateOfWorkToBePerformed);
-    }
-
-    const location = item.location?.trim() || item.workArea?.name?.trim() || '';
-    this.router.navigate(['/permit-builder/daily-packages'], {
-      queryParams: {
-        reissueFromWr: item.id,
+      url = `${window.location.origin}/app/permit-builder/daily-packages?${params}`;
+    } else {
+      let previousDay = '';
+      if (item.dateOfWorkToBePerformed) {
+        previousDay = this.getPreviousDay(item.dateOfWorkToBePerformed);
+      }
+      const location = item.location?.trim() || item.workArea?.name?.trim() || '';
+      const params = new URLSearchParams({
+        reissueFromWr: item.id.toString(),
         scope: item.workScope || '',
         date: previousDay,
         location,
-      }
-    });
+        mode: 'popup',
+      });
+      url = `${window.location.origin}/app/permit-builder/daily-packages?${params}`;
+    }
+
+    this.popupWindowService.openOrFocus(url);
     this.closeContextMenu();
   }
 

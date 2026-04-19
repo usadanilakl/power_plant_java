@@ -1245,6 +1245,34 @@ input[type="text"] {
   background: var(--card-background);
   color: var(--primary-text);
 }
+.reissue-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.reissue-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+.reissue-clear-btn, .reissue-day-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--card-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.reissue-clear-btn:hover, .reissue-day-btn:hover {
+  background: var(--hover-background, #333);
+}
+.reissue-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
 
 @media (max-width: 1500px) {
   .package-header-grid {
