@@ -14,7 +14,7 @@
           <app-rf-value-select
             categoryAlias="fileType"
             label="File Type"
-            [canManageValues]="false"
+            [canManageValues]="true"
             (ngModelChange)="onFileTypeChange($event)"
             [ngModel]="fileTypeId()"
           ></app-rf-value-select>
@@ -23,7 +23,7 @@
           <app-rf-value-select
             categoryAlias="vendor"
             label="Vendor"
-            [canManageValues]="false"
+            [canManageValues]="true"
             (ngModelChange)="onVendorChange($event)"
             [ngModel]="vendorId()"
           ></app-rf-value-select>

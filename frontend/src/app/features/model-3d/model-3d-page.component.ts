@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MainLayoutComponent } from '../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
+import { RfMultiUploadComponent } from '../files/refactored/rf-multi-upload/rf-multi-upload.component';
 import { RfFileApiService } from '../files/refactored/services/rf-file-api.service';
 import { RfLotoPointApiService } from '../loto-points/refactored/services/rf-loto-point-api.service';
 import { FileDto } from '../../models/file/file.model';
@@ -16,7 +17,7 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
 @Component({
   selector: 'app-model-3d-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, RfMultiUploadComponent],
   template: `
     <app-main-layout>
       <ng-container header>
@@ -29,10 +30,9 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
             <div class="panel-header">
               <h3>3D Model Files</h3>
               <div class="panel-actions">
-                <button class="btn btn-sm btn-primary" (click)="triggerUpload()">Upload</button>
+                <button class="btn btn-sm btn-primary" (click)="showUploadDialog.set(true)">Upload</button>
                 <button class="btn btn-sm" (click)="refreshFiles()" [disabled]="isLoadingFiles()">↻</button>
               </div>
-              <input #fileInput type="file" [accept]="acceptAttr" (change)="onFileSelected($event)" hidden />
             </div>
 
             <div class="file-list">
@@ -57,14 +57,6 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
               }
             </div>
 
-            <!-- Upload state -->
-            @if (uploadState() === 'uploading') {
-              <div class="upload-status uploading">Uploading...</div>
-            } @else if (uploadState() === 'success') {
-              <div class="upload-status success">Upload complete</div>
-            } @else if (uploadState() === 'error') {
-              <div class="upload-status error">{{ uploadError() }}</div>
-            }
           </div>
 
           <!-- RIGHT: Detail + linked LOTO points -->
@@ -162,6 +154,14 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
             }
           </div>
         </div>
+
+        <!-- Reuse existing multi-upload dialog -->
+        @if (showUploadDialog()) {
+          <app-rf-multi-upload
+            (close)="showUploadDialog.set(false)"
+            (uploadComplete)="onUploadComplete($event)"
+          ></app-rf-multi-upload>
+        }
       </ng-container>
     </app-main-layout>
   `,
@@ -233,10 +233,6 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
     .empty-state .hint { font-size: 12px; margin-top: 4px; }
     .no-selection { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #bbb; }
     .no-selection-icon { font-size: 64px; margin-bottom: 12px; }
-    .upload-status { padding: 6px 14px; font-size: 12px; text-align: center; }
-    .upload-status.uploading { color: #e65100; background: #fff3e0; }
-    .upload-status.success { color: #2e7d32; background: #e8f5e9; }
-    .upload-status.error { color: #c62828; background: #ffebee; }
   `]
 })
 export class Model3dPageComponent implements OnInit {
@@ -244,16 +240,13 @@ export class Model3dPageComponent implements OnInit {
   private lpApi = inject(RfLotoPointApiService);
   private destroyRef = inject(DestroyRef);
 
-  acceptAttr = MODEL_EXTENSIONS.map(e => '.' + e).join(',');
+  // Upload dialog
+  showUploadDialog = signal(false);
 
   // Left panel state
   modelFiles = signal<FileDto[]>([]);
   isLoadingFiles = signal(false);
   selectedFile = signal<FileDto | null>(null);
-
-  // Upload state
-  uploadState = signal<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  uploadError = signal('');
 
   // Right panel state
   linkedLotoPoints = signal<LotoPointDto[]>([]);
@@ -264,10 +257,6 @@ export class Model3dPageComponent implements OnInit {
   linkSearchQuery = '';
   searchResults = signal<LotoPointDto[]>([]);
   isSearching = signal(false);
-
-  private fileTypeId: number | null = null;
-  private vendorId: number | null = null;
-  private fileInputRef: HTMLInputElement | null = null;
 
   ngOnInit(): void {
     this.refreshFiles();
@@ -319,40 +308,9 @@ export class Model3dPageComponent implements OnInit {
     });
   }
 
-  triggerUpload(): void {
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    input?.click();
-  }
-
-  async onFileSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    input.value = '';
-
-    this.uploadState.set('uploading');
-
-    try {
-      // Ensure fileType "3D Model" and vendor "Internal" exist
-      if (!this.fileTypeId) {
-        const ftRes = await firstValueFrom(this.lpApi.createValue('File Type', '3D Model'));
-        this.fileTypeId = ftRes.responseData?.id;
-      }
-      if (!this.vendorId) {
-        const vRes = await firstValueFrom(this.lpApi.createValue('Vendor', 'Internal'));
-        this.vendorId = vRes.responseData?.id;
-      }
-      if (!this.fileTypeId || !this.vendorId) throw new Error('Failed to create reference values');
-
-      const res = await firstValueFrom(this.fileApi.uploadMultipleFiles([file], this.fileTypeId, this.vendorId));
-      this.uploadState.set('success');
-      setTimeout(() => this.uploadState.set('idle'), 2000);
-      this.refreshFiles();
-    } catch (e: any) {
-      this.uploadState.set('error');
-      this.uploadError.set(e?.error?.message || e?.message || 'Upload failed');
-      setTimeout(() => this.uploadState.set('idle'), 4000);
-    }
+  onUploadComplete(files: FileDto[]): void {
+    this.showUploadDialog.set(false);
+    this.refreshFiles();
   }
 
   getDownloadUrl(file: FileDto): string {
