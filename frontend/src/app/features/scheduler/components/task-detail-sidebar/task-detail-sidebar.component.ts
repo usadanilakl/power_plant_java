@@ -16,7 +16,92 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
         <button class="close-btn" (click)="closed.emit()">x</button>
       </div>
 
-      <div class="sidebar-body" *ngIf="task">
+      <!-- ======= EXECUTE MODE ======= -->
+      <div class="sidebar-body" *ngIf="task && viewMode === 'execute'">
+        <!-- Safety banners first — operator sees these immediately -->
+        <div class="safety-banner warning-banner" *ngIf="task.warning">
+          <strong>WARNING:</strong> {{ task.warning }}
+        </div>
+        <div class="safety-banner caution-banner" *ngIf="task.caution">
+          <strong>CAUTION:</strong> {{ task.caution }}
+        </div>
+        <div class="safety-banner signoff-banner" *ngIf="task.requiresSignoff">
+          <strong>SIGNOFF REQUIRED</strong> — Supervisor sign-off before completion.
+        </div>
+
+        <section>
+          <label>Instructions</label>
+          <div class="exec-description">{{ task.description || 'No instructions provided.' }}</div>
+        </section>
+
+        <section *ngIf="task.expectedDurationMinutes">
+          <label>Expected Duration</label>
+          <span class="tag tag-duration">{{ task.expectedDurationMinutes }} min</span>
+        </section>
+
+        <!-- Steps progress (for parent tasks) -->
+        <section *ngIf="task.taskLevel === 'TASK' && task.subTasks.length > 0">
+          <label>Steps Progress</label>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="stepProgress"></div>
+          </div>
+          <span class="progress-text">{{ stepsDone }}/{{ task.subTasks.length }} complete</span>
+          <ul class="step-checklist">
+            <li *ngFor="let step of task.subTasks" [class.step-done]="isStepDone(step)">
+              <span class="step-check-icon">{{ isStepDone(step) ? '\u2713' : '\u25CB' }}</span>
+              {{ step.name }}
+            </li>
+          </ul>
+          <button class="btn btn-small btn-view" (click)="drillInto.emit(task)">Open Steps</button>
+        </section>
+
+        <!-- Read-only references -->
+        <section *ngIf="task.references.length > 0">
+          <label>References</label>
+          <ul class="item-list">
+            <li *ngFor="let ref of task.references">
+              <span class="dot" [class]="'dot-' + ref.referenceType.toLowerCase()"></span>
+              <span class="ref-label">{{ ref.referenceType }} #{{ ref.referenceId }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Read-only attachments -->
+        <section *ngIf="task.attachments.length > 0">
+          <label>Attachments</label>
+          <ul class="item-list">
+            <li *ngFor="let att of task.attachments">
+              <span class="dot dot-file"></span>
+              <a class="file-link" [href]="'/' + att.fileLink" target="_blank">{{ att.name }}</a>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Operator notes -->
+        <section>
+          <label>Notes</label>
+          <textarea [(ngModel)]="task.notes" (blur)="taskUpdated.emit(task)" rows="4" placeholder="Add execution notes..."></textarea>
+        </section>
+
+        <!-- Execute actions -->
+        <section class="actions exec-actions">
+          <button class="btn btn-progress btn-large" *ngIf="computedStatus === 'ready'"
+                  (click)="statusChanged.emit({task: task, status: 'In Progress'})">
+            Start
+          </button>
+          <button class="btn btn-complete btn-large" *ngIf="computedStatus !== 'completed'"
+                  (click)="statusChanged.emit({task: task, status: 'Completed'})">
+            Mark Complete
+          </button>
+          <button class="btn btn-skip" *ngIf="computedStatus !== 'completed' && computedStatus !== 'skipped'"
+                  (click)="statusChanged.emit({task: task, status: 'Skipped'})">
+            Skip
+          </button>
+        </section>
+      </div>
+
+      <!-- ======= BUILD MODE ======= -->
+      <div class="sidebar-body" *ngIf="task && viewMode === 'build'">
         <section>
           <label>Name</label>
           <input [(ngModel)]="task.name" (blur)="taskUpdated.emit(task)" />
@@ -148,20 +233,8 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
           <textarea [(ngModel)]="task.notes" (blur)="taskUpdated.emit(task)" rows="4" placeholder="Add notes..."></textarea>
         </section>
 
-        <!-- Actions -->
+        <!-- Builder Actions -->
         <section class="actions">
-          <button class="btn btn-complete" *ngIf="computedStatus !== 'completed'"
-                  (click)="statusChanged.emit({task: task, status: 'Completed'})">
-            Mark Complete
-          </button>
-          <button class="btn btn-progress" *ngIf="computedStatus === 'ready'"
-                  (click)="statusChanged.emit({task: task, status: 'In Progress'})">
-            Start
-          </button>
-          <button class="btn btn-skip" *ngIf="computedStatus !== 'completed' && computedStatus !== 'skipped'"
-                  (click)="statusChanged.emit({task: task, status: 'Skipped'})">
-            Skip
-          </button>
           <button class="btn btn-delete" (click)="taskDeleted.emit(task)">Delete</button>
         </section>
 
@@ -275,12 +348,42 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
       padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;
     }
     .btn-template-save:hover { background: #4f46e5; }
+    /* Execute mode styles */
+    .exec-description {
+      font-size: 13px; color: #cdd6f4; line-height: 1.5;
+      white-space: pre-wrap; background: #181825; padding: 8px 10px;
+      border-radius: 4px; border: 1px solid #333;
+    }
+    .progress-bar {
+      height: 6px; background: #313244; border-radius: 3px;
+      overflow: hidden; margin: 6px 0 4px;
+    }
+    .progress-fill {
+      height: 100%; background: #22c55e; border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .progress-text { font-size: 11px; color: #888; }
+    .step-checklist {
+      list-style: none; padding: 0; margin: 8px 0;
+    }
+    .step-checklist li {
+      font-size: 12px; padding: 3px 0; display: flex; align-items: center; gap: 6px;
+      color: #888;
+    }
+    .step-checklist li.step-done { color: #22c55e; text-decoration: line-through; }
+    .step-check-icon { font-size: 14px; min-width: 16px; }
+    .exec-actions { display: flex; flex-direction: column; gap: 8px; }
+    .btn-large {
+      padding: 12px; font-size: 14px; font-weight: 600;
+    }
+    .status-in.progress { background: #eab308; color: #000; }
   `]
 })
 export class TaskDetailSidebarComponent {
   @Input() task: SchedulerTaskDto | null = null;
   @Input() allTasks: SchedulerTaskDto[] = [];
   @Input() isDrilledView = false;
+  @Input() viewMode: 'build' | 'execute' = 'build';
   @Output() closed = new EventEmitter<void>();
   @Output() taskUpdated = new EventEmitter<SchedulerTaskDto>();
   @Output() taskDeleted = new EventEmitter<SchedulerTaskDto>();
@@ -309,6 +412,24 @@ export class TaskDetailSidebarComponent {
       return p && (p.statusName === 'Completed' || p.statusName === 'Skipped');
     });
     return allDone ? 'ready' : 'blocked';
+  }
+
+  get stepsDone(): number {
+    if (!this.task) return 0;
+    return this.task.subTasks.filter(s => {
+      const st = s.statusName?.toLowerCase();
+      return st === 'completed' || st === 'skipped';
+    }).length;
+  }
+
+  get stepProgress(): number {
+    if (!this.task || this.task.subTasks.length === 0) return 0;
+    return (this.stepsDone / this.task.subTasks.length) * 100;
+  }
+
+  isStepDone(step: SchedulerTaskDto): boolean {
+    const st = step.statusName?.toLowerCase();
+    return st === 'completed' || st === 'skipped';
   }
 
   get availablePrereqs(): SchedulerTaskDto[] {

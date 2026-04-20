@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;9d527964d5510e1b99b9bb886c48cb6751af0d9362c2aba1fdccdca11d310a7f;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/trend-chart/trend-chart.component.ts"],
+  "sourcesContent": ["\n    :host { display: block; width: 100%; height: 100%; }\n    .chart-container { width: 100%; height: 100%; min-height: 300px; }\n  "],
+  "mappings": ";AACI;AAAQ,WAAS;AAAO,SAAO;AAAM,UAAQ;AAAM;AACnD,CAAC;AAAkB,SAAO;AAAM,UAAQ;AAAM,cAAY;AAAO;",
+  "names": []
+}

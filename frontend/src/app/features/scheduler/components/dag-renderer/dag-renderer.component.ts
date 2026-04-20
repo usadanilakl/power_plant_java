@@ -16,7 +16,7 @@ export interface LinkEvent {
 
 export interface ContextMenuAction {
   task: SchedulerTaskDto;
-  action: 'delete' | 'link-from' | 'unlink' | 'add-step';
+  action: 'delete' | 'link-from' | 'unlink' | 'add-step' | 'start' | 'complete' | 'skip';
   targetId?: number;
 }
 
@@ -43,21 +43,34 @@ interface CtxConnection {
       <!-- Context menu -->
       <div class="context-menu" *ngIf="contextMenu"
            [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y">
-        <button (click)="onCtxAction('link-from')">Link from here...</button>
 
-        <!-- Show existing connections to remove -->
-        <ng-container *ngIf="contextMenu.connections.length > 0">
-          <div class="ctx-separator"></div>
-          <div class="ctx-label">Remove connection:</div>
-          <button *ngFor="let conn of contextMenu.connections"
-                  class="ctx-unlink"
-                  (click)="onCtxUnlink(conn)">
-            {{ conn.label }}
+        <!-- Execute mode actions -->
+        <ng-container *ngIf="viewMode === 'execute'">
+          <button (click)="onCtxAction('start')"
+                  *ngIf="getComputedStatus(contextMenu.task) === 'ready'">
+            Start
           </button>
+          <button (click)="onCtxAction('complete')">Mark Complete</button>
+          <button (click)="onCtxAction('skip')">Skip</button>
         </ng-container>
 
-        <div class="ctx-separator"></div>
-        <button class="ctx-danger" (click)="onCtxAction('delete')">Delete</button>
+        <!-- Builder mode actions -->
+        <ng-container *ngIf="viewMode === 'build'">
+          <button (click)="onCtxAction('link-from')">Link from here...</button>
+
+          <ng-container *ngIf="contextMenu.connections.length > 0">
+            <div class="ctx-separator"></div>
+            <div class="ctx-label">Remove connection:</div>
+            <button *ngFor="let conn of contextMenu.connections"
+                    class="ctx-unlink"
+                    (click)="onCtxUnlink(conn)">
+              {{ conn.label }}
+            </button>
+          </ng-container>
+
+          <div class="ctx-separator"></div>
+          <button class="ctx-danger" (click)="onCtxAction('delete')">Delete</button>
+        </ng-container>
       </div>
     </div>
   `,
@@ -96,6 +109,7 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
   @Input() tasks: SchedulerTaskDto[] = [];
   @Input() selectedTaskId: number | null = null;
+  @Input() viewMode: 'build' | 'execute' = 'build';
   @Output() taskClicked = new EventEmitter<SchedulerTaskDto>();
   @Output() taskDoubleClicked = new EventEmitter<SchedulerTaskDto>();
   @Output() canvasClicked = new EventEmitter<void>();
@@ -119,7 +133,7 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.cy) return;
-    if (changes['tasks']) {
+    if (changes['tasks'] || changes['viewMode']) {
       this.updateGraph();
     } else if (changes['selectedTaskId']) {
       this.updateSelection();
@@ -248,7 +262,7 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.tasks.find(t => t.id === id)?.name || `#${id}`;
   }
 
-  onCtxAction(action: 'delete' | 'link-from' | 'add-step'): void {
+  onCtxAction(action: ContextMenuAction['action']): void {
     if (!this.contextMenu) return;
     const task = this.contextMenu.task;
     this.closeContextMenu();
@@ -284,17 +298,29 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.cy.elements().remove();
 
-    const nodes = this.tasks.map(task => ({
-      data: {
-        id: `task-${task.id}`,
-        taskId: task.id,
-        label: task.name || `Task ${task.id}`,
-        status: this.getComputedStatus(task),
-        taskLevel: task.taskLevel,
-        isMultiStep: task.isMultiStep ? 'true' : undefined,
-        isSelected: task.id === this.selectedTaskId ? 'true' : undefined,
+    const nodes = this.tasks.map(task => {
+      const status = this.viewMode === 'build' ? 'neutral' : this.getComputedStatus(task);
+      let label = task.name || `Task ${task.id}`;
+      // In execute mode, show progress on multi-step tasks
+      if (this.viewMode === 'execute' && task.isMultiStep && task.subTasks?.length) {
+        const done = task.subTasks.filter(s => {
+          const st = s.statusName?.toLowerCase();
+          return st === 'completed' || st === 'skipped';
+        }).length;
+        label += ` (${done}/${task.subTasks.length})`;
       }
-    }));
+      return {
+        data: {
+          id: `task-${task.id}`,
+          taskId: task.id,
+          label,
+          status,
+          taskLevel: task.taskLevel,
+          isMultiStep: task.isMultiStep ? 'true' : undefined,
+          isSelected: task.id === this.selectedTaskId ? 'true' : undefined,
+        }
+      };
+    });
 
     const edges: cytoscape.ElementDefinition[] = [];
     this.tasks.forEach(task => {
@@ -339,7 +365,7 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private getComputedStatus(task: SchedulerTaskDto): string {
+  getComputedStatus(task: SchedulerTaskDto): string {
     const stored = task.statusName?.toLowerCase() ?? '';
     if (stored === 'completed' || stored === 'skipped' || stored === 'in progress') {
       return stored;
@@ -371,6 +397,10 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
           'border-width': 2,
           'border-color': '#4b5563',
         }
+      },
+      {
+        selector: 'node[status = "neutral"]',
+        style: {'background-color': '#374151', 'border-color': '#4b5563'}
       },
       {
         selector: 'node[status = "ready"]',

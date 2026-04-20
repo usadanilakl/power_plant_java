@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;39bdd53d8918fbee54514e09f575b19dd337fa73f1516d73f8d1e3003b8b0c46;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/agent/agent-toggle/agent-toggle.component.ts"],
+  "sourcesContent": ["\n    .agent-toggle-btn {\n      color: var(--header-text);\n      transition: color 0.2s;\n    }\n    .agent-toggle-btn.active {\n      color: var(--accent-color);\n    }\n    .agent-toggle-btn:hover {\n      color: var(--accent-color);\n    }\n  "],
+  "mappings": ";AACI,CAAC;AACC,SAAO,IAAI;AACX,cAAY,MAAM;AACpB;AACA,CAJC,gBAIgB,CAAC;AAChB,SAAO,IAAI;AACb;AACA,CAPC,gBAOgB;AACf,SAAO,IAAI;AACb;",
+  "names": []
+}

@@ -148,6 +148,29 @@
   background: #3f3f5c;
 }
 
+.btn-mode {
+  padding: 6px 14px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-mode.active-build {
+  background: #374151;
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.btn-mode.active-execute {
+  background: #065f46;
+  color: #34d399;
+  border-color: #059669;
+}
+
 .empty-state {
   display: flex;
   align-items: center;

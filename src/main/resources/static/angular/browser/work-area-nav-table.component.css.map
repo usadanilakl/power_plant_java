@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;8b5ca4114f327099b671c0388486cd97cc2acd6005d964e0f49902fc6bf6b559;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/permit-builder/work-area/work-area-map/work-area-nav-table.component.ts"],
+  "sourcesContent": ["\n    :host {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n\n    :host app-table {\n      display: flex;\n      flex-direction: column;\n      width: 100%;\n      height: 100%;\n      flex: 1;\n      min-height: 0;\n    }\n  "],
+  "mappings": ";AACI;AACE,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;AAEA,MAAM;AACJ,WAAS;AACT,kBAAgB;AAChB,SAAO;AACP,UAAQ;AACR,QAAM;AACN,cAAY;AACd;",
+  "names": []
+}

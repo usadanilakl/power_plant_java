@@ -1,4 +1,4 @@
-<div class="scheduler-container">
+<div class="scheduler-container" [class.execute-mode]="viewMode === 'execute'">
   <!-- Top bar -->
   <div class="scheduler-toolbar">
     <app-flow-selector
@@ -10,22 +10,32 @@
     </app-flow-selector>
 
     <div class="toolbar-actions" *ngIf="activeFlow">
-      <button class="btn-add-task" (click)="onAddTask()">
-        {{ drilledTask ? '+ Add Step' : '+ Add Task' }}
+      <!-- Mode toggle -->
+      <button class="btn-mode" [class.active-build]="viewMode === 'build'"
+              [class.active-execute]="viewMode === 'execute'"
+              (click)="onToggleMode()">
+        {{ viewMode === 'build' ? 'Builder' : 'Execute' }}
       </button>
 
-      <!-- From Template dropdown -->
-      <div class="template-dropdown" *ngIf="!drilledTask && templates.length > 0">
-        <button class="btn-template" (click)="toggleTemplateMenu()">From Template</button>
-        <div class="template-menu" *ngIf="showTemplateMenu">
-          <button *ngFor="let t of templates" (click)="onInstantiateTemplate(t)">
-            {{ t.name }}
-            <span class="tmpl-meta">{{ t.taskType }}</span>
-          </button>
-        </div>
-      </div>
+      <!-- Builder-only controls -->
+      <ng-container *ngIf="viewMode === 'build'">
+        <button class="btn-add-task" (click)="onAddTask()">
+          {{ drilledTask ? '+ Add Step' : '+ Add Task' }}
+        </button>
 
-      <a class="btn-nav" routerLink="/scheduler/templates">Templates</a>
+        <div class="template-dropdown" *ngIf="!drilledTask && templates.length > 0">
+          <button class="btn-template" (click)="toggleTemplateMenu()">From Template</button>
+          <div class="template-menu" *ngIf="showTemplateMenu">
+            <button *ngFor="let t of templates" (click)="onInstantiateTemplate(t)">
+              {{ t.name }}
+              <span class="tmpl-meta">{{ t.taskType }}</span>
+            </button>
+          </div>
+        </div>
+
+        <a class="btn-nav" routerLink="/scheduler/templates">Templates</a>
+      </ng-container>
+
       <a class="btn-nav" routerLink="/scheduler/table">Table</a>
     </div>
   </div>
@@ -47,6 +57,7 @@
         *ngIf="activeFlow"
         [tasks]="visibleTasks"
         [selectedTaskId]="selectedTask?.id ?? null"
+        [viewMode]="viewMode"
         (taskClicked)="onTaskClicked($event)"
         (taskDoubleClicked)="onTaskDoubleClicked($event)"
         (canvasClicked)="onCanvasClicked()"
@@ -59,11 +70,11 @@
       </div>
 
       <div class="empty-state" *ngIf="activeFlow && visibleTasks.length === 0 && !drilledTask">
-        <p>No tasks yet. Click "+ Add Task" to create one.</p>
+        <p>No tasks yet. Switch to Builder mode and click "+ Add Task" to create one.</p>
       </div>
 
       <div class="empty-state" *ngIf="drilledTask && visibleTasks.length === 0">
-        <p>No steps yet. Click "+ Add Step" to create one.</p>
+        <p>No steps yet. Switch to Builder mode and click "+ Add Step" to create one.</p>
       </div>
     </div>
 
@@ -72,6 +83,7 @@
       [task]="selectedTask"
       [allTasks]="visibleTasks"
       [isDrilledView]="!!drilledTask"
+      [viewMode]="viewMode"
       (closed)="onSidebarClosed()"
       (taskUpdated)="onTaskUpdated($event)"
       (taskDeleted)="onTaskDeleted($event)"

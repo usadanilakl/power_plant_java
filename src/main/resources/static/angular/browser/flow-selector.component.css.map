@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;59151035cadcd061a568fdb3b949c00ffaecd575525fe39173f0aaea1edd672d;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/scheduler/components/flow-selector/flow-selector.component.ts"],
+  "sourcesContent": ["\n    .flow-selector { display: flex; align-items: center; gap: 8px; }\n    select {\n      background: #181825; color: #cdd6f4; border: 1px solid #333;\n      padding: 6px 10px; border-radius: 4px; font-size: 13px; min-width: 200px;\n    }\n    .btn-new {\n      background: #3b82f6; color: #fff; border: none; padding: 6px 12px;\n      border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;\n    }\n    .btn-new:hover { background: #2563eb; }\n    .btn-delete {\n      background: #ef4444; color: #fff; border: none; padding: 6px 12px;\n      border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;\n    }\n    .btn-delete:hover { background: #dc2626; }\n  "],
+  "mappings": ";AACI,CAAC;AAAgB,WAAS;AAAM,eAAa;AAAQ,OAAK;AAAK;AAC/D;AACE,cAAY;AAAS,SAAO;AAAS,UAAQ,IAAI,MAAM;AACvD,WAAS,IAAI;AAAM,iBAAe;AAAK,aAAW;AAAM,aAAW;AACrE;AACA,CAAC;AACC,cAAY;AAAS,SAAO;AAAM,UAAQ;AAAM,WAAS,IAAI;AAC7D,iBAAe;AAAK,UAAQ;AAAS,aAAW;AAAM,eAAa;AACrE;AACA,CAJC,OAIO;AAAS,cAAY;AAAS;AACtC,CAAC;AACC,cAAY;AAAS,SAAO;AAAM,UAAQ;AAAM,WAAS,IAAI;AAC7D,iBAAe;AAAK,UAAQ;AAAS,aAAW;AAAM,eAAa;AACrE;AACA,CAJC,UAIU;AAAS,cAAY;AAAS;",
+  "names": []
+}

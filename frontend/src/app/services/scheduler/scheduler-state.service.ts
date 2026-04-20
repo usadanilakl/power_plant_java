@@ -38,6 +38,20 @@ export class SchedulerStateService {
     this.allTasks().filter(t => t.taskLevel === 'TASK' && !t.parentTaskId)
   );
 
+  // View mode: 'build' for editing structure, 'execute' for running procedures
+  viewMode = signal<'build' | 'execute'>('build');
+  // Auto-detect: if any task is in progress, suggest execute mode
+  hasActiveWork = computed(() =>
+    this.allTasks().some(t => t.statusName?.toLowerCase() === 'in progress')
+  );
+
+  isBuildMode = computed(() => this.viewMode() === 'build');
+  isExecuteMode = computed(() => this.viewMode() === 'execute');
+
+  toggleViewMode(): void {
+    this.viewMode.set(this.viewMode() === 'build' ? 'execute' : 'build');
+  }
+
   // Linking mode
   linkSource = signal<SchedulerTaskDto | null>(null);
 

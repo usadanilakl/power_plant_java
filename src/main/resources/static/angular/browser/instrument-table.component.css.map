@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;f42d1b9cbfef4dee3399a3965cc3b5146ce6f957e01ba865a21e0fa85955b023;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/instrumentation/instrument-table/instrument-table.component.ts"],
+  "sourcesContent": ["\n    :host {\n      display: flex;\n      flex-direction: column;\n      flex: 1;\n      min-height: 0;\n      overflow: hidden;\n    }\n    .table-wrapper {\n      flex: 1 1 auto;\n      display: flex;\n      flex-direction: column;\n      min-height: 0;\n      height: 100%;\n      overflow: hidden;\n    }\n  "],
+  "mappings": ";AACI;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACZ;AACA,CAAC;AACC,QAAM,EAAE,EAAE;AACV,WAAS;AACT,kBAAgB;AAChB,cAAY;AACZ,UAAQ;AACR,YAAU;AACZ;",
+  "names": []
+}

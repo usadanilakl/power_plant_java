@@ -543,6 +543,8 @@ public class FieldSyncService {
                             instrumentLogMergeService.mergeIfDuplicatesExist();
                             conversationMergeService.mergeIfDuplicatesExist();
                             messageMergeService.mergeIfDuplicatesExist();
+                            // Reload remap table — merges may have persisted new remaps
+                            idRemapTable = loadPersistentRemaps();
                         } catch (Exception e) {
                             log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                         } finally {
@@ -580,6 +582,8 @@ public class FieldSyncService {
                     instrumentLogMergeService.mergeIfDuplicatesExist();
                     conversationMergeService.mergeIfDuplicatesExist();
                     messageMergeService.mergeIfDuplicatesExist();
+                    // Reload remap table — merges may have persisted new remaps
+                    idRemapTable = loadPersistentRemaps();
                 } catch (Exception e) {
                     log.debug("Merge skipped due to contention (will retry next cycle): {}", e.getMessage());
                 } finally {

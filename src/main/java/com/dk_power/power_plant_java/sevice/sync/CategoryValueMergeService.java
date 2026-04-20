@@ -104,6 +104,11 @@ public class CategoryValueMergeService {
             duplicate.setDeleted(true);
             entityManager.merge(duplicate);
             entityManager.flush();
+
+            // Record remap so future incoming sync changes referencing the
+            // deleted duplicate ID are redirected to the canonical ID.
+            persistDedupRemap("Category", duplicate.getId(), canonical.getId());
+
             merged++;
 
             log.info("Category merge: '{}' ID={} merged into ID={}, {} values re-pointed",
@@ -161,6 +166,11 @@ public class CategoryValueMergeService {
             duplicate.setDeleted(true);
             entityManager.merge(duplicate);
             entityManager.flush();
+
+            // Record remap so future incoming sync changes referencing the
+            // deleted duplicate ID are redirected to the canonical ID.
+            persistDedupRemap("Value", duplicate.getId(), canonical.getId());
+
             merged++;
 
             log.info("Value merge: '{}' (cat={}) ID={} merged into ID={}",
@@ -242,6 +252,26 @@ public class CategoryValueMergeService {
             } catch (Exception e) {
                 log.warn("Error re-pointing {} references: {}", entityType, e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Persist a dedup remap so future sync batches resolve references to the
+     * deleted duplicate ID to the canonical ID.
+     */
+    private void persistDedupRemap(String entityType, Long originalId, Long remappedId) {
+        try {
+            entityManager.createNativeQuery(
+                "MERGE INTO dedup_id_remap (entity_type, original_id, remapped_id, created_at) " +
+                "KEY (entity_type, original_id) " +
+                "VALUES (:entityType, :originalId, :remappedId, :createdAt)")
+                .setParameter("entityType", entityType)
+                .setParameter("originalId", originalId)
+                .setParameter("remappedId", remappedId)
+                .setParameter("createdAt", java.time.Instant.now())
+                .executeUpdate();
+        } catch (Exception e) {
+            log.warn("Failed to persist dedup remap {}:{}->{}: {}", entityType, originalId, remappedId, e.getMessage());
         }
     }
 

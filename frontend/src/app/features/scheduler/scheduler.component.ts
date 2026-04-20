@@ -26,6 +26,7 @@ export class SchedulerComponent implements OnInit, OnDestroy {
   drilledTask: SchedulerTaskDto | null = null;
   templates: TaskTemplateDto[] = [];
   showTemplateMenu = false;
+  viewMode: 'build' | 'execute' = 'build';
 
   private subs: Subscription[] = [];
 
@@ -52,6 +53,8 @@ export class SchedulerComponent implements OnInit, OnDestroy {
       if (newFlow !== this.activeFlow) { this.activeFlow = newFlow; changed = true; }
       if (newDrilled !== this.drilledTask) { this.drilledTask = newDrilled; changed = true; }
       if (newTemplates !== this.templates) { this.templates = newTemplates; changed = true; }
+      const newMode = this.state.viewMode();
+      if (newMode !== this.viewMode) { this.viewMode = newMode; changed = true; }
 
       if (changed) this.cdr.detectChanges();
     }, 100);
@@ -151,6 +154,18 @@ export class SchedulerComponent implements OnInit, OnDestroy {
           this.state.updatePrerequisites(event.task.id, updated);
         }
         break;
+      case 'start':
+        event.task.statusName = 'In Progress';
+        this.state.updateTask(event.task);
+        break;
+      case 'complete':
+        event.task.statusName = 'Completed';
+        this.state.updateTask(event.task);
+        break;
+      case 'skip':
+        event.task.statusName = 'Skipped';
+        this.state.updateTask(event.task);
+        break;
     }
   }
 
@@ -192,6 +207,10 @@ export class SchedulerComponent implements OnInit, OnDestroy {
 
   onDrillOut(): void {
     this.state.drillOut();
+  }
+
+  onToggleMode(): void {
+    this.state.toggleViewMode();
   }
 
   toggleTemplateMenu(): void {
