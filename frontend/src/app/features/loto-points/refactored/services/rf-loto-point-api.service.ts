@@ -438,6 +438,14 @@ export class RfLotoPointApiService {
     );
   }
 
+  /** Set or clear modelFile FK on multiple LOTO points in one call. modelFileId=0 clears. */
+  setModelFileOnPoints(lotoPointIds: number[], modelFileId: number): Observable<SpringApiResponse<string>> {
+    return this.http.put<SpringApiResponse<string>>(
+      `${this.apiUrl}/set-model-file`,
+      { lotoPointIds, modelFileId }
+    );
+  }
+
   /** LOTO points linked to a given 3D model file (FileObject ID). */
   getByModelFile(fileId: number): Observable<SpringApiResponse<LotoPointDto[]>> {
     return this.http.get<SpringApiResponse<LotoPointDto[]>>(

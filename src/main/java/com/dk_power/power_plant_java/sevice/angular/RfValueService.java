@@ -51,7 +51,7 @@ public class RfValueService {
 
         // Check if value already exists in category
         Optional<Value> existing = category.getValues().stream()
-                .filter(v -> v.getName().equalsIgnoreCase(valueName))
+                .filter(v -> v.getName() != null && v.getName().equalsIgnoreCase(valueName))
                 .findFirst();
 
         if (existing.isPresent()) {
@@ -80,7 +80,7 @@ public class RfValueService {
         // Check if new name conflicts with existing value in same category
         if (nameChanged) {
             boolean nameExists = value.getCategory().getValues().stream()
-                    .anyMatch(v -> !v.getId().equals(valueId) && v.getName().equalsIgnoreCase(newName));
+                    .anyMatch(v -> !v.getId().equals(valueId) && v.getName() != null && v.getName().equalsIgnoreCase(newName));
 
             if (nameExists) {
                 throw new IllegalArgumentException("Value '" + newName + "' already exists in this category");

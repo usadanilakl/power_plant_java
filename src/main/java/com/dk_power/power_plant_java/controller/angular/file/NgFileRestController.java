@@ -219,6 +219,20 @@ public class NgFileRestController {
                 "Allowed extensions retrieved"));
     }
 
+    /** Files whose extension matches any of the given values (e.g. ?extensions=stl,obj,3mf). */
+    @GetMapping("/by-extensions")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> getByExtensions(
+            @RequestParam String extensions) {
+        try {
+            List<String> extList = java.util.Arrays.stream(extensions.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).toList();
+            return ResponseEntity.ok(new NgApiResponse<>(ngFileService.findByExtensions(extList),
+                    "Files retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** Distinct fileType names actually used by FileObjects in the database. */
     @GetMapping("/distinct-types")
     public ResponseEntity<NgApiResponse<List<String>>> getDistinctFileTypes() {

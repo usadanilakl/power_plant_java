@@ -144,6 +144,14 @@ export class RfFileApiService {
     );
   }
 
+  /** Files whose extension matches any of the given values. */
+  getByExtensions(extensions: string[]): Observable<SpringApiResponse<FileDto[]>> {
+    const params = new HttpParams().set('extensions', extensions.join(','));
+    return this.http.get<SpringApiResponse<FileDto[]>>(
+      `${this.apiUrl}/by-extensions`, { params }
+    );
+  }
+
   /** Distinct fileType names actually used by FileObjects in the database. */
   getDistinctFileTypes(): Observable<SpringApiResponse<string[]>> {
     return this.http.get<SpringApiResponse<string[]>>(

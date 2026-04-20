@@ -115,6 +115,24 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 .toList();
     }
 
+    /**
+     * Set or clear the modelFile FK on multiple LOTO points in one transaction.
+     * Lightweight — only touches the modelFile field, no equipment/ZE processing.
+     */
+    @Transactional
+    public void setModelFileOnPoints(List<Long> lotoPointIds, long modelFileId) {
+        com.dk_power.power_plant_java.entities.files.FileObject modelFile =
+                modelFileId > 0
+                        ? entityManager.find(com.dk_power.power_plant_java.entities.files.FileObject.class, modelFileId)
+                        : null;
+        for (Long lpId : lotoPointIds) {
+            lotoPointRepo.findById(lpId).ifPresent(lp -> {
+                lp.setModelFile(modelFile);
+                lotoPointRepo.save(lp);
+            });
+        }
+    }
+
     public Page<LotoPointDto> complexSearch(String searchString, int page, int size) {
         // Use GLOBAL search with OR logic for cross-field token matching.
         // Each token can match in any column (e.g., "condensate" in system + "pump" in description).

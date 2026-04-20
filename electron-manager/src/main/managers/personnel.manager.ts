@@ -136,8 +136,13 @@ export class PersonnelManager {
     if (data.length < 5) throw new Error('Schedule sheet has too few rows');
 
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentDay = now.getDate();
+    const hour = now.getHours();
+    // Between midnight and 5 AM, the active shift started yesterday at 17:00
+    // So "today" for schedule purposes is yesterday
+    const shiftDate = (hour < 5) ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+    const currentMonth = shiftDate.getMonth();
+    const currentDay = shiftDate.getDate();
+    console.log(`[Personnel] Current date: ${now.toLocaleString()} (shiftDate=${shiftDate.toLocaleDateString()}, day=${currentDay}, month=${currentMonth}, hour=${hour})`);
 
     // Find month block
     const monthRange = this.findMonthColumns(data, currentMonth);
@@ -178,15 +183,15 @@ export class PersonnelManager {
       console.log(`[Personnel] Row ${r}: ${cols.join(' ')}`);
     }
 
-    // Build schedule days — rest of the year
+    // Build schedule days — from shift date through end of year
     const scheduleDays: { col: number; date: string }[] = [];
-    const endOfYear = new Date(now.getFullYear(), 11, 31);
-    const totalDays = Math.ceil((endOfYear.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const endOfYear = new Date(shiftDate.getFullYear(), 11, 31);
+    const totalDays = Math.ceil((endOfYear.getTime() - shiftDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
     const monthRangeCache = new Map<number, ReturnType<typeof this.findMonthColumns>>();
     monthRangeCache.set(currentMonth, monthRange);
 
     for (let d = 0; d < totalDays; d++) {
-      const targetDate = new Date(now);
+      const targetDate = new Date(shiftDate);
       targetDate.setDate(currentDay + d);
       const targetDay = targetDate.getDate();
       const targetMonth = targetDate.getMonth();
@@ -203,7 +208,11 @@ export class PersonnelManager {
 
       const col = this.findDayColumn(data[range.dayNumberRow], range.startCol, range.endCol, targetDay);
       if (col >= 0) {
-        scheduleDays.push({ col, date: targetDate.toISOString().split('T')[0] });
+        // Use local date string, not UTC (toISOString would shift by timezone)
+        const y = targetDate.getFullYear();
+        const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(targetDate.getDate()).padStart(2, '0');
+        scheduleDays.push({ col, date: `${y}-${m}-${dd}` });
       }
     }
 

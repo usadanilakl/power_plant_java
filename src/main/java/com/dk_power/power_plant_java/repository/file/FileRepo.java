@@ -17,6 +17,9 @@ public interface FileRepo extends BaseRepository<FileObject> {
 
     @Query("SELECT DISTINCT e.fileType.name FROM FileObject e WHERE e.fileType IS NOT NULL ORDER BY e.fileType.name")
     List<String> getDistinctFileTypeNames();
+
+    @Query("SELECT e FROM FileObject e LEFT JOIN FETCH e.fileType LEFT JOIN FETCH e.vendor WHERE e.extension IN ?1")
+    List<FileObject> findByExtensionIn(List<String> extensions);
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);

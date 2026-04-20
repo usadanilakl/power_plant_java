@@ -118,29 +118,69 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
               <!-- Link dialog -->
               @if (isLinkDialogOpen()) {
                 <div class="link-dialog-overlay" (click)="closeLinkDialog()">
-                  <div class="link-dialog" (click)="$event.stopPropagation()">
+                  <div class="link-dialog link-dialog-wide" (click)="$event.stopPropagation()">
                     <div class="dialog-header">
-                      <h4>Link LOTO Point to Model</h4>
+                      <h4>Link LOTO Points to Model</h4>
                       <button class="btn-icon" (click)="closeLinkDialog()">✕</button>
                     </div>
                     <div class="dialog-body">
-                      <input class="search-input" placeholder="Search by tag number..."
-                             [(ngModel)]="linkSearchQuery"
-                             (input)="searchLotoPoints()" />
+                      <div class="dialog-toolbar">
+                        <input class="search-input" placeholder="Search tag, description, location..."
+                               [(ngModel)]="linkSearchQuery"
+                               (input)="searchLotoPoints()"
+                               (keydown.enter)="searchLotoPoints()" />
+                        <button class="btn btn-sm btn-primary"
+                                [disabled]="selectedSearchResults().length === 0 || isLinking()"
+                                (click)="linkSelected()">
+                          {{ isLinking() ? 'Linking...' : 'Link Selected (' + selectedSearchResults().length + ')' }}
+                        </button>
+                      </div>
                       @if (isSearching()) {
                         <div class="loading">Searching...</div>
-                      } @else {
-                        <div class="search-results">
-                          @for (lp of searchResults(); track lp.id) {
-                            <div class="search-result-item" (click)="linkLotoPoint(lp)">
-                              <span class="result-tag">{{ lp.tagNumber }}</span>
-                              <span class="result-desc">{{ lp.description }}</span>
-                            </div>
-                          }
-                          @if (searchResults().length === 0 && linkSearchQuery.length > 0) {
-                            <div class="empty-state small">No results</div>
-                          }
+                      } @else if (searchResults().length > 0) {
+                        <div class="search-results-table-wrap">
+                          <table class="lp-table search-table">
+                            <thead>
+                              <tr>
+                                <th class="check-col">
+                                  <input type="checkbox"
+                                         [checked]="allSearchSelected()"
+                                         [indeterminate]="someSearchSelected() && !allSearchSelected()"
+                                         (change)="toggleSelectAll($any($event.target).checked)" />
+                                </th>
+                                <th>Tag</th>
+                                <th>Description</th>
+                                <th>Location</th>
+                                <th>Eq Type</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (lp of searchResults(); track lp.id) {
+                                <tr (click)="toggleSearchSelection(lp)" class="selectable-row"
+                                    [class.row-selected]="isSearchSelected(lp)">
+                                  <td class="check-col">
+                                    <input type="checkbox" [checked]="isSearchSelected(lp)"
+                                           (click)="$event.stopPropagation()"
+                                           (change)="toggleSearchSelection(lp)" />
+                                  </td>
+                                  <td class="tag-cell">{{ lp.tagNumber }}</td>
+                                  <td>{{ lp.description }}</td>
+                                  <td>{{ lp.specificLocation }}</td>
+                                  <td>{{ lp.eqType?.name }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
                         </div>
+                        @if (searchHasMore()) {
+                          <button class="btn btn-sm load-more-btn" (click)="loadMoreResults()">
+                            Load more results...
+                          </button>
+                        }
+                      } @else if (linkSearchQuery.length >= 2) {
+                        <div class="empty-state small">No results found</div>
+                      } @else {
+                        <div class="empty-state small">Type at least 2 characters to search</div>
                       }
                     </div>
                   </div>
@@ -211,6 +251,7 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
     /* Link dialog */
     .link-dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 10000; display: flex; align-items: center; justify-content: center; }
     .link-dialog { background: #fff; border-radius: 8px; width: 500px; max-height: 70vh; display: flex; flex-direction: column; }
+    .link-dialog-wide { width: 800px; max-height: 80vh; }
     .dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
     .dialog-header h4 { margin: 0; }
     .dialog-body { padding: 12px 16px; overflow-y: auto; }
@@ -220,6 +261,17 @@ const MODEL_EXTENSIONS = ['stl', 'obj', '3mf'];
     .search-result-item:hover { background: #e3f2fd; }
     .result-tag { font-weight: 600; color: #1976d2; min-width: 100px; }
     .result-desc { color: #555; }
+    .dialog-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .dialog-toolbar .search-input { flex: 1; }
+    .search-results-table-wrap { max-height: 400px; overflow-y: auto; }
+    .search-table { font-size: 12px; }
+    .search-table th { position: sticky; top: 0; background: #f5f5f5; z-index: 1; }
+    .check-col { width: 32px; text-align: center; }
+    .selectable-row { cursor: pointer; }
+    .selectable-row:hover { background: #e3f2fd; }
+    .row-selected { background: #bbdefb; }
+    .row-selected:hover { background: #90caf9; }
+    .load-more-btn { width: 100%; margin-top: 4px; }
 
     /* Shared */
     .btn { padding: 4px 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; }
@@ -257,6 +309,20 @@ export class Model3dPageComponent implements OnInit {
   linkSearchQuery = '';
   searchResults = signal<LotoPointDto[]>([]);
   isSearching = signal(false);
+  isLinking = signal(false);
+  searchPage = signal(1);
+  searchHasMore = signal(false);
+  private selectedIds = signal<Set<number>>(new Set());
+
+  selectedSearchResults = computed(() => {
+    const ids = this.selectedIds();
+    return this.searchResults().filter(lp => ids.has(lp.id));
+  });
+  allSearchSelected = computed(() => {
+    const results = this.searchResults();
+    return results.length > 0 && this.selectedIds().size === results.length;
+  });
+  someSearchSelected = computed(() => this.selectedIds().size > 0);
 
   ngOnInit(): void {
     this.refreshFiles();
@@ -264,18 +330,11 @@ export class Model3dPageComponent implements OnInit {
 
   refreshFiles(): void {
     this.isLoadingFiles.set(true);
-    // Search for files with 3D model extensions
-    const criteria: SearchCriteria = {
-      type: 'column',
-      filters: { extension: MODEL_EXTENSIONS.join(',') },
-      columnFilterLogic: { extension: 'OR' },
-      page: 1,
-    };
-    this.fileApi.searchFiles(criteria, 500).pipe(
+    this.fileApi.getByExtensions(MODEL_EXTENSIONS).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (res) => {
-        const files = (res.responseData?.content ?? []).map((f: any) => FileDto.fromJson(f));
+        const files = (res.responseData ?? []).map((f: any) => FileDto.fromJson(f));
         this.modelFiles.set(files);
         this.isLoadingFiles.set(false);
       },
@@ -322,6 +381,9 @@ export class Model3dPageComponent implements OnInit {
     this.isLinkDialogOpen.set(true);
     this.linkSearchQuery = '';
     this.searchResults.set([]);
+    this.selectedIds.set(new Set());
+    this.searchPage.set(1);
+    this.searchHasMore.set(false);
   }
 
   closeLinkDialog(): void {
@@ -332,49 +394,98 @@ export class Model3dPageComponent implements OnInit {
     const q = this.linkSearchQuery.trim();
     if (q.length < 2) {
       this.searchResults.set([]);
+      this.selectedIds.set(new Set());
       return;
     }
     this.isSearching.set(true);
+    this.searchPage.set(1);
+    this.selectedIds.set(new Set());
+    this.doSearch(q, 1, false);
+  }
+
+  loadMoreResults(): void {
+    const next = this.searchPage() + 1;
+    this.searchPage.set(next);
+    this.doSearch(this.linkSearchQuery.trim(), next, true);
+  }
+
+  private doSearch(query: string, page: number, append: boolean): void {
+    const pageSize = 50;
     const criteria: SearchCriteria = {
       type: 'global',
-      query: q,
-      page: 1,
+      query,
+      page,
     };
-    this.lpApi.searchLotoPoints(criteria, 20).pipe(
+    this.lpApi.searchLotoPoints(criteria, pageSize).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (res) => {
-        const results = (res.responseData?.content ?? [])
+        const content = res.responseData?.content ?? [];
+        const linkedIds = new Set(this.linkedLotoPoints().map(lp => lp.id));
+        const results = content
           .map((lp: any) => LotoPointDto.fromJson(lp))
-          // Exclude already-linked points
-          .filter((lp: LotoPointDto) => !this.linkedLotoPoints().some(linked => linked.id === lp.id));
-        this.searchResults.set(results);
+          .filter((lp: LotoPointDto) => !linkedIds.has(lp.id));
+
+        if (append) {
+          this.searchResults.update(prev => [...prev, ...results]);
+        } else {
+          this.searchResults.set(results);
+        }
+        this.searchHasMore.set(!res.responseData?.last);
         this.isSearching.set(false);
       },
       error: () => {
-        this.searchResults.set([]);
+        if (!append) this.searchResults.set([]);
         this.isSearching.set(false);
       }
     });
   }
 
-  async linkLotoPoint(lp: LotoPointDto): Promise<void> {
+  // Selection helpers
+  isSearchSelected(lp: LotoPointDto): boolean {
+    return this.selectedIds().has(lp.id);
+  }
+
+  toggleSearchSelection(lp: LotoPointDto): void {
+    this.selectedIds.update(ids => {
+      const next = new Set(ids);
+      if (next.has(lp.id)) next.delete(lp.id);
+      else next.add(lp.id);
+      return next;
+    });
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    if (checked) {
+      this.selectedIds.set(new Set(this.searchResults().map(lp => lp.id)));
+    } else {
+      this.selectedIds.set(new Set());
+    }
+  }
+
+  async linkSelected(): Promise<void> {
     if (!this.selectedFile()) return;
+    const toLink = this.selectedSearchResults();
+    if (toLink.length === 0) return;
+
+    this.isLinking.set(true);
+    const fileId = this.selectedFile()!.id;
     try {
-      const payload = { id: lp.id, modelFileId: this.selectedFile()!.id };
-      await firstValueFrom(this.lpApi.updateLotoPoint(payload));
+      const ids = toLink.map(lp => lp.id);
+      await firstValueFrom(this.lpApi.setModelFileOnPoints(ids, fileId));
       this.closeLinkDialog();
-      this.loadLinkedLotoPoints(this.selectedFile()!.id);
+      this.loadLinkedLotoPoints(fileId);
     } catch (e: any) {
-      console.error('Failed to link LOTO point:', e);
+      console.error('Failed to link LOTO points:', e);
+    } finally {
+      this.isLinking.set(false);
     }
   }
 
   async unlinkLotoPoint(lp: LotoPointDto): Promise<void> {
     if (!this.selectedFile()) return;
     try {
-      const payload = { id: lp.id, modelFileId: 0 }; // 0 = explicit clear
-      await firstValueFrom(this.lpApi.updateLotoPoint(payload));
+      await firstValueFrom(this.lpApi.setModelFileOnPoints([lp.id], 0));
       this.loadLinkedLotoPoints(this.selectedFile()!.id);
     } catch (e: any) {
       console.error('Failed to unlink LOTO point:', e);

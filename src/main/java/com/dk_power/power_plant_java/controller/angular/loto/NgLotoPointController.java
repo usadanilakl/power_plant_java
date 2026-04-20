@@ -68,6 +68,28 @@ public class NgLotoPointController {
         }
     }
 
+    /**
+     * Set or clear the 3D model file on one or more LOTO points.
+     * Lightweight — only touches the modelFile FK, no equipment/ZE processing.
+     * Body: { "lotoPointIds": [1,2,3], "modelFileId": 42 }  (0 = clear)
+     */
+    @PutMapping("/set-model-file")
+    public ResponseEntity<NgApiResponse<String>> setModelFile(@RequestBody Map<String, Object> body) {
+        try {
+            List<Number> ids = ((List<?>) body.get("lotoPointIds"))
+                    .stream().map(o -> (Number) o).toList();
+            Number mfId = (Number) body.get("modelFileId");
+            ngLotoPointService.setModelFileOnPoints(
+                    ids.stream().map(Number::longValue).toList(),
+                    mfId != null ? mfId.longValue() : 0L
+            );
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    "Updated " + ids.size() + " LOTO points", "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     /** LOTO points linked to a given 3D model file (FileObject ID). */
     @GetMapping("/by-model-file/{fileId}")
     public ResponseEntity<NgApiResponse<List<LotoPointDto>>> getByModelFile(@PathVariable Long fileId) {

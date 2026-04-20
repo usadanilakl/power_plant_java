@@ -40,8 +40,8 @@ public class Category extends BaseAuditEntity {
     public Value getValueByName(String value){
         if(values==null || values.isEmpty()) return null;
         for (Value v : values) {
-            if(v==null||v.getName()==null||v.getName().isEmpty()||v.getName().isBlank()) return null;
-            else if(v.getName().trim().toLowerCase().equals(value.trim().toLowerCase())) return v;
+            if(v==null || v.getName()==null || v.getName().isBlank()) continue;
+            if(v.getName().trim().equalsIgnoreCase(value.trim())) return v;
         }
         return null;
     }

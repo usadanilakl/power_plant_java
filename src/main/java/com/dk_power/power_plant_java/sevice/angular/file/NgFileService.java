@@ -561,6 +561,11 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileRepo.getDistinctFileTypeNames();
     }
 
+    /** Files whose extension matches any of the given values. Eager-fetches fileType + vendor to avoid lazy loading. */
+    public List<FileDto> findByExtensions(List<String> extensions) {
+        return fileRepo.findByExtensionIn(extensions).stream().map(this::toDtoLight).toList();
+    }
+
     public List<FileDto> getByFileType(com.dk_power.power_plant_java.entities.categories.Value fileType) {
         return fileRepo.findByFileType(fileType).stream().map(this::toDto).toList();
     }
