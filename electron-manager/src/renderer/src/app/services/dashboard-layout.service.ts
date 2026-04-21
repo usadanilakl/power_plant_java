@@ -11,7 +11,8 @@ export type WidgetId =
   | 'paging-system'
   | 'clock'
   | 'notes'
-  | 'personnel';
+  | 'personnel'
+  | 'toi';
 
 export interface WidgetDefinition {
   id: WidgetId;
@@ -60,6 +61,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'clock', title: 'Clock & Timers', icon: 'schedule', iconColor: '#6366f1', description: 'Clock, shift timer, reminders', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'notes', title: 'Notes', icon: 'sticky_note_2', iconColor: '#f59e0b', description: 'Quick notes and reminders', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'personnel', title: 'Personnel', icon: 'groups', iconColor: '#8b5cf6', description: 'Shift schedule and roster', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
+  { id: 'toi', title: 'TOI/TMOD', icon: 'description', iconColor: '#10b981', description: 'Active TOI/TMOD documents', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
 ];
 
 // 3-column grid, auto-placed top-to-bottom left-to-right
@@ -69,7 +71,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     'fire-impairment', 'gate-log', 'weather',
     'pjm', 'permits', 'external-links',
     'contacts', 'paging-system', 'clock',
-    'notes', 'personnel',
+    'notes', 'personnel', 'toi',
   ];
   return order.map((id, i) => ({
     widgetId: id,

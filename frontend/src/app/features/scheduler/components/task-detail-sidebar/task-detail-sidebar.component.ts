@@ -89,12 +89,16 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
                   (click)="statusChanged.emit({task: task, status: 'In Progress'})">
             Start
           </button>
-          <button class="btn btn-complete btn-large" *ngIf="computedStatus !== 'completed'"
+          <button class="btn btn-complete btn-large"
+                  *ngIf="computedStatus !== 'completed' && !hasIncompleteSteps"
                   (click)="statusChanged.emit({task: task, status: 'Completed'})">
             Mark Complete
           </button>
+          <div class="incomplete-warning" *ngIf="computedStatus !== 'completed' && hasIncompleteSteps">
+            Complete all steps before marking this task complete ({{ stepsDone }}/{{ task.subTasks.length }})
+          </div>
           <button class="btn btn-skip" *ngIf="computedStatus !== 'completed' && computedStatus !== 'skipped'"
-                  (click)="statusChanged.emit({task: task, status: 'Skipped'})">
+                  (click)="onSkip()">
             Skip
           </button>
         </section>
@@ -377,6 +381,10 @@ import {EntityPickerDialogComponent, PickedEntity} from '../../../../shared/enti
       padding: 12px; font-size: 14px; font-weight: 600;
     }
     .status-in.progress { background: #eab308; color: #000; }
+    .incomplete-warning {
+      font-size: 11px; color: #f59e0b; background: #451a03;
+      padding: 8px 10px; border-radius: 4px; border-left: 3px solid #f59e0b;
+    }
   `]
 })
 export class TaskDetailSidebarComponent {
@@ -430,6 +438,11 @@ export class TaskDetailSidebarComponent {
   isStepDone(step: SchedulerTaskDto): boolean {
     const st = step.statusName?.toLowerCase();
     return st === 'completed' || st === 'skipped';
+  }
+
+  get hasIncompleteSteps(): boolean {
+    if (!this.task || this.task.subTasks.length === 0) return false;
+    return this.task.subTasks.some(s => !this.isStepDone(s));
   }
 
   get availablePrereqs(): SchedulerTaskDto[] {
@@ -490,5 +503,13 @@ export class TaskDetailSidebarComponent {
   onSaveAsTemplate(): void {
     if (!this.task) return;
     this.saveAsTemplate.emit(this.task);
+  }
+
+  onSkip(): void {
+    if (!this.task) return;
+    const reason = prompt('Reason for skipping (required):');
+    if (!reason || !reason.trim()) return;
+    this.task.notes = (this.task.notes ? this.task.notes + '\n' : '') + `[SKIPPED] ${reason.trim()}`;
+    this.statusChanged.emit({task: this.task, status: 'Skipped'});
   }
 }

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/venting-permit/venting-permit-paper-form/venting-permit-paper-form.component.css"],
-  "sourcesContent": [":host {\n  display: block;\n  height: 100%;\n  overflow: auto;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,UAAQ;AACR,YAAU;AACZ;",
-  "names": []
-}

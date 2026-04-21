@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;ca7f90779a78277dd3707628ca019258ea214efb3881f44f8a0075f6f65093a8;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/scheduler/components/task-table/task-table.component.ts"],
-  "sourcesContent": ["\n    :host {\n      display: flex; flex-direction: column; height: calc(100vh - 120px);\n      overflow: hidden;\n    }\n    .task-table-container {\n      display: flex; flex-direction: column; flex: 1; min-height: 0;\n      background: #11111b; color: #cdd6f4;\n    }\n    .table-toolbar { padding: 8px 16px; background: #1e1e2e; border-bottom: 1px solid #333; flex-shrink: 0; }\n    .table-wrapper { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }\n    .empty { display: flex; align-items: center; justify-content: center; flex: 1; color: #555; }\n  "],
-  "mappings": ";AACI;AACE,WAAS;AAAM,kBAAgB;AAAQ,UAAQ,KAAK,MAAM,EAAE;AAC5D,YAAU;AACZ;AACA,CAAC;AACC,WAAS;AAAM,kBAAgB;AAAQ,QAAM;AAAG,cAAY;AAC5D,cAAY;AAAS,SAAO;AAC9B;AACA,CAAC;AAAgB,WAAS,IAAI;AAAM,cAAY;AAAS,iBAAe,IAAI,MAAM;AAAM,eAAa;AAAG;AACxG,CAAC;AAAgB,QAAM;AAAG,WAAS;AAAM,kBAAgB;AAAQ,cAAY;AAAG,YAAU;AAAQ;AAClG,CAAC;AAAQ,WAAS;AAAM,eAAa;AAAQ,mBAAiB;AAAQ,QAAM;AAAG,SAAO;AAAM;",
-  "names": []
-}

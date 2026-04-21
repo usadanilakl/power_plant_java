@@ -124,6 +124,8 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
   contextMenu: {x: number, y: number, task: SchedulerTaskDto, connections: CtxConnection[]} | null = null;
   private nodeJustClicked = false;
+  // Saved node positions from builder mode (keyed by task ID)
+  private savedPositions = new Map<number, {x: number, y: number}>();
 
   constructor(private ngZone: NgZone) {}
 
@@ -219,6 +221,14 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
         this.contextAction.emit({task: targetTask, action: 'unlink', targetId: sourceTaskId});
       }
     }));
+
+    // Save position after drag (builder mode only)
+    this.cy.on('dragfree', 'node', (evt) => {
+      const node = evt.target;
+      const taskId = Number(node.data('taskId'));
+      const pos = node.position();
+      this.savedPositions.set(taskId, {x: pos.x, y: pos.y});
+    });
 
     this.updateGraph();
   }
@@ -339,17 +349,45 @@ export class DagRendererComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.cy.add([...nodes, ...edges]);
 
-    this.cy.layout({
-      name: 'dagre' as any,
-      rankDir: 'TB',
-      nodeSep: 60,
-      rankSep: 80,
-      edgeSep: 20,
-      animate: false,
-      padding: 30,
-    } as any).run();
+    // Check if we have saved positions for all current nodes
+    const allHavePositions = this.tasks.length > 0 &&
+      this.tasks.every(t => this.savedPositions.has(t.id));
 
-    this.cy.fit(undefined, 30);
+    if (allHavePositions) {
+      // Restore saved positions
+      this.cy.nodes().forEach(node => {
+        const taskId = Number(node.data('taskId'));
+        const pos = this.savedPositions.get(taskId);
+        if (pos) node.position(pos);
+      });
+    } else {
+      // Run dagre layout for new/changed graphs
+      this.cy.layout({
+        name: 'dagre' as any,
+        rankDir: 'TB',
+        nodeSep: 60,
+        rankSep: 80,
+        edgeSep: 20,
+        animate: false,
+        padding: 30,
+      } as any).run();
+
+      // Save the auto-layout positions
+      this.cy.nodes().forEach(node => {
+        const taskId = Number(node.data('taskId'));
+        const pos = node.position();
+        this.savedPositions.set(taskId, {x: pos.x, y: pos.y});
+      });
+
+      this.cy.fit(undefined, 30);
+    }
+
+    // Lock nodes in execute mode, unlock in build mode
+    if (this.viewMode === 'execute') {
+      this.cy.nodes().lock();
+    } else {
+      this.cy.nodes().unlock();
+    }
   }
 
   private updateSelection(): void {

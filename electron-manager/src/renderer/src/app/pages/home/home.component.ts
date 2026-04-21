@@ -16,6 +16,7 @@ import { PagingWidgetComponent } from './widgets/paging-widget.component';
 import { ClockWidgetComponent } from './widgets/clock-widget.component';
 import { NotesWidgetComponent } from './widgets/notes-widget.component';
 import { PersonnelWidgetComponent } from './widgets/personnel-widget.component';
+import { ToiWidgetComponent } from './widgets/toi-widget.component';
 import { DashboardEditToolbarComponent } from './dashboard-edit-toolbar.component';
 
 interface DashboardGridsterItem extends GridsterItem {
@@ -32,7 +33,8 @@ interface DashboardGridsterItem extends GridsterItem {
     FireImpairmentWidgetComponent, GateLogWidgetComponent, WeatherWidgetComponent,
     PjmWidgetComponent, PermitsWidgetComponent, ExternalLinksWidgetComponent,
     ContactsWidgetComponent, PagingWidgetComponent, ClockWidgetComponent,
-    NotesWidgetComponent, PersonnelWidgetComponent, DashboardEditToolbarComponent,
+    NotesWidgetComponent, PersonnelWidgetComponent, ToiWidgetComponent,
+    DashboardEditToolbarComponent,
   ],
   template: `
     <div class="home">
@@ -142,6 +144,8 @@ interface DashboardGridsterItem extends GridsterItem {
             <app-notes-widget *ngSwitchCase="'notes'"
               [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
             <app-personnel-widget *ngSwitchCase="'personnel'"
+              [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
+            <app-toi-widget *ngSwitchCase="'toi'"
               [cols]="item.cols" [rows]="item.rows" [editMode]="editMode" />
           </ng-container>
           </div>

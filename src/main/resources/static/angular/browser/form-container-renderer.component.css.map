@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/form-designer-refactored/form-renderer/form-container-renderer/form-container-renderer.component.css"],
-  "sourcesContent": [".form-container {\r\n  position: absolute;\r\n  display: flex;\r\n}\r\n"],
-  "mappings": ";AAAA,CAAC;AACC,YAAU;AACV,WAAS;AACX;",
-  "names": []
-}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;f98325744e0b559cf66ff4194636910662248756a5b085d326cf8ae927b38615;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/shared/sync-check/sync-check-dialog.component.ts"],
-  "sourcesContent": ["\n    mat-dialog-content { min-width: 380px; }\n  "],
-  "mappings": ";AACI;AAAqB,aAAW;AAAO;",
-  "names": []
-}

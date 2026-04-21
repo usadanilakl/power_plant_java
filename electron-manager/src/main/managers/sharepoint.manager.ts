@@ -182,6 +182,65 @@ export class SharePointManager {
     });
   }
 
+  // ── Folder Listing ──────────────────────────────────────────────────────
+
+  /**
+   * List files in a SharePoint folder.
+   * @param folderRelativeUrl  e.g., "/sites/JG/External/60 - Operations/..."
+   */
+  public async listFiles(folderRelativeUrl: string): Promise<{ name: string; serverRelativeUrl: string; size: number; modified: string }[]> {
+    const token = await this.ensureToken();
+    const encodedPath = folderRelativeUrl.split('/').map(s => encodeURIComponent(s)).join('/');
+    const apiPath = `/_api/web/GetFolderByServerRelativeUrl('${encodedPath}')/Files`;
+    const urlObj = new URL(this.config!.siteUrl + apiPath);
+
+    return new Promise((resolve, reject) => {
+      const options: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json;odata=nometadata',
+        },
+        timeout: 30_000,
+      };
+
+      const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', (chunk) => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 401) {
+            this.cachedToken = null;
+            this.tokenExpiry = 0;
+            reject(new Error('SharePoint returned 401'));
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`SharePoint folder listing returned ${res.statusCode}: ${body.substring(0, 300)}`));
+            return;
+          }
+          try {
+            const data = JSON.parse(body);
+            const files = (data.value || []).map((f: any) => ({
+              name: f.Name || '',
+              serverRelativeUrl: f.ServerRelativeUrl || '',
+              size: f.Length || 0,
+              modified: f.TimeLastModified || '',
+            }));
+            resolve(files);
+          } catch (err: any) {
+            reject(new Error(`Failed to parse folder listing: ${err.message}`));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(new Error(`SharePoint folder listing failed: ${err.message}`)));
+      req.on('timeout', () => { req.destroy(); reject(new Error('SharePoint folder listing timed out')); });
+      req.end();
+    });
+  }
+
   // ── File Downloads ──────────────────────────────────────────────────────
 
   /**

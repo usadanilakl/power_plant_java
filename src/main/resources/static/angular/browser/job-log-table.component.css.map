@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/job-log/job-log-table/job-log-table.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  width: 100%;\n  overflow: hidden;\n  flex: 1;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACV,QAAM;AACR;",
-  "names": []
-}

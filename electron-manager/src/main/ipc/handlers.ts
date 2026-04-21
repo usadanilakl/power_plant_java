@@ -1495,5 +1495,17 @@ export class IpcHandlers {
         return { success: false, error: err.message };
       }
     });
+
+    // TOI/TMOD file listing (uses same SharePoint manager)
+    ipcMain.handle(events.IPC_TOI_LIST_FILES, async () => {
+      try {
+        const files = await this.sharepointManager.listFiles(
+          '/sites/JG/External/60 - Operations/60.11 TIO-TMOD/60.20.01 Active TOI-TMOD'
+        );
+        return { success: true, data: files };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    });
   }
 }

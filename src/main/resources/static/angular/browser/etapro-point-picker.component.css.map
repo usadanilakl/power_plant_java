@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;0026afb1f976ceca00b4e7abe158ff135f48f6da7350d6592ce8cd8b893d6a34;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/etapro/etapro-point-picker/etapro-point-picker.component.ts"],
-  "sourcesContent": ["\n    :host { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; width: 100%; height: 100%; }\n    .table-wrapper { flex: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; overflow: hidden; }\n    app-table { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }\n  "],
-  "mappings": ";AACI;AAAQ,WAAS;AAAM,kBAAgB;AAAQ,QAAM;AAAG,cAAY;AAAG,YAAU;AAAQ,SAAO;AAAM,UAAQ;AAAM;AACpH,CAAC;AAAgB,QAAM;AAAG,WAAS;AAAM,kBAAgB;AAAQ,cAAY;AAAG,UAAQ;AAAM,YAAU;AAAQ;AAChH;AAAY,QAAM;AAAG,YAAU;AAAQ,WAAS;AAAM,kBAAgB;AAAQ,cAAY;AAAG;",
-  "names": []
-}

@@ -138,6 +138,9 @@ export const IPC_VOSK_AUDIO_CHUNK = 'vosk:audio-chunk';    // send/on (one-way, 
 export const IPC_VOSK_RESULT = 'vosk:result';              // send/on (main -> renderer)
 export const IPC_VOSK_ERROR = 'vosk:error';                // send/on (main -> renderer)
 
+// TOI/TMOD (invoke/handle)
+export const IPC_TOI_LIST_FILES = 'toi:list-files';
+
 // Personnel / Schedule (invoke/handle)
 export const IPC_PERSONNEL_GET_STATUS = 'personnel:get-status';
 export const IPC_PERSONNEL_REFRESH = 'personnel:refresh';

@@ -289,6 +289,13 @@ export interface PersonnelContact {
   emergencyRelation?: string;
 }
 
+export interface ToiFile {
+  name: string;
+  serverRelativeUrl: string;
+  size: number;
+  modified: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -404,6 +411,9 @@ interface ElectronAPI {
   personnelGetStatus: () => Promise<IpcResult<PersonnelStatus>>;
   personnelRefresh: () => Promise<IpcResult<PersonnelStatus>>;
   personnelGetContacts: () => Promise<IpcResult<PersonnelContact[]>>;
+
+  // TOI/TMOD
+  toiListFiles: () => Promise<IpcResult<ToiFile[]>>;
 
   // Print
   printHtml: (html: string, options?: { silent?: boolean }) => Promise<IpcResult>;
@@ -948,6 +958,13 @@ export class ElectronService implements OnDestroy {
   async personnelGetContacts(): Promise<IpcResult<PersonnelContact[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.personnelGetContacts();
+  }
+
+  // TOI/TMOD
+
+  async toiListFiles(): Promise<IpcResult<ToiFile[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.toiListFiles();
   }
 
   // Sync entity updates

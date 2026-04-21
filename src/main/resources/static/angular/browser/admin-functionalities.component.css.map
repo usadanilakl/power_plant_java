@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;251970c101977eb6bc98df92af77136963a4d3a6126ee17f2f8a4074ee137160;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/pages/admin/admin-functionalities.component.ts"],
-  "sourcesContent": ["\n    :host {\n      display: block;\n      height: 100%;\n    }\n    .admin-header {\n      padding: 20px 20px 0;\n      max-width: 1200px;\n      margin: 0 auto;\n    }\n    .admin-header h2 {\n      color: #333;\n      margin-bottom: 15px;\n      border-bottom: 2px solid #007bff;\n      padding-bottom: 10px;\n    }\n    .quick-links {\n      display: flex;\n      gap: 10px;\n      margin-bottom: 15px;\n    }\n    .nav-btn {\n      display: inline-block;\n      padding: 10px 20px;\n      border: none;\n      border-radius: 4px;\n      cursor: pointer;\n      font-size: 14px;\n      text-decoration: none;\n      background-color: #28a745;\n      color: white;\n      transition: background-color 0.2s;\n    }\n    .nav-btn:hover {\n      background-color: #218838;\n    }\n  "],
-  "mappings": ";AACI;AACE,WAAS;AACT,UAAQ;AACV;AACA,CAAC;AACC,WAAS,KAAK,KAAK;AACnB,aAAW;AACX,UAAQ,EAAE;AACZ;AACA,CALC,aAKa;AACZ,SAAO;AACP,iBAAe;AACf,iBAAe,IAAI,MAAM;AACzB,kBAAgB;AAClB;AACA,CAAC;AACC,WAAS;AACT,OAAK;AACL,iBAAe;AACjB;AACA,CAAC;AACC,WAAS;AACT,WAAS,KAAK;AACd,UAAQ;AACR,iBAAe;AACf,UAAQ;AACR,aAAW;AACX,mBAAiB;AACjB,oBAAkB;AAClB,SAAO;AACP,cAAY,iBAAiB;AAC/B;AACA,CAZC,OAYO;AACN,oBAAkB;AACpB;",
-  "names": []
-}

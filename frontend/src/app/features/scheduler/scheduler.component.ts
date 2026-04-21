@@ -158,14 +158,27 @@ export class SchedulerComponent implements OnInit, OnDestroy {
         event.task.statusName = 'In Progress';
         this.state.updateTask(event.task);
         break;
-      case 'complete':
+      case 'complete': {
+        const hasIncomplete = event.task.subTasks?.some(s => {
+          const st = s.statusName?.toLowerCase();
+          return st !== 'completed' && st !== 'skipped';
+        });
+        if (hasIncomplete) {
+          alert('Complete all steps before marking this task complete.');
+          return;
+        }
         event.task.statusName = 'Completed';
         this.state.updateTask(event.task);
         break;
-      case 'skip':
+      }
+      case 'skip': {
+        const reason = prompt('Reason for skipping (required):');
+        if (!reason || !reason.trim()) return;
         event.task.statusName = 'Skipped';
+        event.task.notes = (event.task.notes ? event.task.notes + '\n' : '') + `[SKIPPED] ${reason.trim()}`;
         this.state.updateTask(event.task);
         break;
+      }
     }
   }
 

@@ -221,6 +221,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pjmDaFetch: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_FETCH),
   pjmDaRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PJM_DA_REFRESH),
 
+  // TOI/TMOD
+  toiListFiles: (): Promise<any> => ipcRenderer.invoke(events.IPC_TOI_LIST_FILES),
+
   // Personnel / Schedule
   personnelGetStatus: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_GET_STATUS),
   personnelRefresh: (): Promise<any> => ipcRenderer.invoke(events.IPC_PERSONNEL_REFRESH),

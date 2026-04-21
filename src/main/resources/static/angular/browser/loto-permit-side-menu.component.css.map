@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/loto/loto-side-menu/loto-permit-side-menu.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  width: 100%;\n  overflow: hidden;\n  flex: 1;\n}\napp-permit-left-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  width: 100%;\n  overflow: hidden;\n  flex: 1;\n}\n\n.import-bar {\n  padding: 8px 12px;\n  border-top: 1px solid var(--border-color, #e0e0e0);\n  flex-shrink: 0;\n}\n\n.import-btn {\n  width: 100%;\n  padding: 8px 12px;\n  background: var(--primary-color, #2196F3);\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  font-size: 13px;\n}\n\n.import-btn:hover {\n  opacity: 0.9;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACV,QAAM;AACR;AACA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACV,QAAM;AACR;AAEA,CAAC;AACC,WAAS,IAAI;AACb,cAAY,IAAI,MAAM,IAAI,cAAc,EAAE;AAC1C,eAAa;AACf;AAEA,CAAC;AACC,SAAO;AACP,WAAS,IAAI;AACb,cAAY,IAAI,eAAe,EAAE;AACjC,SAAO;AACP,UAAQ;AACR,iBAAe;AACf,UAAQ;AACR,aAAW;AACb;AAEA,CAXC,UAWU;AACT,WAAS;AACX;",
-  "names": []
-}

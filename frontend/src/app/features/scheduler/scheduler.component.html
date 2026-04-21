@@ -11,11 +11,10 @@
 
     <div class="toolbar-actions" *ngIf="activeFlow">
       <!-- Mode toggle -->
-      <button class="btn-mode" [class.active-build]="viewMode === 'build'"
-              [class.active-execute]="viewMode === 'execute'"
-              (click)="onToggleMode()">
-        {{ viewMode === 'build' ? 'Builder' : 'Execute' }}
-      </button>
+      <div class="mode-toggle" (click)="onToggleMode()">
+        <span class="mode-option" [class.active]="viewMode === 'build'">Builder</span>
+        <span class="mode-option" [class.active]="viewMode === 'execute'">Execute</span>
+      </div>
 
       <!-- Builder-only controls -->
       <ng-container *ngIf="viewMode === 'build'">

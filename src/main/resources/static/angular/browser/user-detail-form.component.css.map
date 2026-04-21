@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["angular:styles/component:css;b412ddca0f78122956638f4c44509ef7b8b765d5a4946b18b9dc7be8f8e9121b;C:/Users/usada/my_projects/power_plant_java/frontend/src/app/features/users/user-detail-form/user-detail-form.component.ts"],
-  "sourcesContent": [":host { display: block; padding: 16px; }"],
-  "mappings": ";AAAA;AAAQ,WAAS;AAAO,WAAS;AAAM;",
-  "names": []
-}

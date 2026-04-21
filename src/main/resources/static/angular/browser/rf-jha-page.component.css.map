@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/permit-builder/jha/refactored/rf-jha-page/rf-jha-page.component.css"],
-  "sourcesContent": [":host {\r\n  display: block;\r\n  height: 100%;\r\n  overflow: auto;\r\n}\r\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,UAAQ;AACR,YAAU;AACZ;",
-  "names": []
-}
