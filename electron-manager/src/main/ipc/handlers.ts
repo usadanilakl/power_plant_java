@@ -1496,13 +1496,57 @@ export class IpcHandlers {
       }
     });
 
-    // TOI/TMOD file listing (uses same SharePoint manager)
+    // TOI/TMOD file listing with metadata extraction
     ipcMain.handle(events.IPC_TOI_LIST_FILES, async () => {
       try {
+        const XLSX = require('xlsx');
         const files = await this.sharepointManager.listFiles(
           '/sites/JG/External/60 - Operations/60.11 TIO-TMOD/60.20.01 Active TOI-TMOD'
         );
-        return { success: true, data: files };
+        // Filter to Excel files and enrich with parsed metadata
+        const excelFiles = files.filter(f =>
+          f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls')
+        );
+        const enriched = await Promise.all(excelFiles.map(async (f) => {
+          try {
+            // SharePoint can't resolve files with # in names via REST API — skip download
+            if (f.name.includes('#')) {
+              return { ...f, title: f.name.replace(/\.xlsx?$/i, ''), originator: '', date: '', instructions: '' };
+            }
+            const buffer = await this.sharepointManager.downloadFile(f.serverRelativeUrl);
+            const wb = XLSX.read(buffer, { type: 'buffer' });
+            const formSheet = wb.Sheets['Form'] || wb.Sheets[wb.SheetNames[0]];
+            if (!formSheet) return { ...f, title: '', originator: '', date: '', instructions: '' };
+            const data: any[][] = XLSX.utils.sheet_to_json(formSheet, { header: 1, defval: '' });
+
+            // Labels are in cols A-D, values start from col D-E onwards
+            // Scan cols 2-10 to find the first non-empty value that isn't a known label
+            const labels = new Set(['sequential no.#:', 'date:', 'risk assessment:', 'number from log:',
+              'originator:', 'title:', 'toi/tmod instructions:', 'toi/tmod', 'instructions:',
+              'risk identified:', 'countermeasures/', 'controls:', 'record', 'type:', 'check rpn*',
+              'description', 'part i', 'part ii']);
+            const getRowValue = (row: number): string => {
+              if (!data[row]) return '';
+              for (let c = 2; c < Math.min(data[row].length, 15); c++) {
+                const v = String(data[row][c] || '').trim();
+                if (v && !labels.has(v.toLowerCase())) return v;
+              }
+              return '';
+            };
+
+            const title = getRowValue(11);        // Row 12 (0-indexed 11): Title
+            const originator = getRowValue(10);    // Row 11 (0-indexed 10): Originator
+            const date = getRowValue(8);           // Row 9 (0-indexed 8): Date
+            const instructions = getRowValue(12);  // Row 13 (0-indexed 12): Instructions
+
+            return { ...f, title, originator, date, instructions };
+          } catch (err: any) {
+            console.warn(`[TOI] Failed to parse ${f.name}:`, err.message);
+            return { ...f, title: '', originator: '', date: '', instructions: '' };
+          }
+        }));
+        console.log(`[TOI] Loaded ${enriched.length} files with metadata`);
+        return { success: true, data: enriched };
       } catch (err: any) {
         return { success: false, error: err.message };
       }

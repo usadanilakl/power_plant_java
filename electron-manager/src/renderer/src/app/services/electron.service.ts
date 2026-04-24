@@ -294,6 +294,10 @@ export interface ToiFile {
   serverRelativeUrl: string;
   size: number;
   modified: string;
+  title?: string;
+  originator?: string;
+  date?: string;
+  instructions?: string;
 }
 
 interface ElectronAPI {

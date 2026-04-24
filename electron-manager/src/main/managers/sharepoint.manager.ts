@@ -249,16 +249,19 @@ export class SharePointManager {
    */
   public async downloadFile(serverRelativeUrl: string): Promise<Buffer> {
     const token = await this.ensureToken();
-    // Encode each path segment individually, preserving slashes
-    const encodedPath = serverRelativeUrl.split('/').map(s => encodeURIComponent(s)).join('/');
-    const apiPath = `/_api/web/GetFileByServerRelativeUrl('${encodedPath}')/$value`;
-    const urlObj = new URL(this.config!.siteUrl + apiPath);
-    console.log('[SharePoint] Downloading file:', urlObj.href);
+    // Use @a parameter syntax to pass the path separately in the query string
+    // This avoids issues with #, &, etc. in filenames breaking the URL path
+    const siteUrl = this.config!.siteUrl;
+    const hostname = siteUrl.replace(/^https?:\/\//, '').split('/')[0];
+    const sitePath = '/' + siteUrl.replace(/^https?:\/\//, '').split('/').slice(1).join('/');
+    const encodedParam = encodeURIComponent("'" + serverRelativeUrl + "'");
+    const fullPath = `${sitePath}/_api/web/GetFileByServerRelativeUrl(@a)/$value?@a=${encodedParam}`;
+    console.log('[SharePoint] Downloading:', serverRelativeUrl.substring(serverRelativeUrl.lastIndexOf('/') + 1));
 
     return new Promise((resolve, reject) => {
       const options: https.RequestOptions = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname + urlObj.search,
+        hostname,
+        path: fullPath,
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

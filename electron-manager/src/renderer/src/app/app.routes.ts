@@ -9,6 +9,7 @@ import { SyncUpdatesComponent } from './pages/sync-updates/sync-updates.componen
 import { SettingsComponent } from './pages/settings/settings.component';
 import { SpringBootUiComponent } from './pages/spring-boot-ui/spring-boot-ui.component';
 import { PersonnelComponent } from './pages/personnel/personnel.component';
+import { ToiComponent } from './pages/toi/toi.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -20,6 +21,7 @@ export const routes: Routes = [
   { path: 'logs', component: LogsComponent },
   { path: 'sync-updates', component: SyncUpdatesComponent },
   { path: 'personnel', component: PersonnelComponent },
+  { path: 'toi', component: ToiComponent },
   { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

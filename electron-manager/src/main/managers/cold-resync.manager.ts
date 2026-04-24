@@ -374,7 +374,7 @@ export class ColdResyncManager {
             port: endpoint.port || 80,
             path: endpoint.pathname + (endpoint.search || ''),
             method: 'GET',
-            timeout: 30000,
+            timeout: 300000, // 5 min — same as file downloads
             headers: { ...extraHeaders }
           },
           (res) => {

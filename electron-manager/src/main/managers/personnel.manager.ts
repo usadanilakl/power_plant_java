@@ -142,7 +142,6 @@ export class PersonnelManager {
     const shiftDate = (hour < 5) ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
     const currentMonth = shiftDate.getMonth();
     const currentDay = shiftDate.getDate();
-    console.log(`[Personnel] Current date: ${now.toLocaleString()} (shiftDate=${shiftDate.toLocaleDateString()}, day=${currentDay}, month=${currentMonth}, hour=${hour})`);
 
     // Find month block
     const monthRange = this.findMonthColumns(data, currentMonth);
@@ -151,37 +150,8 @@ export class PersonnelManager {
       return [];
     }
 
-    console.log(`[Personnel] Month: ${MONTH_NAMES[currentMonth]}, nameCol: ${monthRange.nameCol}, groupCol: ${monthRange.groupCol}, dayRange: ${monthRange.startCol}-${monthRange.endCol}, dayNumberRow: ${monthRange.dayNumberRow}, monthFoundAt: row=${monthRange._debugRow} col=${monthRange._debugCol}`);
-
-    // Log the day number row around the found range
-    const dayRowData = data[monthRange.dayNumberRow];
-    const dayNums = [];
-    for (let c = Math.max(0, monthRange.startCol - 2); c <= Math.min(monthRange.endCol + 2, dayRowData.length - 1); c++) {
-      dayNums.push(`[${c}]=${dayRowData[c]}`);
-    }
-    console.log(`[Personnel] Day number row: ${dayNums.join(', ')}`);
-
     // Find today's column
     const todayCol = this.findDayColumn(data[monthRange.dayNumberRow], monthRange.startCol, monthRange.endCol, currentDay);
-    console.log(`[Personnel] Today col for day ${currentDay}: ${todayCol}`);
-
-    // Log rows — show cols 0-2 (fixed group/name area) + name col + today
-    const debugDayStart = todayCol >= 0 ? todayCol : monthRange.startCol;
-    for (let r = monthRange.dataStartRow - 1; r < Math.min(monthRange.dataStartRow + 30, data.length); r++) {
-      const cols: string[] = [];
-      // Show first few columns (fixed group area)
-      for (let c = 0; c <= Math.min(3, data[r].length - 1); c++) {
-        cols.push(`[${c}]="${String(data[r][c] || '').trim()}"`);
-      }
-      // Show cols 93-99 to find the actual group/name columns for this month
-      for (let c = 93; c <= 99; c++) {
-        cols.push(`[${c}]="${String(data[r][c] || '').trim()}"`);
-      }
-      for (let c = debugDayStart; c <= Math.min(debugDayStart + 2, monthRange.endCol); c++) {
-        cols.push(`day[${c}]="${String(data[r][c] || '').trim()}"`);
-      }
-      console.log(`[Personnel] Row ${r}: ${cols.join(' ')}`);
-    }
 
     // Build schedule days — from shift date through end of year
     const scheduleDays: { col: number; date: string }[] = [];
@@ -252,7 +222,6 @@ export class PersonnelManager {
 
       const group = currentGroup;
       entries.push({ name: nameCell, group, todayShift, schedule });
-      console.log(`[Personnel] Person: "${nameCell}" group=${group} today=${todayShift} schedule=[${schedule.map(s => s.shift || '-').join(',')}] (row ${r})`);
 
       // Skip the second row of this person's pair
       r++;
@@ -279,7 +248,7 @@ export class PersonnelManager {
 
   private findMonthColumns(data: any[][], month: number): {
     startCol: number; endCol: number; nameCol: number; groupCol: number;
-    dayNumberRow: number; dataStartRow: number; _debugRow?: number; _debugCol?: number;
+    dayNumberRow: number; dataStartRow: number;
   } | null {
     const monthName = MONTH_NAMES[month];
 
@@ -353,7 +322,6 @@ export class PersonnelManager {
             }
           }
 
-          console.log(`[Personnel] findMonthColumns("${monthName}"): found at row=${r} col=${c}, firstDayCol=${firstDayCol}, lastDayCol=${lastDayCol}, nameCol=${nameCol}, groupCol=${groupCol}`);
 
           return {
             startCol: firstDayCol,
@@ -362,8 +330,6 @@ export class PersonnelManager {
             groupCol,
             dayNumberRow,
             dataStartRow: dayNumberRow + 1,
-            _debugRow: r,
-            _debugCol: c,
           };
         }
       }
@@ -394,17 +360,6 @@ export class PersonnelManager {
     }
 
     const rotData: any[][] = XLSX.utils.sheet_to_json(rotSheet, { header: 1, defval: '' });
-    console.log(`[Personnel] Rotation sheet: ${rotData.length} rows, ${rotData[0]?.length || 0} cols`);
-
-    // Log first 20 rows to understand structure
-    for (let r = 0; r < Math.min(rotData.length, 20); r++) {
-      const cells = [];
-      for (let c = 0; c < Math.min(rotData[r].length, 15); c++) {
-        const v = String(rotData[r][c] || '').trim();
-        if (v) cells.push(`[${c}]="${v}"`);
-      }
-      if (cells.length > 0) console.log(`[Personnel] Rot row ${r}: ${cells.join(' ')}`);
-    }
 
     // Try to find current month column and map names to groups
     // Common structures:
@@ -469,7 +424,6 @@ export class PersonnelManager {
     if (!sheet) return [];
 
     const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-    console.log(`[Personnel] Contacts: ${rows.length} rows, keys: ${rows[0] ? Object.keys(rows[0]).map(k => JSON.stringify(k)).join(', ') : 'none'}`);
 
     // Column headers may contain newlines (e.g., "Primary Phone\nNumber")
     // Normalize keys by replacing newlines with spaces

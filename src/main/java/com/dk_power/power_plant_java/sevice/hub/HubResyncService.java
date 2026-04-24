@@ -462,13 +462,12 @@ public class HubResyncService {
         try {
             Files.walkFileTree(uploadsDir, new SimpleFileVisitor<>() {
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     String relativePath = uploadsDir.relativize(file).toString().replace('\\', '/');
-                    String fileHash = computeFileHash(file);
 
                     manifest.add(PathBasedManifestEntry.builder()
                         .relativePath(relativePath)
-                        .fileHash(fileHash)
+                        .fileHash(null)
                         .fileSize(attrs.size())
                         .lastModified(attrs.lastModifiedTime().toInstant())
                         .build());

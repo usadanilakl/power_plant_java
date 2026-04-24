@@ -839,7 +839,7 @@ public class FileObjectSyncHandler {
      * Process pending uploads (runs in background).
      * Uses database-backed queue with exponential backoff for retries.
      */
-    @Scheduled(fixedDelay = 5000, initialDelay = 10000)
+    @Scheduled(fixedDelay = 30000, initialDelay = 10000)
     @Transactional
     public void processUploadQueue() {
         if (!syncConfig.isServerSyncEnabled()) {
@@ -910,7 +910,7 @@ public class FileObjectSyncHandler {
      * Process pending downloads (runs in background - eager download).
      * Uses database-backed queue with exponential backoff for retries.
      */
-    @Scheduled(fixedDelay = 5000, initialDelay = 15000)
+    @Scheduled(fixedDelay = 30000, initialDelay = 15000)
     @Transactional
     public void processDownloadQueue() {
         if (!syncConfig.isServerSyncEnabled()) {

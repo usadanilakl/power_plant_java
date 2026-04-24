@@ -17,7 +17,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -68,8 +68,15 @@ public class CentralSyncService {
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
 
     private static final int DEFAULT_SEND_BATCH_SIZE = 5000;
-    private static final int DEFAULT_RECEIVE_BATCH_SIZE = 500;
+    private static final int DEFAULT_RECEIVE_BATCH_SIZE = 100;
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
+    private static final long DEFAULT_RECEIVE_MAX_DURATION_MS = 1500;
+
+    @Value("${sync.receive.batch-size:100}")
+    private int receiveBatchSize = DEFAULT_RECEIVE_BATCH_SIZE;
+
+    @Value("${sync.receive.max-duration-ms:1500}")
+    private long receiveMaxDurationMs = DEFAULT_RECEIVE_MAX_DURATION_MS;
 
     private ServerSseClient getServerSseClient() {
         if (serverSseClient == null) {
@@ -86,7 +93,7 @@ public class CentralSyncService {
     }
 
     private int getReceiveBatchSize() {
-        return DEFAULT_RECEIVE_BATCH_SIZE;
+        return receiveBatchSize;
     }
 
     /**
@@ -140,14 +147,19 @@ public class CentralSyncService {
 
     /**
      * Polls every 15s; runs send + receive when interval has elapsed.
+     * markPeerSynced() is called only when the full backlog has been drained.
+     * If receive yields early (wall-clock budget), the next poll fires again
+     * without waiting for the full peer sync interval.
      */
     @Scheduled(fixedDelay = 15000, initialDelay = 60000)
     public void periodicSync() {
         if (syncConfig.isHubMode() || !syncConfig.isServerSyncEnabled()) return;
         if (!syncIntervals.isPeerSyncDue()) return;
-        syncIntervals.markPeerSynced();
         sendToServer();
-        receiveFromServer();
+        SyncResult receiveResult = receiveFromServer();
+        if (!receiveResult.isMorePending()) {
+            syncIntervals.markPeerSynced();
+        }
     }
 
     /**
@@ -216,17 +228,20 @@ public class CentralSyncService {
             BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();
             result.setChangesReceived(receiveResult.totalReceived);
             result.setChangesApplied(receiveResult.totalApplied);
+            result.setMorePending(receiveResult.morePending);
             result.setSuccess(true);
             serverAvailable = true;
 
             totalChangesReceived.addAndGet(receiveResult.totalReceived);
 
             if (receiveResult.totalReceived > 0) {
-                log.info("server_sync.receive.done received={} applied={}", receiveResult.totalReceived, receiveResult.totalApplied);
+                log.info("server_sync.receive.done received={} applied={} morePending={}",
+                    receiveResult.totalReceived, receiveResult.totalApplied, receiveResult.morePending);
             }
 
-            // Post-receive dedup
-            if (receiveResult.totalApplied > 0) {
+            // Post-receive dedup — skip when more batches are pending to avoid
+            // repeated expensive merge scans during backlog catch-up
+            if (receiveResult.totalApplied > 0 && !receiveResult.morePending) {
                 try { workRequestMergeService.mergeIfDuplicatesExist(); } catch (Exception ex) {
                     log.error("Post-sync WorkRequest merge failed: {}", ex.getMessage(), ex);
                 }
@@ -290,7 +305,6 @@ public class CentralSyncService {
      * Send outgoing changes to server in batches.
      * This prevents memory issues with large change sets.
      */
-    @Transactional
     protected int sendOutgoingChangesInBatches() {
         int batchSize = getSendBatchSize();
         int totalSent = 0;
@@ -398,11 +412,11 @@ public class CentralSyncService {
     /**
      * Receive incoming changes from server in batches.
      */
-    @Transactional
     protected BatchedReceiveResult receiveIncomingChangesInBatches() {
         BatchedReceiveResult result = new BatchedReceiveResult();
         int batchSize = getReceiveBatchSize();
         int batchNumber = 0;
+        long startTime = System.currentTimeMillis();
 
         // First, check how many changes the server has for us
         long pendingCount = getPendingChangeCountFromServer();
@@ -415,11 +429,20 @@ public class CentralSyncService {
             return result;
         }
 
-        log.info("server_sync.receive.start pending={} batchSize={}", pendingCount, batchSize);
+        log.info("server_sync.receive.start pending={} batchSize={} budgetMs={}", pendingCount, batchSize, receiveMaxDurationMs);
 
         // Request changes in batches using the paginated endpoint
         int page = 0;
         while (true) {
+            // Wall-clock budget: yield between batches to let HTTP requests through.
+            // The next scheduled run (or immediate follow-up) will continue draining.
+            if (batchNumber > 0 && (System.currentTimeMillis() - startTime) >= receiveMaxDurationMs) {
+                result.morePending = true;
+                log.info("server_sync.receive.yield elapsed={}ms batches={} received={} applied={}",
+                    System.currentTimeMillis() - startTime, batchNumber, result.totalReceived, result.totalApplied);
+                break;
+            }
+
             try {
                 List<FieldChange> batch = fetchBatchFromServer(page, batchSize);
 
@@ -472,8 +495,8 @@ public class CentralSyncService {
             }
         }
 
-        log.info("server_sync.receive.complete received={} applied={} batches={}",
-            result.totalReceived, result.totalApplied, batchNumber);
+        log.info("server_sync.receive.complete received={} applied={} batches={} morePending={}",
+            result.totalReceived, result.totalApplied, batchNumber, result.morePending);
         return result;
     }
 
@@ -551,6 +574,7 @@ public class CentralSyncService {
     private static class BatchedReceiveResult {
         int totalReceived = 0;
         int totalApplied = 0;
+        boolean morePending = false;
     }
 
     /**
@@ -658,13 +682,21 @@ public class CentralSyncService {
 
     @lombok.Data
     @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
     public static class SyncResult {
         private boolean success;
         private String errorMessage;
         private int changesSent;
         private int changesReceived;
         private int changesApplied;
+        private boolean morePending;
+
+        public SyncResult(boolean success, String errorMessage, int changesSent, int changesReceived, int changesApplied) {
+            this.success = success;
+            this.errorMessage = errorMessage;
+            this.changesSent = changesSent;
+            this.changesReceived = changesReceived;
+            this.changesApplied = changesApplied;
+        }
     }
 
     @lombok.Data
