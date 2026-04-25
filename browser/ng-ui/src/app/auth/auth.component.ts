@@ -41,7 +41,14 @@ export class AuthComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/home']);
+      // Logged in — ensure local user data exists before navigating
+      if (!this.userSetupService.isValid()) {
+        this.authService.syncLocalUserData().subscribe(() => {
+          this.router.navigate(['/home']);
+        });
+      } else {
+        this.router.navigate(['/home']);
+      }
       return;
     }
 
@@ -114,10 +121,11 @@ export class AuthComponent implements OnInit {
     this.errorMessage = null;
     const { email, password } = this.loginForm.value;
 
-    this.authService.authenticate(email, password).subscribe({
+    this.authService.authenticate(email, password).pipe(
+      switchMap(() => this.authService.syncLocalUserData())
+    ).subscribe({
       next: () => {
         this.isLoading = false;
-        this.authService.syncLocalUserData();
         this.router.navigate([this.returnUrl]);
       },
       error: (err) => {
@@ -166,10 +174,11 @@ export class AuthComponent implements OnInit {
         }
         return this.authService.authenticate(email, password);
       })
+    ).pipe(
+      switchMap(() => this.authService.syncLocalUserData())
     ).subscribe({
       next: () => {
         this.isLoading = false;
-        this.authService.syncLocalUserData();
         this.router.navigate([this.returnUrl]);
       },
       error: (err) => {

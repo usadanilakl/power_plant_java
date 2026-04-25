@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, tap, throwError } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ServerApiService, PwaRegistrationStatus } from '../services/server-api.service';
 import { UserSetupService } from '../services/user-setup.service';
@@ -108,13 +108,14 @@ export class AuthService {
   /**
    * After login, sync local PwaUserData with the server profile.
    * Updates localStorage if server data differs from local data.
+   * Returns Observable<boolean> (true if sync succeeded).
    */
-  syncLocalUserData(): void {
-    if (!this.isLoggedIn()) return;
+  syncLocalUserData(): Observable<boolean> {
+    if (!this.isLoggedIn()) return of(false);
 
-    this.serverApi.getProfile().subscribe({
-      next: (profile) => {
-        if (!profile) return;
+    return this.serverApi.getProfile().pipe(
+      map(profile => {
+        if (!profile) return false;
         const local = this.userSetupService.getUserData();
 
         const needsUpdate = !local ||
@@ -136,9 +137,13 @@ export class AuthService {
         } else if (local && !local.registeredOnServer) {
           this.userSetupService.markRegistered();
         }
-      },
-      error: (err) => console.warn('[Auth] Could not sync local user data:', err)
-    });
+        return true;
+      }),
+      catchError(err => {
+        console.warn('[Auth] Could not sync local user data:', err);
+        return of(false);
+      })
+    );
   }
 
   private storeAuth(authData: PwaAuthData): void {

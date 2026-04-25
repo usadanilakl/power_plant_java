@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { switchMap } from 'rxjs';
 import { ServerApiService } from '../../services/server-api.service';
 import { AuthService } from '../../auth/auth.service';
 import { MainLayoutComponent } from '../../layouts/main-layout/main-layout.component';
@@ -282,9 +283,10 @@ export class ResetPasswordPageComponent implements OnInit {
         this.successMessage = 'Password set successfully. Signing you in...';
         const email = res.email;
         if (email) {
-          this.authService.authenticate(email, password).subscribe({
+          this.authService.authenticate(email, password).pipe(
+            switchMap(() => this.authService.syncLocalUserData())
+          ).subscribe({
             next: () => {
-              this.authService.syncLocalUserData();
               this.router.navigate(['/home']);
             },
             error: () => {
