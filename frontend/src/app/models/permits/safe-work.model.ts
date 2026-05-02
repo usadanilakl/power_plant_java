@@ -46,7 +46,8 @@ export class SwHazards {
 export class SwPermits {
   lotoRequired: boolean = false;
   lotoDescription: string = '';
-  confinedSpace: boolean = false;
+  confinedSpaceReclassified: boolean = false;
+  confinedSpacePermitRequired: boolean = false;
   confinedSpaceDescription: string = '';
   hotWork: boolean = false;
   hotWorkDescription: string = '';
@@ -420,7 +421,8 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     return {
       'permits.lotoRequired': { name: 'permits.lotoRequired', label: 'LOTO Required', type: 'checkbox', initialValue: permits.lotoRequired, group: group },
       'permits.lotoDescription': { name: 'permits.lotoDescription', label: 'LOTO Description', type: 'text', initialValue: permits.lotoDescription, group: group },
-      'permits.confinedSpace': { name: 'permits.confinedSpace', label: 'Confined Space', type: 'checkbox', initialValue: permits.confinedSpace, group: group },
+      'permits.confinedSpaceReclassified': { name: 'permits.confinedSpaceReclassified', label: 'Confined Space (Reclassified)', type: 'checkbox', initialValue: permits.confinedSpaceReclassified, group: group },
+      'permits.confinedSpacePermitRequired': { name: 'permits.confinedSpacePermitRequired', label: 'Confined Space (Permit Required)', type: 'checkbox', initialValue: permits.confinedSpacePermitRequired, group: group },
       'permits.confinedSpaceDescription': { name: 'permits.confinedSpaceDescription', label: 'Confined Space Description', type: 'text', initialValue: permits.confinedSpaceDescription, group: group },
       'permits.hotWork': { name: 'permits.hotWork', label: 'Hot Work', type: 'checkbox', initialValue: permits.hotWork, group: group },
       'permits.hotWorkDescription': { name: 'permits.hotWorkDescription', label: 'Hot Work Description', type: 'text', initialValue: permits.hotWorkDescription, group: group },

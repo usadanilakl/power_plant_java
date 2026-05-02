@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.permits.loto_box;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.esp.LedStripDto;
+import com.dk_power.power_plant_java.dto.permits.LockDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -11,6 +12,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -40,4 +44,9 @@ public class LotoBoxDto extends BaseDto {
     private Integer b;
     private Integer brightness;
 
+    private Integer setSize = 0;
+    private Boolean active = true;
+    private Boolean portable = false;
+
+    private List<LockDto> homeLocks = new ArrayList<>();
 }

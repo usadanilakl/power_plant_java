@@ -1,19 +1,68 @@
 <div class="container">
-  <h1>LOTO Boxes Control Panel</h1>
+  <div class="toolbar">
+    <button
+      class="btn-primary"
+      (click)="updateAllBoxes()"
+      [disabled]="isLoading()">
+      Update All Boxes
+    </button>
+    <button
+      class="btn-secondary"
+      (click)="loadBoxes()"
+      [disabled]="isLoading()">
+      Refresh
+    </button>
+    <button
+      class="btn-secondary"
+      [class.toggle-on]="editMode()"
+      (click)="toggleEditMode()">
+      {{ editMode() ? '✓ Edit Mode' : 'Edit Mode' }}
+    </button>
+    <button
+      class="btn-secondary"
+      [class.toggle-on]="showInactive()"
+      (click)="toggleShowInactive()">
+      {{ showInactive() ? '✓ Show Inactive' : 'Show Inactive' }}
+    </button>
+    @if (editMode()) {
+      <button class="btn-primary" (click)="addBox(false)">+ Add Box</button>
+      <button class="btn-secondary" (click)="addBox(true)">+ Add Portable</button>
+    }
+  </div>
 
   <div class="grid-container">
-    @for (box of boxes(); track box.number) {
+    @for (box of fixedSlots(); track box.number) {
       <div
         class="box"
         [class.manual-override]="isManualOverride(box)"
+        [class.placeholder]="isPlaceholder(box)"
+        [class.inactive]="!box.active && !isPlaceholder(box)"
         [style.background-color]="getBoxColor(box)"
-        (click)="toggleDropdown(box.number, $event)">
-        <span class="box-number">{{ box.number }}</span>
+        (click)="onBoxClick(box, $event)">
+
+        <div class="box-content">
+          <span class="box-number">{{ box.number }}</span>
+          @if (!isPlaceholder(box) && getLockSummary(box)) {
+            <span class="box-lock-summary">{{ getLockSummary(box) }}</span>
+          }
+        </div>
+
+        @if (!isPlaceholder(box)) {
+          <button class="box-info-btn" (click)="openSidePanel(box, $event)" title="Details">i</button>
+          @if (commentCount(box.id!) > 0) {
+            <button class="box-comment-badge"
+                    (click)="openComments('LotoBox', box.id!, $event)"
+                    [title]="commentCount(box.id!) + ' comment(s)'">
+              💬{{ commentCount(box.id!) }}
+            </button>
+          }
+        }
+
         @if (isManualOverride(box)) {
           <span class="override-indicator" title="Manual Override Active">M</span>
         }
 
-        @if (activeDropdown() === box.number) {
+        @if (activeDropdown() === box.number && !editMode() && !isPlaceholder(box)) {
           <div class="dropdown" (click)="$event.stopPropagation()">
             @for (status of statuses; track status) {
               <div
@@ -34,26 +83,209 @@
     }
   </div>
 
+  @if (portableBoxes().length > 0) {
+    <div class="portable-section">
+      <h2>Portable Boxes</h2>
+      <div class="portable-grid">
+        @for (box of portableBoxes(); track box.number) {
+          <div
+            class="box portable"
+            [class.manual-override]="isManualOverride(box)"
+            [class.inactive]="!box.active"
+            [style.background-color]="getBoxColor(box)"
+            (click)="onBoxClick(box, $event)">
+
+            <div class="box-content">
+              <span class="box-number">{{ box.number }}</span>
+              @if (getLockSummary(box)) {
+                <span class="box-lock-summary">{{ getLockSummary(box) }}</span>
+              }
+            </div>
+
+            <button class="box-info-btn" (click)="openSidePanel(box, $event)" title="Details">i</button>
+            @if (commentCount(box.id!) > 0) {
+              <button class="box-comment-badge"
+                      (click)="openComments('LotoBox', box.id!, $event)"
+                      [title]="commentCount(box.id!) + ' comment(s)'">
+                💬{{ commentCount(box.id!) }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   @if (statusMessage()) {
     <pre class="status">{{ statusMessage() }}</pre>
   }
 
-  <div class="controls">
-    <button
-      class="btn-primary"
-      (click)="updateAllBoxes()"
-      [disabled]="isLoading()">
-      Update All Boxes
-    </button>
-    <button
-      class="btn-secondary"
-      (click)="loadBoxes()"
-      [disabled]="isLoading()">
-      Refresh
-    </button>
-  </div>
-
   @if (isLoading()) {
     <div class="loading">Loading...</div>
+  }
+
+  <!-- Side panel: read-only details -->
+  @if (selectedBox() && !editDraft()) {
+    <div class="modal-backdrop" (click)="closeSidePanel()">
+      <div class="box-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Box {{ selectedBox()!.number }}</h3>
+          <button class="modal-close" (click)="closeSidePanel()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-row">
+            <strong>Description:</strong>
+            <span>{{ selectedBox()!.description || '—' }}</span>
+          </div>
+          <div class="modal-row">
+            <strong>Type:</strong>
+            <span>{{ selectedBox()!.portable ? 'Portable' : 'Fixed' }}</span>
+            <span class="badge" [class.badge-active]="selectedBox()!.active" [class.badge-inactive]="!selectedBox()!.active">
+              {{ selectedBox()!.active ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+          <div class="modal-row">
+            <strong>Set Size:</strong>
+            <span>{{ selectedBox()!.setSize }}</span>
+          </div>
+          <div class="modal-row">
+            <strong>LOTO:</strong>
+            <span>{{ selectedBox()!.loto?.docNum ?? '—' }}</span>
+          </div>
+
+          <h4>Locks ({{ selectedBox()!.homeLocks.length }})</h4>
+          @if (selectedBox()!.homeLocks.length === 0) {
+            <p class="empty">No locks home-boxed here.</p>
+          } @else {
+            <table class="lock-table">
+              <thead><tr><th>#</th><th>Type</th><th>Single</th><th>Tag</th><th>In Use</th></tr></thead>
+              <tbody>
+                @for (lock of selectedBox()!.homeLocks; track lock.id) {
+                  <tr>
+                    <td>{{ lock.number }}</td>
+                    <td>{{ lock.lockType }}</td>
+                    <td>{{ lock.isSingleLock ? '✓' : '' }}</td>
+                    <td>{{ lock.tagLabel || '—' }}</td>
+                    <td>{{ lock.loto?.docNum ?? '' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          <button class="btn-secondary"
+                  (click)="openComments('LotoBox', selectedBox()!.id ?? 0, $event)">
+            Open Comments
+          </button>
+          @if (editMode()) {
+            <button class="btn-primary" (click)="openEditDialog(selectedBox()!)">Edit Box</button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit dialog -->
+  @if (editDraft(); as d) {
+    <div class="modal-backdrop" (click)="closeEditDialog()">
+      <div class="box-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Edit Box {{ d.number }}</h3>
+          <button class="modal-close" (click)="closeEditDialog()">×</button>
+        </div>
+        <div class="modal-body">
+          <label class="field">
+            <span>Number</span>
+            <input type="number" [ngModel]="d.number"
+                   (ngModelChange)="updateDraftNumber($event)">
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <input type="text" [ngModel]="d.description"
+                   (ngModelChange)="updateDraftDescription($event)">
+          </label>
+          <label class="field">
+            <span>Set Size</span>
+            <input type="number" [ngModel]="d.setSize" min="0"
+                   (ngModelChange)="updateDraftSetSize($event)">
+          </label>
+          <label class="field-inline">
+            <input type="checkbox" [ngModel]="d.portable"
+                   (ngModelChange)="updateDraftPortable($event)">
+            <span>Portable</span>
+          </label>
+          <label class="field-inline">
+            <input type="checkbox" [ngModel]="d.active"
+                   (ngModelChange)="updateDraftActive($event)">
+            <span>Active</span>
+          </label>
+
+          <div class="modal-actions">
+            <button class="btn-primary" (click)="saveEditDialog()">Save</button>
+            <button class="btn-danger" (click)="deactivateBox()">Deactivate</button>
+          </div>
+
+          <h4>Locks Home-Boxed Here ({{ selectedBox()?.homeLocks?.length ?? 0 }})</h4>
+          @if (selectedBox()?.homeLocks?.length === 0) {
+            <p class="empty">No locks yet.</p>
+          } @else {
+            <table class="lock-table">
+              <thead><tr><th>#</th><th>Type</th><th>Single</th><th>Tag</th><th>In Use</th><th></th></tr></thead>
+              <tbody>
+                @for (lock of selectedBox()!.homeLocks; track lock.id) {
+                  <tr [class.lock-row-busy]="!!lock.loto">
+                    <td>{{ lock.number }}</td>
+                    <td>{{ lock.lockType }}</td>
+                    <td>
+                      <input type="checkbox" [checked]="lock.isSingleLock"
+                             (change)="toggleLockSingle(lock, $event)">
+                    </td>
+                    <td>{{ lock.tagLabel || '—' }}</td>
+                    <td>{{ lock.loto?.docNum ?? '' }}</td>
+                    <td>
+                      <button class="btn-link-danger"
+                              [disabled]="!!lock.loto"
+                              (click)="deleteLock(lock, $event)">Delete</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          <h4>Add Locks</h4>
+          <div class="add-lock-row">
+            <label class="field-inline">
+              <span>Start #</span>
+              <input type="number" [ngModel]="newLockStartNumber()"
+                     (ngModelChange)="newLockStartNumber.set($event)">
+            </label>
+            <label class="field-inline">
+              <span>Count</span>
+              <input type="number" [ngModel]="newLockCount()" min="1"
+                     (ngModelChange)="newLockCount.set($event)">
+            </label>
+            <label class="field-inline">
+              <span>Type</span>
+              <select [ngModel]="newLockType()" (ngModelChange)="newLockType.set($event)">
+                <option value="LOCK">Lock</option>
+                <option value="ZIPTIE">Ziptie</option>
+              </select>
+            </label>
+            <label class="field-inline">
+              <input type="checkbox" [ngModel]="newLockIsSingle()"
+                     (ngModelChange)="newLockIsSingle.set($event)">
+              <span>Singles</span>
+            </label>
+            <button class="btn-primary" (click)="bulkAddLocks()">Add</button>
+          </div>
+
+          <button class="btn-secondary"
+                  (click)="openComments('LotoBox', d.id ?? 0, $event)">
+            Open Comments
+          </button>
+        </div>
+      </div>
+    </div>
   }
 </div>

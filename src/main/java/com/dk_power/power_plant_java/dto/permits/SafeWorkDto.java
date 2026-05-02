@@ -68,7 +68,7 @@ public class SafeWorkDto extends BasePermitDto {
 
         SwPermits permits = new SwPermits();
         permits.setLotoRequired(true);
-        permits.setConfinedSpace(true);
+        permits.setConfinedSpacePermitRequired(true);
         permits.setHotWork(true);
         permits.setVentingPurging(false);
         permits.setJha(true);

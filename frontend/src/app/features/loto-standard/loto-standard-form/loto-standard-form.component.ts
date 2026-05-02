@@ -1,8 +1,10 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, DestroyRef, inject, input, output, Signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { Router } from "@angular/router";
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 import { RedTagService } from "../../../services/loto/red-tag.service";
+import { LotoService } from "../../../services/loto/loto.service";
 import { LotoStandardDto } from "../../../models/loto/loto-standard.model";
 import { LotoPointDto } from "../../../models/loto/loto-point.model";
 import { BehaviorSubject } from "rxjs";
@@ -19,6 +21,8 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 export class LotoStandardFormComponent {
 
   redTagService = inject(RedTagService);
+  lotoService = inject(LotoService);
+  router = inject(Router);
   destroyRef = inject(DestroyRef);
 
   lotoStandard = input.required<Signal<LotoStandardDto>>();
@@ -89,5 +93,29 @@ export class LotoStandardFormComponent {
         alert(`Error building in Red Tag: ${error.message}`);
       }
     );
+  }
+
+  flipToPermit() {
+    const standardId = this.lotoStandard()().id;
+    if (!standardId) {
+      alert('Save the LOTO standard before flipping to a permit.');
+      return;
+    }
+    this.lotoService.createFromStandard(standardId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        const newPermitId = response?.responseData?.id;
+        if (newPermitId) {
+          this.router.navigate(['/permit-builder/lotos'], { queryParams: { lotoId: newPermitId } });
+        } else {
+          alert('LOTO permit was not created — backend returned no id.');
+        }
+      },
+      error: (err) => {
+        console.error('Error creating LOTO permit from standard', err);
+        alert(`Error flipping LOTO standard to permit: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+      }
+    });
   }
 }

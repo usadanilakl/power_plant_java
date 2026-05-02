@@ -27,4 +27,9 @@ public class LockDto extends BaseDto {
     private ValueDto lotoAccessoryStatus;
     private Long id;
 
+    private String tagLabel;
+    private Long assignedLotoPointId;
+    private String lockType;
+    private Integer homeBoxNumber;
+    private Boolean isSingleLock;
 }

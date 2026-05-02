@@ -96,6 +96,7 @@ export class RedTagProgressPanelComponent implements OnInit, OnDestroy {
   getCategoryLabel(category: string): string {
     switch (category) {
       case 'setup': return 'Setup';
+      case 'loto': return 'LOTO';
       case 'hotWork': return 'Hot Work';
       case 'confinedSpace': return 'Confined Space';
       case 'safeWork': return 'Safe Work';

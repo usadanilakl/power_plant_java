@@ -4,13 +4,17 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePpe;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePrecautions;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,6 +31,14 @@ public class ConfinedSpace extends BasePermitEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "daily_permit_package_id")
     private DailyPermitPackage dailyPermitPackage;
+
+    @Enumerated(EnumType.STRING)
+    private ConfinedSpaceType csType = ConfinedSpaceType.PERMIT_REQUIRED;
+
+    @PostLoad
+    private void backfillCsType() {
+        if (csType == null) csType = ConfinedSpaceType.PERMIT_REQUIRED;
+    }
 
     private String date;
     private String time;

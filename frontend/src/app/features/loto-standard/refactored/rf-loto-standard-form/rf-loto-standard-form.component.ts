@@ -8,9 +8,11 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { LotoStandardMapperService } from '../services/rf-loto-standard-mapper.service';
 import { RfLotoStandardApiService } from '../services/rf-loto-standard-api.service';
+import { LotoService } from '../../../../services/loto/loto.service';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -42,6 +44,8 @@ export class RfLotoStandardFormComponent {
   protected stateService = inject(RfLotoStandardStateService);
   protected mapperService = inject(LotoStandardMapperService);
   private apiService = inject(RfLotoStandardApiService);
+  private lotoService = inject(LotoService);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   entityInput = input<LotoStandardDto>();
@@ -335,6 +339,30 @@ export class RfLotoStandardFormComponent {
 
   openCounterpartDialog(): void {
     this.showCounterpartDialog.set(true);
+  }
+
+  flipToPermit(): void {
+    const standardId = this.entity().id;
+    if (!standardId) {
+      alert('Save the LOTO standard before flipping to a permit.');
+      return;
+    }
+    this.lotoService.createFromStandard(standardId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        const newPermitId = response?.responseData?.id;
+        if (newPermitId) {
+          this.router.navigate(['/permit-builder/lotos'], { queryParams: { lotoId: newPermitId } });
+        } else {
+          alert('LOTO permit was not created — backend returned no id.');
+        }
+      },
+      error: (err) => {
+        console.error('Error creating LOTO permit from standard', err);
+        alert(`Error flipping LOTO standard to permit: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+      }
+    });
   }
 
   onCounterpartCreated(created: LotoStandardDto): void {

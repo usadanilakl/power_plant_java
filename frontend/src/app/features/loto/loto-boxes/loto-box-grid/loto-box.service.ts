@@ -89,4 +89,19 @@ export class LotoBoxService {
   getWledQueueStatus(): Observable<SpringApiResponse<{pending: number, expired: number}>> {
     return this.http.get<SpringApiResponse<{pending: number, expired: number}>>(`${this.apiUrl}/wled-queue-status`);
   }
+
+  // Box-and-lock management
+
+  bulkAddLocks(boxId: number, startNumber: number, count: number, isSingleLock: boolean, lockType: string = 'LOCK'): Observable<SpringApiResponse<LotoBoxDto>> {
+    const params = new HttpParams()
+      .set('startNumber', startNumber.toString())
+      .set('count', count.toString())
+      .set('isSingleLock', String(isSingleLock))
+      .set('lockType', lockType);
+    return this.http.post<SpringApiResponse<LotoBoxDto>>(`${this.apiUrl}/${boxId}/locks`, null, { params });
+  }
+
+  deactivateBox(id: number): Observable<SpringApiResponse<string>> {
+    return this.http.delete<SpringApiResponse<string>>(`${this.apiUrl}/${id}`);
+  }
 }

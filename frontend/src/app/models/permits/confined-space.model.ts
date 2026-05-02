@@ -67,9 +67,12 @@ export class ConfinedSpacePrecautions {
 
 
 
+export type ConfinedSpaceType = 'PERMIT_REQUIRED' | 'RECLASSIFIED';
+
 export type ConfinedSpaceFieldName = keyof ConfinedSpaceModel;
 
 export interface ConfinedSpaceModel extends BaseModel {
+  csType: ConfinedSpaceType;
   date: string | null;
   time: string | null;
   space: string | null;
@@ -97,6 +100,7 @@ export interface ConfinedSpaceModel extends BaseModel {
 }
 
 export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
+  csType: ConfinedSpaceType;
   date: string | null;
   time: string | null;
   space: string | null;
@@ -124,6 +128,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
 
   constructor(data: Partial<ConfinedSpaceModel> = {}) {
     super(data);
+    this.csType = data.csType ?? 'PERMIT_REQUIRED';
     this.date = data.date ?? null;
     this.time = data.time ?? null;
     this.space = data.space ?? null;
@@ -153,6 +158,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   override toJson(): any {
     return {
       ...super.toJson(),
+      csType: this.csType,
       date: this.date,
       time: this.time,
       space: this.space,
@@ -181,6 +187,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   static override fromJson(json: any): ConfinedSpaceDto {
     return new ConfinedSpaceDto({
       ...super.fromJson(json),
+      csType: (json.csType as ConfinedSpaceType) || 'PERMIT_REQUIRED',
       date: json.date || null,
       time: json.time || null,
       space: json.space || null,
@@ -218,6 +225,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     dto: ConfinedSpaceDto,
     spaceOptions: Option[] = [],
     fields: (ConfinedSpaceFieldName | 'workArea')[] = [
+      'csType',
       'space', 'date', 'time', 'workScope', 'issuedTo', 'duration', 'meterModel',
       'meterNum', 'calibrated',
       ...Object.keys(ConfinedSpaceDto.getHazardFields(null)) as ConfinedSpaceFieldName[],
@@ -232,6 +240,17 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     const allFields: { [key: string]: FormField } = {
 
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      csType: {
+        name: 'csType',
+        label: 'CS Classification',
+        type: 'select',
+        options: [
+          { label: 'Permit Required', key: 'PERMIT_REQUIRED', value: 'PERMIT_REQUIRED' },
+          { label: 'Reclassified', key: 'RECLASSIFIED', value: 'RECLASSIFIED' },
+        ],
+        initialValue: dto.csType ?? 'PERMIT_REQUIRED',
+        validators: [Validators.required],
+      },
       workArea: {
         name: 'workArea',
         label: 'Work Area',
@@ -319,6 +338,11 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   static toTableColumns(fields: ConfinedSpaceFieldName[] = ['date', 'time', 'space', 'workScope', 'issuedTo', 'duration']): Column[] {
     const allColumns: { [key in ConfinedSpaceFieldName]: Column } = {
       id: { id: 'id', header: 'ID', accessorKey: 'id' },
+      csType: {
+        id: 'csType',
+        header: 'Classification',
+        accessorFn: (item: ConfinedSpaceDto) => item.csType === 'RECLASSIFIED' ? 'Reclassified' : 'Permit Required'
+      },
       date: { id: 'date', header: 'Date', accessorKey: 'date' },
       time: { id: 'time', header: 'Time', accessorKey: 'time' },
       space: { id: 'space', header: 'Confined Space', accessorKey: 'space' },

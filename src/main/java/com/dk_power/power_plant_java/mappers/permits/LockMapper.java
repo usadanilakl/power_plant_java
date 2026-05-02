@@ -30,7 +30,7 @@ public class LockMapper implements BaseMapper {
 
     public LockDto convertToDto(Lock entity) {
         LockDto dto = new LockDto();
-        
+
         dto.setId(entity.getId());
 
         if (entity.getNumber() != null) {
@@ -41,7 +41,11 @@ public class LockMapper implements BaseMapper {
             dto.setLotoAccessoryStatus(valueService.getDtoById(entity.getLotoAccessoryStatus().getId()));
         }
 
-        // Add any additional fields specific to Lock
+        dto.setTagLabel(entity.getTagLabel());
+        dto.setAssignedLotoPointId(entity.getAssignedLotoPointId());
+        dto.setLockType(entity.getLockType());
+        dto.setHomeBoxNumber(entity.getHomeBoxNumber());
+        dto.setIsSingleLock(entity.getIsSingleLock());
 
         return dto;
     }
@@ -82,7 +86,11 @@ public class LockMapper implements BaseMapper {
             }
         }
 
-        // Add any additional fields specific to Lock
+        if (source.getTagLabel() != null) entity.setTagLabel(source.getTagLabel());
+        if (source.getAssignedLotoPointId() != null) entity.setAssignedLotoPointId(source.getAssignedLotoPointId());
+        if (source.getLockType() != null) entity.setLockType(source.getLockType());
+        if (source.getHomeBoxNumber() != null) entity.setHomeBoxNumber(source.getHomeBoxNumber());
+        if (source.getIsSingleLock() != null) entity.setIsSingleLock(source.getIsSingleLock());
 
         return entity;
     }

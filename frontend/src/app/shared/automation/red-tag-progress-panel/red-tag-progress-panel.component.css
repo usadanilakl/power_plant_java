@@ -252,6 +252,7 @@
 }
 
 .step-category[data-category="setup"]         { background: #e3f2fd; color: #1565c0; }
+.step-category[data-category="loto"]          { background: #fffde7; color: #f9a825; }
 .step-category[data-category="hotWork"]       { background: #fce4ec; color: #c62828; }
 .step-category[data-category="confinedSpace"] { background: #fff3e0; color: #e65100; }
 .step-category[data-category="safeWork"]      { background: #e8f5e9; color: #2e7d32; }

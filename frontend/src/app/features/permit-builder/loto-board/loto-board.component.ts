@@ -1,9 +1,7 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { LotoBoxService } from '../../loto/loto-boxes/loto-box-grid/loto-box.service';
-import { LotoBoxDto } from '../../../models/loto/loto-box.model';
+import { LotoBoxGridComponent } from '../../loto/loto-boxes/loto-box-grid/loto-box-grid.component';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-loto-board',
   standalone: true,
-  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonToggleModule, MatButtonModule, MatIconModule, LotoBoxGridComponent],
   template: `
         <div class="board-container">
           <div class="board-toolbar">
@@ -19,9 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
               <mat-button-toggle value="table"><mat-icon>table_rows</mat-icon> Table</mat-button-toggle>
               <mat-button-toggle value="grid"><mat-icon>grid_view</mat-icon> Box Grid</mat-button-toggle>
             </mat-button-toggle-group>
-            @if (viewMode() === 'grid') {
-              <button mat-stroked-button (click)="syncAllBoxes()"><mat-icon>sync</mat-icon> Sync All</button>
-            }
           </div>
 
           @if (viewMode() === 'table') {
@@ -68,21 +63,8 @@ import { MatIconModule } from '@angular/material/icon';
               </table>
             }
           } @else {
-            <!-- BOX GRID VIEW -->
-            <div class="box-grid">
-              @for (box of boxes(); track box.id) {
-                <div class="box-tile"
-                     [style.background-color]="'rgb(' + box.r + ',' + box.g + ',' + box.b + ')'"
-                     [style.opacity]="(box.brightness ?? 255) / 255"
-                     [class.has-loto]="box.loto?.id"
-                     (click)="onBoxClick(box)">
-                  <span class="box-number">{{ box.number }}</span>
-                  @if (box.loto?.id) {
-                    <span class="box-loto-indicator">LOTO</span>
-                  }
-                </div>
-              }
-            </div>
+            <!-- BOX GRID VIEW: full-featured grid with edit mode + lock/comment management -->
+            <app-loto-box-grid></app-loto-box-grid>
           }
         </div>
   `,
@@ -154,22 +136,15 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class LotoBoardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
-  private lotoBoxService = inject(LotoBoxService);
-  private router = inject(Router);
 
   lotos = signal<any[]>([]);
-  boxes = signal<LotoBoxDto[]>([]);
   loading = signal(true);
   viewMode = signal<'table' | 'grid'>('table');
   private refreshInterval: any;
 
   ngOnInit(): void {
     this.loadLotos();
-    this.loadBoxGrid();
-    this.refreshInterval = setInterval(() => {
-      this.loadLotos();
-      if (this.viewMode() === 'grid') this.loadBoxGrid();
-    }, 60000);
+    this.refreshInterval = setInterval(() => this.loadLotos(), 60000);
   }
 
   ngOnDestroy(): void {
@@ -184,25 +159,5 @@ export class LotoBoardComponent implements OnInit, OnDestroy {
       },
       error: () => this.loading.set(false)
     });
-  }
-
-  private loadBoxGrid(): void {
-    this.lotoBoxService.getBoxGrid().subscribe({
-      next: (res) => {
-        if (res.responseData) {
-          this.boxes.set(res.responseData.map((b: any) => LotoBoxDto.fromJson(b)));
-        }
-      }
-    });
-  }
-
-  onBoxClick(box: LotoBoxDto): void {
-    if (box.loto?.id) {
-      this.router.navigate(['/permit-builder/lotos'], { queryParams: { id: box.loto?.id } });
-    }
-  }
-
-  syncAllBoxes(): void {
-    this.lotoBoxService.syncAllBoxesToEsp().subscribe(() => this.loadBoxGrid());
   }
 }

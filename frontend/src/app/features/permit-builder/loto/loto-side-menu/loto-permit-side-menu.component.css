@@ -37,3 +37,13 @@ app-permit-left-panel {
 .import-btn:hover {
   opacity: 0.9;
 }
+
+.import-btn.build-btn {
+  margin-top: 6px;
+  background: var(--accent-color, #e65100);
+}
+
+.import-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

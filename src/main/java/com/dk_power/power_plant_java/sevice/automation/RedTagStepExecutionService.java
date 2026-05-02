@@ -3,6 +3,10 @@ package com.dk_power.power_plant_java.sevice.automation;
 import com.dk_power.power_plant_java.controller.automation.RedTagProgressController;
 import com.dk_power.power_plant_java.dto.automation.*;
 import com.dk_power.power_plant_java.dto.permits.*;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType;
+import com.dk_power.power_plant_java.mappers.LotoPointMapper;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgConfinedSpaceService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgHotWorkService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgSafeWorkService;
@@ -27,6 +31,8 @@ public class RedTagStepExecutionService {
     private final NgHotWorkService hotWorkService;
     private final NgConfinedSpaceService confinedSpaceService;
     private final NgSafeWorkService safeWorkService;
+    private final NgLotoService lotoService;
+    private final LotoPointMapper lotoPointMapper;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -55,6 +61,28 @@ public class RedTagStepExecutionService {
 
         buildStepQueue(packageDto);
         buildStepActions(packageDto);
+
+        progressController.broadcastSessionState("session_started", session);
+
+        runningTask = executor.submit(() -> executeLoop());
+        return session;
+    }
+
+    public synchronized AutomationSessionState startLotoBuild(LotoDto lotoDto) {
+        if (session != null && session.getStatus() == SessionStatus.RUNNING) {
+            throw new IllegalStateException("A build is already running");
+        }
+
+        session = new AutomationSessionState();
+        session.setPackageName("LOTO " + (lotoDto.getDocNum() != null ? lotoDto.getDocNum() : lotoDto.getId()));
+        session.setStartTimeMs(System.currentTimeMillis());
+        session.setStatus(SessionStatus.RUNNING);
+
+        pauseRequested = false;
+        stopRequested = false;
+
+        buildLotoStepQueue(lotoDto);
+        buildLotoStepActions(lotoDto);
 
         progressController.broadcastSessionState("session_started", session);
 
@@ -262,6 +290,21 @@ public class RedTagStepExecutionService {
         steps.add(new AutomationStep(idx++, "open-app", "Open Red Tag Application", "setup"));
         steps.add(new AutomationStep(idx++, "login", "Login to Red Tag", "setup"));
 
+        // LOTOs
+        int lotoNum = 0;
+        if (packageDto.getLotos() != null) {
+            for (LotoDto loto : packageDto.getLotos()) {
+                if (loto.getRedTagNum() != null) continue;
+                lotoNum++;
+                String suffix = "-" + lotoNum;
+                Long pid = loto.getId();
+                steps.add(new AutomationStep(idx++, "loto" + suffix + "-open", "Open LOTO Builder (#" + lotoNum + ")", "loto", "Loto", pid));
+                steps.add(new AutomationStep(idx++, "loto" + suffix + "-no-standard", "Fill LOTO Header (#" + lotoNum + ")", "loto", "Loto", pid));
+                steps.add(new AutomationStep(idx++, "loto" + suffix + "-add-points", "Add LOTO Points (#" + lotoNum + ")", "loto", "Loto", pid));
+                steps.add(new AutomationStep(idx++, "loto" + suffix + "-save", "Save LOTO (#" + lotoNum + ")", "loto", "Loto", pid));
+            }
+        }
+
         // Hot Works
         int hwNum = 0;
         for (HotWorkDto hw : packageDto.getHotWorks()) {
@@ -324,6 +367,48 @@ public class RedTagStepExecutionService {
         stepActions.put("open-app", () -> redTagService.openApp());
         stepActions.put("login", () -> redTagService.login());
 
+        // LOTOs
+        int lotoNum = 0;
+        if (lotos != null) {
+            for (LotoDto loto : lotos) {
+                if (loto.getRedTagNum() != null) continue;
+                lotoNum++;
+                String suffix = "-" + lotoNum;
+                final LotoDto lotoRef = loto;
+
+                stepActions.put("loto" + suffix + "-open", () -> {
+                    try {
+                        return redTagService.openNewLotoBuilder();
+                    } catch (FindFailed ex) { throw new RuntimeException(ex); }
+                });
+                stepActions.put("loto" + suffix + "-no-standard", () -> {
+                    try {
+                        return redTagService.openLotoBuilderWithNoStandard(lotoRef);
+                    } catch (FindFailed ex) { throw new RuntimeException(ex); }
+                });
+                stepActions.put("loto" + suffix + "-add-points", () -> {
+                    List<LotoPointDto> points = lotoRef.getLotoPoints() == null
+                            ? java.util.List.of()
+                            : lotoRef.getLotoPoints().stream().map(lotoPointMapper::convertToDto).toList();
+                    return redTagService.buildWithNewPoints(points);
+                });
+                stepActions.put("loto" + suffix + "-save", () -> {
+                    String permitNum = redTagService.saveLoto();
+                    if (permitNum != null && !permitNum.toLowerCase().contains("failed")) {
+                        lotoRef.setRedTagNum(permitNum);
+                        try {
+                            lotoService.save(lotoRef);
+                        } catch (Exception saveErr) {
+                            log.error("LOTO {} saved in Red Tag as {} but failed to persist to DB: {}",
+                                    lotoRef.getId(), permitNum, saveErr.getMessage(), saveErr);
+                            return "Failed to persist LOTO redTagNum=" + permitNum + ": " + saveErr.getMessage();
+                        }
+                    }
+                    return permitNum;
+                });
+            }
+        }
+
         // Hot Works
         int hwNum = 0;
         for (HotWorkDto hw : packageDto.getHotWorks()) {
@@ -356,7 +441,7 @@ public class RedTagStepExecutionService {
             stepActions.put("cs" + suffix + "-open", () -> {
                 csRef.setHotWorkNum(hotworkNums.toString());
                 csRef.setLotoNum(finalLotoNumbers);
-                return redTagService.openNewConfinedSpaceBuilder();
+                return redTagService.openNewConfinedSpaceBuilder(csRef.getCsType());
             });
             stepActions.put("cs" + suffix + "-fill", () -> redTagService.fillOutCSForm(csRef));
             stepActions.put("cs" + suffix + "-save", () -> {
@@ -387,8 +472,18 @@ public class RedTagStepExecutionService {
                     specialInstructions += ", " + finalLotoBoxes;
                 }
                 if (lotos != null && !lotos.isEmpty()) swRef.getPermits().setLotoRequired(true);
-                if (!hotworkNums.isEmpty()) swRef.getPermits().setHotWork(true);
-                if (!spaceNums.isEmpty()) swRef.getPermits().setConfinedSpace(true);
+                boolean hasHotWork = packageDto.getHotWorks() != null && !packageDto.getHotWorks().isEmpty();
+                if (hasHotWork) swRef.getPermits().setHotWork(true);
+                List<ConfinedSpaceDto> allCs = packageDto.getConfinedSpaces();
+                if (allCs != null && !allCs.isEmpty()) {
+                    boolean hasReclassified = allCs.stream()
+                            .anyMatch(c -> c.getCsType() == ConfinedSpaceType.RECLASSIFIED);
+                    boolean hasPermitRequired = allCs.stream()
+                            .anyMatch(c -> c.getCsType() == ConfinedSpaceType.PERMIT_REQUIRED
+                                    || c.getCsType() == null);
+                    swRef.getPermits().setConfinedSpaceReclassified(hasReclassified);
+                    swRef.getPermits().setConfinedSpacePermitRequired(hasPermitRequired);
+                }
                 swRef.setSpecialInstructions(specialInstructions);
                 return redTagService.openNewSafeWorkBuilder();
             });
@@ -403,6 +498,62 @@ public class RedTagStepExecutionService {
             });
             stepActions.put("sw" + suffix + "-associate", () -> redTagService.associatePermits(packageDto));
         }
+    }
+
+    // --- Standalone LOTO build (single LotoDto) ---
+
+    private void buildLotoStepQueue(LotoDto loto) {
+        List<AutomationStep> steps = new ArrayList<>();
+        int idx = 0;
+        Long pid = loto.getId();
+
+        steps.add(new AutomationStep(idx++, "open-app", "Open Red Tag Application", "setup"));
+        steps.add(new AutomationStep(idx++, "login", "Login to Red Tag", "setup"));
+        steps.add(new AutomationStep(idx++, "loto-1-open", "Open LOTO Builder", "loto", "Loto", pid));
+        steps.add(new AutomationStep(idx++, "loto-1-no-standard", "Fill LOTO Header", "loto", "Loto", pid));
+        steps.add(new AutomationStep(idx++, "loto-1-add-points", "Add LOTO Points", "loto", "Loto", pid));
+        steps.add(new AutomationStep(idx++, "loto-1-save", "Save LOTO", "loto", "Loto", pid));
+
+        session.setSteps(steps);
+    }
+
+    private void buildLotoStepActions(LotoDto loto) {
+        stepActions = new LinkedHashMap<>();
+        final LotoDto lotoRef = loto;
+
+        stepActions.put("open-app", () -> redTagService.openApp());
+        stepActions.put("login", () -> redTagService.login());
+
+        stepActions.put("loto-1-open", () -> {
+            try {
+                return redTagService.openNewLotoBuilder();
+            } catch (FindFailed ex) { throw new RuntimeException(ex); }
+        });
+        stepActions.put("loto-1-no-standard", () -> {
+            try {
+                return redTagService.openLotoBuilderWithNoStandard(lotoRef);
+            } catch (FindFailed ex) { throw new RuntimeException(ex); }
+        });
+        stepActions.put("loto-1-add-points", () -> {
+            List<LotoPointDto> points = lotoRef.getLotoPoints() == null
+                    ? java.util.List.of()
+                    : lotoRef.getLotoPoints().stream().map(lotoPointMapper::convertToDto).toList();
+            return redTagService.buildWithNewPoints(points);
+        });
+        stepActions.put("loto-1-save", () -> {
+            String permitNum = redTagService.saveLoto();
+            if (permitNum != null && !permitNum.toLowerCase().contains("failed")) {
+                lotoRef.setRedTagNum(permitNum);
+                try {
+                    lotoService.save(lotoRef);
+                } catch (Exception saveErr) {
+                    log.error("LOTO {} saved in Red Tag as {} but failed to persist to DB: {}",
+                            lotoRef.getId(), permitNum, saveErr.getMessage(), saveErr);
+                    return "Failed to persist LOTO redTagNum=" + permitNum + ": " + saveErr.getMessage();
+                }
+            }
+            return permitNum;
+        });
     }
 
     private String formatError(Exception e) {

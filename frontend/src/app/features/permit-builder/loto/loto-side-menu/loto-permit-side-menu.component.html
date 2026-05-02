@@ -8,6 +8,11 @@
 
 <div class="import-bar">
   <button class="import-btn" (click)="openImportDialog()">Import LOTOs</button>
+  <button class="import-btn build-btn"
+          [disabled]="isBuildingInRedTag()"
+          (click)="buildInRedTag()">
+    {{ isBuildingInRedTag() ? 'Starting…' : 'Build in Red Tag' }}
+  </button>
 </div>
 
 @if (showImportDialog()) {

@@ -113,7 +113,8 @@ public class RedTagAutomationService {
     private static final Pattern SW_ENVIRONMENTAL = new Pattern(SAFE_WORK_PATH + "/SW_ENVIRONMENTAL.png");
 
     private static final Pattern SW_LOTO_REQUIRED = new Pattern(SAFE_WORK_PATH + "/SW_LOTO_REQUIRED.png");
-    private static final Pattern SW_CONFINED_SPACE = new Pattern(SAFE_WORK_PATH + "/SW_CONFINED_SPACE.png");
+    private static final Pattern SW_CONFINED_SPACE_RECLASSIFIED = new Pattern(SAFE_WORK_PATH + "/SW_CONFINED_SPACE_RECLASSIFIED.png");
+    private static final Pattern SW_CONFINED_SPACE_PERMIT_REQUIRED = new Pattern(SAFE_WORK_PATH + "/SW_CONFINED_SPACE_PERMIT_REQUIRED.png");
     private static final Pattern SW_HOT_WORK = new Pattern(SAFE_WORK_PATH + "/SW_HOT_WORK.png");
     private static final Pattern SW_VENTING_PURGING = new Pattern(SAFE_WORK_PATH + "/SW_VENTING_PURGING.png");
     private static final Pattern SW_JHA = new Pattern(SAFE_WORK_PATH + "/SW_JHA.png");
@@ -173,7 +174,8 @@ public class RedTagAutomationService {
 
 
     private static final String CS_PATH = Paths.get(BASE_PATH+"confined-space").toString();
-    private static final Pattern CS_TAB = new Pattern(CS_PATH + "/CS_TAB.png");
+    private static final Pattern CS_TAB_RECLASSIFIED = new Pattern(CS_PATH + "/CS_TAB_RECLASSIFIED.png");
+    private static final Pattern CS_TAB_PERMIT_REQUIRED = new Pattern(CS_PATH + "/CS_TAB_PERMIT_REQUIRED.png");
     private static final Pattern CS_SPACE = new Pattern(CS_PATH + "/CS_SPACE.png");
     private static final Pattern CS_PURPOSE = new Pattern(CS_PATH + "/CS_PURPOSE.png");
     private static final Pattern CS_ISSUED_TO = new Pattern(CS_PATH + "/CS_ISSUED_TO.png");
@@ -358,7 +360,7 @@ public class RedTagAutomationService {
         }
 
         for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
-            openNewConfinedSpaceBuilder();
+            openNewConfinedSpaceBuilder(cs.getCsType());
             fillOutCSForm(cs);
             String permitNum = saveCsForm();
             cs.setRedTagNum(permitNum);
@@ -423,7 +425,7 @@ public class RedTagAutomationService {
             cs.setHotWorkNum(hotworks.toString());
             cs.setLotoNum(lotoNumbers);
 
-            progress.setOpenBuilderMessage(openNewConfinedSpaceBuilder());
+            progress.setOpenBuilderMessage(openNewConfinedSpaceBuilder(cs.getCsType()));
             progress.setFillOutForm(fillOutCSForm(cs));
             String permitNum = saveCsForm();
             spaces.append(",").append(permitNum);
@@ -447,7 +449,12 @@ public class RedTagAutomationService {
 
                 if(lotos!=null && !lotos.isEmpty())safeWork.getPermits().setLotoRequired(true);
                 if(!hotworks.isEmpty()) safeWork.getPermits().setHotWork(true);
-                if(!spaces.isEmpty()) safeWork.getPermits().setConfinedSpace(true);
+                boolean hasReclassified = packageDto.getConfinedSpaces().stream()
+                        .anyMatch(c -> c.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.RECLASSIFIED);
+                boolean hasPermitRequired = packageDto.getConfinedSpaces().stream()
+                        .anyMatch(c -> c.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.PERMIT_REQUIRED);
+                if(hasReclassified) safeWork.getPermits().setConfinedSpaceReclassified(true);
+                if(hasPermitRequired) safeWork.getPermits().setConfinedSpacePermitRequired(true);
 
                 safeWork.setSpecialInstructions(specialInstructions);
 
@@ -482,7 +489,7 @@ public class RedTagAutomationService {
         login();
 
         openNewLotoBuilder();
-        openLotoBuilderWithNoStandard();
+        openLotoBuilderWithNoStandard(lotoDto);
         buildWithNewPoints(lotoDto.getLotoPoints().stream().map(lotoPointMapper::convertToDto).toList());
         return "Success";
     }
@@ -545,7 +552,7 @@ public class RedTagAutomationService {
         openApp();
         login();
         for(ConfinedSpaceDto confinedSpace : confinedSpaces){
-            openNewConfinedSpaceBuilder();
+            openNewConfinedSpaceBuilder(confinedSpace.getCsType());
             fillOutCSForm(confinedSpace);
             String permitNum = saveCsForm();
             confinedSpace.setRedTagNum(permitNum);
@@ -616,24 +623,32 @@ public class RedTagAutomationService {
 
     }
 
-    public String openLotoBuilderWithNoStandard() throws FindFailed {
+    public String openLotoBuilderWithNoStandard(LotoDto loto) throws FindFailed {
         screen.wait(ISSUE_LOTO_WITH_NO_STANDARD_BUTTON,5).click();
 
+        String workScope = loto != null && loto.getWorkScope() != null ? loto.getWorkScope() : "";
+        String lotoType = loto != null && loto.getPermitType() != null && loto.getPermitType().getName() != null
+                ? loto.getPermitType().getName() : "LOTO";
+        String equipmentDescription = loto != null && loto.getEquipmentSystem() != null
+                ? loto.getEquipmentSystem() : "";
+        String equipmentTag = loto != null && loto.getDocNum() != null
+                ? String.valueOf(loto.getDocNum()) : "";
+
         Region dropdown = screen.wait(LOTO_BUILDER_LOTO_TYPE_DROPDOWN,5);
-        App.setClipboard("WORK SCOPE");
+        App.setClipboard(workScope);
         screen.type("v", KeyModifier.CTRL);
         dropdown.offset(100,0).click();
-        App.setClipboard("LOTO");
+        App.setClipboard(lotoType);
         screen.type("v", KeyModifier.CTRL);
 
         Region eqDescr = screen.wait(LOTO_BUILDER_EQUIPMENT_DESCRIPTION,1);
         eqDescr.offset(100,0).click();
-        App.setClipboard("SOME EQUIPMENT DESCRIPTION");
+        App.setClipboard(equipmentDescription);
         screen.type("v", KeyModifier.CTRL);
 
         Region eqTag = screen.wait(LOTO_BUILDER_EQUIPMENT_TAG_NUMBER,1);
         eqTag.offset(100,0).click();
-        App.setClipboard("SOME EQUIPMENT TAG");
+        App.setClipboard(equipmentTag);
         screen.type("v", KeyModifier.CTRL);
 
 
@@ -644,6 +659,18 @@ public class RedTagAutomationService {
     public String buildWithNewPoints(List<LotoPointDto> points){
         LotoBuilderService.buildLotowWithNewPoints(points);
         return "Success";
+    }
+
+    public String saveLoto(){
+        try{
+            clickSaveButton();
+            String num = getPermitNumber();
+            return num;
+        }catch (Exception e){
+            e.printStackTrace();
+            logger.info("Failed saving LOTO permit: " + e.getMessage());
+            return "Failed saving LOTO permit: " + e.getMessage();
+        }
     }
 
     public String completeLotoBuilding() throws FindFailed {
@@ -737,7 +764,8 @@ public class RedTagAutomationService {
             clickLeftSideOfElement(SW_ENVIRONMENTAL, 2);
 
             clickYesNo(SW_LOTO_REQUIRED, true);
-            clickYesNo(SW_CONFINED_SPACE, true);
+            clickYesNo(SW_CONFINED_SPACE_RECLASSIFIED, true);
+            clickYesNo(SW_CONFINED_SPACE_PERMIT_REQUIRED, true);
             clickYesNo(SW_HOT_WORK, true);
             clickNoBelow(SW_HOT_WORK);
             clickYesNo(SW_JHA, true);
@@ -769,7 +797,8 @@ public class RedTagAutomationService {
             clickYesNo(SW_PURGIN_VENTILATION, true);
 
             clickYesNo(SW_LOTO_REQUIRED, false);
-            clickYesNo(SW_CONFINED_SPACE, false);
+            clickYesNo(SW_CONFINED_SPACE_RECLASSIFIED, false);
+            clickYesNo(SW_CONFINED_SPACE_PERMIT_REQUIRED, false);
             clickYesNo(SW_HOT_WORK, false);
             clickNoBelow(SW_HOT_WORK);
             clickYesNo(SW_JHA, false);
@@ -895,8 +924,10 @@ public class RedTagAutomationService {
             // --- Permits section ---
             currentField = "Permits: LOTO Required";
             clickYesNo(SW_LOTO_REQUIRED, permits.isLotoRequired());
-            currentField = "Permits: Confined Space";
-            clickYesNo(SW_CONFINED_SPACE, permits.isConfinedSpace());
+            currentField = "Permits: Confined Space (Reclassified)";
+            clickYesNo(SW_CONFINED_SPACE_RECLASSIFIED, permits.isConfinedSpaceReclassified());
+            currentField = "Permits: Confined Space (Permit Required)";
+            clickYesNo(SW_CONFINED_SPACE_PERMIT_REQUIRED, permits.isConfinedSpacePermitRequired());
             currentField = "Permits: Hot Work";
             clickYesNo(SW_HOT_WORK, permits.isHotWork());
             clickNoBelow(SW_HOT_WORK);
@@ -1036,9 +1067,12 @@ public class RedTagAutomationService {
 
 
 
-    public String openNewConfinedSpaceBuilder() {
+    public String openNewConfinedSpaceBuilder(com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType csType) {
         try {
-            screen.wait(CS_TAB,5).click();
+            Pattern tab = csType == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.RECLASSIFIED
+                    ? CS_TAB_RECLASSIFIED
+                    : CS_TAB_PERMIT_REQUIRED;
+            screen.wait(tab,5).click();
             screen.wait(NEW_PERMIT_BUTTON, 1).click();
             screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
             Region shrink = screen.wait(SHRINK_BUTTON, 10);

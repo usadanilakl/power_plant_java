@@ -9,6 +9,8 @@ export interface LockModel extends BaseModel {
   tagLabel: string;
   assignedLotoPointId: number | null;
   lockType: string;
+  homeBoxNumber: number | null;
+  isSingleLock: boolean;
 }
 
 export class LockDto extends BaseDto implements LockModel {
@@ -18,6 +20,8 @@ export class LockDto extends BaseDto implements LockModel {
   tagLabel: string;
   assignedLotoPointId: number | null;
   lockType: string;
+  homeBoxNumber: number | null;
+  isSingleLock: boolean;
 
   constructor(data: Partial<LockModel> = {}) {
     super(data);
@@ -27,6 +31,8 @@ export class LockDto extends BaseDto implements LockModel {
     this.tagLabel = data.tagLabel ?? '';
     this.assignedLotoPointId = data.assignedLotoPointId ?? null;
     this.lockType = data.lockType ?? 'LOCK';
+    this.homeBoxNumber = data.homeBoxNumber ?? null;
+    this.isSingleLock = data.isSingleLock ?? false;
   }
 
   // Override toJson method
@@ -38,7 +44,9 @@ export class LockDto extends BaseDto implements LockModel {
       lotoAccessoryStatus: this.lotoAccessoryStatus.toJson(),
       tagLabel: this.tagLabel,
       assignedLotoPointId: this.assignedLotoPointId,
-      lockType: this.lockType
+      lockType: this.lockType,
+      homeBoxNumber: this.homeBoxNumber,
+      isSingleLock: this.isSingleLock,
     };
   }
 
@@ -56,7 +64,9 @@ export class LockDto extends BaseDto implements LockModel {
       lotoAccessoryStatus: ValueDto.fromJson(json.lotoAccessoryStatus),
       tagLabel: json.tagLabel ?? '',
       assignedLotoPointId: json.assignedLotoPointId ?? null,
-      lockType: json.lockType ?? 'LOCK'
+      lockType: json.lockType ?? 'LOCK',
+      homeBoxNumber: json.homeBoxNumber ?? null,
+      isSingleLock: json.isSingleLock ?? false,
     });
   }
 }

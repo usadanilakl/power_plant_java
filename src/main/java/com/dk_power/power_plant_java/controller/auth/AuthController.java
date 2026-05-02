@@ -321,11 +321,21 @@ public class AuthController {
                 baseUrl += ":" + port;
             }
         }
-        // If request came from an external app (e.g. ng-ui PWA), send user to that app's
-        // own reset-password page instead of the server UI
+        // If request came from an external app (e.g. ng-ui PWA on GitHub Pages), send user
+        // to that app's own reset-password page instead of the server UI.
+        // Behind a reverse proxy, request.getServerName() may not match the public hostname,
+        // so prefer comparing against the configured external URL when available.
         String origin = request.getHeader("Origin");
         String resetLink;
-        if (origin != null && !origin.isBlank() && !origin.contains(request.getServerName())) {
+        boolean originIsExternalPwa = false;
+        if (origin != null && !origin.isBlank()) {
+            if (externalUrl != null && !externalUrl.isBlank()) {
+                originIsExternalPwa = !origin.startsWith(externalUrl);
+            } else {
+                originIsExternalPwa = !origin.contains(request.getServerName());
+            }
+        }
+        if (originIsExternalPwa) {
             String appBase = origin.endsWith("/") ? origin + "permits" : origin + "/permits";
             resetLink = appBase + "/reset-password?token=" + token;
         } else {

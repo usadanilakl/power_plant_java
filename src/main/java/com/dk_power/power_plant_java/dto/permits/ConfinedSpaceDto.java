@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePpe;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePrecautions;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -20,6 +21,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ConfinedSpaceDto extends BasePermitDto {
 
+    private ConfinedSpaceType csType = ConfinedSpaceType.PERMIT_REQUIRED;
     private String date;
     private String time;
     private String space;

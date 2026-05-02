@@ -102,7 +102,7 @@ public class RedTagControlsRestController {
     @GetMapping("/build-loto-with-no-standard")
     public ResponseEntity<NgApiResponse<String>> buildLotoWithNoStandard() {
         try {
-            String login = redTagAutomationService.openLotoBuilderWithNoStandard();
+            String login = redTagAutomationService.openLotoBuilderWithNoStandard(null);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Loto Builder open operation is "+login));
         } catch (FindFailed e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
@@ -187,7 +187,8 @@ public class RedTagControlsRestController {
     @GetMapping("/open-cs-builder")
     public ResponseEntity<NgApiResponse<String>> openCsBuilder() {
         try {
-            String login = redTagAutomationService.openNewConfinedSpaceBuilder();
+            String login = redTagAutomationService.openNewConfinedSpaceBuilder(
+                    com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.PERMIT_REQUIRED);
             return ResponseEntity.ok(new NgApiResponse<>(null, "CS Builder open operation is "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));

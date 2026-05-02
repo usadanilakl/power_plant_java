@@ -16,4 +16,8 @@ export class RedTagService{
         const lotoPointIdDtos = lotoPoints.map(lotoPoint => lotoPoint.toIdModel());
         return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/simple-build`, lotoPointIdDtos);
     }
+
+    fullBuild(lotoId: number): Observable<SpringApiResponse<any>> {
+        return this.http.post<SpringApiResponse<any>>(`${this.apiUrl}/full-build/${lotoId}`, {});
+    }
 }

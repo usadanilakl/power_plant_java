@@ -2,6 +2,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { LotoDto } from './loto.model';
 import { ValueDto } from '../value.model';
 import { BasePermitDto, BasePermitModel } from '../base/base-permit.model';
+import { LockDto } from './lock.model';
 
 export interface LotoBoxModel extends BasePermitModel {
   number: number;
@@ -11,6 +12,11 @@ export interface LotoBoxModel extends BasePermitModel {
   rangeStart: number | null;
   rangeEnd: number | null;
   description: string;
+
+  setSize: number;
+  active: boolean;
+  portable: boolean;
+  homeLocks: LockDto[];
 
   // LED status fields (not persisted, from LED status API)
   r?: number;
@@ -30,6 +36,11 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
   rangeEnd: number | null;
   description: string;
 
+  setSize: number;
+  active: boolean;
+  portable: boolean;
+  homeLocks: LockDto[];
+
   // LED status fields
   r?: number;
   g?: number;
@@ -47,6 +58,10 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
     this.rangeStart = data.rangeStart ?? null;
     this.rangeEnd = data.rangeEnd ?? null;
     this.description = data.description ?? '';
+    this.setSize = data.setSize ?? 0;
+    this.active = data.active ?? true;
+    this.portable = data.portable ?? false;
+    this.homeLocks = data.homeLocks ?? [];
     this.r = data.r;
     this.g = data.g;
     this.b = data.b;
@@ -65,7 +80,10 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       ledStripId: this.ledStripId,
       rangeStart: this.rangeStart,
       rangeEnd: this.rangeEnd,
-      description: this.description
+      description: this.description,
+      setSize: this.setSize,
+      active: this.active,
+      portable: this.portable,
     };
   }
 
@@ -85,6 +103,10 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       rangeStart: json.rangeStart,
       rangeEnd: json.rangeEnd,
       description: json.description,
+      setSize: json.setSize ?? 0,
+      active: json.active ?? true,
+      portable: json.portable ?? false,
+      homeLocks: Array.isArray(json.homeLocks) ? json.homeLocks.map((l: any) => LockDto.fromJson(l)) : [],
       r: json.r,
       g: json.g,
       b: json.b,

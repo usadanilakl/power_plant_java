@@ -6,6 +6,8 @@ import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.permits.LockMapper;
+import com.dk_power.power_plant_java.repository.loto.LockRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.esp.LedStripService;
@@ -21,17 +23,23 @@ public class LotoBoxMapper implements BaseMapper {
     private final LotoService lotoService;
     private final NgLotoBoxService lotoBoxService;
     private final LedStripService ledStripService;
+    private final LockRepo lockRepo;
+    private final LockMapper lockMapper;
 
-    public LotoBoxMapper(ModelMapper modelMapper, 
+    public LotoBoxMapper(ModelMapper modelMapper,
                          @Lazy NgValueService valueService,
-                         @Lazy LotoService lotoService, 
+                         @Lazy LotoService lotoService,
                          @Lazy NgLotoBoxService lotoBoxService,
-                         @Lazy LedStripService ledStripService) {
+                         @Lazy LedStripService ledStripService,
+                         LockRepo lockRepo,
+                         @Lazy LockMapper lockMapper) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.lotoService = lotoService;
         this.lotoBoxService = lotoBoxService;
         this.ledStripService = ledStripService;
+        this.lockRepo = lockRepo;
+        this.lockMapper = lockMapper;
     }
 
     public LotoBoxDto convertToDto(LotoBox entity) {
@@ -77,6 +85,18 @@ public class LotoBoxMapper implements BaseMapper {
         dto.setG(entity.getG());
         dto.setB(entity.getB());
         dto.setBrightness(entity.getBrightness());
+
+        dto.setSetSize(entity.getSetSize() != null ? entity.getSetSize() : 0);
+        dto.setActive(entity.getActive() != null ? entity.getActive() : Boolean.TRUE);
+        dto.setPortable(entity.getPortable() != null ? entity.getPortable() : Boolean.FALSE);
+
+        if (entity.getNumber() != null) {
+            dto.setHomeLocks(
+                    lockRepo.findByHomeBoxNumber(entity.getNumber()).stream()
+                            .map(lockMapper::convertToDto)
+                            .toList()
+            );
+        }
 
         return dto;
     }
@@ -151,6 +171,16 @@ public class LotoBoxMapper implements BaseMapper {
 
         if (source.getDescription() != null) {
             entity.setDescription(source.getDescription());
+        }
+
+        if (source.getSetSize() != null) {
+            entity.setSetSize(source.getSetSize());
+        }
+        if (source.getActive() != null) {
+            entity.setActive(source.getActive());
+        }
+        if (source.getPortable() != null) {
+            entity.setPortable(source.getPortable());
         }
 
         // Map LED color state

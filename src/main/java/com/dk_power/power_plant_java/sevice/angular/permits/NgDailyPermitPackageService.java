@@ -369,7 +369,11 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         if (pkg.getSafeWorks() == null || pkg.getSafeWorks().isEmpty()) return;
 
         boolean hasHotWork = pkg.getHotWorks() != null && !pkg.getHotWorks().isEmpty();
-        boolean hasConfinedSpace = pkg.getConfinedSpaces() != null && !pkg.getConfinedSpaces().isEmpty();
+        boolean hasReclassifiedCs = pkg.getConfinedSpaces() != null && pkg.getConfinedSpaces().stream()
+                .anyMatch(cs -> cs.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.RECLASSIFIED);
+        boolean hasPermitRequiredCs = pkg.getConfinedSpaces() != null && pkg.getConfinedSpaces().stream()
+                .anyMatch(cs -> cs.getCsType() == com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceType.PERMIT_REQUIRED);
+        boolean hasConfinedSpace = hasReclassifiedCs || hasPermitRequiredCs;
 
         for (SafeWork sw : pkg.getSafeWorks()) {
             com.dk_power.power_plant_java.entities.permits.pojo.SwPermits permits = sw.getPermits();
@@ -377,7 +381,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
             if (permits == null) permits = new com.dk_power.power_plant_java.entities.permits.pojo.SwPermits();
             if (ppe == null) ppe = new com.dk_power.power_plant_java.entities.permits.pojo.SwPpe();
 
-            applyGasMonitoringFlags(permits, ppe, hasHotWork, hasConfinedSpace);
+            applyGasMonitoringFlags(permits, ppe, hasHotWork, hasReclassifiedCs, hasPermitRequiredCs, hasConfinedSpace);
             sw.setPermits(permits);
             sw.setPpe(ppe);
         }
@@ -386,9 +390,10 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
     private void applyGasMonitoringFlags(
             com.dk_power.power_plant_java.entities.permits.pojo.SwPermits permits,
             com.dk_power.power_plant_java.entities.permits.pojo.SwPpe ppe,
-            boolean hasHotWork, boolean hasConfinedSpace) {
+            boolean hasHotWork, boolean hasReclassifiedCs, boolean hasPermitRequiredCs, boolean hasConfinedSpace) {
         permits.setHotWork(hasHotWork);
-        permits.setConfinedSpace(hasConfinedSpace);
+        permits.setConfinedSpaceReclassified(hasReclassifiedCs);
+        permits.setConfinedSpacePermitRequired(hasPermitRequiredCs);
         permits.setGasTesting(hasHotWork || hasConfinedSpace);
         ppe.setGasMonitor(hasHotWork || hasConfinedSpace);
     }

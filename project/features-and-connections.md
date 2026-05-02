@@ -1,0 +1,52 @@
+## Current State
+
+- File feature
+    - Purpose: stand alone database of categorized files for user to search, view, download, upload, edit. Files are also referenced by other features (Equipment, Tasks)
+    - CRUD plus UI
+    - Supports multiple extensions
+    - Supports pdf to jpg conversion
+    - Supports revisioning
+- Equipment feature
+    - Purpose: represents actual equipment in the plant, serves as a main data package/connector:
+        - Equipment overview data - built for each equipment by user and displayed as first equpment identification  (user click equipment on a P&ID or diagram)
+        - Related Files - references FileObject entity so user can see all relevant documentation in one place
+        - Related procedures - references Task entity so user can access all relevant procedures
+        - Related logs - user can see logs of all categories related to the equipment
+        - Related permits - user can see all active and closed permits related to the equipment.
+        - 
+    - CRUD plus UI (form, table)
+    - P&ID management component allowing user turn PDF P&ID into interactive JPG version where each element of P&ID is identified interactive Equipment referencing specific coordinates on the image
+- Permit feature
+    - Purpose: Organize work to be performed and record keeping
+        - Who is working
+        - Where work is performed
+        - Associated hazards
+        - Safety steps needed
+        - Manage archived permits
+    - LOTO
+        - LOTO Point
+            - Purpose: Identify location, position of an isolation point and the way to verify Zero Energy
+            - All LOTO Points are Equipment
+            - LOTO Points have is own CRUD and UI
+        - LOTO permit
+            - Purpose: Identifies LOTO Points needed to isolate Equipment
+            - Has Status:
+                - Building
+                - Active
+                - Test
+                - Closed
+            - Keeps track of people protected by it.
+        - LOTO standard
+
+    - SafeWork
+    - HW
+    - CS
+    - Digging
+    - Venting
+    - Energized Work
+- Scheduler feature
+- Visual Plant feature
+- Fire Impairment feature
+- EtaPro feature
+- Diagnostic feature
+- User feature

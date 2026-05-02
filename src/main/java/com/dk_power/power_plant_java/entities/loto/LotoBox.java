@@ -36,6 +36,10 @@ public class LotoBox extends BaseAuditEntity {
 
     private Integer setSize = 0; // Number of locks in this box's set (0 = no set)
 
+    private Boolean active = true; // soft-delete flag for boxes the operator removed
+
+    private Boolean portable = false; // portable boxes render outside the fixed 12x6 grid
+
     // Current LED color state (persisted to database)
     private Integer r = 0; // Red value (0-255)
 
