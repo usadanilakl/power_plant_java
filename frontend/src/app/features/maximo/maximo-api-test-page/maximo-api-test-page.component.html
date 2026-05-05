@@ -1,0 +1,97 @@
+<app-main-layout header="Maximo — API Test">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <p class="muted">
+        Hits <code>/ng/maximo/*</code> on this server. The Spring Boot side proxies to Maximo with the apikey.
+      </p>
+
+      <div class="grid">
+
+        <fieldset>
+          <legend>1. Search assets</legend>
+          <div class="row"><label>Tag <input [(ngModel)]="searchTag" /></label></div>
+          <div class="row"><label>Site <input [(ngModel)]="searchSite" /></label></div>
+          <div class="row"><label>Page <input type="number" [(ngModel)]="searchSize" /></label></div>
+          <button (click)="runSearch()" [disabled]="searchPanel().status === 'loading'">
+            GET /assets
+          </button>
+          <ng-container *ngTemplateOutlet="result; context:{state: searchPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Get asset by tag</legend>
+          <div class="row"><label>Assetnum <input [(ngModel)]="getTag" /></label></div>
+          <button (click)="runGet()" [disabled]="getPanel().status === 'loading'">GET /assets/{{getTag}}</button>
+          <button class="secondary" (click)="copyHref()">copy href ↓</button>
+          <ng-container *ngTemplateOutlet="result; context:{state: getPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. SRs for asset</legend>
+          <div class="row"><label>Assetnum <input [(ngModel)]="srAsset" /></label></div>
+          <button (click)="runSrList()" [disabled]="srPanel().status === 'loading'">GET /assets/{{srAsset}}/service-requests</button>
+          <ng-container *ngTemplateOutlet="result; context:{state: srPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset>
+          <legend>4. WOs for asset</legend>
+          <div class="row"><label>Assetnum <input [(ngModel)]="woAsset" /></label></div>
+          <button (click)="runWoList()" [disabled]="woPanel().status === 'loading'">GET /assets/{{woAsset}}/work-orders</button>
+          <ng-container *ngTemplateOutlet="result; context:{state: woPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset class="span-2">
+          <legend>5. Submit new SR</legend>
+          <div class="row"><label>Asset <input [(ngModel)]="newSr.assetnum" /></label>
+            <label>Site <input [(ngModel)]="newSr.siteid" /></label>
+            <label>Priority <input [(ngModel)]="newSr.priority" /></label>
+            <label>Reported by <input [(ngModel)]="newSr.reportedby" placeholder="personid" /></label>
+          </div>
+          <div class="row full"><label>Description <input [(ngModel)]="newSr.description" /></label></div>
+          <div class="row full"><label>Long description <textarea [(ngModel)]="newSr.longDescription" rows="2"></textarea></label></div>
+          <button (click)="submitNewSr()" [disabled]="submitPanel().status === 'loading'">POST /service-requests</button>
+          <ng-container *ngTemplateOutlet="result; context:{state: submitPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset class="span-2">
+          <legend>6. Attachments — list / upload</legend>
+          <div class="row">
+            <label>Parent
+              <select [(ngModel)]="attParent">
+                <option value="asset">asset (mxasset)</option>
+                <option value="sr">sr (mxapisr)</option>
+                <option value="wo">wo (mxapiwodetail)</option>
+              </select>
+            </label>
+            <label>Parent href <input [(ngModel)]="attHref" placeholder="OSLC href id" /></label>
+            <label>Doctype <input [(ngModel)]="attDoctype" /></label>
+          </div>
+          <button (click)="listAttachments()" [disabled]="attPanel().status === 'loading'">GET attachments</button>
+          <label class="file-btn">
+            POST attachment
+            <input type="file" (change)="uploadAttachment($event)" hidden />
+          </label>
+          <ng-container *ngTemplateOutlet="result; context:{state: attPanel()}"></ng-container>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <ng-template #result let-state="state">
+      <pre class="result"
+           [class.error-state]="state.status === 'error'"
+           [class.ok-state]="state.status === 'ok'">
+        <ng-container [ngSwitch]="state.status">
+          <span *ngSwitchCase="'idle'">—</span>
+          <span *ngSwitchCase="'loading'">… loading</span>
+          <span *ngSwitchCase="'error'"><strong>error:</strong> {{ state.error }}{{ state.payload ? '\n' + pretty(state.payload) : '' }}</span>
+          <span *ngSwitchCase="'ok'">{{ pretty(state.payload) }}</span>
+        </ng-container>
+      </pre>
+    </ng-template>
+  </ng-container>
+</app-main-layout>

@@ -1,0 +1,37 @@
+<app-main-layout header="Maximo — Work Orders">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+      <section class="bar">
+        <label>Assetnum <input [(ngModel)]="assetnum" placeholder="e.g. -1-CEM-SS" /></label>
+        <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
+        <button (click)="load()" [disabled]="!assetnum || loading()">
+          {{ loading() ? 'Loading…' : 'Load' }}
+        </button>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+      </section>
+
+      <table>
+        <thead>
+          <tr><th>WO #</th><th>Description</th><th>Status</th><th>Type</th><th>Asset</th><th>Reported</th><th>Sched start</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let w of list()">
+            <td>{{ w.wonum }}</td>
+            <td>{{ w.description }}</td>
+            <td>{{ w.status }}</td>
+            <td>{{ w.worktype }}</td>
+            <td>{{ w.assetnum }}</td>
+            <td>{{ w.reportdate }}</td>
+            <td>{{ w.schedstart }}</td>
+          </tr>
+          <tr *ngIf="list().length === 0">
+            <td colspan="7" class="muted">{{ assetnum ? 'No work orders for this asset.' : 'Enter an assetnum and click Load.' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</app-main-layout>

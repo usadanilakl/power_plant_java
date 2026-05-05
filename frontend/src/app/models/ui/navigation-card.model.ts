@@ -128,6 +128,20 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
     ]
   },
   {
+    label: 'Maximo',
+    description: 'IBM Maximo assets, service requests, and work orders',
+    icon: 'engineering',
+    color: '#26C6DA',
+    defaultRoute: '/maximo/assets',
+    requiresFullAccess: true,
+    items: [
+      { title: 'Assets', description: 'Search Maximo assets and view their SR / WO history', icon: 'precision_manufacturing', route: '/maximo/assets', color: '#26C6DA' },
+      { title: 'Service Requests', description: 'List and submit service requests for an asset', icon: 'support_agent', route: '/maximo/service-requests', color: '#FFA726' },
+      { title: 'Work Orders', description: 'View work orders for an asset', icon: 'assignment', route: '/maximo/work-orders', color: '#66BB6A' },
+      { title: 'API Test', description: 'Diagnostic panel for the Maximo integration endpoints', icon: 'api', route: '/maximo/api-test', color: '#EF5350' }
+    ]
+  },
+  {
     label: 'Admin',
     description: 'System administration and synchronization',
     icon: 'admin_panel_settings',

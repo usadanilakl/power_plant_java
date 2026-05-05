@@ -1,0 +1,117 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Observable, firstValueFrom } from 'rxjs';
+import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
+import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
+import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoAttachmentParent, CreateMaximoServiceRequest } from '../../../models/maximo/maximo.models';
+
+interface PanelState {
+  status: 'idle' | 'loading' | 'ok' | 'error';
+  payload?: unknown;
+  error?: string;
+}
+
+const idle = (): PanelState => ({ status: 'idle' });
+
+@Component({
+  selector: 'app-maximo-api-test-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  templateUrl: './maximo-api-test-page.component.html',
+  styleUrl: './maximo-api-test-page.component.css'
+})
+export class MaximoApiTestPageComponent {
+  private api = inject(MaximoApiService);
+
+  // 1. Search assets
+  searchTag = 'CEM';
+  searchSite = 'JG';
+  searchSize = 10;
+  searchPanel = signal<PanelState>(idle());
+
+  // 2. Get asset by tag
+  getTag = '-1-CEM-SS';
+  getPanel = signal<PanelState>(idle());
+  lastAssetHref = '';
+
+  // 3. SRs for asset
+  srAsset = '-1-CEM-SS';
+  srPanel = signal<PanelState>(idle());
+
+  // 4. WOs for asset
+  woAsset = '-1-CEM-SS';
+  woPanel = signal<PanelState>(idle());
+
+  // 5. Submit new SR
+  newSr: CreateMaximoServiceRequest = {
+    description: 'Test SR from API test panel',
+    longDescription: 'Submitted via /maximo/api-test for integration verification.',
+    assetnum: '-1-CEM-SS',
+    siteid: 'JG',
+    priority: '3'
+  };
+  submitPanel = signal<PanelState>(idle());
+
+  // 6. Attachments
+  attParent: MaximoAttachmentParent = 'asset';
+  attHref = '';
+  attDoctype = 'Attachments';
+  attPanel = signal<PanelState>(idle());
+
+  runSearch() {
+    return this.run(this.searchPanel,
+      this.api.searchAssets({ tag: this.searchTag, siteid: this.searchSite, pageSize: this.searchSize }));
+  }
+
+  async runGet() {
+    const result = await this.run(this.getPanel, this.api.getAsset(this.getTag));
+    if (result && (result as any).href) this.lastAssetHref = (result as any).href;
+  }
+
+  copyHref() {
+    if (!this.lastAssetHref) { alert('Run "Get asset" first.'); return; }
+    this.attHref = this.lastAssetHref;
+    this.attParent = 'asset';
+  }
+
+  runSrList() { return this.run(this.srPanel, this.api.listServiceRequestsForAsset(this.srAsset)); }
+  runWoList() { return this.run(this.woPanel, this.api.listWorkOrdersForAsset(this.woAsset)); }
+  submitNewSr() { return this.run(this.submitPanel, this.api.createServiceRequest(this.newSr)); }
+
+  listAttachments() {
+    if (!this.attHref) { alert('Parent href required.'); return Promise.resolve(null); }
+    return this.run(this.attPanel, this.api.listAttachments(this.attParent, this.attHref));
+  }
+
+  async uploadAttachment(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!this.attHref) { alert('Parent href required.'); input.value = ''; return; }
+    if (!file) return;
+    await this.run(this.attPanel,
+      this.api.uploadAttachment(this.attParent, this.attHref, file, this.attDoctype || undefined));
+    input.value = '';
+  }
+
+  pretty(v: unknown): string {
+    if (v == null) return '';
+    try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+  }
+
+  private async run<T>(
+    panel: ReturnType<typeof signal<PanelState>>,
+    obs: Observable<T>
+  ): Promise<T | null> {
+    panel.set({ status: 'loading' });
+    try {
+      const result = await firstValueFrom(obs);
+      panel.set({ status: 'ok', payload: result });
+      return result ?? null;
+    } catch (e: any) {
+      panel.set({ status: 'error', error: e?.error?.message ?? e?.message ?? String(e), payload: e?.error });
+      return null;
+    }
+  }
+}

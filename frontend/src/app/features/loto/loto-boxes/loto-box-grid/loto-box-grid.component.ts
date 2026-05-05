@@ -231,7 +231,15 @@ export class LotoBoxGridComponent implements OnInit {
 
   addBox(portable: boolean = false) {
     const next = this.nextAvailableNumber(portable);
-    const draft = new LotoBoxDto({ number: next, portable, active: true, setSize: 0 });
+    if (next < 0) {
+      alert('Fixed grid (1–72) is full. Reactivate an inactive box, or add a portable box instead.');
+      return;
+    }
+    this.createBoxAtNumber(next, portable);
+  }
+
+  private createBoxAtNumber(number: number, portable: boolean) {
+    const draft = new LotoBoxDto({ number, portable, active: true, setSize: 0 });
     this.boxService.createLotoBox(draft).subscribe({
       next: (response) => {
         const created = LotoBoxDto.fromJson(response.responseData);
@@ -240,23 +248,44 @@ export class LotoBoxGridComponent implements OnInit {
         this.openEditDialog(created);
       },
       error: (err) => {
+        const msg = err?.error?.message ?? err.message;
+        // Number-collision recovery: server has a row our cache didn't. Refetch + retry once.
+        if (typeof msg === 'string' && msg.includes('already exists')) {
+          this.boxService.getAllBoxes().subscribe(resp => {
+            const fresh = (resp.responseData ?? []).map((b: any) => LotoBoxDto.fromJson(b));
+            this.allBoxes.set(fresh);
+            const retry = this.nextAvailableNumber(portable);
+            if (retry < 0 || retry === number) {
+              this.statusMessage.set(`Could not reserve a free number: ${msg}`);
+              return;
+            }
+            this.createBoxAtNumber(retry, portable);
+          });
+          return;
+        }
         console.error(err);
-        this.statusMessage.set(`Error creating box: ${err?.error?.message ?? err.message}`);
+        this.statusMessage.set(`Error creating box: ${msg}`);
       }
     });
   }
 
   private nextAvailableNumber(portable: boolean): number {
-    const existing = this.allBoxes()
-      .filter(b => b.portable === portable)
-      .map(b => b.number);
-    if (!portable) {
-      for (let i = 1; i <= this.TOTAL_BOXES; i++) {
-        if (!existing.includes(i)) return i;
-      }
-      return this.TOTAL_BOXES + 1;
+    const all = this.allBoxes();
+    if (portable) {
+      const portableNums = all.filter(b => b.portable).map(b => b.number);
+      const allNums = all.map(b => b.number);
+      const start = portableNums.length === 0 ? 101 : Math.max(...portableNums) + 1;
+      // Skip forward past any number already used by any box (fixed or portable)
+      let candidate = start;
+      while (allNums.includes(candidate)) candidate++;
+      return candidate;
     }
-    return existing.length === 0 ? 101 : Math.max(...existing) + 1;
+    // Fixed: fill first gap in 1-72; signal full if none.
+    const fixedNums = all.filter(b => !b.portable).map(b => b.number);
+    for (let i = 1; i <= this.TOTAL_BOXES; i++) {
+      if (!fixedNums.includes(i)) return i;
+    }
+    return -1;
   }
 
   // --- Edit dialog ---

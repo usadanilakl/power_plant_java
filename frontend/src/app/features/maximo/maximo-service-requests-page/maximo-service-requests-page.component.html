@@ -1,0 +1,56 @@
+<app-main-layout header="Maximo — Service Requests">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+      <section class="bar">
+        <label>Assetnum <input [(ngModel)]="assetnum" placeholder="e.g. -1-CEM-SS" /></label>
+        <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
+        <button (click)="load()" [disabled]="!assetnum || loading()">
+          {{ loading() ? 'Loading…' : 'Load' }}
+        </button>
+        <button (click)="openForm()" [disabled]="!assetnum">+ New SR</button>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+      </section>
+
+      <div class="form-panel" *ngIf="showForm()">
+        <h4>New service request</h4>
+        <label>Description<input [(ngModel)]="newSr.description" /></label>
+        <label>Long description<textarea [(ngModel)]="newSr.longDescription" rows="3"></textarea></label>
+        <div class="row">
+          <label>Asset <input [(ngModel)]="newSr.assetnum" /></label>
+          <label>Site <input [(ngModel)]="newSr.siteid" /></label>
+          <label>Priority <input [(ngModel)]="newSr.priority" /></label>
+          <label>Reported by <input [(ngModel)]="newSr.reportedby" placeholder="personid" /></label>
+        </div>
+        <div class="row">
+          <button (click)="submit()" [disabled]="submitting()">
+            {{ submitting() ? 'Submitting…' : 'Submit' }}
+          </button>
+          <button class="secondary" (click)="showForm.set(false)">Cancel</button>
+          <span *ngIf="submitError()" class="error">{{ submitError() }}</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Ticket</th><th>Description</th><th>Status</th><th>Asset</th><th>Reported</th><th>Priority</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of list()">
+            <td>{{ s.ticketid }}</td>
+            <td>{{ s.description }}</td>
+            <td>{{ s.status }}</td>
+            <td>{{ s.assetnum }}</td>
+            <td>{{ s.reportdate }}</td>
+            <td>{{ s.priority }}</td>
+          </tr>
+          <tr *ngIf="list().length === 0">
+            <td colspan="6" class="muted">{{ assetnum ? 'No service requests for this asset.' : 'Enter an assetnum and click Load.' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</app-main-layout>
