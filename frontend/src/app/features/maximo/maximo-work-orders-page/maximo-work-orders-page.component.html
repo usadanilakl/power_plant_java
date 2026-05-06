@@ -4,18 +4,54 @@
   </ng-container>
   <ng-container main-content>
     <div class="mx-page">
-      <section class="bar">
-        <label>Assetnum <input [(ngModel)]="assetnum" placeholder="e.g. -1-CEM-SS" /></label>
-        <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
-        <button (click)="load()" [disabled]="!assetnum || loading()">
-          {{ loading() ? 'Loading…' : 'Load' }}
-        </button>
-        <span *ngIf="error()" class="error">{{ error() }}</span>
+
+      <section class="filter-panel">
+        <div class="row">
+          <label>Status
+            <select [(ngModel)]="criteria.status">
+              <option *ngFor="let s of statusOptions" [value]="s">{{ s || '(any)' }}</option>
+            </select>
+          </label>
+          <label>Worktype
+            <select [(ngModel)]="criteria.worktype">
+              <option *ngFor="let w of worktypeOptions" [value]="w">{{ w || '(any)' }}</option>
+            </select>
+          </label>
+          <label>Priority <input [(ngModel)]="criteria.priority" placeholder="numeric" /></label>
+          <label>Page <input type="number" [(ngModel)]="pageSize" min="1" max="200" /></label>
+        </div>
+        <div class="row">
+          <label>Assetnum <input [(ngModel)]="criteria.assetnum" placeholder="-1-CEM-SS" /></label>
+          <label>Location <input [(ngModel)]="criteria.location" placeholder="01-CEMS" /></label>
+          <label>Lead craft <input [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA" /></label>
+          <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
+        </div>
+        <div class="row">
+          <label>Sched start ≥ <input [(ngModel)]="criteria.schedstartFrom" placeholder="2022-01-01T00:00:00-05:00" class="wide" /></label>
+          <label>Sched finish ≤ <input [(ngModel)]="criteria.schedfinishTo" placeholder="2022-12-31T23:59:59-05:00" class="wide" /></label>
+        </div>
+        <div class="row">
+          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="auto-wrapped in %…%" class="wide" /></label>
+        </div>
+        <div class="row actions">
+          <button (click)="apply()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Apply filters' }}</button>
+          <button class="secondary" (click)="clear()">Clear</button>
+          <span class="muted">{{ activeFilterCount() }} filter(s) active</span>
+          <span *ngIf="error()" class="error">{{ error() }}</span>
+        </div>
       </section>
+
+      <div class="results-header">
+        <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
+      </div>
 
       <table>
         <thead>
-          <tr><th>WO #</th><th>Description</th><th>Status</th><th>Type</th><th>Asset</th><th>Reported</th><th>Sched start</th></tr>
+          <tr>
+            <th>WO #</th><th>Description</th><th>Status</th><th>Type</th>
+            <th>Asset</th><th>Location</th><th>Lead</th>
+            <th>Reported</th><th>Sched start</th><th>Pri</th>
+          </tr>
         </thead>
         <tbody>
           <tr *ngFor="let w of list()">
@@ -24,11 +60,17 @@
             <td>{{ w.status }}</td>
             <td>{{ w.worktype }}</td>
             <td>{{ w.assetnum }}</td>
+            <td>{{ w.location }}</td>
+            <td>{{ w.leadCraft }}</td>
             <td>{{ w.reportdate }}</td>
             <td>{{ w.schedstart }}</td>
+            <td>{{ w.priority }}</td>
           </tr>
           <tr *ngIf="list().length === 0">
-            <td colspan="7" class="muted">{{ assetnum ? 'No work orders for this asset.' : 'Enter an assetnum and click Load.' }}</td>
+            <td colspan="10" class="muted">{{
+              loaded() ? 'No work orders match these filters.' :
+              'Set filters above and click Apply.'
+            }}</td>
           </tr>
         </tbody>
       </table>

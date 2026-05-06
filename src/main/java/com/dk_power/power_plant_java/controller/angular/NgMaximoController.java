@@ -3,7 +3,9 @@ package com.dk_power.power_plant_java.controller.angular;
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoAssetDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoDoclinkDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoAssetAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
@@ -76,6 +78,36 @@ public class NgMaximoController {
                 serviceRequests.listForAsset(assetnum, pageSize), "ok"));
     }
 
+    @GetMapping("/service-requests")
+    public ResponseEntity<NgApiResponse<List<MaximoServiceRequestDto>>> srByCriteria(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "assetnum", required = false) String assetnum,
+            @RequestParam(value = "location", required = false) String location,
+            @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam(value = "reportedby", required = false) String reportedby,
+            @RequestParam(value = "affectedperson", required = false) String affectedperson,
+            @RequestParam(value = "classstructureid", required = false) String classstructureid,
+            @RequestParam(value = "reportdateFrom", required = false) String reportdateFrom,
+            @RequestParam(value = "reportdateTo", required = false) String reportdateTo,
+            @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        MaximoServiceRequestCriteria c = new MaximoServiceRequestCriteria();
+        c.setStatus(status);
+        c.setAssetnum(assetnum);
+        c.setLocation(location);
+        c.setPriority(priority);
+        c.setReportedby(reportedby);
+        c.setAffectedperson(affectedperson);
+        c.setClassstructureid(classstructureid);
+        c.setReportdateFrom(reportdateFrom);
+        c.setReportdateTo(reportdateTo);
+        c.setDescriptionContains(descriptionContains);
+        c.setSiteid(siteid);
+        return ResponseEntity.ok(new NgApiResponse<>(
+                serviceRequests.listByCriteria(c, pageSize), "ok"));
+    }
+
     @PostMapping("/service-requests")
     public ResponseEntity<NgApiResponse<MaximoServiceRequestDto>> createSr(
             @RequestBody CreateMaximoServiceRequestDto body) {
@@ -98,6 +130,34 @@ public class NgMaximoController {
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         return ResponseEntity.ok(new NgApiResponse<>(
                 workOrders.listForAsset(assetnum, pageSize), "ok"));
+    }
+
+    @GetMapping("/work-orders")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> woByCriteria(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "worktype", required = false) String worktype,
+            @RequestParam(value = "assetnum", required = false) String assetnum,
+            @RequestParam(value = "location", required = false) String location,
+            @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam(value = "leadCraft", required = false) String leadCraft,
+            @RequestParam(value = "schedstartFrom", required = false) String schedstartFrom,
+            @RequestParam(value = "schedfinishTo", required = false) String schedfinishTo,
+            @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
+            @RequestParam(value = "siteid", required = false) String siteid,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
+        c.setStatus(status);
+        c.setWorktype(worktype);
+        c.setAssetnum(assetnum);
+        c.setLocation(location);
+        c.setPriority(priority);
+        c.setLeadCraft(leadCraft);
+        c.setSchedstartFrom(schedstartFrom);
+        c.setSchedfinishTo(schedfinishTo);
+        c.setDescriptionContains(descriptionContains);
+        c.setSiteid(siteid);
+        return ResponseEntity.ok(new NgApiResponse<>(
+                workOrders.listByCriteria(c, pageSize), "ok"));
     }
 
     @GetMapping("/work-orders/{href}")

@@ -68,3 +68,30 @@ export interface CreateMaximoServiceRequest {
 }
 
 export type MaximoAttachmentParent = 'asset' | 'sr' | 'wo';
+
+export interface MaximoServiceRequestCriteria {
+  status?: string;
+  assetnum?: string;
+  location?: string;
+  priority?: string;
+  reportedby?: string;
+  affectedperson?: string;
+  classstructureid?: string;
+  reportdateFrom?: string;     // ISO 8601
+  reportdateTo?: string;       // ISO 8601
+  descriptionContains?: string;
+  siteid?: string;
+}
+
+export interface MaximoWorkOrderCriteria {
+  status?: string;
+  worktype?: string;
+  assetnum?: string;
+  location?: string;
+  priority?: string;
+  leadCraft?: string;
+  schedstartFrom?: string;     // ISO 8601, e.g. 2022-01-01T00:00:00-05:00
+  schedfinishTo?: string;      // ISO 8601
+  descriptionContains?: string;
+  siteid?: string;
+}

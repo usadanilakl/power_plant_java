@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
 import com.dk_power.power_plant_java.dto.maximo.CreateMaximoServiceRequestDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,18 +30,72 @@ public class MaximoServiceRequestAdapter {
 
     private final MaximoAccessService access;
 
+    /** List service requests by status (e.g. "NEW", "QUEUED", "INPROG", "RESOLVED", "CLOSED"). */
+    public List<MaximoServiceRequestDto> listByStatus(String status, int pageSize) {
+        if (status == null || status.isBlank()) return List.of();
+        MaximoServiceRequestCriteria c = new MaximoServiceRequestCriteria();
+        c.setStatus(status);
+        return listByCriteria(c, pageSize);
+    }
+
     /** List service requests for a given assetnum, newest reportdate first. */
     public List<MaximoServiceRequestDto> listForAsset(String assetnum, int pageSize) {
         if (assetnum == null || assetnum.isBlank()) return List.of();
+        MaximoServiceRequestCriteria c = new MaximoServiceRequestCriteria();
+        c.setAssetnum(assetnum);
+        return listByCriteria(c, pageSize);
+    }
+
+    /**
+     * AND-combined query across any subset of SR criteria fields.
+     * Returns empty list if no criteria provided (don't blast the whole site).
+     */
+    public List<MaximoServiceRequestDto> listByCriteria(MaximoServiceRequestCriteria c, int pageSize) {
+        if (c == null) return List.of();
+        List<String> conds = new ArrayList<>();
+        addStr(conds, "status", c.getStatus());
+        addStr(conds, "assetnum", c.getAssetnum());
+        addStr(conds, "location", c.getLocation());
+        addNum(conds, "reportedpriority", c.getPriority());
+        addStr(conds, "reportedby", c.getReportedby());
+        addStr(conds, "affectedperson", c.getAffectedperson());
+        addStr(conds, "classstructureid", c.getClassstructureid());
+        addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
+        addStrOp(conds, "reportdate", "<=", c.getReportdateTo());
+        addLike(conds, "description", c.getDescriptionContains());
+        if (conds.isEmpty()) return List.of();
+
+        String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())
+                ? c.getSiteid() : access.defaultSite();
+        addStr(conds, "siteid", siteid);
+
         Map<String, String> params = new LinkedHashMap<>();
         params.put("oslc.select", SELECT_FIELDS);
         params.put("oslc.pageSize", Integer.toString(Math.max(1, pageSize)));
-        params.put("oslc.where",
-                "spi:assetnum=\"" + escape(assetnum) + "\""
-                + " and spi:siteid=\"" + escape(access.defaultSite()) + "\"");
+        params.put("oslc.where", String.join(" and ", conds));
         params.put("oslc.orderBy", "-spi:reportdate");
         Map<String, Object> body = access.getMap(access.osUrl(OS), params);
         return mapAll(members(body));
+    }
+
+    private static void addStr(List<String> conds, String field, String value) {
+        if (value == null || value.isBlank()) return;
+        conds.add("spi:" + field + "=\"" + escape(value) + "\"");
+    }
+
+    private static void addNum(List<String> conds, String field, String value) {
+        if (value == null || value.isBlank()) return;
+        conds.add("spi:" + field + "=" + escape(value));
+    }
+
+    private static void addStrOp(List<String> conds, String field, String op, String value) {
+        if (value == null || value.isBlank()) return;
+        conds.add("spi:" + field + op + "\"" + escape(value) + "\"");
+    }
+
+    private static void addLike(List<String> conds, String field, String value) {
+        if (value == null || value.isBlank()) return;
+        conds.add("spi:" + field + "=\"%" + escape(value) + "%\"");
     }
 
     public Optional<MaximoServiceRequestDto> findByHref(String href) {

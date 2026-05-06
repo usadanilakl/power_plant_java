@@ -8,8 +8,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.http.HttpClient;
+import java.time.Duration;
 
 @Slf4j
 @Getter
@@ -34,9 +39,19 @@ public class MaximoConfig {
 
     @Bean("maximoRestTemplate")
     public RestTemplate maximoRestTemplate() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(connectTimeoutMs);
-        factory.setReadTimeout(readTimeoutMs);
+        // Maximo issues JSESSIONID on every response. The default JVM CookieHandler may be set
+        // by other libraries in this app, which would cause RestTemplate to send the session
+        // cookie alongside the apikey on subsequent calls. Maximo then prefers session auth,
+        // finds the session has no creds, and returns 401 BMXAA0021E.
+        // Use a per-client CookieManager that rejects everything to keep each call apikey-only.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_NONE))
+                .build();
+
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
         RestTemplate rt = new RestTemplate(factory);
         rt.getInterceptors().add((req, body, exec) -> {

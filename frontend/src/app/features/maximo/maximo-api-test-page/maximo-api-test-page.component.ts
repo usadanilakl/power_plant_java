@@ -5,7 +5,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
-import { MaximoAttachmentParent, CreateMaximoServiceRequest } from '../../../models/maximo/maximo.models';
+import { MaximoAttachmentParent, CreateMaximoServiceRequest, MaximoServiceRequestCriteria, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 
 interface PanelState {
   status: 'idle' | 'loading' | 'ok' | 'error';
@@ -40,9 +40,47 @@ export class MaximoApiTestPageComponent {
   srAsset = '-1-CEM-SS';
   srPanel = signal<PanelState>(idle());
 
+  // 3b. SRs by status
+  srStatus = 'NEW';
+  srStatusSize = 10;
+  srStatusPanel = signal<PanelState>(idle());
+
+  // 3c. SRs by criteria (any combination)
+  srCriteria: MaximoServiceRequestCriteria = {
+    status: '',
+    assetnum: '',
+    location: '',
+    priority: '',
+    reportedby: '',
+    affectedperson: '',
+    reportdateFrom: '',
+    reportdateTo: '',
+    descriptionContains: ''
+  };
+  srCriteriaSize = 10;
+  srCriteriaPanel = signal<PanelState>(idle());
+  readonly srStatusOptions = ['', 'NEW', 'QUEUED', 'INPROG', 'PENDING', 'RESOLVED', 'CLOSED'];
+
   // 4. WOs for asset
   woAsset = '-1-CEM-SS';
   woPanel = signal<PanelState>(idle());
+
+  // 4b. WOs by criteria (any combination of status, worktype, assetnum, location, priority)
+  woCriteria: MaximoWorkOrderCriteria = {
+    status: 'CLOSE',
+    worktype: '',
+    assetnum: '',
+    location: '',
+    priority: '',
+    leadCraft: '',
+    schedstartFrom: '',
+    schedfinishTo: '',
+    descriptionContains: ''
+  };
+  woCriteriaSize = 10;
+  woCriteriaPanel = signal<PanelState>(idle());
+  readonly woStatusOptions = ['', 'WAPPR', 'APPR', 'INPRG', 'COMP', 'CLOSE', 'CAN'];
+  readonly woWorktypeOptions = ['', 'CM', 'PM', 'EM', 'INSP'];
 
   // 5. Submit new SR
   newSr: CreateMaximoServiceRequest = {
@@ -77,7 +115,10 @@ export class MaximoApiTestPageComponent {
   }
 
   runSrList() { return this.run(this.srPanel, this.api.listServiceRequestsForAsset(this.srAsset)); }
+  runSrByStatus() { return this.run(this.srStatusPanel, this.api.listServiceRequestsByStatus(this.srStatus, this.srStatusSize)); }
+  runSrByCriteria() { return this.run(this.srCriteriaPanel, this.api.listServiceRequestsByCriteria(this.srCriteria, this.srCriteriaSize)); }
   runWoList() { return this.run(this.woPanel, this.api.listWorkOrdersForAsset(this.woAsset)); }
+  runWoByCriteria() { return this.run(this.woCriteriaPanel, this.api.listWorkOrdersByCriteria(this.woCriteria, this.woCriteriaSize)); }
   submitNewSr() { return this.run(this.submitPanel, this.api.createServiceRequest(this.newSr)); }
 
   listAttachments() {

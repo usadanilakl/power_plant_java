@@ -1,10 +1,15 @@
 .mx-page { padding: 12px; color: #e6e6e6; font: 13px/1.4 ui-monospace, Consolas, monospace; }
-.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-       padding: 10px; background: #2a2a2a; border-radius: 4px; margin-bottom: 12px; }
-.bar label { color: #aaa; }
-.bar input { background: #1e1e1e; color: #e6e6e6; border: 1px solid #444;
-             border-radius: 3px; padding: 4px 6px; margin-left: 4px; font: inherit; }
-.bar input[type=number] { width: 70px; }
+
+.filter-panel { background: #1f1f1f; border: 1px solid #333; border-radius: 4px;
+                padding: 10px; margin-bottom: 12px; }
+.filter-panel .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.filter-panel .row.actions { margin-top: 6px; padding-top: 8px; border-top: 1px solid #333; }
+label { color: #aaa; }
+input, select, textarea { background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
+                          border-radius: 3px; padding: 4px 6px; margin-left: 4px; font: inherit; }
+input[type=number] { width: 70px; }
+input.wide { min-width: 230px; }
+
 button { background: #0e639c; color: #fff; border: 0; border-radius: 3px;
          padding: 5px 12px; font: inherit; cursor: pointer; }
 button:hover:not(:disabled) { background: #1177bb; }
@@ -16,11 +21,12 @@ button.secondary { background: #444; }
 .form-panel h4 { margin: 0 0 8px; color: #7cc6ff; }
 .form-panel label { display: block; color: #aaa; margin-bottom: 6px; }
 .form-panel input, .form-panel textarea {
-  display: block; width: 100%; box-sizing: border-box;
-  background: #2a2a2a; color: #e6e6e6; border: 1px solid #444;
-  border-radius: 3px; padding: 4px 6px; margin-top: 2px; font: inherit; }
+  display: block; width: 100%; box-sizing: border-box; margin-top: 2px; }
 .form-panel .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
 .form-panel .row label { flex: 1; }
+
+.results-header { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
+.results-header h3 { margin: 0; }
 
 table { width: 100%; border-collapse: collapse; background: #1f1f1f;
         border: 1px solid #333; border-radius: 4px; }

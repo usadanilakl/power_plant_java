@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.maximo;
 
 import com.dk_power.power_plant_java.config.MaximoConfig;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -25,13 +24,20 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MaximoAccessService {
 
     private final MaximoConfig config;
-
-    @Qualifier("maximoRestTemplate")
     private final RestTemplate restTemplate;
+
+    // Explicit constructor so @Qualifier on the parameter is honored. With @RequiredArgsConstructor,
+    // Lombok generates a constructor whose parameter has no @Qualifier, so Spring would inject the
+    // wrong RestTemplate bean (e.g. sharepointRestTemplate) and Maximo returns 401 BMXAA0021E
+    // because no apikey header is attached.
+    public MaximoAccessService(MaximoConfig config,
+                               @Qualifier("maximoRestTemplate") RestTemplate restTemplate) {
+        this.config = config;
+        this.restTemplate = restTemplate;
+    }
 
     /** Absolute URL for an OSLC object structure (e.g. "mxasset" -> ".../oslc/os/mxasset"). */
     public String osUrl(String objectStructure) {
@@ -51,7 +57,7 @@ public class MaximoAccessService {
                 if (v != null && !v.isBlank()) b.queryParam(k, v);
             });
         }
-        return b.build(true).toUri();
+        return b.encode().build().toUri();
     }
 
     /** GET returning the body as Map (top-level OSLC envelope). */
