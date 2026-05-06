@@ -23,6 +23,8 @@ table { width: 100%; border-collapse: collapse; background: #1f1f1f;
         border: 1px solid #333; border-radius: 4px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a2a; }
 th { color: #7cc6ff; font-weight: 500; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: #2a2a2a; }
 
 .muted { color: #777; }
 .error { color: #ff7b72; }

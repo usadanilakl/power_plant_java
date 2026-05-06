@@ -54,7 +54,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let w of list()">
+          <tr *ngFor="let w of list()" (click)="openDetail(w)" class="clickable">
             <td>{{ w.wonum }}</td>
             <td>{{ w.description }}</td>
             <td>{{ w.status }}</td>
@@ -74,6 +74,13 @@
           </tr>
         </tbody>
       </table>
+
+      <app-maximo-detail-dialog
+        *ngIf="selectedWo()"
+        [parent]="'wo'"
+        [wo]="selectedWo()"
+        (closed)="closeDetail()">
+      </app-maximo-detail-dialog>
     </div>
   </ng-container>
 </app-main-layout>

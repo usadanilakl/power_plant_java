@@ -39,6 +39,25 @@ public final class MaximoOslcMapper {
         return v == null ? null : Objects.toString(v);
     }
 
+    /** Read a value from a record under any of the given (already-prefixed) keys. */
+    public static String strRaw(Map<String, Object> record, String... keys) {
+        if (record == null) return null;
+        for (String k : keys) {
+            Object v = record.get(k);
+            if (v != null) return Objects.toString(v);
+        }
+        return null;
+    }
+
+    /** Doclinks records nest the actual metadata in "wdrs:describedBy" — return that or the row itself. */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> describedBy(Map<String, Object> record) {
+        if (record == null) return null;
+        Object inner = record.get("wdrs:describedBy");
+        if (inner instanceof Map<?, ?> m) return (Map<String, Object>) m;
+        return record;
+    }
+
     public static Long longVal(Map<String, Object> record, String key) {
         String s = str(record, key);
         if (s == null || s.isBlank()) return null;

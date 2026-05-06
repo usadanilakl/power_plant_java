@@ -1,0 +1,87 @@
+<div class="mx-backdrop" (click)="onBackdropClick($event)">
+  <div class="mx-dialog">
+    <header>
+      <div>
+        <h3>{{ title }}</h3>
+        <div class="muted">{{ description }}</div>
+      </div>
+      <button class="close-btn" (click)="close()" title="Close">×</button>
+    </header>
+
+    <nav class="tabs">
+      <button [class.active]="tab() === 'details'" (click)="setTab('details')">Details</button>
+      <button [class.active]="tab() === 'notes'" (click)="setTab('notes')">
+        Notes <span class="muted" *ngIf="notesLoaded()">({{ notes().length }})</span>
+      </button>
+      <button [class.active]="tab() === 'attachments'" (click)="setTab('attachments')">
+        Attachments <span class="muted" *ngIf="attachmentsLoaded()">({{ attachments().length }})</span>
+      </button>
+    </nav>
+
+    <div class="body">
+      <div class="error" *ngIf="error()">{{ error() }}</div>
+      <div class="muted" *ngIf="loading()">Loading…</div>
+
+      <!-- Details tab -->
+      <div *ngIf="tab() === 'details'">
+        <table class="kv">
+          <tr *ngFor="let pair of detailFields">
+            <th>{{ pair[0] }}</th>
+            <td>{{ pair[1] || '—' }}</td>
+          </tr>
+        </table>
+        <div class="long-desc" *ngIf="longDescription">
+          <h4>Long description</h4>
+          <pre>{{ longDescription }}</pre>
+        </div>
+      </div>
+
+      <!-- Notes tab -->
+      <div *ngIf="tab() === 'notes' && !loading()">
+        <div *ngIf="notes().length === 0" class="muted">No notes / worklog entries.</div>
+        <div *ngFor="let n of notes()" class="note">
+          <div class="note-head">
+            <strong>{{ n.description || '(no title)' }}</strong>
+            <span class="muted">{{ n.logtypeDescription || n.logtype }}</span>
+            <span class="muted spacer">·</span>
+            <span class="muted">{{ n.createby }}</span>
+            <span class="muted spacer">·</span>
+            <span class="muted">{{ n.createdate }}</span>
+          </div>
+          <pre *ngIf="n.longDescription" class="note-body">{{ n.longDescription }}</pre>
+        </div>
+      </div>
+
+      <!-- Attachments tab -->
+      <div *ngIf="tab() === 'attachments' && !loading()">
+        <div class="upload-row">
+          <label>Doctype <input [(ngModel)]="uploadDoctype" /></label>
+          <label class="file-btn">
+            Upload file
+            <input type="file" (change)="onUpload($event)" [disabled]="uploading()" hidden />
+          </label>
+          <span *ngIf="uploading()" class="muted">Uploading…</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>File</th><th>Title</th><th>Type</th><th>Size</th><th>Created</th><th>By</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of attachments()">
+              <td>{{ d.urlname || d.title || d.document }}</td>
+              <td>{{ d.title }}</td>
+              <td>{{ d.mimeType || d.doctype }}</td>
+              <td>{{ fmtSize(d.size) }}</td>
+              <td>{{ d.createdDate }}</td>
+              <td>{{ d.createby }}</td>
+              <td><a [href]="downloadUrl(d)" target="_blank" rel="noopener">open</a></td>
+            </tr>
+            <tr *ngIf="attachments().length === 0">
+              <td colspan="7" class="muted">No attachments.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

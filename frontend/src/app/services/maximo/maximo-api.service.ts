@@ -10,8 +10,10 @@ import {
   MaximoDoclink,
   MaximoServiceRequest,
   MaximoServiceRequestCriteria,
+  MaximoTicketParent,
   MaximoWorkOrder,
-  MaximoWorkOrderCriteria
+  MaximoWorkOrderCriteria,
+  MaximoWorklog
 } from '../../models/maximo/maximo.models';
 
 @Injectable({ providedIn: 'root' })
@@ -106,6 +108,13 @@ export class MaximoApiService {
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder>>(`${this.base}/work-orders/${encodeURIComponent(href)}`)
       .pipe(map(r => r.responseData ?? null));
+  }
+
+  listWorklog(parent: MaximoTicketParent, href: string): Observable<MaximoWorklog[]> {
+    return this.http
+      .get<SpringApiResponse<MaximoWorklog[]>>(
+        `${this.base}/${parent}/${encodeURIComponent(href)}/worklog`)
+      .pipe(map(r => r.responseData ?? []));
   }
 
   listAttachments(parent: MaximoAttachmentParent, href: string): Observable<MaximoDoclink[]> {

@@ -23,9 +23,9 @@ public class MaximoWorkOrderAdapter {
 
     private static final String OS = "mxapiwodetail";
     private static final String SELECT_FIELDS =
-            "spi:wonum,spi:description,spi:status,spi:worktype,spi:assetnum,"
-            + "spi:location,spi:siteid,spi:reportdate,spi:schedstart,spi:schedfinish,"
-            + "spi:lead,spi:supervisor,spi:wopriority";
+            "spi:wonum,spi:description,spi:description_longdescription,spi:status,"
+            + "spi:worktype,spi:assetnum,spi:location,spi:siteid,spi:reportdate,"
+            + "spi:schedstart,spi:schedfinish,spi:lead,spi:supervisor,spi:wopriority";
 
     private final MaximoAccessService access;
 
@@ -108,6 +108,7 @@ public class MaximoWorkOrderAdapter {
         d.setHref(hrefId(row));
         d.setWonum(str(row, "wonum"));
         d.setDescription(str(row, "description"));
+        d.setLongDescription(str(row, "description_longdescription"));
         d.setStatus(str(row, "status"));
         d.setWorktype(str(row, "worktype"));
         d.setAssetnum(str(row, "assetnum"));

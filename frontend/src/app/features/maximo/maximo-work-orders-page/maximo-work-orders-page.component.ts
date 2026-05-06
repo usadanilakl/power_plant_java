@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoWorkOrder, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 import { firstValueFrom } from 'rxjs';
 
@@ -23,7 +24,7 @@ const emptyCriteria = (): MaximoWorkOrderCriteria => ({
 @Component({
   selector: 'app-maximo-work-orders-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
   templateUrl: './maximo-work-orders-page.component.html',
   styleUrl: './maximo-work-orders-page.component.css'
 })
@@ -38,15 +39,21 @@ export class MaximoWorkOrdersPageComponent {
   list = signal<MaximoWorkOrder[]>([]);
   loaded = signal(false);
 
+  selectedWo = signal<MaximoWorkOrder | null>(null);
+  openDetail(wo: MaximoWorkOrder) { this.selectedWo.set(wo); }
+  closeDetail() { this.selectedWo.set(null); }
+
   readonly statusOptions = ['', 'WAPPR', 'APPR', 'INPRG', 'COMP', 'CLOSE', 'CAN'];
   readonly worktypeOptions = ['', 'CM', 'PM', 'EM', 'INSP'];
 
-  activeFilterCount = computed(() => {
+  // Plain method (not computed) — criteria is a mutable object, not a signal,
+  // so a computed signal would never recompute when fields change via ngModel.
+  activeFilterCount(): number {
     const c = this.criteria;
     return [c.status, c.worktype, c.assetnum, c.location, c.priority, c.leadCraft,
       c.schedstartFrom, c.schedfinishTo, c.descriptionContains, c.siteid]
-      .filter(v => v && v.trim() !== '').length;
-  });
+      .filter(v => v != null && v.trim() !== '').length;
+  }
 
   hasAnyCriteria(): boolean {
     return this.activeFilterCount() > 0;

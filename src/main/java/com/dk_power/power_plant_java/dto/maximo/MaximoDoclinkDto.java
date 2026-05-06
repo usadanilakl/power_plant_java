@@ -8,12 +8,18 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class MaximoDoclinkDto {
-    private String href;            // OSLC resource id of the doclink row
-    private String document;        // document number/key
-    private String description;
-    private String urlname;         // display name
-    private String url;             // download URL (Maximo-served)
-    private String urltype;         // FILE / WEB
-    private String doctype;         // category (Attachments, etc.)
-    private Long doclinksid;
+    private String href;            // doclink id (last segment of rdf:about, e.g. "21934")
+    private String document;        // dcterms:identifier
+    private String title;           // dcterms:title (display name)
+    private String description;     // dcterms:description (often the server-side file path)
+    private String urlname;         // spi:fileName (download filename)
+    private String url;             // legacy field — kept for back-compat (not populated for FILE doctype)
+    private String urltype;         // spi:urlType — FILE / WEB
+    private String doctype;         // spi:docType
+    private Long doclinksid;        // spi:docinfoid
+    private String mimeType;        // dcterms:format.rdfs:label, e.g. image/jpeg
+    private Long size;              // oslc_cm:attachmentSize (bytes)
+    private String createdDate;     // dcterms:created
+    private String modifiedDate;    // dcterms:modified
+    private String createby;        // spi:createby
 }

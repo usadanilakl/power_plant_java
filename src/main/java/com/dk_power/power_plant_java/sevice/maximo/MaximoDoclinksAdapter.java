@@ -15,10 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.describedBy;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.hrefId;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.longVal;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.members;
 import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.str;
+import static com.dk_power.power_plant_java.sevice.maximo.MaximoOslcMapper.strRaw;
 
 /**
  * Doclinks (attachments) on a parent record (asset / SR / WO).
@@ -86,6 +88,16 @@ public class MaximoDoclinksAdapter {
         return access.getBytes(doclink.getUrl());
     }
 
+    /**
+     * Stream a doclink's binary along with its content-type/length headers.
+     * Maximo serves the binary at "{parent}/{parentHref}/doclinks/{doclinkId}".
+     */
+    public org.springframework.http.ResponseEntity<byte[]> streamBinary(
+            String parentObjectStructure, String parentHref, String doclinkId) {
+        String url = access.subUrl(parentObjectStructure, parentHref, "doclinks") + "/" + doclinkId;
+        return access.getBinaryWithHeaders(url);
+    }
+
     private List<MaximoDoclinkDto> mapAll(List<Map<String, Object>> rows) {
         List<MaximoDoclinkDto> out = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) out.add(map(row));
@@ -93,15 +105,48 @@ public class MaximoDoclinksAdapter {
     }
 
     private MaximoDoclinkDto map(Map<String, Object> row) {
+        // Doclink records have a top-level row with rdf:about (resource URL whose last segment is the doclink id),
+        // and the actual metadata one level deep inside "wdrs:describedBy".
+        Map<String, Object> meta = describedBy(row);
+
         MaximoDoclinkDto d = new MaximoDoclinkDto();
-        d.setHref(hrefId(row));
-        d.setDocument(str(row, "document"));
-        d.setDescription(str(row, "description"));
-        d.setUrlname(str(row, "urlname"));
-        d.setUrl(str(row, "url"));
-        d.setUrltype(str(row, "urltype"));
-        d.setDoctype(str(row, "doctype"));
-        d.setDoclinksid(longVal(row, "doclinksid"));
+        d.setHref(hrefId(row));                                            // e.g. "21934"
+        d.setDocument(strRaw(meta, "dcterms:identifier", "spi:document"));
+        d.setTitle(strRaw(meta, "dcterms:title"));
+        d.setDescription(strRaw(meta, "dcterms:description", "spi:description"));
+        d.setUrlname(strRaw(meta, "spi:fileName", "spi:urlname"));
+        d.setUrl(strRaw(meta, "spi:url"));                                 // populated for WEB-type links only
+        d.setUrltype(strRaw(meta, "spi:urlType", "spi:urltype"));
+        d.setDoctype(strRaw(meta, "spi:docType", "spi:doctype"));
+        d.setDoclinksid(longVal(meta, "docinfoid"));
+        d.setMimeType(extractMimeLabel(meta));
+        d.setSize(parseLong(strRaw(meta, "oslc_cm:attachmentSize")));
+        d.setCreatedDate(strRaw(meta, "dcterms:created"));
+        d.setModifiedDate(strRaw(meta, "dcterms:modified"));
+        d.setCreateby(strRaw(meta, "spi:createby"));
+        // Fallback: keep legacy str() lookup if nothing turned up (in case Maximo flattens the response in some flow)
+        if (d.getUrlname() == null) d.setUrlname(str(row, "urlname"));
         return d;
+    }
+
+    private static Long parseLong(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return Long.parseLong(s); }
+        catch (NumberFormatException e) {
+            try { return (long) Double.parseDouble(s); }
+            catch (NumberFormatException ex) { return null; }
+        }
+    }
+
+    /** dcterms:format is itself an object with rdfs:label = "image/jpeg" or similar. */
+    @SuppressWarnings("unchecked")
+    private static String extractMimeLabel(Map<String, Object> meta) {
+        if (meta == null) return null;
+        Object format = meta.get("dcterms:format");
+        if (format instanceof Map<?, ?> m) {
+            Object label = ((Map<String, Object>) m).get("rdfs:label");
+            return label == null ? null : label.toString();
+        }
+        return null;
     }
 }

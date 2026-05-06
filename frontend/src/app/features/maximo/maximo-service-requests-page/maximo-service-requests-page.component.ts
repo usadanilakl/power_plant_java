@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import {
   CreateMaximoServiceRequest,
   MaximoServiceRequest,
@@ -27,7 +28,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
 @Component({
   selector: 'app-maximo-service-requests-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'
 })
@@ -47,14 +48,20 @@ export class MaximoServiceRequestsPageComponent {
   submitting = signal(false);
   submitError = signal<string | null>(null);
 
+  selectedSr = signal<MaximoServiceRequest | null>(null);
+  openDetail(sr: MaximoServiceRequest) { this.selectedSr.set(sr); }
+  closeDetail() { this.selectedSr.set(null); }
+
   readonly statusOptions = ['', 'NEW', 'QUEUED', 'INPROG', 'PENDING', 'RESOLVED', 'CLOSED'];
 
-  activeFilterCount = computed(() => {
+  // Plain method (not computed) — criteria is a mutable object, not a signal,
+  // so a computed signal would never recompute when fields change via ngModel.
+  activeFilterCount(): number {
     const c = this.criteria;
     return [c.status, c.assetnum, c.location, c.priority, c.reportedby, c.affectedperson,
       c.reportdateFrom, c.reportdateTo, c.descriptionContains, c.siteid]
-      .filter(v => v && v.trim() !== '').length;
-  });
+      .filter(v => v != null && v.trim() !== '').length;
+  }
 
   hasAnyCriteria(): boolean {
     return this.activeFilterCount() > 0;

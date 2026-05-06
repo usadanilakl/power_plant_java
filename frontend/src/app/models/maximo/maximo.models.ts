@@ -31,6 +31,7 @@ export interface MaximoWorkOrder {
   href: string;
   wonum: string;
   description: string;
+  longDescription: string;
   status: string;
   worktype: string;
   assetnum: string;
@@ -45,14 +46,20 @@ export interface MaximoWorkOrder {
 }
 
 export interface MaximoDoclink {
-  href: string;
+  href: string;            // doclink id (e.g. "21934")
   document: string;
-  description: string;
-  urlname: string;
-  url: string;
-  urltype: string;
+  title: string;           // dcterms:title — display name
+  description: string;     // dcterms:description — often a server-side path
+  urlname: string;         // download filename
+  url: string;             // populated for WEB-type links only; FILE-type uses backend stream proxy
+  urltype: string;         // FILE / WEB
   doctype: string;
   doclinksid: number;
+  mimeType: string;
+  size: number;
+  createdDate: string;
+  modifiedDate: string;
+  createby: string;
 }
 
 export interface CreateMaximoServiceRequest {
@@ -68,6 +75,22 @@ export interface CreateMaximoServiceRequest {
 }
 
 export type MaximoAttachmentParent = 'asset' | 'sr' | 'wo';
+export type MaximoTicketParent = 'sr' | 'wo';
+
+export interface MaximoWorklog {
+  href: string;
+  worklogid: number;
+  description: string;
+  longDescription: string;
+  logtype: string;
+  logtypeDescription: string;
+  createby: string;
+  createdate: string;
+  modifyby: string;
+  modifydate: string;
+  clientviewable: boolean;
+  recordkey: string;
+}
 
 export interface MaximoServiceRequestCriteria {
   status?: string;

@@ -11,6 +11,7 @@ public class MaximoWorkOrderDto {
     private String href;
     private String wonum;
     private String description;
+    private String longDescription;
     private String status;
     private String worktype;
     private String assetnum;

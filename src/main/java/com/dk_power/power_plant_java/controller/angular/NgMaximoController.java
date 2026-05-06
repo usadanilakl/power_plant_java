@@ -7,10 +7,12 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoServiceRequestDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderCriteria;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
+import com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoAssetAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -49,6 +51,7 @@ public class NgMaximoController {
     private final MaximoServiceRequestAdapter serviceRequests;
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoDoclinksAdapter doclinks;
+    private final MaximoWorklogAdapter worklog;
 
     // ---- Assets -----------------------------------------------------------
 
@@ -167,6 +170,19 @@ public class NgMaximoController {
                 .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "not found")));
     }
 
+    // ---- Worklog (notes / comments) --------------------------------------
+
+    @GetMapping("/{parent}/{href}/worklog")
+    public ResponseEntity<NgApiResponse<List<MaximoWorklogDto>>> listWorklog(
+            @PathVariable String parent, @PathVariable String href) {
+        List<MaximoWorklogDto> result = switch (parent.toLowerCase()) {
+            case "sr", "service-request", "service-requests" -> worklog.listForSr(href);
+            case "wo", "work-order", "work-orders"           -> worklog.listForWo(href);
+            default -> List.of();
+        };
+        return ResponseEntity.ok(new NgApiResponse<>(result, "ok"));
+    }
+
     // ---- Attachments (doclinks) ------------------------------------------
 
     @GetMapping("/{parent}/{href}/attachments")
@@ -174,6 +190,23 @@ public class NgMaximoController {
             @PathVariable String parent, @PathVariable String href) {
         return ResponseEntity.ok(new NgApiResponse<>(
                 doclinks.list(resolveParent(parent), href), "ok"));
+    }
+
+    @GetMapping("/{parent}/{href}/attachments/{attachmentId}/content")
+    public ResponseEntity<byte[]> downloadAttachment(
+            @PathVariable String parent,
+            @PathVariable String href,
+            @PathVariable String attachmentId) {
+        ResponseEntity<byte[]> upstream = doclinks.streamBinary(resolveParent(parent), href, attachmentId);
+        org.springframework.http.HttpHeaders out = new org.springframework.http.HttpHeaders();
+        if (upstream.getHeaders().getContentType() != null) {
+            out.setContentType(upstream.getHeaders().getContentType());
+        }
+        long len = upstream.getHeaders().getContentLength();
+        if (len > 0) out.setContentLength(len);
+        // Inline disposition so the browser previews images/PDFs in a new tab instead of forcing a download.
+        out.set(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline");
+        return new ResponseEntity<>(upstream.getBody(), out, upstream.getStatusCode());
     }
 
     @PostMapping("/{parent}/{href}/attachments")

@@ -71,7 +71,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let s of list()">
+          <tr *ngFor="let s of list()" (click)="openDetail(s)" class="clickable">
             <td>{{ s.ticketid }}</td>
             <td>{{ s.description }}</td>
             <td>{{ s.status }}</td>
@@ -88,6 +88,13 @@
           </tr>
         </tbody>
       </table>
+
+      <app-maximo-detail-dialog
+        *ngIf="selectedSr()"
+        [parent]="'sr'"
+        [sr]="selectedSr()"
+        (closed)="closeDetail()">
+      </app-maximo-detail-dialog>
     </div>
   </ng-container>
 </app-main-layout>

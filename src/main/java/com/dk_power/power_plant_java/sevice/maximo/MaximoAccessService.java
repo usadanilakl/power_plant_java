@@ -134,6 +134,17 @@ public class MaximoAccessService {
         }
     }
 
+    /** GET binary along with the response headers so the proxy can forward Content-Type / Content-Length / Content-Disposition. */
+    public ResponseEntity<byte[]> getBinaryWithHeaders(String url) {
+        try {
+            return restTemplate.exchange(
+                    URI.create(url), HttpMethod.GET, new HttpEntity<>(new HttpHeaders()), byte[].class);
+        } catch (HttpClientErrorException e) {
+            log.warn("[Maximo] GET binary {} failed: {} {}", url, e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
+        }
+    }
+
     public String defaultSite() {
         return config.getDefaultSite();
     }
