@@ -1,6 +1,7 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LotoBoxDto } from '../../../../models/loto/loto-box.model';
 import { LockDto } from '../../../../models/loto/lock.model';
@@ -23,6 +24,7 @@ export class LotoBoxGridComponent implements OnInit {
   private lockService = inject(LockService);
   private commentsDialog = inject(CommentsDialogService);
   private commentService = inject(CommentService);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   // Fixed grid layout: 12 columns x 6 rows = 72 boxes
@@ -218,6 +220,20 @@ export class LotoBoxGridComponent implements OnInit {
     this.commentsDialog.open(entityType, entityId);
   }
 
+  openLoto(lotoId: number) {
+    this.router.navigate(['/permit-builder/lotos'], { queryParams: { lotoId } });
+    this.closeSidePanel();
+  }
+
+  // Picks the best label for a lock's assigned LOTO, with proper null handling
+  // (so we never render the literal string "#null" or "LOTO #null").
+  lockLotoLabel(lock: LockDto): string {
+    if (lock.lotoPermitNumber) return lock.lotoPermitNumber;
+    if (lock.lotoDocNum != null) return '#' + lock.lotoDocNum;
+    if (lock.lotoId != null) return 'LOTO #' + lock.lotoId;
+    return '';
+  }
+
   // --- Edit mode ---
 
   toggleEditMode() {
@@ -227,6 +243,19 @@ export class LotoBoxGridComponent implements OnInit {
 
   toggleShowInactive() {
     this.showInactive.set(!this.showInactive());
+  }
+
+  seedInventory() {
+    this.boxService.seedInventory().subscribe({
+      next: (response) => {
+        this.statusMessage.set(response.message ?? 'Inventory seeded');
+        this.loadBoxes();
+      },
+      error: (err) => {
+        console.error(err);
+        this.statusMessage.set(`Error seeding inventory: ${err?.error?.message ?? err.message}`);
+      }
+    });
   }
 
   addBox(portable: boolean = false) {

@@ -49,9 +49,14 @@ public class MaximoWorkOrderAdapter {
         addStr(conds, "location", c.getLocation());
         addNum(conds, "wopriority", c.getPriority());
         addStr(conds, "lead", c.getLeadCraft());
+        addStr(conds, "supervisor", c.getSupervisor());
         addStrOp(conds, "schedstart", ">=", c.getSchedstartFrom());
         addStrOp(conds, "schedfinish", "<=", c.getSchedfinishTo());
+        addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
+        addStrOp(conds, "reportdate", "<=", c.getReportdateTo());
         addLike(conds, "description", c.getDescriptionContains());
+        addLike(conds, "description_longdescription", c.getLongDescriptionContains());
+        addLike(conds, "wonum", c.getWonumContains());
         if (conds.isEmpty()) return List.of();
 
         String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())

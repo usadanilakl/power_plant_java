@@ -104,4 +104,8 @@ export class LotoBoxService {
   deactivateBox(id: number): Observable<SpringApiResponse<string>> {
     return this.http.delete<SpringApiResponse<string>>(`${this.apiUrl}/${id}`);
   }
+
+  seedInventory(): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/seed-inventory`, null);
+  }
 }

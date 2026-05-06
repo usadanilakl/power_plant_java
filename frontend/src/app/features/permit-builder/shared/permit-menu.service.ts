@@ -62,7 +62,13 @@ export class PermitMenuService {
       const location = item.location || item.space || '';
       return location ? `${item.date} - ${location}` : item.date;
     }
-    return item.name || 'Unnamed Permit';
+    if (item.name) return item.name;
+    // LOTO-friendly fallbacks (LOTO has no name field)
+    if (item.permitNumber) return item.permitNumber;
+    if (item.docNum) return `#${item.docNum}`;
+    if (item.equipmentSystem) return item.equipmentSystem;
+    if (item.id) return `LOTO #${item.id}`;
+    return 'Unnamed Permit';
   }
 
   private getStatusColor(item: any): string {

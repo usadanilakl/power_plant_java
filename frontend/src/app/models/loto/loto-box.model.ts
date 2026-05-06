@@ -18,6 +18,13 @@ export interface LotoBoxModel extends BasePermitModel {
   portable: boolean;
   homeLocks: LockDto[];
 
+  // Flat display fields for assigned LOTO
+  lotoId: number | null;
+  lotoPermitNumber: string | null;
+  lotoEquipmentSystem: string | null;
+  lotoStatus: string | null;
+  lotoWorkScope: string | null;
+
   // LED status fields (not persisted, from LED status API)
   r?: number;
   g?: number;
@@ -41,6 +48,12 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
   portable: boolean;
   homeLocks: LockDto[];
 
+  lotoId: number | null;
+  lotoPermitNumber: string | null;
+  lotoEquipmentSystem: string | null;
+  lotoStatus: string | null;
+  lotoWorkScope: string | null;
+
   // LED status fields
   r?: number;
   g?: number;
@@ -62,6 +75,11 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
     this.active = data.active ?? true;
     this.portable = data.portable ?? false;
     this.homeLocks = data.homeLocks ?? [];
+    this.lotoId = data.lotoId ?? null;
+    this.lotoPermitNumber = data.lotoPermitNumber ?? null;
+    this.lotoEquipmentSystem = data.lotoEquipmentSystem ?? null;
+    this.lotoStatus = data.lotoStatus ?? null;
+    this.lotoWorkScope = data.lotoWorkScope ?? null;
     this.r = data.r;
     this.g = data.g;
     this.b = data.b;
@@ -84,6 +102,11 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       setSize: this.setSize,
       active: this.active,
       portable: this.portable,
+      lotoId: this.lotoId,
+      lotoPermitNumber: this.lotoPermitNumber,
+      lotoEquipmentSystem: this.lotoEquipmentSystem,
+      lotoStatus: this.lotoStatus,
+      lotoWorkScope: this.lotoWorkScope,
     };
   }
 
@@ -107,6 +130,11 @@ export class LotoBoxDto extends BasePermitDto implements LotoBoxModel {
       active: json.active ?? true,
       portable: json.portable ?? false,
       homeLocks: Array.isArray(json.homeLocks) ? json.homeLocks.map((l: any) => LockDto.fromJson(l)) : [],
+      lotoId: json.lotoId ?? null,
+      lotoPermitNumber: json.lotoPermitNumber ?? null,
+      lotoEquipmentSystem: json.lotoEquipmentSystem ?? null,
+      lotoStatus: json.lotoStatus ?? null,
+      lotoWorkScope: json.lotoWorkScope ?? null,
       r: json.r,
       g: json.g,
       b: json.b,

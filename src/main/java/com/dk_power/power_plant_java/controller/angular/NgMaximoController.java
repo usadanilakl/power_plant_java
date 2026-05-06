@@ -93,6 +93,7 @@ public class NgMaximoController {
             @RequestParam(value = "reportdateFrom", required = false) String reportdateFrom,
             @RequestParam(value = "reportdateTo", required = false) String reportdateTo,
             @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
+            @RequestParam(value = "longDescriptionContains", required = false) String longDescriptionContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         MaximoServiceRequestCriteria c = new MaximoServiceRequestCriteria();
@@ -106,6 +107,7 @@ public class NgMaximoController {
         c.setReportdateFrom(reportdateFrom);
         c.setReportdateTo(reportdateTo);
         c.setDescriptionContains(descriptionContains);
+        c.setLongDescriptionContains(longDescriptionContains);
         c.setSiteid(siteid);
         return ResponseEntity.ok(new NgApiResponse<>(
                 serviceRequests.listByCriteria(c, pageSize), "ok"));
@@ -143,9 +145,14 @@ public class NgMaximoController {
             @RequestParam(value = "location", required = false) String location,
             @RequestParam(value = "priority", required = false) String priority,
             @RequestParam(value = "leadCraft", required = false) String leadCraft,
+            @RequestParam(value = "supervisor", required = false) String supervisor,
             @RequestParam(value = "schedstartFrom", required = false) String schedstartFrom,
             @RequestParam(value = "schedfinishTo", required = false) String schedfinishTo,
+            @RequestParam(value = "reportdateFrom", required = false) String reportdateFrom,
+            @RequestParam(value = "reportdateTo", required = false) String reportdateTo,
             @RequestParam(value = "descriptionContains", required = false) String descriptionContains,
+            @RequestParam(value = "longDescriptionContains", required = false) String longDescriptionContains,
+            @RequestParam(value = "wonumContains", required = false) String wonumContains,
             @RequestParam(value = "siteid", required = false) String siteid,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
         MaximoWorkOrderCriteria c = new MaximoWorkOrderCriteria();
@@ -155,9 +162,14 @@ public class NgMaximoController {
         c.setLocation(location);
         c.setPriority(priority);
         c.setLeadCraft(leadCraft);
+        c.setSupervisor(supervisor);
         c.setSchedstartFrom(schedstartFrom);
         c.setSchedfinishTo(schedfinishTo);
+        c.setReportdateFrom(reportdateFrom);
+        c.setReportdateTo(reportdateTo);
         c.setDescriptionContains(descriptionContains);
+        c.setLongDescriptionContains(longDescriptionContains);
+        c.setWonumContains(wonumContains);
         c.setSiteid(siteid);
         return ResponseEntity.ok(new NgApiResponse<>(
                 workOrders.listByCriteria(c, pageSize), "ok"));

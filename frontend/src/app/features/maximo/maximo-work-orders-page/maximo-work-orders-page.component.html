@@ -24,14 +24,39 @@
           <label>Assetnum <input [(ngModel)]="criteria.assetnum" placeholder="-1-CEM-SS" /></label>
           <label>Location <input [(ngModel)]="criteria.location" placeholder="01-CEMS" /></label>
           <label>Lead craft <input [(ngModel)]="criteria.leadCraft" placeholder="RGARCIA" /></label>
+          <label>Supervisor <input [(ngModel)]="criteria.supervisor" placeholder="personid" /></label>
           <label>Site <input [(ngModel)]="criteria.siteid" placeholder="default JG" /></label>
         </div>
         <div class="row">
-          <label>Sched start ≥ <input [(ngModel)]="criteria.schedstartFrom" placeholder="2022-01-01T00:00:00-05:00" class="wide" /></label>
-          <label>Sched finish ≤ <input [(ngModel)]="criteria.schedfinishTo" placeholder="2022-12-31T23:59:59-05:00" class="wide" /></label>
+          <label>Sched start ≥
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.schedstartFrom)"
+                   (ngModelChange)="criteria.schedstartFrom = fromLocal($event)" />
+          </label>
+          <label>Sched finish ≤
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.schedfinishTo)"
+                   (ngModelChange)="criteria.schedfinishTo = fromLocal($event)" />
+          </label>
         </div>
         <div class="row">
-          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="auto-wrapped in %…%" class="wide" /></label>
+          <label>Reported ≥
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.reportdateFrom)"
+                   (ngModelChange)="criteria.reportdateFrom = fromLocal($event)" />
+          </label>
+          <label>Reported ≤
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.reportdateTo)"
+                   (ngModelChange)="criteria.reportdateTo = fromLocal($event)" />
+          </label>
+        </div>
+        <div class="row">
+          <label>WO # contains <input [(ngModel)]="criteria.wonumContains" placeholder="J26-" /></label>
+          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="title only" class="wide" /></label>
+        </div>
+        <div class="row">
+          <label>Long description contains <input [(ngModel)]="criteria.longDescriptionContains" placeholder="long-text body" class="wide" /></label>
         </div>
         <div class="row actions">
           <button (click)="apply()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Apply filters' }}</button>

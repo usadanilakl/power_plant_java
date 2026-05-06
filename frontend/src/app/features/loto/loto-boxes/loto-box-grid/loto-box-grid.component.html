@@ -27,6 +27,7 @@
     @if (editMode()) {
       <button class="btn-primary" (click)="addBox(false)">+ Add Box</button>
       <button class="btn-secondary" (click)="addBox(true)">+ Add Portable</button>
+      <button class="btn-secondary" (click)="seedInventory()" title="Top up missing set locks and singles">Seed Inventory</button>
     }
   </div>
 
@@ -150,8 +151,26 @@
           </div>
           <div class="modal-row">
             <strong>LOTO:</strong>
-            <span>{{ selectedBox()!.loto?.docNum ?? '—' }}</span>
+            @if (selectedBox()!.lotoId) {
+              <span>{{ selectedBox()!.lotoPermitNumber || ('#' + selectedBox()!.lotoId) }}</span>
+              @if (selectedBox()!.lotoStatus) {
+                <span class="badge badge-active">{{ selectedBox()!.lotoStatus }}</span>
+              }
+              <button class="btn-link" (click)="openLoto(selectedBox()!.lotoId!)">Open LOTO →</button>
+            } @else {
+              <span>—</span>
+            }
           </div>
+          @if (selectedBox()!.lotoId) {
+            <div class="modal-row">
+              <strong>Equipment:</strong>
+              <span>{{ selectedBox()!.lotoEquipmentSystem || '—' }}</span>
+            </div>
+            <div class="modal-row">
+              <strong>Work Scope:</strong>
+              <span>{{ selectedBox()!.lotoWorkScope || '—' }}</span>
+            </div>
+          }
 
           <h4>Locks ({{ selectedBox()!.homeLocks.length }})</h4>
           @if (selectedBox()!.homeLocks.length === 0) {
@@ -166,7 +185,13 @@
                     <td>{{ lock.lockType }}</td>
                     <td>{{ lock.isSingleLock ? '✓' : '' }}</td>
                     <td>{{ lock.tagLabel || '—' }}</td>
-                    <td>{{ lock.loto?.docNum ?? '' }}</td>
+                    <td>
+                      @if (lock.lotoId) {
+                        <button class="btn-link" (click)="openLoto(lock.lotoId!)">
+                          {{ lockLotoLabel(lock) }}
+                        </button>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -233,7 +258,7 @@
               <thead><tr><th>#</th><th>Type</th><th>Single</th><th>Tag</th><th>In Use</th><th></th></tr></thead>
               <tbody>
                 @for (lock of selectedBox()!.homeLocks; track lock.id) {
-                  <tr [class.lock-row-busy]="!!lock.loto">
+                  <tr [class.lock-row-busy]="!!lock.lotoId">
                     <td>{{ lock.number }}</td>
                     <td>{{ lock.lockType }}</td>
                     <td>
@@ -241,10 +266,16 @@
                              (change)="toggleLockSingle(lock, $event)">
                     </td>
                     <td>{{ lock.tagLabel || '—' }}</td>
-                    <td>{{ lock.loto?.docNum ?? '' }}</td>
+                    <td>
+                      @if (lock.lotoId) {
+                        <button class="btn-link" (click)="openLoto(lock.lotoId!)">
+                          {{ lockLotoLabel(lock) }}
+                        </button>
+                      }
+                    </td>
                     <td>
                       <button class="btn-link-danger"
-                              [disabled]="!!lock.loto"
+                              [disabled]="!!lock.lotoId"
                               (click)="deleteLock(lock, $event)">Delete</button>
                     </td>
                   </tr>

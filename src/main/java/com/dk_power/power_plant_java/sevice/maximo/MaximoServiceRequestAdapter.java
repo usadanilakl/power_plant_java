@@ -63,6 +63,7 @@ public class MaximoServiceRequestAdapter {
         addStrOp(conds, "reportdate", ">=", c.getReportdateFrom());
         addStrOp(conds, "reportdate", "<=", c.getReportdateTo());
         addLike(conds, "description", c.getDescriptionContains());
+        addLike(conds, "description_longdescription", c.getLongDescriptionContains());
         if (conds.isEmpty()) return List.of();
 
         String siteid = (c.getSiteid() != null && !c.getSiteid().isBlank())

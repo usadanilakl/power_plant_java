@@ -59,11 +59,21 @@ export class CurrentLotoService{
       return item ? PrintableFormDto.fromJson(item) : new PrintableFormDto();
     }
 
+    reloadLotos() {
+        this.loadLotosFromServer();
+    }
+
     private loadLotosFromServer() {
-        this.lotoService.getLotos().pipe(
+        this.lotoService.getLotos(1, 200).pipe(
             takeUntilDestroyed(this.destroyRef),
-            map((response: SpringPaginatedResponse<LotoDto>) => this.normalizeLotos(response.responseData.content || []))
+            map((response: SpringPaginatedResponse<LotoDto>) => this.normalizeLotos(response?.responseData?.content || [])),
+            catchError(err => {
+                console.error('[CurrentLotoService] Failed to load LOTOs:', err);
+                return of([] as LotoDto[]);
+            })
         ).subscribe((lotos: LotoDto[]) => {
+            console.log(`[CurrentLotoService] Loaded ${lotos.length} LOTOs:`,
+                lotos.map(l => ({ id: l.id, docNum: l.docNum, status: l.permitStatus?.name })));
             this.allLotosSubject.next(lotos);
         });
     }

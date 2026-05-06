@@ -5,6 +5,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoAttachmentParent, CreateMaximoServiceRequest, MaximoServiceRequestCriteria, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 
 interface PanelState {
@@ -55,7 +56,8 @@ export class MaximoApiTestPageComponent {
     affectedperson: '',
     reportdateFrom: '',
     reportdateTo: '',
-    descriptionContains: ''
+    descriptionContains: '',
+    longDescriptionContains: ''
   };
   srCriteriaSize = 10;
   srCriteriaPanel = signal<PanelState>(idle());
@@ -73,14 +75,23 @@ export class MaximoApiTestPageComponent {
     location: '',
     priority: '',
     leadCraft: '',
+    supervisor: '',
     schedstartFrom: '',
     schedfinishTo: '',
-    descriptionContains: ''
+    reportdateFrom: '',
+    reportdateTo: '',
+    descriptionContains: '',
+    longDescriptionContains: '',
+    wonumContains: ''
   };
   woCriteriaSize = 10;
   woCriteriaPanel = signal<PanelState>(idle());
   readonly woStatusOptions = ['', 'WAPPR', 'APPR', 'INPRG', 'COMP', 'CLOSE', 'CAN'];
   readonly woWorktypeOptions = ['', 'CM', 'PM', 'EM', 'INSP'];
+
+  // Date picker bridge.
+  toLocal = toDatetimeLocal;
+  fromLocal = fromDatetimeLocal;
 
   // 5. Submit new SR
   newSr: CreateMaximoServiceRequest = {

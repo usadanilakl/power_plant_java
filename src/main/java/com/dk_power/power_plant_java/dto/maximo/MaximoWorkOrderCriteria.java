@@ -19,8 +19,13 @@ public class MaximoWorkOrderCriteria {
     private String location;
     private String priority;        // numeric — passed without quotes
     private String leadCraft;            // Maximo field is "lead"; exact match
+    private String supervisor;           // exact match
     private String schedstartFrom;       // ISO 8601, applied as spi:schedstart >= value
     private String schedfinishTo;        // ISO 8601, applied as spi:schedfinish <= value
-    private String descriptionContains;  // wraps in %...% for SQL-style LIKE on spi:description
+    private String reportdateFrom;       // ISO 8601, applied as spi:reportdate >= value
+    private String reportdateTo;         // ISO 8601, applied as spi:reportdate <= value
+    private String descriptionContains;       // LIKE %...% on spi:description (title only)
+    private String longDescriptionContains;   // LIKE %...% on spi:description_longdescription
+    private String wonumContains;              // LIKE %...% on spi:wonum
     private String siteid;               // override default site
 }

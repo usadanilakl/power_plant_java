@@ -98,6 +98,17 @@ public class LotoBoxMapper implements BaseMapper {
             );
         }
 
+        if (entity.getLoto() != null) {
+            com.dk_power.power_plant_java.entities.loto.Loto lotoEnt = entity.getLoto();
+            dto.setLotoId(lotoEnt.getId());
+            dto.setLotoPermitNumber(lotoEnt.getPermitNumber());
+            dto.setLotoEquipmentSystem(lotoEnt.getEquipmentSystem());
+            dto.setLotoWorkScope(lotoEnt.getWorkScope());
+            if (lotoEnt.getPermitStatus() != null) {
+                dto.setLotoStatus(lotoEnt.getPermitStatus().getName());
+            }
+        }
+
         return dto;
     }
 

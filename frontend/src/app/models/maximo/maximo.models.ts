@@ -103,6 +103,7 @@ export interface MaximoServiceRequestCriteria {
   reportdateFrom?: string;     // ISO 8601
   reportdateTo?: string;       // ISO 8601
   descriptionContains?: string;
+  longDescriptionContains?: string;
   siteid?: string;
 }
 
@@ -113,8 +114,13 @@ export interface MaximoWorkOrderCriteria {
   location?: string;
   priority?: string;
   leadCraft?: string;
+  supervisor?: string;
   schedstartFrom?: string;     // ISO 8601, e.g. 2022-01-01T00:00:00-05:00
   schedfinishTo?: string;      // ISO 8601
+  reportdateFrom?: string;     // ISO 8601
+  reportdateTo?: string;       // ISO 8601
   descriptionContains?: string;
+  longDescriptionContains?: string;
+  wonumContains?: string;
   siteid?: string;
 }

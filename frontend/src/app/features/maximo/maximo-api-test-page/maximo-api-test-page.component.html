@@ -77,11 +77,20 @@
             <label>Affected person <input [(ngModel)]="srCriteria.affectedperson" placeholder="personid" /></label>
           </div>
           <div class="row">
-            <label>Report date ≥ <input [(ngModel)]="srCriteria.reportdateFrom" placeholder="2022-01-01T00:00:00-05:00" style="min-width:230px" /></label>
-            <label>Report date ≤ <input [(ngModel)]="srCriteria.reportdateTo" placeholder="2022-12-31T23:59:59-05:00" style="min-width:230px" /></label>
+            <label>Report date ≥
+              <input type="datetime-local"
+                     [ngModel]="toLocal(srCriteria.reportdateFrom)"
+                     (ngModelChange)="srCriteria.reportdateFrom = fromLocal($event)" />
+            </label>
+            <label>Report date ≤
+              <input type="datetime-local"
+                     [ngModel]="toLocal(srCriteria.reportdateTo)"
+                     (ngModelChange)="srCriteria.reportdateTo = fromLocal($event)" />
+            </label>
           </div>
           <div class="row">
-            <label>Description contains <input [(ngModel)]="srCriteria.descriptionContains" placeholder="e.g. trip (auto-wrapped in %…%)" style="min-width:300px" /></label>
+            <label>Description contains <input [(ngModel)]="srCriteria.descriptionContains" placeholder="title only" style="min-width:200px" /></label>
+            <label>Long description contains <input [(ngModel)]="srCriteria.longDescriptionContains" placeholder="long-text body" style="min-width:200px" /></label>
           </div>
           <button (click)="runSrByCriteria()" [disabled]="srCriteriaPanel().status === 'loading'">GET /service-requests?...</button>
           <ng-container *ngTemplateOutlet="result; context:{state: srCriteriaPanel()}"></ng-container>
@@ -114,14 +123,37 @@
             <label>Assetnum <input [(ngModel)]="woCriteria.assetnum" placeholder="e.g. -1-CEM-SS" /></label>
             <label>Location <input [(ngModel)]="woCriteria.location" placeholder="e.g. 01-CEMS" /></label>
             <label>Lead craft <input [(ngModel)]="woCriteria.leadCraft" placeholder="e.g. RGARCIA" /></label>
+            <label>Supervisor <input [(ngModel)]="woCriteria.supervisor" placeholder="personid" /></label>
             <label>Site <input [(ngModel)]="woCriteria.siteid" placeholder="default JG" /></label>
           </div>
           <div class="row">
-            <label>Sched start ≥ <input [(ngModel)]="woCriteria.schedstartFrom" placeholder="2022-01-01T00:00:00-05:00" style="min-width:230px" /></label>
-            <label>Sched finish ≤ <input [(ngModel)]="woCriteria.schedfinishTo" placeholder="2022-12-31T23:59:59-05:00" style="min-width:230px" /></label>
+            <label>Sched start ≥
+              <input type="datetime-local"
+                     [ngModel]="toLocal(woCriteria.schedstartFrom)"
+                     (ngModelChange)="woCriteria.schedstartFrom = fromLocal($event)" />
+            </label>
+            <label>Sched finish ≤
+              <input type="datetime-local"
+                     [ngModel]="toLocal(woCriteria.schedfinishTo)"
+                     (ngModelChange)="woCriteria.schedfinishTo = fromLocal($event)" />
+            </label>
           </div>
           <div class="row">
-            <label>Description contains <input [(ngModel)]="woCriteria.descriptionContains" placeholder="e.g. pump (auto-wrapped in %…%)" style="min-width:300px" /></label>
+            <label>Reported ≥
+              <input type="datetime-local"
+                     [ngModel]="toLocal(woCriteria.reportdateFrom)"
+                     (ngModelChange)="woCriteria.reportdateFrom = fromLocal($event)" />
+            </label>
+            <label>Reported ≤
+              <input type="datetime-local"
+                     [ngModel]="toLocal(woCriteria.reportdateTo)"
+                     (ngModelChange)="woCriteria.reportdateTo = fromLocal($event)" />
+            </label>
+          </div>
+          <div class="row">
+            <label>WO # contains <input [(ngModel)]="woCriteria.wonumContains" placeholder="e.g. J26-" /></label>
+            <label>Description contains <input [(ngModel)]="woCriteria.descriptionContains" placeholder="title only" style="min-width:200px" /></label>
+            <label>Long description contains <input [(ngModel)]="woCriteria.longDescriptionContains" placeholder="long-text body" style="min-width:200px" /></label>
           </div>
           <button (click)="runWoByCriteria()" [disabled]="woCriteriaPanel().status === 'loading'">GET /work-orders?...</button>
           <ng-container *ngTemplateOutlet="result; context:{state: woCriteriaPanel()}"></ng-container>

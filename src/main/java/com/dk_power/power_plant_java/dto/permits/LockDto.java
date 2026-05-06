@@ -32,4 +32,9 @@ public class LockDto extends BaseDto {
     private String lockType;
     private Integer homeBoxNumber;
     private Boolean isSingleLock;
+
+    // Flat display fields for the assigned LOTO (loto field above is JsonBackReference and not serialized).
+    private Long lotoId;
+    private String lotoPermitNumber;
+    private Long lotoDocNum;
 }

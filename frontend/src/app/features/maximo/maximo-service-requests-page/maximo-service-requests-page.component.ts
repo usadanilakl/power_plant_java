@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import {
   CreateMaximoServiceRequest,
@@ -22,6 +23,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   reportdateFrom: '',
   reportdateTo: '',
   descriptionContains: '',
+  longDescriptionContains: '',
   siteid: ''
 });
 
@@ -52,6 +54,10 @@ export class MaximoServiceRequestsPageComponent {
   openDetail(sr: MaximoServiceRequest) { this.selectedSr.set(sr); }
   closeDetail() { this.selectedSr.set(null); }
 
+  // Date picker bridge — picker shows local time, criteria stores ISO with TZ for Maximo.
+  toLocal = toDatetimeLocal;
+  fromLocal = fromDatetimeLocal;
+
   readonly statusOptions = ['', 'NEW', 'QUEUED', 'INPROG', 'PENDING', 'RESOLVED', 'CLOSED'];
 
   // Plain method (not computed) — criteria is a mutable object, not a signal,
@@ -59,7 +65,7 @@ export class MaximoServiceRequestsPageComponent {
   activeFilterCount(): number {
     const c = this.criteria;
     return [c.status, c.assetnum, c.location, c.priority, c.reportedby, c.affectedperson,
-      c.reportdateFrom, c.reportdateTo, c.descriptionContains, c.siteid]
+      c.reportdateFrom, c.reportdateTo, c.descriptionContains, c.longDescriptionContains, c.siteid]
       .filter(v => v != null && v.trim() !== '').length;
   }
 

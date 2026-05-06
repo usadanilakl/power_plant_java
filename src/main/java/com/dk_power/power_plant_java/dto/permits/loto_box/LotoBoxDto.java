@@ -49,4 +49,11 @@ public class LotoBoxDto extends BaseDto {
     private Boolean portable = false;
 
     private List<LockDto> homeLocks = new ArrayList<>();
+
+    // Flat display fields for the assigned LOTO (loto field above is JsonBackReference and not serialized).
+    private Long lotoId;
+    private String lotoPermitNumber;
+    private String lotoEquipmentSystem;
+    private String lotoStatus;
+    private String lotoWorkScope;
 }

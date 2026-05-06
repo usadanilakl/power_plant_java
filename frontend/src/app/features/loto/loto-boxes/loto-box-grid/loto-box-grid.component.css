@@ -278,6 +278,17 @@ h1 {
 }
 .btn-link-danger:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-color, #82b1ff);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 13px;
+  padding: 0 6px;
+}
+.btn-link:hover { color: #fff; }
+
 .btn-danger {
   background: #c62828;
   color: white;

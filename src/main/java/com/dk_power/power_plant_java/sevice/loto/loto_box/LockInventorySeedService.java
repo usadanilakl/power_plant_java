@@ -42,14 +42,9 @@ public class LockInventorySeedService {
 
     @Transactional
     public void seedLockInventory() {
-        // Update box set sizes
         seedBoxSetSizes();
-
-        // Seed set locks (only if none exist yet)
-        if (lockRepo.count() == 0) {
-            seedSetLocks();
-            seedSingleLocks();
-        }
+        seedSetLocks();    // idempotent: top up missing per box
+        seedSingleLocks(); // idempotent: top up missing in 200-399 range
     }
 
     private void seedBoxSetSizes() {
@@ -64,29 +59,51 @@ public class LockInventorySeedService {
         }
     }
 
+    /**
+     * Idempotent top-up: ensures each set-box (1..SET_BOX_MAX) has exactly
+     * {@code getSetSizeForBox(boxNum)} locks home-boxed there. Adds any that are missing.
+     */
     private void seedSetLocks() {
         List<Lock> locksToSave = new ArrayList<>();
+        int totalAdded = 0;
 
         for (int boxNum = 1; boxNum <= SET_BOX_MAX; boxNum++) {
-            int setSize = getSetSizeForBox(boxNum);
-            for (int i = 0; i < setSize; i++) {
+            int targetSize = getSetSizeForBox(boxNum);
+            int existing = lockRepo.findByHomeBoxNumber(boxNum).size();
+            int missing = targetSize - existing;
+            for (int i = 0; i < missing; i++) {
                 Lock lock = new Lock();
-                lock.setNumber(boxNum); // All locks in a set numbered same as box
+                lock.setNumber(boxNum); // set locks share the box number
                 lock.setHomeBoxNumber(boxNum);
                 lock.setLockType("LOCK");
                 lock.setIsSingleLock(false);
                 locksToSave.add(lock);
             }
+            totalAdded += Math.max(0, missing);
         }
 
-        lockRepo.saveAll(locksToSave);
-        System.out.println("Seeded " + locksToSave.size() + " set locks across boxes 1-" + SET_BOX_MAX);
+        if (!locksToSave.isEmpty()) {
+            lockRepo.saveAll(locksToSave);
+            System.out.println("Seeded " + totalAdded + " missing set locks across boxes 1-" + SET_BOX_MAX);
+        }
     }
 
+    /**
+     * Idempotent top-up: ensures every number in [SINGLE_LOCK_START, SINGLE_LOCK_END] has
+     * a single-lock row. Adds any that are missing.
+     */
     private void seedSingleLocks() {
-        List<Lock> locksToSave = new ArrayList<>();
+        List<Lock> existingSingles = lockRepo.findAll().stream()
+                .filter(l -> Boolean.TRUE.equals(l.getIsSingleLock()))
+                .toList();
+        java.util.Set<Integer> haveNumbers = new java.util.HashSet<>();
+        for (Lock l : existingSingles) {
+            if (l.getNumber() != null) haveNumbers.add(l.getNumber());
+        }
 
+        List<Lock> locksToSave = new ArrayList<>();
         for (int lockNum = SINGLE_LOCK_START; lockNum <= SINGLE_LOCK_END; lockNum++) {
+            if (haveNumbers.contains(lockNum)) continue;
             Lock lock = new Lock();
             lock.setNumber(lockNum);
             lock.setHomeBoxNumber(null);
@@ -95,8 +112,10 @@ public class LockInventorySeedService {
             locksToSave.add(lock);
         }
 
-        lockRepo.saveAll(locksToSave);
-        System.out.println("Seeded " + locksToSave.size() + " single locks (" + SINGLE_LOCK_START + "-" + SINGLE_LOCK_END + ")");
+        if (!locksToSave.isEmpty()) {
+            lockRepo.saveAll(locksToSave);
+            System.out.println("Seeded " + locksToSave.size() + " missing single locks (" + SINGLE_LOCK_START + "-" + SINGLE_LOCK_END + ")");
+        }
     }
 
     public static int getSetSizeForBox(int boxNumber) {

@@ -47,6 +47,12 @@ public class LockMapper implements BaseMapper {
         dto.setHomeBoxNumber(entity.getHomeBoxNumber());
         dto.setIsSingleLock(entity.getIsSingleLock());
 
+        if (entity.getLoto() != null) {
+            dto.setLotoId(entity.getLoto().getId());
+            dto.setLotoPermitNumber(entity.getLoto().getPermitNumber());
+            dto.setLotoDocNum(entity.getLoto().getDocNum());
+        }
+
         return dto;
     }
 

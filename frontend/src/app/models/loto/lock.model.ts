@@ -11,6 +11,9 @@ export interface LockModel extends BaseModel {
   lockType: string;
   homeBoxNumber: number | null;
   isSingleLock: boolean;
+  lotoId: number | null;
+  lotoPermitNumber: string | null;
+  lotoDocNum: number | null;
 }
 
 export class LockDto extends BaseDto implements LockModel {
@@ -22,6 +25,9 @@ export class LockDto extends BaseDto implements LockModel {
   lockType: string;
   homeBoxNumber: number | null;
   isSingleLock: boolean;
+  lotoId: number | null;
+  lotoPermitNumber: string | null;
+  lotoDocNum: number | null;
 
   constructor(data: Partial<LockModel> = {}) {
     super(data);
@@ -33,6 +39,9 @@ export class LockDto extends BaseDto implements LockModel {
     this.lockType = data.lockType ?? 'LOCK';
     this.homeBoxNumber = data.homeBoxNumber ?? null;
     this.isSingleLock = data.isSingleLock ?? false;
+    this.lotoId = data.lotoId ?? null;
+    this.lotoPermitNumber = data.lotoPermitNumber ?? null;
+    this.lotoDocNum = data.lotoDocNum ?? null;
   }
 
   // Override toJson method
@@ -47,6 +56,9 @@ export class LockDto extends BaseDto implements LockModel {
       lockType: this.lockType,
       homeBoxNumber: this.homeBoxNumber,
       isSingleLock: this.isSingleLock,
+      lotoId: this.lotoId,
+      lotoPermitNumber: this.lotoPermitNumber,
+      lotoDocNum: this.lotoDocNum,
     };
   }
 
@@ -67,6 +79,9 @@ export class LockDto extends BaseDto implements LockModel {
       lockType: json.lockType ?? 'LOCK',
       homeBoxNumber: json.homeBoxNumber ?? null,
       isSingleLock: json.isSingleLock ?? false,
+      lotoId: json.lotoId ?? null,
+      lotoPermitNumber: json.lotoPermitNumber ?? null,
+      lotoDocNum: json.lotoDocNum ?? null,
     });
   }
 }

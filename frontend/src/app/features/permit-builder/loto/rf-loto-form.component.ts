@@ -253,7 +253,9 @@ export class RfLotoFormComponent {
     if (entity?.id) {
       this.lotoService.changeStatus(entity.id, status).subscribe(res => {
         if (res.responseData) {
-          this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
+          const updated = LotoDto.fromJson(res.responseData);
+          this.currentService.updateLotoInList(updated);
+          this.currentService.setCurrentLoto(updated);
         }
       });
     }
@@ -271,7 +273,9 @@ export class RfLotoFormComponent {
   createFromStandard(standardId: number): void {
     this.lotoService.createFromStandard(standardId).subscribe(res => {
       if (res.responseData) {
-        this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
+        const newLoto = LotoDto.fromJson(res.responseData);
+        this.currentService.addLotoToList(newLoto);
+        this.currentService.setCurrentLoto(newLoto);
         this.showStandardSelector.set(false);
       }
     });
@@ -280,7 +284,9 @@ export class RfLotoFormComponent {
   createFromScratch(): void {
     this.lotoService.createFromScratch().subscribe(res => {
       if (res.responseData) {
-        this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
+        const newLoto = LotoDto.fromJson(res.responseData);
+        this.currentService.addLotoToList(newLoto);
+        this.currentService.setCurrentLoto(newLoto);
       }
     });
   }

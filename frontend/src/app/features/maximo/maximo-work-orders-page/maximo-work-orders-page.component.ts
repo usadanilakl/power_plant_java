@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoWorkOrder, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 import { firstValueFrom } from 'rxjs';
@@ -15,9 +16,14 @@ const emptyCriteria = (): MaximoWorkOrderCriteria => ({
   location: '',
   priority: '',
   leadCraft: '',
+  supervisor: '',
   schedstartFrom: '',
   schedfinishTo: '',
+  reportdateFrom: '',
+  reportdateTo: '',
   descriptionContains: '',
+  longDescriptionContains: '',
+  wonumContains: '',
   siteid: ''
 });
 
@@ -43,6 +49,10 @@ export class MaximoWorkOrdersPageComponent {
   openDetail(wo: MaximoWorkOrder) { this.selectedWo.set(wo); }
   closeDetail() { this.selectedWo.set(null); }
 
+  // Date picker bridge — picker shows local time, criteria stores ISO with TZ for Maximo.
+  toLocal = toDatetimeLocal;
+  fromLocal = fromDatetimeLocal;
+
   readonly statusOptions = ['', 'WAPPR', 'APPR', 'INPRG', 'COMP', 'CLOSE', 'CAN'];
   readonly worktypeOptions = ['', 'CM', 'PM', 'EM', 'INSP'];
 
@@ -51,7 +61,8 @@ export class MaximoWorkOrdersPageComponent {
   activeFilterCount(): number {
     const c = this.criteria;
     return [c.status, c.worktype, c.assetnum, c.location, c.priority, c.leadCraft,
-      c.schedstartFrom, c.schedfinishTo, c.descriptionContains, c.siteid]
+      c.supervisor, c.schedstartFrom, c.schedfinishTo, c.reportdateFrom, c.reportdateTo,
+      c.descriptionContains, c.longDescriptionContains, c.wonumContains, c.siteid]
       .filter(v => v != null && v.trim() !== '').length;
   }
 

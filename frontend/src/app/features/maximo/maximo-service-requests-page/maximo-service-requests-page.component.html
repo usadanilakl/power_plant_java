@@ -25,11 +25,22 @@
           <label>Affected person <input [(ngModel)]="criteria.affectedperson" placeholder="personid" /></label>
         </div>
         <div class="row">
-          <label>Report date ≥ <input [(ngModel)]="criteria.reportdateFrom" placeholder="2022-01-01T00:00:00-05:00" class="wide" /></label>
-          <label>Report date ≤ <input [(ngModel)]="criteria.reportdateTo" placeholder="2022-12-31T23:59:59-05:00" class="wide" /></label>
+          <label>Report date ≥
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.reportdateFrom)"
+                   (ngModelChange)="criteria.reportdateFrom = fromLocal($event)" />
+          </label>
+          <label>Report date ≤
+            <input type="datetime-local"
+                   [ngModel]="toLocal(criteria.reportdateTo)"
+                   (ngModelChange)="criteria.reportdateTo = fromLocal($event)" />
+          </label>
         </div>
         <div class="row">
-          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="auto-wrapped in %…%" class="wide" /></label>
+          <label>Description contains <input [(ngModel)]="criteria.descriptionContains" placeholder="title only" class="wide" /></label>
+        </div>
+        <div class="row">
+          <label>Long description contains <input [(ngModel)]="criteria.longDescriptionContains" placeholder="long-text body" class="wide" /></label>
         </div>
         <div class="row actions">
           <button (click)="apply()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Apply filters' }}</button>

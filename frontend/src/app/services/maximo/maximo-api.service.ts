@@ -52,8 +52,9 @@ export class MaximoApiService {
     if (c.classstructureid)     p = p.set('classstructureid', c.classstructureid);
     if (c.reportdateFrom)       p = p.set('reportdateFrom', c.reportdateFrom);
     if (c.reportdateTo)         p = p.set('reportdateTo', c.reportdateTo);
-    if (c.descriptionContains)  p = p.set('descriptionContains', c.descriptionContains);
-    if (c.siteid)               p = p.set('siteid', c.siteid);
+    if (c.descriptionContains)      p = p.set('descriptionContains', c.descriptionContains);
+    if (c.longDescriptionContains)  p = p.set('longDescriptionContains', c.longDescriptionContains);
+    if (c.siteid)                   p = p.set('siteid', c.siteid);
     return this.http
       .get<SpringApiResponse<MaximoServiceRequest[]>>(`${this.base}/service-requests`, { params: p })
       .pipe(map(r => r.responseData ?? []));
@@ -87,10 +88,15 @@ export class MaximoApiService {
     if (c.location) p = p.set('location', c.location);
     if (c.priority) p = p.set('priority', c.priority);
     if (c.leadCraft) p = p.set('leadCraft', c.leadCraft);
+    if (c.supervisor) p = p.set('supervisor', c.supervisor);
     if (c.schedstartFrom) p = p.set('schedstartFrom', c.schedstartFrom);
     if (c.schedfinishTo)  p = p.set('schedfinishTo', c.schedfinishTo);
-    if (c.descriptionContains) p = p.set('descriptionContains', c.descriptionContains);
-    if (c.siteid)   p = p.set('siteid', c.siteid);
+    if (c.reportdateFrom) p = p.set('reportdateFrom', c.reportdateFrom);
+    if (c.reportdateTo)   p = p.set('reportdateTo', c.reportdateTo);
+    if (c.descriptionContains)     p = p.set('descriptionContains', c.descriptionContains);
+    if (c.longDescriptionContains) p = p.set('longDescriptionContains', c.longDescriptionContains);
+    if (c.wonumContains)           p = p.set('wonumContains', c.wonumContains);
+    if (c.siteid)                  p = p.set('siteid', c.siteid);
     return this.http
       .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/work-orders`, { params: p })
       .pipe(map(r => r.responseData ?? []));

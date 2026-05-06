@@ -39,10 +39,8 @@ public class LotoAssignmentService {
      * Returns the assigned LotoBox, and the locks are saved with loto reference.
      */
     public LotoBox autoAssign(Loto loto, int pointCount) {
-        // Auto-seed if lock inventory is empty
-        if (lockRepo.count() == 0) {
-            lockInventorySeedService.seedLockInventory();
-        }
+        // Idempotent top-up: re-runs every call so missing set-locks / singles get filled
+        lockInventorySeedService.seedLockInventory();
 
         if (pointCount <= 0) {
             // Just assign a no-set box, no locks needed yet
@@ -73,13 +71,19 @@ public class LotoAssignmentService {
     }
 
     /**
-     * >5 points: find best-fit set box, supplement with singles if needed
+     * >5 points: find best-fit set box, supplement with singles if needed.
+     *
+     * Selection is driven by the *actual* available lock count per box (not the {@code setSize}
+     * label), so a box that lost its physical Lock rows won't be selected.
      */
     private LotoBox assignWithSet(Loto loto, int pointCount) {
-        // Get all available set boxes (1-38 with loto IS NULL), sorted by setSize
-        List<LotoBox> availableSetBoxes = lotoBoxRepo.findAvailableBoxes().stream()
+        record BoxLocks(LotoBox box, int availableLocks) {}
+
+        List<BoxLocks> availableSetBoxes = lotoBoxRepo.findAvailableBoxes().stream()
                 .filter(b -> b.getSetSize() != null && b.getSetSize() > 0)
-                .sorted(Comparator.comparingInt(LotoBox::getSetSize))
+                .map(b -> new BoxLocks(b, lockRepo.findAvailableLocksByHomeBox(b.getNumber()).size()))
+                .filter(bl -> bl.availableLocks() > 0)
+                .sorted(Comparator.comparingInt(BoxLocks::availableLocks))
                 .toList();
 
         if (availableSetBoxes.isEmpty()) {
@@ -87,24 +91,24 @@ public class LotoAssignmentService {
             return assignWithSinglesOnly(loto, pointCount);
         }
 
-        // Find best fit: smallest set that covers all points
-        LotoBox bestBox = null;
-        for (LotoBox candidate : availableSetBoxes) {
-            if (candidate.getSetSize() >= pointCount) {
+        // Find best fit: smallest set whose actual lock count covers all points
+        BoxLocks bestBox = null;
+        for (BoxLocks candidate : availableSetBoxes) {
+            if (candidate.availableLocks() >= pointCount) {
                 bestBox = candidate;
                 break;
             }
         }
 
-        // If no single set covers all, use the largest available set
+        // If no single set covers all, use the largest available set (by actual locks)
         if (bestBox == null) {
             bestBox = availableSetBoxes.get(availableSetBoxes.size() - 1);
         }
 
-        linkBoxToLoto(bestBox, loto);
+        linkBoxToLoto(bestBox.box(), loto);
 
         // Assign set locks from this box
-        List<Lock> setLocks = lockRepo.findAvailableLocksByHomeBox(bestBox.getNumber());
+        List<Lock> setLocks = lockRepo.findAvailableLocksByHomeBox(bestBox.box().getNumber());
         int setLocksToUse = Math.min(setLocks.size(), pointCount);
         assignLocks(setLocks.subList(0, setLocksToUse), loto);
 
@@ -118,7 +122,7 @@ public class LotoAssignmentService {
             assignLocks(singles.subList(0, remaining), loto);
         }
 
-        return bestBox;
+        return bestBox.box();
     }
 
     private LotoBox assignNoSetBox(Loto loto) {

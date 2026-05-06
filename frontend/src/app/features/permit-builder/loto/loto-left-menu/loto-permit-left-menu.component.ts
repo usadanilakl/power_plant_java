@@ -52,11 +52,6 @@ export class LotoPermitLeftMenuComponent implements OnInit {
 
   refresh(): void {
     this.isLoading.set(true);
-    this.currentLotoService.allLotos$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(items => {
-      this.regroup(items);
-      this.isLoading.set(false);
-    });
+    this.currentLotoService.reloadLotos();
   }
 }
