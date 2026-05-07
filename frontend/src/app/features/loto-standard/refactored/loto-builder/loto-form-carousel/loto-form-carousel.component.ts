@@ -7,11 +7,12 @@ import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
 import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
+import { LotoStandardWorkflowPanelComponent } from '../loto-standard-workflow-panel/loto-standard-workflow-panel.component';
 
 @Component({
   selector: 'app-loto-form-carousel',
   standalone: true,
-  imports: [CommonModule, SimpleLotoFormComponent, RfFloatingWindowComponent],
+  imports: [CommonModule, SimpleLotoFormComponent, RfFloatingWindowComponent, LotoStandardWorkflowPanelComponent],
   templateUrl: './loto-form-carousel.component.html',
   styleUrl: './loto-form-carousel.component.css',
 })
@@ -228,5 +229,14 @@ export class LotoFormCarouselComponent implements OnInit {
    */
   onClose(): void {
     this.close.emit();
+  }
+
+  /**
+   * Handle workflow transition completion. The backend returns the fully refreshed
+   * standard — push it back to the parent so it stays in sync with the carousel array.
+   */
+  onWorkflowStandardUpdated(updated: LotoStandardDto): void {
+    const index = this.activeIndex();
+    this.standardUpdated.emit({ index, standard: updated });
   }
 }

@@ -25,9 +25,12 @@
     </div>
     <ul>
       <li *ngFor="let opt of m.options">
-        <button (click)="pickCandidate(opt)">
-          <strong>{{ opt.assetnum }}</strong>
-          <span class="muted"> — {{ opt.description }} ({{ opt.location || 'no loc' }} / {{ opt.siteid }})</span>
+        <button (click)="pickCandidate(opt.asset)">
+          <strong>{{ opt.asset.assetnum }}</strong>
+          <span class="muted"> — {{ opt.asset.description }} ({{ opt.asset.location || 'no loc' }} / {{ opt.asset.siteid }})</span>
+          <span *ngIf="opt.matchedSegments.length > 0" class="match-badge">
+            matched: {{ opt.matchedSegments.join(', ') }}
+          </span>
         </button>
       </li>
     </ul>

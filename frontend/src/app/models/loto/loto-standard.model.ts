@@ -14,16 +14,61 @@ export interface LotoStandardModel extends BaseModel {
   groups: ValueDto[] | null;
 }
 
+export interface PointPrerequisiteDto {
+  requiredPointIds: number[];
+  safetyConditions: string[];
+}
+
 export class LotoStandardDto extends BaseDto {
   description: string | null;
   lotoPoints: LotoPointDto[] | null;
   groups: ValueDto[] | null;
+  pointPrerequisites: Record<number, PointPrerequisiteDto> | null;
+  prerequisitesText: string | null;
+  hazardControlMethodsText: string | null;
+  installProcedureText: string | null;
+  removalProcedureText: string | null;
+
+  /** Username of original creator (from BaseAuditEntity.createdBy on the server). */
+  createdBy: string | null;
+
+  // Development workflow (read-only — mutated only via workflow endpoints)
+  developmentStatus: ValueDto | null;
+  currentVersion: number | null;
+  submittedForVerificationBy: string | null;
+  submittedForVerificationAt: string | null;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+  walkdownBy: string | null;
+  walkdownAt: string | null;
+  readyForTestingBy: string | null;
+  readyForTestingAt: string | null;
+  managerApprovedBy: string | null;
+  managerApprovedAt: string | null;
 
   constructor(data: Partial<LotoStandardDto> = {}) {
     super(data);
     this.description = data.description || null;
     this.lotoPoints = data.lotoPoints?.map(point => new LotoPointDto(point)) || null;
     this.groups = data.groups?.map(group => new ValueDto(group)) || null;
+    this.pointPrerequisites = data.pointPrerequisites ?? null;
+    this.prerequisitesText = data.prerequisitesText ?? null;
+    this.hazardControlMethodsText = data.hazardControlMethodsText ?? null;
+    this.installProcedureText = data.installProcedureText ?? null;
+    this.removalProcedureText = data.removalProcedureText ?? null;
+    this.createdBy = data.createdBy ?? null;
+    this.developmentStatus = data.developmentStatus ? new ValueDto(data.developmentStatus) : null;
+    this.currentVersion = data.currentVersion ?? null;
+    this.submittedForVerificationBy = data.submittedForVerificationBy ?? null;
+    this.submittedForVerificationAt = data.submittedForVerificationAt ?? null;
+    this.verifiedBy = data.verifiedBy ?? null;
+    this.verifiedAt = data.verifiedAt ?? null;
+    this.walkdownBy = data.walkdownBy ?? null;
+    this.walkdownAt = data.walkdownAt ?? null;
+    this.readyForTestingBy = data.readyForTestingBy ?? null;
+    this.readyForTestingAt = data.readyForTestingAt ?? null;
+    this.managerApprovedBy = data.managerApprovedBy ?? null;
+    this.managerApprovedAt = data.managerApprovedAt ?? null;
   }
 
   // Serialization method
@@ -42,7 +87,25 @@ export class LotoStandardDto extends BaseDto {
       ...super.fromJson(json),
       description: json.description,
       lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null,
-      groups: json.groups?.map((groupJson: any) => ValueDto.fromJson(groupJson)) || null
+      groups: json.groups?.map((groupJson: any) => ValueDto.fromJson(groupJson)) || null,
+      pointPrerequisites: json.pointPrerequisites ?? null,
+      prerequisitesText: json.prerequisitesText ?? null,
+      hazardControlMethodsText: json.hazardControlMethodsText ?? null,
+      installProcedureText: json.installProcedureText ?? null,
+      removalProcedureText: json.removalProcedureText ?? null,
+      createdBy: json.createdBy ?? null,
+      developmentStatus: json.developmentStatus ? ValueDto.fromJson(json.developmentStatus) : null,
+      currentVersion: json.currentVersion ?? null,
+      submittedForVerificationBy: json.submittedForVerificationBy ?? null,
+      submittedForVerificationAt: json.submittedForVerificationAt ?? null,
+      verifiedBy: json.verifiedBy ?? null,
+      verifiedAt: json.verifiedAt ?? null,
+      walkdownBy: json.walkdownBy ?? null,
+      walkdownAt: json.walkdownAt ?? null,
+      readyForTestingBy: json.readyForTestingBy ?? null,
+      readyForTestingAt: json.readyForTestingAt ?? null,
+      managerApprovedBy: json.managerApprovedBy ?? null,
+      managerApprovedAt: json.managerApprovedAt ?? null,
     });
   }
 

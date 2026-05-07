@@ -8,7 +8,9 @@
  *   Then personnel rows in pairs:
  *     - Row with name (col B) + shift codes across day columns
  *     - Second row (sometimes has override codes like P, U)
- *   Group labels (A, B, C, D, Relief) appear in column A, spanning 2+ person pairs
+ *   Group labels (A, B, C, D, Relief, On Call Manager) appear in the group column,
+ *   normalized to A/B/C/D/Rel/OCM. People rotate groups across months — each month's
+ *   block has its own name->row layout, so shifts must be looked up per-month.
  *
  * Caches parsed data for 30 minutes.
  */
@@ -24,9 +26,41 @@ function getSchedulePath(): string {
 const CONTACTS_PATH = '/sites/JG/External/10 - Administration/PERSONNEL/EMERGENCY CONTACT LIST - EDITED 11_2024.xlsx';
 
 const CACHE_TTL = 30 * 60_000;
-const VALID_SHIFTS: Set<string> = new Set(['D', 'N', 'U', 'P', 'T']);
+const VALID_SHIFTS: Set<string> = new Set(['D', 'N', 'U', 'P', 'T', 'OCM']);
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
+
+function normalizeGroupLabel(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^[A-D]$/i.test(s)) return s.toUpperCase();
+  if (/^rel(ief)?$/i.test(s)) return 'Rel';
+  if (/^on\s*call\s*manager$/i.test(s) || /^ocm$/i.test(s)) return 'OCM';
+  return null;
+}
+
+/**
+ * Find a group label in a row, scanning the primary group column plus a few
+ * nearby columns. Handles minor layout drift between months and merged cells
+ * where the label may be at column ±1 or ±2 from the expected position.
+ */
+function findGroupLabelInRow(row: any[], primaryCol: number): string | null {
+  const direct = normalizeGroupLabel(String(row[primaryCol] || ''));
+  if (direct) return direct;
+  for (const offset of [-1, 1, -2, 2]) {
+    const c = primaryCol + offset;
+    if (c < 0) continue;
+    const found = normalizeGroupLabel(String(row[c] || ''));
+    if (found) return found;
+  }
+  return null;
+}
+
+interface MonthMaps {
+  nameToRow: Map<string, number>;
+  rowToGroup: Map<number, string>;
+  namesInOrder: string[];
+}
 
 export class PersonnelManager {
   private sharepoint: SharePointManager;
@@ -128,9 +162,6 @@ export class PersonnelManager {
     console.log(`[Personnel] Using sheet: "${targetSheetName}" (${year}, leap=${isLeapYear})`);
     if (!sheet) throw new Error('Schedule workbook has no sheets');
 
-    // Parse the Rotation sheet to get month-specific group assignments
-    const rotationMap = this.parseRotation(workbook);
-
     const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     console.log(`[Personnel] Sheet has ${data.length} rows, ${data[0]?.length || 0} cols`);
     if (data.length < 5) throw new Error('Schedule sheet has too few rows');
@@ -138,96 +169,127 @@ export class PersonnelManager {
     const now = new Date();
     const hour = now.getHours();
     // Between midnight and 5 AM, the active shift started yesterday at 17:00
-    // So "today" for schedule purposes is yesterday
     const shiftDate = (hour < 5) ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
     const currentMonth = shiftDate.getMonth();
     const currentDay = shiftDate.getDate();
 
-    // Find month block
     const monthRange = this.findMonthColumns(data, currentMonth);
     if (!monthRange) {
       console.warn(`[Personnel] Could not find month ${MONTH_NAMES[currentMonth]} in schedule`);
       return [];
     }
 
-    // Find today's column
     const todayCol = this.findDayColumn(data[monthRange.dayNumberRow], monthRange.startCol, monthRange.endCol, currentDay);
 
-    // Build schedule days — from shift date through end of year
-    const scheduleDays: { col: number; date: string }[] = [];
-    const endOfYear = new Date(shiftDate.getFullYear(), 11, 31);
-    const totalDays = Math.ceil((endOfYear.getTime() - shiftDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-    const monthRangeCache = new Map<number, ReturnType<typeof this.findMonthColumns>>();
-    monthRangeCache.set(currentMonth, monthRange);
+    // Resolve the column ranges for ALL 12 months so the page can browse any month
+    type MonthRange = NonNullable<ReturnType<typeof this.findMonthColumns>>;
+    const monthRanges = new Map<number, MonthRange>();
+    monthRanges.set(currentMonth, monthRange);
+    for (let m = 0; m < 12; m++) {
+      if (m === currentMonth) continue;
+      const r = this.findMonthColumns(data, m);
+      if (r) monthRanges.set(m, r);
+    }
+
+    // Build schedule days for the entire calendar year (Jan 1 → Dec 31).
+    // Skip months whose layout couldn't be resolved (instead of bailing out).
+    const scheduleDays: { col: number; date: string; month: number }[] = [];
+    const startDate = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31);
+    const totalDays = Math.round((endOfYear.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
 
     for (let d = 0; d < totalDays; d++) {
-      const targetDate = new Date(shiftDate);
-      targetDate.setDate(currentDay + d);
-      const targetDay = targetDate.getDate();
+      const targetDate = new Date(year, 0, 1 + d);
       const targetMonth = targetDate.getMonth();
+      const range = monthRanges.get(targetMonth);
+      if (!range) continue;
 
-      let range = monthRange;
-      if (targetMonth !== currentMonth) {
-        if (!monthRangeCache.has(targetMonth)) {
-          monthRangeCache.set(targetMonth, this.findMonthColumns(data, targetMonth));
-        }
-        const cached = monthRangeCache.get(targetMonth);
-        if (!cached) break;
-        range = cached;
-      }
-
-      const col = this.findDayColumn(data[range.dayNumberRow], range.startCol, range.endCol, targetDay);
+      const col = this.findDayColumn(data[range.dayNumberRow], range.startCol, range.endCol, targetDate.getDate());
       if (col >= 0) {
-        // Use local date string, not UTC (toISOString would shift by timezone)
         const y = targetDate.getFullYear();
-        const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const mm = String(targetMonth + 1).padStart(2, '0');
         const dd = String(targetDate.getDate()).padStart(2, '0');
-        scheduleDays.push({ col, date: `${y}-${m}-${dd}` });
+        scheduleDays.push({ col, date: `${y}-${mm}-${dd}`, month: targetMonth });
       }
     }
 
-    // Parse personnel — each person occupies 2 rows (shift row + overflow row)
-    // Use MONTH-SPECIFIC group+name columns, not the fixed cols 0/1 which have January's layout
-    const NAME_COL = monthRange.nameCol;
-    const GROUP_COL = monthRange.groupCol;
+    // For each month present (current + all schedule months), build a name->row + row->group map.
+    // Names rotate between groups across months, so each month has its own row layout.
+    const monthMaps = new Map<number, MonthMaps>();
+    for (const [mIdx, range] of monthRanges.entries()) {
+      monthMaps.set(mIdx, this.buildMonthMaps(data, range));
+    }
+
+    const currentMaps = monthMaps.get(currentMonth);
+    if (!currentMaps) return [];
+
+    // Iterate canonical roster from current month (preserves current-month order)
     const entries: PersonnelEntry[] = [];
-    let currentGroup = '';
+    for (const name of currentMaps.namesInOrder) {
+      const currentRow = currentMaps.nameToRow.get(name)!;
+      const currentGroup = currentMaps.rowToGroup.get(currentRow) || '';
 
-    for (let r = monthRange.dataStartRow; r < data.length; r++) {
-      // Track group from month-specific group column
-      const groupCell = String(data[r][GROUP_COL] || '').trim();
-      if (groupCell && /^[A-D]$|^Relief$/i.test(groupCell)) {
-        currentGroup = groupCell.length === 1 ? groupCell.toUpperCase() : groupCell;
+      const todayShift = this.getBestShift(data, currentRow, todayCol);
+
+      // For each scheduled day, look up the person's row in THAT day's month
+      const schedule = scheduleDays.map(sd => {
+        const mMap = monthMaps.get(sd.month);
+        const row = (mMap && sd.month !== currentMonth)
+          ? (mMap.nameToRow.get(name) ?? currentRow)
+          : currentRow;
+        return { date: sd.date, shift: this.getBestShift(data, row, sd.col) };
+      });
+
+      // Track group per month for visual indication of rotation,
+      // and per-month row index so the page can preserve spreadsheet order
+      // (top=lead, middle=CRO, bottom=AO) for each month independently.
+      const groupByMonth: Record<string, string> = {};
+      const monthOrder: Record<string, number> = {};
+      for (const [mIdx, mMap] of monthMaps.entries()) {
+        const mRow = mMap.nameToRow.get(name);
+        if (mRow !== undefined) {
+          const grp = mMap.rowToGroup.get(mRow);
+          if (grp) groupByMonth[String(mIdx)] = grp;
+          const idx = mMap.namesInOrder.indexOf(name);
+          if (idx >= 0) monthOrder[String(mIdx)] = idx;
+        }
       }
 
-      // Check for name in month-specific name column
-      const nameCell = String(data[r][NAME_COL] || '').trim();
-      if (!nameCell) continue;
-
-      // Skip if this looks like a header/label row (day-of-week names, month names, etc.)
-      if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun|January|February|March|April|May|June|July|August|September|October|November|December|Outage)/i.test(nameCell)) {
-        continue;
-      }
-      // Skip pure numbers (day numbers that might appear in name column)
-      if (/^\d+$/.test(nameCell)) continue;
-
-      // This is a person row — read shifts from this row
-      // Also check the row below for override shifts (P, U on second line)
-      const todayShift = this.getBestShift(data, r, todayCol);
-
-      const schedule = scheduleDays.map(sd => ({
-        date: sd.date,
-        shift: this.getBestShift(data, r, sd.col),
-      }));
-
-      const group = currentGroup;
-      entries.push({ name: nameCell, group, todayShift, schedule });
-
-      // Skip the second row of this person's pair
-      r++;
+      entries.push({ name, group: currentGroup, todayShift, schedule, groupByMonth, monthOrder });
     }
 
     return entries;
+  }
+
+  /**
+   * Build name→row and row→group maps for a single month's data block.
+   * Each person occupies 2 rows in the spreadsheet (main shift + override).
+   */
+  private buildMonthMaps(
+    data: any[][],
+    range: { groupCol: number; nameCol: number; dataStartRow: number }
+  ): MonthMaps {
+    const nameToRow = new Map<string, number>();
+    const rowToGroup = new Map<number, string>();
+    const namesInOrder: string[] = [];
+    let currentGroup = '';
+
+    for (let r = range.dataStartRow; r < data.length; r++) {
+      const normalized = findGroupLabelInRow(data[r], range.groupCol);
+      if (normalized) currentGroup = normalized;
+
+      const nameCell = String(data[r][range.nameCol] || '').trim();
+      if (!nameCell) continue;
+      if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun|January|February|March|April|May|June|July|August|September|October|November|December|Outage)/i.test(nameCell)) continue;
+      if (/^\d+$/.test(nameCell)) continue;
+
+      nameToRow.set(nameCell, r);
+      rowToGroup.set(r, currentGroup);
+      namesInOrder.push(nameCell);
+      r++; // Skip the second row of this person's pair
+    }
+
+    return { nameToRow, rowToGroup, namesInOrder };
   }
 
   /**
@@ -343,77 +405,6 @@ export class PersonnelManager {
       if (val === targetDay) return c;
     }
     return -1;
-  }
-
-  // ── Rotation Parsing ─────────────────────────────────────────────────────
-
-  /**
-   * Parse the "Rotation" sheet to determine which group each person belongs to
-   * for the current month. Returns a map of name -> group.
-   */
-  private parseRotation(workbook: XLSX.WorkBook): Map<string, string> {
-    const map = new Map<string, string>();
-    const rotSheet = workbook.Sheets['Rotation'];
-    if (!rotSheet) {
-      console.log('[Personnel] No Rotation sheet found — using fallback groups');
-      return map;
-    }
-
-    const rotData: any[][] = XLSX.utils.sheet_to_json(rotSheet, { header: 1, defval: '' });
-
-    // Try to find current month column and map names to groups
-    // Common structures:
-    //   Row 0: headers (Month, Name, Group) or (Name, Jan, Feb, Mar, ...)
-    //   Subsequent rows: data
-    const currentMonth = new Date().getMonth();
-    const monthName = MONTH_NAMES[currentMonth];
-
-    // Strategy 1: Month names as column headers (Name, Jan, Feb, ..., Dec)
-    const headerRow = rotData[0] || [];
-    let monthCol = -1;
-    let nameCol = -1;
-
-    for (let c = 0; c < headerRow.length; c++) {
-      const h = String(headerRow[c] || '').trim().toLowerCase();
-      if (h === monthName.toLowerCase() || h === monthName.substring(0, 3).toLowerCase()) {
-        monthCol = c;
-      }
-      if (h === 'name' || h === 'person' || h === 'employee') {
-        nameCol = c;
-      }
-    }
-
-    if (monthCol >= 0) {
-      // Found month as column header — each row has name + group per month
-      if (nameCol < 0) nameCol = 0; // assume first col is name
-      for (let r = 1; r < rotData.length; r++) {
-        const name = String(rotData[r][nameCol] || '').trim();
-        const group = String(rotData[r][monthCol] || '').trim();
-        if (name && group) {
-          map.set(name, group);
-        }
-      }
-      console.log(`[Personnel] Rotation: found ${map.size} name->group mappings (month col ${monthCol})`);
-      return map;
-    }
-
-    // Strategy 2: Months as rows, groups as values
-    // Look for the month name in any cell and read the adjacent data
-    for (let r = 0; r < rotData.length; r++) {
-      for (let c = 0; c < rotData[r].length; c++) {
-        const cell = String(rotData[r][c] || '').trim();
-        if (cell.toLowerCase() === monthName.toLowerCase()) {
-          // Found month — try to read group assignments from this row or section
-          console.log(`[Personnel] Rotation: found "${monthName}" at row ${r} col ${c}`);
-          // Read subsequent cells as group:name pairs or similar
-          // This needs more structure analysis
-          break;
-        }
-      }
-    }
-
-    console.log(`[Personnel] Rotation: could not parse — using fallback groups`);
-    return map;
   }
 
   // ── Contacts Parsing ────────────────────────────────────────────────────

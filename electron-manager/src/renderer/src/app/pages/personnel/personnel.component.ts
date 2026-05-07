@@ -6,7 +6,7 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
 const CONTACTS_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BE445C5F4-C235-45F7-8D29-F0613E875FA0%7D&file=EMERGENCY%20CONTACT%20LIST%20-%20EDITED%2011_2024.xlsx&action=default&mobileredirect=true';
 
 const SHIFT_LABELS: Record<string, string> = {
-  'D': 'Day Shift', 'N': 'Night Shift', 'U': 'Off', 'P': 'PTO', 'T': 'Training', '': 'Off',
+  'D': 'Day Shift', 'N': 'Night Shift', 'U': 'Off', 'P': 'PTO', 'T': 'Training', 'OCM': 'On Call Manager', '': 'Off',
 };
 
 @Component({
@@ -53,19 +53,39 @@ const SHIFT_LABELS: Record<string, string> = {
           </div>
         </div>
 
+        <!-- On Call Manager today -->
+        <div class="section" *ngIf="status?.status === 'available' && onCallManagerToday.length > 0">
+          <h2 class="section-title">
+            <span class="material-icons section-icon">support_agent</span>
+            On Call Manager
+          </h2>
+          <div class="on-shift-chips">
+            <div class="person-chip" *ngFor="let p of onCallManagerToday">
+              <span class="chip-group group-ocm">OCM</span>
+              <span class="chip-name">{{ p.name }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Full schedule table -->
         <div class="section" *ngIf="status?.status === 'available'">
-          <h2 class="section-title">
-            <span class="material-icons section-icon">event_note</span>
-            Schedule
-          </h2>
+          <div class="schedule-header-row">
+            <h2 class="section-title">
+              <span class="material-icons section-icon">event_note</span>
+              Schedule
+            </h2>
+            <div class="month-selector">
+              <button *ngFor="let m of monthOptions"
+                      class="month-btn"
+                      [class.active]="m.idx === selectedMonth"
+                      (click)="selectMonth(m.idx)">
+                {{ m.label }}
+              </button>
+            </div>
+          </div>
           <div class="schedule-table-wrap">
             <table class="schedule-table">
               <thead>
-                <tr class="month-row">
-                  <th class="th-group th-month-spacer" colspan="2"></th>
-                  <th *ngFor="let m of monthHeaders" [attr.colspan]="m.span" class="th-month">{{ m.name }}</th>
-                </tr>
                 <tr>
                   <th class="th-group">Group</th>
                   <th class="th-name">Name</th>
@@ -84,12 +104,12 @@ const SHIFT_LABELS: Record<string, string> = {
                   </tr>
                   <tr *ngFor="let p of getGroupMembers(group)" class="person-row">
                     <td class="td-group">
-                      <span class="group-badge" [class]="'group-' + p.group.toLowerCase()">{{ p.group.charAt(0) }}</span>
+                      <span class="group-badge" [class]="'group-' + group.toLowerCase()">{{ groupBadge(group) }}</span>
                     </td>
                     <td class="td-name">{{ p.name }}</td>
-                    <td *ngFor="let s of p.schedule; let i = index"
+                    <td *ngFor="let s of getMonthSchedule(p); let i = index"
                         class="td-shift" [class]="getShiftClass(s.shift)"
-                        [class.today]="scheduleDays[i]?.isToday || false"
+                        [class.today]="scheduleDays[i] && scheduleDays[i].isToday"
                         [title]="getShiftLabel(s.shift)">
                       {{ s.shift || '-' }}
                     </td>
@@ -106,6 +126,7 @@ const SHIFT_LABELS: Record<string, string> = {
             <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> P — PTO</span>
             <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> T — Training</span>
             <span class="legend-item"><span class="legend-dot" style="background:#71717a"></span> U — Unavailable</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#ec4899"></span> OCM — On Call Manager</span>
             <span class="legend-item"><span class="legend-swatch" style="background:#fef08a"></span> Outage Dates</span>
             <span class="legend-item"><span class="legend-swatch" style="background:#bbf7d0"></span> Pay Period Start</span>
             <span class="legend-item"><span class="legend-swatch" style="background:#bfdbfe"></span> Holiday</span>
@@ -243,7 +264,8 @@ const SHIFT_LABELS: Record<string, string> = {
     .group-b { background: #22c55e; }
     .group-c { background: #f59e0b; }
     .group-d { background: #ef4444; }
-    .group-relief { background: #8b5cf6; }
+    .group-rel { background: #8b5cf6; }
+    .group-ocm { background: #ec4899; }
 
     /* Schedule table */
     .schedule-table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 10px; }
@@ -254,12 +276,19 @@ const SHIFT_LABELS: Record<string, string> = {
       text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;
       border-bottom: 1px solid var(--border-color); white-space: nowrap;
     }
-    .month-row .th-month-spacer { position: sticky; left: 0; z-index: 3; background: var(--bg-secondary); }
-    .th-month {
-      text-align: center; font-size: 12px; font-weight: 700; color: var(--accent-primary);
-      padding: 6px 4px; border-bottom: 2px solid var(--accent-primary);
-      background: var(--bg-secondary); letter-spacing: 0.5px;
+    .schedule-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+    .schedule-header-row .section-title { margin-bottom: 0; }
+    .month-selector {
+      display: flex; gap: 2px; padding: 2px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; flex-wrap: wrap;
     }
+    .month-btn {
+      background: transparent; border: none; color: var(--text-muted);
+      padding: 5px 10px; font-size: 11px; font-weight: 600; border-radius: 5px;
+      cursor: pointer; transition: all 120ms;
+    }
+    .month-btn:hover { color: var(--text-primary); background: var(--bg-secondary); }
+    .month-btn.active { background: var(--accent-primary); color: #fff; }
+
     .th-group { width: 50px; text-align: center; position: sticky; left: 0; z-index: 2; background: var(--bg-secondary); }
     .th-name { text-align: left; min-width: 100px; position: sticky; left: 50px; z-index: 2; background: var(--bg-secondary); }
     .th-day { text-align: center; min-width: 60px; }
@@ -293,6 +322,7 @@ const SHIFT_LABELS: Record<string, string> = {
     .shift-off { color: var(--text-muted); }
     .shift-pto { color: #3b82f6; }
     .shift-training { color: #f59e0b; }
+    .shift-ocm { color: #ec4899; font-size: 9px; }
 
     /* Contacts table */
     .contacts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -337,16 +367,28 @@ export class PersonnelComponent implements OnInit {
   contactsError = '';
   activeTab: 'schedule' | 'contacts' = 'schedule';
 
-  // Pre-computed to avoid recalculation on every change detection
-  groups: string[] = [];
-  scheduleDays: { dayName: string; dayNum: string; isToday: boolean; month: string }[] = [];
-  monthHeaders: { name: string; span: number }[] = [];
-  groupMembersMap: Map<string, PersonnelEntry[]> = new Map();
+  selectedMonth: number = new Date().getMonth();
+  monthOptions: { idx: number; label: string }[] = [];
 
-  constructor(private electronService: ElectronService) {}
+  // Pre-computed for the selected month to avoid recalculation on every change detection
+  groups: string[] = [];
+  scheduleDays: { date: string; dayName: string; dayNum: string; isToday: boolean }[] = [];
+  groupMembersMap: Map<string, PersonnelEntry[]> = new Map();
+  /** Per-person, schedule slice that matches scheduleDays for the selected month. */
+  private personMonthSchedule: Map<string, { date: string; shift: any }[]> = new Map();
+
+  constructor(private electronService: ElectronService) {
+    const fmt = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    this.monthOptions = fmt.map((label, idx) => ({ idx, label }));
+  }
 
   ngOnInit(): void {
     this.loadSchedule();
+  }
+
+  selectMonth(idx: number): void {
+    this.selectedMonth = idx;
+    this.computeDerived();
   }
 
   private computeDerived(): void {
@@ -354,39 +396,64 @@ export class PersonnelComponent implements OnInit {
       this.groups = [];
       this.scheduleDays = [];
       this.groupMembersMap = new Map();
+      this.personMonthSchedule = new Map();
       return;
     }
 
-    const g = new Set(this.status.allPersonnel.map(p => p.group).filter(Boolean));
-    this.groups = Array.from(g).sort();
+    const monthKey = String(this.selectedMonth);
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+    // Build scheduleDays for the selected month from any one person's full-year schedule
     const first = this.status.allPersonnel[0];
-    const today = new Date().toISOString().split('T')[0];
-    this.scheduleDays = first?.schedule?.map(s => {
+    const monthEntries = first?.schedule?.filter(s => {
       const d = new Date(s.date + 'T12:00:00');
-      return {
-        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        dayNum: d.getDate().toString(),
-        month: d.toLocaleDateString('en-US', { month: 'short' }),
-        isToday: s.date === today,
-      };
+      return d.getMonth() === this.selectedMonth;
     }) || [];
 
-    // Build month header spans
-    this.monthHeaders = [];
-    let currentMonth = '';
-    for (const day of this.scheduleDays) {
-      if (day.month !== currentMonth) {
-        this.monthHeaders.push({ name: day.month, span: 1 });
-        currentMonth = day.month;
-      } else {
-        this.monthHeaders[this.monthHeaders.length - 1].span++;
-      }
+    this.scheduleDays = monthEntries.map(s => {
+      const d = new Date(s.date + 'T12:00:00');
+      return {
+        date: s.date,
+        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dayNum: d.getDate().toString(),
+        isToday: s.date === todayStr,
+      };
+    });
+
+    // Each person's schedule slice for the selected month, mapped by name
+    this.personMonthSchedule = new Map();
+    for (const p of this.status.allPersonnel) {
+      const slice = p.schedule.filter(s => {
+        const d = new Date(s.date + 'T12:00:00');
+        return d.getMonth() === this.selectedMonth;
+      });
+      this.personMonthSchedule.set(p.name, slice);
     }
 
+    // Group people by their group for the SELECTED month
+    const groupsByPerson = new Map<string, string>();
+    for (const p of this.status.allPersonnel) {
+      const grp = p.groupByMonth?.[monthKey] || p.group;
+      if (grp) groupsByPerson.set(p.name, grp);
+    }
+
+    const uniqueGroups = new Set(groupsByPerson.values());
+    this.groups = Array.from(uniqueGroups).sort();
+
+    // Sort each group's members by the selected month's row index so the order
+    // matches the Excel layout for that month (top=lead, middle=CRO, bottom=AO).
+    // People not in the selected month's roster sort to the end.
     this.groupMembersMap = new Map();
     for (const group of this.groups) {
-      this.groupMembersMap.set(group, this.status.allPersonnel.filter(p => p.group === group));
+      const members = this.status.allPersonnel
+        .filter(p => groupsByPerson.get(p.name) === group)
+        .sort((a, b) => {
+          const aIdx = a.monthOrder?.[monthKey] ?? Number.MAX_SAFE_INTEGER;
+          const bIdx = b.monthOrder?.[monthKey] ?? Number.MAX_SAFE_INTEGER;
+          return aIdx - bIdx;
+        });
+      this.groupMembersMap.set(group, members);
     }
   }
 
@@ -394,8 +461,22 @@ export class PersonnelComponent implements OnInit {
     return this.groupMembersMap.get(group) || [];
   }
 
+  getMonthSchedule(person: PersonnelEntry): { date: string; shift: any }[] {
+    return this.personMonthSchedule.get(person.name) || [];
+  }
+
+  groupBadge(group: string): string {
+    if (group === 'OCM') return 'O';
+    if (group === 'Rel') return 'R';
+    return group.charAt(0);
+  }
+
+  get onCallManagerToday(): PersonnelEntry[] {
+    return this.status?.allPersonnel?.filter(p => p.todayShift === 'OCM') || [];
+  }
+
   getShiftClass(code: string): string {
-    const map: Record<string, string> = { 'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training' };
+    const map: Record<string, string> = { 'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training', 'OCM': 'shift-ocm' };
     return map[code] || 'shift-off';
   }
 

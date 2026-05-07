@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.mappers.permits.LotoSnapshotMapper;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -30,6 +31,7 @@ public class LotoMapper implements BaseMapper{
     private final NgValueService valueService;
     private final NgEquipmentService equipmentService;
     private final NgLotoService lotoService;
+    private final LotoSnapshotMapper lotoSnapshotMapper;
 
     public LotoMapper(ModelMapper mapper,
                       @Lazy NgLotoPointService lotoPointService,
@@ -38,7 +40,8 @@ public class LotoMapper implements BaseMapper{
                       @Lazy NgUserService userService,
                       @Lazy NgValueService valueService,
                       @Lazy NgEquipmentService equipmentService,
-                      @Lazy NgLotoService lotoService) {
+                      @Lazy NgLotoService lotoService,
+                      @Lazy LotoSnapshotMapper lotoSnapshotMapper) {
         this.mapper = mapper;
         this.lotoPointService = lotoPointService;
         this.lockService = lockService;
@@ -47,6 +50,7 @@ public class LotoMapper implements BaseMapper{
         this.valueService = valueService;
         this.equipmentService = equipmentService;
         this.lotoService = lotoService;
+        this.lotoSnapshotMapper = lotoSnapshotMapper;
     }
 
     @Override
@@ -77,8 +81,14 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getRequestor()!=null) dto.setLotoRequestor(loto.getRequestor().getName());
     if(loto.getDateCreated()!=null) dto.setDate(loto.getDateCreated().toString());
     if(loto.getBoxNumber()!=null && loto.getBoxNumber()!=0) dto.setBoxNumber(loto.getBoxNumber() );
+    dto.setWasModifiedDuringActive(loto.getWasModifiedDuringActive());
+    dto.setCloseDisposition(loto.getCloseDisposition());
 
-
+    if(loto.getSnapshots()!=null && !loto.getSnapshots().isEmpty()) {
+        dto.setSnapshots(loto.getSnapshots().stream()
+                .map(lotoSnapshotMapper::convertToDto)
+                .collect(Collectors.toList()));
+    }
 
     return dto;
 }

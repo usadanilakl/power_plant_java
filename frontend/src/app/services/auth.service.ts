@@ -171,4 +171,12 @@ export class AuthService {
   hasFullAccess(): boolean {
     return this.currentUser?.accessLevel === 'FULL';
   }
+
+  /** Case-insensitive role check against the current user's role list. */
+  hasRole(role: string): boolean {
+    if (!role) return false;
+    const roles = this.currentUser?.roles ?? [];
+    const target = role.toLowerCase();
+    return roles.some(r => r?.toLowerCase() === target);
+  }
 }

@@ -45,6 +45,18 @@ public class Loto extends BasePermitEntity {
     private String date;
     private Integer boxNumber;
 
+    /** Flipped to true any time a LOTO point is added or removed while permitStatus is Active or Test. */
+    @Column(name = "was_modified_during_active")
+    private Boolean wasModifiedDuringActive = Boolean.FALSE;
+
+    /**
+     * Computed at Close-time. One of:
+     *   READY_FOR_APPROVAL — no modifications during Active; the source standard is a candidate to advance.
+     *   NEEDS_REVIEW       — modifications happened during Active; standard may need rework.
+     */
+    @Column(name = "close_disposition", length = 32)
+    private String closeDisposition;
+
 
     /*********************************************************************************************************************
      * TRANSIENT FIELDS
@@ -275,10 +287,36 @@ public class Loto extends BasePermitEntity {
         return this.isMutable ? this.getLatestSnapshot() : this.duplicateLatestSnapshot();
     }
 
+    public LotoSnapshot recordCaApprovedForHanging(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setCaApprovedForHangingBy(user);
+        s.setCaApprovedForHangingAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordCaActivated(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setCaActivatedBy(user);
+        s.setCaActivatedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
     public LotoSnapshot recordHung(String user) {
         LotoSnapshot s = lifecycleSnapshot();
         s.setHungBy(user);
         s.setHungAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot markPointHung(Long pointId, String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setPointHungBy(pointId, user);
+        return s;
+    }
+
+    public LotoSnapshot markPointVerified(Long pointId, String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setPointVerifiedBy(pointId, user);
         return s;
     }
 

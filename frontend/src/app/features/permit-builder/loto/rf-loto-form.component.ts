@@ -1,7 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { LotoDto, PersonnelSignEntry } from '../../../models/loto/loto.model';
-import { LotoSnapshotDto } from '../../../models/loto/loto-snapshot.model';
+import { LotoSnapshotDto, PointPrerequisiteDto } from '../../../models/loto/loto-snapshot.model';
+import { WalkdownChecklistDto } from '../../../models/loto/walkdown-checklist.model';
+import { WalkdownService } from '../../../services/loto/walkdown.service';
 import { RfFormField } from '../../../models/ui/form-field.model';
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { LotoPointsPanelComponent } from './loto-points-panel/loto-points-panel.component';
@@ -104,6 +107,19 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       }
 
+      <!-- Close-time disposition banner -->
+      @if (closeDispositionMessage(); as msg) {
+        <div class="close-disposition" [class.disposition-ok]="entity().closeDisposition === 'READY_FOR_APPROVAL'"
+             [class.disposition-warn]="entity().closeDisposition === 'NEEDS_REVIEW'">
+          <span>{{ msg }}</span>
+          @if (entity().sourceStandardId) {
+            <button mat-stroked-button (click)="proposeChangesToStandard()">
+              {{ entity().closeDisposition === 'NEEDS_REVIEW' ? 'Propose Changes to Standard' : 'Open Source Standard' }}
+            </button>
+          }
+        </div>
+      }
+
       <!-- EDIT VIEW — shown when entity is selected -->
       @if (entity().id) {
         <mat-tab-group>
@@ -176,11 +192,67 @@ import { MatIconModule } from '@angular/material/icon';
                 <thead><tr><th>Event</th><th>By</th><th>At</th><th></th></tr></thead>
                 <tbody>
                   <tr>
+                    <td>CA Approved for Hanging</td>
+                    <td>{{ latestEvent('caApprovedForHangingBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('caApprovedForHangingAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('ca-approve-hanging')" (click)="recordCaApprovedForHanging()">Approve for Hanging</button>
+                    </td>
+                  </tr>
+                  <tr>
                     <td>Hung By</td>
                     <td>{{ latestEvent('hungBy') || '—' }}</td>
                     <td>{{ formatTime(latestEvent('hungAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('hung')" (click)="recordHung()">Sign as Hung</button>
+                      <span class="progress-note">{{ pointsHungProgress() }}</span>
+                    </td>
+                  </tr>
+                  <tr class="point-list-row">
+                    <td colspan="4">
+                      <details open>
+                        <summary>Per-point Hung status</summary>
+                        @if (entity().lotoPoints?.length) {
+                          <table class="point-status-table">
+                            <thead><tr><th>Tag #</th><th>Description</th><th>Prerequisites</th><th>Hung By</th><th>At</th><th></th></tr></thead>
+                            <tbody>
+                              @for (p of entity().lotoPoints; track p.id) {
+                                <tr [class.point-done]="isPointHung(p.id)" [class.point-blocked]="!isPointHung(p.id) && hangPredecessorBlock(p.id)">
+                                  <td>{{ p.tagNumber }}</td>
+                                  <td>{{ p.description }}</td>
+                                  <td>
+                                    @if (hangPredecessorBlock(p.id); as block) {
+                                      <div class="prereq-block">⏸ {{ block }}</div>
+                                    }
+                                    @for (cond of safetyConditionsFor(p.id); track cond) {
+                                      <label class="cond-row">
+                                        <input type="checkbox"
+                                               [disabled]="isPointHung(p.id) || !canRecord('point-hung')"
+                                               [checked]="isHangCondAcked(p.id, cond)"
+                                               (change)="toggleHangCond(p.id, cond)">
+                                        <span>{{ cond }}</span>
+                                      </label>
+                                    }
+                                  </td>
+                                  <td>{{ pointHungBy(p.id) || '—' }}</td>
+                                  <td>{{ formatTime(pointHungAt(p.id)) || '—' }}</td>
+                                  <td>
+                                    @if (!isPointHung(p.id)) {
+                                      <button mat-stroked-button
+                                              [disabled]="!canMarkPointHung(p.id)"
+                                              (click)="markPointHung(p.id)">Mark Hung</button>
+                                    } @else {
+                                      <span class="check">✓</span>
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        } @else {
+                          <p class="empty-text">No LOTO points.</p>
+                        }
+                      </details>
                     </td>
                   </tr>
                   <tr>
@@ -189,6 +261,62 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatTime(latestEvent('verifiedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('verified')" (click)="recordVerified()">Sign as Verified</button>
+                      <span class="progress-note">{{ pointsVerifiedProgress() }}</span>
+                    </td>
+                  </tr>
+                  <tr class="point-list-row">
+                    <td colspan="4">
+                      <details open>
+                        <summary>Per-point Verified status</summary>
+                        @if (entity().lotoPoints?.length) {
+                          <table class="point-status-table">
+                            <thead><tr><th>Tag #</th><th>Description</th><th>Prerequisites</th><th>Verified By</th><th>At</th><th></th></tr></thead>
+                            <tbody>
+                              @for (p of entity().lotoPoints; track p.id) {
+                                <tr [class.point-done]="isPointVerified(p.id)" [class.point-blocked]="!isPointVerified(p.id) && verifyPredecessorBlock(p.id)">
+                                  <td>{{ p.tagNumber }}</td>
+                                  <td>{{ p.description }}</td>
+                                  <td>
+                                    @if (verifyPredecessorBlock(p.id); as block) {
+                                      <div class="prereq-block">⏸ {{ block }}</div>
+                                    }
+                                    @for (cond of safetyConditionsFor(p.id); track cond) {
+                                      <label class="cond-row">
+                                        <input type="checkbox"
+                                               [disabled]="isPointVerified(p.id) || !canRecord('point-verified')"
+                                               [checked]="isVerifyCondAcked(p.id, cond)"
+                                               (change)="toggleVerifyCond(p.id, cond)">
+                                        <span>{{ cond }}</span>
+                                      </label>
+                                    }
+                                  </td>
+                                  <td>{{ pointVerifiedBy(p.id) || '—' }}</td>
+                                  <td>{{ formatTime(pointVerifiedAt(p.id)) || '—' }}</td>
+                                  <td>
+                                    @if (!isPointVerified(p.id)) {
+                                      <button mat-stroked-button
+                                              [disabled]="!canMarkPointVerified(p.id)"
+                                              (click)="markPointVerified(p.id)">Mark Verified</button>
+                                    } @else {
+                                      <span class="check">✓</span>
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        } @else {
+                          <p class="empty-text">No LOTO points.</p>
+                        }
+                      </details>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>CA Activated</td>
+                    <td>{{ latestEvent('caActivatedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('caActivatedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('ca-activate')" (click)="recordCaActivated()">Activate as CA</button>
                     </td>
                   </tr>
                   <tr>
@@ -284,6 +412,78 @@ import { MatIconModule } from '@angular/material/icon';
               </div>
             }
           </mat-tab>
+          <mat-tab label="Walkdowns ({{ walkdowns().length }})">
+            <div class="walkdown-panel">
+              <div class="walkdown-header">
+                <h3>Walkdowns</h3>
+                <button mat-raised-button color="primary"
+                        [disabled]="!canStartWalkdown()"
+                        (click)="startWalkdown()">
+                  <mat-icon>add</mat-icon> Start Walkdown
+                </button>
+              </div>
+
+              @if (walkdowns().length === 0) {
+                <p class="empty-text">No walkdowns yet. Start one once the LOTO has been hung.</p>
+              }
+
+              @for (w of walkdowns(); track w.id) {
+                <div class="walkdown-card" [class.completed]="w.completed">
+                  <div class="walkdown-card-header">
+                    <strong>Walkdown #{{ w.id }}</strong>
+                    @if (w.completed) {
+                      <span class="badge-completed">COMPLETED</span>
+                    } @else {
+                      <span class="badge-active">IN PROGRESS</span>
+                    }
+                    <span class="walkdown-meta">
+                      Requested by {{ w.requestedBy }} at {{ formatTime(w.requestedAt) }}
+                      @if (w.completed) {
+                        · Completed by {{ w.completedBy }} at {{ formatTime(w.completedAt) }}
+                      }
+                    </span>
+                    <span class="spacer"></span>
+                    <button mat-stroked-button (click)="printWalkdown(w)">
+                      <mat-icon>print</mat-icon> Print
+                    </button>
+                  </div>
+
+                  <table class="walkdown-points-table">
+                    <thead>
+                      <tr><th style="width: 14%">Tag #</th><th style="width: 36%">Description</th><th style="width: 12%">Checked</th><th style="width: 18%">By</th><th>At</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (p of orderedPointsFor(w); track p.id) {
+                        <tr [class.point-checked]="walkdownPointChecked(w, p.id)">
+                          <td>{{ p.tagNumber }}</td>
+                          <td>{{ p.description }}</td>
+                          <td>
+                            <input type="checkbox"
+                                   [disabled]="w.completed"
+                                   [checked]="walkdownPointChecked(w, p.id)"
+                                   (change)="toggleWalkdownPoint(w, p.id, $any($event.target).checked)">
+                          </td>
+                          <td>{{ walkdownPointBy(w, p.id) || '—' }}</td>
+                          <td>{{ formatTime(walkdownPointAt(w, p.id)) || '—' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+
+                  @if (!w.completed) {
+                    <div class="walkdown-actions">
+                      <button mat-raised-button color="primary"
+                              [disabled]="!walkdownAllChecked(w)"
+                              (click)="completeWalkdown(w)">
+                        Complete &amp; Lock
+                      </button>
+                      <span class="walkdown-progress">{{ walkdownProgressText(w) }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </mat-tab>
           <mat-tab label="History ({{ entity().snapshots?.length || 0 }})">
             <div class="snapshot-panel">
               @if ((entity().snapshots?.length ?? 0) === 0) {
@@ -358,6 +558,47 @@ import { MatIconModule } from '@angular/material/icon';
     .lifecycle-table th { color: #aaa; font-weight: 500; }
     .lifecycle-table td:first-child { color: #ccc; font-weight: 600; width: 22%; }
     .auto-note { color: #777; font-style: italic; font-size: 12px; }
+    .progress-note { margin-left: 10px; color: #888; font-size: 12px; }
+
+    .point-list-row td { background: #141414; padding: 4px 12px 12px; }
+    .point-list-row summary { cursor: pointer; color: #999; font-size: 12px; padding: 6px 0; }
+    .point-list-row summary:hover { color: #ccc; }
+
+    .point-status-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .point-status-table th, .point-status-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #2a2a2a; font-size: 12px; }
+    .point-status-table th { color: #888; font-weight: 500; }
+    .point-status-table tr.point-done { color: #999; background: rgba(46, 125, 50, 0.07); }
+    .point-status-table tr.point-blocked { background: rgba(255, 152, 0, 0.06); }
+    .point-status-table .check { color: #66bb6a; font-weight: bold; }
+    .prereq-block { color: #ffb74d; font-size: 11px; margin-bottom: 4px; }
+    .cond-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #ccc; padding: 2px 0; }
+    .cond-row input[type="checkbox"] { margin: 0; }
+
+    .close-disposition {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      border-radius: 6px; margin: 8px 12px 0; font-size: 13px;
+    }
+    .close-disposition.disposition-ok { background: rgba(46, 125, 50, 0.18); border: 1px solid #2e7d32; color: #c8e6c9; }
+    .close-disposition.disposition-warn { background: rgba(245, 124, 0, 0.18); border: 1px solid #f57c00; color: #ffe0b2; }
+    .close-disposition span { flex: 1; }
+
+    .walkdown-panel { padding: 16px; }
+    .walkdown-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .walkdown-header h3 { margin: 0; color: #82b1ff; }
+    .walkdown-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+    .walkdown-card.completed { opacity: 0.85; border-color: #2e7d32; background: #16201a; }
+    .walkdown-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .walkdown-card-header strong { color: #ddd; }
+    .walkdown-meta { color: #888; font-size: 12px; flex-shrink: 0; }
+    .walkdown-card-header .spacer { flex: 1; }
+    .badge-completed { background: #2e7d32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-active { background: #f57c00; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .walkdown-points-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .walkdown-points-table th, .walkdown-points-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #2a2a2a; }
+    .walkdown-points-table th { color: #aaa; font-weight: 500; }
+    .walkdown-points-table tr.point-checked { color: #999; background: rgba(46, 125, 50, 0.07); }
+    .walkdown-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a2a2a; }
+    .walkdown-progress { color: #888; font-size: 12px; }
 
     .snapshot-table { width: 100%; border-collapse: collapse; }
     .snapshot-table th, .snapshot-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; font-size: 13px; vertical-align: top; }
@@ -384,6 +625,8 @@ export class RfLotoFormComponent {
   private currentService = inject(CurrentLotoService);
   private lotoService = inject(LotoService);
   private lotoStandardService = inject(LotoStandardService);
+  private walkdownService = inject(WalkdownService);
+  private router = inject(Router);
 
   showStandardSelector = signal(false);
   showSignOnForm = signal(false);
@@ -423,15 +666,17 @@ export class RfLotoFormComponent {
 
   changeStatus(status: string): void {
     const entity = this.entity();
-    if (entity?.id) {
-      this.lotoService.changeStatus(entity.id, status).subscribe(res => {
-        if (res.responseData) {
-          const updated = LotoDto.fromJson(res.responseData);
-          this.currentService.updateLotoInList(updated);
-          this.currentService.setCurrentLoto(updated);
-        }
-      });
-    }
+    if (!entity?.id) return;
+    const current = this.statusName();
+    const action = status === current ? `re-apply ${status}` : `change status from ${current} to ${status}`;
+    if (!confirm(`Are you sure you want to ${action}? This is an irreversible operation.`)) return;
+    this.lotoService.changeStatus(entity.id, status).subscribe(res => {
+      if (res.responseData) {
+        const updated = LotoDto.fromJson(res.responseData);
+        this.currentService.updateLotoInList(updated);
+        this.currentService.setCurrentLoto(updated);
+      }
+    });
   }
 
   loadStandardsAndShow(): void {
@@ -512,13 +757,31 @@ export class RfLotoFormComponent {
     return d.toLocaleString();
   }
 
-  canRecord(event: 'hung' | 'verified' | 'transfer' | 'accept' | 'release' | 'release-ca' | 'remove-locks'): boolean {
+  canRecord(event: 'ca-approve-hanging' | 'ca-activate' | 'hung' | 'verified' | 'point-hung' | 'point-verified' | 'transfer' | 'accept' | 'release' | 'release-ca' | 'remove-locks'): boolean {
     const s = this.statusName();
     if (s === 'Closed') return false;
     switch (event) {
+      case 'ca-approve-hanging':
+        return s === 'Building' && !this.latestEvent('caApprovedForHangingBy');
+      case 'point-hung':
+        return s === 'Building' && !!this.latestEvent('caApprovedForHangingBy');
       case 'hung':
-      case 'verified':
+        return s === 'Building'
+          && !!this.latestEvent('caApprovedForHangingBy')
+          && this.allPointsHung()
+          && (this.entity().lotoPoints?.length ?? 0) > 0;
+      case 'point-verified':
         return s === 'Building';
+      case 'verified':
+        return s === 'Building'
+          && this.allPointsVerified()
+          && (this.entity().lotoPoints?.length ?? 0) > 0;
+      case 'ca-activate':
+        // CA can activate once Hung + Verified are recorded, and not yet activated
+        return s === 'Building'
+          && !!this.latestEvent('hungBy')
+          && !!this.latestEvent('verifiedBy')
+          && !this.latestEvent('caActivatedBy');
       case 'transfer':
       case 'accept':
       case 'release':
@@ -530,13 +793,157 @@ export class RfLotoFormComponent {
     return false;
   }
 
+  // ---- Per-point helpers ----
+
+  /**
+   * Returns the latest snapshot's per-point map for the given key
+   * (newest snapshot first; first non-empty wins, since clearLifecycleEventFields()
+   * resets these on each new snapshot).
+   */
+  private latestPointMap(field: 'pointHungBy' | 'pointHungAt' | 'pointVerifiedBy' | 'pointVerifiedAt'): Record<number, string> {
+    const snaps = [...(this.entity().snapshots ?? [])].sort((a, b) => {
+      const ta = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+      const tb = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+      return tb - ta;
+    });
+    for (const s of snaps) {
+      const m = (s as any)[field];
+      if (m && Object.keys(m).length > 0) return m;
+    }
+    return {};
+  }
+
+  pointHungBy(pointId: number): string | null { return this.latestPointMap('pointHungBy')[pointId] ?? null; }
+  pointHungAt(pointId: number): string | null { return this.latestPointMap('pointHungAt')[pointId] ?? null; }
+  pointVerifiedBy(pointId: number): string | null { return this.latestPointMap('pointVerifiedBy')[pointId] ?? null; }
+  pointVerifiedAt(pointId: number): string | null { return this.latestPointMap('pointVerifiedAt')[pointId] ?? null; }
+
+  // ---- Prerequisites ----
+
+  /** Read prereq spec from the latest snapshot's pointPrerequisites map. */
+  private prereqFor(pointId: number): PointPrerequisiteDto | null {
+    const snaps = [...(this.entity().snapshots ?? [])].sort((a, b) => {
+      const ta = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+      const tb = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+      return tb - ta;
+    });
+    const latest = snaps[0];
+    if (!latest || !latest.pointPrerequisites) return null;
+    return latest.pointPrerequisites[pointId] ?? null;
+  }
+
+  safetyConditionsFor(pointId: number): string[] {
+    const spec = this.prereqFor(pointId);
+    return spec?.safetyConditions ?? [];
+  }
+
+  /**
+   * Returns a human-readable predecessor block message if any required predecessor
+   * point isn't yet hung; null when all are satisfied (or no prereqs declared).
+   */
+  hangPredecessorBlock(pointId: number): string | null {
+    const spec = this.prereqFor(pointId);
+    if (!spec || !spec.requiredPointIds?.length) return null;
+    const points = this.entity().lotoPoints ?? [];
+    const tagFor = (id: number) => points.find(p => p.id === id)?.tagNumber ?? `#${id}`;
+    const missing = spec.requiredPointIds.filter(id => !this.isPointHung(id));
+    if (missing.length === 0) return null;
+    return `Hang first: ${missing.map(tagFor).join(', ')}`;
+  }
+
+  verifyPredecessorBlock(pointId: number): string | null {
+    const spec = this.prereqFor(pointId);
+    if (!spec || !spec.requiredPointIds?.length) return null;
+    const points = this.entity().lotoPoints ?? [];
+    const tagFor = (id: number) => points.find(p => p.id === id)?.tagNumber ?? `#${id}`;
+    const missing = spec.requiredPointIds.filter(id => !this.isPointVerified(id));
+    if (missing.length === 0) return null;
+    return `Verify first: ${missing.map(tagFor).join(', ')}`;
+  }
+
+  // Per-point in-memory acknowledgement state (cleared on point save).
+  private hangAckMap = signal<Record<number, Set<string>>>({});
+  private verifyAckMap = signal<Record<number, Set<string>>>({});
+
+  isHangCondAcked(pointId: number, cond: string): boolean {
+    return this.hangAckMap()[pointId]?.has(cond) ?? false;
+  }
+
+  isVerifyCondAcked(pointId: number, cond: string): boolean {
+    return this.verifyAckMap()[pointId]?.has(cond) ?? false;
+  }
+
+  toggleHangCond(pointId: number, cond: string): void {
+    const map = { ...this.hangAckMap() };
+    const set = new Set(map[pointId] ?? []);
+    if (set.has(cond)) set.delete(cond); else set.add(cond);
+    map[pointId] = set;
+    this.hangAckMap.set(map);
+  }
+
+  toggleVerifyCond(pointId: number, cond: string): void {
+    const map = { ...this.verifyAckMap() };
+    const set = new Set(map[pointId] ?? []);
+    if (set.has(cond)) set.delete(cond); else set.add(cond);
+    map[pointId] = set;
+    this.verifyAckMap.set(map);
+  }
+
+  /** True when the per-point Mark Hung button should be enabled for this point. */
+  canMarkPointHung(pointId: number): boolean {
+    if (!this.canRecord('point-hung')) return false;
+    if (this.isPointHung(pointId)) return false;
+    if (this.hangPredecessorBlock(pointId)) return false;
+    const conds = this.safetyConditionsFor(pointId);
+    return conds.every(c => this.isHangCondAcked(pointId, c));
+  }
+
+  canMarkPointVerified(pointId: number): boolean {
+    if (!this.canRecord('point-verified')) return false;
+    if (this.isPointVerified(pointId)) return false;
+    if (this.verifyPredecessorBlock(pointId)) return false;
+    const conds = this.safetyConditionsFor(pointId);
+    return conds.every(c => this.isVerifyCondAcked(pointId, c));
+  }
+
+  isPointHung(pointId: number): boolean { return !!this.pointHungBy(pointId); }
+  isPointVerified(pointId: number): boolean { return !!this.pointVerifiedBy(pointId); }
+
+  allPointsHung(): boolean {
+    const points = this.entity().lotoPoints ?? [];
+    if (points.length === 0) return false;
+    return points.every(p => this.isPointHung(p.id));
+  }
+
+  allPointsVerified(): boolean {
+    const points = this.entity().lotoPoints ?? [];
+    if (points.length === 0) return false;
+    return points.every(p => this.isPointVerified(p.id));
+  }
+
+  pointsHungProgress(): string {
+    const points = this.entity().lotoPoints ?? [];
+    if (points.length === 0) return '';
+    const hung = points.filter(p => this.isPointHung(p.id)).length;
+    return `${hung} of ${points.length} hung`;
+  }
+
+  pointsVerifiedProgress(): string {
+    const points = this.entity().lotoPoints ?? [];
+    if (points.length === 0) return '';
+    const verified = points.filter(p => this.isPointVerified(p.id)).length;
+    return `${verified} of ${points.length} verified`;
+  }
+
   describeEvents(s: LotoSnapshotDto): string {
     const parts: string[] = [];
     const add = (label: string, by: string | null, at: string | null) => {
       if (by || at) parts.push(`${label}: ${by ?? '?'} (${this.formatTime(at) || '?'})`);
     };
+    add('CA Approved Hanging', s.caApprovedForHangingBy, s.caApprovedForHangingAt);
     add('Hung', s.hungBy, s.hungAt);
     add('Verified', s.verifiedBy, s.verifiedAt);
+    add('CA Activated', s.caActivatedBy, s.caActivatedAt);
     add('Activated', s.activatedBy, s.activatedAt);
     add('Test Started', s.testStartedBy, s.testStartedAt);
     add('Re-Activated', s.reactivatedBy, s.reactivatedAt);
@@ -559,10 +966,62 @@ export class RfLotoFormComponent {
     }
   }
 
+  recordCaApprovedForHanging(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.approveForHanging(id).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  recordCaActivated(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.caActivate(id).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  markPointHung(pointId: number): void {
+    const id = this.entity().id;
+    if (!id) return;
+    const acked = Array.from(this.hangAckMap()[pointId] ?? []);
+    this.lotoService.markPointHung(id, pointId, acked).subscribe({
+      next: res => {
+        this.applyLifecycleResponse(res);
+        // Clear in-memory ack state for this point — it's persisted now.
+        const m = { ...this.hangAckMap() };
+        delete m[pointId];
+        this.hangAckMap.set(m);
+      },
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  markPointVerified(pointId: number): void {
+    const id = this.entity().id;
+    if (!id) return;
+    const acked = Array.from(this.verifyAckMap()[pointId] ?? []);
+    this.lotoService.markPointVerified(id, pointId, acked).subscribe({
+      next: res => {
+        this.applyLifecycleResponse(res);
+        const m = { ...this.verifyAckMap() };
+        delete m[pointId];
+        this.verifyAckMap.set(m);
+      },
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
   recordHung(): void {
     const id = this.entity().id;
     if (!id) return;
-    this.lotoService.markHung(id).subscribe(res => this.applyLifecycleResponse(res));
+    this.lotoService.markHung(id).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err.message),
+    });
   }
 
   recordVerified(): void {
@@ -610,5 +1069,134 @@ export class RfLotoFormComponent {
     const id = this.entity().id;
     if (!id) return;
     this.lotoService.removeLocks(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  // ── Walkdown ──────────────────────────────────────────────────────────────
+
+  walkdowns = signal<WalkdownChecklistDto[]>([]);
+
+  /**
+   * Reload walkdowns whenever the current LOTO id changes. Implemented as a self-firing
+   * computed that watches entity().id; the result is unused but the signal-tracking
+   * ensures Angular re-runs it on every entity change.
+   */
+  private walkdownLoader = computed(() => {
+    const id = this.entity().id;
+    if (id) {
+      this.walkdownService.listForLoto(id).subscribe({
+        next: res => this.walkdowns.set((res.responseData ?? []).map(WalkdownChecklistDto.fromJson)),
+        error: () => this.walkdowns.set([]),
+      });
+    } else {
+      this.walkdowns.set([]);
+    }
+    return id;
+  });
+
+  canStartWalkdown(): boolean {
+    // Touch the loader so it fires on entity changes
+    void this.walkdownLoader();
+    if (!this.entity().id) return false;
+    if (this.statusName() === 'Closed') return false;
+    return !!this.latestEvent('hungBy');
+  }
+
+  startWalkdown(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.walkdownService.request(id).subscribe({
+      next: res => {
+        const w = WalkdownChecklistDto.fromJson(res.responseData);
+        this.walkdowns.set([w, ...this.walkdowns()]);
+      },
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  toggleWalkdownPoint(w: WalkdownChecklistDto, pointId: number, checked: boolean): void {
+    if (w.completed || !w.id) return;
+    this.walkdownService.checkPoint(w.id, pointId, checked).subscribe({
+      next: res => {
+        const updated = WalkdownChecklistDto.fromJson(res.responseData);
+        this.walkdowns.set(this.walkdowns().map(x => x.id === updated.id ? updated : x));
+      },
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  completeWalkdown(w: WalkdownChecklistDto): void {
+    if (!w.id) return;
+    if (!confirm('Complete and lock this walkdown? It cannot be modified after this.')) return;
+    this.walkdownService.complete(w.id).subscribe({
+      next: res => {
+        const updated = WalkdownChecklistDto.fromJson(res.responseData);
+        this.walkdowns.set(this.walkdowns().map(x => x.id === updated.id ? updated : x));
+      },
+      error: err => alert(err?.error?.message ?? err.message),
+    });
+  }
+
+  orderedPointsFor(_w: WalkdownChecklistDto) {
+    return this.entity().lotoPoints ?? [];
+  }
+
+  walkdownPointChecked(w: WalkdownChecklistDto, pointId: number): boolean {
+    return !!w.pointStates?.[pointId]?.checked;
+  }
+  walkdownPointBy(w: WalkdownChecklistDto, pointId: number): string | null {
+    return w.pointStates?.[pointId]?.checkedBy ?? null;
+  }
+  walkdownPointAt(w: WalkdownChecklistDto, pointId: number): string | null {
+    return w.pointStates?.[pointId]?.checkedAt ?? null;
+  }
+  walkdownAllChecked(w: WalkdownChecklistDto): boolean {
+    const points = this.entity().lotoPoints ?? [];
+    if (points.length === 0) return false;
+    return points.every(p => this.walkdownPointChecked(w, p.id));
+  }
+  walkdownProgressText(w: WalkdownChecklistDto): string {
+    const total = (this.entity().lotoPoints ?? []).length;
+    const done = (this.entity().lotoPoints ?? []).filter(p => this.walkdownPointChecked(w, p.id)).length;
+    return `${done} of ${total} points checked`;
+  }
+
+  printWalkdown(w: WalkdownChecklistDto): void {
+    const points = this.entity().lotoPoints ?? [];
+    const rows = points.map(p => {
+      const st = w.pointStates?.[p.id];
+      const mark = st?.checked ? '✓' : '☐';
+      const by = st?.checkedBy ?? '';
+      const at = st?.checkedAt ? this.formatTime(st.checkedAt) : '';
+      return `<tr><td>${p.tagNumber ?? ''}</td><td>${p.description ?? ''}</td><td style="text-align:center">${mark}</td><td>${by}</td><td>${at}</td></tr>`;
+    }).join('');
+    const html = `<html><head><title>Walkdown #${w.id}</title>
+      <style>body{font-family:sans-serif;margin:24px}h1{color:#222;margin:0 0 8px}.meta{color:#555;margin-bottom:18px;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid #ccc;text-align:left}th{background:#f0f0f0}.notes{margin-top:18px;padding:10px;background:#f8f8f8;border-left:4px solid #888;white-space:pre-wrap}</style>
+      </head><body><h1>Walkdown #${w.id}</h1>
+      <div class="meta">Requested by ${w.requestedBy ?? '?'} at ${this.formatTime(w.requestedAt)}
+      ${w.completed ? `· Completed by ${w.completedBy ?? '?'} at ${this.formatTime(w.completedAt)}` : '(IN PROGRESS)'}</div>
+      <table><thead><tr><th>Tag #</th><th>Description</th><th>Checked</th><th>By</th><th>At</th></tr></thead><tbody>${rows}</tbody></table>
+      ${w.notes ? `<div class="notes"><strong>Notes:</strong><br>${w.notes}</div>` : ''}
+      </body></html>`;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) { win.document.open(); win.document.write(html); win.document.close(); win.focus(); win.print(); }
+  }
+
+  // ── Close-time disposition ────────────────────────────────────────────────
+
+  closeDispositionMessage = computed(() => {
+    if (this.statusName() !== 'Closed') return null;
+    if (this.entity().closeDisposition === 'READY_FOR_APPROVAL') {
+      return 'No modifications during Active. Source standard is ready for approval.';
+    }
+    if (this.entity().closeDisposition === 'NEEDS_REVIEW') {
+      return 'Modifications occurred during Active. Test possibly failed — consider applying the modifications back to the source standard.';
+    }
+    return null;
+  });
+
+  proposeChangesToStandard(): void {
+    const stdId = this.entity().sourceStandardId;
+    if (!stdId) { alert('This LOTO has no source standard.'); return; }
+    this.router.navigate(['/loto/loto-standards'], { queryParams: { standardId: stdId } });
   }
 }

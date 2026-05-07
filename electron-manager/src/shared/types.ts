@@ -380,13 +380,18 @@ export interface AppSettings {
 }
 
 // Personnel / Schedule
-export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | '';
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | '';
 
 export interface PersonnelEntry {
   name: string;
-  group: string;        // "A", "B", "C"
+  group: string;        // "A", "B", "C", "D", "Rel", "OCM"
   todayShift: ShiftCode;
-  schedule: { date: string; shift: ShiftCode }[]; // next 7 days
+  schedule: { date: string; shift: ShiftCode }[];
+  /** Group assignment per month index (0-11). Some people rotate groups across months. */
+  groupByMonth?: Record<string, string>;
+  /** Row index within the month's roster (0-based). Used to preserve spreadsheet order
+   *  per month — top=lead, middle=CRO, bottom=AO. Missing if person isn't in that month. */
+  monthOrder?: Record<string, number>;
 }
 
 export interface PersonnelStatus {

@@ -261,13 +261,15 @@ export interface PjmDaAward {
   processedAt?: string;
 }
 
-export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | '';
+export type ShiftCode = 'D' | 'N' | 'U' | 'P' | 'T' | 'OCM' | '';
 
 export interface PersonnelEntry {
   name: string;
   group: string;
   todayShift: ShiftCode;
   schedule: { date: string; shift: ShiftCode }[];
+  groupByMonth?: Record<string, string>;
+  monthOrder?: Record<string, number>;
 }
 
 export interface PersonnelStatus {

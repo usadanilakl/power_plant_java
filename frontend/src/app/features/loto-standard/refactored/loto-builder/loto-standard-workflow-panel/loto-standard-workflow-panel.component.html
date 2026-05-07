@@ -1,0 +1,115 @@
+<div class="workflow-panel">
+  <!-- NEW pending re-approval banner -->
+  @if (isNewPendingReapproval()) {
+    <div class="reapproval-banner">
+      <span class="banner-icon">⚠️</span>
+      <div class="banner-text">
+        <strong>This standard was modified after approval.</strong>
+        It must be re-verified and re-approved before use.
+        @if (standard().currentVersion !== null) {
+          <span class="version-tag">v{{ standard().currentVersion }}</span>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Status badge + action buttons row -->
+  <div class="status-row">
+    <div class="status-block">
+      <span class="status-label">Status</span>
+      <span class="status-badge" [style.background-color]="currentStatusColor()">
+        {{ currentStatusName() }}
+      </span>
+      @if (standard().currentVersion && standard().currentVersion! > 1) {
+        <span class="version-pill">v{{ standard().currentVersion }}</span>
+      }
+    </div>
+
+    @if (isUnsaved()) {
+      <div class="unsaved-hint">Save the standard to enable workflow actions.</div>
+    } @else if (actions().length === 0) {
+      <div class="terminal-hint">
+        @if (isApproved()) {
+          ✓ Approved — ready to spawn LOTO instances. Edits will reset to re-approval.
+        } @else {
+          No actions available from this status.
+        }
+      </div>
+    } @else {
+      <div class="actions">
+        @for (action of actions(); track action.targetStatus) {
+          <button
+            class="action-btn"
+            [class.disabled]="!action.enabled"
+            [disabled]="!action.enabled || isProcessing()"
+            [title]="action.disabledReason || ''"
+            (click)="onActionClick(action)"
+          >
+            {{ action.label }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Attribution summary -->
+  @if (attribution().length > 0) {
+    <div class="attribution">
+      @for (entry of attribution(); track entry.label) {
+        <div class="attribution-row">
+          <span class="attribution-label">{{ entry.label }}</span>
+          <span class="attribution-value">
+            {{ entry.by || '—' }}
+            @if (entry.at) {
+              <span class="attribution-time">· {{ formatTimestamp(entry.at) }}</span>
+            }
+          </span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- History toggle + panel -->
+  @if (!isUnsaved()) {
+    <div class="history-toggle">
+      <button class="link-btn" (click)="toggleHistory()">
+        {{ showHistory() ? '▼ Hide approval history' : '▶ Show approval history' }}
+      </button>
+    </div>
+
+    @if (showHistory()) {
+      <div class="history-panel">
+        @if (!historyLoaded()) {
+          <div class="loading">Loading…</div>
+        } @else if (history().length === 0) {
+          <div class="empty">No workflow events yet.</div>
+        } @else {
+          <ul class="history-list">
+            @for (event of history(); track event.id) {
+              <li class="history-item">
+                <div class="history-line">
+                  <span class="history-type">{{ event.eventType }}</span>
+                  @if (event.fromStatus || event.toStatus) {
+                    <span class="history-transition">
+                      {{ event.fromStatus || '∅' }} → {{ event.toStatus || '∅' }}
+                    </span>
+                  }
+                  @if (event.standardVersion) {
+                    <span class="history-version">v{{ event.standardVersion }}</span>
+                  }
+                </div>
+                <div class="history-meta">
+                  by {{ event.performedBy || 'unknown' }}
+                  · {{ formatTimestamp(event.eventAt) }}
+                </div>
+                @if (event.notes) {
+                  <div class="history-notes">{{ event.notes }}</div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  }
+</div>

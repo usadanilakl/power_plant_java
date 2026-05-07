@@ -11,6 +11,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,29 @@ public class LotoStandard extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     private String lotoPointOrder;
 
+    /** JSON map: {pointId: {requiredPointIds, safetyConditions}} */
+    @Column(columnDefinition = "TEXT")
+    private String pointPrerequisitesJson;
+
+    // ── Procedural prose ─────────────────────────────────────────────────────
+    // Free-text fields the qualified employee fills in while developing the standard.
+
+    /** System shutdown / electrical switching / grounding prerequisites that apply to the whole LOTO. */
+    @Column(columnDefinition = "TEXT")
+    private String prerequisitesText;
+
+    /** Methods to control hazards encountered during this LOTO. */
+    @Column(columnDefinition = "TEXT")
+    private String hazardControlMethodsText;
+
+    /** Install procedure prose — narrative of how to install the LOTO. */
+    @Column(columnDefinition = "TEXT")
+    private String installProcedureText;
+
+    /** Removal procedure prose — narrative of how to remove the LOTO. */
+    @Column(columnDefinition = "TEXT")
+    private String removalProcedureText;
+
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "loto_standard_groups",
@@ -41,6 +65,56 @@ public class LotoStandard extends BaseAuditEntity {
     )
     private Set<Value> groups = new HashSet<>();
 
+    // ── Development workflow ─────────────────────────────────────────────────
+    /** Current development status (FK to Value, category {@link LotoStandardStatus#CATEGORY}). */
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "development_status_id")
+    private Value developmentStatus;
+
+    /** Increments each time the standard is invalidated by modification (NEW reset). */
+    @Column(name = "current_version")
+    private Integer currentVersion = 1;
+
+    @Column(name = "submitted_for_verification_by", length = 128)
+    private String submittedForVerificationBy;
+    @Column(name = "submitted_for_verification_at")
+    private LocalDateTime submittedForVerificationAt;
+
+    /** Second qualified person who verified the standard. Must differ from creator. */
+    @Column(name = "verified_by", length = 128)
+    private String verifiedBy;
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "walkdown_by", length = 128)
+    private String walkdownBy;
+    @Column(name = "walkdown_at")
+    private LocalDateTime walkdownAt;
+
+    @Column(name = "ready_for_testing_by", length = 128)
+    private String readyForTestingBy;
+    @Column(name = "ready_for_testing_at")
+    private LocalDateTime readyForTestingAt;
+
+    /** Manager who gave final approval. */
+    @Column(name = "manager_approved_by", length = 128)
+    private String managerApprovedBy;
+    @Column(name = "manager_approved_at")
+    private LocalDateTime managerApprovedAt;
+
+    /** Clears all attribution fields. Called on NEW reset and when stepping back to DRAFT. */
+    public void clearWorkflowAttribution() {
+        submittedForVerificationBy = null;
+        submittedForVerificationAt = null;
+        verifiedBy = null;
+        verifiedAt = null;
+        walkdownBy = null;
+        walkdownAt = null;
+        readyForTestingBy = null;
+        readyForTestingAt = null;
+        managerApprovedBy = null;
+        managerApprovedAt = null;
+    }
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -147,6 +221,21 @@ public class LotoStandard extends BaseAuditEntity {
         return orderedPoints;
     }
 
+    public Map<Long, PointPrerequisite> getPointPrerequisites() {
+        if (pointPrerequisitesJson == null || pointPrerequisitesJson.isEmpty()) return new HashMap<>();
+        try {
+            return objectMapper.readValue(pointPrerequisitesJson,
+                    new TypeReference<Map<Long, PointPrerequisite>>() {});
+        } catch (IOException e) {
+            return new HashMap<>();
+        }
+    }
 
-
+    public void setPointPrerequisites(Map<Long, PointPrerequisite> prerequisites) {
+        try {
+            this.pointPrerequisitesJson = objectMapper.writeValueAsString(prerequisites);
+        } catch (IOException e) {
+            this.pointPrerequisitesJson = "{}";
+        }
+    }
 }

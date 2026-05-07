@@ -270,6 +270,57 @@ public class NgLotoController {
         }
     }
 
+    @PutMapping("/{id}/lifecycle/ca-approve-hanging")
+    public ResponseEntity<NgApiResponse<LotoDto>> approveForHanging(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.approveForHanging(id), "CA approved for hanging"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/ca-activate")
+    public ResponseEntity<NgApiResponse<LotoDto>> caActivate(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.caActivate(id), "CA activated"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/prerequisites")
+    public ResponseEntity<NgApiResponse<LotoDto>> updatePrerequisites(
+            @PathVariable Long id,
+            @RequestBody Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> prerequisites) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    ngLotoService.updateInstancePrerequisites(id, prerequisites),
+                    "Point prerequisites updated"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/point/{pointId}/hung")
+    public ResponseEntity<NgApiResponse<LotoDto>> markPointHung(
+            @PathVariable Long id, @PathVariable Long pointId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> acknowledged = body != null && body.get("acknowledged") instanceof List
+                    ? (List<String>) body.get("acknowledged")
+                    : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointHung(id, pointId, acknowledged), "Point marked hung"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/point/{pointId}/verified")
+    public ResponseEntity<NgApiResponse<LotoDto>> markPointVerified(
+            @PathVariable Long id, @PathVariable Long pointId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> acknowledged = body != null && body.get("acknowledged") instanceof List
+                    ? (List<String>) body.get("acknowledged")
+                    : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointVerified(id, pointId, acknowledged), "Point marked verified"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
     @PutMapping("/{id}/lifecycle/hung")
     public ResponseEntity<NgApiResponse<LotoDto>> markHung(@PathVariable Long id) {
         try {

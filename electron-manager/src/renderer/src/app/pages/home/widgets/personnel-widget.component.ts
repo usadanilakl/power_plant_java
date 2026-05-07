@@ -6,10 +6,10 @@ import { ElectronService, PersonnelStatus, PersonnelEntry } from '../../../servi
 type SizeTier = 'compact' | 'large';
 
 const SHIFT_LABELS: Record<string, string> = {
-  'D': 'Day', 'N': 'Night', 'U': 'Off', 'P': 'PTO', 'T': 'Training', '': '-',
+  'D': 'Day', 'N': 'Night', 'U': 'Off', 'P': 'PTO', 'T': 'Training', 'OCM': 'On Call Manager', '': '-',
 };
 const SHIFT_COLORS: Record<string, string> = {
-  'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training', '': '',
+  'D': 'shift-day', 'N': 'shift-night', 'U': 'shift-off', 'P': 'shift-pto', 'T': 'shift-training', 'OCM': 'shift-ocm', '': '',
 };
 const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7BC2B8028F-8473-49EC-8B24-1FEBBB8D1584%7D&file=OPS%20Schedule%202026.xlsx&action=default&mobileredirect=true';
 
@@ -84,6 +84,17 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
             <div class="on-shift-list">
               <div class="person-chip dimmed" *ngFor="let p of nextShiftPeople">
                 <span class="person-group" [class]="'group-' + p.group.toLowerCase()">{{ p.group }}</span>
+                <span class="person-name">{{ p.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- On Call Manager today -->
+          <div class="on-shift-section" *ngIf="onCallManagerToday.length > 0">
+            <span class="section-label">On Call Manager</span>
+            <div class="on-shift-list">
+              <div class="person-chip" *ngFor="let p of onCallManagerToday">
+                <span class="person-group group-ocm">OCM</span>
                 <span class="person-name">{{ p.name }}</span>
               </div>
             </div>
@@ -175,12 +186,13 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
       display: flex; align-items: center; gap: 4px; padding: 3px 8px;
       background: var(--bg-secondary); border-radius: 6px; font-size: 11px;
     }
-    .person-group { font-weight: 700; font-size: 10px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 3px; color: #fff; }
+    .person-group { font-weight: 700; font-size: 10px; min-width: 14px; height: 14px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; color: #fff; flex-shrink: 0; }
     .group-a { background: #3b82f6; }
     .group-b { background: #22c55e; }
     .group-c { background: #f59e0b; }
     .group-d { background: #ef4444; }
-    .group-relief { background: #8b5cf6; }
+    .group-rel { background: #8b5cf6; }
+    .group-ocm { background: #ec4899; }
     .person-name { color: var(--text-secondary); }
     .person-chip.dimmed { opacity: 0.6; }
     .next-shift .section-label { color: var(--text-muted); opacity: 0.8; }
@@ -209,6 +221,7 @@ const SCHEDULE_URL = 'https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/1
     .shift-off { color: var(--text-muted); }
     .shift-pto { color: #3b82f6; background: rgba(59,130,246,0.1); }
     .shift-training { color: #f59e0b; background: rgba(245,158,11,0.1); }
+    .shift-ocm { color: #ec4899; background: rgba(236,72,153,0.1); font-size: 9px; }
 
     /* States */
     .loading-state { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 12px; }
@@ -264,18 +277,30 @@ export class PersonnelWidgetComponent implements OnInit {
     }, ms);
   }
 
+  /** Returns today's date string (YYYY-MM-DD) using shift logic — before 5am, "today" is yesterday. */
+  private getShiftToday(): string {
+    const now = new Date();
+    const d = (now.getHours() < 5) ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Find the index of today (or first scheduled day >= today) in a person's schedule. */
+  private findTodayIndex(schedule: { date: string }[]): number {
+    const today = this.getShiftToday();
+    const idx = schedule.findIndex(s => s.date >= today);
+    return idx >= 0 ? idx : 0;
+  }
+
   get nextShiftPeople(): PersonnelEntry[] {
     if (!this.status?.allPersonnel || !this.status.currentShiftLabel) return [];
     const isDayNow = this.status.currentShiftLabel === 'Day Shift';
-    const nextCode = isDayNow ? 'N' : 'D';
 
     if (isDayNow) {
-      // Currently day shift → next shift is tonight's night shift → check today's N people
       return this.status.allPersonnel.filter(p => p.todayShift === 'N');
     } else {
-      // Currently night shift → next shift is tomorrow's day shift → check tomorrow's schedule
       return this.status.allPersonnel.filter(p => {
-        const tomorrow = p.schedule?.[1]; // index 0 = today, 1 = tomorrow
+        const todayIdx = this.findTodayIndex(p.schedule);
+        const tomorrow = p.schedule?.[todayIdx + 1];
         return tomorrow?.shift === 'D';
       });
     }
@@ -284,6 +309,10 @@ export class PersonnelWidgetComponent implements OnInit {
   get nextShiftLabel(): string {
     if (!this.status?.currentShiftLabel) return '';
     return this.status.currentShiftLabel === 'Day Shift' ? 'Night Shift' : 'Day Shift';
+  }
+
+  get onCallManagerToday(): PersonnelEntry[] {
+    return this.status?.allPersonnel?.filter(p => p.todayShift === 'OCM') || [];
   }
 
   get tier(): SizeTier {
@@ -300,7 +329,8 @@ export class PersonnelWidgetComponent implements OnInit {
   get scheduleDays(): string[] {
     const first = this.status?.allPersonnel?.[0];
     if (!first?.schedule?.length) return [];
-    return first.schedule.slice(0, 7).map(s => {
+    const todayIdx = this.findTodayIndex(first.schedule);
+    return first.schedule.slice(todayIdx, todayIdx + 7).map(s => {
       const d = new Date(s.date + 'T12:00:00');
       return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
     });
@@ -311,7 +341,8 @@ export class PersonnelWidgetComponent implements OnInit {
   }
 
   getScheduleSlice(person: PersonnelEntry): { date: string; shift: any }[] {
-    return person.schedule.slice(0, 7);
+    const todayIdx = this.findTodayIndex(person.schedule);
+    return person.schedule.slice(todayIdx, todayIdx + 7);
   }
 
   getShiftLabel(code: string): string { return SHIFT_LABELS[code] || code; }

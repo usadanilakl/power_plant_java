@@ -9,10 +9,12 @@ export interface LocatorResult {
   tier: LocatorTier;
   /** Single best match (when one asset is the obvious answer). */
   asset?: MaximoAsset;
-  /** Multiple matches the user must pick from. */
+  /** Multiple matches the user must pick from, sorted best-first when tier === 'partial'. */
   candidates?: MaximoAsset[];
-  /** When tier === 'partial', the segment that produced the hit. */
+  /** When tier === 'partial', the segment(s) that produced hits, joined with comma. */
   partialTerm?: string;
+  /** When tier === 'partial', per-candidate scoring info aligned with `candidates`. */
+  candidateScores?: ScoredCandidate[];
   /** Original tag the user supplied. */
   tag: string;
   /** Optional human-readable note. */
@@ -21,21 +23,36 @@ export interface LocatorResult {
   errorMessage?: string;
 }
 
+export interface ScoredCandidate {
+  assetnum: string;
+  matchedSegments: string[];
+  /** Sum of matched-segment character lengths — longer/multiple matches rank higher. */
+  score: number;
+}
+
 /**
  * Tiered Maximo asset lookup used by both the SR submit form and the API test panel.
  *
  *   1. exact     → MaximoApiService.getAsset(tag)
  *   2. wildcard  → MaximoApiService.searchAssets({ tag })  (sends %tag%)
- *   3. partial   → split tag on -/_/space, try LIKE %segment% on each segment
- *                  (≥2 chars, must contain a letter) longest first, stop at first hit
+ *   3. partial   → fuzzy multi-segment search:
+ *                    - split tag on -/_, keep segments ≥2 chars containing a letter
+ *                    - run a wildcard search per segment in parallel
+ *                    - merge and dedupe by assetnum
+ *                    - score each candidate by the SUM of matched-segment character
+ *                      lengths (so an asset matching on HHS906 + MOV outranks one
+ *                      matching on HHS906 alone)
+ *                    - return top 20 sorted best-first
  *
- * Returns the FIRST non-empty result with the tier that produced it, so the UI can
- * label the suggestion ("exact match", "matched on segment 'CEM'", etc.) instead of
- * silently returning ambiguous candidates.
+ * Returns the first tier that yields hits, with metadata on which segments matched.
  */
 @Injectable({ providedIn: 'root' })
 export class MaximoAssetLocatorService {
   private api = inject(MaximoApiService);
+
+  /** Per-segment search size; total candidates is ≤ TOP_K after dedupe + ranking. */
+  private static readonly PARTIAL_PAGE_SIZE = 50;
+  private static readonly TOP_K = 20;
 
   async locate(tag: string): Promise<LocatorResult> {
     const t = (tag ?? '').trim();
@@ -55,17 +72,67 @@ export class MaximoAssetLocatorService {
         return { tier: 'wildcard', candidates: wildcard, tag: t };
       }
 
-      // Tier 3 — partial: try each meaningful segment of the tag
-      for (const seg of extractSegments(t)) {
-        const partial = await firstValueFrom(this.api.searchAssets({ tag: seg, pageSize: 10 }));
-        if (partial.length === 0) continue;
-        if (partial.length === 1) {
-          return { tier: 'partial', asset: partial[0], tag: t, partialTerm: seg, note: 'single hit on segment' };
-        }
-        return { tier: 'partial', candidates: partial, tag: t, partialTerm: seg };
+      // Tier 3 — fuzzy: gather hits across every meaningful segment, rank by similarity
+      const segments = extractSegments(t);
+      if (segments.length === 0) {
+        return { tier: 'none', tag: t, note: `no segments to search in "${t}"` };
       }
 
-      return { tier: 'none', tag: t, note: `no match for "${t}" or any of its segments` };
+      // Parallel per-segment wildcard searches
+      const perSegment = await Promise.all(
+        segments.map(async seg => ({
+          seg,
+          hits: await firstValueFrom(this.api.searchAssets({
+            tag: seg,
+            pageSize: MaximoAssetLocatorService.PARTIAL_PAGE_SIZE
+          }))
+        }))
+      );
+
+      // Build assetnum → { asset, matchedSegments[] }
+      const seen = new Map<string, { asset: MaximoAsset; matched: Set<string> }>();
+      for (const { seg, hits } of perSegment) {
+        for (const h of hits) {
+          if (!h.assetnum) continue;
+          const existing = seen.get(h.assetnum);
+          if (existing) existing.matched.add(seg);
+          else seen.set(h.assetnum, { asset: h, matched: new Set([seg]) });
+        }
+      }
+
+      if (seen.size === 0) {
+        return { tier: 'none', tag: t, note: `no match for "${t}" or any of its segments` };
+      }
+
+      // Score = sum of matched-segment character lengths.
+      // Tiebreak: more distinct segments matched first, then assetnum alphabetical.
+      const scored: ScoredCandidate[] = Array.from(seen.entries()).map(([assetnum, v]) => {
+        const matchedSegments = Array.from(v.matched);
+        const score = matchedSegments.reduce((s, seg) => s + seg.length, 0);
+        return { assetnum, matchedSegments, score };
+      }).sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.matchedSegments.length !== a.matchedSegments.length)
+          return b.matchedSegments.length - a.matchedSegments.length;
+        return a.assetnum.localeCompare(b.assetnum);
+      }).slice(0, MaximoAssetLocatorService.TOP_K);
+
+      const candidates: MaximoAsset[] = scored.map(s => seen.get(s.assetnum)!.asset);
+      const allMatchedTerms = Array.from(new Set(scored.flatMap(s => s.matchedSegments)));
+
+      if (candidates.length === 1) {
+        return {
+          tier: 'partial', asset: candidates[0], tag: t,
+          partialTerm: scored[0].matchedSegments.join(','),
+          candidateScores: scored,
+          note: `single fuzzy hit (matched on ${scored[0].matchedSegments.join(', ')})`
+        };
+      }
+      return {
+        tier: 'partial', candidates, tag: t,
+        partialTerm: allMatchedTerms.join(','),
+        candidateScores: scored
+      };
     } catch (e: any) {
       return { tier: 'error', tag: t, errorMessage: e?.error?.message ?? e?.message ?? String(e) };
     }

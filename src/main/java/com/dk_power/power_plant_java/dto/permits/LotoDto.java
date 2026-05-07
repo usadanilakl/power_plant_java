@@ -30,4 +30,6 @@ public class LotoDto extends BasePermitDto {
     private String lotoRequestor;
     private String date;
     private Integer boxNumber;
+    private Boolean wasModifiedDuringActive;
+    private String closeDisposition;
 }

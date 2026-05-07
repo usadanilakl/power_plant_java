@@ -34,6 +34,24 @@
       (click)="goToSlide(2)"
       [disabled]="!entity().id"
     >
+      <span class="nav-icon">📑</span>
+      <span class="nav-label">Procedures</span>
+    </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 3"
+      (click)="goToSlide(3)"
+      [disabled]="!entity().id"
+    >
+      <span class="nav-icon">🚦</span>
+      <span class="nav-label">Workflow</span>
+    </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 4"
+      (click)="goToSlide(4)"
+      [disabled]="!entity().id"
+    >
       <span class="nav-icon">🖼️</span>
       <span class="nav-label">Images</span>
     </button>
@@ -81,7 +99,74 @@
         </div>
       </div>
 
-      <!-- Slide 3: Image Viewer -->
+      <!-- Slide 3: Procedures (procedural prose + per-point prereqs) -->
+      <div class="carousel-slide">
+        <div class="slide-content procedures-section">
+          @if (entity().id) {
+            <h3>Procedural Prose</h3>
+            <div class="procedure-fields">
+              <label class="prose-field">
+                <span>Prerequisites (system shutdown / electrical switching / grounding)</span>
+                <textarea rows="3" [ngModel]="proseDraft().prerequisitesText"
+                          (ngModelChange)="onProseChange('prerequisitesText', $event)"></textarea>
+              </label>
+              <label class="prose-field">
+                <span>Methods to control hazards</span>
+                <textarea rows="3" [ngModel]="proseDraft().hazardControlMethodsText"
+                          (ngModelChange)="onProseChange('hazardControlMethodsText', $event)"></textarea>
+              </label>
+              <label class="prose-field">
+                <span>Install procedure</span>
+                <textarea rows="5" [ngModel]="proseDraft().installProcedureText"
+                          (ngModelChange)="onProseChange('installProcedureText', $event)"></textarea>
+              </label>
+              <label class="prose-field">
+                <span>Removal procedure</span>
+                <textarea rows="5" [ngModel]="proseDraft().removalProcedureText"
+                          (ngModelChange)="onProseChange('removalProcedureText', $event)"></textarea>
+              </label>
+              @if (proseDirty()) {
+                <div class="prose-actions">
+                  <button class="btn-save" (click)="saveProse()" [disabled]="proseSaving()">
+                    {{ proseSaving() ? 'Saving…' : 'Save Procedural Text' }}
+                  </button>
+                  <button class="btn-cancel" (click)="resetProse()" [disabled]="proseSaving()">Discard</button>
+                </div>
+              }
+            </div>
+
+            <h3 style="margin-top: 24px">Per-point Prerequisites</h3>
+            <app-point-prerequisites-editor
+              [points]="entity().lotoPoints ?? []"
+              [prerequisites]="entity().pointPrerequisites"
+              [saving]="prereqSaving()"
+              (save)="savePrereqs($event)">
+            </app-point-prerequisites-editor>
+          } @else {
+            <div class="empty-state">
+              <p>Save the LOTO Standard first to edit procedures.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Slide 4: Workflow (FSM transitions + history) -->
+      <div class="carousel-slide">
+        <div class="slide-content workflow-section">
+          @if (entity().id) {
+            <app-loto-standard-workflow-panel
+              [standard]="entity()"
+              (standardUpdated)="onStandardUpdatedFromWorkflow($event)">
+            </app-loto-standard-workflow-panel>
+          } @else {
+            <div class="empty-state">
+              <p>Save the LOTO Standard first to advance through the workflow.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Slide 5: Image Viewer -->
       <div class="carousel-slide">
         <div class="slide-content file-viewer-section">
           @if (entity().id) {
@@ -110,7 +195,7 @@
   <button
     class="carousel-arrow carousel-arrow-right"
     (click)="nextSlide()"
-    [disabled]="currentSlide() === 2 || (currentSlide() === 1 && !entity().id)"
+    [disabled]="currentSlide() === 4 || (currentSlide() === 1 && !entity().id)"
   >
     ›
   </button>

@@ -1,0 +1,168 @@
+import { Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model';
+import {
+  LotoStandardStatusName,
+  LotoRole,
+  LotoStandardApprovalEventDto,
+  allowedTargetStatuses,
+  statusColor,
+  actionLabelFor,
+  endpointForTarget,
+  roleForTarget,
+} from '../../../../../models/loto/loto-standard-workflow.model';
+import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
+import { AuthService } from '../../../../../services/auth.service';
+import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
+
+interface ActionButton {
+  targetStatus: string;
+  label: string;
+  endpointSegment: string;
+  enabled: boolean;
+  disabledReason: string | null;
+}
+
+@Component({
+  selector: 'app-loto-standard-workflow-panel',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './loto-standard-workflow-panel.component.html',
+  styleUrl: './loto-standard-workflow-panel.component.css',
+})
+export class LotoStandardWorkflowPanelComponent {
+  private apiService = inject(RfLotoStandardApiService);
+  private authService = inject(AuthService);
+  private messageService = inject(GlobalMessageService);
+  private destroyRef = inject(DestroyRef);
+
+  /** The standard whose workflow we are showing. */
+  standard = input.required<LotoStandardDto>();
+
+  /** Emitted when a workflow transition completes — parent should refresh state. */
+  standardUpdated = output<LotoStandardDto>();
+
+  isProcessing = signal(false);
+  showHistory = signal(false);
+  history = signal<LotoStandardApprovalEventDto[]>([]);
+  historyLoaded = signal(false);
+
+  currentStatusName = computed(() => this.standard().developmentStatus?.name ?? LotoStandardStatusName.DRAFT);
+  currentStatusColor = computed(() => statusColor(this.currentStatusName()));
+  isNewPendingReapproval = computed(() => this.currentStatusName() === LotoStandardStatusName.NEW_PENDING_REAPPROVAL);
+  isApproved = computed(() => this.currentStatusName() === LotoStandardStatusName.APPROVED);
+  isUnsaved = computed(() => !this.standard().id);
+
+  actions = computed<ActionButton[]>(() => {
+    const std = this.standard();
+    if (!std.id) return [];
+    const targets = allowedTargetStatuses(this.currentStatusName());
+    return targets.map(target => this.buildAction(std, target));
+  });
+
+  attribution = computed(() => {
+    const s = this.standard();
+    return [
+      { label: 'Submitted', by: s.submittedForVerificationBy, at: s.submittedForVerificationAt },
+      { label: 'Verified', by: s.verifiedBy, at: s.verifiedAt },
+      { label: 'Walkdown', by: s.walkdownBy, at: s.walkdownAt },
+      { label: 'Ready for Testing', by: s.readyForTestingBy, at: s.readyForTestingAt },
+      { label: 'Approved', by: s.managerApprovedBy, at: s.managerApprovedAt },
+    ].filter(a => a.by || a.at);
+  });
+
+  private buildAction(std: LotoStandardDto, target: string): ActionButton {
+    const endpoint = endpointForTarget(target);
+    const required = roleForTarget(target);
+    const userRoles = this.authService.currentUser?.roles ?? [];
+    const userName = this.authService.currentUser?.name || '';
+    const hasRole = userRoles.some(r => r?.toUpperCase() === required);
+
+    let enabled = !!endpoint && hasRole;
+    let disabledReason: string | null = null;
+
+    if (!hasRole) {
+      disabledReason = `Requires ${required} role`;
+    } else if (target === LotoStandardStatusName.VERIFIED) {
+      // Second-person verification: surface client-side rather than waiting for backend reject
+      if (userName && std.createdBy && userName.toLowerCase() === std.createdBy.toLowerCase()) {
+        enabled = false;
+        disabledReason = 'Verifier must differ from creator';
+      } else if (userName && std.submittedForVerificationBy && userName.toLowerCase() === std.submittedForVerificationBy.toLowerCase()) {
+        enabled = false;
+        disabledReason = 'Verifier must differ from submitter';
+      }
+    }
+
+    return {
+      targetStatus: target,
+      label: actionLabelFor(target),
+      endpointSegment: endpoint || '',
+      enabled,
+      disabledReason,
+    };
+  }
+
+  onActionClick(action: ActionButton): void {
+    if (!action.enabled || this.isProcessing()) return;
+    const std = this.standard();
+    if (!std.id || !action.endpointSegment) return;
+
+    const confirmMsg = `${action.label}?\n\nCurrent status: ${this.currentStatusName()}\nNew status: ${action.targetStatus}`;
+    if (!confirm(confirmMsg)) return;
+
+    const notes = prompt('Optional notes for this transition (leave blank to skip):', '') || null;
+
+    this.isProcessing.set(true);
+    this.apiService.workflowTransition(std.id, action.endpointSegment, notes)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.isProcessing.set(false);
+          const updated = LotoStandardDto.fromJson(response.responseData);
+          this.messageService.showSuccess(`Standard ${action.label.toLowerCase()}`);
+          this.standardUpdated.emit(updated);
+          // Refresh history if it was visible
+          if (this.showHistory()) this.loadHistory();
+        },
+        error: (err) => {
+          this.isProcessing.set(false);
+          const msg = err?.error?.message || err?.message || 'Transition failed';
+          this.messageService.showError(msg);
+        }
+      });
+  }
+
+  toggleHistory(): void {
+    const next = !this.showHistory();
+    this.showHistory.set(next);
+    if (next && !this.historyLoaded()) {
+      this.loadHistory();
+    }
+  }
+
+  private loadHistory(): void {
+    const std = this.standard();
+    if (!std.id) return;
+    this.apiService.getWorkflowHistory(std.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.history.set(response.responseData || []);
+          this.historyLoaded.set(true);
+        },
+        error: (err) => {
+          console.error('Failed to load workflow history:', err);
+          this.messageService.showError('Failed to load workflow history');
+        }
+      });
+  }
+
+  formatTimestamp(ts: string | null | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+  }
+}

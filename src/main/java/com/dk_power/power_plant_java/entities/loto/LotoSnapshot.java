@@ -47,6 +47,12 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
     // ---- Lifecycle event fields (each populated only on the snapshot that recorded that event) ----
 
+    private String caApprovedForHangingBy;
+    private LocalDateTime caApprovedForHangingAt;
+
+    private String caActivatedBy;
+    private LocalDateTime caActivatedAt;
+
     private String hungBy;
     private LocalDateTime hungAt;
 
@@ -80,6 +86,24 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
     private String closedBy;
     private LocalDateTime closedAt;
+
+    // ---- Per-point hung / verified state (JSON maps: pointId -> userName / ISO timestamp) ----
+
+    @Column(columnDefinition = "TEXT")
+    private String pointHungByJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointHungAtJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointVerifiedByJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointVerifiedAtJson;
+
+    /** JSON map: {pointId: {requiredPointIds, safetyConditions}} — copied from LotoStandard, editable per instance */
+    @Column(columnDefinition = "TEXT")
+    private String pointPrerequisitesJson;
 
     @ElementCollection
     @CollectionTable(name = "loto_snapshot_points", joinColumns = @JoinColumn(name = "loto_snapshot_id"))
@@ -138,6 +162,8 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
      * than getting copied forward.
      */
     public void clearLifecycleEventFields() {
+        caApprovedForHangingBy = null;       caApprovedForHangingAt = null;
+        caActivatedBy = null;                caActivatedAt = null;
         hungBy = null;                       hungAt = null;
         verifiedBy = null;                   verifiedAt = null;
         activatedBy = null;                  activatedAt = null;
@@ -150,5 +176,69 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         locksRemovedBy = null;               locksRemovedAt = null;
         closedBy = null;                     closedAt = null;
         snapshotReason = null;
+        pointHungByJson = null;
+        pointHungAtJson = null;
+        pointVerifiedByJson = null;
+        pointVerifiedAtJson = null;
+    }
+
+    // ---- JSON map helpers for per-point state ----
+
+    private static java.util.Map<Long, String> readJsonMap(String json) {
+        if (json == null || json.isEmpty()) return new java.util.HashMap<>();
+        try {
+            return objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<Long, String>>() {});
+        } catch (Exception e) {
+            return new java.util.HashMap<>();
+        }
+    }
+
+    private static String writeJsonMap(java.util.Map<Long, String> m) {
+        try {
+            return objectMapper.writeValueAsString(m);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    public java.util.Map<Long, String> getPointHungBy()     { return readJsonMap(pointHungByJson); }
+    public java.util.Map<Long, String> getPointHungAt()     { return readJsonMap(pointHungAtJson); }
+    public java.util.Map<Long, String> getPointVerifiedBy() { return readJsonMap(pointVerifiedByJson); }
+    public java.util.Map<Long, String> getPointVerifiedAt() { return readJsonMap(pointVerifiedAtJson); }
+
+    public void setPointHungBy(Long pointId, String user) {
+        java.util.Map<Long, String> by = getPointHungBy();
+        java.util.Map<Long, String> at = getPointHungAt();
+        by.put(pointId, user);
+        at.put(pointId, java.time.LocalDateTime.now().toString());
+        pointHungByJson = writeJsonMap(by);
+        pointHungAtJson = writeJsonMap(at);
+    }
+
+    public void setPointVerifiedBy(Long pointId, String user) {
+        java.util.Map<Long, String> by = getPointVerifiedBy();
+        java.util.Map<Long, String> at = getPointVerifiedAt();
+        by.put(pointId, user);
+        at.put(pointId, java.time.LocalDateTime.now().toString());
+        pointVerifiedByJson = writeJsonMap(by);
+        pointVerifiedAtJson = writeJsonMap(at);
+    }
+
+    public java.util.Map<Long, PointPrerequisite> getPointPrerequisites() {
+        if (pointPrerequisitesJson == null || pointPrerequisitesJson.isEmpty()) return new java.util.HashMap<>();
+        try {
+            return objectMapper.readValue(pointPrerequisitesJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<Long, PointPrerequisite>>() {});
+        } catch (Exception e) {
+            return new java.util.HashMap<>();
+        }
+    }
+
+    public void setPointPrerequisites(java.util.Map<Long, PointPrerequisite> prerequisites) {
+        try {
+            this.pointPrerequisitesJson = objectMapper.writeValueAsString(prerequisites);
+        } catch (Exception e) {
+            this.pointPrerequisitesJson = "{}";
+        }
     }
 }

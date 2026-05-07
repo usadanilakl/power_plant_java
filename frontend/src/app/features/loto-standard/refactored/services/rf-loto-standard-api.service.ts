@@ -8,6 +8,7 @@ import { CounterpartStandardPreviewDto } from '../../../../models/loto/counterpa
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoStandardIdDto } from '../../../../models/loto/loto-standard-id.model';
+import { LotoStandardApprovalEventDto } from '../../../../models/loto/loto-standard-workflow.model';
 import { LotoStandardMapperService } from './rf-loto-standard-mapper.service';
 
 @Injectable({
@@ -209,6 +210,56 @@ export class RfLotoStandardApiService {
   generateCounterpartPreview(standardId: number): Observable<SpringApiResponse<CounterpartStandardPreviewDto>> {
     return this.http.get<SpringApiResponse<CounterpartStandardPreviewDto>>(
       `${this.apiUrl}/${standardId}/counterpart-preview`
+    );
+  }
+
+  // ── Development workflow ─────────────────────────────────────────────────
+
+  /**
+   * Trigger a workflow transition by hitting the matching backend endpoint.
+   * `endpointSegment` is one of: submit-for-verification, verify, walkdown-complete,
+   * ready-for-testing, approve, send-back-to-draft.
+   */
+  workflowTransition(
+    standardId: number,
+    endpointSegment: string,
+    notes: string | null
+  ): Observable<SpringApiResponse<LotoStandardDto>> {
+    const body = notes ? { notes } : {};
+    return this.http.post<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/workflow/${endpointSegment}`,
+      body
+    );
+  }
+
+  /** Returns oldest-first list of approval events for a standard. */
+  getWorkflowHistory(standardId: number): Observable<SpringApiResponse<LotoStandardApprovalEventDto[]>> {
+    return this.http.get<SpringApiResponse<LotoStandardApprovalEventDto[]>>(
+      `${this.apiUrl}/${standardId}/workflow/history`
+    );
+  }
+
+  /** Replace the entire per-point prerequisites map for a standard. */
+  updatePrerequisites(
+    standardId: number,
+    prerequisites: Record<number, { requiredPointIds: number[]; safetyConditions: string[] }>
+  ): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.put<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/prerequisites`,
+      prerequisites
+    );
+  }
+
+  /** Update procedural prose fields. Pass null to leave a field unchanged. */
+  updateProceduralText(standardId: number, body: {
+    prerequisitesText?: string | null;
+    hazardControlMethodsText?: string | null;
+    installProcedureText?: string | null;
+    removalProcedureText?: string | null;
+  }): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.put<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/procedural-text`,
+      body
     );
   }
 }

@@ -73,6 +73,12 @@
     <!-- Carousel content area -->
     <div class="carousel-content">
       @if (activeStandard()) {
+        @if (activeStandard()!.id) {
+          <app-loto-standard-workflow-panel
+            [standard]="activeStandard()!"
+            (standardUpdated)="onWorkflowStandardUpdated($event)"
+          ></app-loto-standard-workflow-panel>
+        }
         <app-simple-loto-form
           [lotoStandard]="activeStandard()!"
           [isActive]="true"

@@ -134,6 +134,30 @@ export class LotoService {
 
   // ----- Lifecycle events -----
 
+  approveForHanging(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-approve-hanging`, {});
+  }
+
+  caActivate(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-activate`, {});
+  }
+
+  markPointHung(lotoId: number, pointId: number, acknowledged: string[] = []): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/hung`,
+      { acknowledged });
+  }
+
+  markPointVerified(lotoId: number, pointId: number, acknowledged: string[] = []): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/verified`,
+      { acknowledged });
+  }
+
+  updateInstancePrerequisites(lotoId: number, prerequisites: Record<number, { requiredPointIds: number[]; safetyConditions: string[] }>): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/prerequisites`, prerequisites);
+  }
+
   markHung(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/hung`, {});
   }

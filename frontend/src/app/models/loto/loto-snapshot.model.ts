@@ -12,6 +12,8 @@ export interface LotoSnapshotModel extends BaseModel {
   workScope: string | null;
   snapshotReason: string | null;
 
+  caApprovedForHangingBy: string | null;       caApprovedForHangingAt: string | null;
+  caActivatedBy: string | null;                caActivatedAt: string | null;
   hungBy: string | null;                       hungAt: string | null;
   verifiedBy: string | null;                   verifiedAt: string | null;
   activatedBy: string | null;                  activatedAt: string | null;
@@ -24,7 +26,19 @@ export interface LotoSnapshotModel extends BaseModel {
   locksRemovedBy: string | null;               locksRemovedAt: string | null;
   closedBy: string | null;                     closedAt: string | null;
 
+  pointHungBy: Record<number, string>;
+  pointHungAt: Record<number, string>;
+  pointVerifiedBy: Record<number, string>;
+  pointVerifiedAt: Record<number, string>;
+
+  pointPrerequisites: Record<number, PointPrerequisiteDto>;
+
   dateCreated: string | null;
+}
+
+export interface PointPrerequisiteDto {
+  requiredPointIds: number[];
+  safetyConditions: string[];
 }
 
 export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
@@ -39,6 +53,8 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
   workScope: string | null;
   snapshotReason: string | null;
 
+  caApprovedForHangingBy: string | null;       caApprovedForHangingAt: string | null;
+  caActivatedBy: string | null;                caActivatedAt: string | null;
   hungBy: string | null;                       hungAt: string | null;
   verifiedBy: string | null;                   verifiedAt: string | null;
   activatedBy: string | null;                  activatedAt: string | null;
@@ -50,6 +66,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
   controlAuthorityReleasedBy: string | null;   controlAuthorityReleasedAt: string | null;
   locksRemovedBy: string | null;               locksRemovedAt: string | null;
   closedBy: string | null;                     closedAt: string | null;
+
+  pointHungBy: Record<number, string>;
+  pointHungAt: Record<number, string>;
+  pointVerifiedBy: Record<number, string>;
+  pointVerifiedAt: Record<number, string>;
+
+  pointPrerequisites: Record<number, PointPrerequisiteDto>;
 
   dateCreated: string | null;
 
@@ -66,6 +89,10 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
     this.workScope = data.workScope ?? null;
     this.snapshotReason = data.snapshotReason ?? null;
 
+    this.caApprovedForHangingBy = data.caApprovedForHangingBy ?? null;
+    this.caApprovedForHangingAt = data.caApprovedForHangingAt ?? null;
+    this.caActivatedBy = data.caActivatedBy ?? null;
+    this.caActivatedAt = data.caActivatedAt ?? null;
     this.hungBy = data.hungBy ?? null;                       this.hungAt = data.hungAt ?? null;
     this.verifiedBy = data.verifiedBy ?? null;               this.verifiedAt = data.verifiedAt ?? null;
     this.activatedBy = data.activatedBy ?? null;             this.activatedAt = data.activatedAt ?? null;
@@ -81,6 +108,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
     this.controlAuthorityReleasedAt = data.controlAuthorityReleasedAt ?? null;
     this.locksRemovedBy = data.locksRemovedBy ?? null;       this.locksRemovedAt = data.locksRemovedAt ?? null;
     this.closedBy = data.closedBy ?? null;                   this.closedAt = data.closedAt ?? null;
+
+    this.pointHungBy = data.pointHungBy ?? {};
+    this.pointHungAt = data.pointHungAt ?? {};
+    this.pointVerifiedBy = data.pointVerifiedBy ?? {};
+    this.pointVerifiedAt = data.pointVerifiedAt ?? {};
+
+    this.pointPrerequisites = data.pointPrerequisites ?? {};
 
     this.dateCreated = data.dateCreated ?? null;
   }
@@ -100,6 +134,10 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
       workScope: json.workScope ?? null,
       snapshotReason: json.snapshotReason ?? null,
 
+      caApprovedForHangingBy: json.caApprovedForHangingBy ?? null,
+      caApprovedForHangingAt: json.caApprovedForHangingAt ?? null,
+      caActivatedBy: json.caActivatedBy ?? null,
+      caActivatedAt: json.caActivatedAt ?? null,
       hungBy: json.hungBy ?? null,                       hungAt: json.hungAt ?? null,
       verifiedBy: json.verifiedBy ?? null,               verifiedAt: json.verifiedAt ?? null,
       activatedBy: json.activatedBy ?? null,             activatedAt: json.activatedAt ?? null,
@@ -115,6 +153,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
       controlAuthorityReleasedAt: json.controlAuthorityReleasedAt ?? null,
       locksRemovedBy: json.locksRemovedBy ?? null,       locksRemovedAt: json.locksRemovedAt ?? null,
       closedBy: json.closedBy ?? null,                   closedAt: json.closedAt ?? null,
+
+      pointHungBy: json.pointHungBy ?? {},
+      pointHungAt: json.pointHungAt ?? {},
+      pointVerifiedBy: json.pointVerifiedBy ?? {},
+      pointVerifiedAt: json.pointVerifiedAt ?? {},
+
+      pointPrerequisites: json.pointPrerequisites ?? {},
 
       dateCreated: json.dateCreated ?? null,
     });

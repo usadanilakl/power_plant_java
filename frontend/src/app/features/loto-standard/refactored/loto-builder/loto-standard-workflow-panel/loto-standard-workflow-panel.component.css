@@ -1,0 +1,194 @@
+.workflow-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-card, #fafafa);
+  border: 1px solid var(--border-color, #e4e4e7);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.reapproval-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  color: #78350f;
+}
+.banner-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.banner-text { line-height: 1.4; }
+.banner-text strong { display: block; margin-bottom: 2px; }
+.version-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #fff;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #71717a);
+  font-weight: 600;
+}
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+.version-pill {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #e4e4e7;
+  color: #52525b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.unsaved-hint, .terminal-hint {
+  font-size: 11px;
+  color: var(--text-muted, #71717a);
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.action-btn {
+  padding: 6px 12px;
+  background: var(--accent-primary, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.action-btn:hover:not(:disabled) { background: #2563eb; }
+.action-btn:disabled, .action-btn.disabled {
+  background: #d4d4d8;
+  color: #a1a1aa;
+  cursor: not-allowed;
+}
+
+.attribution {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  background: var(--bg-secondary, #f4f4f5);
+  border-radius: 6px;
+  font-size: 11px;
+}
+.attribution-row { display: contents; }
+.attribution-label {
+  font-weight: 600;
+  color: var(--text-muted, #71717a);
+}
+.attribution-value { color: var(--text-primary, #18181b); }
+.attribution-time { color: var(--text-muted, #71717a); margin-left: 4px; font-size: 10px; }
+
+.history-toggle { margin-top: 4px; }
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-primary, #3b82f6);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.history-panel {
+  border-top: 1px solid var(--border-color, #e4e4e7);
+  padding-top: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.loading, .empty {
+  font-size: 11px;
+  color: var(--text-muted, #71717a);
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.history-item {
+  padding: 6px 8px;
+  background: var(--bg-secondary, #f4f4f5);
+  border-radius: 4px;
+  border-left: 3px solid var(--accent-primary, #3b82f6);
+}
+.history-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.history-type {
+  font-weight: 700;
+  color: var(--text-primary, #18181b);
+  font-size: 11px;
+}
+.history-transition {
+  font-size: 10px;
+  color: var(--text-muted, #71717a);
+}
+.history-version {
+  padding: 1px 5px;
+  background: #e4e4e7;
+  color: #52525b;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.history-meta {
+  font-size: 10px;
+  color: var(--text-muted, #71717a);
+  margin-top: 2px;
+}
+.history-notes {
+  margin-top: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-secondary, #52525b);
+  font-style: italic;
+}

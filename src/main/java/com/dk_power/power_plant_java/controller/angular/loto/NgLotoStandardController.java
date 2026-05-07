@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.CounterpartStandardPreviewDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardApprovalEventDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
@@ -329,6 +330,123 @@ public class NgLotoStandardController {
             return ResponseEntity.ok(new NgApiResponse<>(preview, "Counterpart preview generated successfully"));
         } catch (Exception e) {
             e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    // ── Development workflow endpoints ───────────────────────────────────────
+
+    public static class WorkflowNotesDto {
+        private String notes;
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
+    }
+
+    @PostMapping("/{id}/workflow/submit-for-verification")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> submitForVerification(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.submitForVerification(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Submitted for verification"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/workflow/verify")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> verify(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.verify(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Standard verified"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/workflow/walkdown-complete")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> markWalkdownComplete(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.markWalkdownComplete(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Walkdown marked complete"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/workflow/ready-for-testing")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> markReadyForTesting(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.markReadyForTesting(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Marked ready for testing"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/workflow/approve")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> approve(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.approve(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Standard approved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/workflow/send-back-to-draft")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> sendBackToDraft(
+            @PathVariable Long id, @RequestBody(required = false) WorkflowNotesDto body) {
+        try {
+            LotoStandardDto dto = lotoStandardService.sendBackToDraft(id, body != null ? body.getNotes() : null);
+            return ResponseEntity.ok(new NgApiResponse<>(dto, "Sent back to draft"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/workflow/history")
+    public ResponseEntity<NgApiResponse<List<LotoStandardApprovalEventDto>>> getApprovalHistory(@PathVariable Long id) {
+        try {
+            List<LotoStandardApprovalEventDto> history = lotoStandardService.getApprovalHistory(id).stream()
+                    .map(LotoStandardApprovalEventDto::from)
+                    .toList();
+            return ResponseEntity.ok(new NgApiResponse<>(history, "History retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/prerequisites")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> updatePrerequisites(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> prerequisites) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoStandardService.updateStandardPrerequisites(id, prerequisites),
+                    "Standard prerequisites updated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/procedural-text")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> updateProceduralText(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoStandardService.updateStandardProceduralText(
+                            id,
+                            body.get("prerequisitesText"),
+                            body.get("hazardControlMethodsText"),
+                            body.get("installProcedureText"),
+                            body.get("removalProcedureText")),
+                    "Standard procedural text updated"));
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }

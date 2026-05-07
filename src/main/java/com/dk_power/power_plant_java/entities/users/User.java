@@ -106,4 +106,9 @@ public class User extends BaseAuditEntity {
             setRoles(current);
         }
     }
+
+    /** Check if user holds a specific LOTO role. */
+    public boolean hasLotoRole(LotoRole lotoRole) {
+        return lotoRole != null && hasRole(lotoRole.roleName());
+    }
 }

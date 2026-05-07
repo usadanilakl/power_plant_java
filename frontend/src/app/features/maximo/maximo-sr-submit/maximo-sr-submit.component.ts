@@ -17,11 +17,17 @@ interface PendingFile {
   error?: string;
 }
 
+interface CandidateOption {
+  asset: MaximoAsset;
+  /** Empty for wildcard tier (whole tag matched), populated for partial tier (per-segment hits). */
+  matchedSegments: string[];
+}
+
 type AssetMatchState =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'exact'; asset: MaximoAsset; tier: 'exact' | 'wildcard' | 'partial'; partialTerm?: string }
-  | { kind: 'candidates'; options: MaximoAsset[]; tier: 'wildcard' | 'partial'; partialTerm?: string }
+  | { kind: 'candidates'; options: CandidateOption[]; tier: 'wildcard' | 'partial'; partialTerm?: string }
   | { kind: 'none'; note?: string }
   | { kind: 'error'; message: string };
 
@@ -90,7 +96,18 @@ export class MaximoSrSubmitComponent implements OnChanges {
       return;
     }
     if (r.candidates && r.candidates.length > 0) {
-      this.match.set({ kind: 'candidates', options: r.candidates, tier: r.tier as 'wildcard' | 'partial', partialTerm: r.partialTerm });
+      // Align per-candidate matched segments by assetnum so the picker can show
+      // "matched on HHS906" next to each option.
+      const scoreMap = new Map((r.candidateScores ?? []).map(s => [s.assetnum, s.matchedSegments]));
+      const options: CandidateOption[] = r.candidates.map(asset => ({
+        asset,
+        matchedSegments: scoreMap.get(asset.assetnum) ?? []
+      }));
+      this.match.set({
+        kind: 'candidates', options,
+        tier: r.tier as 'wildcard' | 'partial',
+        partialTerm: r.partialTerm
+      });
     }
   }
 
@@ -213,7 +230,7 @@ export class MaximoSrSubmitComponent implements OnChanges {
     const m = this.match();
     return m.kind === 'exact' ? { asset: m.asset, tier: m.tier, partialTerm: m.partialTerm } : null;
   }
-  matchCandidates(): { options: MaximoAsset[]; tier: string; partialTerm?: string } | null {
+  matchCandidates(): { options: CandidateOption[]; tier: string; partialTerm?: string } | null {
     const m = this.match();
     return m.kind === 'candidates' ? { options: m.options, tier: m.tier, partialTerm: m.partialTerm } : null;
   }

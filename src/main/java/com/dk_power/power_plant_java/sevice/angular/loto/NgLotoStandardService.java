@@ -6,11 +6,19 @@ import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.CounterpartStandardPreviewDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
+import com.dk_power.power_plant_java.entities.loto.LotoStandardApprovalEvent;
+import com.dk_power.power_plant_java.entities.loto.LotoStandardStatus;
+import com.dk_power.power_plant_java.entities.users.LotoRole;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.mappers.permits.LotoStandardMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoStandardApprovalEventRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
@@ -19,9 +27,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,13 +44,19 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final NgLotoPointService ngLotoPointService;
+    private final LotoStandardApprovalEventRepo approvalEventRepo;
+    private final NgValueService ngValueService;
+    private final UserRepo userRepo;
 
-    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService) {
+    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, NgValueService ngValueService, UserRepo userRepo) {
         this.lotoStandardRepo = lotoStandardRepo;
         this.lotoStandardMapper = lotoStandardMapper;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
         this.ngLotoPointService = ngLotoPointService;
+        this.approvalEventRepo = approvalEventRepo;
+        this.ngValueService = ngValueService;
+        this.userRepo = userRepo;
     }
 
     @Override
@@ -113,6 +130,13 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
     public LotoStandardDto createStandard(LotoStandardIdDto standard) {
         LotoStandard standardEntity = lotoStandardMapper.convertIdDtoToEntity(standard);
+        // Initialize workflow state for new standards
+        if (standardEntity.getDevelopmentStatus() == null) {
+            standardEntity.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.DRAFT));
+        }
+        if (standardEntity.getCurrentVersion() == null) {
+            standardEntity.setCurrentVersion(1);
+        }
         lotoStandardRepo.save(standardEntity);
         return lotoStandardMapper.convertToDto(standardEntity);
     }
@@ -130,6 +154,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
             // Check if the LotoPoint is already in the standard
             if (!standard.getLotoPoints().contains(lotoPoint)) {
+                invalidateIfApproved(standard, "LOTO point added: id=" + lotoPointId);
                 standard.addLotoPoint(lotoPoint);
                 lotoPoint.addLotoStandard(standard);
 
@@ -159,6 +184,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
             // Check if the LotoPoint is already in the standard
             if (standard.getLotoPoints().contains(lotoPoint)) {
+                invalidateIfApproved(standard, "LOTO point removed: id=" + lotoPointId);
                 standard.removeLotoPoint(lotoPoint);
                 lotoPoint.removeStandard(standard);
             }
@@ -190,6 +216,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         if (standard == null) {
             throw new EntityNotFoundException("LotoStandard not found");
         }
+        invalidateIfApproved(standard, "LOTO points reordered");
         standard.reorderLotoPoints(lotoPoints);
         LotoStandard savedStandard = save(standard);
         return toDto(savedStandard);
@@ -311,6 +338,8 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         if (existing == null) {
             throw new EntityNotFoundException("LotoStandard not found with id: " + standardIdDto.getId());
         }
+
+        invalidateIfApproved(existing, "Standard fields edited");
 
         // Update fields on the existing managed entity instead of creating a new one
         if (standardIdDto.getName() != null && !standardIdDto.getName().isEmpty()) {
@@ -587,5 +616,216 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
         List<String> subList = list.subList(start, end);
         return new PageImpl<>(subList, pageable, list.size());
+    }
+
+    // ── Development workflow ─────────────────────────────────────────────────
+
+    /** Submit a DRAFT standard for second-person verification. Any qualified user. */
+    @Transactional
+    public LotoStandardDto submitForVerification(Long standardId, String notes) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.QUALIFIED);
+        String from = transition(s, LotoStandardStatus.PENDING_VERIFICATION);
+        String user = currentUserName();
+        s.setSubmittedForVerificationBy(user);
+        s.setSubmittedForVerificationAt(LocalDateTime.now());
+        recordEvent(s, LotoStandardApprovalEvent.Type.SUBMITTED_FOR_VERIFICATION, user, from, LotoStandardStatus.PENDING_VERIFICATION, notes);
+        return toDto(save(s));
+    }
+
+    /** Second-person verify. Verifier must be qualified AND not the standard's creator. */
+    @Transactional
+    public LotoStandardDto verify(Long standardId, String notes) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.QUALIFIED);
+        String user = currentUserName();
+        if (user.equalsIgnoreCase(s.getCreatedBy())) {
+            throw new IllegalStateException("Verifier must be a different qualified person than the creator");
+        }
+        if (user.equalsIgnoreCase(s.getSubmittedForVerificationBy())) {
+            throw new IllegalStateException("Verifier must be a different qualified person than the submitter");
+        }
+        String from = transition(s, LotoStandardStatus.VERIFIED);
+        s.setVerifiedBy(user);
+        s.setVerifiedAt(LocalDateTime.now());
+        recordEvent(s, LotoStandardApprovalEvent.Type.VERIFIED, user, from, LotoStandardStatus.VERIFIED, notes);
+        return toDto(save(s));
+    }
+
+    /** Mark walkdown complete. Any qualified user. */
+    @Transactional
+    public LotoStandardDto markWalkdownComplete(Long standardId, String notes) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.QUALIFIED);
+        String from = transition(s, LotoStandardStatus.WALKDOWN_COMPLETE);
+        String user = currentUserName();
+        s.setWalkdownBy(user);
+        s.setWalkdownAt(LocalDateTime.now());
+        recordEvent(s, LotoStandardApprovalEvent.Type.WALKDOWN_COMPLETE, user, from, LotoStandardStatus.WALKDOWN_COMPLETE, notes);
+        return toDto(save(s));
+    }
+
+    /** Mark ready for testing — first-time hang gate. Any qualified user. */
+    @Transactional
+    public LotoStandardDto markReadyForTesting(Long standardId, String notes) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.QUALIFIED);
+        String from = transition(s, LotoStandardStatus.READY_FOR_TESTING);
+        String user = currentUserName();
+        s.setReadyForTestingBy(user);
+        s.setReadyForTestingAt(LocalDateTime.now());
+        recordEvent(s, LotoStandardApprovalEvent.Type.READY_FOR_TESTING, user, from, LotoStandardStatus.READY_FOR_TESTING, notes);
+        return toDto(save(s));
+    }
+
+    /** Final approval. Manager-only. Records APPROVED or REAPPROVED depending on history. */
+    @Transactional
+    public LotoStandardDto approve(Long standardId, String notes) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.MANAGER);
+        String from = transition(s, LotoStandardStatus.APPROVED);
+        String user = currentUserName();
+        s.setManagerApprovedBy(user);
+        s.setManagerApprovedAt(LocalDateTime.now());
+        boolean isReapproval = approvalEventRepo.findByStandard_IdOrderByEventAtAsc(s.getId()).stream()
+                .anyMatch(e -> e.getEventType() == LotoStandardApprovalEvent.Type.APPROVED);
+        LotoStandardApprovalEvent.Type type = isReapproval
+                ? LotoStandardApprovalEvent.Type.REAPPROVED
+                : LotoStandardApprovalEvent.Type.APPROVED;
+        recordEvent(s, type, user, from, LotoStandardStatus.APPROVED, notes);
+        return toDto(save(s));
+    }
+
+    /** Step back to DRAFT (e.g., reviewer rejects). Any qualified user. Clears attribution. */
+    @Transactional
+    public LotoStandardDto sendBackToDraft(Long standardId, String reason) {
+        LotoStandard s = requireStandard(standardId);
+        requireRole(LotoRole.QUALIFIED);
+        String from = transition(s, LotoStandardStatus.DRAFT);
+        s.clearWorkflowAttribution();
+        recordEvent(s, LotoStandardApprovalEvent.Type.INVALIDATED, currentUserName(), from, LotoStandardStatus.DRAFT, reason);
+        return toDto(save(s));
+    }
+
+    /** Returns approval-event history for a standard, oldest first. */
+    @Transactional(readOnly = true)
+    public List<LotoStandardApprovalEvent> getApprovalHistory(Long standardId) {
+        return approvalEventRepo.findByStandard_IdOrderByEventAtAsc(standardId);
+    }
+
+    /**
+     * Replace the per-point prerequisites map on the standard. Treated as a content
+     * mutation, so an APPROVED standard gets flipped to NEW_PENDING_REAPPROVAL.
+     */
+    @Transactional
+    public LotoStandardDto updateStandardPrerequisites(Long standardId,
+                                                       java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> prerequisites) {
+        LotoStandard s = requireStandard(standardId);
+        s.setPointPrerequisites(prerequisites != null ? prerequisites : new java.util.HashMap<>());
+        invalidateIfApproved(s, "Point prerequisites edited");
+        return toDto(save(s));
+    }
+
+    /**
+     * Update the procedural prose fields on the standard. Treated as a content mutation.
+     * Pass null on any field to leave it unchanged; pass empty string to clear it.
+     */
+    @Transactional
+    public LotoStandardDto updateStandardProceduralText(Long standardId,
+                                                        String prerequisitesText,
+                                                        String hazardControlMethodsText,
+                                                        String installProcedureText,
+                                                        String removalProcedureText) {
+        LotoStandard s = requireStandard(standardId);
+        boolean changed = false;
+        if (prerequisitesText != null && !prerequisitesText.equals(s.getPrerequisitesText())) {
+            s.setPrerequisitesText(prerequisitesText); changed = true;
+        }
+        if (hazardControlMethodsText != null && !hazardControlMethodsText.equals(s.getHazardControlMethodsText())) {
+            s.setHazardControlMethodsText(hazardControlMethodsText); changed = true;
+        }
+        if (installProcedureText != null && !installProcedureText.equals(s.getInstallProcedureText())) {
+            s.setInstallProcedureText(installProcedureText); changed = true;
+        }
+        if (removalProcedureText != null && !removalProcedureText.equals(s.getRemovalProcedureText())) {
+            s.setRemovalProcedureText(removalProcedureText); changed = true;
+        }
+        if (changed) invalidateIfApproved(s, "Procedural text edited");
+        return toDto(save(s));
+    }
+
+    // ── Workflow helpers ─────────────────────────────────────────────────────
+
+    /** Apply a workflow transition or throw if not allowed. Returns the prior status name (may be null). */
+    private String transition(LotoStandard s, String target) {
+        String current = s.getDevelopmentStatus() != null ? s.getDevelopmentStatus().getName() : null;
+        if (!LotoStandardStatus.allowedTargets(current).contains(target)) {
+            throw new IllegalStateException("Invalid status transition: " + current + " -> " + target);
+        }
+        s.setDevelopmentStatus(getOrCreateStatus(target));
+        return current;
+    }
+
+    /**
+     * If the standard is currently APPROVED, flip it to NEW_PENDING_REAPPROVAL,
+     * clear approval attribution, bump the version, and log an INVALIDATED event.
+     * Called from every content-mutation path.
+     */
+    private void invalidateIfApproved(LotoStandard s, String reason) {
+        if (s.getDevelopmentStatus() == null) return;
+        if (!LotoStandardStatus.APPROVED.equals(s.getDevelopmentStatus().getName())) return;
+        s.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.NEW_PENDING_REAPPROVAL));
+        s.setCurrentVersion((s.getCurrentVersion() == null ? 1 : s.getCurrentVersion()) + 1);
+        s.clearWorkflowAttribution();
+        recordEvent(s, LotoStandardApprovalEvent.Type.INVALIDATED, currentUserName(),
+                LotoStandardStatus.APPROVED, LotoStandardStatus.NEW_PENDING_REAPPROVAL, reason);
+    }
+
+    private LotoStandard requireStandard(Long id) {
+        if (id == null) throw new IllegalArgumentException("Standard id required");
+        LotoStandard s = lotoStandardRepo.findById(id).orElse(null);
+        if (s == null) throw new EntityNotFoundException("LotoStandard not found: " + id);
+        return s;
+    }
+
+    private Value getOrCreateStatus(String statusName) {
+        return ngValueService.createValue(LotoStandardStatus.CATEGORY, statusName);
+    }
+
+    private void recordEvent(LotoStandard s, LotoStandardApprovalEvent.Type type, String user,
+                             String from, String to, String notes) {
+        LotoStandardApprovalEvent e = new LotoStandardApprovalEvent();
+        e.setStandard(s);
+        e.setStandardVersion(s.getCurrentVersion());
+        e.setEventType(type);
+        e.setPerformedBy(user);
+        e.setEventAt(LocalDateTime.now());
+        e.setFromStatus(from);
+        e.setToStatus(to);
+        e.setNotes(notes);
+        approvalEventRepo.save(e);
+    }
+
+    private void requireRole(LotoRole role) {
+        String username = currentUserName();
+        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
+            throw new SecurityException("Authentication required");
+        }
+        User user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+        if (user == null) {
+            throw new SecurityException("User not found: " + username);
+        }
+        if (!user.hasLotoRole(role)) {
+            throw new SecurityException("Requires LOTO role: " + role.roleName());
+        }
+    }
+
+    private String currentUserName() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            return auth != null ? auth.getName() : "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
     }
 }

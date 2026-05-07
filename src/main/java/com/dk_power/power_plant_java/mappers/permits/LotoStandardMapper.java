@@ -61,6 +61,27 @@ public class LotoStandardMapper implements BaseMapper {
                         .orElse(new HashSet<>())
         );
 
+        // Development workflow — read-only on the DTO; mutated via service workflow methods
+        dto.setDevelopmentStatus(entity.getDevelopmentStatus() != null ? valueMapper.convertToDto(entity.getDevelopmentStatus()) : null);
+        dto.setCurrentVersion(entity.getCurrentVersion());
+        dto.setSubmittedForVerificationBy(entity.getSubmittedForVerificationBy());
+        dto.setSubmittedForVerificationAt(entity.getSubmittedForVerificationAt());
+        dto.setVerifiedBy(entity.getVerifiedBy());
+        dto.setVerifiedAt(entity.getVerifiedAt());
+        dto.setWalkdownBy(entity.getWalkdownBy());
+        dto.setWalkdownAt(entity.getWalkdownAt());
+        dto.setReadyForTestingBy(entity.getReadyForTestingBy());
+        dto.setReadyForTestingAt(entity.getReadyForTestingAt());
+        dto.setManagerApprovedBy(entity.getManagerApprovedBy());
+        dto.setManagerApprovedAt(entity.getManagerApprovedAt());
+
+        dto.setPointPrerequisites(entity.getPointPrerequisites());
+
+        dto.setPrerequisitesText(entity.getPrerequisitesText());
+        dto.setHazardControlMethodsText(entity.getHazardControlMethodsText());
+        dto.setInstallProcedureText(entity.getInstallProcedureText());
+        dto.setRemovalProcedureText(entity.getRemovalProcedureText());
+
         return dto;
 
     }

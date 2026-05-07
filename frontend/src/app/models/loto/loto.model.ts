@@ -23,6 +23,8 @@ export interface LotoModel extends BasePermitModel {
   sourceStandardId: number | null;
   sourceStandardName: string;
   snapshots: LotoSnapshotDto[];
+  wasModifiedDuringActive: boolean;
+  closeDisposition: string | null;
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
@@ -38,6 +40,8 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   sourceStandardId: number | null;
   sourceStandardName: string;
   snapshots: LotoSnapshotDto[];
+  wasModifiedDuringActive: boolean;
+  closeDisposition: string | null;
 
   constructor(data: Partial<LotoModel> = {}) {
     super(data);
@@ -52,6 +56,8 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     this.sourceStandardId = data.sourceStandardId ?? null;
     this.sourceStandardName = data.sourceStandardName ?? '';
     this.snapshots = data.snapshots ?? [];
+    this.wasModifiedDuringActive = data.wasModifiedDuringActive ?? false;
+    this.closeDisposition = data.closeDisposition ?? null;
   }
 
   // Override toJson method
@@ -91,6 +97,8 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       sourceStandardId: json.sourceStandardId ?? null,
       sourceStandardName: json.sourceStandardName ?? '',
       snapshots: Array.isArray(json.snapshots) ? json.snapshots.map((s: any) => LotoSnapshotDto.fromJson(s)) : [],
+      wasModifiedDuringActive: json.wasModifiedDuringActive ?? false,
+      closeDisposition: json.closeDisposition ?? null,
     });
   }
 

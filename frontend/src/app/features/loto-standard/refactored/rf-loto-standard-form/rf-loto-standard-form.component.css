@@ -285,3 +285,24 @@
 .counterpart-btn:hover {
   background: #1a3a4a;
 }
+
+.procedures-section { padding: 12px; overflow-y: auto; }
+.procedures-section h3 { color: #82b1ff; margin: 0 0 12px 0; }
+.procedure-fields { display: flex; flex-direction: column; gap: 12px; }
+.prose-field { display: flex; flex-direction: column; gap: 4px; }
+.prose-field span { color: #aaa; font-size: 13px; font-weight: 500; }
+.prose-field textarea {
+  background: #1a1a1a; color: #ddd; border: 1px solid #333;
+  border-radius: 4px; padding: 8px; font-family: inherit; resize: vertical;
+}
+.prose-actions { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #2a2a2a; }
+.prose-actions .btn-save {
+  background: var(--accent-color, #2196F3); color: white; border: none;
+  padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: 600;
+}
+.prose-actions .btn-cancel {
+  background: none; color: #aaa; border: 1px solid #444;
+  padding: 8px 14px; border-radius: 4px; cursor: pointer;
+}
+.prose-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.workflow-section { padding: 12px; overflow-y: auto; }

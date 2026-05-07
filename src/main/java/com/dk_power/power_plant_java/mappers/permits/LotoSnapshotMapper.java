@@ -48,6 +48,10 @@ public class LotoSnapshotMapper {
         dto.setSnapshotReason(snapshot.getSnapshotReason());
 
         // Lifecycle event fields
+        dto.setCaApprovedForHangingBy(snapshot.getCaApprovedForHangingBy());
+        dto.setCaApprovedForHangingAt(snapshot.getCaApprovedForHangingAt());
+        dto.setCaActivatedBy(snapshot.getCaActivatedBy());
+        dto.setCaActivatedAt(snapshot.getCaActivatedAt());
         dto.setHungBy(snapshot.getHungBy());                         dto.setHungAt(snapshot.getHungAt());
         dto.setVerifiedBy(snapshot.getVerifiedBy());                 dto.setVerifiedAt(snapshot.getVerifiedAt());
         dto.setActivatedBy(snapshot.getActivatedBy());               dto.setActivatedAt(snapshot.getActivatedAt());
@@ -63,6 +67,12 @@ public class LotoSnapshotMapper {
         dto.setControlAuthorityReleasedAt(snapshot.getControlAuthorityReleasedAt());
         dto.setLocksRemovedBy(snapshot.getLocksRemovedBy());         dto.setLocksRemovedAt(snapshot.getLocksRemovedAt());
         dto.setClosedBy(snapshot.getClosedBy());                     dto.setClosedAt(snapshot.getClosedAt());
+
+        dto.setPointHungBy(snapshot.getPointHungBy());
+        dto.setPointHungAt(snapshot.getPointHungAt());
+        dto.setPointVerifiedBy(snapshot.getPointVerifiedBy());
+        dto.setPointVerifiedAt(snapshot.getPointVerifiedAt());
+        dto.setPointPrerequisites(snapshot.getPointPrerequisites());
 
         return dto;
     }

@@ -8,12 +8,14 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { LotoStandardMapperService } from '../services/rf-loto-standard-mapper.service';
 import { RfLotoStandardApiService } from '../services/rf-loto-standard-api.service';
 import { LotoService } from '../../../../services/loto/loto.service';
-import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
+import { LotoStandardDto, PointPrerequisiteDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
@@ -22,6 +24,8 @@ import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/
 import { CounterpartStandardDialogComponent } from '../counterpart-standard-dialog/counterpart-standard-dialog.component';
 import { BulkSearchDialogComponent } from '../../../loto-points/refactored/bulk-search-dialog/bulk-search-dialog.component';
 import { LotoPointDtoLight } from '../../../../models/loto/bulk-search-result.model';
+import { LotoStandardWorkflowPanelComponent } from '../loto-builder/loto-standard-workflow-panel/loto-standard-workflow-panel.component';
+import { PointPrerequisitesEditorComponent } from '../loto-builder/point-prerequisites-editor/point-prerequisites-editor.component';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -29,11 +33,15 @@ type LotoStandardFieldName = keyof LotoStandardDto;
   selector: 'app-rf-loto-standard-form',
   standalone: true,
   imports: [
+    CommonModule,
+    FormsModule,
     RfReactiveFormComponent,
     DoubleLotoPointTableComponent,
     LotoStandardImageViewerComponent,
     CounterpartStandardDialogComponent,
     BulkSearchDialogComponent,
+    LotoStandardWorkflowPanelComponent,
+    PointPrerequisitesEditorComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
   styleUrl: './rf-loto-standard-form.component.css',
@@ -325,7 +333,9 @@ export class RfLotoStandardFormComponent {
 
   nextSlide(): void {
     const current = this.currentSlide();
-    if (current < 2 && (current !== 1 || this.entity().id)) {
+    // Slides 0=Info, 1=Points, 2=Procedures, 3=Workflow, 4=Images
+    // Slides 2-4 require a saved entity (id).
+    if (current < 4 && (current !== 1 || this.entity().id)) {
       this.currentSlide.set(current + 1);
     }
   }
@@ -386,5 +396,98 @@ export class RfLotoStandardFormComponent {
       });
       this.onLotoPointAdded(dto);
     }
+  }
+
+  // ── Procedural prose (Procedures slide) ──────────────────────────────────
+
+  proseDraft = signal<{
+    prerequisitesText: string;
+    hazardControlMethodsText: string;
+    installProcedureText: string;
+    removalProcedureText: string;
+  }>({
+    prerequisitesText: '',
+    hazardControlMethodsText: '',
+    installProcedureText: '',
+    removalProcedureText: '',
+  });
+
+  proseSaving = signal(false);
+  prereqSaving = signal(false);
+
+  // Sync proseDraft from the current entity when it changes.
+  private syncProseDraft = effect(() => {
+    const e = this.entity();
+    this.proseDraft.set({
+      prerequisitesText: e.prerequisitesText ?? '',
+      hazardControlMethodsText: e.hazardControlMethodsText ?? '',
+      installProcedureText: e.installProcedureText ?? '',
+      removalProcedureText: e.removalProcedureText ?? '',
+    });
+  }, { allowSignalWrites: true });
+
+  proseDirty = computed(() => {
+    const e = this.entity();
+    const d = this.proseDraft();
+    return (e.prerequisitesText ?? '') !== d.prerequisitesText
+        || (e.hazardControlMethodsText ?? '') !== d.hazardControlMethodsText
+        || (e.installProcedureText ?? '') !== d.installProcedureText
+        || (e.removalProcedureText ?? '') !== d.removalProcedureText;
+  });
+
+  onProseChange(field: keyof ReturnType<typeof this.proseDraft>, value: string): void {
+    this.proseDraft.set({ ...this.proseDraft(), [field]: value });
+  }
+
+  saveProse(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.proseSaving.set(true);
+    this.apiService.updateProceduralText(id, this.proseDraft())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.proseSaving.set(false);
+          const updated = LotoStandardDto.fromJson(response.responseData);
+          this.stateService.setSelectedItem(updated);
+        },
+        error: (err) => {
+          this.proseSaving.set(false);
+          alert(`Failed to save procedural text: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+        }
+      });
+  }
+
+  resetProse(): void {
+    const e = this.entity();
+    this.proseDraft.set({
+      prerequisitesText: e.prerequisitesText ?? '',
+      hazardControlMethodsText: e.hazardControlMethodsText ?? '',
+      installProcedureText: e.installProcedureText ?? '',
+      removalProcedureText: e.removalProcedureText ?? '',
+    });
+  }
+
+  savePrereqs(prerequisites: Record<number, PointPrerequisiteDto>): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.prereqSaving.set(true);
+    this.apiService.updatePrerequisites(id, prerequisites)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.prereqSaving.set(false);
+          const updated = LotoStandardDto.fromJson(response.responseData);
+          this.stateService.setSelectedItem(updated);
+        },
+        error: (err) => {
+          this.prereqSaving.set(false);
+          alert(`Failed to save prerequisites: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+        }
+      });
+  }
+
+  onStandardUpdatedFromWorkflow(updated: LotoStandardDto): void {
+    this.stateService.setSelectedItem(updated);
   }
 }

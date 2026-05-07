@@ -26,6 +26,8 @@ public class LotoSnapshotDto extends BaseDto {
     private String snapshotReason;
 
     // Lifecycle event fields
+    private String caApprovedForHangingBy;       private LocalDateTime caApprovedForHangingAt;
+    private String caActivatedBy;                private LocalDateTime caActivatedAt;
     private String hungBy;                       private LocalDateTime hungAt;
     private String verifiedBy;                   private LocalDateTime verifiedAt;
     private String activatedBy;                  private LocalDateTime activatedAt;
@@ -37,4 +39,12 @@ public class LotoSnapshotDto extends BaseDto {
     private String controlAuthorityReleasedBy;   private LocalDateTime controlAuthorityReleasedAt;
     private String locksRemovedBy;               private LocalDateTime locksRemovedAt;
     private String closedBy;                     private LocalDateTime closedAt;
+
+    // Per-point hung / verified state (pointId -> userName / ISO timestamp)
+    private java.util.Map<Long, String> pointHungBy = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointHungAt = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointVerifiedBy = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointVerifiedAt = new java.util.HashMap<>();
+
+    private java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> pointPrerequisites = new java.util.HashMap<>();
 }
