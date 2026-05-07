@@ -5,6 +5,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoAssetLocatorService } from '../../../services/maximo/maximo-asset-locator.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoAttachmentParent, CreateMaximoServiceRequest, MaximoServiceRequestCriteria, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
 
@@ -25,6 +26,7 @@ const idle = (): PanelState => ({ status: 'idle' });
 })
 export class MaximoApiTestPageComponent {
   private api = inject(MaximoApiService);
+  private locator = inject(MaximoAssetLocatorService);
 
   // 1. Search assets
   searchTag = 'CEM';
@@ -36,6 +38,10 @@ export class MaximoApiTestPageComponent {
   getTag = '-1-CEM-SS';
   getPanel = signal<PanelState>(idle());
   lastAssetHref = '';
+
+  // 2b. Asset locator (same matching logic the SR submit form uses)
+  locatorTag = '-1-CEM-SS';
+  locatorPanel = signal<PanelState>(idle());
 
   // 3. SRs for asset
   srAsset = '-1-CEM-SS';
@@ -123,6 +129,23 @@ export class MaximoApiTestPageComponent {
     if (!this.lastAssetHref) { alert('Run "Get asset" first.'); return; }
     this.attHref = this.lastAssetHref;
     this.attParent = 'asset';
+  }
+
+  /** Runs the same 3-tier locator the SR submit form uses, displays the structured result. */
+  async runLocator() {
+    const tag = this.locatorTag;
+    if (!tag || !tag.trim()) { alert('Tag number required.'); return; }
+    this.locatorPanel.set({ status: 'loading' });
+    const r = await this.locator.locate(tag);
+    if (r.tier === 'error') {
+      this.locatorPanel.set({ status: 'error', error: r.errorMessage ?? 'lookup failed', payload: r });
+      return;
+    }
+    // Surface a flattened "what would the SR form prefill" alongside the raw result.
+    const suggested = r.asset
+      ? { suggestedAsset: r.asset.assetnum, suggestedLocation: r.asset.location, suggestedSite: r.asset.siteid }
+      : null;
+    this.locatorPanel.set({ status: 'ok', payload: { ...r, ...(suggested ?? {}) } });
   }
 
   runSrList() { return this.run(this.srPanel, this.api.listServiceRequestsForAsset(this.srAsset)); }

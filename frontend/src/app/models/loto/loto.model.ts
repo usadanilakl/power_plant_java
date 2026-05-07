@@ -3,6 +3,7 @@ import { LotoPointDto } from './loto-point.model';
 import { LockDto } from './lock.model';
 import { LotoBoxDto } from './loto-box.model';
 import { LotoIdDto } from './loto-id.model';
+import { LotoSnapshotDto } from './loto-snapshot.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { Validators } from '@angular/forms';
@@ -21,6 +22,7 @@ export interface LotoModel extends BasePermitModel {
   personnel: PersonnelSignEntry[];
   sourceStandardId: number | null;
   sourceStandardName: string;
+  snapshots: LotoSnapshotDto[];
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
@@ -35,6 +37,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   personnel: PersonnelSignEntry[];
   sourceStandardId: number | null;
   sourceStandardName: string;
+  snapshots: LotoSnapshotDto[];
 
   constructor(data: Partial<LotoModel> = {}) {
     super(data);
@@ -48,6 +51,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     this.personnel = data.personnel ?? [];
     this.sourceStandardId = data.sourceStandardId ?? null;
     this.sourceStandardName = data.sourceStandardName ?? '';
+    this.snapshots = data.snapshots ?? [];
   }
 
   // Override toJson method
@@ -85,7 +89,8 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       date: json.date,
       personnel: json.personnel ?? [],
       sourceStandardId: json.sourceStandardId ?? null,
-      sourceStandardName: json.sourceStandardName ?? ''
+      sourceStandardName: json.sourceStandardName ?? '',
+      snapshots: Array.isArray(json.snapshots) ? json.snapshots.map((s: any) => LotoSnapshotDto.fromJson(s)) : [],
     });
   }
 
@@ -173,7 +178,12 @@ export class LotoDto extends BasePermitDto implements LotoModel {
         name: 'lotoPoints',
         label: 'Tags and Locks',
         type: 'form-array',
-        initialValue: dto.lotoPoints ?? [],
+        // Flatten ValueDto -> string so the text inputs don't render "[object Object]".
+        initialValue: (dto.lotoPoints ?? []).map((p: any) => ({
+          ...p,
+          isoPos: p?.isoPos?.name ?? p?.isoPos ?? '',
+          normPos: p?.normPos?.name ?? p?.normPos ?? '',
+        })),
         fields: [
           { name: 'tagNumber', label: 'Tag #', type: 'text' },
           { name: 'description', label: 'EID to be Tagged/Locked', type: 'text' },

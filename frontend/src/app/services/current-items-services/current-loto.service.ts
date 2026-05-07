@@ -190,16 +190,23 @@ export class CurrentLotoService{
     processLotoChanges(lotoDto: LotoDto) {
       if(!lotoDto) return;
       const lotoIdDto = new LotoDto(lotoDto).toIdModel();
+      console.log('[CurrentLotoService] processLotoChanges — sending:', lotoIdDto);
       this.lotoService.updateLoto(lotoIdDto).pipe(
         takeUntilDestroyed(this.destroyRef)
-      ).subscribe((response: SpringApiResponse<LotoDto>) => {
-        if(response){
-            const receivedLoto = this.normalizeLoto(response.responseData);
-            this.updateLotoInList(receivedLoto);
-            this.setCurrentLoto(receivedLoto);
-        }
-        else{
-            console.error('Error creating Loto:', response);
+      ).subscribe({
+        next: (response: SpringApiResponse<LotoDto>) => {
+          console.log('[CurrentLotoService] update OK — server returned:', response?.responseData);
+          if(response){
+              const receivedLoto = this.normalizeLoto(response.responseData);
+              this.updateLotoInList(receivedLoto);
+              this.setCurrentLoto(receivedLoto);
+          }
+          else{
+              console.error('Error updating Loto: empty response');
+          }
+        },
+        error: err => {
+          console.error('[CurrentLotoService] update FAILED:', err);
         }
       });
     }

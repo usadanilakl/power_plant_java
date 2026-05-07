@@ -44,7 +44,25 @@ public class LotoSnapshotMapper {
         dto.setWorkAuthorityTime(snapshot.getWorkAuthorityTime());
         dto.setStatus(snapshot.getStatus());
         dto.setLotoPointsData(new HashSet<>(snapshot.getLotoPointDtos())); // This uses the getLotoPointDtos() method from LotoSnapshot
-        
+        dto.setWorkScope(snapshot.getWorkScope());
+        dto.setSnapshotReason(snapshot.getSnapshotReason());
+
+        // Lifecycle event fields
+        dto.setHungBy(snapshot.getHungBy());                         dto.setHungAt(snapshot.getHungAt());
+        dto.setVerifiedBy(snapshot.getVerifiedBy());                 dto.setVerifiedAt(snapshot.getVerifiedAt());
+        dto.setActivatedBy(snapshot.getActivatedBy());               dto.setActivatedAt(snapshot.getActivatedAt());
+        dto.setTestStartedBy(snapshot.getTestStartedBy());           dto.setTestStartedAt(snapshot.getTestStartedAt());
+        dto.setReactivatedBy(snapshot.getReactivatedBy());           dto.setReactivatedAt(snapshot.getReactivatedAt());
+        dto.setTransferredFrom(snapshot.getTransferredFrom());
+        dto.setTransferredTo(snapshot.getTransferredTo());
+        dto.setTransferredAt(snapshot.getTransferredAt());
+        dto.setAcceptedBy(snapshot.getAcceptedBy());                 dto.setAcceptedAt(snapshot.getAcceptedAt());
+        dto.setRequestorReleasedBy(snapshot.getRequestorReleasedBy());
+        dto.setRequestorReleasedAt(snapshot.getRequestorReleasedAt());
+        dto.setControlAuthorityReleasedBy(snapshot.getControlAuthorityReleasedBy());
+        dto.setControlAuthorityReleasedAt(snapshot.getControlAuthorityReleasedAt());
+        dto.setLocksRemovedBy(snapshot.getLocksRemovedBy());         dto.setLocksRemovedAt(snapshot.getLocksRemovedAt());
+        dto.setClosedBy(snapshot.getClosedBy());                     dto.setClosedAt(snapshot.getClosedAt());
 
         return dto;
     }

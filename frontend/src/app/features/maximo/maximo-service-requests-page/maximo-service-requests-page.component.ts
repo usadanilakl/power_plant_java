@@ -6,8 +6,8 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
 import {
-  CreateMaximoServiceRequest,
   MaximoServiceRequest,
   MaximoServiceRequestCriteria
 } from '../../../models/maximo/maximo.models';
@@ -30,7 +30,10 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
 @Component({
   selector: 'app-maximo-service-requests-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
+  imports: [
+    CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
+    MaximoDetailDialogComponent, MaximoSrSubmitComponent
+  ],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'
 })
@@ -46,9 +49,6 @@ export class MaximoServiceRequestsPageComponent {
   loaded = signal(false);
 
   showForm = signal(false);
-  newSr: CreateMaximoServiceRequest = { description: '' };
-  submitting = signal(false);
-  submitError = signal<string | null>(null);
 
   selectedSr = signal<MaximoServiceRequest | null>(null);
   openDetail(sr: MaximoServiceRequest) { this.selectedSr.set(sr); }
@@ -84,7 +84,7 @@ export class MaximoServiceRequestsPageComponent {
       this.list.set(await firstValueFrom(this.api.listServiceRequestsByCriteria(this.criteria, this.pageSize)));
       this.loaded.set(true);
     } catch (e: any) {
-      this.error.set(this.errMsg(e));
+      this.error.set(e?.error?.message ?? e?.message ?? String(e));
     } finally {
       this.loading.set(false);
     }
@@ -97,37 +97,11 @@ export class MaximoServiceRequestsPageComponent {
     this.error.set(null);
   }
 
-  openForm() {
-    this.newSr = {
-      description: '',
-      longDescription: '',
-      assetnum: this.criteria.assetnum || '',
-      siteid: this.criteria.siteid || 'JG',
-      priority: '3'
-    };
-    this.submitError.set(null);
-    this.showForm.set(true);
-  }
+  // ---- New SR submission via MaximoSrSubmitComponent --------------------
 
-  async submit() {
-    if (!this.newSr.description) {
-      this.submitError.set('Description is required.');
-      return;
-    }
-    this.submitting.set(true);
-    this.submitError.set(null);
-    try {
-      const created = await firstValueFrom(this.api.createServiceRequest(this.newSr));
-      this.showForm.set(false);
-      this.list.update(l => [created, ...l]);
-    } catch (e: any) {
-      this.submitError.set(this.errMsg(e));
-    } finally {
-      this.submitting.set(false);
-    }
-  }
-
-  private errMsg(e: any): string {
-    return e?.error?.message ?? e?.message ?? String(e);
+  onSrSubmitted(sr: MaximoServiceRequest) {
+    this.list.update(l => [sr, ...l]);
+    this.loaded.set(true);
+    this.showForm.set(false);
   }
 }

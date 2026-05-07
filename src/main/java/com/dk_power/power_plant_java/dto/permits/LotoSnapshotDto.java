@@ -23,4 +23,18 @@ public class LotoSnapshotDto extends BaseDto {
     private Status status;
     private Set<LotoPointIdDto> lotoPointsData = new HashSet<>();
     private String workScope;
+    private String snapshotReason;
+
+    // Lifecycle event fields
+    private String hungBy;                       private LocalDateTime hungAt;
+    private String verifiedBy;                   private LocalDateTime verifiedAt;
+    private String activatedBy;                  private LocalDateTime activatedAt;
+    private String testStartedBy;                private LocalDateTime testStartedAt;
+    private String reactivatedBy;                private LocalDateTime reactivatedAt;
+    private String transferredFrom;              private String transferredTo;          private LocalDateTime transferredAt;
+    private String acceptedBy;                   private LocalDateTime acceptedAt;
+    private String requestorReleasedBy;          private LocalDateTime requestorReleasedAt;
+    private String controlAuthorityReleasedBy;   private LocalDateTime controlAuthorityReleasedAt;
+    private String locksRemovedBy;               private LocalDateTime locksRemovedAt;
+    private String closedBy;                     private LocalDateTime closedAt;
 }

@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { LotoDto, PersonnelSignEntry } from '../../../models/loto/loto.model';
+import { LotoSnapshotDto } from '../../../models/loto/loto-snapshot.model';
 import { RfFormField } from '../../../models/ui/form-field.model';
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { LotoPointsPanelComponent } from './loto-points-panel/loto-points-panel.component';
@@ -8,6 +9,7 @@ import { LotoService } from '../../../services/loto/loto.service';
 import { LotoStandardService } from '../../../services/loto/loto-standard.service';
 import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RfReactiveFormComponent,
     LotoPointsPanelComponent,
     MatButtonModule,
@@ -167,9 +170,141 @@ import { MatIconModule } from '@angular/material/icon';
               }
             </div>
           </mat-tab>
-          <mat-tab label="History">
+          <mat-tab label="Lifecycle">
+            <div class="lifecycle-panel">
+              <table class="lifecycle-table">
+                <thead><tr><th>Event</th><th>By</th><th>At</th><th></th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>Hung By</td>
+                    <td>{{ latestEvent('hungBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('hungAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('hung')" (click)="recordHung()">Sign as Hung</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Verified By</td>
+                    <td>{{ latestEvent('verifiedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('verifiedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('verified')" (click)="recordVerified()">Sign as Verified</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Activated By</td>
+                    <td>{{ latestEvent('activatedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('activatedAt')) || '—' }}</td>
+                    <td><span class="auto-note">(auto on Activate)</span></td>
+                  </tr>
+                  <tr>
+                    <td>Test Started By</td>
+                    <td>{{ latestEvent('testStartedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('testStartedAt')) || '—' }}</td>
+                    <td><span class="auto-note">(auto on Test)</span></td>
+                  </tr>
+                  <tr>
+                    <td>Re-Activated By</td>
+                    <td>{{ latestEvent('reactivatedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('reactivatedAt')) || '—' }}</td>
+                    <td><span class="auto-note">(auto on Re-Activate)</span></td>
+                  </tr>
+                  <tr>
+                    <td>Requestor Transferred</td>
+                    <td>
+                      @if (latestEvent('transferredFrom') || latestEvent('transferredTo')) {
+                        {{ latestEvent('transferredFrom') || '?' }} → {{ latestEvent('transferredTo') || '?' }}
+                      } @else { — }
+                    </td>
+                    <td>{{ formatTime(latestEvent('transferredAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('transfer')" (click)="openTransferDialog()">Transfer…</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Requestor Accepted By</td>
+                    <td>{{ latestEvent('acceptedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('acceptedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('accept')" (click)="recordAccepted()">Accept</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Requestor Released By</td>
+                    <td>{{ latestEvent('requestorReleasedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('requestorReleasedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('release')" (click)="recordRequestorReleased()">Release</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>CA Released By</td>
+                    <td>{{ latestEvent('controlAuthorityReleasedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('controlAuthorityReleasedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('release-ca')" (click)="recordCAReleased()">Release CA</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Locks Removed By</td>
+                    <td>{{ latestEvent('locksRemovedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('locksRemovedAt')) || '—' }}</td>
+                    <td>
+                      <button mat-stroked-button [disabled]="!canRecord('remove-locks')" (click)="recordLocksRemoved()">Remove Locks</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Closed By</td>
+                    <td>{{ latestEvent('closedBy') || '—' }}</td>
+                    <td>{{ formatTime(latestEvent('closedAt')) || '—' }}</td>
+                    <td><span class="auto-note">(auto on Close)</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Transfer dialog -->
+            @if (showTransferDialog()) {
+              <div class="dialog-backdrop" (click)="showTransferDialog.set(false)">
+                <div class="dialog" (click)="$event.stopPropagation()">
+                  <h3>Transfer Requestor</h3>
+                  <div class="dialog-row">
+                    <label>From:</label>
+                    <input type="text" [value]="entity().lotoRequestor || ''" disabled>
+                  </div>
+                  <div class="dialog-row">
+                    <label>To:</label>
+                    <input type="text" [(ngModel)]="transferTo" placeholder="New requestor name">
+                  </div>
+                  <div class="dialog-actions">
+                    <button mat-stroked-button (click)="showTransferDialog.set(false)">Cancel</button>
+                    <button mat-raised-button color="primary" [disabled]="!transferTo()" (click)="confirmTransfer()">Confirm Transfer</button>
+                  </div>
+                </div>
+              </div>
+            }
+          </mat-tab>
+          <mat-tab label="History ({{ entity().snapshots?.length || 0 }})">
             <div class="snapshot-panel">
-              <p class="empty-text">Snapshot history will appear here after status changes.</p>
+              @if ((entity().snapshots?.length ?? 0) === 0) {
+                <p class="empty-text">No snapshots yet — they're created on each status transition.</p>
+              } @else {
+                <table class="snapshot-table">
+                  <thead>
+                    <tr><th>Date</th><th>Reason</th><th>Status</th><th>Events</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (s of sortedSnapshots(); track s.id) {
+                      <tr>
+                        <td>{{ formatTime(s.dateCreated) }}</td>
+                        <td>{{ s.snapshotReason || '—' }}</td>
+                        <td>{{ s.status || '—' }}</td>
+                        <td class="events-cell">{{ describeEvents(s) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
             </div>
           </mat-tab>
         </mat-tab-group>
@@ -216,6 +351,33 @@ import { MatIconModule } from '@angular/material/icon';
     .signed-off { opacity: 0.5; }
     .snapshot-panel { padding: 16px; }
     .empty-text { color: #666; font-style: italic; }
+
+    .lifecycle-panel { padding: 16px; }
+    .lifecycle-table { width: 100%; border-collapse: collapse; }
+    .lifecycle-table th, .lifecycle-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; font-size: 13px; }
+    .lifecycle-table th { color: #aaa; font-weight: 500; }
+    .lifecycle-table td:first-child { color: #ccc; font-weight: 600; width: 22%; }
+    .auto-note { color: #777; font-style: italic; font-size: 12px; }
+
+    .snapshot-table { width: 100%; border-collapse: collapse; }
+    .snapshot-table th, .snapshot-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; font-size: 13px; vertical-align: top; }
+    .snapshot-table th { color: #aaa; font-weight: 500; }
+    .snapshot-table .events-cell { color: #ccc; max-width: 50ch; }
+
+    .dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      display: flex; align-items: center; justify-content: center; z-index: 3000;
+    }
+    .dialog {
+      background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 8px;
+      padding: 20px; width: min(440px, 90vw); display: flex; flex-direction: column; gap: 12px;
+    }
+    .dialog h3 { margin: 0; color: #82b1ff; }
+    .dialog-row { display: flex; align-items: center; gap: 10px; }
+    .dialog-row label { width: 60px; color: #aaa; }
+    .dialog-row input { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: white; padding: 6px 8px; }
+    .dialog-row input:disabled { opacity: 0.7; }
+    .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
   `],
 })
 export class RfLotoFormComponent {
@@ -225,8 +387,19 @@ export class RfLotoFormComponent {
 
   showStandardSelector = signal(false);
   showSignOnForm = signal(false);
+  showTransferDialog = signal(false);
+  transferTo = signal('');
   standards = signal<LotoStandardDto[]>([]);
   loadingStandards = signal(false);
+
+  sortedSnapshots = computed(() => {
+    const list = this.entity().snapshots ?? [];
+    return [...list].sort((a, b) => {
+      const ta = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+      const tb = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+      return tb - ta; // newest first
+    });
+  });
 
   entity = computed(() => this.currentService.selectedItem() ?? new LotoDto());
   fields = computed(() => LotoDto.toFormFields(this.entity()) as RfFormField[]);
@@ -311,5 +484,131 @@ export class RfLotoFormComponent {
         if (res.responseData) this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
       });
     }
+  }
+
+  // ----- Lifecycle helpers -----
+
+  /**
+   * Returns the most recent non-null value of the given field across all snapshots
+   * (newest snapshot first). Used to display "current state" in the Lifecycle panel.
+   */
+  latestEvent(field: keyof LotoSnapshotDto): string | null {
+    const snaps = [...(this.entity().snapshots ?? [])].sort((a, b) => {
+      const ta = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+      const tb = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+      return tb - ta;
+    });
+    for (const s of snaps) {
+      const v = (s as any)[field];
+      if (v != null && v !== '') return String(v);
+    }
+    return null;
+  }
+
+  formatTime(s: string | null): string {
+    if (!s) return '';
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    return d.toLocaleString();
+  }
+
+  canRecord(event: 'hung' | 'verified' | 'transfer' | 'accept' | 'release' | 'release-ca' | 'remove-locks'): boolean {
+    const s = this.statusName();
+    if (s === 'Closed') return false;
+    switch (event) {
+      case 'hung':
+      case 'verified':
+        return s === 'Building';
+      case 'transfer':
+      case 'accept':
+      case 'release':
+      case 'release-ca':
+        return s === 'Active' || s === 'Test' || s === 'Building';
+      case 'remove-locks':
+        return s === 'Active' || s === 'Test';
+    }
+    return false;
+  }
+
+  describeEvents(s: LotoSnapshotDto): string {
+    const parts: string[] = [];
+    const add = (label: string, by: string | null, at: string | null) => {
+      if (by || at) parts.push(`${label}: ${by ?? '?'} (${this.formatTime(at) || '?'})`);
+    };
+    add('Hung', s.hungBy, s.hungAt);
+    add('Verified', s.verifiedBy, s.verifiedAt);
+    add('Activated', s.activatedBy, s.activatedAt);
+    add('Test Started', s.testStartedBy, s.testStartedAt);
+    add('Re-Activated', s.reactivatedBy, s.reactivatedAt);
+    if (s.transferredFrom || s.transferredTo) {
+      parts.push(`Transferred: ${s.transferredFrom ?? '?'} → ${s.transferredTo ?? '?'} (${this.formatTime(s.transferredAt) || '?'})`);
+    }
+    add('Accepted', s.acceptedBy, s.acceptedAt);
+    add('Requestor Released', s.requestorReleasedBy, s.requestorReleasedAt);
+    add('CA Released', s.controlAuthorityReleasedBy, s.controlAuthorityReleasedAt);
+    add('Locks Removed', s.locksRemovedBy, s.locksRemovedAt);
+    add('Closed', s.closedBy, s.closedAt);
+    return parts.join('  •  ') || '—';
+  }
+
+  private applyLifecycleResponse(res: any): void {
+    if (res?.responseData) {
+      const updated = LotoDto.fromJson(res.responseData);
+      this.currentService.updateLotoInList(updated);
+      this.currentService.setCurrentLoto(updated);
+    }
+  }
+
+  recordHung(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.markHung(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  recordVerified(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.markVerified(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  openTransferDialog(): void {
+    this.transferTo.set('');
+    this.showTransferDialog.set(true);
+  }
+
+  confirmTransfer(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    const to = this.transferTo();
+    if (!to) return;
+    const from = this.entity().lotoRequestor || null;
+    this.lotoService.transferRequestor(id, from, to).subscribe(res => {
+      this.applyLifecycleResponse(res);
+      this.showTransferDialog.set(false);
+    });
+  }
+
+  recordAccepted(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.acceptRequestor(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  recordRequestorReleased(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.releaseByRequestor(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  recordCAReleased(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.releaseByControlAuthority(id).subscribe(res => this.applyLifecycleResponse(res));
+  }
+
+  recordLocksRemoved(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.removeLocks(id).subscribe(res => this.applyLifecycleResponse(res));
   }
 }

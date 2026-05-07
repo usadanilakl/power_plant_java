@@ -131,4 +131,34 @@ export class LotoService {
   assignLocks(lotoId: number, lockAssignments: any[]): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/assign-locks`, lockAssignments);
   }
+
+  // ----- Lifecycle events -----
+
+  markHung(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/hung`, {});
+  }
+
+  markVerified(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/verified`, {});
+  }
+
+  transferRequestor(lotoId: number, fromUser: string | null, toUser: string): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/transfer`, { fromUser, toUser });
+  }
+
+  acceptRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/accept`, {});
+  }
+
+  releaseByRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-requestor`, {});
+  }
+
+  releaseByControlAuthority(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-ca`, {});
+  }
+
+  removeLocks(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/remove-locks`, {});
+  }
 }

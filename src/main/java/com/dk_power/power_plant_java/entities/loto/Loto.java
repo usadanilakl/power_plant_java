@@ -191,6 +191,7 @@ public class Loto extends BasePermitEntity {
             newSnapshot.setId(null);
             newSnapshot.setDateCreated(java.time.LocalDateTime.now());
             newSnapshot.setLoto(this);
+            newSnapshot.clearLifecycleEventFields();
             this.snapshots.add(newSnapshot);
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
@@ -262,6 +263,96 @@ public class Loto extends BasePermitEntity {
     public Set<LotoPointIdDto> getLotoPointDtos() {
         if (this.getLatestSnapshot() == null) this.createNewSnapshot();
         return this.getLatestSnapshot().getLotoPointDtos();
+    }
+
+    /*********************************************************************************************************************
+     * LIFECYCLE EVENTS — each writes a (user, timestamp) pair into the latest snapshot
+     * (or a duplicated one when the LOTO is no longer mutable).
+     ******************************************************************************************************************/
+
+    private LotoSnapshot lifecycleSnapshot() {
+        if (this.isArchived) throw new RuntimeException("Loto is archived and can't be modified");
+        return this.isMutable ? this.getLatestSnapshot() : this.duplicateLatestSnapshot();
+    }
+
+    public LotoSnapshot recordHung(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setHungBy(user);
+        s.setHungAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordVerified(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setVerifiedBy(user);
+        s.setVerifiedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordActivated(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setActivatedBy(user);
+        s.setActivatedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordTestStarted(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setTestStartedBy(user);
+        s.setTestStartedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordReactivated(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setReactivatedBy(user);
+        s.setReactivatedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordTransferred(String fromUser, String toUser) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setTransferredFrom(fromUser);
+        s.setTransferredTo(toUser);
+        s.setTransferredAt(java.time.LocalDateTime.now());
+        // The lotoRequestor field on the parent reflects "current owner".
+        this.setLotoRequestor(toUser);
+        return s;
+    }
+
+    public LotoSnapshot recordAccepted(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setAcceptedBy(user);
+        s.setAcceptedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordRequestorReleased(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setRequestorReleasedBy(user);
+        s.setRequestorReleasedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordControlAuthorityReleased(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setControlAuthorityReleasedBy(user);
+        s.setControlAuthorityReleasedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordLocksRemoved(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setLocksRemovedBy(user);
+        s.setLocksRemovedAt(java.time.LocalDateTime.now());
+        return s;
+    }
+
+    public LotoSnapshot recordClosed(String user) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setClosedBy(user);
+        s.setClosedAt(java.time.LocalDateTime.now());
+        return s;
     }
 
     /*********************************************************************************************************************

@@ -45,30 +45,19 @@
         <div class="row actions">
           <button (click)="apply()" [disabled]="loading()">{{ loading() ? 'Loading…' : 'Apply filters' }}</button>
           <button class="secondary" (click)="clear()">Clear</button>
-          <button (click)="openForm()">+ New SR</button>
+          <button (click)="showForm.set(!showForm())">{{ showForm() ? 'Close form' : '+ New SR' }}</button>
           <span class="muted">{{ activeFilterCount() }} filter(s) active</span>
           <span *ngIf="error()" class="error">{{ error() }}</span>
         </div>
       </section>
 
-      <div class="form-panel" *ngIf="showForm()">
-        <h4>New service request</h4>
-        <label>Description<input [(ngModel)]="newSr.description" /></label>
-        <label>Long description<textarea [(ngModel)]="newSr.longDescription" rows="3"></textarea></label>
-        <div class="row">
-          <label>Asset <input [(ngModel)]="newSr.assetnum" /></label>
-          <label>Site <input [(ngModel)]="newSr.siteid" /></label>
-          <label>Priority <input [(ngModel)]="newSr.priority" /></label>
-          <label>Reported by <input [(ngModel)]="newSr.reportedby" placeholder="personid" /></label>
-        </div>
-        <div class="row">
-          <button (click)="submit()" [disabled]="submitting()">
-            {{ submitting() ? 'Submitting…' : 'Submit' }}
-          </button>
-          <button class="secondary" (click)="showForm.set(false)">Cancel</button>
-          <span *ngIf="submitError()" class="error">{{ submitError() }}</span>
-        </div>
-      </div>
+      <app-maximo-sr-submit
+        *ngIf="showForm()"
+        [tagNumber]="criteria.assetnum || null"
+        [defaultSite]="criteria.siteid || 'JG'"
+        (submitted)="onSrSubmitted($event)"
+        (cancel)="showForm.set(false)">
+      </app-maximo-sr-submit>
 
       <div class="results-header">
         <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>

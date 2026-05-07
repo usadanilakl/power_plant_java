@@ -1,0 +1,96 @@
+<div class="sr-submit">
+
+  <!-- Header -->
+  <header>
+    <h4>New service request</h4>
+    <button class="link" (click)="onCancel()" [disabled]="submitting()">Cancel</button>
+  </header>
+
+  <!-- Asset matching banner -->
+  <div *ngIf="matchKind() === 'loading'" class="banner muted">
+    Looking up Maximo asset for tag <code>{{ tagNumber }}</code>…
+  </div>
+
+  <div *ngIf="matchExact() as m" class="banner ok">
+    Maximo match: <strong>{{ m.asset.assetnum }}</strong>
+    <span class="muted">— {{ m.asset.description }}</span>
+    <span class="muted small"> · {{ tierLabel(m.tier, m.partialTerm) }}</span>
+  </div>
+
+  <div *ngIf="matchCandidates() as m" class="banner candidates">
+    <div>
+      Multiple Maximo assets match tag <code>{{ tagNumber }}</code>
+      <span class="muted small"> · {{ tierLabel(m.tier, m.partialTerm) }}</span>
+      . Pick one:
+    </div>
+    <ul>
+      <li *ngFor="let opt of m.options">
+        <button (click)="pickCandidate(opt)">
+          <strong>{{ opt.assetnum }}</strong>
+          <span class="muted"> — {{ opt.description }} ({{ opt.location || 'no loc' }} / {{ opt.siteid }})</span>
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div *ngIf="matchKind() === 'none'" class="banner warn">
+    No Maximo asset found for tag <code>{{ tagNumber }}</code>. Fill the asset / location fields manually below.
+  </div>
+
+  <div *ngIf="matchErrorMsg() as msg" class="banner err">
+    Lookup failed: {{ msg }}
+  </div>
+
+  <!-- Required + key fields -->
+  <label class="full">Description <span class="req">*</span>
+    <input [(ngModel)]="sr.description" placeholder="What's wrong, in one line" />
+  </label>
+
+  <label class="full">Long description
+    <textarea [(ngModel)]="sr.longDescription" rows="4" placeholder="Steps, observations, context"></textarea>
+  </label>
+
+  <div class="row">
+    <label>Asset <input [(ngModel)]="sr.assetnum" placeholder="auto-prefilled" /></label>
+    <label>Location <input [(ngModel)]="sr.location" placeholder="auto-prefilled" /></label>
+    <label>Site <input [(ngModel)]="sr.siteid" /></label>
+  </div>
+
+  <div class="row">
+    <label>Priority <input [(ngModel)]="sr.priority" placeholder="1-5" /></label>
+    <label>Reported by <input [(ngModel)]="sr.reportedby" placeholder="Maximo personid" /></label>
+  </div>
+
+  <!-- Attachments dropzone -->
+  <div class="dropzone"
+       [class.drag]="isDragOver()"
+       (dragover)="onDragOver($event)"
+       (dragleave)="onDragLeave()"
+       (drop)="onDrop($event)">
+    <p>Drop files here, or
+      <label class="file-btn">browse <input type="file" multiple (change)="onFilePick($event)" hidden /></label>
+    </p>
+    <p class="muted small">images, PDF, Word/Excel, txt</p>
+  </div>
+
+  <ul class="files" *ngIf="pending().length > 0">
+    <li *ngFor="let f of pending(); let i = index" [class]="'item ' + f.status">
+      <span class="name">{{ f.file.name }}</span>
+      <span class="muted">{{ fmtSize(f.file.size) }}</span>
+      <input class="doctype" [(ngModel)]="f.doctype" placeholder="doctype" />
+      <span class="status-badge">{{ f.status }}</span>
+      <button class="link" (click)="removeFile(i)" [disabled]="submitting()">remove</button>
+      <span class="err small" *ngIf="f.error">{{ f.error }}</span>
+    </li>
+  </ul>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button (click)="submit()" [disabled]="submitting()">
+      {{ submitting() ? 'Submitting…' : 'Submit' }}
+    </button>
+    <button class="secondary" (click)="onCancel()" [disabled]="submitting()">Cancel</button>
+    <span class="muted" *ngIf="attachmentProgress()">{{ attachmentProgress() }}</span>
+    <span class="err" *ngIf="submitError()">{{ submitError() }}</span>
+  </div>
+</div>

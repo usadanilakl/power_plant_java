@@ -270,6 +270,57 @@ public class NgLotoController {
         }
     }
 
+    @PutMapping("/{id}/lifecycle/hung")
+    public ResponseEntity<NgApiResponse<LotoDto>> markHung(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markHung(id), "Recorded as hung"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/verified")
+    public ResponseEntity<NgApiResponse<LotoDto>> markVerified(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markVerified(id), "Recorded as verified"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/transfer")
+    public ResponseEntity<NgApiResponse<LotoDto>> transferRequestor(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String fromUser = body.get("fromUser");
+            String toUser = body.get("toUser");
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.transferRequestor(id, fromUser, toUser), "Requestor transferred"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/accept")
+    public ResponseEntity<NgApiResponse<LotoDto>> acceptRequestor(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.acceptRequestor(id), "Transfer accepted"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/release-requestor")
+    public ResponseEntity<NgApiResponse<LotoDto>> releaseByRequestor(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.releaseByRequestor(id), "Released by requestor"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/release-ca")
+    public ResponseEntity<NgApiResponse<LotoDto>> releaseByControlAuthority(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.releaseByControlAuthority(id), "Released by control authority"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/remove-locks")
+    public ResponseEntity<NgApiResponse<LotoDto>> removeLocks(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.removeLocks(id), "Locks removed"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
     @PostMapping("/{id}/sign-on")
     public ResponseEntity<NgApiResponse<LotoDto>> signOn(
             @PathVariable Long id,

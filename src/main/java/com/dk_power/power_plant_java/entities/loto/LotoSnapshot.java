@@ -45,6 +45,42 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
     private String snapshotReason;
 
+    // ---- Lifecycle event fields (each populated only on the snapshot that recorded that event) ----
+
+    private String hungBy;
+    private LocalDateTime hungAt;
+
+    private String verifiedBy;
+    private LocalDateTime verifiedAt;
+
+    private String activatedBy;
+    private LocalDateTime activatedAt;
+
+    private String testStartedBy;
+    private LocalDateTime testStartedAt;
+
+    private String reactivatedBy;
+    private LocalDateTime reactivatedAt;
+
+    private String transferredFrom;
+    private String transferredTo;
+    private LocalDateTime transferredAt;
+
+    private String acceptedBy;
+    private LocalDateTime acceptedAt;
+
+    private String requestorReleasedBy;
+    private LocalDateTime requestorReleasedAt;
+
+    private String controlAuthorityReleasedBy;
+    private LocalDateTime controlAuthorityReleasedAt;
+
+    private String locksRemovedBy;
+    private LocalDateTime locksRemovedAt;
+
+    private String closedBy;
+    private LocalDateTime closedAt;
+
     @ElementCollection
     @CollectionTable(name = "loto_snapshot_points", joinColumns = @JoinColumn(name = "loto_snapshot_id"))
     @Column(name = "loto_point_data", columnDefinition = "TEXT")
@@ -96,6 +132,23 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         return cloned;
     }
 
-
-
+    /**
+     * Clears all event-recording fields. Called after a snapshot is duplicated for a new
+     * status transition so events stay tied to the snapshot row that recorded them rather
+     * than getting copied forward.
+     */
+    public void clearLifecycleEventFields() {
+        hungBy = null;                       hungAt = null;
+        verifiedBy = null;                   verifiedAt = null;
+        activatedBy = null;                  activatedAt = null;
+        testStartedBy = null;                testStartedAt = null;
+        reactivatedBy = null;                reactivatedAt = null;
+        transferredFrom = null;              transferredTo = null;            transferredAt = null;
+        acceptedBy = null;                   acceptedAt = null;
+        requestorReleasedBy = null;          requestorReleasedAt = null;
+        controlAuthorityReleasedBy = null;   controlAuthorityReleasedAt = null;
+        locksRemovedBy = null;               locksRemovedAt = null;
+        closedBy = null;                     closedAt = null;
+        snapshotReason = null;
+    }
 }

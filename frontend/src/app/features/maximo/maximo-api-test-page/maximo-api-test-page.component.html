@@ -31,6 +31,20 @@
         </fieldset>
 
         <fieldset>
+          <legend>2b. Asset locator (3-tier fallback)</legend>
+          <p class="muted small">
+            Used by the SR submit form. Tries in order:
+            <strong>exact</strong> getAsset →
+            <strong>wildcard</strong> %tag% →
+            <strong>partial</strong> matches each tag segment (e.g. "-1-CEM-SS" → CEM, SS) longest-first.
+            Stops at the first tier that returns hits and reports which tier matched.
+          </p>
+          <div class="row"><label>Tag number <input [(ngModel)]="locatorTag" /></label></div>
+          <button (click)="runLocator()" [disabled]="locatorPanel().status === 'loading'">Locate Maximo asset</button>
+          <ng-container *ngTemplateOutlet="result; context:{state: locatorPanel()}"></ng-container>
+        </fieldset>
+
+        <fieldset>
           <legend>3. SRs for asset</legend>
           <div class="row"><label>Assetnum <input [(ngModel)]="srAsset" /></label></div>
           <button (click)="runSrList()" [disabled]="srPanel().status === 'loading'">GET /assets/{{srAsset}}/service-requests</button>

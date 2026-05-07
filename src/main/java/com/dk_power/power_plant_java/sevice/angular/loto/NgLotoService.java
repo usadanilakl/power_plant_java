@@ -321,12 +321,21 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
         String currentStatus = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
         validateStatusTransition(currentStatus, newStatus);
+        String user = currentUserName();
 
         switch (newStatus) {
             case "Active" -> {
                 LotoSnapshot latest = loto.getLatestSnapshot();
                 latest.setPersonnelSnapshot(loto.getPersonnelJson());
-                latest.setSnapshotReason("Test".equals(currentStatus) ? "Re-Activated" : "Activated");
+                if ("Test".equals(currentStatus)) {
+                    latest.setSnapshotReason("Re-Activated");
+                    LotoSnapshot recorded = loto.recordReactivated(user);
+                    lotoSnapshotRepo.save(recorded);
+                } else {
+                    latest.setSnapshotReason("Activated");
+                    LotoSnapshot recorded = loto.recordActivated(user);
+                    lotoSnapshotRepo.save(recorded);
+                }
                 lotoSnapshotRepo.save(latest);
             }
             case "Test" -> {
@@ -336,7 +345,10 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                     testSnapshot.setId(null);
                     testSnapshot.setDateCreated(java.time.LocalDateTime.now());
                     testSnapshot.setLoto(loto);
+                    testSnapshot.clearLifecycleEventFields();
                     testSnapshot.setSnapshotReason("Test Started");
+                    testSnapshot.setTestStartedBy(user);
+                    testSnapshot.setTestStartedAt(java.time.LocalDateTime.now());
                     loto.getSnapshots().add(testSnapshot);
                     lotoSnapshotRepo.save(testSnapshot);
                 } catch (CloneNotSupportedException e) {
@@ -347,6 +359,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 LotoSnapshot latest = loto.getLatestSnapshot();
                 latest.setPersonnelSnapshot(loto.getPersonnelJson());
                 latest.setSnapshotReason("Closed");
+                LotoSnapshot recorded = loto.recordClosed(user);
+                lotoSnapshotRepo.save(recorded);
                 lotoSnapshotRepo.save(latest);
                 // Release locks back to inventory
                 lotoAssignmentService.releaseLocks(loto);
@@ -362,6 +376,80 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             lotoBoxService.updateBoxColorForStatus(loto.getLotoBox(), newStatus);
         }
 
+        return toDto(repo.save(loto));
+    }
+
+    /*********************************************************************************************************************
+     * LIFECYCLE EVENTS — operator records hung/verified/transfer/accept/release/etc into the latest snapshot.
+     ******************************************************************************************************************/
+
+    private String currentUserName() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            return auth != null ? auth.getName() : "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    @Transactional
+    public LotoDto markHung(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordHung(currentUserName());
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto markVerified(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordVerified(currentUserName());
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto transferRequestor(Long lotoId, String fromUser, String toUser) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        if (toUser == null || toUser.isBlank()) {
+            throw new IllegalArgumentException("Transfer requires a target user (toUser)");
+        }
+        String resolvedFrom = (fromUser != null && !fromUser.isBlank()) ? fromUser : loto.getLotoRequestor();
+        LotoSnapshot s = loto.recordTransferred(resolvedFrom, toUser);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto acceptRequestor(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordAccepted(currentUserName());
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto releaseByRequestor(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordRequestorReleased(currentUserName());
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto releaseByControlAuthority(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordControlAuthorityReleased(currentUserName());
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto removeLocks(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        LotoSnapshot s = loto.recordLocksRemoved(currentUserName());
+        lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
 
