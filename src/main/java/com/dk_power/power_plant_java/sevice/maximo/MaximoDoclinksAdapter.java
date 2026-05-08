@@ -3,13 +3,10 @@ package com.dk_power.power_plant_java.sevice.maximo;
 import com.dk_power.power_plant_java.dto.maximo.MaximoDoclinkDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,13 +39,20 @@ public class MaximoDoclinksAdapter {
     /**
      * Upload a file as a doclink on the parent record.
      *
+     * On this Maximo instance, the multipart upload endpoint NPEs (BMXAA1649E). The OSLC
+     * binary-body upload works: file bytes go in the request body, headers carry the
+     * filename ("slug") and doctype ("x-document-meta" — plain string, NOT JSON despite
+     * the header name suggesting otherwise). Maximo's 201 response has an empty body and
+     * the new doclink URL in Location, so we parse the id from there.
+     *
      * @param parentObjectStructure e.g. "mxasset", "mxapisr", "mxapiwodetail"
      * @param parentHref            href id of the parent record
-     * @param fileName              display name (also used as filename)
+     * @param fileName              display name (also used as the slug filename)
      * @param contentType           MIME type ("application/pdf", "image/png", etc.)
      * @param bytes                 file bytes
-     * @param doctype               Maximo doctype/category (e.g. "Attachments"); null = Maximo default
-     * @return the freshly-created doclink record
+     * @param doctype               Maximo doctype (Document Folder); REQUIRED, defaults to "Attachments" if blank
+     * @return a stub doclink with id, filename, doctype, mime, size populated.
+     *         Call list(...) afterwards to get full metadata if needed.
      */
     public MaximoDoclinkDto upload(String parentObjectStructure,
                                    String parentHref,
@@ -57,29 +61,35 @@ public class MaximoDoclinksAdapter {
                                    byte[] bytes,
                                    String doctype) {
         String url = access.subUrl(parentObjectStructure, parentHref, "doclinks");
+        String mime = (contentType != null && !contentType.isBlank())
+                ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        String docFolder = (doctype != null && !doctype.isBlank()) ? doctype : "Attachments";
 
-        ByteArrayResource fileResource = new ByteArrayResource(bytes) {
-            @Override public String getFilename() { return fileName; }
-        };
+        HttpHeaders h = new HttpHeaders();
+        h.setContentType(MediaType.parseMediaType(mime));
+        h.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+        h.set("slug", fileName);
+        h.set("x-document-meta", docFolder);
 
-        HttpHeaders fileHeaders = new HttpHeaders();
-        fileHeaders.setContentType(MediaType.parseMediaType(
-                contentType != null ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE));
+        ResponseEntity<Void> resp = access.postBinary(url, bytes, h);
+        String docId = extractIdFromLocation(resp.getHeaders().getFirst(HttpHeaders.LOCATION));
+        log.info("[Maximo] Uploaded doclink to {}/{} name={} id={}", parentObjectStructure, parentHref, fileName, docId);
 
-        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
-        parts.add("uploadfile", new HttpEntity<>(fileResource, fileHeaders));
-        parts.add("urlname", fileName);
-        if (doctype != null && !doctype.isBlank()) parts.add("doctype", doctype);
+        MaximoDoclinkDto d = new MaximoDoclinkDto();
+        d.setHref(docId);
+        d.setUrlname(fileName);
+        d.setDoctype(docFolder);
+        d.setUrltype("FILE");
+        d.setMimeType(mime);
+        d.setSize((long) bytes.length);
+        return d;
+    }
 
-        HttpHeaders multipartHeaders = new HttpHeaders();
-        multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-        multipartHeaders.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-        multipartHeaders.set("Properties", "*");
-
-        Map<String, Object> created = access.postMultipart(url,
-                new HttpEntity<>(parts, multipartHeaders));
-        log.info("[Maximo] Uploaded doclink to {}/{} name={}", parentObjectStructure, parentHref, fileName);
-        return map(created);
+    /** Last segment of "https://.../doclinks/21974" → "21974". */
+    private static String extractIdFromLocation(String location) {
+        if (location == null) return null;
+        int slash = location.lastIndexOf('/');
+        return slash >= 0 ? location.substring(slash + 1) : location;
     }
 
     /** Download a doclink's bytes by following its serve URL. */

@@ -29,10 +29,13 @@ public final class LotoStandardStatus {
      * FSM. Allowed target statuses for a given current status. APPROVED is
      * terminal in the forward direction — modifications kick it to
      * NEW_PENDING_REAPPROVAL via the modification hook, not via this map.
+     *
+     * <p>Legacy rows with no developmentStatus are treated as DRAFT so they can
+     * enter the workflow normally without an explicit data backfill.
      */
     public static Set<String> allowedTargets(String current) {
-        if (current == null) return Set.of(DRAFT);
-        return switch (current) {
+        String effective = current == null ? DRAFT : current;
+        return switch (effective) {
             case DRAFT -> Set.of(PENDING_VERIFICATION);
             case PENDING_VERIFICATION -> Set.of(VERIFIED, DRAFT);
             case VERIFIED -> Set.of(WALKDOWN_COMPLETE, DRAFT);

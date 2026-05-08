@@ -109,15 +109,18 @@ public class MaximoAccessService {
         }
     }
 
-    /** Multipart upload to a doclinks-style sub-collection. body is a MultiValueMap with "doc" file part + meta fields. */
-    public Map<String, Object> postMultipart(String url, HttpEntity<?> multipartEntity) {
+    /**
+     * POST raw binary bytes (e.g. a file) and return the full ResponseEntity so callers can
+     * read response headers like Location. Used for doclink uploads — Maximo's multipart
+     * endpoint NPEs on this instance, but the OSLC binary-body upload works:
+     *   Content-Type: <file mime>; slug: <filename>; x-document-meta: <doctype>; body = bytes.
+     */
+    public ResponseEntity<Void> postBinary(String url, byte[] bytes, HttpHeaders headers) {
         try {
-            ResponseEntity<Map<String, Object>> resp = restTemplate.exchange(
-                    URI.create(url), HttpMethod.POST, multipartEntity,
-                    new ParameterizedTypeReference<>() {});
-            return resp.getBody();
+            return restTemplate.exchange(
+                    URI.create(url), HttpMethod.POST, new HttpEntity<>(bytes, headers), Void.class);
         } catch (HttpClientErrorException e) {
-            log.warn("[Maximo] multipart POST {} failed: {} {}", url, e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("[Maximo] binary POST {} failed: {} {}", url, e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
         }
     }

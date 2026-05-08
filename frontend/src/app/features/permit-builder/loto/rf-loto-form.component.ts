@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { LotoDto, PersonnelSignEntry } from '../../../models/loto/loto.model';
@@ -1076,11 +1076,11 @@ export class RfLotoFormComponent {
   walkdowns = signal<WalkdownChecklistDto[]>([]);
 
   /**
-   * Reload walkdowns whenever the current LOTO id changes. Implemented as a self-firing
-   * computed that watches entity().id; the result is unused but the signal-tracking
-   * ensures Angular re-runs it on every entity change.
+   * Reload walkdowns whenever the current LOTO id changes. effect() is the right tool
+   * here: it tracks signal reads and fires once per change, with no risk of being
+   * triggered repeatedly by template reads.
    */
-  private walkdownLoader = computed(() => {
+  private walkdownLoader = effect(() => {
     const id = this.entity().id;
     if (id) {
       this.walkdownService.listForLoto(id).subscribe({
@@ -1090,12 +1090,9 @@ export class RfLotoFormComponent {
     } else {
       this.walkdowns.set([]);
     }
-    return id;
-  });
+  }, { allowSignalWrites: true });
 
   canStartWalkdown(): boolean {
-    // Touch the loader so it fires on entity changes
-    void this.walkdownLoader();
     if (!this.entity().id) return false;
     if (this.statusName() === 'Closed') return false;
     return !!this.latestEvent('hungBy');

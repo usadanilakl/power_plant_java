@@ -40,15 +40,12 @@ function normalizeGroupLabel(raw: string): string | null {
 }
 
 /**
- * Find a group label in a row, scanning the primary group column plus a few
- * nearby columns. Handles minor layout drift between months and merged cells
- * where the label may be at column ±1 or ±2 from the expected position.
+ * Find a group label in a row, scanning the primary group column and nearby
+ * columns to its LEFT only. Never scans into day-shift cells (right of nameCol),
+ * because shift codes like "D" and "OCM" would false-match as group labels.
  */
 function findGroupLabelInRow(row: any[], primaryCol: number): string | null {
-  const direct = normalizeGroupLabel(String(row[primaryCol] || ''));
-  if (direct) return direct;
-  for (const offset of [-1, 1, -2, 2]) {
-    const c = primaryCol + offset;
+  for (const c of [primaryCol, primaryCol - 1, primaryCol - 2]) {
     if (c < 0) continue;
     const found = normalizeGroupLabel(String(row[c] || ''));
     if (found) return found;
@@ -217,7 +214,16 @@ export class PersonnelManager {
     // Names rotate between groups across months, so each month has its own row layout.
     const monthMaps = new Map<number, MonthMaps>();
     for (const [mIdx, range] of monthRanges.entries()) {
-      monthMaps.set(mIdx, this.buildMonthMaps(data, range));
+      const m = this.buildMonthMaps(data, range);
+      monthMaps.set(mIdx, m);
+
+      // Diagnostic: log the group breakdown for each month so we can spot months where
+      // a known group (e.g. Rel) wasn't detected and people were misbucketed.
+      const groupCounts: Record<string, number> = {};
+      for (const grp of m.rowToGroup.values()) {
+        groupCounts[grp || '(empty)'] = (groupCounts[grp || '(empty)'] || 0) + 1;
+      }
+      console.log(`[Personnel] ${MONTH_NAMES[mIdx]} group breakdown:`, groupCounts);
     }
 
     const currentMaps = monthMaps.get(currentMonth);

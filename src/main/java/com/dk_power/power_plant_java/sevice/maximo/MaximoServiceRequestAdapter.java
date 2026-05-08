@@ -107,25 +107,37 @@ public class MaximoServiceRequestAdapter {
         return Optional.of(map(body));
     }
 
-    /** Create a new service request. Returns the freshly-created record (Maximo echoes it back when Properties: * is set). */
+    /**
+     * Create a new service request.
+     *
+     * Maximo OSLC requires the `spi:` namespace prefix on every payload field — unprefixed
+     * keys are silently dropped, leaving an empty record. Confirmed by curl probe: a POST
+     * with `{"description": "..."}` sticks only `siteid` and `ticketid`; with `{"spi:description": "..."}`
+     * everything sticks. Maximo also auto-populates `location` from the asset's location
+     * when `assetnum` is set, so we don't need to send location explicitly.
+     */
     public MaximoServiceRequestDto create(CreateMaximoServiceRequestDto req) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        if (req.getDescription() != null) payload.put("description", req.getDescription());
-        if (req.getLongDescription() != null) payload.put("description_longdescription", req.getLongDescription());
-        if (req.getAssetnum() != null) payload.put("assetnum", req.getAssetnum());
-        if (req.getLocation() != null) payload.put("location", req.getLocation());
-        payload.put("siteid",
+        putIfPresent(payload, "spi:description", req.getDescription());
+        putIfPresent(payload, "spi:description_longdescription", req.getLongDescription());
+        putIfPresent(payload, "spi:assetnum", req.getAssetnum());
+        putIfPresent(payload, "spi:location", req.getLocation());
+        payload.put("spi:siteid",
                 (req.getSiteid() != null && !req.getSiteid().isBlank()) ? req.getSiteid() : access.defaultSite());
-        if (req.getReportedby() != null) payload.put("reportedby", req.getReportedby());
-        if (req.getClassstructureid() != null) payload.put("classstructureid", req.getClassstructureid());
-        if (req.getPriority() != null) payload.put("reportedpriority", req.getPriority());
-        if (req.getAffectedperson() != null) payload.put("affectedperson", req.getAffectedperson());
+        putIfPresent(payload, "spi:reportedby", req.getReportedby());
+        putIfPresent(payload, "spi:classstructureid", req.getClassstructureid());
+        putIfPresent(payload, "spi:reportedpriority", req.getPriority());
+        putIfPresent(payload, "spi:affectedperson", req.getAffectedperson());
         // class is "SR" — required so Maximo creates a Service Request (not an Incident or Problem)
-        payload.put("class", "SR");
+        payload.put("spi:class", "SR");
 
         Map<String, Object> created = access.postJson(access.osUrl(OS), null, payload);
         log.info("[Maximo] Created SR ticketid={}", str(created, "ticketid"));
         return map(created);
+    }
+
+    private static void putIfPresent(Map<String, Object> payload, String key, String value) {
+        if (value != null && !value.isBlank()) payload.put(key, value);
     }
 
     private List<MaximoServiceRequestDto> mapAll(List<Map<String, Object>> rows) {

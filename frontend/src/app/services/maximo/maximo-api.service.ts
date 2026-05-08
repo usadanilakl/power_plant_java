@@ -134,11 +134,12 @@ export class MaximoApiService {
     const fd = new FormData();
     fd.append('file', file);
     if (doctype) fd.append('doctype', doctype);
-    let p = new HttpParams();
-    if (doctype) p = p.set('doctype', doctype);
+    // Don't ALSO set doctype as a query param — Spring's @RequestParam binding then sees both
+    // (form field + query string), joins them as "Attachments,Attachments", and Maximo errors
+    // on the 16-char DOCTYPE limit. Form field alone is sufficient.
     return this.http
       .post<SpringApiResponse<MaximoDoclink>>(
-        `${this.base}/${parent}/${encodeURIComponent(href)}/attachments`, fd, { params: p })
+        `${this.base}/${parent}/${encodeURIComponent(href)}/attachments`, fd)
       .pipe(map(r => r.responseData));
   }
 }

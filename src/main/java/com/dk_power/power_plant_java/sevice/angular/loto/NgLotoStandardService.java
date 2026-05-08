@@ -759,11 +759,14 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     /** Apply a workflow transition or throw if not allowed. Returns the prior status name (may be null). */
     private String transition(LotoStandard s, String target) {
         String current = s.getDevelopmentStatus() != null ? s.getDevelopmentStatus().getName() : null;
+        // Legacy rows: a null current is treated as DRAFT for FSM purposes (allowedTargets does the same)
+        // and we record DRAFT as the from-status on the audit row so it isn't ambiguous.
+        String effectiveFrom = current == null ? LotoStandardStatus.DRAFT : current;
         if (!LotoStandardStatus.allowedTargets(current).contains(target)) {
-            throw new IllegalStateException("Invalid status transition: " + current + " -> " + target);
+            throw new IllegalStateException("Invalid status transition: " + effectiveFrom + " -> " + target);
         }
         s.setDevelopmentStatus(getOrCreateStatus(target));
-        return current;
+        return effectiveFrom;
     }
 
     /**
