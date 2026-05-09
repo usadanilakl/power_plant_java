@@ -162,6 +162,12 @@ export class HomePageComponent {
       description: 'Track insulation, leaks, winterization',
       icon: '📝',
       route: '/field-lists'
+    },
+    {
+      title: 'Inventory',
+      description: 'Track tools and equipment with QR codes',
+      icon: '📦',
+      route: '/inventory'
     }
   ];
 

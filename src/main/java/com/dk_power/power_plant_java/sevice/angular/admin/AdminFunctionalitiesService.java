@@ -629,6 +629,7 @@ public class AdminFunctionalitiesService {
             case "map" -> workAreaGitHubPublisher.publishMap();
             case "categories" -> workAreaGitHubPublisher.publishCategories();
             case "fieldlisttypes" -> workAreaGitHubPublisher.publishFieldListTypes();
+            case "inventorytypes" -> workAreaGitHubPublisher.publishInventoryTypes();
             case "locations" -> workAreaGitHubPublisher.publishLocations();
             case "lotopoints" -> workAreaGitHubPublisher.publishLotoPoints();
             case "all" -> workAreaGitHubPublisher.publishAll();

@@ -123,6 +123,7 @@ export const GROUPED_HOME_NAVIGATION_CARDS: GroupedNavigationCards = [
       { title: 'System Log', description: 'View all comments across the system', icon: 'forum', route: '/log', color: '#607d8b' },
       { title: 'Instruments', description: 'View and manage instruments', icon: 'precision_manufacturing', route: '/instrumentation', color: '#00897b' },
       { title: 'Field Lists', description: 'Track insulation, leaks, winterization, and more', icon: 'checklist_rtl', route: '/field-lists', color: '#26A69A' },
+      { title: 'Inventory', description: 'Track tools and equipment with QR codes', icon: 'inventory_2', route: '/inventory', color: '#FB8C00' },
       { title: 'EtaPro Trends', description: 'Live and historical plant data from EtaPro historian', icon: 'trending_up', route: '/etapro', color: '#42A5F5' },
       { title: 'EtaPro Reports', description: 'Build and run reports on EtaPro historian data', icon: 'analytics', route: '/etapro-reports', color: '#9C27B0' }
     ]

@@ -459,6 +459,8 @@ public class NgValueService {
                 || "workcategory".equalsIgnoreCase(alias);
         boolean isFieldListType = "FieldListType".equalsIgnoreCase(name)
                 || "fieldlisttype".equalsIgnoreCase(alias);
+        boolean isInventoryType = "InventoryType".equalsIgnoreCase(name)
+                || "inventorytype".equalsIgnoreCase(alias);
         boolean isLocation = "Location".equalsIgnoreCase(name)
                 || "location".equalsIgnoreCase(alias);
 
@@ -466,6 +468,14 @@ public class NgValueService {
             WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
             if (publisher != null) {
                 publisher.publishFieldListTypes();
+            }
+            return;
+        }
+
+        if (isInventoryType) {
+            WorkAreaGitHubPublisher publisher = workAreaGitHubPublisherProvider.getIfAvailable();
+            if (publisher != null) {
+                publisher.publishInventoryTypes();
             }
             return;
         }

@@ -84,6 +84,10 @@ public class EntityTableRegistry {
         // Field Lists
         Map.entry("FieldListItem", "field_list_item"),
 
+        // Inventory
+        Map.entry("InventoryItem", "inventory_item"),
+        Map.entry("InventoryUsage", "inventory_usage"),
+
         // Permits - additional
         Map.entry("JobLog", "job_log"),
         Map.entry("EnergizedWorkPermit", "energized_work_permit"),
@@ -154,6 +158,8 @@ public class EntityTableRegistry {
         "VentingPermit",
         "FireImpairment",
         "FieldListItem",
+        "InventoryItem",
+        "InventoryUsage",
         "PrintableForm",
         "FormContainer",
         "Flow",

@@ -819,6 +819,189 @@ export class SubmissionOrchestratorService {
     );
   }
 
+  // ====================== Inventory ======================
+
+  submitInventoryItem(payload: any): Observable<SubmissionResult> {
+    const localUuid = payload.localUuid || crypto.randomUUID();
+    payload.localUuid = localUuid;
+
+    return this.serverApi.submitInventoryItem(payload).pipe(
+      map(response => ({
+        success: !!response.success,
+        method: (response.method === 'local' ? 'local' : 'server') as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || localUuid,
+        message: response.method === 'local'
+          ? 'Saved on server. Will sync to SharePoint when available.'
+          : 'Submitted successfully via server.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for inventory, trying PA:', serverError.message);
+        return this.tryPowerAutomateInventory(payload, localUuid);
+      })
+    );
+  }
+
+  updateInventoryItem(payload: any): Observable<SubmissionResult> {
+    return this.serverApi.updateInventoryItem(payload).pipe(
+      map(response => ({
+        success: response.success,
+        method: 'server' as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || payload.localUuid,
+        message: 'Updated successfully.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for inventory update, trying PA:', serverError.message);
+        return this.tryPowerAutomateInventory({ ...payload, actionType: 'update' }, payload.localUuid);
+      })
+    );
+  }
+
+  recordInventoryUsage(payload: any): Observable<SubmissionResult> {
+    const localUuid = payload.localUuid || crypto.randomUUID();
+    payload.localUuid = localUuid;
+
+    return this.serverApi.recordInventoryUsage(payload).pipe(
+      map(response => ({
+        success: !!response.success,
+        method: 'server' as SubmissionResult['method'],
+        sharepointId: response.sharepointId,
+        localUuid: response.localUuid || localUuid,
+        message: 'Usage recorded.'
+      })),
+      catchError(serverError => {
+        console.warn('[Orchestrator] Server failed for usage, trying PA:', serverError.message);
+        return this.tryPowerAutomateInventoryUsage(payload, localUuid);
+      })
+    );
+  }
+
+  private tryPowerAutomateInventoryUsage(payload: any, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured('inventoryUsage')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Server unavailable and Power Automate not configured.',
+        requiresEmail: true
+      });
+    }
+
+    const paData: Record<string, any> = {
+      Title: `${payload.qrToken || ''} — ${payload.eventType || ''} by ${payload.userName || ''}`,
+      PwaId: localUuid,
+      InventoryItemId: payload.inventoryItemId != null ? String(payload.inventoryItemId) : '',
+      QrToken: payload.qrToken || '',
+      UserName: payload.userName || '',
+      UserEmail: payload.userEmail || '',
+      Location: payload.location || '',
+      Purpose: payload.purpose || '',
+      Comments: payload.comments || '',
+      EventType: payload.eventType || 'checkout',
+      ScannedAt: payload.scannedAt || new Date().toISOString(),
+      ReturnedAt: payload.returnedAt || ''
+    };
+
+    const paRequest = {
+      actionType: 'create',
+      data: paData,
+      attachments: []
+    };
+
+    return this.powerAutomate.submitV2('inventoryUsage', paRequest).pipe(
+      map(response => {
+        const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
+        return {
+          success: isSuccess,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: isSuccess
+            ? 'Usage recorded directly to SharePoint via Power Automate.'
+            : (response.message || 'Power Automate submission failed.')
+        };
+      }),
+      catchError(paError => {
+        console.error('[Orchestrator] PA also failed for inventory usage:', paError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: 'Both server and Power Automate unavailable. Usage saved locally.',
+          requiresEmail: true
+        });
+      })
+    );
+  }
+
+  private tryPowerAutomateInventory(payload: any, localUuid: string): Observable<SubmissionResult> {
+    if (!this.powerAutomate.isV2Configured('inventory')) {
+      return of({
+        success: false,
+        method: 'email' as const,
+        localUuid,
+        message: 'Server unavailable and Power Automate not configured.',
+        requiresEmail: true
+      });
+    }
+
+    const paData: Record<string, any> = {
+      Title: payload.title || '',
+      PwaId: localUuid,
+      ItemType: payload.itemTypeName || '',
+      Status: payload.statusName || 'Available',
+      Location: payload.locationName || '',
+      SerialNumber: payload.serialNumber || '',
+      Manufacturer: payload.manufacturer || '',
+      Model: payload.model || '',
+      Description: payload.description || '',
+      QrToken: payload.qrToken || '',
+      CurrentLocation: payload.currentLocation || '',
+      CurrentHolderName: payload.currentHolderName || '',
+      CurrentHolderEmail: payload.currentHolderEmail || '',
+      SubmitterName: payload.submitterName || '',
+      SubmitterEmail: payload.submitterEmail || '',
+      SubmitterPhone: payload.submitterPhone || '',
+    };
+
+    const paRequest = {
+      actionType: payload.actionType || 'create',
+      id: payload.sharepointId,
+      data: paData,
+      attachments: (payload.attachments || []).map((a: any) => ({
+        fileName: a.fileName || a.name,
+        contentType: a.contentType || 'application/octet-stream',
+        base64Content: a.base64Content || a.content
+      }))
+    };
+
+    return this.powerAutomate.submitV2('inventory', paRequest).pipe(
+      map(response => {
+        const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
+        return {
+          success: isSuccess,
+          method: 'powerAutomate' as const,
+          sharepointId: response.id,
+          localUuid,
+          message: isSuccess
+            ? 'Submitted directly to SharePoint via Power Automate.'
+            : (response.message || 'Power Automate submission failed.')
+        };
+      }),
+      catchError(paError => {
+        console.error('[Orchestrator] PA also failed for inventory:', paError.message);
+        return of({
+          success: false,
+          method: 'email' as const,
+          localUuid,
+          message: 'Both server and Power Automate unavailable. Item saved locally.',
+          requiresEmail: true
+        });
+      })
+    );
+  }
+
   private tryPowerAutomateFieldList(payload: any, localUuid: string): Observable<SubmissionResult> {
     if (!this.powerAutomate.isV2Configured('fieldList')) {
       return of({

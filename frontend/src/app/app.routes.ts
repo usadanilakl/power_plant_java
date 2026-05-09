@@ -26,6 +26,7 @@ import { INSTRUMENTATION_ROUTES } from './routes/instrumentation.routes';
 import { DIAGRAM_BUILDER_ROUTES } from './routes/diagram-builder.routes';
 import { VISUAL_PLANT_ROUTES } from './routes/visual-plant.routes';
 import { FIELD_LIST_ROUTES } from './routes/field-list.routes';
+import { INVENTORY_ROUTES } from './routes/inventory.routes';
 import { ETAPRO_ROUTES } from './routes/etapro.routes';
 import { ETAPRO_REPORTS_ROUTES } from './routes/etapro-reports.routes';
 import { MAXIMO_ROUTES } from './routes/maximo.routes';
@@ -63,6 +64,7 @@ export const routes: Routes = [
   ...DIAGRAM_BUILDER_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...VISUAL_PLANT_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...FIELD_LIST_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
+  ...INVENTORY_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...ETAPRO_REPORTS_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] })),
   ...MAXIMO_ROUTES.map(r => r.redirectTo ? r : ({ ...r, canActivate: [authGuard, fullAccessGuard] }))

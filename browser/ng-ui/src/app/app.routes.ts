@@ -12,6 +12,8 @@ import { InstrumentFormComponent } from './features/equipment/instrument/instrum
 import { HomePageComponent } from './pages/home-page/home-page.component';
 import { FieldListPageComponent } from './pages/field-list-page/field-list-page.component';
 import { FieldListComponent } from './features/field-list/field-list.component';
+import { InventoryPageComponent } from './pages/inventory-page/inventory-page.component';
+import { InventoryComponent } from './features/inventory/inventory.component';
 import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -81,6 +83,15 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: FieldListComponent }
+      ]
+    },
+    {
+      path: 'inventory',
+      component: InventoryPageComponent,
+      canActivate: [standaloneGuard, userSetupGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: InventoryComponent }
       ]
     },
     {

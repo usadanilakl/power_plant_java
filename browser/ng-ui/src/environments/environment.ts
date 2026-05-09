@@ -9,7 +9,9 @@ export const environment = {
     confinedSpace: '',
     instrumentLog: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4',
     instrument: '',
-    fieldList: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e0bad99434cc416eb14e7f1e6049b18f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lpx4Wm2gB8rap8XYk3MwAD97LaZg52oTuDKjwHoEw5k'
+    fieldList: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e0bad99434cc416eb14e7f1e6049b18f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lpx4Wm2gB8rap8XYk3MwAD97LaZg52oTuDKjwHoEw5k',
+    inventory: 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms',
+    inventoryUsage: ''
   },
   emailRecipient: 'jgportal@jpowerusa.com',
   emailCcRecipients: 'jgportal@jpowerusa.com',

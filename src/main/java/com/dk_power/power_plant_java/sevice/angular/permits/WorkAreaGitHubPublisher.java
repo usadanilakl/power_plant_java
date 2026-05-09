@@ -38,6 +38,7 @@ public class WorkAreaGitHubPublisher {
         MAP,
         CATEGORIES,
         FIELD_LIST_TYPES,
+        INVENTORY_TYPES,
         LOCATIONS,
         LOTO_POINTS,
         ALL
@@ -94,6 +95,11 @@ public class WorkAreaGitHubPublisher {
     }
 
     @Async
+    public void publishInventoryTypes() {
+        requestPublish(PublishTarget.INVENTORY_TYPES);
+    }
+
+    @Async
     public void publishLocations() {
         requestPublish(PublishTarget.LOCATIONS);
     }
@@ -140,6 +146,12 @@ public class WorkAreaGitHubPublisher {
                     String fieldListTypesJson = buildFieldListTypesJson();
                     writeFieldListTypesLocally(dataDir, fieldListTypesJson);
                     pushFieldListTypesToGitHub(fieldListTypesJson);
+                }
+
+                if (shouldPublishInventoryTypes(targetToPublish)) {
+                    String inventoryTypesJson = buildInventoryTypesJson();
+                    writeInventoryTypesLocally(dataDir, inventoryTypesJson);
+                    pushInventoryTypesToGitHub(inventoryTypesJson);
                 }
 
                 if (shouldPublishLocations(targetToPublish)) {
@@ -209,6 +221,10 @@ public class WorkAreaGitHubPublisher {
 
     private boolean shouldPublishFieldListTypes(PublishTarget target) {
         return target == PublishTarget.ALL || target == PublishTarget.FIELD_LIST_TYPES;
+    }
+
+    private boolean shouldPublishInventoryTypes(PublishTarget target) {
+        return target == PublishTarget.ALL || target == PublishTarget.INVENTORY_TYPES;
     }
 
     private boolean shouldPublishLocations(PublishTarget target) {
@@ -298,6 +314,24 @@ public class WorkAreaGitHubPublisher {
         Files.writeString(dataDir.resolve("field-list-types.json"), json);
     }
 
+    private String buildInventoryTypesJson() throws IOException {
+        List<com.dk_power.power_plant_java.entities.categories.Value> types;
+        try {
+            types = valueService.getValuesByCategory("InventoryType");
+        } catch (RuntimeException e) {
+            log.debug("[PWA Publisher] InventoryType not found yet, returning empty list");
+            types = List.of();
+        }
+        List<Map<String, Object>> result = types.stream()
+                .map(v -> Map.<String, Object>of("id", v.getId(), "name", v.getName() != null ? v.getName() : ""))
+                .collect(Collectors.toList());
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+    }
+
+    private void writeInventoryTypesLocally(Path dataDir, String json) throws IOException {
+        Files.writeString(dataDir.resolve("inventory-types.json"), json);
+    }
+
     private String buildLocationsJson() throws IOException {
         List<com.dk_power.power_plant_java.entities.categories.Value> locations;
         try {
@@ -373,6 +407,16 @@ public class WorkAreaGitHubPublisher {
             log.info("[PWA Publisher] GitHub repo {} updated for field list types", pwaGitHubRepo);
         } catch (Exception e) {
             log.error("[PWA Publisher] GitHub push failed for field list types (local files still written): {}", e.getMessage(), e);
+        }
+    }
+
+    private void pushInventoryTypesToGitHub(String json) {
+        try {
+            GHRepository repo = gitHub.getRepository(pwaGitHubRepo);
+            pushTextFile(repo, "data/inventory-types.json", json);
+            log.info("[PWA Publisher] GitHub repo {} updated for inventory types", pwaGitHubRepo);
+        } catch (Exception e) {
+            log.error("[PWA Publisher] GitHub push failed for inventory types (local files still written): {}", e.getMessage(), e);
         }
     }
 

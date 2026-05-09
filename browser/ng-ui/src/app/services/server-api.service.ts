@@ -728,6 +728,69 @@ export class ServerApiService {
     );
   }
 
+  // ====================== Inventory ======================
+
+  getInventoryTypes(): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ responseData: { id: number; name: string }[] }>(
+      `${this.baseUrl}/api/pwa/inventory-item/types`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  submitInventoryItem(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/inventory-item/submit`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  updateInventoryItem(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.put<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/inventory-item/update`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  recordInventoryUsage(payload: any): Observable<PwaSubmissionResult> {
+    return this.http.post<{ responseData: PwaSubmissionResult }>(
+      `${this.baseUrl}/api/pwa/inventory-item/usage`,
+      payload
+    ).pipe(
+      timeout(30000),
+      map(response => response.responseData)
+    );
+  }
+
+  getInventoryItemByQr(qrToken: string): Observable<any> {
+    return this.http.get<{ responseData: any }>(
+      `${this.baseUrl}/api/pwa/inventory-item/by-qr/${encodeURIComponent(qrToken)}`
+    ).pipe(
+      timeout(10000),
+      map(response => response.responseData),
+      catchError(this.handleError)
+    );
+  }
+
+  getActiveInventoryItems(type?: string): Observable<any[]> {
+    const params = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.http.get<{ responseData: any[] }>(
+      `${this.baseUrl}/api/pwa/secured/inventory/active-items${params}`
+    ).pipe(
+      timeout(15000),
+      map(response => response.responseData || []),
+      catchError(this.handleError)
+    );
+  }
+
   getFieldListItemStatus(localUuid: string): Observable<PwaStatusResult> {
     return this.http.get<{ responseData: PwaStatusResult }>(
       `${this.baseUrl}/api/pwa/field-list-item/status/${localUuid}`

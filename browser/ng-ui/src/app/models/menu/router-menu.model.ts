@@ -12,6 +12,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/jha', label: 'JHA' },
     { route: '/instruments', label: 'Instrumentation' },
     { route: '/field-lists', label: 'Field Lists' },
+    { route: '/inventory', label: 'Inventory' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

@@ -33,6 +33,10 @@ import {
           <button (click)="syncPwaData('areas')" [disabled]="loading.pwaSync">Sync Work Areas</button>
           <button (click)="syncPwaData('map')" [disabled]="loading.pwaSync">Sync Work Map</button>
           <button (click)="syncPwaData('categories')" [disabled]="loading.pwaSync">Sync Work Categories</button>
+          <button (click)="syncPwaData('fieldlisttypes')" [disabled]="loading.pwaSync">Sync Field List Types</button>
+          <button (click)="syncPwaData('inventorytypes')" [disabled]="loading.pwaSync">Sync Inventory Types</button>
+          <button (click)="syncPwaData('locations')" [disabled]="loading.pwaSync">Sync Locations</button>
+          <button (click)="syncPwaData('lotopoints')" [disabled]="loading.pwaSync">Sync LOTO Points</button>
         </div>
 
         <div class="error" *ngIf="errors.pwaSync">{{ errors.pwaSync }}</div>
@@ -656,12 +660,16 @@ export class AdminSyncComponent implements OnInit {
 
   // ==================== PWA Sync ====================
 
-  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories') {
-    const labels: Record<'all' | 'areas' | 'map' | 'categories', string> = {
+  syncPwaData(target: 'all' | 'areas' | 'map' | 'categories' | 'fieldlisttypes' | 'inventorytypes' | 'locations' | 'lotopoints') {
+    const labels: Record<typeof target, string> = {
       all: 'all PWA work-request data',
       areas: 'PWA work areas and shape links',
       map: 'the PWA work-area map image',
-      categories: 'PWA work categories'
+      categories: 'PWA work categories',
+      fieldlisttypes: 'PWA field list types',
+      inventorytypes: 'PWA inventory types',
+      locations: 'PWA locations',
+      lotopoints: 'PWA LOTO points'
     };
 
     if (!confirm(`Queue a publish for ${labels[target]}?`)) return;

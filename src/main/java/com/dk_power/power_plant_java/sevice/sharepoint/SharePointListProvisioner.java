@@ -195,7 +195,20 @@ public class SharePointListProvisioner {
                         text("PwaId"), text("ListType"), text("Status"), text("Location"),
                         text("SpecificLocation"), note("Notes"), text("DateObserved"),
                         text("EquipmentTag"),
-                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone"))
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone")),
+
+                list("Inventory",
+                        text("PwaId"), text("ItemType"), text("Status"), text("Location"),
+                        text("SerialNumber"), text("Manufacturer"), text("Model"),
+                        note("Description"), text("QrToken"),
+                        text("CurrentLocation"), text("CurrentHolderName"), text("CurrentHolderEmail"),
+                        text("SubmitterName"), text("SubmitterEmail"), text("SubmitterPhone")),
+
+                list("Inventory Usage",
+                        text("PwaId"), text("InventoryItemId"), text("QrToken"),
+                        text("UserName"), text("UserEmail"),
+                        text("Location"), text("Purpose"), note("Comments"),
+                        text("EventType"), text("ScannedAt"), text("ReturnedAt"))
         );
     }
 

@@ -37,6 +37,7 @@ public class PwaSecuredController {
     private final PwaPermitService pwaPermitService;
     private final PwaNotificationService pwaNotificationService;
     private final NgFieldListItemService fieldListItemService;
+    private final com.dk_power.power_plant_java.sevice.angular.inventory.NgInventoryItemService inventoryItemService;
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
 
@@ -328,6 +329,46 @@ public class PwaSecuredController {
             items = fieldListItemService.getOpenItems();
         }
         return ResponseEntity.ok(new NgApiResponse<>(items, "Open items retrieved"));
+    }
+
+    // ============ Inventory ============
+
+    @GetMapping("/inventory/active-items")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.inventory.InventoryItemDto>>> getActiveInventoryItems(
+            @RequestParam(required = false) String type) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(
+                new NgApiResponse<>(null, "NOT_AUTHENTICATED"));
+
+        List<com.dk_power.power_plant_java.dto.inventory.InventoryItemDto> items;
+        if (type != null && !type.isBlank()) {
+            items = inventoryItemService.getActiveItemsByType(type);
+        } else {
+            items = inventoryItemService.getActiveItems();
+        }
+        return ResponseEntity.ok(new NgApiResponse<>(items, "Active inventory items retrieved"));
+    }
+
+    @GetMapping("/inventory/by-qr/{qrToken}")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.inventory.InventoryItemDto>> getInventoryByQr(
+            @PathVariable String qrToken) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(
+                new NgApiResponse<>(null, "NOT_AUTHENTICATED"));
+
+        com.dk_power.power_plant_java.dto.inventory.InventoryItemDto dto = inventoryItemService.getDtoByQrToken(qrToken);
+        if (dto == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(new NgApiResponse<>(dto, "Found"));
+    }
+
+    @GetMapping("/inventory/{id}/usage")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.inventory.InventoryUsageDto>>> getInventoryUsage(
+            @PathVariable Long id) {
+        User user = getCurrentUser();
+        if (user == null) return ResponseEntity.status(401).body(
+                new NgApiResponse<>(null, "NOT_AUTHENTICATED"));
+
+        return ResponseEntity.ok(new NgApiResponse<>(inventoryItemService.getUsageHistory(id), "Usage history retrieved"));
     }
 
     private User getCurrentUser() {

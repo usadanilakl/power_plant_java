@@ -58,6 +58,12 @@ public class PowerAutomateV2Client {
     @Value("${pa.flow.field-list-url:}")
     private String fieldListFlowUrl;
 
+    @Value("${pa.flow.inventory-url:}")
+    private String inventoryFlowUrl;
+
+    @Value("${pa.flow.inventory-usage-url:}")
+    private String inventoryUsageFlowUrl;
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -204,6 +210,22 @@ public class PowerAutomateV2Client {
 
     public boolean isFieldListConfigured() {
         return fieldListFlowUrl != null && !fieldListFlowUrl.isBlank();
+    }
+
+    public PaResponseDto inventory(PaRequestDto request) {
+        return sendRequest(inventoryFlowUrl, request);
+    }
+
+    public boolean isInventoryConfigured() {
+        return inventoryFlowUrl != null && !inventoryFlowUrl.isBlank();
+    }
+
+    public PaResponseDto inventoryUsage(PaRequestDto request) {
+        return sendRequest(inventoryUsageFlowUrl, request);
+    }
+
+    public boolean isInventoryUsageConfigured() {
+        return inventoryUsageFlowUrl != null && !inventoryUsageFlowUrl.isBlank();
     }
 
 }

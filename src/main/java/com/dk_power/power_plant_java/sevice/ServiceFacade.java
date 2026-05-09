@@ -10,6 +10,8 @@ import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
+import com.dk_power.power_plant_java.entities.inventory.InventoryItem;
+import com.dk_power.power_plant_java.entities.inventory.InventoryUsage;
 import com.dk_power.power_plant_java.entities.engraver.EngraverTemplate;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.forms.FormContainer;
@@ -39,6 +41,8 @@ import com.dk_power.power_plant_java.sevice.angular.scheduler.TaskService;
 import com.dk_power.power_plant_java.sevice.base_services.SyncableService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.angular.field_list.FieldListItemSyncService;
+import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryItemSyncService;
+import com.dk_power.power_plant_java.sevice.angular.inventory.InventoryUsageSyncService;
 import com.dk_power.power_plant_java.sevice.fire_impairment.FireImpairmentService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
@@ -127,7 +131,10 @@ public class ServiceFacade {
             // Fire Impairment
             @Lazy FireImpairmentService fireImpairmentService,
             // Field Lists
-            @Lazy FieldListItemSyncService fieldListItemSyncService
+            @Lazy FieldListItemSyncService fieldListItemSyncService,
+            // Inventory
+            @Lazy InventoryItemSyncService inventoryItemSyncService,
+            @Lazy InventoryUsageSyncService inventoryUsageSyncService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -191,6 +198,9 @@ public class ServiceFacade {
         serviceMap.put(FireImpairment.class.getSimpleName(), fireImpairmentService);
         // Field Lists
         serviceMap.put(FieldListItem.class.getSimpleName(), fieldListItemSyncService);
+        // Inventory
+        serviceMap.put(InventoryItem.class.getSimpleName(), inventoryItemSyncService);
+        serviceMap.put(InventoryUsage.class.getSimpleName(), inventoryUsageSyncService);
     }
 
     public SyncableService getService(String entityClass) {
