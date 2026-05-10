@@ -70,8 +70,13 @@ public class LotoSnapshotMapper {
 
         dto.setPointHungBy(snapshot.getPointHungBy());
         dto.setPointHungAt(snapshot.getPointHungAt());
+        dto.setPointHangNotes(snapshot.getPointHangNotes());
         dto.setPointVerifiedBy(snapshot.getPointVerifiedBy());
         dto.setPointVerifiedAt(snapshot.getPointVerifiedAt());
+        dto.setPointVerifyNotes(snapshot.getPointVerifyNotes());
+        dto.setPointWalkdownBy(snapshot.getPointWalkdownBy());
+        dto.setPointWalkdownAt(snapshot.getPointWalkdownAt());
+        dto.setPointWalkdownNotes(snapshot.getPointWalkdownNotes());
         dto.setPointPrerequisites(snapshot.getPointPrerequisites());
 
         return dto;

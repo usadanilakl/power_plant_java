@@ -101,6 +101,24 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     @Column(columnDefinition = "TEXT")
     private String pointVerifiedAtJson;
 
+    /** Per-point notes captured during the guided hang procedure. */
+    @Column(columnDefinition = "TEXT")
+    private String pointHangNotesJson;
+
+    /** Per-point notes captured during the guided verify procedure. */
+    @Column(columnDefinition = "TEXT")
+    private String pointVerifyNotesJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointWalkdownByJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointWalkdownAtJson;
+
+    /** Per-point notes captured during walkdown. */
+    @Column(columnDefinition = "TEXT")
+    private String pointWalkdownNotesJson;
+
     /** JSON map: {pointId: {requiredPointIds, safetyConditions}} — copied from LotoStandard, editable per instance */
     @Column(columnDefinition = "TEXT")
     private String pointPrerequisitesJson;
@@ -178,8 +196,13 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         snapshotReason = null;
         pointHungByJson = null;
         pointHungAtJson = null;
+        pointHangNotesJson = null;
         pointVerifiedByJson = null;
         pointVerifiedAtJson = null;
+        pointVerifyNotesJson = null;
+        pointWalkdownByJson = null;
+        pointWalkdownAtJson = null;
+        pointWalkdownNotesJson = null;
     }
 
     // ---- JSON map helpers for per-point state ----
@@ -201,27 +224,68 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         }
     }
 
-    public java.util.Map<Long, String> getPointHungBy()     { return readJsonMap(pointHungByJson); }
-    public java.util.Map<Long, String> getPointHungAt()     { return readJsonMap(pointHungAtJson); }
-    public java.util.Map<Long, String> getPointVerifiedBy() { return readJsonMap(pointVerifiedByJson); }
-    public java.util.Map<Long, String> getPointVerifiedAt() { return readJsonMap(pointVerifiedAtJson); }
+    public java.util.Map<Long, String> getPointHungBy()        { return readJsonMap(pointHungByJson); }
+    public java.util.Map<Long, String> getPointHungAt()        { return readJsonMap(pointHungAtJson); }
+    public java.util.Map<Long, String> getPointHangNotes()     { return readJsonMap(pointHangNotesJson); }
+    public java.util.Map<Long, String> getPointVerifiedBy()    { return readJsonMap(pointVerifiedByJson); }
+    public java.util.Map<Long, String> getPointVerifiedAt()    { return readJsonMap(pointVerifiedAtJson); }
+    public java.util.Map<Long, String> getPointVerifyNotes()   { return readJsonMap(pointVerifyNotesJson); }
+    public java.util.Map<Long, String> getPointWalkdownBy()    { return readJsonMap(pointWalkdownByJson); }
+    public java.util.Map<Long, String> getPointWalkdownAt()    { return readJsonMap(pointWalkdownAtJson); }
+    public java.util.Map<Long, String> getPointWalkdownNotes() { return readJsonMap(pointWalkdownNotesJson); }
 
-    public void setPointHungBy(Long pointId, String user) {
+    public void setPointHungBy(Long pointId, String user, String notes) {
         java.util.Map<Long, String> by = getPointHungBy();
         java.util.Map<Long, String> at = getPointHungAt();
+        java.util.Map<Long, String> nt = getPointHangNotes();
         by.put(pointId, user);
         at.put(pointId, java.time.LocalDateTime.now().toString());
+        if (notes != null && !notes.isBlank()) nt.put(pointId, notes); else nt.remove(pointId);
         pointHungByJson = writeJsonMap(by);
         pointHungAtJson = writeJsonMap(at);
+        pointHangNotesJson = writeJsonMap(nt);
     }
 
-    public void setPointVerifiedBy(Long pointId, String user) {
+    public void clearPointHung(Long pointId) {
+        java.util.Map<Long, String> by = getPointHungBy(); by.remove(pointId); pointHungByJson = writeJsonMap(by);
+        java.util.Map<Long, String> at = getPointHungAt(); at.remove(pointId); pointHungAtJson = writeJsonMap(at);
+        java.util.Map<Long, String> nt = getPointHangNotes(); nt.remove(pointId); pointHangNotesJson = writeJsonMap(nt);
+    }
+
+    public void setPointVerifiedBy(Long pointId, String user, String notes) {
         java.util.Map<Long, String> by = getPointVerifiedBy();
         java.util.Map<Long, String> at = getPointVerifiedAt();
+        java.util.Map<Long, String> nt = getPointVerifyNotes();
         by.put(pointId, user);
         at.put(pointId, java.time.LocalDateTime.now().toString());
+        if (notes != null && !notes.isBlank()) nt.put(pointId, notes); else nt.remove(pointId);
         pointVerifiedByJson = writeJsonMap(by);
         pointVerifiedAtJson = writeJsonMap(at);
+        pointVerifyNotesJson = writeJsonMap(nt);
+    }
+
+    public void clearPointVerified(Long pointId) {
+        java.util.Map<Long, String> by = getPointVerifiedBy(); by.remove(pointId); pointVerifiedByJson = writeJsonMap(by);
+        java.util.Map<Long, String> at = getPointVerifiedAt(); at.remove(pointId); pointVerifiedAtJson = writeJsonMap(at);
+        java.util.Map<Long, String> nt = getPointVerifyNotes(); nt.remove(pointId); pointVerifyNotesJson = writeJsonMap(nt);
+    }
+
+    public void setPointWalkdownBy(Long pointId, String user, String notes) {
+        java.util.Map<Long, String> by = getPointWalkdownBy();
+        java.util.Map<Long, String> at = getPointWalkdownAt();
+        java.util.Map<Long, String> nt = getPointWalkdownNotes();
+        by.put(pointId, user);
+        at.put(pointId, java.time.LocalDateTime.now().toString());
+        if (notes != null && !notes.isBlank()) nt.put(pointId, notes); else nt.remove(pointId);
+        pointWalkdownByJson = writeJsonMap(by);
+        pointWalkdownAtJson = writeJsonMap(at);
+        pointWalkdownNotesJson = writeJsonMap(nt);
+    }
+
+    public void clearPointWalkdown(Long pointId) {
+        java.util.Map<Long, String> by = getPointWalkdownBy(); by.remove(pointId); pointWalkdownByJson = writeJsonMap(by);
+        java.util.Map<Long, String> at = getPointWalkdownAt(); at.remove(pointId); pointWalkdownAtJson = writeJsonMap(at);
+        java.util.Map<Long, String> nt = getPointWalkdownNotes(); nt.remove(pointId); pointWalkdownNotesJson = writeJsonMap(nt);
     }
 
     public java.util.Map<Long, PointPrerequisite> getPointPrerequisites() {

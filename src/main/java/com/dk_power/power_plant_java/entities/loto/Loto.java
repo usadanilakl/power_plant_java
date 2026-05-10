@@ -308,15 +308,39 @@ public class Loto extends BasePermitEntity {
         return s;
     }
 
-    public LotoSnapshot markPointHung(Long pointId, String user) {
+    public LotoSnapshot markPointHung(Long pointId, String user, String notes) {
         LotoSnapshot s = lifecycleSnapshot();
-        s.setPointHungBy(pointId, user);
+        s.setPointHungBy(pointId, user, notes);
         return s;
     }
 
-    public LotoSnapshot markPointVerified(Long pointId, String user) {
+    public LotoSnapshot unmarkPointHung(Long pointId) {
         LotoSnapshot s = lifecycleSnapshot();
-        s.setPointVerifiedBy(pointId, user);
+        s.clearPointHung(pointId);
+        return s;
+    }
+
+    public LotoSnapshot markPointVerified(Long pointId, String user, String notes) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setPointVerifiedBy(pointId, user, notes);
+        return s;
+    }
+
+    public LotoSnapshot unmarkPointVerified(Long pointId) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.clearPointVerified(pointId);
+        return s;
+    }
+
+    public LotoSnapshot markPointWalkdown(Long pointId, String user, String notes) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setPointWalkdownBy(pointId, user, notes);
+        return s;
+    }
+
+    public LotoSnapshot unmarkPointWalkdown(Long pointId) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.clearPointWalkdown(pointId);
         return s;
     }
 

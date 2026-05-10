@@ -25,4 +25,17 @@ import java.util.List;
 public class PointPrerequisite {
     private List<Long> requiredPointIds = new ArrayList<>();
     private List<String> safetyConditions = new ArrayList<>();
+
+    /** Free-text instructions the operator follows when hanging this point. */
+    private String installNotes;
+
+    /** Free-text instructions the operator follows when removing this point. */
+    private String removalNotes;
+
+    /**
+     * Optional explicit removal-order rank for this point. Lower numbers come first.
+     * When null on every point, the UI/automation falls back to reverse-of-install order.
+     */
+    private Integer removalOrder;
 }
+

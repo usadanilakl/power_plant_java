@@ -415,15 +415,30 @@ export class RfLotoStandardFormComponent {
   proseSaving = signal(false);
   prereqSaving = signal(false);
 
-  // Sync proseDraft from the current entity when it changes.
+  // Tracks the last entity id this form's prose draft was synced from.
+  // We always reset when the id changes (navigated to a new Standard); we DO NOT
+  // overwrite an unsaved-dirty draft when the id is the same (e.g. when a sibling
+  // save round-trips a fresh entity that doesn't reflect this section's edits).
+  private proseLastSyncedId = signal<number | null>(null);
+
   private syncProseDraft = effect(() => {
     const e = this.entity();
-    this.proseDraft.set({
+    const newId = e.id ?? null;
+    const prevId = this.proseLastSyncedId();
+    const fromEntity = {
       prerequisitesText: e.prerequisitesText ?? '',
       hazardControlMethodsText: e.hazardControlMethodsText ?? '',
       installProcedureText: e.installProcedureText ?? '',
       removalProcedureText: e.removalProcedureText ?? '',
-    });
+    };
+    if (newId !== prevId) {
+      // Different entity (or initial load) → always reset.
+      this.proseDraft.set(fromEntity);
+      this.proseLastSyncedId.set(newId);
+    } else if (!this.proseDirty()) {
+      // Same entity, no unsaved edits → safe to absorb server changes.
+      this.proseDraft.set(fromEntity);
+    }
   }, { allowSignalWrites: true });
 
   proseDirty = computed(() => {

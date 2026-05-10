@@ -28,8 +28,13 @@ export interface LotoSnapshotModel extends BaseModel {
 
   pointHungBy: Record<number, string>;
   pointHungAt: Record<number, string>;
+  pointHangNotes: Record<number, string>;
   pointVerifiedBy: Record<number, string>;
   pointVerifiedAt: Record<number, string>;
+  pointVerifyNotes: Record<number, string>;
+  pointWalkdownBy: Record<number, string>;
+  pointWalkdownAt: Record<number, string>;
+  pointWalkdownNotes: Record<number, string>;
 
   pointPrerequisites: Record<number, PointPrerequisiteDto>;
 
@@ -39,6 +44,9 @@ export interface LotoSnapshotModel extends BaseModel {
 export interface PointPrerequisiteDto {
   requiredPointIds: number[];
   safetyConditions: string[];
+  installNotes?: string | null;
+  removalNotes?: string | null;
+  removalOrder?: number | null;
 }
 
 export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
@@ -69,8 +77,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
 
   pointHungBy: Record<number, string>;
   pointHungAt: Record<number, string>;
+  pointHangNotes: Record<number, string>;
   pointVerifiedBy: Record<number, string>;
   pointVerifiedAt: Record<number, string>;
+  pointVerifyNotes: Record<number, string>;
+  pointWalkdownBy: Record<number, string>;
+  pointWalkdownAt: Record<number, string>;
+  pointWalkdownNotes: Record<number, string>;
 
   pointPrerequisites: Record<number, PointPrerequisiteDto>;
 
@@ -111,8 +124,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
 
     this.pointHungBy = data.pointHungBy ?? {};
     this.pointHungAt = data.pointHungAt ?? {};
+    this.pointHangNotes = data.pointHangNotes ?? {};
     this.pointVerifiedBy = data.pointVerifiedBy ?? {};
     this.pointVerifiedAt = data.pointVerifiedAt ?? {};
+    this.pointVerifyNotes = data.pointVerifyNotes ?? {};
+    this.pointWalkdownBy = data.pointWalkdownBy ?? {};
+    this.pointWalkdownAt = data.pointWalkdownAt ?? {};
+    this.pointWalkdownNotes = data.pointWalkdownNotes ?? {};
 
     this.pointPrerequisites = data.pointPrerequisites ?? {};
 
@@ -156,8 +174,13 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
 
       pointHungBy: json.pointHungBy ?? {},
       pointHungAt: json.pointHungAt ?? {},
+      pointHangNotes: json.pointHangNotes ?? {},
       pointVerifiedBy: json.pointVerifiedBy ?? {},
       pointVerifiedAt: json.pointVerifiedAt ?? {},
+      pointVerifyNotes: json.pointVerifyNotes ?? {},
+      pointWalkdownBy: json.pointWalkdownBy ?? {},
+      pointWalkdownAt: json.pointWalkdownAt ?? {},
+      pointWalkdownNotes: json.pointWalkdownNotes ?? {},
 
       pointPrerequisites: json.pointPrerequisites ?? {},
 

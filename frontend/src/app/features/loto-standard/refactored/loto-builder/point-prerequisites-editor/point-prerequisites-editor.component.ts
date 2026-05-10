@@ -10,6 +10,9 @@ interface RowState {
   description: string;
   requiredPointIds: number[];
   safetyConditions: string[];
+  installNotes: string;
+  removalNotes: string;
+  removalOrder: number | null;
 }
 
 @Component({
@@ -24,10 +27,13 @@ interface RowState {
         <table class="prereq-table">
           <thead>
             <tr>
-              <th style="width: 14%">Tag #</th>
-              <th style="width: 26%">Description</th>
-              <th style="width: 26%">Required predecessors</th>
-              <th style="width: 34%">Safety conditions to acknowledge</th>
+              <th style="width: 10%">Tag #</th>
+              <th style="width: 18%">Description</th>
+              <th style="width: 6%" title="Removal order — lower numbers come first. Leave blank to fall back to reverse install order.">Rem. Order</th>
+              <th style="width: 18%">Required predecessors</th>
+              <th style="width: 22%">Safety conditions to acknowledge</th>
+              <th style="width: 13%">Install notes</th>
+              <th style="width: 13%">Removal notes</th>
             </tr>
           </thead>
           <tbody>
@@ -35,6 +41,12 @@ interface RowState {
               <tr>
                 <td>{{ row.tagNumber }}</td>
                 <td>{{ row.description }}</td>
+                <td>
+                  <input type="number" class="order-input"
+                         [ngModel]="row.removalOrder"
+                         (ngModelChange)="onRemovalOrderChange(row.pointId, $event)"
+                         placeholder="—">
+                </td>
                 <td>
                   <select multiple
                           class="multi-select"
@@ -61,6 +73,18 @@ interface RowState {
                     <button type="button" class="add-cond" (click)="onAddCondition(row.pointId)">+ Add condition</button>
                   </div>
                 </td>
+                <td>
+                  <textarea class="notes-input"
+                            [ngModel]="row.installNotes"
+                            (ngModelChange)="onInstallNotesChange(row.pointId, $event)"
+                            placeholder="Steps to follow when hanging this point"></textarea>
+                </td>
+                <td>
+                  <textarea class="notes-input"
+                            [ngModel]="row.removalNotes"
+                            (ngModelChange)="onRemovalNotesChange(row.pointId, $event)"
+                            placeholder="Steps to follow when removing this point"></textarea>
+                </td>
               </tr>
             }
           </tbody>
@@ -86,6 +110,8 @@ interface RowState {
     .conditions { display: flex; flex-direction: column; gap: 4px; }
     .cond-row { display: flex; gap: 4px; align-items: center; }
     .cond-input { flex: 1; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; }
+    .order-input { width: 100%; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; text-align: center; }
+    .notes-input { width: 100%; min-height: 80px; resize: vertical; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; font-family: inherit; font-size: 12px; }
     .remove-cond { background: none; border: none; color: #e57373; font-size: 16px; cursor: pointer; padding: 0 6px; }
     .add-cond { background: none; border: 1px dashed #444; color: #82b1ff; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; align-self: flex-start; }
     .actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 8px; border-top: 1px solid #2a2a2a; }
@@ -111,6 +137,11 @@ export class PointPrerequisitesEditorComponent {
   private working = signal<Record<number, PointPrerequisiteDto>>({});
   private baseline = signal<Record<number, PointPrerequisiteDto>>({});
 
+  // Snapshot of the input the working set was last seeded from, by JSON identity.
+  // Used to distinguish "parent passed a fresh prereqs map" from "parent's entity changed
+  // but the map is unchanged" — in the latter case we don't want to clobber unsaved edits.
+  private lastSeenInputJson = signal<string | null>(null);
+
   rows = computed<RowState[]>(() => {
     const w = this.working();
     return this.points().map(p => ({
@@ -119,18 +150,32 @@ export class PointPrerequisitesEditorComponent {
       description: p.description ?? '',
       requiredPointIds: w[p.id!]?.requiredPointIds ?? [],
       safetyConditions: w[p.id!]?.safetyConditions ?? [],
+      installNotes: w[p.id!]?.installNotes ?? '',
+      removalNotes: w[p.id!]?.removalNotes ?? '',
+      removalOrder: w[p.id!]?.removalOrder ?? null,
     }));
   });
 
   dirty = computed(() => JSON.stringify(this.working()) !== JSON.stringify(this.baseline()));
 
   constructor() {
-    // Sync local working/baseline whenever the parent passes a new prerequisites map.
+    // Sync local working/baseline only when the parent passes a different prerequisites
+    // map than we last absorbed, AND we don't have unsaved local edits. Detecting "different"
+    // by JSON identity is fine here — the maps are small and shallow.
     effect(() => {
       const incoming = this.prerequisites();
-      const cloned = JSON.parse(JSON.stringify(incoming ?? {}));
+      const incomingJson = JSON.stringify(incoming ?? {});
+      const lastJson = this.lastSeenInputJson();
+      if (incomingJson === lastJson && lastJson !== null) {
+        // Same input as last sync — nothing to do (and certainly don't clobber edits).
+        return;
+      }
+      // Input changed. If we have unsaved edits, hold them; otherwise absorb.
+      if (lastJson !== null && this.dirty()) return;
+      const cloned = JSON.parse(incomingJson);
       this.working.set(cloned);
-      this.baseline.set(JSON.parse(JSON.stringify(cloned)));
+      this.baseline.set(JSON.parse(incomingJson));
+      this.lastSeenInputJson.set(incomingJson);
     }, { allowSignalWrites: true });
   }
 
@@ -166,16 +211,44 @@ export class PointPrerequisitesEditorComponent {
     });
   }
 
+  onInstallNotesChange(pointId: number, value: string): void {
+    this.updateRow(pointId, spec => ({ ...spec, installNotes: value ?? '' }));
+  }
+
+  onRemovalNotesChange(pointId: number, value: string): void {
+    this.updateRow(pointId, spec => ({ ...spec, removalNotes: value ?? '' }));
+  }
+
+  onRemovalOrderChange(pointId: number, value: number | string | null): void {
+    let next: number | null;
+    if (value === null || value === undefined || value === '') {
+      next = null;
+    } else {
+      const n = typeof value === 'string' ? Number(value) : value;
+      next = Number.isFinite(n) ? Math.trunc(n as number) : null;
+    }
+    this.updateRow(pointId, spec => ({ ...spec, removalOrder: next }));
+  }
+
   onSave(): void {
-    // Drop entries that are empty (no required points + no conditions) so we don't
-    // clutter the persisted map.
+    // Drop entries that are fully empty (no preds, no conditions, no notes, no order)
+    // so we don't clutter the persisted map.
     const cleaned: Record<number, PointPrerequisiteDto> = {};
     const w = this.working();
     for (const [k, v] of Object.entries(w)) {
       const reqs = (v.requiredPointIds ?? []).filter(id => Number.isFinite(id));
       const conds = (v.safetyConditions ?? []).map(c => c.trim()).filter(c => c.length > 0);
-      if (reqs.length || conds.length) {
-        cleaned[Number(k)] = { requiredPointIds: reqs, safetyConditions: conds };
+      const installNotes = (v.installNotes ?? '').trim();
+      const removalNotes = (v.removalNotes ?? '').trim();
+      const removalOrder = (v.removalOrder ?? null) as number | null;
+      if (reqs.length || conds.length || installNotes || removalNotes || removalOrder !== null) {
+        cleaned[Number(k)] = {
+          requiredPointIds: reqs,
+          safetyConditions: conds,
+          installNotes: installNotes || null,
+          removalNotes: removalNotes || null,
+          removalOrder,
+        };
       }
     }
     this.save.emit(cleaned);

@@ -304,7 +304,15 @@ public class NgLotoController {
             List<String> acknowledged = body != null && body.get("acknowledged") instanceof List
                     ? (List<String>) body.get("acknowledged")
                     : null;
-            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointHung(id, pointId, acknowledged), "Point marked hung"));
+            String notes = body != null && body.get("notes") != null ? body.get("notes").toString() : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointHung(id, pointId, acknowledged, notes), "Point marked hung"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @DeleteMapping("/{id}/lifecycle/point/{pointId}/hung")
+    public ResponseEntity<NgApiResponse<LotoDto>> unmarkPointHung(@PathVariable Long id, @PathVariable Long pointId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.unmarkPointHung(id, pointId), "Point un-hung"));
         } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
     }
 
@@ -317,7 +325,32 @@ public class NgLotoController {
             List<String> acknowledged = body != null && body.get("acknowledged") instanceof List
                     ? (List<String>) body.get("acknowledged")
                     : null;
-            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointVerified(id, pointId, acknowledged), "Point marked verified"));
+            String notes = body != null && body.get("notes") != null ? body.get("notes").toString() : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointVerified(id, pointId, acknowledged, notes), "Point marked verified"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @DeleteMapping("/{id}/lifecycle/point/{pointId}/verified")
+    public ResponseEntity<NgApiResponse<LotoDto>> unmarkPointVerified(@PathVariable Long id, @PathVariable Long pointId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.unmarkPointVerified(id, pointId), "Point un-verified"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/point/{pointId}/walkdown")
+    public ResponseEntity<NgApiResponse<LotoDto>> markPointWalkdown(
+            @PathVariable Long id, @PathVariable Long pointId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String notes = body != null && body.get("notes") != null ? body.get("notes").toString() : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointWalkdown(id, pointId, notes), "Point marked walked-down"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @DeleteMapping("/{id}/lifecycle/point/{pointId}/walkdown")
+    public ResponseEntity<NgApiResponse<LotoDto>> unmarkPointWalkdown(@PathVariable Long id, @PathVariable Long pointId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.unmarkPointWalkdown(id, pointId), "Point walkdown cleared"));
         } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
     }
 

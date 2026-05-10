@@ -40,11 +40,16 @@ public class LotoSnapshotDto extends BaseDto {
     private String locksRemovedBy;               private LocalDateTime locksRemovedAt;
     private String closedBy;                     private LocalDateTime closedAt;
 
-    // Per-point hung / verified state (pointId -> userName / ISO timestamp)
+    // Per-point hung / verified / walkdown state (pointId -> userName / ISO timestamp / notes)
     private java.util.Map<Long, String> pointHungBy = new java.util.HashMap<>();
     private java.util.Map<Long, String> pointHungAt = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointHangNotes = new java.util.HashMap<>();
     private java.util.Map<Long, String> pointVerifiedBy = new java.util.HashMap<>();
     private java.util.Map<Long, String> pointVerifiedAt = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointVerifyNotes = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointWalkdownBy = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointWalkdownAt = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointWalkdownNotes = new java.util.HashMap<>();
 
     private java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> pointPrerequisites = new java.util.HashMap<>();
 }

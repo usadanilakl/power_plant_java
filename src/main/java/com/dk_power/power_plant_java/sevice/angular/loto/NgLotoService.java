@@ -481,23 +481,98 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     @Transactional
-    public LotoDto markPointHung(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions) {
+    public LotoDto markPointHung(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Mark point hung", "Building");
         LotoSnapshot latest = loto.getLatestSnapshot();
         enforcePrerequisitesForHang(loto, latest, pointId, acknowledgedSafetyConditions);
-        LotoSnapshot s = loto.markPointHung(pointId, currentUserName());
+        LotoSnapshot s = loto.markPointHung(pointId, currentUserName(), notes);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
 
     @Transactional
-    public LotoDto markPointVerified(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions) {
+    public LotoDto unmarkPointHung(Long lotoId, Long pointId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStatusOneOf(loto, "Unmark point hung", "Building");
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        // Reject if any successor still depends on this hang
+        for (java.util.Map.Entry<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> e
+                : latest.getPointPrerequisites().entrySet()) {
+            if (e.getKey().equals(pointId)) continue;
+            if (e.getValue() == null || e.getValue().getRequiredPointIds() == null) continue;
+            if (!e.getValue().getRequiredPointIds().contains(pointId)) continue;
+            if (latest.getPointHungBy().containsKey(e.getKey())) {
+                throw new IllegalStateException(
+                        "Cannot un-hang point " + pointId + " — point " + e.getKey() + " was hung after it");
+            }
+        }
+        // Verify must be undone first if present
+        if (latest.getPointVerifiedBy().containsKey(pointId)) {
+            throw new IllegalStateException("Cannot un-hang point " + pointId + " — verify it off first");
+        }
+        LotoSnapshot s = loto.unmarkPointHung(pointId);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto markPointVerified(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Mark point verified", "Building");
         LotoSnapshot latest = loto.getLatestSnapshot();
+        // Verify is only available after every point in the LOTO has been hung.
+        java.util.Set<Long> pointIds = new java.util.HashSet<>();
+        for (com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto p : latest.getLotoPointDtos()) {
+            if (p != null && p.getId() != null) pointIds.add(p.getId());
+        }
+        if (!latest.getPointHungBy().keySet().containsAll(pointIds)) {
+            throw new IllegalStateException("Cannot verify points until every point on the LOTO has been hung");
+        }
         enforcePrerequisitesForVerify(loto, latest, pointId, acknowledgedSafetyConditions);
-        LotoSnapshot s = loto.markPointVerified(pointId, currentUserName());
+        // Second-person rule: the user who hung this point cannot verify it.
+        String hungBy = latest.getPointHungBy().get(pointId);
+        String me = currentUserName();
+        if (hungBy != null && hungBy.equals(me)) {
+            throw new IllegalStateException("Cannot verify a point you hung yourself");
+        }
+        LotoSnapshot s = loto.markPointVerified(pointId, me, notes);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto unmarkPointVerified(Long lotoId, Long pointId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStatusOneOf(loto, "Unmark point verified", "Building");
+        LotoSnapshot s = loto.unmarkPointVerified(pointId);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto markPointWalkdown(Long lotoId, Long pointId, String notes) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStatusOneOf(loto, "Mark point walkdown", "Building");
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        // Walkdown is only available after every point has been verified.
+        java.util.Set<Long> pointIds = new java.util.HashSet<>();
+        for (com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto p : latest.getLotoPointDtos()) {
+            if (p != null && p.getId() != null) pointIds.add(p.getId());
+        }
+        if (!latest.getPointVerifiedBy().keySet().containsAll(pointIds)) {
+            throw new IllegalStateException("Cannot walk down points until every point on the LOTO has been verified");
+        }
+        LotoSnapshot s = loto.markPointWalkdown(pointId, currentUserName(), notes);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto unmarkPointWalkdown(Long lotoId, Long pointId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStatusOneOf(loto, "Unmark point walkdown", "Building");
+        LotoSnapshot s = loto.unmarkPointWalkdown(pointId);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -601,8 +676,10 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                             .toList();
                 java.util.List<Long> reqs = spec.getRequiredPointIds() == null
                         ? java.util.Collections.emptyList() : spec.getRequiredPointIds();
-                normalized.put(entry.getKey(), new com.dk_power.power_plant_java.entities.loto.PointPrerequisite(
-                        new java.util.ArrayList<>(reqs), new java.util.ArrayList<>(conds)));
+                var normalizedSpec = new com.dk_power.power_plant_java.entities.loto.PointPrerequisite(
+                        new java.util.ArrayList<>(reqs), new java.util.ArrayList<>(conds),
+                        spec.getInstallNotes(), spec.getRemovalNotes(), spec.getRemovalOrder());
+                normalized.put(entry.getKey(), normalizedSpec);
             }
         }
         latest.setPointPrerequisites(normalized);

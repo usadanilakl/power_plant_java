@@ -17,6 +17,9 @@ export interface LotoStandardModel extends BaseModel {
 export interface PointPrerequisiteDto {
   requiredPointIds: number[];
   safetyConditions: string[];
+  installNotes?: string | null;
+  removalNotes?: string | null;
+  removalOrder?: number | null;
 }
 
 export class LotoStandardDto extends BaseDto {

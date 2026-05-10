@@ -142,16 +142,37 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-activate`, {});
   }
 
-  markPointHung(lotoId: number, pointId: number, acknowledged: string[] = []): Observable<SpringApiResponse<LotoDto>> {
+  markPointHung(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(
       `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/hung`,
-      { acknowledged });
+      { acknowledged, notes: notes ?? null });
   }
 
-  markPointVerified(lotoId: number, pointId: number, acknowledged: string[] = []): Observable<SpringApiResponse<LotoDto>> {
+  unmarkPointHung(lotoId: number, pointId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.delete<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/hung`);
+  }
+
+  markPointVerified(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(
       `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/verified`,
-      { acknowledged });
+      { acknowledged, notes: notes ?? null });
+  }
+
+  unmarkPointVerified(lotoId: number, pointId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.delete<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/verified`);
+  }
+
+  markPointWalkdown(lotoId: number, pointId: number, notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/walkdown`,
+      { notes: notes ?? null });
+  }
+
+  unmarkPointWalkdown(lotoId: number, pointId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.delete<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/walkdown`);
   }
 
   updateInstancePrerequisites(lotoId: number, prerequisites: Record<number, { requiredPointIds: number[]; safetyConditions: string[] }>): Observable<SpringApiResponse<LotoDto>> {

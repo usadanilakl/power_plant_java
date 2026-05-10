@@ -46,7 +46,10 @@ public class NgEquipmentRestController {
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<EquipmentDto>> getEquipmentById(@PathVariable Long id) {
         try {
-            EquipmentDto equipmentDto = ngEquipmentService.toDto(ngEquipmentService.findById(id).orElse(null));
+            // Use findDtoById so the entity → DTO mapping happens inside the same
+            // transaction. Calling toDto() after findById() returns a detached entity
+            // and fails on lazy collections (Equipment.files / lotoPoints / etc.).
+            EquipmentDto equipmentDto = ngEquipmentService.findDtoById(id).orElse(null);
             if (equipmentDto == null) {
                 return ResponseEntity.notFound().build();
             }
