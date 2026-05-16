@@ -50,6 +50,11 @@
   font-weight: 500;
 }
 
+.count-badge.filtered {
+  background: #e67e22;
+  font-variant-numeric: tabular-nums;
+}
+
 .filter-toggle-btn {
   display: flex;
   align-items: center;

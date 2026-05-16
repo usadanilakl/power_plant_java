@@ -21,11 +21,15 @@ public class LotoStandardDto extends BaseDto {
     private java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> pointPrerequisites;
     private Set<ValueDto> groups;
 
-    // Procedural prose
-    private String prerequisitesText;
-    private String hazardControlMethodsText;
+    // Procedural prose — install side
+    private String installPrerequisitesText;
+    private String installHazardControlText;
     private String installProcedureText;
+    // Procedural prose — removal side
+    private String removalPrerequisitesText;
+    private String removalHazardControlText;
     private String removalProcedureText;
+    private boolean removalReversesInstallOrder;
 
     // Development workflow
     private ValueDto developmentStatus;

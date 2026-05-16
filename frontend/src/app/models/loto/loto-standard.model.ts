@@ -15,9 +15,13 @@ export interface LotoStandardModel extends BaseModel {
 }
 
 export interface PointPrerequisiteDto {
-  requiredPointIds: number[];
-  safetyConditions: string[];
+  // Install side
+  installRequiredPointIds: number[];
+  installSafetyConditions: string[];
   installNotes?: string | null;
+  // Removal side (empty arrays = inherit from install)
+  removalRequiredPointIds: number[];
+  removalSafetyConditions: string[];
   removalNotes?: string | null;
   removalOrder?: number | null;
 }
@@ -27,10 +31,13 @@ export class LotoStandardDto extends BaseDto {
   lotoPoints: LotoPointDto[] | null;
   groups: ValueDto[] | null;
   pointPrerequisites: Record<number, PointPrerequisiteDto> | null;
-  prerequisitesText: string | null;
-  hazardControlMethodsText: string | null;
+  installPrerequisitesText: string | null;
+  installHazardControlText: string | null;
   installProcedureText: string | null;
+  removalPrerequisitesText: string | null;
+  removalHazardControlText: string | null;
   removalProcedureText: string | null;
+  removalReversesInstallOrder: boolean;
 
   /** Username of original creator (from BaseAuditEntity.createdBy on the server). */
   createdBy: string | null;
@@ -55,10 +62,13 @@ export class LotoStandardDto extends BaseDto {
     this.lotoPoints = data.lotoPoints?.map(point => new LotoPointDto(point)) || null;
     this.groups = data.groups?.map(group => new ValueDto(group)) || null;
     this.pointPrerequisites = data.pointPrerequisites ?? null;
-    this.prerequisitesText = data.prerequisitesText ?? null;
-    this.hazardControlMethodsText = data.hazardControlMethodsText ?? null;
+    this.installPrerequisitesText = data.installPrerequisitesText ?? null;
+    this.installHazardControlText = data.installHazardControlText ?? null;
     this.installProcedureText = data.installProcedureText ?? null;
+    this.removalPrerequisitesText = data.removalPrerequisitesText ?? null;
+    this.removalHazardControlText = data.removalHazardControlText ?? null;
     this.removalProcedureText = data.removalProcedureText ?? null;
+    this.removalReversesInstallOrder = data.removalReversesInstallOrder ?? false;
     this.createdBy = data.createdBy ?? null;
     this.developmentStatus = data.developmentStatus ? new ValueDto(data.developmentStatus) : null;
     this.currentVersion = data.currentVersion ?? null;
@@ -92,10 +102,13 @@ export class LotoStandardDto extends BaseDto {
       lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null,
       groups: json.groups?.map((groupJson: any) => ValueDto.fromJson(groupJson)) || null,
       pointPrerequisites: json.pointPrerequisites ?? null,
-      prerequisitesText: json.prerequisitesText ?? null,
-      hazardControlMethodsText: json.hazardControlMethodsText ?? null,
+      installPrerequisitesText: json.installPrerequisitesText ?? json.prerequisitesText ?? null,
+      installHazardControlText: json.installHazardControlText ?? json.hazardControlMethodsText ?? null,
       installProcedureText: json.installProcedureText ?? null,
+      removalPrerequisitesText: json.removalPrerequisitesText ?? null,
+      removalHazardControlText: json.removalHazardControlText ?? null,
       removalProcedureText: json.removalProcedureText ?? null,
+      removalReversesInstallOrder: json.removalReversesInstallOrder ?? false,
       createdBy: json.createdBy ?? null,
       developmentStatus: json.developmentStatus ? ValueDto.fromJson(json.developmentStatus) : null,
       currentVersion: json.currentVersion ?? null,

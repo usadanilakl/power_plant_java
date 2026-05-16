@@ -242,7 +242,15 @@ export class RfLotoStandardApiService {
   /** Replace the entire per-point prerequisites map for a standard. */
   updatePrerequisites(
     standardId: number,
-    prerequisites: Record<number, { requiredPointIds: number[]; safetyConditions: string[] }>
+    prerequisites: Record<number, {
+      installRequiredPointIds: number[];
+      installSafetyConditions: string[];
+      installNotes?: string | null;
+      removalRequiredPointIds: number[];
+      removalSafetyConditions: string[];
+      removalNotes?: string | null;
+      removalOrder?: number | null;
+    }>
   ): Observable<SpringApiResponse<LotoStandardDto>> {
     return this.http.put<SpringApiResponse<LotoStandardDto>>(
       `${this.apiUrl}/${standardId}/prerequisites`,
@@ -252,14 +260,24 @@ export class RfLotoStandardApiService {
 
   /** Update procedural prose fields. Pass null to leave a field unchanged. */
   updateProceduralText(standardId: number, body: {
-    prerequisitesText?: string | null;
-    hazardControlMethodsText?: string | null;
+    installPrerequisitesText?: string | null;
+    installHazardControlText?: string | null;
     installProcedureText?: string | null;
+    removalPrerequisitesText?: string | null;
+    removalHazardControlText?: string | null;
     removalProcedureText?: string | null;
   }): Observable<SpringApiResponse<LotoStandardDto>> {
     return this.http.put<SpringApiResponse<LotoStandardDto>>(
       `${this.apiUrl}/${standardId}/procedural-text`,
       body
+    );
+  }
+
+  /** Toggle the standard's "removal reverses install order" flag. */
+  setRemovalReverse(standardId: number, reverse: boolean): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.put<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/removal-reverse`,
+      { reverse }
     );
   }
 }

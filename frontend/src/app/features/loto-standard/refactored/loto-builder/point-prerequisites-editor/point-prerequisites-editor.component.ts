@@ -4,15 +4,18 @@ import { FormsModule } from '@angular/forms';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { PointPrerequisiteDto } from '../../../../../models/loto/loto-standard.model';
 
+type Side = 'INSTALL' | 'REMOVAL';
+
 interface RowState {
   pointId: number;
   tagNumber: string;
   description: string;
-  requiredPointIds: number[];
+  // active-side projection — what the current tab renders
+  predecessorIds: number[];
   safetyConditions: string[];
-  installNotes: string;
-  removalNotes: string;
-  removalOrder: number | null;
+  notes: string;
+  removalOrder: number | null; // only meaningful on REMOVAL tab
+  inheritingFromInstall: boolean; // removal-only flag — true when removal fields are empty
 }
 
 @Component({
@@ -21,69 +24,107 @@ interface RowState {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="prereq-editor">
+      <div class="side-tabs">
+        <button type="button" class="side-tab" [class.active]="side() === 'INSTALL'"
+                (click)="setSide('INSTALL')">Install Procedure</button>
+        <button type="button" class="side-tab" [class.active]="side() === 'REMOVAL'"
+                (click)="setSide('REMOVAL')">Removal Procedure</button>
+        <span class="spacer"></span>
+        @if (side() === 'REMOVAL') {
+          <label class="reverse-toggle">
+            <input type="checkbox"
+                   [checked]="removalReversesOrder()"
+                   [disabled]="readonly()"
+                   (change)="onReverseToggle($any($event.target).checked)">
+            <span>Removal reverses install order</span>
+          </label>
+        }
+      </div>
+
       @if (rows().length === 0) {
         <p class="empty">Add LOTO points first to configure their prerequisites.</p>
       } @else {
+        @if (side() === 'REMOVAL') {
+          <p class="hint">
+            Empty rows inherit from the install side. Use the per-point overrides only when removal needs to differ.
+          </p>
+        }
         <table class="prereq-table">
           <thead>
             <tr>
               <th style="width: 10%">Tag #</th>
               <th style="width: 18%">Description</th>
-              <th style="width: 6%" title="Removal order — lower numbers come first. Leave blank to fall back to reverse install order.">Rem. Order</th>
+              @if (side() === 'REMOVAL') {
+                <th style="width: 6%" title="Removal order — lower numbers come first. Leave blank to follow install order.">Rem. Order</th>
+              }
               <th style="width: 18%">Required predecessors</th>
               <th style="width: 22%">Safety conditions to acknowledge</th>
-              <th style="width: 13%">Install notes</th>
-              <th style="width: 13%">Removal notes</th>
+              <th style="width: 22%">{{ side() === 'INSTALL' ? 'Install notes' : 'Removal notes' }}</th>
             </tr>
           </thead>
           <tbody>
             @for (row of rows(); track row.pointId) {
-              <tr>
+              <tr [class.inheriting]="row.inheritingFromInstall">
                 <td>{{ row.tagNumber }}</td>
                 <td>{{ row.description }}</td>
+                @if (side() === 'REMOVAL') {
+                  <td>
+                    <input type="number" class="order-input"
+                           [ngModel]="row.removalOrder"
+                           (ngModelChange)="onRemovalOrderChange(row.pointId, $event)"
+                           placeholder="—">
+                  </td>
+                }
                 <td>
-                  <input type="number" class="order-input"
-                         [ngModel]="row.removalOrder"
-                         (ngModelChange)="onRemovalOrderChange(row.pointId, $event)"
-                         placeholder="—">
-                </td>
-                <td>
-                  <select multiple
-                          class="multi-select"
-                          [ngModel]="row.requiredPointIds"
-                          (ngModelChange)="onRequiredChange(row.pointId, $event)">
-                    @for (other of points(); track other.id) {
-                      @if (other.id !== row.pointId) {
-                        <option [value]="other.id">{{ other.tagNumber }} — {{ other.description }}</option>
-                      }
+                  <div class="pred-chips">
+                    @for (predId of row.predecessorIds; track predId) {
+                      <span class="chip" [class.inherited]="row.inheritingFromInstall">
+                        <span class="chip-label">{{ tagFor(predId) }}</span>
+                        @if (!row.inheritingFromInstall) {
+                          <button type="button" class="chip-remove"
+                                  (click)="togglePredecessor(row.pointId, predId)"
+                                  title="Remove">×</button>
+                        }
+                      </span>
                     }
-                  </select>
+                    @if (points().length > 1) {
+                      <button type="button" class="add-pred-btn"
+                              (click)="openPredecessorPicker(row.pointId)"
+                              [title]="side() === 'REMOVAL' && row.inheritingFromInstall ? 'Override removal predecessors' : 'Add predecessor'">+</button>
+                    } @else {
+                      <span class="pred-empty">No other points</span>
+                    }
+                  </div>
                 </td>
                 <td>
                   <div class="conditions">
                     @for (cond of row.safetyConditions; track $index) {
                       <div class="cond-row">
-                        <input type="text" class="cond-input"
-                               [ngModel]="cond"
-                               (ngModelChange)="onConditionChange(row.pointId, $index, $event)"
-                               placeholder="e.g. MOV must be Open">
-                        <button type="button" class="remove-cond" (click)="onRemoveCondition(row.pointId, $index)">×</button>
+                        @if (row.inheritingFromInstall) {
+                          <span class="cond-inherited">{{ cond }}</span>
+                        } @else {
+                          <input type="text" class="cond-input"
+                                 [ngModel]="cond"
+                                 (ngModelChange)="onConditionChange(row.pointId, $index, $event)"
+                                 placeholder="e.g. MOV must be Open">
+                          <button type="button" class="remove-cond" (click)="onRemoveCondition(row.pointId, $index)">×</button>
+                        }
                       </div>
                     }
-                    <button type="button" class="add-cond" (click)="onAddCondition(row.pointId)">+ Add condition</button>
+                    @if (!row.inheritingFromInstall) {
+                      <button type="button" class="add-cond" (click)="onAddCondition(row.pointId)">+ Add condition</button>
+                    } @else if (row.safetyConditions.length > 0) {
+                      <button type="button" class="add-cond" (click)="overrideRemovalConditions(row.pointId)">Override for removal</button>
+                    } @else {
+                      <button type="button" class="add-cond" (click)="overrideRemovalConditions(row.pointId)">+ Add removal condition</button>
+                    }
                   </div>
                 </td>
                 <td>
                   <textarea class="notes-input"
-                            [ngModel]="row.installNotes"
-                            (ngModelChange)="onInstallNotesChange(row.pointId, $event)"
-                            placeholder="Steps to follow when hanging this point"></textarea>
-                </td>
-                <td>
-                  <textarea class="notes-input"
-                            [ngModel]="row.removalNotes"
-                            (ngModelChange)="onRemovalNotesChange(row.pointId, $event)"
-                            placeholder="Steps to follow when removing this point"></textarea>
+                            [ngModel]="row.notes"
+                            (ngModelChange)="onNotesChange(row.pointId, $event)"
+                            [placeholder]="side() === 'INSTALL' ? 'Steps to follow when hanging this point' : 'Steps to follow when removing this point'"></textarea>
                 </td>
               </tr>
             }
@@ -98,15 +139,71 @@ interface RowState {
           </div>
         }
       }
+
+      @if (pickerRowId() !== null) {
+        <div class="picker-backdrop" (click)="closePicker()">
+          <div class="picker-dialog" (click)="$event.stopPropagation()">
+            <div class="picker-header">
+              <strong>{{ side() === 'INSTALL' ? 'Install' : 'Removal' }} predecessors for {{ activeRowTag() }}</strong>
+              <button type="button" class="picker-close" (click)="closePicker()">×</button>
+            </div>
+            <div class="picker-body">
+              @for (other of points(); track other.id) {
+                @if (other.id !== pickerRowId()) {
+                  <label class="picker-row">
+                    <input type="checkbox"
+                           [checked]="isPredecessor(pickerRowId()!, other.id!)"
+                           (change)="togglePredecessor(pickerRowId()!, other.id!)">
+                    <span class="pred-tag">{{ other.tagNumber }}</span>
+                    <span class="pred-desc">{{ other.description }}</span>
+                  </label>
+                }
+              }
+            </div>
+            <div class="picker-footer">
+              <button type="button" class="btn-save" (click)="closePicker()">Done</button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
     .prereq-editor { padding: 12px; }
+    .side-tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #2a2a2a; margin-bottom: 12px; padding-bottom: 6px; }
+    .side-tab { background: none; border: none; color: #aaa; padding: 6px 14px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; }
+    .side-tab.active { color: #82b1ff; border-bottom-color: #82b1ff; font-weight: 600; }
+    .side-tabs .spacer { flex: 1; }
+    .reverse-toggle { display: inline-flex; align-items: center; gap: 6px; color: #aaa; font-size: 12px; cursor: pointer; }
+    .reverse-toggle input { margin: 0; }
+    .hint { color: #888; font-size: 12px; font-style: italic; margin: 0 0 8px; padding: 4px 8px; background: #1a1a1a; border-left: 3px solid #555; }
     .empty { color: #888; font-style: italic; }
     .prereq-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .prereq-table th, .prereq-table td { padding: 8px; text-align: left; border-bottom: 1px solid #2a2a2a; vertical-align: top; }
     .prereq-table th { color: #aaa; font-weight: 500; background: #181818; }
-    .multi-select { width: 100%; min-height: 80px; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px; }
+    .prereq-table tr.inheriting { background: rgba(255, 255, 255, 0.02); }
+    .pred-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; background: #2a3a50; color: #ddd; border-radius: 12px; padding: 2px 4px 2px 8px; font-size: 12px; }
+    .chip.inherited { background: #2a2a2a; color: #888; font-style: italic; }
+    .chip-label { line-height: 1; }
+    .chip-remove { background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; border-radius: 50%; }
+    .chip-remove:hover { background: rgba(255,255,255,0.1); color: #e57373; }
+    .add-pred-btn { background: none; border: 1px dashed #555; color: #82b1ff; width: 22px; height: 22px; line-height: 1; border-radius: 50%; cursor: pointer; font-size: 14px; }
+    .add-pred-btn:hover { background: #1f2937; border-color: #82b1ff; }
+    .pred-empty { color: #666; font-style: italic; font-size: 11px; }
+    .cond-inherited { color: #888; font-style: italic; font-size: 12px; padding: 4px 6px; }
+    .picker-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .picker-dialog { background: #1f1f1f; border: 1px solid #333; border-radius: 8px; min-width: 380px; max-width: 540px; max-height: 70vh; display: flex; flex-direction: column; }
+    .picker-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #2a2a2a; color: #ddd; }
+    .picker-close { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; padding: 0 6px; }
+    .picker-close:hover { color: #e57373; }
+    .picker-body { padding: 8px 16px; overflow-y: auto; flex: 1; }
+    .picker-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; font-size: 13px; color: #ddd; border-bottom: 1px solid #232323; }
+    .picker-row:hover { background: #262626; }
+    .picker-row input[type="checkbox"] { margin: 0; cursor: pointer; }
+    .pred-tag { font-weight: 600; min-width: 72px; }
+    .pred-desc { color: #888; font-size: 12px; }
+    .picker-footer { padding: 10px 16px; border-top: 1px solid #2a2a2a; display: flex; justify-content: flex-end; }
     .conditions { display: flex; flex-direction: column; gap: 4px; }
     .cond-row { display: flex; gap: 4px; align-items: center; }
     .cond-input { flex: 1; background: #1a1a1a; color: #ddd; border: 1px solid #333; border-radius: 4px; padding: 4px 6px; }
@@ -121,102 +218,252 @@ interface RowState {
   `],
 })
 export class PointPrerequisitesEditorComponent {
-  /** All loto points the standard owns, in install order. */
   points = input.required<LotoPointDto[]>();
-  /** Existing prereq map (from server). Edits are local until Save. */
   prerequisites = input<Record<number, PointPrerequisiteDto> | null>(null);
-  /** Optional: disable editing (read-only mode). */
   readonly = input<boolean>(false);
-  /** Saving state from parent. */
   saving = input<boolean>(false);
+  removalReversesOrder = input<boolean>(false);
 
-  /** Emits the new map when the user clicks Save. */
   save = output<Record<number, PointPrerequisiteDto>>();
+  removalReverseChange = output<boolean>();
 
-  // Internal working copy (cloned from input on load + on reset).
+  side = signal<Side>('INSTALL');
+
   private working = signal<Record<number, PointPrerequisiteDto>>({});
   private baseline = signal<Record<number, PointPrerequisiteDto>>({});
-
-  // Snapshot of the input the working set was last seeded from, by JSON identity.
-  // Used to distinguish "parent passed a fresh prereqs map" from "parent's entity changed
-  // but the map is unchanged" — in the latter case we don't want to clobber unsaved edits.
   private lastSeenInputJson = signal<string | null>(null);
 
   rows = computed<RowState[]>(() => {
     const w = this.working();
-    return this.points().map(p => ({
-      pointId: p.id!,
-      tagNumber: p.tagNumber ?? '',
-      description: p.description ?? '',
-      requiredPointIds: w[p.id!]?.requiredPointIds ?? [],
-      safetyConditions: w[p.id!]?.safetyConditions ?? [],
-      installNotes: w[p.id!]?.installNotes ?? '',
-      removalNotes: w[p.id!]?.removalNotes ?? '',
-      removalOrder: w[p.id!]?.removalOrder ?? null,
-    }));
+    const s = this.side();
+    return this.points().map(p => {
+      const spec = w[p.id!];
+      if (s === 'INSTALL') {
+        return {
+          pointId: p.id!,
+          tagNumber: p.tagNumber ?? '',
+          description: p.description ?? '',
+          predecessorIds: spec?.installRequiredPointIds ?? [],
+          safetyConditions: spec?.installSafetyConditions ?? [],
+          notes: spec?.installNotes ?? '',
+          removalOrder: null,
+          inheritingFromInstall: false,
+        };
+      }
+      const hasRemovalPreds = (spec?.removalRequiredPointIds?.length ?? 0) > 0;
+      const hasRemovalConds = (spec?.removalSafetyConditions?.length ?? 0) > 0;
+      // If nothing on the removal side, inherit display from install.
+      const inheriting = !hasRemovalPreds && !hasRemovalConds;
+      return {
+        pointId: p.id!,
+        tagNumber: p.tagNumber ?? '',
+        description: p.description ?? '',
+        predecessorIds: inheriting
+          ? this.computeInheritedRemovalPreds(p.id!, spec)
+          : (spec?.removalRequiredPointIds ?? []),
+        safetyConditions: hasRemovalConds
+          ? (spec?.removalSafetyConditions ?? [])
+          : (spec?.installSafetyConditions ?? []),
+        notes: spec?.removalNotes ?? '',
+        removalOrder: spec?.removalOrder ?? null,
+        inheritingFromInstall: inheriting,
+      };
+    });
   });
+
+  /** When a removal row inherits, show install predecessors (optionally reversed). */
+  private computeInheritedRemovalPreds(pointId: number, spec: PointPrerequisiteDto | undefined): number[] {
+    if (!this.removalReversesOrder()) return spec?.installRequiredPointIds ?? [];
+    // Reverse the graph: this point's "removal predecessors" become the points that
+    // have THIS point as an install predecessor.
+    const all = this.working();
+    return Object.entries(all)
+      .filter(([k, v]) => Number(k) !== pointId
+        && (v.installRequiredPointIds ?? []).includes(pointId))
+      .map(([k]) => Number(k));
+  }
 
   dirty = computed(() => JSON.stringify(this.working()) !== JSON.stringify(this.baseline()));
 
   constructor() {
-    // Sync local working/baseline only when the parent passes a different prerequisites
-    // map than we last absorbed, AND we don't have unsaved local edits. Detecting "different"
-    // by JSON identity is fine here — the maps are small and shallow.
     effect(() => {
       const incoming = this.prerequisites();
       const incomingJson = JSON.stringify(incoming ?? {});
       const lastJson = this.lastSeenInputJson();
-      if (incomingJson === lastJson && lastJson !== null) {
-        // Same input as last sync — nothing to do (and certainly don't clobber edits).
-        return;
-      }
-      // Input changed. If we have unsaved edits, hold them; otherwise absorb.
+      if (incomingJson === lastJson && lastJson !== null) return;
       if (lastJson !== null && this.dirty()) return;
-      const cloned = JSON.parse(incomingJson);
-      this.working.set(cloned);
-      this.baseline.set(JSON.parse(incomingJson));
+      const cloned = JSON.parse(incomingJson) as Record<number, PointPrerequisiteDto>;
+      this.working.set(this.normalizeIncoming(cloned));
+      this.baseline.set(this.normalizeIncoming(JSON.parse(incomingJson)));
       this.lastSeenInputJson.set(incomingJson);
     }, { allowSignalWrites: true });
+  }
+
+  /** Defensive: ensure every spec has the new install/removal arrays defined. */
+  private normalizeIncoming(map: Record<number, PointPrerequisiteDto>): Record<number, PointPrerequisiteDto> {
+    const out: Record<number, PointPrerequisiteDto> = {};
+    for (const [k, v] of Object.entries(map ?? {})) {
+      out[Number(k)] = {
+        installRequiredPointIds: v.installRequiredPointIds ?? [],
+        installSafetyConditions: v.installSafetyConditions ?? [],
+        installNotes: v.installNotes ?? null,
+        removalRequiredPointIds: v.removalRequiredPointIds ?? [],
+        removalSafetyConditions: v.removalSafetyConditions ?? [],
+        removalNotes: v.removalNotes ?? null,
+        removalOrder: v.removalOrder ?? null,
+      };
+    }
+    return out;
+  }
+
+  setSide(s: Side): void {
+    this.side.set(s);
+  }
+
+  onReverseToggle(value: boolean): void {
+    if (this.readonly()) return;
+    this.removalReverseChange.emit(value);
   }
 
   private updateRow(pointId: number, fn: (spec: PointPrerequisiteDto) => PointPrerequisiteDto): void {
     if (this.readonly()) return;
     const w = { ...this.working() };
-    const current = w[pointId] ?? { requiredPointIds: [], safetyConditions: [] };
+    const current = w[pointId] ?? this.blankSpec();
     w[pointId] = fn({ ...current });
     this.working.set(w);
   }
 
-  onRequiredChange(pointId: number, ids: (number | string)[]): void {
-    const numericIds = (ids ?? []).map(v => typeof v === 'string' ? Number(v) : v);
-    this.updateRow(pointId, spec => ({ ...spec, requiredPointIds: numericIds }));
+  private blankSpec(): PointPrerequisiteDto {
+    return {
+      installRequiredPointIds: [],
+      installSafetyConditions: [],
+      installNotes: null,
+      removalRequiredPointIds: [],
+      removalSafetyConditions: [],
+      removalNotes: null,
+      removalOrder: null,
+    };
   }
 
-  onAddCondition(pointId: number): void {
-    this.updateRow(pointId, spec => ({ ...spec, safetyConditions: [...(spec.safetyConditions ?? []), ''] }));
+  isPredecessor(pointId: number, candidateId: number): boolean {
+    const spec = this.working()[pointId];
+    const list = this.side() === 'INSTALL'
+      ? spec?.installRequiredPointIds
+      : (spec?.removalRequiredPointIds?.length ? spec.removalRequiredPointIds : null);
+    if (list) return list.includes(candidateId);
+    // Inheriting case for REMOVAL: render install preds as "checked" but they're not actually
+    // persisted on the removal side — checking still toggles into an override.
+    if (this.side() === 'REMOVAL') {
+      return (spec?.installRequiredPointIds ?? []).includes(candidateId);
+    }
+    return false;
   }
 
-  onRemoveCondition(pointId: number, index: number): void {
-    this.updateRow(pointId, spec => ({
-      ...spec,
-      safetyConditions: (spec.safetyConditions ?? []).filter((_, i) => i !== index),
-    }));
-  }
-
-  onConditionChange(pointId: number, index: number, value: string): void {
+  togglePredecessor(pointId: number, candidateId: number): void {
+    if (this.side() === 'INSTALL') {
+      this.updateRow(pointId, spec => {
+        const existing = spec.installRequiredPointIds ?? [];
+        const next = existing.includes(candidateId)
+          ? existing.filter(id => id !== candidateId)
+          : [...existing, candidateId];
+        return { ...spec, installRequiredPointIds: next };
+      });
+      return;
+    }
+    // REMOVAL side: if inheriting, materialize current displayed list first, then toggle.
     this.updateRow(pointId, spec => {
-      const next = [...(spec.safetyConditions ?? [])];
-      next[index] = value;
-      return { ...spec, safetyConditions: next };
+      const hasOverride = (spec.removalRequiredPointIds?.length ?? 0) > 0;
+      const base = hasOverride
+        ? spec.removalRequiredPointIds!
+        : this.computeInheritedRemovalPreds(pointId, spec);
+      const next = base.includes(candidateId)
+        ? base.filter(id => id !== candidateId)
+        : [...base, candidateId];
+      return { ...spec, removalRequiredPointIds: next };
     });
   }
 
-  onInstallNotesChange(pointId: number, value: string): void {
-    this.updateRow(pointId, spec => ({ ...spec, installNotes: value ?? '' }));
+  tagFor(pointId: number): string {
+    const p = this.points().find(x => x.id === pointId);
+    return p?.tagNumber ?? `#${pointId}`;
   }
 
-  onRemovalNotesChange(pointId: number, value: string): void {
-    this.updateRow(pointId, spec => ({ ...spec, removalNotes: value ?? '' }));
+  // ── Picker dialog ─────────────────────────────────────────────────────────
+  pickerRowId = signal<number | null>(null);
+
+  openPredecessorPicker(rowId: number): void {
+    if (this.readonly()) return;
+    this.pickerRowId.set(rowId);
+  }
+
+  closePicker(): void { this.pickerRowId.set(null); }
+
+  activeRowTag(): string {
+    const id = this.pickerRowId();
+    return id == null ? '' : this.tagFor(id);
+  }
+
+  // ── Safety conditions ─────────────────────────────────────────────────────
+
+  onAddCondition(pointId: number): void {
+    if (this.side() === 'INSTALL') {
+      this.updateRow(pointId, spec => ({
+        ...spec, installSafetyConditions: [...(spec.installSafetyConditions ?? []), ''],
+      }));
+    } else {
+      this.updateRow(pointId, spec => ({
+        ...spec, removalSafetyConditions: [...(spec.removalSafetyConditions ?? []), ''],
+      }));
+    }
+  }
+
+  onRemoveCondition(pointId: number, index: number): void {
+    if (this.side() === 'INSTALL') {
+      this.updateRow(pointId, spec => ({
+        ...spec,
+        installSafetyConditions: (spec.installSafetyConditions ?? []).filter((_, i) => i !== index),
+      }));
+    } else {
+      this.updateRow(pointId, spec => ({
+        ...spec,
+        removalSafetyConditions: (spec.removalSafetyConditions ?? []).filter((_, i) => i !== index),
+      }));
+    }
+  }
+
+  onConditionChange(pointId: number, index: number, value: string): void {
+    if (this.side() === 'INSTALL') {
+      this.updateRow(pointId, spec => {
+        const next = [...(spec.installSafetyConditions ?? [])];
+        next[index] = value;
+        return { ...spec, installSafetyConditions: next };
+      });
+    } else {
+      this.updateRow(pointId, spec => {
+        const next = [...(spec.removalSafetyConditions ?? [])];
+        next[index] = value;
+        return { ...spec, removalSafetyConditions: next };
+      });
+    }
+  }
+
+  /** Removal-side action: materialize current inherited conditions into a removal override. */
+  overrideRemovalConditions(pointId: number): void {
+    this.updateRow(pointId, spec => {
+      const seed = (spec.removalSafetyConditions?.length ?? 0) > 0
+        ? spec.removalSafetyConditions!
+        : [...(spec.installSafetyConditions ?? []), ''];
+      // If nothing to seed, start with one blank row.
+      return { ...spec, removalSafetyConditions: seed.length ? [...seed] : [''] };
+    });
+  }
+
+  onNotesChange(pointId: number, value: string): void {
+    if (this.side() === 'INSTALL') {
+      this.updateRow(pointId, spec => ({ ...spec, installNotes: value ?? '' }));
+    } else {
+      this.updateRow(pointId, spec => ({ ...spec, removalNotes: value ?? '' }));
+    }
   }
 
   onRemovalOrderChange(pointId: number, value: number | string | null): void {
@@ -231,25 +478,27 @@ export class PointPrerequisitesEditorComponent {
   }
 
   onSave(): void {
-    // Drop entries that are fully empty (no preds, no conditions, no notes, no order)
-    // so we don't clutter the persisted map.
     const cleaned: Record<number, PointPrerequisiteDto> = {};
-    const w = this.working();
-    for (const [k, v] of Object.entries(w)) {
-      const reqs = (v.requiredPointIds ?? []).filter(id => Number.isFinite(id));
-      const conds = (v.safetyConditions ?? []).map(c => c.trim()).filter(c => c.length > 0);
-      const installNotes = (v.installNotes ?? '').trim();
-      const removalNotes = (v.removalNotes ?? '').trim();
-      const removalOrder = (v.removalOrder ?? null) as number | null;
-      if (reqs.length || conds.length || installNotes || removalNotes || removalOrder !== null) {
-        cleaned[Number(k)] = {
-          requiredPointIds: reqs,
-          safetyConditions: conds,
-          installNotes: installNotes || null,
-          removalNotes: removalNotes || null,
-          removalOrder,
-        };
-      }
+    for (const [k, v] of Object.entries(this.working())) {
+      const iReqs = (v.installRequiredPointIds ?? []).filter(id => Number.isFinite(id));
+      const iConds = (v.installSafetyConditions ?? []).map(c => c.trim()).filter(c => c.length > 0);
+      const rReqs = (v.removalRequiredPointIds ?? []).filter(id => Number.isFinite(id));
+      const rConds = (v.removalSafetyConditions ?? []).map(c => c.trim()).filter(c => c.length > 0);
+      const iNotes = (v.installNotes ?? '').trim();
+      const rNotes = (v.removalNotes ?? '').trim();
+      const rOrder = v.removalOrder ?? null;
+      const anything = iReqs.length || iConds.length || rReqs.length || rConds.length
+                    || iNotes || rNotes || rOrder !== null;
+      if (!anything) continue;
+      cleaned[Number(k)] = {
+        installRequiredPointIds: iReqs,
+        installSafetyConditions: iConds,
+        installNotes: iNotes || null,
+        removalRequiredPointIds: rReqs,
+        removalSafetyConditions: rConds,
+        removalNotes: rNotes || null,
+        removalOrder: rOrder,
+      };
     }
     this.save.emit(cleaned);
   }

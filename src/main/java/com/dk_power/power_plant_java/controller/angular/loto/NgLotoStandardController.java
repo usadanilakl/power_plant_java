@@ -439,13 +439,22 @@ public class NgLotoStandardController {
             @RequestBody java.util.Map<String, String> body) {
         try {
             return ResponseEntity.ok(new NgApiResponse<>(
-                    lotoStandardService.updateStandardProceduralText(
-                            id,
-                            body.get("prerequisitesText"),
-                            body.get("hazardControlMethodsText"),
-                            body.get("installProcedureText"),
-                            body.get("removalProcedureText")),
+                    lotoStandardService.updateStandardProceduralText(id, body),
                     "Standard procedural text updated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/removal-reverse")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> setRemovalReverse(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, Object> body) {
+        try {
+            boolean reverse = Boolean.TRUE.equals(body.get("reverse"));
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoStandardService.setRemovalReversesInstallOrder(id, reverse),
+                    "Removal order direction updated"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }

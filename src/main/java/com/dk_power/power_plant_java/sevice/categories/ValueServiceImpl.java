@@ -62,6 +62,21 @@ public class ValueServiceImpl implements ValueService {
         return valueMapper;
     }
 
+    /**
+     * Override the default ModelMapper-based conversion with explicit field mapping.
+     * The default uses generic ModelMapper which traverses Value.category.values (lazy Set)
+     * and fails with LazyInitializationException when the Hibernate session is closed
+     * (e.g., during dual-form saves that detach entities mid-flow).
+     */
+    @Override
+    public ValueDto convertToDto(Value entity) {
+        return valueMapper.convertToDto(entity);
+    }
+
+    @Override
+    public Value convertToEntity(ValueDto dto) {
+        return valueMapper.convertToEntity(dto);
+    }
 
     @Override
     public SessionFactory getSessionFactory() {

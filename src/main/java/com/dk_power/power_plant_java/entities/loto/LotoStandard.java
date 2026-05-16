@@ -40,22 +40,41 @@ public class LotoStandard extends BaseAuditEntity {
 
     // ── Procedural prose ─────────────────────────────────────────────────────
     // Free-text fields the qualified employee fills in while developing the standard.
+    // Install and removal sides are stored separately. The two original ambiguous
+    // fields (prerequisitesText, hazardControlMethodsText) are pinned to the
+    // install-side columns so existing rows keep their data.
 
-    /** System shutdown / electrical switching / grounding prerequisites that apply to the whole LOTO. */
-    @Column(columnDefinition = "TEXT")
-    private String prerequisitesText;
+    /** Install-side prerequisites prose (legacy DB column: prerequisites_text). */
+    @Column(name = "prerequisites_text", columnDefinition = "TEXT")
+    private String installPrerequisitesText;
 
-    /** Methods to control hazards encountered during this LOTO. */
-    @Column(columnDefinition = "TEXT")
-    private String hazardControlMethodsText;
+    /** Install-side hazard-control methods (legacy DB column: hazard_control_methods_text). */
+    @Column(name = "hazard_control_methods_text", columnDefinition = "TEXT")
+    private String installHazardControlText;
 
-    /** Install procedure prose — narrative of how to install the LOTO. */
+    /** Install procedure prose. */
     @Column(columnDefinition = "TEXT")
     private String installProcedureText;
 
-    /** Removal procedure prose — narrative of how to remove the LOTO. */
+    /** Removal-side prerequisites prose. */
+    @Column(columnDefinition = "TEXT")
+    private String removalPrerequisitesText;
+
+    /** Removal-side hazard-control methods. */
+    @Column(columnDefinition = "TEXT")
+    private String removalHazardControlText;
+
+    /** Removal procedure prose. */
     @Column(columnDefinition = "TEXT")
     private String removalProcedureText;
+
+    /**
+     * When true, the removal procedure's default predecessor graph is the reverse
+     * of the install graph. When false (default), removal follows install order.
+     * Per-point overrides on {@code PointPrerequisite.removalRequiredPointIds} take
+     * precedence over this default.
+     */
+    private boolean removalReversesInstallOrder = false;
 
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(

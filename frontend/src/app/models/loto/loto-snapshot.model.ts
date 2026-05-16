@@ -35,6 +35,12 @@ export interface LotoSnapshotModel extends BaseModel {
   pointWalkdownBy: Record<number, string>;
   pointWalkdownAt: Record<number, string>;
   pointWalkdownNotes: Record<number, string>;
+  pointRemovedBy: Record<number, string>;
+  pointRemovedAt: Record<number, string>;
+  pointRemovedNotes: Record<number, string>;
+
+  removalReversesInstallOrder: boolean;
+  pointNeedsRehang: number[];
 
   pointPrerequisites: Record<number, PointPrerequisiteDto>;
 
@@ -42,9 +48,13 @@ export interface LotoSnapshotModel extends BaseModel {
 }
 
 export interface PointPrerequisiteDto {
-  requiredPointIds: number[];
-  safetyConditions: string[];
+  // Install side
+  installRequiredPointIds: number[];
+  installSafetyConditions: string[];
   installNotes?: string | null;
+  // Removal side (empty arrays = inherit from install)
+  removalRequiredPointIds: number[];
+  removalSafetyConditions: string[];
   removalNotes?: string | null;
   removalOrder?: number | null;
 }
@@ -84,6 +94,12 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
   pointWalkdownBy: Record<number, string>;
   pointWalkdownAt: Record<number, string>;
   pointWalkdownNotes: Record<number, string>;
+  pointRemovedBy: Record<number, string>;
+  pointRemovedAt: Record<number, string>;
+  pointRemovedNotes: Record<number, string>;
+
+  removalReversesInstallOrder: boolean;
+  pointNeedsRehang: number[];
 
   pointPrerequisites: Record<number, PointPrerequisiteDto>;
 
@@ -131,6 +147,12 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
     this.pointWalkdownBy = data.pointWalkdownBy ?? {};
     this.pointWalkdownAt = data.pointWalkdownAt ?? {};
     this.pointWalkdownNotes = data.pointWalkdownNotes ?? {};
+    this.pointRemovedBy = data.pointRemovedBy ?? {};
+    this.pointRemovedAt = data.pointRemovedAt ?? {};
+    this.pointRemovedNotes = data.pointRemovedNotes ?? {};
+
+    this.removalReversesInstallOrder = data.removalReversesInstallOrder ?? false;
+    this.pointNeedsRehang = data.pointNeedsRehang ?? [];
 
     this.pointPrerequisites = data.pointPrerequisites ?? {};
 
@@ -181,6 +203,12 @@ export class LotoSnapshotDto extends BaseDto implements LotoSnapshotModel {
       pointWalkdownBy: json.pointWalkdownBy ?? {},
       pointWalkdownAt: json.pointWalkdownAt ?? {},
       pointWalkdownNotes: json.pointWalkdownNotes ?? {},
+      pointRemovedBy: json.pointRemovedBy ?? {},
+      pointRemovedAt: json.pointRemovedAt ?? {},
+      pointRemovedNotes: json.pointRemovedNotes ?? {},
+
+      removalReversesInstallOrder: json.removalReversesInstallOrder ?? false,
+      pointNeedsRehang: json.pointNeedsRehang ?? [],
 
       pointPrerequisites: json.pointPrerequisites ?? {},
 

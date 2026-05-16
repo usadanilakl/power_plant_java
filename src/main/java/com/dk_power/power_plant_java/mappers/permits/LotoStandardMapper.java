@@ -77,10 +77,13 @@ public class LotoStandardMapper implements BaseMapper {
 
         dto.setPointPrerequisites(entity.getPointPrerequisites());
 
-        dto.setPrerequisitesText(entity.getPrerequisitesText());
-        dto.setHazardControlMethodsText(entity.getHazardControlMethodsText());
+        dto.setInstallPrerequisitesText(entity.getInstallPrerequisitesText());
+        dto.setInstallHazardControlText(entity.getInstallHazardControlText());
         dto.setInstallProcedureText(entity.getInstallProcedureText());
+        dto.setRemovalPrerequisitesText(entity.getRemovalPrerequisitesText());
+        dto.setRemovalHazardControlText(entity.getRemovalHazardControlText());
         dto.setRemovalProcedureText(entity.getRemovalProcedureText());
+        dto.setRemovalReversesInstallOrder(entity.isRemovalReversesInstallOrder());
 
         return dto;
 

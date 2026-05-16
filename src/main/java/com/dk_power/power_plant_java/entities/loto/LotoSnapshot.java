@@ -119,6 +119,32 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     @Column(columnDefinition = "TEXT")
     private String pointWalkdownNotesJson;
 
+    /** Per-point removal state — populated as the operator clicks "Mark Removed" after CA release. */
+    @Column(columnDefinition = "TEXT")
+    private String pointRemovedByJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointRemovedAtJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String pointRemovedNotesJson;
+
+    /**
+     * Snapshot of the standard's "removal reverses install order" flag at flip time.
+     * When true, points with no explicit removalRequiredPointIds are treated as having
+     * the reverse-of-install predecessor graph.
+     */
+    private boolean removalReversesInstallOrder = false;
+
+    /**
+     * JSON-encoded set of point IDs that need re-hanging. Populated when a point is
+     * added during Modification, or when a point's lock is pulled during Test. Cleared
+     * when the point is re-hung. Drives the resume-from-Mod/Test gate (CA re-activate
+     * is blocked until this is empty).
+     */
+    @Column(columnDefinition = "TEXT")
+    private String pointNeedsRehangJson;
+
     /** JSON map: {pointId: {requiredPointIds, safetyConditions}} — copied from LotoStandard, editable per instance */
     @Column(columnDefinition = "TEXT")
     private String pointPrerequisitesJson;
@@ -175,9 +201,14 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     }
 
     /**
-     * Clears all event-recording fields. Called after a snapshot is duplicated for a new
-     * status transition so events stay tied to the snapshot row that recorded them rather
-     * than getting copied forward.
+     * Clears aggregate event-recording fields (single who/when per LOTO event). Called after
+     * a snapshot is duplicated so each aggregate event stays tied to the snapshot row that
+     * recorded it rather than getting copied forward.
+     *
+     * <p><b>Per-point maps are intentionally NOT cleared</b> — they represent ongoing
+     * operational state (which points are currently hung/verified/walked-down/removed) and
+     * must persist across snapshot duplications. Without this, post-activation operations
+     * like per-point removal lose history because every call duplicates the snapshot.
      */
     public void clearLifecycleEventFields() {
         caApprovedForHangingBy = null;       caApprovedForHangingAt = null;
@@ -194,15 +225,6 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         locksRemovedBy = null;               locksRemovedAt = null;
         closedBy = null;                     closedAt = null;
         snapshotReason = null;
-        pointHungByJson = null;
-        pointHungAtJson = null;
-        pointHangNotesJson = null;
-        pointVerifiedByJson = null;
-        pointVerifiedAtJson = null;
-        pointVerifyNotesJson = null;
-        pointWalkdownByJson = null;
-        pointWalkdownAtJson = null;
-        pointWalkdownNotesJson = null;
     }
 
     // ---- JSON map helpers for per-point state ----
@@ -286,6 +308,100 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
         java.util.Map<Long, String> by = getPointWalkdownBy(); by.remove(pointId); pointWalkdownByJson = writeJsonMap(by);
         java.util.Map<Long, String> at = getPointWalkdownAt(); at.remove(pointId); pointWalkdownAtJson = writeJsonMap(at);
         java.util.Map<Long, String> nt = getPointWalkdownNotes(); nt.remove(pointId); pointWalkdownNotesJson = writeJsonMap(nt);
+    }
+
+    public java.util.Map<Long, String> getPointRemovedBy()    { return readJsonMap(pointRemovedByJson); }
+    public java.util.Map<Long, String> getPointRemovedAt()    { return readJsonMap(pointRemovedAtJson); }
+    public java.util.Map<Long, String> getPointRemovedNotes() { return readJsonMap(pointRemovedNotesJson); }
+
+    public void setPointRemovedBy(Long pointId, String user, String notes) {
+        java.util.Map<Long, String> by = getPointRemovedBy();
+        java.util.Map<Long, String> at = getPointRemovedAt();
+        java.util.Map<Long, String> nt = getPointRemovedNotes();
+        by.put(pointId, user);
+        at.put(pointId, java.time.LocalDateTime.now().toString());
+        if (notes != null && !notes.isBlank()) nt.put(pointId, notes); else nt.remove(pointId);
+        pointRemovedByJson = writeJsonMap(by);
+        pointRemovedAtJson = writeJsonMap(at);
+        pointRemovedNotesJson = writeJsonMap(nt);
+    }
+
+    public void clearPointRemoved(Long pointId) {
+        java.util.Map<Long, String> by = getPointRemovedBy(); by.remove(pointId); pointRemovedByJson = writeJsonMap(by);
+        java.util.Map<Long, String> at = getPointRemovedAt(); at.remove(pointId); pointRemovedAtJson = writeJsonMap(at);
+        java.util.Map<Long, String> nt = getPointRemovedNotes(); nt.remove(pointId); pointRemovedNotesJson = writeJsonMap(nt);
+    }
+
+    /**
+     * Effective removal predecessors for a point on this snapshot.
+     * Resolution order: explicit per-point override → reverse-of-install graph
+     * (when {@link #removalReversesInstallOrder} is true) → install predecessors.
+     */
+    public java.util.List<Long> effectiveRemovalPredecessors(Long pointId) {
+        java.util.Map<Long, PointPrerequisite> prereqs = getPointPrerequisites();
+        PointPrerequisite spec = prereqs.get(pointId);
+        if (spec != null && spec.getRemovalRequiredPointIds() != null
+                && !spec.getRemovalRequiredPointIds().isEmpty()) {
+            return spec.getRemovalRequiredPointIds();
+        }
+        if (removalReversesInstallOrder) {
+            // Reverse graph: this point's "removal predecessors" are the points whose
+            // install predecessors list contains THIS point.
+            java.util.List<Long> reversed = new java.util.ArrayList<>();
+            for (var entry : prereqs.entrySet()) {
+                if (entry.getKey().equals(pointId)) continue;
+                PointPrerequisite other = entry.getValue();
+                if (other == null || other.getInstallRequiredPointIds() == null) continue;
+                if (other.getInstallRequiredPointIds().contains(pointId)) reversed.add(entry.getKey());
+            }
+            return reversed;
+        }
+        return spec != null && spec.getInstallRequiredPointIds() != null
+                ? spec.getInstallRequiredPointIds()
+                : java.util.Collections.emptyList();
+    }
+
+    /** Effective safety conditions for removal — per-point override falls back to install. */
+    public java.util.List<String> effectiveRemovalSafetyConditions(Long pointId) {
+        PointPrerequisite spec = getPointPrerequisites().get(pointId);
+        if (spec == null) return java.util.Collections.emptyList();
+        return spec.effectiveRemovalSafetyConditions();
+    }
+
+    // ── needsRehang ───────────────────────────────────────────────────────────
+
+    public java.util.Set<Long> getPointNeedsRehang() {
+        if (pointNeedsRehangJson == null || pointNeedsRehangJson.isEmpty()) return new java.util.HashSet<>();
+        try {
+            return objectMapper.readValue(pointNeedsRehangJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.Set<Long>>() {});
+        } catch (Exception e) {
+            return new java.util.HashSet<>();
+        }
+    }
+
+    public void setPointNeedsRehang(java.util.Set<Long> ids) {
+        try {
+            this.pointNeedsRehangJson = objectMapper.writeValueAsString(ids != null ? ids : new java.util.HashSet<>());
+        } catch (Exception e) {
+            this.pointNeedsRehangJson = "[]";
+        }
+    }
+
+    public void flagNeedsRehang(Long pointId) {
+        java.util.Set<Long> s = getPointNeedsRehang();
+        s.add(pointId);
+        setPointNeedsRehang(s);
+    }
+
+    public void clearNeedsRehang(Long pointId) {
+        java.util.Set<Long> s = getPointNeedsRehang();
+        s.remove(pointId);
+        setPointNeedsRehang(s);
+    }
+
+    public boolean isNeedsRehang(Long pointId) {
+        return getPointNeedsRehang().contains(pointId);
     }
 
     public java.util.Map<Long, PointPrerequisite> getPointPrerequisites() {

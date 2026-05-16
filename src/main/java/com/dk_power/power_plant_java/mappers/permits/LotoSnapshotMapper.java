@@ -77,6 +77,11 @@ public class LotoSnapshotMapper {
         dto.setPointWalkdownBy(snapshot.getPointWalkdownBy());
         dto.setPointWalkdownAt(snapshot.getPointWalkdownAt());
         dto.setPointWalkdownNotes(snapshot.getPointWalkdownNotes());
+        dto.setPointRemovedBy(snapshot.getPointRemovedBy());
+        dto.setPointRemovedAt(snapshot.getPointRemovedAt());
+        dto.setPointRemovedNotes(snapshot.getPointRemovedNotes());
+        dto.setRemovalReversesInstallOrder(snapshot.isRemovalReversesInstallOrder());
+        dto.setPointNeedsRehang(snapshot.getPointNeedsRehang());
         dto.setPointPrerequisites(snapshot.getPointPrerequisites());
 
         return dto;

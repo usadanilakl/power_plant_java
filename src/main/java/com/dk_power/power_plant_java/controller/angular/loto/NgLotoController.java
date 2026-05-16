@@ -354,6 +354,37 @@ public class NgLotoController {
         } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
     }
 
+    @PutMapping("/{id}/lifecycle/point/{pointId}/removed")
+    public ResponseEntity<NgApiResponse<LotoDto>> markPointRemoved(
+            @PathVariable Long id, @PathVariable Long pointId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> acknowledged = body != null && body.get("acknowledged") instanceof List
+                    ? (List<String>) body.get("acknowledged")
+                    : null;
+            String notes = body != null && body.get("notes") != null ? body.get("notes").toString() : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.markPointRemoved(id, pointId, acknowledged, notes), "Point marked removed"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @DeleteMapping("/{id}/lifecycle/point/{pointId}/removed")
+    public ResponseEntity<NgApiResponse<LotoDto>> unmarkPointRemoved(@PathVariable Long id, @PathVariable Long pointId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.unmarkPointRemoved(id, pointId), "Point removal cleared"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PostMapping("/{id}/lifecycle/point/{pointId}/pull-for-test")
+    public ResponseEntity<NgApiResponse<LotoDto>> pullPointForTest(
+            @PathVariable Long id, @PathVariable Long pointId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String reason = body != null && body.get("reason") != null ? body.get("reason").toString() : null;
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.pullPointForTest(id, pointId, reason), "Point pulled — needs re-hang"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
     @PutMapping("/{id}/lifecycle/hung")
     public ResponseEntity<NgApiResponse<LotoDto>> markHung(@PathVariable Long id) {
         try {
@@ -381,6 +412,13 @@ public class NgLotoController {
     public ResponseEntity<NgApiResponse<LotoDto>> acceptRequestor(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.acceptRequestor(id), "Transfer accepted"));
+        } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
+    }
+
+    @PutMapping("/{id}/lifecycle/cancel-transfer")
+    public ResponseEntity<NgApiResponse<LotoDto>> cancelTransfer(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(ngLotoService.cancelTransfer(id), "Transfer cancelled"));
         } catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage())); }
     }
 

@@ -86,6 +86,14 @@ export class LotoConflictLeftPanelComponent implements OnInit {
       .filter((g): g is DuplicateGroup => g !== null);
   });
 
+  /** Count of items currently visible after filters. For duplicates, counts unique points across groups. */
+  filteredCount = computed(() => {
+    if (this.state.activeConflictType() === 'DUPLICATE_TAG') {
+      return this.filteredDuplicateGroups().reduce((sum, g) => sum + g.points.length, 0);
+    }
+    return this.filteredPoints().length;
+  });
+
   ngOnInit(): void {
     this.sharedData.locations$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -190,8 +198,10 @@ export class LotoConflictLeftPanelComponent implements OnInit {
   }
 
   private loadConflictPoints(type: ConflictType, page: number, append = false): void {
+    // Use large page size so client-side filters see the full dataset.
+    // Conflict lists are bounded (typically hundreds, not millions).
     this.api
-      .getConflictsByType({ conflictType: type, page, pageSize: 50 })
+      .getConflictsByType({ conflictType: type, page, pageSize: 10000 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {

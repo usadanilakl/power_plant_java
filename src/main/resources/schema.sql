@@ -37,6 +37,18 @@ ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_email VARC
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_phone VARCHAR(255);
 ALTER TABLE IF EXISTS work_request ADD COLUMN IF NOT EXISTS submitter_company VARCHAR(255);
 
+-- LotoStandard procedural-prose split (install vs removal)
+ALTER TABLE IF EXISTS loto_standard ADD COLUMN IF NOT EXISTS removal_prerequisites_text TEXT;
+ALTER TABLE IF EXISTS loto_standard ADD COLUMN IF NOT EXISTS removal_hazard_control_text TEXT;
+ALTER TABLE IF EXISTS loto_standard ADD COLUMN IF NOT EXISTS removal_reverses_install_order BOOLEAN DEFAULT FALSE NOT NULL;
+
+-- LotoSnapshot per-point removal tracking + reverse-direction flag captured at flip time
+ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_removed_by_json TEXT;
+ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_removed_at_json TEXT;
+ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_removed_notes_json TEXT;
+ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS removal_reverses_install_order BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_needs_rehang_json TEXT;
+
 -- Instrumentation dedup and lookup indexes
 CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);
 CREATE INDEX IF NOT EXISTS idx_instrument_local_uuid ON instrument(local_uuid);

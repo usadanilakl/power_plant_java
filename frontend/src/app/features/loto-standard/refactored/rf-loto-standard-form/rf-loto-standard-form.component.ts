@@ -401,14 +401,18 @@ export class RfLotoStandardFormComponent {
   // ── Procedural prose (Procedures slide) ──────────────────────────────────
 
   proseDraft = signal<{
-    prerequisitesText: string;
-    hazardControlMethodsText: string;
+    installPrerequisitesText: string;
+    installHazardControlText: string;
     installProcedureText: string;
+    removalPrerequisitesText: string;
+    removalHazardControlText: string;
     removalProcedureText: string;
   }>({
-    prerequisitesText: '',
-    hazardControlMethodsText: '',
+    installPrerequisitesText: '',
+    installHazardControlText: '',
     installProcedureText: '',
+    removalPrerequisitesText: '',
+    removalHazardControlText: '',
     removalProcedureText: '',
   });
 
@@ -426,9 +430,11 @@ export class RfLotoStandardFormComponent {
     const newId = e.id ?? null;
     const prevId = this.proseLastSyncedId();
     const fromEntity = {
-      prerequisitesText: e.prerequisitesText ?? '',
-      hazardControlMethodsText: e.hazardControlMethodsText ?? '',
+      installPrerequisitesText: e.installPrerequisitesText ?? '',
+      installHazardControlText: e.installHazardControlText ?? '',
       installProcedureText: e.installProcedureText ?? '',
+      removalPrerequisitesText: e.removalPrerequisitesText ?? '',
+      removalHazardControlText: e.removalHazardControlText ?? '',
       removalProcedureText: e.removalProcedureText ?? '',
     };
     if (newId !== prevId) {
@@ -444,9 +450,11 @@ export class RfLotoStandardFormComponent {
   proseDirty = computed(() => {
     const e = this.entity();
     const d = this.proseDraft();
-    return (e.prerequisitesText ?? '') !== d.prerequisitesText
-        || (e.hazardControlMethodsText ?? '') !== d.hazardControlMethodsText
+    return (e.installPrerequisitesText ?? '') !== d.installPrerequisitesText
+        || (e.installHazardControlText ?? '') !== d.installHazardControlText
         || (e.installProcedureText ?? '') !== d.installProcedureText
+        || (e.removalPrerequisitesText ?? '') !== d.removalPrerequisitesText
+        || (e.removalHazardControlText ?? '') !== d.removalHazardControlText
         || (e.removalProcedureText ?? '') !== d.removalProcedureText;
   });
 
@@ -476,11 +484,30 @@ export class RfLotoStandardFormComponent {
   resetProse(): void {
     const e = this.entity();
     this.proseDraft.set({
-      prerequisitesText: e.prerequisitesText ?? '',
-      hazardControlMethodsText: e.hazardControlMethodsText ?? '',
+      installPrerequisitesText: e.installPrerequisitesText ?? '',
+      installHazardControlText: e.installHazardControlText ?? '',
       installProcedureText: e.installProcedureText ?? '',
+      removalPrerequisitesText: e.removalPrerequisitesText ?? '',
+      removalHazardControlText: e.removalHazardControlText ?? '',
       removalProcedureText: e.removalProcedureText ?? '',
     });
+  }
+
+  /** Persist the standard's "removal reverses install order" flag. */
+  onRemovalReverseChange(value: boolean): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.apiService.setRemovalReverse(id, value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const updated = LotoStandardDto.fromJson(response.responseData);
+          this.stateService.setSelectedItem(updated);
+        },
+        error: (err) => {
+          alert(`Failed to toggle removal direction: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+        }
+      });
   }
 
   savePrereqs(prerequisites: Record<number, PointPrerequisiteDto>): void {

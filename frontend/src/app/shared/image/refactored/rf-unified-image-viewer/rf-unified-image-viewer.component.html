@@ -60,10 +60,10 @@
 
           <!-- Interactive Image -->
           <div class="large-image-container">
-            @if (currentImageUrl()) {
+            @if (effectiveImageUrl()) {
               @if (isRasterImage()) {
                 <app-interactive-image
-                  [imageUrl]="currentImageUrl()"
+                  [imageUrl]="effectiveImageUrl()"
                   [shapesInput]="currentShapes()"
                   [preset]="mode()"
                   [hoveredShapeId]="externalHoveredShapeId()"
@@ -78,7 +78,7 @@
               } @else {
                 <!-- Non-raster file: delegate to the generic viewer host (pdf/other) -->
                 <app-rf-file-viewer-host
-                  [fileLink]="currentImageUrl()"
+                  [fileLink]="effectiveImageUrl()"
                   [extension]="currentExtension()"
                 ></app-rf-file-viewer-host>
               }

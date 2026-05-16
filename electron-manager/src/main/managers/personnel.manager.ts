@@ -40,15 +40,23 @@ function normalizeGroupLabel(raw: string): string | null {
 }
 
 /**
- * Find a group label in a row, scanning the primary group column and nearby
- * columns to its LEFT only. Never scans into day-shift cells (right of nameCol),
- * because shift codes like "D" and "OCM" would false-match as group labels.
+ * Find a group label in a row. First tries the expected primaryCol (handles
+ * A/B/C/D/Rel/OCM). If empty there, falls back to scanning the whole row but
+ * ONLY for the multi-word labels "Relief" and "On Call Manager" — these never
+ * appear in day-shift cells (unlike single-char "D" or short "OCM" which
+ * collide with shift codes). Some months have the Relief/OCM header cell
+ * drift to a column offset that doesn't line up with groupCol.
  */
 function findGroupLabelInRow(row: any[], primaryCol: number): string | null {
-  for (const c of [primaryCol, primaryCol - 1, primaryCol - 2]) {
-    if (c < 0) continue;
-    const found = normalizeGroupLabel(String(row[c] || ''));
-    if (found) return found;
+  if (primaryCol >= 0) {
+    const direct = normalizeGroupLabel(String(row[primaryCol] || ''));
+    if (direct) return direct;
+  }
+  for (let c = 0; c < row.length; c++) {
+    if (c === primaryCol) continue;
+    const s = String(row[c] || '').trim();
+    if (/^relief$/i.test(s)) return 'Rel';
+    if (/^on\s*call\s*manager$/i.test(s)) return 'OCM';
   }
   return null;
 }

@@ -184,6 +184,11 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + pointId));
 
         loto.addLotoPoint(lotoPointService.toIdDto(point));
+        // Points added during Modification/Test must go through the re-hang flow before re-activation.
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Modification".equals(status) || "Test".equals(status)) {
+            loto.getLatestSnapshot().flagNeedsRehang(pointId);
+        }
         flagIfActiveModification(loto);
 
         return toDto(save(loto));
@@ -282,6 +287,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
         // Copy point prerequisites from standard so the instance has its own editable copy
         snapshot.setPointPrerequisites(standard.getPointPrerequisites());
+        // Capture removal direction policy at flip time — used by per-point removal enforcement
+        snapshot.setRemovalReversesInstallOrder(standard.isRemovalReversesInstallOrder());
 
         loto = repo.save(loto);
         lotoSnapshotRepo.save(snapshot);
@@ -333,8 +340,27 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         switch (newStatus) {
             case "Active" -> {
                 // First Activation (Building → Active) requires CA Activation signature.
-                // Re-Activation (Test → Active) does not — the LOTO was already CA-activated previously.
-                if (!"Test".equals(currentStatus)) {
+                // Re-Activation (Test/Modification → Active) requires all needsRehang cleared
+                // and all points hung + verified.
+                if ("Test".equals(currentStatus) || "Modification".equals(currentStatus)) {
+                    LotoSnapshot latest = loto.getLatestSnapshot();
+                    java.util.Set<Long> stillNeed = latest.getPointNeedsRehang();
+                    if (!stillNeed.isEmpty()) {
+                        throw new IllegalStateException(
+                                "Cannot re-activate: " + stillNeed.size() + " point(s) still need re-hanging");
+                    }
+                    // Verify every current point has been re-hung + re-verified
+                    java.util.Set<Long> pointIds = new java.util.HashSet<>();
+                    for (var p : latest.getLotoPointDtos()) {
+                        if (p != null && p.getId() != null) pointIds.add(p.getId());
+                    }
+                    if (!latest.getPointHungBy().keySet().containsAll(pointIds)) {
+                        throw new IllegalStateException("Cannot re-activate: not all points are hung");
+                    }
+                    if (!latest.getPointVerifiedBy().keySet().containsAll(pointIds)) {
+                        throw new IllegalStateException("Cannot re-activate: not all points are verified");
+                    }
+                } else {
                     boolean caActivated = loto.getSnapshots().stream().anyMatch(sn -> sn.getCaActivatedBy() != null);
                     if (!caActivated) {
                         throw new IllegalStateException("Control Authority must Activate the LOTO before it can be marked Active");
@@ -342,32 +368,42 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 }
                 LotoSnapshot latest = loto.getLatestSnapshot();
                 latest.setPersonnelSnapshot(loto.getPersonnelJson());
-                if ("Test".equals(currentStatus)) {
-                    latest.setSnapshotReason("Re-Activated");
+                if ("Test".equals(currentStatus) || "Modification".equals(currentStatus)) {
+                    latest.setSnapshotReason("Re-Activated from " + currentStatus);
                     LotoSnapshot recorded = loto.recordReactivated(user);
                     lotoSnapshotRepo.save(recorded);
                 } else {
+                    // No separate "activatedBy" record — CA Activated (caActivatedBy)
+                    // is the canonical authorization event; the status flip itself
+                    // doesn't need a separate signer.
                     latest.setSnapshotReason("Activated");
-                    LotoSnapshot recorded = loto.recordActivated(user);
-                    lotoSnapshotRepo.save(recorded);
                 }
                 lotoSnapshotRepo.save(latest);
             }
-            case "Test" -> {
+            case "Test", "Modification" -> {
+                // Pre-flight: everyone must be signed off before entering Test or Modification.
+                java.util.List<PersonnelSignEntry> stillOn = loto.getSignedOnPersonnel();
+                if (!stillOn.isEmpty()) {
+                    throw new IllegalStateException(
+                            "Cannot enter " + newStatus + ": " + stillOn.size() + " worker(s) still signed on (" +
+                            stillOn.stream().map(PersonnelSignEntry::getPersonName).reduce((a, b) -> a + ", " + b).orElse("") + ")");
+                }
                 LotoSnapshot latest = loto.getLatestSnapshot();
                 try {
-                    LotoSnapshot testSnapshot = (LotoSnapshot) latest.clone();
-                    testSnapshot.setId(null);
-                    testSnapshot.setDateCreated(java.time.LocalDateTime.now());
-                    testSnapshot.setLoto(loto);
-                    testSnapshot.clearLifecycleEventFields();
-                    testSnapshot.setSnapshotReason("Test Started");
-                    testSnapshot.setTestStartedBy(user);
-                    testSnapshot.setTestStartedAt(java.time.LocalDateTime.now());
-                    loto.getSnapshots().add(testSnapshot);
-                    lotoSnapshotRepo.save(testSnapshot);
+                    LotoSnapshot pauseSnapshot = (LotoSnapshot) latest.clone();
+                    pauseSnapshot.setId(null);
+                    pauseSnapshot.setDateCreated(java.time.LocalDateTime.now());
+                    pauseSnapshot.setLoto(loto);
+                    pauseSnapshot.clearLifecycleEventFields();
+                    pauseSnapshot.setSnapshotReason(newStatus + " Started");
+                    if ("Test".equals(newStatus)) {
+                        pauseSnapshot.setTestStartedBy(user);
+                        pauseSnapshot.setTestStartedAt(java.time.LocalDateTime.now());
+                    }
+                    loto.getSnapshots().add(pauseSnapshot);
+                    lotoSnapshotRepo.save(pauseSnapshot);
                 } catch (CloneNotSupportedException e) {
-                    throw new RuntimeException("Failed to clone snapshot for test", e);
+                    throw new RuntimeException("Failed to clone snapshot for " + newStatus, e);
                 }
             }
             case "Closed" -> {
@@ -475,7 +511,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (!hungPointIds.containsAll(requiredPointIds)) {
             throw new IllegalStateException("All LOTO points must be marked hung before the LOTO can be signed as hung");
         }
-        LotoSnapshot s = loto.recordHung(currentUserName());
+        // Guard: signer must be one of the people who actually hung points.
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        java.util.Set<String> hangers = new java.util.HashSet<>(latest.getPointHungBy().values());
+        String me = currentUserName();
+        if (!hangers.contains(me)) {
+            throw new IllegalStateException(
+                    "Only a user who hung at least one point can sign the LOTO as hung");
+        }
+        LotoSnapshot s = loto.recordHung(me);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -483,7 +527,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Transactional
     public LotoDto markPointHung(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Mark point hung", "Building");
+        requirePerPointHangVerifyStatus(loto, "Mark point hung", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
         enforcePrerequisitesForHang(loto, latest, pointId, acknowledgedSafetyConditions);
         LotoSnapshot s = loto.markPointHung(pointId, currentUserName(), notes);
@@ -491,17 +535,33 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return toDto(repo.save(loto));
     }
 
+    /**
+     * Per-point hang/verify is allowed during Building (initial build) OR during
+     * Modification / Test when the point is flagged needsRehang (resume flow).
+     */
+    private void requirePerPointHangVerifyStatus(Loto loto, String op, Long pointId) {
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Building".equals(status)) return;
+        if ("Modification".equals(status) || "Test".equals(status)) {
+            LotoSnapshot latest = loto.getLatestSnapshot();
+            if (latest != null && latest.isNeedsRehang(pointId)) return;
+            throw new IllegalStateException(
+                    op + " during " + status + " is only allowed for points flagged needs-rehang");
+        }
+        throw new IllegalStateException(op + " not allowed in status: " + status);
+    }
+
     @Transactional
     public LotoDto unmarkPointHung(Long lotoId, Long pointId) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Unmark point hung", "Building");
+        requirePerPointHangVerifyStatus(loto, "Unmark point hung", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
         // Reject if any successor still depends on this hang
         for (java.util.Map.Entry<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> e
                 : latest.getPointPrerequisites().entrySet()) {
             if (e.getKey().equals(pointId)) continue;
-            if (e.getValue() == null || e.getValue().getRequiredPointIds() == null) continue;
-            if (!e.getValue().getRequiredPointIds().contains(pointId)) continue;
+            if (e.getValue() == null || e.getValue().getInstallRequiredPointIds() == null) continue;
+            if (!e.getValue().getInstallRequiredPointIds().contains(pointId)) continue;
             if (latest.getPointHungBy().containsKey(e.getKey())) {
                 throw new IllegalStateException(
                         "Cannot un-hang point " + pointId + " — point " + e.getKey() + " was hung after it");
@@ -519,15 +579,22 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Transactional
     public LotoDto markPointVerified(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Mark point verified", "Building");
+        requirePerPointHangVerifyStatus(loto, "Mark point verified", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
-        // Verify is only available after every point in the LOTO has been hung.
-        java.util.Set<Long> pointIds = new java.util.HashSet<>();
-        for (com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto p : latest.getLotoPointDtos()) {
-            if (p != null && p.getId() != null) pointIds.add(p.getId());
-        }
-        if (!latest.getPointHungBy().keySet().containsAll(pointIds)) {
-            throw new IllegalStateException("Cannot verify points until every point on the LOTO has been hung");
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Building".equals(status)) {
+            // Verify is only available after the aggregate "Hanging Complete" sign-off has been
+            // signed by one of the hangers (markHung above). That gate already enforces all
+            // points are hung, so we just check the aggregate stamp here.
+            boolean hangingComplete = loto.getSnapshots().stream().anyMatch(sn -> sn.getHungBy() != null);
+            if (!hangingComplete) {
+                throw new IllegalStateException("Cannot verify points until 'Hanging Complete' is signed by one of the hangers");
+            }
+        } else {
+            // During Mod/Test resume: the affected point must already be re-hung.
+            if (!latest.getPointHungBy().containsKey(pointId)) {
+                throw new IllegalStateException("Cannot verify point " + pointId + " — it must be re-hung first");
+            }
         }
         enforcePrerequisitesForVerify(loto, latest, pointId, acknowledgedSafetyConditions);
         // Second-person rule: the user who hung this point cannot verify it.
@@ -537,6 +604,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             throw new IllegalStateException("Cannot verify a point you hung yourself");
         }
         LotoSnapshot s = loto.markPointVerified(pointId, me, notes);
+        // Re-hang flow: verifying the re-hung point clears the rehang flag for that point.
+        s.clearNeedsRehang(pointId);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -544,7 +613,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Transactional
     public LotoDto unmarkPointVerified(Long lotoId, Long pointId) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Unmark point verified", "Building");
+        requirePerPointHangVerifyStatus(loto, "Unmark point verified", pointId);
         LotoSnapshot s = loto.unmarkPointVerified(pointId);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
@@ -577,6 +646,94 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return toDto(repo.save(loto));
     }
 
+    // ── Per-point removal (post CA-release) ───────────────────────────────────
+
+    /**
+     * Gate for per-point removal operations. Removal is allowed when CA has released
+     * the LOTO (controlAuthorityReleasedBy set on any snapshot) and the LOTO isn't Closed.
+     */
+    private void requireCaReleasedAndOpen(Loto loto, String operation) {
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Closed".equals(status)) {
+            throw new IllegalStateException(operation + " not allowed: LOTO is Closed");
+        }
+        boolean caReleased = loto.getSnapshots() != null && loto.getSnapshots().stream()
+                .anyMatch(sn -> sn.getControlAuthorityReleasedBy() != null);
+        if (!caReleased) {
+            throw new IllegalStateException(operation + " not allowed: Control Authority has not released the LOTO");
+        }
+    }
+
+    @Transactional
+    public LotoDto markPointRemoved(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireCaReleasedAndOpen(loto, "Mark point removed");
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        enforcePrerequisitesForRemove(latest, pointId, acknowledgedSafetyConditions);
+        LotoSnapshot s = loto.markPointRemoved(pointId, currentUserName(), notes);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    @Transactional
+    public LotoDto unmarkPointRemoved(Long lotoId, Long pointId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireCaReleasedAndOpen(loto, "Unmark point removed");
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        // Reject if any successor (point that lists this one as a removal predecessor) is already removed.
+        java.util.Set<Long> alreadyRemoved = latest.getPointRemovedBy().keySet();
+        for (var p : latest.getLotoPointDtos()) {
+            if (p == null || p.getId() == null || p.getId().equals(pointId)) continue;
+            if (!alreadyRemoved.contains(p.getId())) continue;
+            java.util.List<Long> preds = latest.effectiveRemovalPredecessors(p.getId());
+            if (preds != null && preds.contains(pointId)) {
+                throw new IllegalStateException(
+                        "Cannot undo removal of point " + pointId + " — point " + p.getId() + " was removed after it");
+            }
+        }
+        LotoSnapshot s = loto.unmarkPointRemoved(pointId);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    /**
+     * Test-mode action: pull a point for testing. Marks it needsRehang and clears its
+     * hung/verified state for the current snapshot. Caller must be authenticated; no
+     * role check (operators do this).
+     */
+    @Transactional
+    public LotoDto pullPointForTest(Long lotoId, Long pointId, String reason) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if (!"Test".equals(status) && !"Modification".equals(status)) {
+            throw new IllegalStateException("Pull-for-test requires Test or Modification status (current: " + status + ")");
+        }
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        // Use lifecycleSnapshot via Loto helper to write to the current mutable snapshot
+        latest.flagNeedsRehang(pointId);
+        latest.clearPointHung(pointId);
+        latest.clearPointVerified(pointId);
+        // Stash reason as the new install note for the operator to see (optional — passthrough field).
+        // Not modifying prereqs; reason just appears in a future "rehang reason" log if needed.
+        lotoSnapshotRepo.save(latest);
+        return toDto(repo.save(loto));
+    }
+
+    /** Predecessor + safety enforcement for per-point removal. Mirrors hang/verify gates. */
+    private void enforcePrerequisitesForRemove(LotoSnapshot latest, Long pointId, java.util.List<String> acknowledged) {
+        java.util.List<Long> preds = latest.effectiveRemovalPredecessors(pointId);
+        java.util.Set<Long> alreadyRemoved = latest.getPointRemovedBy().keySet();
+        if (preds != null) {
+            for (Long required : preds) {
+                if (!alreadyRemoved.contains(required)) {
+                    throw new IllegalStateException(
+                            "Cannot remove point " + pointId + " — required predecessor point " + required + " is not yet removed");
+                }
+            }
+        }
+        enforceSafetyConditions("remove", pointId, latest.effectiveRemovalSafetyConditions(pointId), acknowledged);
+    }
+
     /**
      * Reject the hang if (a) any prerequisite point isn't yet hung, or
      * (b) any safety condition declared on the point hasn't been acknowledged.
@@ -587,15 +744,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (spec == null) return; // no prereqs configured
 
         java.util.Set<Long> alreadyHung = latest.getPointHungBy().keySet();
-        if (spec.getRequiredPointIds() != null) {
-            for (Long required : spec.getRequiredPointIds()) {
+        if (spec.getInstallRequiredPointIds() != null) {
+            for (Long required : spec.getInstallRequiredPointIds()) {
                 if (!alreadyHung.contains(required)) {
                     throw new IllegalStateException(
                             "Cannot hang point " + pointId + " — required predecessor point " + required + " is not yet hung");
                 }
             }
         }
-        enforceSafetyConditions("hang", pointId, spec.getSafetyConditions(), acknowledged);
+        enforceSafetyConditions("hang", pointId, spec.getInstallSafetyConditions(), acknowledged);
     }
 
     /**
@@ -608,21 +765,29 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (spec == null) return;
 
         java.util.Set<Long> alreadyVerified = latest.getPointVerifiedBy().keySet();
-        if (spec.getRequiredPointIds() != null) {
-            for (Long required : spec.getRequiredPointIds()) {
+        if (spec.getInstallRequiredPointIds() != null) {
+            for (Long required : spec.getInstallRequiredPointIds()) {
                 if (!alreadyVerified.contains(required)) {
                     throw new IllegalStateException(
                             "Cannot verify point " + pointId + " — required predecessor point " + required + " is not yet verified");
                 }
             }
         }
-        enforceSafetyConditions("verify", pointId, spec.getSafetyConditions(), acknowledged);
+        enforceSafetyConditions("verify", pointId, spec.getInstallSafetyConditions(), acknowledged);
     }
 
     /**
      * Compare safety conditions case-insensitively after trimming whitespace,
      * so display drift (extra space, capitalization) doesn't block a legitimate ack.
      */
+    private static java.util.List<String> trimAndDropBlanks(java.util.List<String> in) {
+        if (in == null) return java.util.Collections.emptyList();
+        return in.stream()
+                .map(c -> c == null ? "" : c.trim())
+                .filter(c -> !c.isEmpty())
+                .toList();
+    }
+
     private void enforceSafetyConditions(String op, Long pointId,
                                          java.util.List<String> required, java.util.List<String> acknowledged) {
         if (required == null || required.isEmpty()) return;
@@ -668,17 +833,20 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             for (var entry : prerequisites.entrySet()) {
                 var spec = entry.getValue();
                 if (spec == null) continue;
-                java.util.List<String> conds = (spec.getSafetyConditions() == null
-                        ? java.util.Collections.<String>emptyList()
-                        : spec.getSafetyConditions()).stream()
-                            .map(c -> c == null ? "" : c.trim())
-                            .filter(c -> !c.isEmpty())
-                            .toList();
-                java.util.List<Long> reqs = spec.getRequiredPointIds() == null
-                        ? java.util.Collections.emptyList() : spec.getRequiredPointIds();
+                java.util.List<String> installConds = trimAndDropBlanks(spec.getInstallSafetyConditions());
+                java.util.List<String> removalConds = trimAndDropBlanks(spec.getRemovalSafetyConditions());
+                java.util.List<Long> installReqs = spec.getInstallRequiredPointIds() == null
+                        ? java.util.Collections.emptyList() : spec.getInstallRequiredPointIds();
+                java.util.List<Long> removalReqs = spec.getRemovalRequiredPointIds() == null
+                        ? java.util.Collections.emptyList() : spec.getRemovalRequiredPointIds();
                 var normalizedSpec = new com.dk_power.power_plant_java.entities.loto.PointPrerequisite(
-                        new java.util.ArrayList<>(reqs), new java.util.ArrayList<>(conds),
-                        spec.getInstallNotes(), spec.getRemovalNotes(), spec.getRemovalOrder());
+                        new java.util.ArrayList<>(installReqs),
+                        new java.util.ArrayList<>(installConds),
+                        spec.getInstallNotes(),
+                        new java.util.ArrayList<>(removalReqs),
+                        new java.util.ArrayList<>(removalConds),
+                        spec.getRemovalNotes(),
+                        spec.getRemovalOrder());
                 normalized.put(entry.getKey(), normalizedSpec);
             }
         }
@@ -711,8 +879,51 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (toUser == null || toUser.isBlank()) {
             throw new IllegalArgumentException("Transfer requires a target user (toUser)");
         }
-        String resolvedFrom = (fromUser != null && !fromUser.isBlank()) ? fromUser : loto.getLotoRequestor();
+        // Caller must be the current requestor.
+        String me = currentUserName();
+        String current = loto.getLotoRequestor();
+        if (current == null || !current.equals(me)) {
+            throw new IllegalStateException(
+                    "Only the current requestor (" + (current != null ? current : "unknown") + ") can initiate a transfer");
+        }
+        // Target must be in the LOTO's personnel list.
+        if (loto.getPersonnel() == null
+                || loto.getPersonnel().stream().noneMatch(p -> toUser.equals(p.getPersonName()))) {
+            throw new IllegalArgumentException("Transfer target '" + toUser + "' is not in this LOTO's personnel list");
+        }
+        // Don't allow transferring to self.
+        if (toUser.equals(me)) {
+            throw new IllegalArgumentException("Cannot transfer the LOTO to yourself");
+        }
+        String resolvedFrom = (fromUser != null && !fromUser.isBlank()) ? fromUser : current;
         LotoSnapshot s = loto.recordTransferred(resolvedFrom, toUser);
+        lotoSnapshotRepo.save(s);
+        return toDto(repo.save(loto));
+    }
+
+    /**
+     * Cancel a pending transfer. Only the current requestor (the one who initiated)
+     * may cancel, and only while the transfer is still pending (no acceptedBy yet).
+     */
+    @Transactional
+    public LotoDto cancelTransfer(Long lotoId) {
+        Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStatusOneOf(loto, "Cancel transfer", "Building", "Active", "Test");
+        String me = currentUserName();
+        String current = loto.getLotoRequestor();
+        if (current == null || !current.equals(me)) {
+            throw new IllegalStateException(
+                    "Only the current requestor (" + (current != null ? current : "unknown") + ") can cancel a transfer");
+        }
+        // Pending = latest snapshot has transferredTo and no acceptedBy on any later snapshot.
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        if (latest == null || latest.getTransferredTo() == null) {
+            throw new IllegalStateException("No pending transfer to cancel");
+        }
+        if (latest.getAcceptedBy() != null) {
+            throw new IllegalStateException("Transfer has already been accepted — cannot cancel");
+        }
+        LotoSnapshot s = loto.cancelTransfer();
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -721,7 +932,23 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     public LotoDto acceptRequestor(Long lotoId) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Accept requestor transfer", "Building", "Active", "Test");
-        LotoSnapshot s = loto.recordAccepted(currentUserName());
+        // Pending state lives on the latest snapshot: transferredTo set + acceptedBy still null.
+        // After accept, lifecycleSnapshot() duplicates and clearLifecycleEventFields wipes
+        // transferredTo on the new snapshot, so subsequent accepts have no pending to find.
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        String pendingRecipient = latest != null ? latest.getTransferredTo() : null;
+        if (pendingRecipient == null) {
+            throw new IllegalStateException("No pending transfer to accept");
+        }
+        if (latest.getAcceptedBy() != null) {
+            throw new IllegalStateException("Transfer has already been accepted");
+        }
+        String me = currentUserName();
+        if (!pendingRecipient.equals(me)) {
+            throw new IllegalStateException(
+                    "Only " + pendingRecipient + " (the transfer recipient) can accept this transfer");
+        }
+        LotoSnapshot s = loto.recordAccepted(me);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -730,7 +957,20 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     public LotoDto releaseByRequestor(Long lotoId) {
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Requestor release", "Building", "Active", "Test");
-        LotoSnapshot s = loto.recordRequestorReleased(currentUserName());
+        String me = currentUserName();
+        String current = loto.getLotoRequestor();
+        if (current == null || !current.equals(me)) {
+            throw new IllegalStateException(
+                    "Only the current requestor (" + (current != null ? current : "unknown") + ") can release the LOTO");
+        }
+        // Everyone must be signed off before requestor release.
+        java.util.List<PersonnelSignEntry> stillOn = loto.getSignedOnPersonnel();
+        if (!stillOn.isEmpty()) {
+            throw new IllegalStateException(
+                    "Cannot release: " + stillOn.size() + " worker(s) still signed on (" +
+                    stillOn.stream().map(PersonnelSignEntry::getPersonName).reduce((a, b) -> a + ", " + b).orElse("") + ")");
+        }
+        LotoSnapshot s = loto.recordRequestorReleased(me);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -757,8 +997,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (target == null) throw new IllegalArgumentException("Target status cannot be null");
         Set<String> allowed = switch (current != null ? current : "") {
             case "Building" -> Set.of("Active", "Closed");
-            case "Active" -> Set.of("Test", "Closed");
+            case "Active" -> Set.of("Test", "Modification", "Closed");
             case "Test" -> Set.of("Active", "Closed");
+            case "Modification" -> Set.of("Active", "Closed");
             case "Closed" -> Set.of();
             default -> Set.of("Active", "Building", "Closed");
         };
@@ -771,7 +1012,33 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     public LotoDto signOnPerson(Long lotoId, PersonnelSignEntry entry) {
         Loto loto = repo.findById(lotoId)
                 .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        // Lifecycle gates: sign-on requires Active (not Test or Modification — those pauses
+        // are explicit "everyone off the LOTO" phases), CA-activated, and requestor not released.
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if (!"Active".equals(status)) {
+            throw new IllegalStateException("Sign-on requires the LOTO to be Active (current: " + status + ")");
+        }
+        boolean caActivated = loto.getSnapshots().stream().anyMatch(sn -> sn.getCaActivatedBy() != null);
+        if (!caActivated) {
+            throw new IllegalStateException("Sign-on requires CA Activation first");
+        }
+        boolean requestorReleased = loto.getSnapshots().stream().anyMatch(sn -> sn.getRequestorReleasedBy() != null);
+        if (requestorReleased) {
+            throw new IllegalStateException("Sign-on is closed — requestor has released the LOTO");
+        }
+        // Resolve name; reject duplicate open sign-ons for the same person.
+        if (entry.getPersonName() == null || entry.getPersonName().isBlank()) {
+            entry.setPersonName(currentUserName());
+        }
+        boolean alreadyOn = loto.getSignedOnPersonnel().stream()
+                .anyMatch(e -> entry.getPersonName().equals(e.getPersonName()));
+        if (alreadyOn) {
+            throw new IllegalStateException(entry.getPersonName() + " is already signed on");
+        }
         entry.setSignOnTime(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        if (entry.getPerformedBy() == null || entry.getPerformedBy().isBlank()) {
+            entry.setPerformedBy(currentUserName());
+        }
         List<PersonnelSignEntry> personnel = loto.getPersonnel();
         personnel.add(entry);
         loto.setPersonnel(personnel);
@@ -782,8 +1049,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     public LotoDto signOffPerson(Long lotoId, String personName, String comments) {
         Loto loto = repo.findById(lotoId)
                 .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        boolean found = loto.signOffPerson(personName, null, comments);
-        if (!found) throw new EntityNotFoundException("No active sign-on found for: " + personName);
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Closed".equals(status)) {
+            throw new IllegalStateException("Cannot sign off — LOTO is Closed");
+        }
+        String resolved = (personName != null && !personName.isBlank()) ? personName : currentUserName();
+        boolean found = loto.signOffPerson(resolved, currentUserName(), comments);
+        if (!found) throw new EntityNotFoundException("No active sign-on found for: " + resolved);
         return toDto(repo.save(loto));
     }
 

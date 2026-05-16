@@ -106,6 +106,13 @@ export class RfUnifiedImageViewerComponent {
    */
   highlightedShapeIds = input<number[]>([]);
 
+  /**
+   * Force raster (JPG) rendering even if the file URL points to a PDF.
+   * Use this when equipment shape overlays are required (shapes don't render on PDFs).
+   * Swaps ".pdf" → ".jpg" in the URL and routes through InteractiveImageComponent.
+   */
+  forceRasterImage = input<boolean>(false);
+
   // ==================== OUTPUTS ====================
 
   imageSelected = output<CarouselImage>();
@@ -237,11 +244,24 @@ export class RfUnifiedImageViewerComponent {
   });
 
   /**
+   * Effective image URL — if forceRasterImage is true and the URL points to a PDF,
+   * swap the extension to .jpg so shapes render correctly.
+   */
+  effectiveImageUrl = computed(() => {
+    const url = this.currentImageUrl();
+    if (!url) return '';
+    if (this.forceRasterImage() && url.toLowerCase().endsWith('.pdf')) {
+      return url.replace(/\.pdf$/i, '.jpg');
+    }
+    return url;
+  });
+
+  /**
    * Extension of the current file URL (lowercase, no dot). Empty if none.
    * Used to decide between the built-in raster viewer and the generic file host.
    */
   currentExtension = computed(() => {
-    const url = this.currentImageUrl();
+    const url = this.effectiveImageUrl();
     if (!url) return '';
     const dot = url.lastIndexOf('.');
     if (dot < 0) return '';
@@ -251,8 +271,10 @@ export class RfUnifiedImageViewerComponent {
   /**
    * True when the current URL is a raster image this component can render directly.
    * Non-raster (e.g. PDF) falls back to {@code RfFileViewerHostComponent}.
+   * Always true when forceRasterImage is enabled.
    */
   isRasterImage = computed(() => {
+    if (this.forceRasterImage()) return true;
     const ext = this.currentExtension();
     return ['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'webp'].includes(ext);
   });

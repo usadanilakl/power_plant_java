@@ -175,6 +175,24 @@ export class LotoService {
       `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/walkdown`);
   }
 
+  markPointRemoved(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/removed`,
+      { acknowledged, notes: notes ?? null });
+  }
+
+  unmarkPointRemoved(lotoId: number, pointId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.delete<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/removed`);
+  }
+
+  /** Pull a point for test/modification — flags it needs-rehang and clears its hung/verified state. */
+  pullPointForTest(lotoId: number, pointId: number, reason?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.post<SpringApiResponse<LotoDto>>(
+      `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/pull-for-test`,
+      { reason: reason ?? null });
+  }
+
   updateInstancePrerequisites(lotoId: number, prerequisites: Record<number, { requiredPointIds: number[]; safetyConditions: string[] }>): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/prerequisites`, prerequisites);
   }
@@ -193,6 +211,10 @@ export class LotoService {
 
   acceptRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/accept`, {});
+  }
+
+  cancelTransfer(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/cancel-transfer`, {});
   }
 
   releaseByRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {

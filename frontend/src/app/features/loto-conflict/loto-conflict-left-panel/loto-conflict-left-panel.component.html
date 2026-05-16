@@ -37,7 +37,13 @@
         <mat-icon>arrow_back</mat-icon>
       </button>
       <span class="panel-title">{{ state.activeConflictTypeLabel() }}</span>
-      <span class="count-badge">{{ state.totalConflictPoints() }}</span>
+      @if (hasActiveFilters) {
+        <span class="count-badge filtered" matTooltip="Filtered / Total">
+          {{ filteredCount() }} / {{ state.totalConflictPoints() }}
+        </span>
+      } @else {
+        <span class="count-badge">{{ state.totalConflictPoints() }}</span>
+      }
       <button
         class="filter-toggle-btn"
         [class.active]="isFilterExpanded() || hasActiveFilters"

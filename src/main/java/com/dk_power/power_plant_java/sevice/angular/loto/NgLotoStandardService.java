@@ -732,25 +732,62 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
      */
     @Transactional
     public LotoStandardDto updateStandardProceduralText(Long standardId,
-                                                        String prerequisitesText,
-                                                        String hazardControlMethodsText,
-                                                        String installProcedureText,
-                                                        String removalProcedureText) {
+                                                        java.util.Map<String, String> fields) {
         LotoStandard s = requireStandard(standardId);
         boolean changed = false;
-        if (prerequisitesText != null && !prerequisitesText.equals(s.getPrerequisitesText())) {
-            s.setPrerequisitesText(prerequisitesText); changed = true;
+        if (fields == null) return toDto(s);
+        if (fields.containsKey("installPrerequisitesText")) {
+            String v = fields.get("installPrerequisitesText");
+            if (!java.util.Objects.equals(v, s.getInstallPrerequisitesText())) {
+                s.setInstallPrerequisitesText(v); changed = true;
+            }
         }
-        if (hazardControlMethodsText != null && !hazardControlMethodsText.equals(s.getHazardControlMethodsText())) {
-            s.setHazardControlMethodsText(hazardControlMethodsText); changed = true;
+        if (fields.containsKey("installHazardControlText")) {
+            String v = fields.get("installHazardControlText");
+            if (!java.util.Objects.equals(v, s.getInstallHazardControlText())) {
+                s.setInstallHazardControlText(v); changed = true;
+            }
         }
-        if (installProcedureText != null && !installProcedureText.equals(s.getInstallProcedureText())) {
-            s.setInstallProcedureText(installProcedureText); changed = true;
+        if (fields.containsKey("installProcedureText")) {
+            String v = fields.get("installProcedureText");
+            if (!java.util.Objects.equals(v, s.getInstallProcedureText())) {
+                s.setInstallProcedureText(v); changed = true;
+            }
         }
-        if (removalProcedureText != null && !removalProcedureText.equals(s.getRemovalProcedureText())) {
-            s.setRemovalProcedureText(removalProcedureText); changed = true;
+        if (fields.containsKey("removalPrerequisitesText")) {
+            String v = fields.get("removalPrerequisitesText");
+            if (!java.util.Objects.equals(v, s.getRemovalPrerequisitesText())) {
+                s.setRemovalPrerequisitesText(v); changed = true;
+            }
+        }
+        if (fields.containsKey("removalHazardControlText")) {
+            String v = fields.get("removalHazardControlText");
+            if (!java.util.Objects.equals(v, s.getRemovalHazardControlText())) {
+                s.setRemovalHazardControlText(v); changed = true;
+            }
+        }
+        if (fields.containsKey("removalProcedureText")) {
+            String v = fields.get("removalProcedureText");
+            if (!java.util.Objects.equals(v, s.getRemovalProcedureText())) {
+                s.setRemovalProcedureText(v); changed = true;
+            }
         }
         if (changed) invalidateIfApproved(s, "Procedural text edited");
+        return toDto(save(s));
+    }
+
+    /**
+     * Toggle the standard's "removal reverses install order" flag. When true,
+     * any point that does NOT have explicit removalRequiredPointIds inherits a
+     * reversed install graph for removal sequencing.
+     */
+    @Transactional
+    public LotoStandardDto setRemovalReversesInstallOrder(Long standardId, boolean reverse) {
+        LotoStandard s = requireStandard(standardId);
+        if (s.isRemovalReversesInstallOrder() != reverse) {
+            s.setRemovalReversesInstallOrder(reverse);
+            invalidateIfApproved(s, "Removal order direction edited");
+        }
         return toDto(save(s));
     }
 

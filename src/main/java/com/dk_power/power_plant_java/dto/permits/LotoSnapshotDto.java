@@ -50,6 +50,14 @@ public class LotoSnapshotDto extends BaseDto {
     private java.util.Map<Long, String> pointWalkdownBy = new java.util.HashMap<>();
     private java.util.Map<Long, String> pointWalkdownAt = new java.util.HashMap<>();
     private java.util.Map<Long, String> pointWalkdownNotes = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointRemovedBy = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointRemovedAt = new java.util.HashMap<>();
+    private java.util.Map<Long, String> pointRemovedNotes = new java.util.HashMap<>();
+
+    private boolean removalReversesInstallOrder;
+
+    /** Points that need re-hanging after Modification or Test (cleared on re-verify). */
+    private java.util.Set<Long> pointNeedsRehang = new java.util.HashSet<>();
 
     private java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> pointPrerequisites = new java.util.HashMap<>();
 }

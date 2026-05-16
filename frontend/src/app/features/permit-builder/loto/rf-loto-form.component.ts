@@ -1,9 +1,12 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
+import { AuthService } from '../../../services/auth.service';
 import { LotoDto, PersonnelSignEntry } from '../../../models/loto/loto.model';
 import { LotoSnapshotDto } from '../../../models/loto/loto-snapshot.model';
 import { GuidedProcedureWindowComponent, GuidedProcedureMode } from '../../../shared/loto/guided-procedure-window/guided-procedure-window.component';
+import { WalkdownSessionService } from '../../../services/loto/walkdown-session.service';
+import { WalkdownSessionDto } from '../../../models/loto/walkdown-session.model';
 import { RfFormField } from '../../../models/ui/form-field.model';
 import { RfReactiveFormComponent } from '../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { LotoPointsPanelComponent } from './loto-points-panel/loto-points-panel.component';
@@ -51,15 +54,45 @@ import { MatIconModule } from '@angular/material/icon';
             <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
           }
           @if (statusName() === 'Active') {
-            <button mat-raised-button color="accent" (click)="changeStatus('Test')">Test</button>
+            <button mat-raised-button color="accent"
+                    [disabled]="currentlySignedOnCount() > 0"
+                    [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
+                    (click)="changeStatus('Test')">Test</button>
+            <button mat-stroked-button
+                    [disabled]="currentlySignedOnCount() > 0"
+                    [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
+                    (click)="changeStatus('Modification')">Modify</button>
             <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
           }
-          @if (statusName() === 'Test') {
-            <button mat-raised-button color="warn" (click)="changeStatus('Active')">Re-Activate</button>
+          @if (statusName() === 'Test' || statusName() === 'Modification') {
+            <button mat-raised-button color="warn"
+                    [disabled]="!canReactivate()"
+                    [title]="canReactivate() ? '' : reactivateBlockedReason()"
+                    (click)="changeStatus('Active')">Re-Activate</button>
             <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
           }
         }
       </div>
+
+      <!-- Pending transfer banner -->
+      @if (pendingTransferTo(); as recipient) {
+        <div class="transfer-banner">
+          <mat-icon>swap_horiz</mat-icon>
+          <strong>Pending transfer:</strong>
+          <span>{{ pendingTransferFrom() || '?' }} → {{ recipient }}</span>
+          <span class="spacer"></span>
+          @if (isCurrentUserPendingTransferee()) {
+            <button mat-raised-button color="primary" (click)="acceptTransfer()">
+              <mat-icon>check</mat-icon> Accept Transfer
+            </button>
+          }
+          @if (isCurrentUserRequestor()) {
+            <button mat-stroked-button (click)="cancelPendingTransfer()">
+              <mat-icon>close</mat-icon> Cancel
+            </button>
+          }
+        </div>
+      }
 
       <!-- CREATE VIEW — shown when no entity is selected -->
       @if (!entity().id) {
@@ -137,19 +170,33 @@ import { MatIconModule } from '@angular/material/icon';
           <mat-tab label="LOTO Points">
             <app-loto-points-panel></app-loto-points-panel>
           </mat-tab>
-          <mat-tab label="Personnel ({{ entity().personnel?.length || 0 }})">
+          <mat-tab label="Personnel ({{ currentlySignedOnCount() }}/{{ entity().personnel?.length || 0 }})">
             <div class="personnel-panel">
+              <div class="personnel-status-banner" [class.warn]="!canSignOn()">
+                <strong>{{ currentlySignedOnCount() }}</strong> currently signed on
+                @if (!canSignOn(); as _) {
+                  <span class="status-note">— {{ signOnBlockedReason() }}</span>
+                }
+              </div>
               <div class="personnel-actions">
-                <button mat-raised-button color="primary" (click)="showSignOnForm.set(!showSignOnForm())">
+                <button mat-raised-button color="primary"
+                        [disabled]="!canSignOn()"
+                        (click)="openSignOn()">
                   <mat-icon>person_add</mat-icon> Sign On
                 </button>
+                @if (isCurrentUserSignedOn()) {
+                  <button mat-stroked-button color="warn" class="self-off-btn"
+                          (click)="signOffSelf()">
+                    <mat-icon>logout</mat-icon> Sign Off (me)
+                  </button>
+                }
               </div>
               @if (showSignOnForm()) {
                 <div class="sign-on-form">
-                  <input #nameInput placeholder="Name" class="form-input">
+                  <input #nameInput placeholder="Name" class="form-input" [value]="defaultSignOnName()">
                   <input #roleInput placeholder="Role" class="form-input">
                   <input #companyInput placeholder="Company" class="form-input">
-                  <button mat-raised-button (click)="signOn(nameInput.value, roleInput.value, companyInput.value); showSignOnForm.set(false); nameInput.value=''; roleInput.value=''; companyInput.value=''">
+                  <button mat-raised-button (click)="signOn(nameInput.value || defaultSignOnName(), roleInput.value, companyInput.value); showSignOnForm.set(false); nameInput.value=''; roleInput.value=''; companyInput.value=''">
                     Confirm
                   </button>
                   <button mat-stroked-button (click)="showSignOnForm.set(false)">Cancel</button>
@@ -233,7 +280,7 @@ import { MatIconModule } from '@angular/material/icon';
                   </tr>
                   <tr>
                     <td>Walkdown</td>
-                    <td>{{ walkdownDoneCount() }} / {{ entity().lotoPoints?.length || 0 }} points</td>
+                    <td>{{ walkdownCompletedCount() }} completed / {{ walkdownSessionCount() }} total sessions</td>
                     <td>{{ formatTime(latestWalkdownAt()) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
@@ -250,12 +297,6 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('ca-activate')" (click)="recordCaActivated()">Activate as CA</button>
                     </td>
-                  </tr>
-                  <tr>
-                    <td>Activated By</td>
-                    <td>{{ latestEvent('activatedBy') || '—' }}</td>
-                    <td>{{ formatTime(latestEvent('activatedAt')) || '—' }}</td>
-                    <td><span class="auto-note">(auto on Activate)</span></td>
                   </tr>
                   <tr>
                     <td>Test Started By</td>
@@ -306,6 +347,18 @@ import { MatIconModule } from '@angular/material/icon';
                     </td>
                   </tr>
                   <tr>
+                    <td>Per-point Removal</td>
+                    <td>{{ removalDoneCount() }} / {{ entity().lotoPoints?.length || 0 }} points</td>
+                    <td>{{ formatTime(latestRemovedAt()) || '—' }}</td>
+                    <td>
+                      <button mat-raised-button color="primary"
+                              [disabled]="!canStartProcedure('REMOVE')"
+                              (click)="openProcedure('REMOVE')">
+                        <mat-icon>lock_open</mat-icon> Start Removal
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
                     <td>Locks Removed By</td>
                     <td>{{ latestEvent('locksRemovedBy') || '—' }}</td>
                     <td>{{ formatTime(latestEvent('locksRemovedAt')) || '—' }}</td>
@@ -334,8 +387,16 @@ import { MatIconModule } from '@angular/material/icon';
                   </div>
                   <div class="dialog-row">
                     <label>To:</label>
-                    <input type="text" [(ngModel)]="transferTo" placeholder="New requestor name">
+                    <select [ngModel]="transferTo()" (ngModelChange)="transferTo.set($event)">
+                      <option value="">— Select a person —</option>
+                      @for (p of transferCandidates(); track p) {
+                        <option [value]="p">{{ p }}</option>
+                      }
+                    </select>
                   </div>
+                  @if ((entity().personnel?.length ?? 0) === 0) {
+                    <p class="dialog-warn">No personnel on this LOTO. Add personnel before transferring.</p>
+                  }
                   <div class="dialog-actions">
                     <button mat-stroked-button (click)="showTransferDialog.set(false)">Cancel</button>
                     <button mat-raised-button color="primary" [disabled]="!transferTo()" (click)="confirmTransfer()">Confirm Transfer</button>
@@ -352,21 +413,38 @@ import { MatIconModule } from '@angular/material/icon';
                 <table class="procedure-log-table">
                   <thead>
                     <tr>
-                      <th style="width: 10%">Tag #</th>
-                      <th style="width: 18%">Description</th>
+                      <th style="width: 9%">Tag #</th>
+                      <th style="width: 14%">Description</th>
                       <th>Hung</th>
                       <th>Verified</th>
                       <th>Walked-down</th>
+                      <th>Removed</th>
+                      @if (statusName() === 'Test' || statusName() === 'Modification') {
+                        <th style="width: 14%">Re-hang</th>
+                      }
                     </tr>
                   </thead>
                   <tbody>
                     @for (p of entity().lotoPoints; track p.id) {
-                      <tr>
+                      <tr [class.needs-rehang]="isNeedsRehang(p.id)">
                         <td>{{ p.tagNumber }}</td>
                         <td>{{ p.description }}</td>
                         <td>{{ describePointAction('HANG', p.id) }}</td>
                         <td>{{ describePointAction('VERIFY', p.id) }}</td>
-                        <td>{{ describePointAction('WALKDOWN', p.id) }}</td>
+                        <td>{{ pointWalkdownSummary(p.id) }}</td>
+                        <td>{{ describePointAction('REMOVE', p.id) }}</td>
+                        @if (statusName() === 'Test' || statusName() === 'Modification') {
+                          <td>
+                            @if (isNeedsRehang(p.id)) {
+                              <span class="rehang-badge">needs re-hang</span>
+                            } @else if (isPointHung(p.id) && isPointVerified(p.id)) {
+                              <button mat-stroked-button class="pull-btn"
+                                      (click)="pullPointForTest(p.id, p.tagNumber)">
+                                Pull
+                              </button>
+                            }
+                          </td>
+                        }
                       </tr>
                     }
                   </tbody>
@@ -419,6 +497,7 @@ import { MatIconModule } from '@angular/material/icon';
     .status-building { background: #2e7d32; color: white; }
     .status-active { background: #c62828; color: white; }
     .status-test { background: #f9a825; color: black; }
+    .status-modification { background: #ef6c00; color: white; }
     .status-closed { background: #424242; color: #aaa; }
     .box-indicator { padding: 4px 10px; background: #333; border-radius: 8px; font-size: 13px; }
 
@@ -441,7 +520,14 @@ import { MatIconModule } from '@angular/material/icon';
     .standard-desc { font-size: 12px; color: #888; }
 
     .personnel-panel { padding: 16px; }
-    .personnel-actions { margin-bottom: 12px; }
+    .transfer-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #1a2030; border: 1px solid #1565c0; border-radius: 6px; margin: 0 0 12px; color: #bbdefb; font-size: 13px; }
+    .transfer-banner .spacer { flex: 1; }
+    .transfer-banner mat-icon { color: #82b1ff; }
+    .personnel-status-banner { padding: 8px 12px; background: #1a2a1a; border-left: 3px solid #66bb6a; border-radius: 4px; margin-bottom: 10px; color: #ddd; font-size: 13px; }
+    .personnel-status-banner.warn { background: #2a1f1a; border-left-color: #ffb74d; color: #ffd180; }
+    .personnel-status-banner .status-note { color: inherit; font-style: italic; margin-left: 4px; }
+    .personnel-actions { margin-bottom: 12px; display: flex; gap: 8px; }
+    .self-off-btn { margin-left: auto; }
     .sign-on-form { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
     .form-input { padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: white; }
     .personnel-table { width: 100%; border-collapse: collapse; }
@@ -472,6 +558,9 @@ import { MatIconModule } from '@angular/material/icon';
     .procedure-log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .procedure-log-table th, .procedure-log-table td { padding: 8px; text-align: left; border-bottom: 1px solid #2a2a2a; vertical-align: top; }
     .procedure-log-table th { color: #aaa; font-weight: 500; background: #181818; }
+    .procedure-log-table tr.needs-rehang { background: rgba(239, 108, 0, 0.08); }
+    .rehang-badge { display: inline-block; padding: 2px 8px; background: #ef6c00; color: white; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .pull-btn { font-size: 11px !important; padding: 0 8px !important; min-height: 24px !important; line-height: 24px !important; }
     .aggregate-btn { margin-left: 8px; }
     .badge-completed { background: #2e7d32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .badge-active { background: #f57c00; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
@@ -494,12 +583,16 @@ import { MatIconModule } from '@angular/material/icon';
     .dialog-row label { width: 60px; color: #aaa; }
     .dialog-row input { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: white; padding: 6px 8px; }
     .dialog-row input:disabled { opacity: 0.7; }
+    .dialog-row select { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: white; padding: 6px 8px; }
+    .dialog-warn { color: #ffb74d; font-size: 12px; margin: 8px 0; font-style: italic; }
     .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
   `],
 })
 export class RfLotoFormComponent {
   private currentService = inject(CurrentLotoService);
   private lotoService = inject(LotoService);
+  private authService = inject(AuthService);
+  private walkdownSessionService = inject(WalkdownSessionService);
   private lotoStandardService = inject(LotoStandardService);
   private router = inject(Router);
 
@@ -586,24 +679,73 @@ export class RfLotoFormComponent {
 
   signOn(name: string, role: string, company: string): void {
     const entity = this.entity();
-    if (entity?.id && name) {
-      const entry: PersonnelSignEntry = {
-        personName: name, personRole: role, company: company,
-        signOnTime: '', signOffTime: null, signOffComments: null, performedBy: '', foreman: false
-      };
-      this.lotoService.signOn(entity.id, entry).subscribe(res => {
-        if (res.responseData) this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
-      });
-    }
+    if (!entity?.id) return;
+    const resolved = (name && name.trim()) || this.defaultSignOnName();
+    if (!resolved) { alert('Name required for sign-on'); return; }
+    const entry: PersonnelSignEntry = {
+      personName: resolved, personRole: role, company: company,
+      signOnTime: '', signOffTime: null, signOffComments: null, performedBy: '', foreman: false
+    };
+    this.lotoService.signOn(entity.id, entry).subscribe({
+      next: res => { if (res.responseData) this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData)); },
+      error: err => alert(err?.error?.message ?? err?.message ?? 'Sign-on failed'),
+    });
   }
 
   signOff(name: string): void {
     const entity = this.entity();
-    if (entity?.id) {
-      this.lotoService.signOff(entity.id, name, '').subscribe(res => {
-        if (res.responseData) this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData));
-      });
-    }
+    if (!entity?.id) return;
+    this.lotoService.signOff(entity.id, name, '').subscribe({
+      next: res => { if (res.responseData) this.currentService.setCurrentLoto(LotoDto.fromJson(res.responseData)); },
+      error: err => alert(err?.error?.message ?? err?.message ?? 'Sign-off failed'),
+    });
+  }
+
+  /** Convenience: sign off the authenticated user. */
+  signOffSelf(): void {
+    const me = this.authService.currentUser?.name;
+    if (!me) return;
+    this.signOff(me);
+  }
+
+  openSignOn(): void {
+    if (!this.canSignOn()) return;
+    this.showSignOnForm.set(true);
+  }
+
+  defaultSignOnName(): string {
+    return this.authService.currentUser?.name ?? '';
+  }
+
+  currentlySignedOnCount(): number {
+    return (this.entity().personnel ?? []).filter(p => !p.signOffTime).length;
+  }
+
+  isCurrentUserSignedOn(): boolean {
+    const me = this.authService.currentUser?.name;
+    if (!me) return false;
+    return (this.entity().personnel ?? []).some(p => p.personName === me && !p.signOffTime);
+  }
+
+  /** Mirrors NgLotoService.signOnPerson gates so the UI doesn't trigger expected errors. */
+  canSignOn(): boolean {
+    if (!this.entity().id) return false;
+    const status = this.statusName();
+    if (status !== 'Active' && status !== 'Test') return false;
+    if (!this.latestEvent('caActivatedBy')) return false;
+    if (this.latestEvent('requestorReleasedBy')) return false;
+    if (this.isCurrentUserSignedOn()) return false;
+    return true;
+  }
+
+  signOnBlockedReason(): string {
+    if (!this.entity().id) return 'save the LOTO first';
+    const status = this.statusName();
+    if (status !== 'Active' && status !== 'Test') return 'LOTO must be Active or Test';
+    if (!this.latestEvent('caActivatedBy')) return 'CA must activate the LOTO first';
+    if (this.latestEvent('requestorReleasedBy')) return 'requestor has released the LOTO';
+    if (this.isCurrentUserSignedOn()) return 'you are already signed on';
+    return '';
   }
 
   // ----- Lifecycle helpers -----
@@ -641,10 +783,13 @@ export class RfLotoFormComponent {
       case 'point-hung':
         return s === 'Building' && !!this.latestEvent('caApprovedForHangingBy');
       case 'hung':
+        // Aggregate "Hanging Complete" sign-off — must be one of the people who actually
+        // hung points (mirrors the server-side guard in NgLotoService.markHung).
         return s === 'Building'
           && !!this.latestEvent('caApprovedForHangingBy')
           && this.allPointsHung()
-          && (this.entity().lotoPoints?.length ?? 0) > 0;
+          && (this.entity().lotoPoints?.length ?? 0) > 0
+          && this.isCurrentUserAHanger();
       case 'point-verified':
         return s === 'Building';
       case 'verified':
@@ -658,8 +803,15 @@ export class RfLotoFormComponent {
           && !!this.latestEvent('verifiedBy')
           && !this.latestEvent('caActivatedBy');
       case 'transfer':
+        return (s === 'Active' || s === 'Test' || s === 'Building')
+          && this.isCurrentUserRequestor()
+          && this.transferCandidates().length > 0;
       case 'accept':
+        return (s === 'Active' || s === 'Test' || s === 'Building')
+          && this.isCurrentUserPendingTransferee();
       case 'release':
+        return (s === 'Active' || s === 'Test' || s === 'Building')
+          && this.isCurrentUserRequestor();
       case 'release-ca':
         return s === 'Active' || s === 'Test' || s === 'Building';
       case 'remove-locks':
@@ -678,7 +830,8 @@ export class RfLotoFormComponent {
   private latestPointMap(field:
         'pointHungBy' | 'pointHungAt' | 'pointHangNotes'
       | 'pointVerifiedBy' | 'pointVerifiedAt' | 'pointVerifyNotes'
-      | 'pointWalkdownBy' | 'pointWalkdownAt' | 'pointWalkdownNotes'): Record<number, string> {
+      | 'pointWalkdownBy' | 'pointWalkdownAt' | 'pointWalkdownNotes'
+      | 'pointRemovedBy' | 'pointRemovedAt' | 'pointRemovedNotes'): Record<number, string> {
     const snaps = [...(this.entity().snapshots ?? [])].sort((a, b) => {
       const ta = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
       const tb = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
@@ -699,6 +852,111 @@ export class RfLotoFormComponent {
   isPointHung(pointId: number): boolean { return !!this.pointHungBy(pointId); }
   isPointVerified(pointId: number): boolean { return !!this.pointVerifiedBy(pointId); }
   isPointWalkedDown(pointId: number): boolean { return !!this.latestPointMap('pointWalkdownBy')[pointId]; }
+
+  /** True when the authenticated user is one of the people who hung at least one point. */
+  isCurrentUserAHanger(): boolean {
+    const me = this.authService.currentUser?.name;
+    if (!me) return false;
+    return Object.values(this.latestPointMap('pointHungBy')).includes(me);
+  }
+
+  /** True when the authenticated user is the current requestor on this LOTO. */
+  isCurrentUserRequestor(): boolean {
+    const me = this.authService.currentUser?.name;
+    return !!me && me === this.entity().lotoRequestor;
+  }
+
+  /** True when the authenticated user is the named recipient of a pending transfer. */
+  isCurrentUserPendingTransferee(): boolean {
+    const me = this.authService.currentUser?.name;
+    if (!me) return false;
+    const to = this.latestEvent('transferredTo');
+    return !!to && to === me;
+  }
+
+  // ── Phase 4: Modification / Test resume gating ────────────────────────────
+
+  /** Returns the set of point IDs that need re-hanging on the latest snapshot. */
+  needsRehangSet(): Set<number> {
+    const snaps = this.entity().snapshots ?? [];
+    if (snaps.length === 0) return new Set();
+    const latest = [...snaps].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+    return new Set(latest.pointNeedsRehang ?? []);
+  }
+
+  isNeedsRehang(pointId: number): boolean {
+    return this.needsRehangSet().has(pointId);
+  }
+
+  canReactivate(): boolean {
+    const status = this.statusName();
+    if (status !== 'Test' && status !== 'Modification') return false;
+    if (this.needsRehangSet().size > 0) return false;
+    return this.allPointsHung() && this.allPointsVerified();
+  }
+
+  reactivateBlockedReason(): string {
+    const s = this.needsRehangSet().size;
+    if (s > 0) return `${s} point(s) still need re-hanging`;
+    if (!this.allPointsHung()) return 'Not all points are hung';
+    if (!this.allPointsVerified()) return 'Not all points are verified';
+    return '';
+  }
+
+  pullPointForTest(pointId: number, tagNumber: string): void {
+    const id = this.entity().id;
+    if (!id) return;
+    if (!confirm(`Pull point ${tagNumber} for testing? Its lock state will be cleared and it will need to be re-hung + re-verified before re-activation.`)) return;
+    this.lotoService.pullPointForTest(id, pointId, null).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err?.message ?? 'Pull-for-test failed'),
+    });
+  }
+
+  /** Pending transfer recipient = latest snapshot's transferredTo (cleared after accept). */
+  pendingTransferTo(): string | null {
+    const snaps = this.entity().snapshots ?? [];
+    if (snaps.length === 0) return null;
+    const latest = [...snaps].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+    if (latest.acceptedBy) return null;
+    return latest.transferredTo ?? null;
+  }
+
+  pendingTransferFrom(): string | null {
+    const snaps = this.entity().snapshots ?? [];
+    if (snaps.length === 0) return null;
+    const latest = [...snaps].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+    if (latest.acceptedBy) return null;
+    return latest.transferredFrom ?? null;
+  }
+
+  acceptTransfer(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    this.lotoService.acceptRequestor(id).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err?.message ?? 'Accept failed'),
+    });
+  }
+
+  cancelPendingTransfer(): void {
+    const id = this.entity().id;
+    if (!id) return;
+    if (!confirm(`Cancel pending transfer to ${this.pendingTransferTo()}?`)) return;
+    this.lotoService.cancelTransfer(id).subscribe({
+      next: res => this.applyLifecycleResponse(res),
+      error: err => alert(err?.error?.message ?? err?.message ?? 'Cancel failed'),
+    });
+  }
+
+  /** Personnel names for the transfer dropdown — excludes the current requestor. */
+  transferCandidates(): string[] {
+    const me = this.entity().lotoRequestor;
+    const personnel = this.entity().personnel ?? [];
+    return personnel
+      .map(p => p.personName)
+      .filter(n => !!n && n !== me) as string[];
+  }
 
   allPointsHung(): boolean {
     const points = this.entity().lotoPoints ?? [];
@@ -837,16 +1095,26 @@ export class RfLotoFormComponent {
 
   canStartProcedure(mode: GuidedProcedureMode): boolean {
     if (!this.entity().id) return false;
-    if (this.statusName() !== 'Building') return false;
-    if (mode === 'HANG') {
-      // Need CA approval before hanging.
-      return !!this.latestEvent('caApprovedForHangingBy');
+    const status = this.statusName();
+    if (mode === 'REMOVE') {
+      // Per-point removal happens after CA release while LOTO isn't Closed.
+      if (status === 'Closed') return false;
+      return !!this.latestEvent('controlAuthorityReleasedBy');
     }
-    if (mode === 'VERIFY') {
-      // Verify only after every point is hung.
-      return this.allPointsHung();
+    // HANG/VERIFY work in Building OR Mod/Test when there are needs-rehang points.
+    if (mode === 'HANG' || mode === 'VERIFY') {
+      if (status === 'Building') {
+        if (mode === 'HANG') return !!this.latestEvent('caApprovedForHangingBy');
+        // VERIFY: Aggregate "Hanging Complete" sign-off must be in place.
+        return !!this.latestEvent('hungBy');
+      }
+      if (status === 'Modification' || status === 'Test') {
+        return this.needsRehangSet().size > 0;
+      }
+      return false;
     }
-    // Walkdown — only after every point is verified.
+    // Walkdown — only during Building, after every point is verified.
+    if (status !== 'Building') return false;
     return this.allPointsVerified();
   }
 
@@ -860,12 +1128,50 @@ export class RfLotoFormComponent {
     this.currentService.setCurrentLoto(updated);
   }
 
-  walkdownDoneCount(): number {
-    return Object.keys(this.latestPointMap('pointWalkdownBy')).length;
-  }
+  /** Multi-crew walkdown sessions for the current LOTO. */
+  walkdownSessions = signal<WalkdownSessionDto[]>([]);
+
+  private walkdownSessionLoader = effect(() => {
+    const id = this.entity().id;
+    if (!id) { this.walkdownSessions.set([]); return; }
+    this.walkdownSessionService.listForLoto(id).subscribe({
+      next: res => this.walkdownSessions.set((res.responseData ?? []).map(WalkdownSessionDto.fromJson)),
+      error: () => this.walkdownSessions.set([]),
+    });
+  }, { allowSignalWrites: true });
+
+  walkdownSessionCount(): number { return this.walkdownSessions().length; }
+  walkdownCompletedCount(): number { return this.walkdownSessions().filter(s => s.completed).length; }
 
   latestWalkdownAt(): string | null {
-    const map = this.latestPointMap('pointWalkdownAt');
+    let latest: string | null = null;
+    for (const s of this.walkdownSessions()) {
+      const t = s.completedAt ?? s.startedAt;
+      if (!t) continue;
+      if (!latest || t > latest) latest = t;
+    }
+    return latest;
+  }
+
+  /** Compact per-point summary: number of sessions that checked this point. */
+  pointWalkdownSummary(pointId: number): string {
+    const sessions = this.walkdownSessions();
+    if (sessions.length === 0) return '—';
+    const checks = sessions.filter(s => !!s.pointStates?.[pointId]?.checked);
+    if (checks.length === 0) return `0 / ${sessions.length}`;
+    return `✓ ${checks.length} / ${sessions.length}`;
+  }
+
+  removalDoneCount(): number {
+    return Object.keys(this.latestPointMap('pointRemovedBy')).length;
+  }
+
+  latestRemovedAt(): string | null {
+    return this.latestTimestamp('pointRemovedAt');
+  }
+
+  private latestTimestamp(field: Parameters<RfLotoFormComponent['latestPointMap']>[0]): string | null {
+    const map = this.latestPointMap(field);
     let latest: string | null = null;
     for (const v of Object.values(map)) {
       if (!v) continue;
@@ -877,17 +1183,20 @@ export class RfLotoFormComponent {
   /** Procedure-log cell text for one point in one mode. */
   describePointAction(mode: GuidedProcedureMode, pointId: number): string {
     const byMap =
-      mode === 'HANG'   ? this.latestPointMap('pointHungBy') :
-      mode === 'VERIFY' ? this.latestPointMap('pointVerifiedBy') :
-                          this.latestPointMap('pointWalkdownBy');
+      mode === 'HANG'    ? this.latestPointMap('pointHungBy') :
+      mode === 'VERIFY'  ? this.latestPointMap('pointVerifiedBy') :
+      mode === 'REMOVE'  ? this.latestPointMap('pointRemovedBy') :
+                           this.latestPointMap('pointWalkdownBy');
     const atMap =
-      mode === 'HANG'   ? this.latestPointMap('pointHungAt') :
-      mode === 'VERIFY' ? this.latestPointMap('pointVerifiedAt') :
-                          this.latestPointMap('pointWalkdownAt');
+      mode === 'HANG'    ? this.latestPointMap('pointHungAt') :
+      mode === 'VERIFY'  ? this.latestPointMap('pointVerifiedAt') :
+      mode === 'REMOVE'  ? this.latestPointMap('pointRemovedAt') :
+                           this.latestPointMap('pointWalkdownAt');
     const notesMap =
-      mode === 'HANG'   ? this.latestPointMap('pointHangNotes') :
-      mode === 'VERIFY' ? this.latestPointMap('pointVerifyNotes') :
-                          this.latestPointMap('pointWalkdownNotes');
+      mode === 'HANG'    ? this.latestPointMap('pointHangNotes') :
+      mode === 'VERIFY'  ? this.latestPointMap('pointVerifyNotes') :
+      mode === 'REMOVE'  ? this.latestPointMap('pointRemovedNotes') :
+                           this.latestPointMap('pointWalkdownNotes');
     const by = byMap[pointId];
     if (!by) return '—';
     const at = this.formatTime(atMap[pointId] ?? '') || '?';

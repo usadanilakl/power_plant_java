@@ -344,6 +344,18 @@ public class Loto extends BasePermitEntity {
         return s;
     }
 
+    public LotoSnapshot markPointRemoved(Long pointId, String user, String notes) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setPointRemovedBy(pointId, user, notes);
+        return s;
+    }
+
+    public LotoSnapshot unmarkPointRemoved(Long pointId) {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.clearPointRemoved(pointId);
+        return s;
+    }
+
     public LotoSnapshot recordVerified(String user) {
         LotoSnapshot s = lifecycleSnapshot();
         s.setVerifiedBy(user);
@@ -377,8 +389,8 @@ public class Loto extends BasePermitEntity {
         s.setTransferredFrom(fromUser);
         s.setTransferredTo(toUser);
         s.setTransferredAt(java.time.LocalDateTime.now());
-        // The lotoRequestor field on the parent reflects "current owner".
-        this.setLotoRequestor(toUser);
+        // NOTE: lotoRequestor is NOT flipped until the recipient explicitly accepts
+        // (see recordAccepted). Until acceptance the transfer is "pending".
         return s;
     }
 
@@ -386,6 +398,18 @@ public class Loto extends BasePermitEntity {
         LotoSnapshot s = lifecycleSnapshot();
         s.setAcceptedBy(user);
         s.setAcceptedAt(java.time.LocalDateTime.now());
+        // Flip the lotoRequestor on acceptance. The acceptor's identity equals the
+        // pending transferredTo (enforced by the service-layer gate before this call).
+        this.setLotoRequestor(user);
+        return s;
+    }
+
+    /** Clear a pending transfer on the latest snapshot. lotoRequestor remains unchanged. */
+    public LotoSnapshot cancelTransfer() {
+        LotoSnapshot s = lifecycleSnapshot();
+        s.setTransferredFrom(null);
+        s.setTransferredTo(null);
+        s.setTransferredAt(null);
         return s;
     }
 
