@@ -182,6 +182,7 @@ export class IpcHandlers {
     this.registerColdResyncHandlers();
     this.registerStartupHandlers();
     this.registerPermitsHandlers();
+    this.registerMaximoHandlers();
     this.registerGateLogHandlers();
     this.registerWeatherHandlers();
     this.registerPerryWeatherHandlers();
@@ -843,6 +844,37 @@ export class IpcHandlers {
         return { success: true };
       } catch (error: any) {
         console.error('[Permits] Failed to open monitor window:', error.message);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  /**
+   * Maximo bundle endpoints — read-only summaries Electron home widgets consume.
+   * Forwards to the Spring Boot bundle endpoint and trims the response to {count, top[]}
+   * so we don't ship the full WO list across IPC when the widget only renders 3 rows.
+   */
+  private registerMaximoHandlers(): void {
+    ipcMain.handle(events.IPC_MAXIMO_LEAD_OP_SUMMARY, async (_event, status?: string) => {
+      try {
+        const url = '/ng/maximo/bundle/lead-operators/work-orders'
+          + '?pageSize=100'
+          + (status ? '&status=' + encodeURIComponent(status) : '');
+        const envelope = await this.springBootApiGet(url);
+        const list: any[] = Array.isArray(envelope?.responseData) ? envelope.responseData : [];
+        // Top 5 — widget shows at most a few in its large/standard tier.
+        const top = list.slice(0, 5).map(w => ({
+          href: w.href,
+          wonum: w.wonum,
+          description: w.description,
+          assetnum: w.assetnum,
+          location: w.location,
+          leadCraft: w.leadCraft,
+          status: w.status,
+          priority: w.priority,
+        }));
+        return { success: true, data: { count: list.length, top } };
+      } catch (error: any) {
         return { success: false, error: error.message };
       }
     });

@@ -5,6 +5,7 @@ import { AuthService } from '../../../services/auth.service';
 import { LotoDto, PersonnelSignEntry } from '../../../models/loto/loto.model';
 import { LotoSnapshotDto } from '../../../models/loto/loto-snapshot.model';
 import { GuidedProcedureWindowComponent, GuidedProcedureMode } from '../../../shared/loto/guided-procedure-window/guided-procedure-window.component';
+import { StepUpDialogComponent } from '../../../shared/step-up/step-up-dialog.component';
 import { WalkdownSessionService } from '../../../services/loto/walkdown-session.service';
 import { WalkdownSessionDto } from '../../../models/loto/walkdown-session.model';
 import { RfFormField } from '../../../models/ui/form-field.model';
@@ -31,6 +32,7 @@ import { MatIconModule } from '@angular/material/icon';
     MatTabsModule,
     MatIconModule,
     GuidedProcedureWindowComponent,
+    StepUpDialogComponent,
   ],
   template: `
     <div class="loto-form-container">
@@ -48,28 +50,30 @@ import { MatIconModule } from '@angular/material/icon';
             <span class="box-indicator">Box #{{ entity().boxNumber }}</span>
           }
 
-          <!-- Status transition buttons -->
-          @if (statusName() === 'Building') {
-            <button mat-raised-button color="warn" (click)="changeStatus('Active')">Activate</button>
-            <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
-          }
-          @if (statusName() === 'Active') {
-            <button mat-raised-button color="accent"
-                    [disabled]="currentlySignedOnCount() > 0"
-                    [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
-                    (click)="changeStatus('Test')">Test</button>
-            <button mat-stroked-button
-                    [disabled]="currentlySignedOnCount() > 0"
-                    [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
-                    (click)="changeStatus('Modification')">Modify</button>
-            <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
-          }
-          @if (statusName() === 'Test' || statusName() === 'Modification') {
-            <button mat-raised-button color="warn"
-                    [disabled]="!canReactivate()"
-                    [title]="canReactivate() ? '' : reactivateBlockedReason()"
-                    (click)="changeStatus('Active')">Re-Activate</button>
-            <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+          <!-- Status transition buttons (CA only) -->
+          @if (authService.isControlAuthority()) {
+            @if (statusName() === 'Building') {
+              <button mat-raised-button color="warn" (click)="changeStatus('Active')">Activate</button>
+              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+            }
+            @if (statusName() === 'Active') {
+              <button mat-raised-button color="accent"
+                      [disabled]="currentlySignedOnCount() > 0"
+                      [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
+                      (click)="changeStatus('Test')">Test</button>
+              <button mat-stroked-button
+                      [disabled]="currentlySignedOnCount() > 0"
+                      [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
+                      (click)="changeStatus('Modification')">Modify</button>
+              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+            }
+            @if (statusName() === 'Test' || statusName() === 'Modification') {
+              <button mat-raised-button color="warn"
+                      [disabled]="!canReactivate()"
+                      [title]="canReactivate() ? '' : reactivateBlockedReason()"
+                      (click)="changeStatus('Active')">Re-Activate</button>
+              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+            }
           }
         }
       </div>
@@ -83,7 +87,12 @@ import { MatIconModule } from '@angular/material/icon';
           <span class="spacer"></span>
           @if (isCurrentUserPendingTransferee()) {
             <button mat-raised-button color="primary" (click)="acceptTransfer()">
-              <mat-icon>check</mat-icon> Accept Transfer
+              <mat-icon>check</mat-icon> Accept Transfer as {{ recipient }}
+            </button>
+          } @else {
+            <!-- Anyone (recipient on a shared tablet) can accept via step-up PIN -->
+            <button mat-stroked-button color="primary" (click)="openStepUpForAccept()">
+              <mat-icon>vpn_key</mat-icon> Accept (sign in)
             </button>
           }
           @if (isCurrentUserRequestor()) {
@@ -92,6 +101,15 @@ import { MatIconModule } from '@angular/material/icon';
             </button>
           }
         </div>
+      }
+
+      <!-- Step-up authorization dialog (one-shot PIN entry) -->
+      @if (stepUpContext()) {
+        <app-step-up-dialog
+          [actionLabel]="stepUpContext()!.label"
+          (authorized)="onStepUpAuthorized($event)"
+          (cancelled)="stepUpContext.set(null)">
+        </app-step-up-dialog>
       }
 
       <!-- CREATE VIEW — shown when no entity is selected -->
@@ -591,7 +609,7 @@ import { MatIconModule } from '@angular/material/icon';
 export class RfLotoFormComponent {
   private currentService = inject(CurrentLotoService);
   private lotoService = inject(LotoService);
-  private authService = inject(AuthService);
+  protected authService = inject(AuthService);
   private walkdownSessionService = inject(WalkdownSessionService);
   private lotoStandardService = inject(LotoStandardService);
   private router = inject(Router);
@@ -779,43 +797,50 @@ export class RfLotoFormComponent {
     if (s === 'Closed') return false;
     switch (event) {
       case 'ca-approve-hanging':
-        return s === 'Building' && !this.latestEvent('caApprovedForHangingBy');
+        return s === 'Building' && !this.latestEvent('caApprovedForHangingBy')
+          && this.authService.isControlAuthority();
       case 'point-hung':
-        return s === 'Building' && !!this.latestEvent('caApprovedForHangingBy');
+        return s === 'Building' && !!this.latestEvent('caApprovedForHangingBy')
+          && this.authService.isLotoQualified();
       case 'hung':
-        // Aggregate "Hanging Complete" sign-off — must be one of the people who actually
-        // hung points (mirrors the server-side guard in NgLotoService.markHung).
         return s === 'Building'
           && !!this.latestEvent('caApprovedForHangingBy')
           && this.allPointsHung()
           && (this.entity().lotoPoints?.length ?? 0) > 0
-          && this.isCurrentUserAHanger();
+          && this.isCurrentUserAHanger()
+          && this.authService.isLotoQualified();
       case 'point-verified':
-        return s === 'Building';
+        return s === 'Building' && this.authService.isLotoQualified();
       case 'verified':
         return s === 'Building'
           && this.allPointsVerified()
-          && (this.entity().lotoPoints?.length ?? 0) > 0;
+          && (this.entity().lotoPoints?.length ?? 0) > 0
+          && this.authService.isLotoQualified();
       case 'ca-activate':
-        // CA can activate once Hung + Verified are recorded, and not yet activated
         return s === 'Building'
           && !!this.latestEvent('hungBy')
           && !!this.latestEvent('verifiedBy')
-          && !this.latestEvent('caActivatedBy');
+          && !this.latestEvent('caActivatedBy')
+          && this.authService.isControlAuthority();
       case 'transfer':
         return (s === 'Active' || s === 'Test' || s === 'Building')
           && this.isCurrentUserRequestor()
+          && this.authService.isRequestor()
           && this.transferCandidates().length > 0;
       case 'accept':
         return (s === 'Active' || s === 'Test' || s === 'Building')
-          && this.isCurrentUserPendingTransferee();
+          && this.isCurrentUserPendingTransferee()
+          && this.authService.isRequestor();
       case 'release':
         return (s === 'Active' || s === 'Test' || s === 'Building')
-          && this.isCurrentUserRequestor();
+          && this.isCurrentUserRequestor()
+          && this.authService.isRequestor();
       case 'release-ca':
-        return s === 'Active' || s === 'Test' || s === 'Building';
+        return (s === 'Active' || s === 'Test' || s === 'Building')
+          && this.authService.isControlAuthority();
       case 'remove-locks':
-        return s === 'Active' || s === 'Test';
+        return (s === 'Active' || s === 'Test')
+          && this.authService.isControlAuthority();
     }
     return false;
   }
@@ -903,10 +928,11 @@ export class RfLotoFormComponent {
     return '';
   }
 
-  pullPointForTest(pointId: number, tagNumber: string): void {
+  pullPointForTest(pointId: number, tagNumber: string | null): void {
     const id = this.entity().id;
     if (!id) return;
-    if (!confirm(`Pull point ${tagNumber} for testing? Its lock state will be cleared and it will need to be re-hung + re-verified before re-activation.`)) return;
+    const tag = tagNumber || `#${pointId}`;
+    if (!confirm(`Pull point ${tag} for testing? Its lock state will be cleared and it will need to be re-hung + re-verified before re-activation.`)) return;
     this.lotoService.pullPointForTest(id, pointId, null).subscribe({
       next: res => this.applyLifecycleResponse(res),
       error: err => alert(err?.error?.message ?? err?.message ?? 'Pull-for-test failed'),
@@ -937,6 +963,36 @@ export class RfLotoFormComponent {
       next: res => this.applyLifecycleResponse(res),
       error: err => alert(err?.error?.message ?? err?.message ?? 'Accept failed'),
     });
+  }
+
+  // ── Step-up authorization (one-shot PIN entry) ────────────────────────────
+
+  /** What action a pending step-up should authorize. Null = no dialog open. */
+  stepUpContext = signal<{ kind: 'accept-transfer'; label: string } | null>(null);
+
+  openStepUpForAccept(): void {
+    const recipient = this.pendingTransferTo();
+    if (!recipient) return;
+    this.stepUpContext.set({
+      kind: 'accept-transfer',
+      label: `Accept transfer as ${recipient}`,
+    });
+  }
+
+  onStepUpAuthorized(result: { token: string; expiresAt: string }): void {
+    const ctx = this.stepUpContext();
+    this.stepUpContext.set(null);
+    if (!ctx) return;
+    const id = this.entity().id;
+    if (!id) return;
+    switch (ctx.kind) {
+      case 'accept-transfer':
+        this.lotoService.acceptRequestor(id, result.token).subscribe({
+          next: res => this.applyLifecycleResponse(res),
+          error: err => alert(err?.error?.message ?? err?.message ?? 'Accept failed'),
+        });
+        break;
+    }
   }
 
   cancelPendingTransfer(): void {
@@ -1096,16 +1152,15 @@ export class RfLotoFormComponent {
   canStartProcedure(mode: GuidedProcedureMode): boolean {
     if (!this.entity().id) return false;
     const status = this.statusName();
+    // All four modes require at least LOTO_QUALIFIED (CA implicitly qualifies).
+    if (!this.authService.isLotoQualified()) return false;
     if (mode === 'REMOVE') {
-      // Per-point removal happens after CA release while LOTO isn't Closed.
       if (status === 'Closed') return false;
       return !!this.latestEvent('controlAuthorityReleasedBy');
     }
-    // HANG/VERIFY work in Building OR Mod/Test when there are needs-rehang points.
     if (mode === 'HANG' || mode === 'VERIFY') {
       if (status === 'Building') {
         if (mode === 'HANG') return !!this.latestEvent('caApprovedForHangingBy');
-        // VERIFY: Aggregate "Hanging Complete" sign-off must be in place.
         return !!this.latestEvent('hungBy');
       }
       if (status === 'Modification' || status === 'Test') {
@@ -1113,7 +1168,6 @@ export class RfLotoFormComponent {
       }
       return false;
     }
-    // Walkdown — only during Building, after every point is verified.
     if (status !== 'Building') return false;
     return this.allPointsVerified();
   }

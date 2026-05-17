@@ -80,6 +80,14 @@ export class MaximoApiService {
       .pipe(map(r => r.responseData));
   }
 
+  /** WOs Maximo has assigned to any local Lead Operator (`spi:lead in [...]`). */
+  listLeadOperatorWorkOrders(pageSize = 100): Observable<MaximoWorkOrder[]> {
+    const p = new HttpParams().set('pageSize', String(pageSize));
+    return this.http
+      .get<SpringApiResponse<MaximoWorkOrder[]>>(`${this.base}/bundle/lead-operators/work-orders`, { params: p })
+      .pipe(map(r => r.responseData ?? []));
+  }
+
   listWorkOrdersByCriteria(c: MaximoWorkOrderCriteria, pageSize = 50): Observable<MaximoWorkOrder[]> {
     let p = new HttpParams().set('pageSize', String(pageSize));
     if (c.status)   p = p.set('status', c.status);

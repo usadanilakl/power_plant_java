@@ -70,35 +70,14 @@
         <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>WO #</th><th>Description</th><th>Status</th><th>Type</th>
-            <th>Asset</th><th>Location</th><th>Lead</th>
-            <th>Reported</th><th>Sched start</th><th>Pri</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let w of list()" (click)="openDetail(w)" class="clickable">
-            <td>{{ w.wonum }}</td>
-            <td>{{ w.description }}</td>
-            <td>{{ w.status }}</td>
-            <td>{{ w.worktype }}</td>
-            <td>{{ w.assetnum }}</td>
-            <td>{{ w.location }}</td>
-            <td>{{ w.leadCraft }}</td>
-            <td>{{ w.reportdate }}</td>
-            <td>{{ w.schedstart }}</td>
-            <td>{{ w.priority }}</td>
-          </tr>
-          <tr *ngIf="list().length === 0">
-            <td colspan="10" class="muted">{{
-              loaded() ? 'No work orders match these filters.' :
-              'Set filters above and click Apply.'
-            }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div *ngIf="!loaded()" class="muted empty-msg">Set filters above and click Apply.</div>
+
+      <app-maximo-table *ngIf="loaded()"
+        [columns]="columns"
+        [items]="list()"
+        emptyMessage="No work orders match these filters."
+        (rowDoubleClicked)="openDetail($event)">
+      </app-maximo-table>
 
       <app-maximo-detail-dialog
         *ngIf="selectedWo()"

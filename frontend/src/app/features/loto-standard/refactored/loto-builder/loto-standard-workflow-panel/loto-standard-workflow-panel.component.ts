@@ -75,9 +75,13 @@ export class LotoStandardWorkflowPanelComponent {
   private buildAction(std: LotoStandardDto, target: string): ActionButton {
     const endpoint = endpointForTarget(target);
     const required = roleForTarget(target);
-    const userRoles = this.authService.currentUser?.roles ?? [];
+    const userRoles = (this.authService.currentUser?.roles ?? []).map(r => r?.toUpperCase());
     const userName = this.authService.currentUser?.name || '';
-    const hasRole = userRoles.some(r => r?.toUpperCase() === required);
+    // Legacy alias: a user tagged QUALIFIED in old data is treated as CONTROL_AUTHORITY here.
+    const accepts = required === 'CONTROL_AUTHORITY'
+      ? ['CONTROL_AUTHORITY', 'QUALIFIED']
+      : [required];
+    const hasRole = userRoles.some(r => accepts.includes(r));
 
     let enabled = !!endpoint && hasRole;
     let disabledReason: string | null = null;

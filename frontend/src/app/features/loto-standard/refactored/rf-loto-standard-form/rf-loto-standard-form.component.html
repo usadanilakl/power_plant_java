@@ -103,60 +103,77 @@
       <div class="carousel-slide">
         <div class="slide-content procedures-section">
           @if (entity().id) {
-            <h3>Install Procedure</h3>
-            <div class="procedure-fields">
-              <label class="prose-field">
-                <span>Prerequisites (system shutdown / electrical switching / grounding)</span>
-                <textarea rows="3" [ngModel]="proseDraft().installPrerequisitesText"
-                          (ngModelChange)="onProseChange('installPrerequisitesText', $event)"></textarea>
-              </label>
-              <label class="prose-field">
-                <span>Methods to control hazards</span>
-                <textarea rows="3" [ngModel]="proseDraft().installHazardControlText"
-                          (ngModelChange)="onProseChange('installHazardControlText', $event)"></textarea>
-              </label>
-              <label class="prose-field">
-                <span>Install procedure</span>
-                <textarea rows="5" [ngModel]="proseDraft().installProcedureText"
-                          (ngModelChange)="onProseChange('installProcedureText', $event)"></textarea>
-              </label>
-            </div>
-
-            <h3 style="margin-top: 24px">Removal Procedure</h3>
-            <div class="procedure-fields">
-              <label class="prose-field">
-                <span>Prerequisites (post-job re-energization / grounding removal / system restart)</span>
-                <textarea rows="3" [ngModel]="proseDraft().removalPrerequisitesText"
-                          (ngModelChange)="onProseChange('removalPrerequisitesText', $event)"></textarea>
-              </label>
-              <label class="prose-field">
-                <span>Methods to control hazards during removal</span>
-                <textarea rows="3" [ngModel]="proseDraft().removalHazardControlText"
-                          (ngModelChange)="onProseChange('removalHazardControlText', $event)"></textarea>
-              </label>
-              <label class="prose-field">
-                <span>Removal procedure</span>
-                <textarea rows="5" [ngModel]="proseDraft().removalProcedureText"
-                          (ngModelChange)="onProseChange('removalProcedureText', $event)"></textarea>
-              </label>
-              @if (proseDirty()) {
-                <div class="prose-actions">
-                  <button class="btn-save" (click)="saveProse()" [disabled]="proseSaving()">
-                    {{ proseSaving() ? 'Saving…' : 'Save Procedural Text' }}
-                  </button>
-                  <button class="btn-cancel" (click)="resetProse()" [disabled]="proseSaving()">Discard</button>
-                </div>
+            <div class="procedure-side-tabs">
+              <button type="button" class="side-tab" [class.active]="proseSide() === 'INSTALL'"
+                      (click)="proseSide.set('INSTALL')">Install Procedure</button>
+              <button type="button" class="side-tab" [class.active]="proseSide() === 'REMOVAL'"
+                      (click)="proseSide.set('REMOVAL')">Removal Procedure</button>
+              <span class="tab-spacer"></span>
+              @if (proseSide() === 'REMOVAL') {
+                <label class="reverse-toggle">
+                  <input type="checkbox"
+                         [checked]="entity().removalReversesInstallOrder"
+                         (change)="onRemovalReverseChange($any($event.target).checked)">
+                  <span>Removal reverses install order</span>
+                </label>
               }
             </div>
+
+            @if (proseSide() === 'INSTALL') {
+              <div class="procedure-fields">
+                <label class="prose-field">
+                  <span>Prerequisites (system shutdown / electrical switching / grounding)</span>
+                  <textarea rows="3" [ngModel]="proseDraft().installPrerequisitesText"
+                            (ngModelChange)="onProseChange('installPrerequisitesText', $event)"></textarea>
+                </label>
+                <label class="prose-field">
+                  <span>Methods to control hazards</span>
+                  <textarea rows="3" [ngModel]="proseDraft().installHazardControlText"
+                            (ngModelChange)="onProseChange('installHazardControlText', $event)"></textarea>
+                </label>
+                <label class="prose-field">
+                  <span>Install procedure</span>
+                  <textarea rows="5" [ngModel]="proseDraft().installProcedureText"
+                            (ngModelChange)="onProseChange('installProcedureText', $event)"></textarea>
+                </label>
+              </div>
+            } @else {
+              <div class="procedure-fields">
+                <label class="prose-field">
+                  <span>Prerequisites (post-job re-energization / grounding removal / system restart)</span>
+                  <textarea rows="3" [ngModel]="proseDraft().removalPrerequisitesText"
+                            (ngModelChange)="onProseChange('removalPrerequisitesText', $event)"></textarea>
+                </label>
+                <label class="prose-field">
+                  <span>Methods to control hazards during removal</span>
+                  <textarea rows="3" [ngModel]="proseDraft().removalHazardControlText"
+                            (ngModelChange)="onProseChange('removalHazardControlText', $event)"></textarea>
+                </label>
+                <label class="prose-field">
+                  <span>Removal procedure</span>
+                  <textarea rows="5" [ngModel]="proseDraft().removalProcedureText"
+                            (ngModelChange)="onProseChange('removalProcedureText', $event)"></textarea>
+                </label>
+              </div>
+            }
+
+            @if (proseDirty()) {
+              <div class="prose-actions">
+                <button class="btn-save" (click)="saveProse()" [disabled]="proseSaving()">
+                  {{ proseSaving() ? 'Saving…' : 'Save Procedural Text' }}
+                </button>
+                <button class="btn-cancel" (click)="resetProse()" [disabled]="proseSaving()">Discard</button>
+              </div>
+            }
 
             <h3 style="margin-top: 24px">Per-point Prerequisites</h3>
             <app-point-prerequisites-editor
               [points]="entity().lotoPoints ?? []"
               [prerequisites]="entity().pointPrerequisites"
+              [side]="proseSide()"
               [removalReversesOrder]="entity().removalReversesInstallOrder"
               [saving]="prereqSaving()"
-              (save)="savePrereqs($event)"
-              (removalReverseChange)="onRemovalReverseChange($event)">
+              (save)="savePrereqs($event)">
             </app-point-prerequisites-editor>
           } @else {
             <div class="empty-state">

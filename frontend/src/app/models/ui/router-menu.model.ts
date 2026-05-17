@@ -129,6 +129,7 @@ export const GROUPED_MAIN_MENU: GroupedRouterMenu = [
             { route: '/maximo/assets', label: 'Assets', icon: 'precision_manufacturing', iconColor: '#26C6DA' },
             { route: '/maximo/service-requests', label: 'Service Requests', icon: 'support_agent', iconColor: '#FFA726' },
             { route: '/maximo/work-orders', label: 'Work Orders', icon: 'assignment', iconColor: '#66BB6A' },
+            { route: '/maximo/bundles/lead-operators', label: 'Lead Operator WOs', icon: 'groups', iconColor: '#FFA726', separator: true },
             { route: '/maximo/api-test', label: 'API Test', icon: 'api', iconColor: '#EF5350', separator: true }
         ]
     },

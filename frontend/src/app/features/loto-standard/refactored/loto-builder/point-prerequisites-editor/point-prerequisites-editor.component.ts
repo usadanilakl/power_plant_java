@@ -24,23 +24,6 @@ interface RowState {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="prereq-editor">
-      <div class="side-tabs">
-        <button type="button" class="side-tab" [class.active]="side() === 'INSTALL'"
-                (click)="setSide('INSTALL')">Install Procedure</button>
-        <button type="button" class="side-tab" [class.active]="side() === 'REMOVAL'"
-                (click)="setSide('REMOVAL')">Removal Procedure</button>
-        <span class="spacer"></span>
-        @if (side() === 'REMOVAL') {
-          <label class="reverse-toggle">
-            <input type="checkbox"
-                   [checked]="removalReversesOrder()"
-                   [disabled]="readonly()"
-                   (change)="onReverseToggle($any($event.target).checked)">
-            <span>Removal reverses install order</span>
-          </label>
-        }
-      </div>
-
       @if (rows().length === 0) {
         <p class="empty">Add LOTO points first to configure their prerequisites.</p>
       } @else {
@@ -149,14 +132,13 @@ interface RowState {
             </div>
             <div class="picker-body">
               @for (other of points(); track other.id) {
-                @if (other.id !== pickerRowId()) {
-                  <label class="picker-row">
-                    <input type="checkbox"
-                           [checked]="isPredecessor(pickerRowId()!, other.id!)"
-                           (change)="togglePredecessor(pickerRowId()!, other.id!)">
+                @if (isPickerCandidate(pickerRowId()!, other.id!)) {
+                  <div class="picker-row"
+                       [class.selected]="isPredecessor(pickerRowId()!, other.id!)"
+                       (click)="togglePredecessor(pickerRowId()!, other.id!)">
                     <span class="pred-tag">{{ other.tagNumber }}</span>
                     <span class="pred-desc">{{ other.description }}</span>
-                  </label>
+                  </div>
                 }
               }
             </div>
@@ -170,12 +152,6 @@ interface RowState {
   `,
   styles: [`
     .prereq-editor { padding: 12px; }
-    .side-tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #2a2a2a; margin-bottom: 12px; padding-bottom: 6px; }
-    .side-tab { background: none; border: none; color: #aaa; padding: 6px 14px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; }
-    .side-tab.active { color: #82b1ff; border-bottom-color: #82b1ff; font-weight: 600; }
-    .side-tabs .spacer { flex: 1; }
-    .reverse-toggle { display: inline-flex; align-items: center; gap: 6px; color: #aaa; font-size: 12px; cursor: pointer; }
-    .reverse-toggle input { margin: 0; }
     .hint { color: #888; font-size: 12px; font-style: italic; margin: 0 0 8px; padding: 4px 8px; background: #1a1a1a; border-left: 3px solid #555; }
     .empty { color: #888; font-style: italic; }
     .prereq-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -198,9 +174,10 @@ interface RowState {
     .picker-close { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; padding: 0 6px; }
     .picker-close:hover { color: #e57373; }
     .picker-body { padding: 8px 16px; overflow-y: auto; flex: 1; }
-    .picker-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; font-size: 13px; color: #ddd; border-bottom: 1px solid #232323; }
+    .picker-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; font-size: 13px; color: #ddd; border-bottom: 1px solid #232323; border-left: 3px solid transparent; user-select: none; transition: background 0.12s, border-left-color 0.12s; }
     .picker-row:hover { background: #262626; }
-    .picker-row input[type="checkbox"] { margin: 0; cursor: pointer; }
+    .picker-row.selected { background: #1f3047; border-left-color: #82b1ff; color: #fff; }
+    .picker-row.selected:hover { background: #25395a; }
     .pred-tag { font-weight: 600; min-width: 72px; }
     .pred-desc { color: #888; font-size: 12px; }
     .picker-footer { padding: 10px 16px; border-top: 1px solid #2a2a2a; display: flex; justify-content: flex-end; }
@@ -223,11 +200,11 @@ export class PointPrerequisitesEditorComponent {
   readonly = input<boolean>(false);
   saving = input<boolean>(false);
   removalReversesOrder = input<boolean>(false);
+  /** Parent-controlled side. Defaults to INSTALL; can be bound via [side]. */
+  side = input<Side>('INSTALL');
 
   save = output<Record<number, PointPrerequisiteDto>>();
   removalReverseChange = output<boolean>();
-
-  side = signal<Side>('INSTALL');
 
   private working = signal<Record<number, PointPrerequisiteDto>>({});
   private baseline = signal<Record<number, PointPrerequisiteDto>>({});
@@ -316,15 +293,6 @@ export class PointPrerequisitesEditorComponent {
     return out;
   }
 
-  setSide(s: Side): void {
-    this.side.set(s);
-  }
-
-  onReverseToggle(value: boolean): void {
-    if (this.readonly()) return;
-    this.removalReverseChange.emit(value);
-  }
-
   private updateRow(pointId: number, fn: (spec: PointPrerequisiteDto) => PointPrerequisiteDto): void {
     if (this.readonly()) return;
     const w = { ...this.working() };
@@ -386,6 +354,44 @@ export class PointPrerequisitesEditorComponent {
   tagFor(pointId: number): string {
     const p = this.points().find(x => x.id === pointId);
     return p?.tagNumber ?? `#${pointId}`;
+  }
+
+  /**
+   * Adding {@code candidate} as a predecessor of {@code pickerRow} would create
+   * a cycle when {@code pickerRow} is already a (transitive) predecessor of
+   * {@code candidate}. The picker hides candidates flagged here.
+   */
+  private wouldCreateCycle(pickerRow: number, candidate: number): boolean {
+    const visited = new Set<number>();
+    const stack: number[] = [candidate];
+    const w = this.working();
+    const useRemoval = this.side() === 'REMOVAL';
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      const spec = w[cur];
+      if (!spec) continue;
+      // Walk the predecessor edges in the same direction the user is editing.
+      const preds = useRemoval
+        ? (spec.removalRequiredPointIds && spec.removalRequiredPointIds.length > 0
+            ? spec.removalRequiredPointIds
+            : (spec.installRequiredPointIds ?? []))
+        : (spec.installRequiredPointIds ?? []);
+      for (const p of preds) {
+        if (p === pickerRow) return true;
+        if (!visited.has(p)) stack.push(p);
+      }
+    }
+    return false;
+  }
+
+  /** Picker visibility: not self, and adding it wouldn't create a cycle. */
+  isPickerCandidate(pickerRow: number, candidate: number): boolean {
+    if (pickerRow === candidate) return false;
+    // Already-selected predecessors always show so the user can de-select.
+    if (this.isPredecessor(pickerRow, candidate)) return true;
+    return !this.wouldCreateCycle(pickerRow, candidate);
   }
 
   // ── Picker dialog ─────────────────────────────────────────────────────────

@@ -139,6 +139,9 @@ export class UserDto extends BaseDto implements UserModel {
       { value: 'ROLE_EMPLOYEE', label: 'Employee' },
       { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
       { value: 'ROLE_PLANT', label: 'Plant' },
+      // Plant job roles (no ROLE_ prefix — matches LotoRole convention).
+      // Used by MaximoBundleService to find users whose WOs to aggregate.
+      { value: 'LEAD_OPERATOR', label: 'Lead Operator' },
     ];
 
     const permissionOptions: Option[] = [

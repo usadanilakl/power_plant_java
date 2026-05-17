@@ -209,8 +209,9 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/transfer`, { fromUser, toUser });
   }
 
-  acceptRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/accept`, {});
+  acceptRequestor(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/accept`, {}, options);
   }
 
   cancelTransfer(lotoId: number): Observable<SpringApiResponse<LotoDto>> {

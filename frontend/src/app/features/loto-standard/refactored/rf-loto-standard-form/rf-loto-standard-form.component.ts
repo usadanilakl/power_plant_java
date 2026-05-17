@@ -102,8 +102,12 @@ export class RfLotoStandardFormComponent {
             this.stateService.clearDraftForItem(lotoStandardId);
           }
         } else {
-          // For new items, auto-load draft
-          this.stateService.setSelectedItem(draftData);
+          // For new items, auto-load draft — but skip if currentEntity already
+          // matches the draft, otherwise this effect loops forever (writing
+          // selectedItem retriggers entity(), which reloads the same draft).
+          if (this.hasRealDifferences(currentEntity, draftData)) {
+            this.stateService.setSelectedItem(draftData);
+          }
         }
       } else {
         // No draft - store the original server version
@@ -418,6 +422,9 @@ export class RfLotoStandardFormComponent {
 
   proseSaving = signal(false);
   prereqSaving = signal(false);
+
+  /** Tab selection for the Procedures slide — drives both prose section and per-point editor. */
+  proseSide = signal<'INSTALL' | 'REMOVAL'>('INSTALL');
 
   // Tracks the last entity id this form's prose draft was synced from.
   // We always reset when the id changes (navigated to a new Standard); we DO NOT

@@ -37,6 +37,7 @@ public class SecurityConfigSpring {
     private final DesktopAutoAuthFilter desktopAutoAuthFilter;
     private final AccessGrantFilter accessGrantFilter;
     private final PwaJwtAuthFilter pwaJwtAuthFilter;
+    private final com.dk_power.power_plant_java.config.security.StepUpAuthFilter stepUpAuthFilter;
 
     @Value("${security.cors.allowed-origins:http://localhost:*,https://dk-power.github.io,https://*.loclx.io}")
     private String allowedOrigins;
@@ -104,6 +105,7 @@ public class SecurityConfigSpring {
                 .requestMatchers(
                     "/api/auth/login", "/api/auth/logout", "/api/auth/me",
                     "/api/auth/forgot-password", "/api/auth/reset-password",
+                    "/api/auth/step-up",
                     "/api/pwa/**",
                     "/api/sharepoint-sync/**", "/power-automate/**",
                     "/actuator/health",
@@ -182,6 +184,10 @@ public class SecurityConfigSpring {
             // PwaJwtAuthFilter self-skips non-PWA paths; DesktopAutoAuthFilter self-skips non-desktop paths.
             .addFilterBefore(desktopAutoAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(pwaJwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            // StepUpAuthFilter must run AFTER the session-establishing filters so the
+            // original SecurityContext (user A) is in place; it swaps to user B for
+            // one request and restores in a finally block.
+            .addFilterAfter(stepUpAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(accessGrantFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

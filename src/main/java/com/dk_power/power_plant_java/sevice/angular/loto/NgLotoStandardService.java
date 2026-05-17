@@ -624,7 +624,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto submitForVerification(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.QUALIFIED);
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         String from = transition(s, LotoStandardStatus.PENDING_VERIFICATION);
         String user = currentUserName();
         s.setSubmittedForVerificationBy(user);
@@ -637,7 +637,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto verify(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.QUALIFIED);
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         String user = currentUserName();
         if (user.equalsIgnoreCase(s.getCreatedBy())) {
             throw new IllegalStateException("Verifier must be a different qualified person than the creator");
@@ -656,7 +656,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto markWalkdownComplete(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.QUALIFIED);
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         String from = transition(s, LotoStandardStatus.WALKDOWN_COMPLETE);
         String user = currentUserName();
         s.setWalkdownBy(user);
@@ -669,7 +669,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto markReadyForTesting(Long standardId, String notes) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.QUALIFIED);
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         String from = transition(s, LotoStandardStatus.READY_FOR_TESTING);
         String user = currentUserName();
         s.setReadyForTestingBy(user);
@@ -700,7 +700,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     @Transactional
     public LotoStandardDto sendBackToDraft(Long standardId, String reason) {
         LotoStandard s = requireStandard(standardId);
-        requireRole(LotoRole.QUALIFIED);
+        requireRole(LotoRole.CONTROL_AUTHORITY);
         String from = transition(s, LotoStandardStatus.DRAFT);
         s.clearWorkflowAttribution();
         recordEvent(s, LotoStandardApprovalEvent.Type.INVALIDATED, currentUserName(), from, LotoStandardStatus.DRAFT, reason);
@@ -847,6 +847,12 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     private void requireRole(LotoRole role) {
+        requireAnyRole(role);
+    }
+
+    /** Pass-if-any-of helper. CONTROL_AUTHORITY callers also satisfy legacy QUALIFIED gates. */
+    @SuppressWarnings("deprecation")
+    private void requireAnyRole(LotoRole... roles) {
         String username = currentUserName();
         if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
             throw new SecurityException("Authentication required");
@@ -855,9 +861,17 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         if (user == null) {
             throw new SecurityException("User not found: " + username);
         }
-        if (!user.hasLotoRole(role)) {
-            throw new SecurityException("Requires LOTO role: " + role.roleName());
+        for (LotoRole r : roles) {
+            if (user.hasLotoRole(r)) return;
+            // Legacy alias: QUALIFIED ⇆ CONTROL_AUTHORITY
+            if (r == LotoRole.CONTROL_AUTHORITY && user.hasLotoRole(LotoRole.QUALIFIED)) return;
+            if (r == LotoRole.QUALIFIED && user.hasLotoRole(LotoRole.CONTROL_AUTHORITY)) return;
+            // Legacy alias: AUTHORIZED ⇆ LOTO_QUALIFIED
+            if (r == LotoRole.LOTO_QUALIFIED && user.hasLotoRole(LotoRole.AUTHORIZED)) return;
+            if (r == LotoRole.AUTHORIZED && user.hasLotoRole(LotoRole.LOTO_QUALIFIED)) return;
         }
+        String names = java.util.Arrays.stream(roles).map(LotoRole::roleName).reduce((a,b) -> a + " | " + b).orElse("");
+        throw new SecurityException("Requires one of LOTO role: " + names);
     }
 
     private String currentUserName() {

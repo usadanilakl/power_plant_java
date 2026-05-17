@@ -49,6 +49,16 @@ ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_removed_notes
 ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS removal_reverses_install_order BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE IF EXISTS loto_snapshot ADD COLUMN IF NOT EXISTS point_needs_rehang_json TEXT;
 
+-- User PIN authentication (see project/features/users/pin-authentication.md)
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS signing_initials VARCHAR(8);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_set_at TIMESTAMP;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_locked_until TIMESTAMP;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS failed_pin_attempts INTEGER DEFAULT 0;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS training_completed_at TIMESTAMP;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS training_expires_at TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_users_signing_initials ON users(signing_initials);
+
 -- Instrumentation dedup and lookup indexes
 CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);
 CREATE INDEX IF NOT EXISTS idx_instrument_local_uuid ON instrument(local_uuid);

@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.dto.maximo.MaximoWorkOrderDto;
 import com.dk_power.power_plant_java.dto.maximo.MaximoWorklogDto;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoAssetAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoDoclinksAdapter;
+import com.dk_power.power_plant_java.sevice.maximo.MaximoBundleService;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoServiceRequestAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorkOrderAdapter;
 import com.dk_power.power_plant_java.sevice.maximo.MaximoWorklogAdapter;
@@ -52,6 +53,7 @@ public class NgMaximoController {
     private final MaximoWorkOrderAdapter workOrders;
     private final MaximoDoclinksAdapter doclinks;
     private final MaximoWorklogAdapter worklog;
+    private final MaximoBundleService bundles;
 
     // ---- Assets -----------------------------------------------------------
 
@@ -180,6 +182,20 @@ public class NgMaximoController {
         return workOrders.findByHref(href)
                 .map(wo -> ResponseEntity.ok(new NgApiResponse<>(wo, "ok")))
                 .orElseGet(() -> ResponseEntity.ok(new NgApiResponse<>(null, "not found")));
+    }
+
+    // ---- Bundles (cross-source aggregations) -----------------------------
+
+    /**
+     * All Maximo work orders whose `spi:lead` is one of the local Lead Operators.
+     * Optional `status` query param narrows to that status (e.g. APPR / INPRG).
+     */
+    @GetMapping("/bundle/lead-operators/work-orders")
+    public ResponseEntity<NgApiResponse<List<MaximoWorkOrderDto>>> leadOperatorWorkOrders(
+            @RequestParam(value = "pageSize", defaultValue = "100") int pageSize,
+            @RequestParam(value = "status", required = false) String status) {
+        return ResponseEntity.ok(new NgApiResponse<>(
+                bundles.leadOperatorWorkOrders(pageSize, status), "ok"));
     }
 
     // ---- Worklog (notes / comments) --------------------------------------

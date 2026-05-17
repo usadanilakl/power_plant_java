@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, LotoMapper> {
     private final LotoMapper mapper;
     private final LotoRepo repo;
+    private final com.dk_power.power_plant_java.repository.users.UserRepo userRepo;
     private final EntityManager entityManager;
     private final SessionFactory sessionFactory;
     private final NgValueService ngValueService;
@@ -262,6 +263,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto createFromStandard(Long standardId, LotoIdDto permitData, Integer requestedBoxNumber) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         LotoStandard standard = lotoStandardRepo.findById(standardId)
                 .orElseThrow(() -> new EntityNotFoundException("LotoStandard not found with id: " + standardId));
 
@@ -330,6 +332,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto changeStatus(Long lotoId, String newStatus) {
+        // Status transitions (Active, Test, Modification, Closed) are CA-only.
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId)
                 .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
 
@@ -450,6 +454,34 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     /**
+     * Throws if the authenticated user has none of the supplied LOTO roles. Legacy
+     * role names (QUALIFIED, AUTHORIZED) are accepted as aliases for the new ones.
+     */
+    @SuppressWarnings("deprecation")
+    private void requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole... roles) {
+        String username = currentUserName();
+        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
+            throw new SecurityException("Authentication required");
+        }
+        com.dk_power.power_plant_java.entities.users.User user =
+                userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+        if (user == null) {
+            throw new SecurityException("User not found: " + username);
+        }
+        for (var r : roles) {
+            if (user.hasLotoRole(r)) return;
+            if (r == com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY
+                    && user.hasLotoRole(com.dk_power.power_plant_java.entities.users.LotoRole.QUALIFIED)) return;
+            if (r == com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED
+                    && user.hasLotoRole(com.dk_power.power_plant_java.entities.users.LotoRole.AUTHORIZED)) return;
+        }
+        String names = java.util.Arrays.stream(roles)
+                .map(com.dk_power.power_plant_java.entities.users.LotoRole::roleName)
+                .reduce((a,b) -> a + " | " + b).orElse("");
+        throw new SecurityException("Requires LOTO role: " + names);
+    }
+
+    /**
      * Returns the current permit status name (e.g. "Building" / "Active" / "Test" / "Closed").
      * Null when the LOTO has no status (shouldn't happen post-creation; treated as Closed for safety).
      */
@@ -472,6 +504,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto approveForHanging(Long lotoId) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "CA approval for hanging", "Building");
         LotoSnapshot s = loto.recordCaApprovedForHanging(currentUserName());
@@ -481,6 +514,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto caActivate(Long lotoId) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "CA activation", "Building");
         // Guard: hung + verified must be done before CA can activate
@@ -496,6 +530,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markHung(Long lotoId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Mark hung (aggregate)", "Building");
         // Guard: CA must have approved hanging before the LOTO can be marked hung
@@ -526,6 +563,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markPointHung(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requirePerPointHangVerifyStatus(loto, "Mark point hung", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -553,6 +593,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto unmarkPointHung(Long lotoId, Long pointId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requirePerPointHangVerifyStatus(loto, "Unmark point hung", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -578,6 +621,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markPointVerified(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requirePerPointHangVerifyStatus(loto, "Mark point verified", pointId);
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -612,6 +658,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto unmarkPointVerified(Long lotoId, Long pointId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requirePerPointHangVerifyStatus(loto, "Unmark point verified", pointId);
         LotoSnapshot s = loto.unmarkPointVerified(pointId);
@@ -621,6 +670,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markPointWalkdown(Long lotoId, Long pointId, String notes) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Mark point walkdown", "Building");
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -639,6 +691,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto unmarkPointWalkdown(Long lotoId, Long pointId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Unmark point walkdown", "Building");
         LotoSnapshot s = loto.unmarkPointWalkdown(pointId);
@@ -666,6 +721,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markPointRemoved(Long lotoId, Long pointId, java.util.List<String> acknowledgedSafetyConditions, String notes) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireCaReleasedAndOpen(loto, "Mark point removed");
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -677,6 +735,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto unmarkPointRemoved(Long lotoId, Long pointId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireCaReleasedAndOpen(loto, "Unmark point removed");
         LotoSnapshot latest = loto.getLatestSnapshot();
@@ -703,6 +764,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
      */
     @Transactional
     public LotoDto pullPointForTest(Long lotoId, Long pointId, String reason) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
         if (!"Test".equals(status) && !"Modification".equals(status)) {
@@ -858,6 +922,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto markVerified(Long lotoId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Mark verified (aggregate)", "Building");
         java.util.Set<Long> requiredPointIds = loto.getLotoPointDtos().stream()
@@ -874,6 +941,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto transferRequestor(Long lotoId, String fromUser, String toUser) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.REQUESTOR);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Transfer requestor", "Building", "Active", "Test");
         if (toUser == null || toUser.isBlank()) {
@@ -907,6 +977,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
      */
     @Transactional
     public LotoDto cancelTransfer(Long lotoId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.REQUESTOR);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Cancel transfer", "Building", "Active", "Test");
         String me = currentUserName();
@@ -930,6 +1003,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto acceptRequestor(Long lotoId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.REQUESTOR);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Accept requestor transfer", "Building", "Active", "Test");
         // Pending state lives on the latest snapshot: transferredTo set + acceptedBy still null.
@@ -955,6 +1031,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto releaseByRequestor(Long lotoId) {
+        requireAnyRole(
+                com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
+                com.dk_power.power_plant_java.entities.users.LotoRole.REQUESTOR);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Requestor release", "Building", "Active", "Test");
         String me = currentUserName();
@@ -977,6 +1056,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto releaseByControlAuthority(Long lotoId) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Control Authority release", "Building", "Active", "Test");
         LotoSnapshot s = loto.recordControlAuthorityReleased(currentUserName());
@@ -986,6 +1066,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Transactional
     public LotoDto removeLocks(Long lotoId) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Remove locks", "Active", "Test");
         LotoSnapshot s = loto.recordLocksRemoved(currentUserName());

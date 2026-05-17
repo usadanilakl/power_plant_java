@@ -11,15 +11,20 @@ button:hover:not(:disabled) { background: #1177bb; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.secondary { background: #444; }
 
-.split { display: grid; grid-template-columns: 380px 1fr; gap: 14px; margin-top: 12px; }
-.results, .detail { background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 10px; }
+.split { display: grid; grid-template-columns: 380px 1fr; gap: 14px; margin-top: 12px; min-height: 0; }
+.results, .detail { background: #1f1f1f; border: 1px solid #333; border-radius: 4px; padding: 10px;
+                    display: flex; flex-direction: column; min-height: 0; }
 .detail.empty { display: flex; align-items: center; justify-content: center; min-height: 220px; }
 
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a2a; }
-th { color: #7cc6ff; font-weight: 500; }
-tr:hover { background: #2a2a2a; cursor: pointer; }
-tr.selected { background: #0e639c33; }
+.empty-msg { padding: 10px 0; }
+
+.results app-maximo-table { flex: 1; display: flex; flex-direction: column; min-height: 300px; max-height: 70vh; overflow: hidden; }
+
+/* Plain-table styles below apply ONLY to the small sub-tables inside .tab-body (SR/WO/attachments lists). */
+.tab-body table { width: 100%; border-collapse: collapse; }
+.tab-body th, .tab-body td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a2a; }
+.tab-body th { color: #7cc6ff; font-weight: 500; }
+.tab-body tr:hover { background: #2a2a2a; cursor: pointer; }
 
 .detail header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .detail h3 { margin: 0 0 2px; }

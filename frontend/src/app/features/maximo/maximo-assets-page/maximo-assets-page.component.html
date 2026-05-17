@@ -16,24 +16,15 @@
       <div class="split">
         <section class="results">
           <h3>Results ({{ results().length }})</h3>
-          <table>
-            <thead>
-              <tr><th>Tag</th><th>Description</th><th>Site</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let a of results()"
-                  [class.selected]="selected()?.href === a.href"
-                  (click)="select(a)">
-                <td>{{ a.assetnum }}</td>
-                <td>{{ a.description }}</td>
-                <td>{{ a.siteid }}</td>
-                <td>{{ a.status }}</td>
-              </tr>
-              <tr *ngIf="!searching() && results().length === 0">
-                <td colspan="4" class="muted">No results — search above.</td>
-              </tr>
-            </tbody>
-          </table>
+          <div *ngIf="!searching() && results().length === 0" class="muted empty-msg">
+            No results — search above.
+          </div>
+          <app-maximo-table *ngIf="results().length > 0"
+            [columns]="columns"
+            [items]="results()"
+            emptyMessage="No results match these filters."
+            (rowClicked)="select($event)">
+          </app-maximo-table>
         </section>
 
         <section class="detail" *ngIf="selected() as sel">

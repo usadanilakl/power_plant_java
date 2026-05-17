@@ -2,8 +2,11 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.WalkdownSession;
+import com.dk_power.power_plant_java.entities.users.LotoRole;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.WalkdownSessionRepo;
+import com.dk_power.power_plant_java.repository.users.UserRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -30,6 +33,22 @@ public class NgWalkdownSessionService {
 
     private final WalkdownSessionRepo repo;
     private final LotoRepo lotoRepo;
+    private final UserRepo userRepo;
+
+    @SuppressWarnings("deprecation")
+    private void requireHangVerifyRole() {
+        String username = currentUserName();
+        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
+            throw new SecurityException("Authentication required");
+        }
+        User user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+        if (user == null) throw new SecurityException("User not found: " + username);
+        if (user.hasLotoRole(LotoRole.CONTROL_AUTHORITY)) return;
+        if (user.hasLotoRole(LotoRole.LOTO_QUALIFIED)) return;
+        if (user.hasLotoRole(LotoRole.QUALIFIED)) return;
+        if (user.hasLotoRole(LotoRole.AUTHORIZED)) return;
+        throw new SecurityException("Walkdown requires CONTROL_AUTHORITY or LOTO_QUALIFIED role");
+    }
 
     private String currentUserName() {
         try {
@@ -41,6 +60,7 @@ public class NgWalkdownSessionService {
     }
 
     public WalkdownSession requestWalkdown(Long lotoId, String crewName, String notes) {
+        requireHangVerifyRole();
         Loto loto = lotoRepo.findById(lotoId)
                 .orElseThrow(() -> new EntityNotFoundException("Loto not found: " + lotoId));
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
@@ -72,6 +92,7 @@ public class NgWalkdownSessionService {
     }
 
     public WalkdownSession checkPoint(Long sessionId, Long pointId, boolean checked, String pointNotes) {
+        requireHangVerifyRole();
         WalkdownSession w = requireMutable(sessionId);
         Map<Long, WalkdownSession.PointState> states = w.getPointStates();
         WalkdownSession.PointState existing = states.getOrDefault(pointId,
@@ -91,6 +112,7 @@ public class NgWalkdownSessionService {
     }
 
     public WalkdownSession completeWalkdown(Long sessionId, String notes) {
+        requireHangVerifyRole();
         WalkdownSession w = requireMutable(sessionId);
         if (notes != null) w.setSessionNotes(notes);
         w.setCompleted(true);

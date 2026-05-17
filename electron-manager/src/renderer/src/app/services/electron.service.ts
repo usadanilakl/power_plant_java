@@ -98,6 +98,22 @@ export interface GateLogEntry {
   source: 'gate' | 'onlocation';
 }
 
+export interface MaximoWoBrief {
+  href: string;
+  wonum: string;
+  description: string;
+  assetnum: string;
+  location: string;
+  leadCraft: string;
+  status: string;
+  priority: string;
+}
+
+export interface MaximoLeadOpSummary {
+  count: number;
+  top: MaximoWoBrief[];
+}
+
 export interface GateLogStatus {
   lastUpdate: string | null;
   autoRefreshEnabled: boolean;
@@ -333,6 +349,9 @@ interface ElectronAPI {
   // Permits
   getWorkRequestCount: () => Promise<IpcResult<{ newCount: number; activeCount: number }>>;
   openPermitsMonitor: () => Promise<IpcResult>;
+
+  // Maximo bundles
+  maximoGetLeadOpSummary: (status?: string) => Promise<IpcResult<MaximoLeadOpSummary>>;
 
   // Window Layout
   saveWindowLayout: () => Promise<IpcResult>;
@@ -625,6 +644,11 @@ export class ElectronService implements OnDestroy {
   async openPermitsMonitor(): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.openPermitsMonitor();
+  }
+
+  async maximoGetLeadOpSummary(status?: string): Promise<IpcResult<MaximoLeadOpSummary>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.maximoGetLeadOpSummary(status);
   }
 
   // Window Layout

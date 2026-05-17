@@ -179,4 +179,28 @@ export class AuthService {
     const target = role.toLowerCase();
     return roles.some(r => r?.toLowerCase() === target);
   }
+
+  // ── LOTO role helpers ─────────────────────────────────────────────────────
+  // The new canonical names are CONTROL_AUTHORITY / LOTO_QUALIFIED / REQUESTOR /
+  // MANAGER. QUALIFIED and AUTHORIZED are legacy aliases (mapped to CA / LOTO_Q).
+
+  /** Control Authority — can do most operations on standards and permits. */
+  isControlAuthority(): boolean {
+    return this.hasRole('CONTROL_AUTHORITY') || this.hasRole('QUALIFIED');
+  }
+
+  /** Can hang and verify LOTO points. CA implicitly satisfies this. */
+  isLotoQualified(): boolean {
+    return this.isControlAuthority() || this.hasRole('LOTO_QUALIFIED') || this.hasRole('AUTHORIZED');
+  }
+
+  /** Can be a permit requestor. CA implicitly satisfies this. */
+  isRequestor(): boolean {
+    return this.isControlAuthority() || this.hasRole('REQUESTOR');
+  }
+
+  /** Manager — final-approves standards after testing. */
+  isManager(): boolean {
+    return this.hasRole('MANAGER');
+  }
 }

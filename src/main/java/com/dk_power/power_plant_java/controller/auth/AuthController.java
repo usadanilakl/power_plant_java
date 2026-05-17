@@ -45,6 +45,8 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailFacadeService emailFacadeService;
+    private final com.dk_power.power_plant_java.sevice.auth.StepUpAuthService stepUpAuthService;
+    private final com.dk_power.power_plant_java.sevice.auth.PinManagementService pinManagementService;
 
     @Value("${email.graph.from:}")
     private String emailFrom;
@@ -467,9 +469,74 @@ public class AuthController {
         return info;
     }
 
+    // ── Step-up authentication ─────────────────────────────────────────────
+    // Exchanges a combined-code (e.g. "DK1234") for a short-lived single-use
+    // token. The caller attaches it as X-Sign-As-Token header on the next
+    // request to run that one request under the matched user's identity.
+    // See project/features/users/pin-authentication.md.
+
+    @PostMapping("/step-up")
+    public ResponseEntity<?> stepUp(@RequestBody StepUpRequest req) {
+        try {
+            var token = stepUpAuthService.authorize(req.code());
+            log.info("security.stepup.issued user={} ttlSeconds={}",
+                    token.username(),
+                    java.time.Duration.between(java.time.Instant.now(), token.expiresAt()).getSeconds());
+            return ResponseEntity.ok(Map.of(
+                    "token", token.token(),
+                    "expiresAt", token.expiresAt().toString()
+            ));
+        } catch (com.dk_power.power_plant_java.sevice.auth.StepUpAuthService.StepUpException e) {
+            log.info("security.stepup.rejected reason={}", e.getMessage());
+            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** User self-service: change own PIN. Requires current PIN to be supplied. */
+    @PostMapping("/pin/change")
+    public ResponseEntity<?> changePin(@RequestBody ChangePinRequest req) {
+        var me = getCurrentUserDetails();
+        if (me == null) return ResponseEntity.status(401).body(Map.of("message", "Authentication required"));
+        try {
+            pinManagementService.changeOwnPin(me.getId(), req.currentPin(), req.newPin());
+            return ResponseEntity.ok(Map.of("message", "PIN updated"));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** Admin: reset a user's PIN. Returns the generated PIN ONCE for distribution. */
+    @PostMapping("/admin/users/{userId}/pin/reset")
+    public ResponseEntity<?> adminResetPin(@PathVariable Long userId) {
+        try {
+            String pin = pinManagementService.generateAndAssignPin(userId);
+            log.info("security.pin.admin_reset userId={}", userId);
+            return ResponseEntity.ok(Map.of(
+                    "pin", pin,
+                    "message", "PIN generated — display once and have the user change it on first use"
+            ));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** Admin: set or change a user's signing initials (2-3 letters). */
+    @PostMapping("/admin/users/{userId}/initials")
+    public ResponseEntity<?> adminSetInitials(@PathVariable Long userId, @RequestBody SetInitialsRequest req) {
+        try {
+            pinManagementService.setSigningInitials(userId, req.initials());
+            return ResponseEntity.ok(Map.of("message", "Initials updated"));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     public record LoginRequest(String credential, String password) {}
     public record UpdateProfileRequest(String firstName, String lastName, String password) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
     public record ForgotPasswordRequest(String email) {}
     public record ResetPasswordRequest(String token, String newPassword) {}
+    public record StepUpRequest(String code) {}
+    public record ChangePinRequest(String currentPin, String newPin) {}
+    public record SetInitialsRequest(String initials) {}
 }

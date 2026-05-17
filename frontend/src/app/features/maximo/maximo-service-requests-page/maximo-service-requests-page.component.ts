@@ -7,10 +7,12 @@ import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
 import { MaximoSrSubmitComponent } from '../maximo-sr-submit/maximo-sr-submit.component';
+import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import {
   MaximoServiceRequest,
   MaximoServiceRequestCriteria
 } from '../../../models/maximo/maximo.models';
+import { SR_COLUMNS } from '../maximo-table-configs';
 import { firstValueFrom } from 'rxjs';
 
 const emptyCriteria = (): MaximoServiceRequestCriteria => ({
@@ -32,7 +34,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
   standalone: true,
   imports: [
     CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent,
-    MaximoDetailDialogComponent, MaximoSrSubmitComponent
+    MaximoTableComponent, MaximoDetailDialogComponent, MaximoSrSubmitComponent
   ],
   templateUrl: './maximo-service-requests-page.component.html',
   styleUrl: './maximo-service-requests-page.component.css'
@@ -40,6 +42,7 @@ const emptyCriteria = (): MaximoServiceRequestCriteria => ({
 export class MaximoServiceRequestsPageComponent {
   private api = inject(MaximoApiService);
 
+  readonly columns = SR_COLUMNS;
   criteria: MaximoServiceRequestCriteria = emptyCriteria();
   pageSize = 50;
 

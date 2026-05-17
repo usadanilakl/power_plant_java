@@ -353,6 +353,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Home', route: '/', icon: 'home', color: '#3b82f6' },
     { label: 'PID App', route: '/pid-app', icon: 'dashboard', color: '#8b5cf6' },
     { label: 'Permits', route: '', icon: 'assignment', color: '#8b5cf6', action: 'open-permits-monitor' },
+    // Lead Operator WOs — opens the Spring Boot bundle page via iframe (?path= deep link).
+    // Reuses the existing SpringBootUiComponent route so we don't duplicate the table/dialog UI.
+    { label: 'Lead Op WOs', route: '/pid-app', icon: 'engineering', color: '#26C6DA',
+      queryParams: { path: 'maximo/bundles/lead-operators' } },
     { label: 'Fire Impairment', route: '/fire-impairment', icon: 'local_fire_department', color: '#ef4444' },
     { label: 'Gate Log', route: '/gate-log', icon: 'badge', color: '#06b6d4' },
     { label: 'Personnel', route: '/personnel', icon: 'groups', color: '#8b5cf6' },

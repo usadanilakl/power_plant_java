@@ -1,0 +1,32 @@
+/* `.mx-page` is projected into <main class="main-content"> (a block element with flex-allocated
+   height); height:100% resolves against that, and display:flex lets the inner app-table take
+   the remaining space below the filter bar / header. */
+.mx-page {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex; flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  color: #e6e6e6;
+  font: 13px/1.4 ui-monospace, Consolas, monospace;
+}
+
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+       padding: 10px; background: #2a2a2a; border-radius: 4px; margin-bottom: 12px;
+       flex-shrink: 0; }
+button { background: #0e639c; color: #fff; border: 0; border-radius: 3px;
+         padding: 5px 12px; font: inherit; cursor: pointer; }
+button:hover:not(:disabled) { background: #1177bb; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.results-header { display: flex; align-items: center; gap: 10px; margin: 0 0 6px;
+                  flex-shrink: 0; }
+.results-header h3 { margin: 0; }
+
+.empty-msg { padding: 16px; background: #1f1f1f; border: 1px solid #333; border-radius: 4px; }
+
+app-maximo-table { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+code { background: #1f1f1f; padding: 1px 4px; border-radius: 2px; }
+.muted { color: #777; }
+.error { color: #ff7b72; }

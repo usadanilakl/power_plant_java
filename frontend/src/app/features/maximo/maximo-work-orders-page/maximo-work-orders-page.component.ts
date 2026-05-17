@@ -6,7 +6,9 @@ import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-men
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
 import { fromDatetimeLocal, toDatetimeLocal } from '../../../services/maximo/maximo-date.util';
 import { MaximoDetailDialogComponent } from '../maximo-detail-dialog/maximo-detail-dialog.component';
+import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import { MaximoWorkOrder, MaximoWorkOrderCriteria } from '../../../models/maximo/maximo.models';
+import { WO_COLUMNS } from '../maximo-table-configs';
 import { firstValueFrom } from 'rxjs';
 
 const emptyCriteria = (): MaximoWorkOrderCriteria => ({
@@ -30,7 +32,7 @@ const emptyCriteria = (): MaximoWorkOrderCriteria => ({
 @Component({
   selector: 'app-maximo-work-orders-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoDetailDialogComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent, MaximoDetailDialogComponent],
   templateUrl: './maximo-work-orders-page.component.html',
   styleUrl: './maximo-work-orders-page.component.css'
 })
@@ -40,6 +42,7 @@ export class MaximoWorkOrdersPageComponent {
   criteria: MaximoWorkOrderCriteria = emptyCriteria();
   pageSize = 50;
 
+  readonly columns = WO_COLUMNS;
   loading = signal(false);
   error = signal<string | null>(null);
   list = signal<MaximoWorkOrder[]>([]);

@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 /**
  * Multi-field filter for Maximo work order queries.
  * All fields optional — non-blank values are AND'd into the OSLC where clause.
@@ -19,6 +21,7 @@ public class MaximoWorkOrderCriteria {
     private String location;
     private String priority;        // numeric — passed without quotes
     private String leadCraft;            // Maximo field is "lead"; exact match
+    private List<String> leadIn;         // Maximo field is "lead"; matches any of N personids (OSLC `in [...]`)
     private String supervisor;           // exact match
     private String schedstartFrom;       // ISO 8601, applied as spi:schedstart >= value
     private String schedfinishTo;        // ISO 8601, applied as spi:schedfinish <= value

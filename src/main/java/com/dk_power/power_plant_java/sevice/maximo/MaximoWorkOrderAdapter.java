@@ -49,6 +49,7 @@ public class MaximoWorkOrderAdapter {
         addStr(conds, "location", c.getLocation());
         addNum(conds, "wopriority", c.getPriority());
         addStr(conds, "lead", c.getLeadCraft());
+        addStrIn(conds, "lead", c.getLeadIn());
         addStr(conds, "supervisor", c.getSupervisor());
         addStrOp(conds, "schedstart", ">=", c.getSchedstartFrom());
         addStrOp(conds, "schedfinish", "<=", c.getSchedfinishTo());
@@ -92,6 +93,20 @@ public class MaximoWorkOrderAdapter {
     private static void addLike(List<String> conds, String field, String value) {
         if (value == null || value.isBlank()) return;
         conds.add("spi:" + field + "=\"%" + escape(value) + "%\"");
+    }
+
+    /**
+     * OSLC `in` operator: emits `spi:field in ["A","B","C"]`. Square brackets are mandatory;
+     * Maximo's parser rejects parens. Empty/null list is a no-op.
+     */
+    private static void addStrIn(List<String> conds, String field, java.util.List<String> values) {
+        if (values == null || values.isEmpty()) return;
+        String joined = values.stream()
+                .filter(v -> v != null && !v.isBlank())
+                .map(v -> "\"" + escape(v) + "\"")
+                .collect(java.util.stream.Collectors.joining(","));
+        if (joined.isEmpty()) return;
+        conds.add("spi:" + field + " in [" + joined + "]");
     }
 
     public Optional<MaximoWorkOrderDto> findByHref(String href) {

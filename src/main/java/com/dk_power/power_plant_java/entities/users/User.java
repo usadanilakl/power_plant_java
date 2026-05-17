@@ -74,6 +74,36 @@ public class User extends BaseAuditEntity {
     @Column(name = "last_notification_check")
     private LocalDateTime lastNotificationCheck;
 
+    // ── PIN authentication (see project/features/users/pin-authentication.md) ──
+
+    /** 2-character (or short) prefix the user types before their 4-digit PIN. */
+    @Column(name = "signing_initials", length = 8)
+    private String signingInitials;
+
+    /** BCrypt hash of the 4-digit PIN. Null when no PIN has been set. */
+    @Column(name = "pin_hash")
+    private String pinHash;
+
+    /** Last time the user set their PIN. */
+    @Column(name = "pin_set_at")
+    private LocalDateTime pinSetAt;
+
+    /** Account locked for PIN-based step-up until this timestamp; null when not locked. */
+    @Column(name = "pin_locked_until")
+    private LocalDateTime pinLockedUntil;
+
+    /** Consecutive failed PIN attempts; reset to 0 on success. */
+    @Column(name = "failed_pin_attempts")
+    private Integer failedPinAttempts;
+
+    /** Most recent safety-training completion timestamp. */
+    @Column(name = "training_completed_at")
+    private LocalDateTime trainingCompletedAt;
+
+    /** When the current safety training expires (typically completed + 1 year). */
+    @Column(name = "training_expires_at")
+    private LocalDateTime trainingExpiresAt;
+
     /** Returns roles as a list (comma-separated storage in `role` column). */
     public List<String> getRoles() {
         if (role == null || role.isBlank()) return Collections.emptyList();
@@ -110,5 +140,16 @@ public class User extends BaseAuditEntity {
     /** Check if user holds a specific LOTO role. */
     public boolean hasLotoRole(LotoRole lotoRole) {
         return lotoRole != null && hasRole(lotoRole.roleName());
+    }
+
+    /**
+     * This user's identity in Maximo (e.g. value of `spi:lead` on a work order).
+     * Today: uppercased `windowsUsername` — plant convention is that Maximo personids
+     * are domain usernames in uppercase. If a user ever has a Maximo personid that
+     * diverges from their Windows account, add an explicit override field and prefer it here.
+     */
+    @Transient
+    public String getMaximoPersonid() {
+        return windowsUsername == null ? null : windowsUsername.trim().toUpperCase();
     }
 }

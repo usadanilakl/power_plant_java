@@ -1,0 +1,76 @@
+<div class="mx-table">
+  <div class="search-bar">
+    <button class="logic-toggle"
+            (click)="toggleLogic()"
+            [title]="'Global search: ' + globalSearchLogic + ' — click to toggle'">
+      {{ globalSearchLogic }}
+    </button>
+    <input class="global-search"
+           type="text"
+           [(ngModel)]="globalSearch"
+           placeholder="Global search · space-separated words" />
+  </div>
+
+  <div class="scroll-area">
+    <table>
+      <thead>
+        <tr>
+          <th *ngFor="let col of columns"
+              [style.width.px]="col.width"
+              [class.sortable]="col.sortable !== false"
+              [class.sorted]="sortColumn === col.id"
+              (click)="onHeaderClick(col)">
+            <span class="head-label">{{ col.header }}</span>
+            <span class="sort-ind" *ngIf="sortColumn === col.id">
+              {{ sortDir === 'asc' ? '▲' : '▼' }}
+            </span>
+          </th>
+        </tr>
+        <tr class="filter-row">
+          <th *ngFor="let col of columns" class="filter-cell">
+            <ng-container *ngIf="col.filterable !== false">
+              <div class="filter-wrap">
+                <input type="text"
+                       [(ngModel)]="columnFilters[col.id]"
+                       (focus)="onFilterFocus(col)"
+                       (blur)="onFilterBlur()"
+                       placeholder="Filter…" />
+                <button *ngIf="columnFilters[col.id]"
+                        class="filter-clear"
+                        (mousedown)="clearColumnFilter(col); $event.preventDefault()"
+                        title="Clear">×</button>
+              </div>
+
+              <!-- Suggestions dropdown -->
+              <div *ngIf="focusedColumn() === col.id && suggestionsFor(col) as sug"
+                   class="suggest-pop">
+                <button *ngFor="let v of sug.items"
+                        type="button"
+                        class="suggest-item"
+                        (mousedown)="pickSuggestion(col, v); $event.preventDefault()"
+                        [title]="v">
+                  {{ v }}
+                </button>
+                <div *ngIf="sug.items.length === 0" class="suggest-empty">No matches</div>
+                <div *ngIf="sug.truncated > 0" class="suggest-more">
+                  +{{ sug.truncated }} more — keep typing to narrow
+                </div>
+              </div>
+            </ng-container>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of visibleItems()"
+            class="row"
+            (click)="rowClicked.emit(item)"
+            (dblclick)="rowDoubleClicked.emit(item)">
+          <td *ngFor="let col of columns">{{ cell(item, col) }}</td>
+        </tr>
+        <tr *ngIf="visibleItems().length === 0">
+          <td [attr.colspan]="columns.length" class="empty">{{ emptyMessage }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

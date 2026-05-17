@@ -6,6 +6,7 @@ export type WidgetId =
   | 'weather'
   | 'pjm'
   | 'permits'
+  | 'maximo-lead-op'
   | 'external-links'
   | 'contacts'
   | 'paging-system'
@@ -55,6 +56,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'weather', title: 'Weather', icon: 'thunderstorm', iconColor: '#f59e0b', description: 'Lightning and weather monitoring', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'pjm', title: 'PJM', icon: 'bolt', iconColor: '#eab308', description: 'Grid pricing and power data', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'permits', title: 'Permits', icon: 'assignment', iconColor: '#8b5cf6', description: 'Work requests, LOTOs, permits', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: true },
+  { id: 'maximo-lead-op', title: 'Maximo · Lead Op WOs', icon: 'engineering', iconColor: '#26C6DA', description: 'Approved Maximo work orders assigned to Lead Operators', minCols: 1, minRows: 1, defaultCols: 2, defaultRows: 1, requiresSpringBoot: true },
   { id: 'external-links', title: 'External Links', icon: 'open_in_new', iconColor: '#3b82f6', description: 'SharePoint, Maximo, and other tools', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'contacts', title: 'Contacts', icon: 'contacts', iconColor: '#10b981', description: 'Plant contact information', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'paging-system', title: 'Paging System', icon: 'campaign', iconColor: '#f97316', description: 'PA system extension numbers', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
@@ -69,9 +71,9 @@ function buildDefaultPreset(): WidgetPlacement[] {
   const cols = 3;
   const order: WidgetId[] = [
     'fire-impairment', 'gate-log', 'weather',
-    'pjm', 'permits', 'external-links',
-    'contacts', 'paging-system', 'clock',
-    'notes', 'personnel', 'toi',
+    'pjm', 'permits', 'maximo-lead-op',
+    'external-links', 'contacts', 'paging-system',
+    'clock', 'notes', 'personnel', 'toi',
   ];
   return order.map((id, i) => ({
     widgetId: id,

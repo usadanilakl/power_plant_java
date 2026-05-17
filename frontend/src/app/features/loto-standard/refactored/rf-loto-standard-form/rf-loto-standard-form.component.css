@@ -288,6 +288,21 @@
 
 .procedures-section { padding: 12px; overflow-y: auto; }
 .procedures-section h3 { color: #82b1ff; margin: 0 0 12px 0; }
+
+.procedure-side-tabs {
+  display: flex; align-items: center; gap: 4px;
+  border-bottom: 1px solid #2a2a2a; margin-bottom: 14px; padding-bottom: 6px;
+}
+.procedure-side-tabs .side-tab {
+  background: none; border: none; color: #aaa;
+  padding: 8px 18px; cursor: pointer; border-bottom: 2px solid transparent;
+  font-size: 14px; font-weight: 500;
+}
+.procedure-side-tabs .side-tab.active { color: #82b1ff; border-bottom-color: #82b1ff; font-weight: 600; }
+.procedure-side-tabs .tab-spacer { flex: 1; }
+.procedure-side-tabs .reverse-toggle { display: inline-flex; align-items: center; gap: 6px; color: #aaa; font-size: 12px; cursor: pointer; }
+.procedure-side-tabs .reverse-toggle input { margin: 0; }
+
 .procedure-fields { display: flex; flex-direction: column; gap: 12px; }
 .prose-field { display: flex; flex-direction: column; gap: 4px; }
 .prose-field span { color: #aaa; font-size: 13px; font-weight: 500; }

@@ -16,10 +16,15 @@ export const LotoStandardStatusName = {
 export type LotoStandardStatusValue = typeof LotoStandardStatusName[keyof typeof LotoStandardStatusName];
 
 export const LotoRole = {
+  // Canonical roles
+  CONTROL_AUTHORITY: 'CONTROL_AUTHORITY',
+  LOTO_QUALIFIED: 'LOTO_QUALIFIED',
+  REQUESTOR: 'REQUESTOR',
+  MANAGER: 'MANAGER',
+  // Legacy aliases (treated as CONTROL_AUTHORITY / LOTO_QUALIFIED by AuthService helpers)
   AFFECTED: 'AFFECTED',
   AUTHORIZED: 'AUTHORIZED',
   QUALIFIED: 'QUALIFIED',
-  MANAGER: 'MANAGER',
 } as const;
 
 export type LotoRoleValue = typeof LotoRole[keyof typeof LotoRole];
@@ -108,10 +113,10 @@ export function endpointForTarget(targetStatus: string): string | null {
   }
 }
 
-/** Required role for each transition. */
+/** Required role for each transition. Final APPROVED is manager-only; all others are CA. */
 export function roleForTarget(targetStatus: string): LotoRoleValue {
   switch (targetStatus) {
     case LotoStandardStatusName.APPROVED: return LotoRole.MANAGER;
-    default: return LotoRole.QUALIFIED;
+    default: return LotoRole.CONTROL_AUTHORITY;
   }
 }

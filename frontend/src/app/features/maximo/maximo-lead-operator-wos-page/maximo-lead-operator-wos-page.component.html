@@ -1,0 +1,41 @@
+<app-main-layout header="Maximo — Lead Operator WOs">
+  <ng-container header>
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </ng-container>
+  <ng-container main-content>
+    <div class="mx-page">
+
+      <section class="bar">
+        <button (click)="load()" [disabled]="loading()">
+          {{ loading() ? 'Loading…' : (loaded() ? 'Refresh' : 'Load') }}
+        </button>
+        <span class="muted">
+          All Maximo work orders assigned to any local user with the
+          <code>LEAD_OPERATOR</code> role.
+        </span>
+        <span class="muted" *ngIf="lastLoaded() as t">· last loaded {{ t.toLocaleTimeString() }}</span>
+        <span *ngIf="error()" class="error">{{ error() }}</span>
+      </section>
+
+      <div class="results-header">
+        <h3>Results <span class="muted" *ngIf="loaded()">({{ list().length }})</span></h3>
+      </div>
+
+      <div *ngIf="!loaded()" class="muted empty-msg">Click Load to fetch.</div>
+
+      <app-maximo-table *ngIf="loaded()"
+        [columns]="columns"
+        [items]="list()"
+        emptyMessage="No work orders are assigned to any Lead Operator right now."
+        (rowDoubleClicked)="openDetail($event)">
+      </app-maximo-table>
+
+      <app-maximo-detail-dialog
+        *ngIf="selectedWo()"
+        [parent]="'wo'"
+        [wo]="selectedWo()"
+        (closed)="closeDetail()">
+      </app-maximo-detail-dialog>
+    </div>
+  </ng-container>
+</app-main-layout>

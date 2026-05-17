@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MainLayoutComponent } from '../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../shared/menu/router-menu/router-menu.component';
 import { MaximoApiService } from '../../../services/maximo/maximo-api.service';
+import { MaximoTableComponent } from '../maximo-table/maximo-table.component';
 import {
   CreateMaximoServiceRequest,
   MaximoAsset,
@@ -11,6 +12,7 @@ import {
   MaximoServiceRequest,
   MaximoWorkOrder
 } from '../../../models/maximo/maximo.models';
+import { ASSET_COLUMNS } from '../maximo-table-configs';
 import { firstValueFrom } from 'rxjs';
 
 type Tab = 'sr' | 'wo' | 'att';
@@ -18,12 +20,14 @@ type Tab = 'sr' | 'wo' | 'att';
 @Component({
   selector: 'app-maximo-assets-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent],
+  imports: [CommonModule, FormsModule, MainLayoutComponent, RouterMenuComponent, MaximoTableComponent],
   templateUrl: './maximo-assets-page.component.html',
   styleUrl: './maximo-assets-page.component.css'
 })
 export class MaximoAssetsPageComponent {
   private api = inject(MaximoApiService);
+
+  readonly columns = ASSET_COLUMNS;
 
   // search
   searchTag = '';

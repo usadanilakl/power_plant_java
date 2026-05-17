@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GridsterModule, GridsterConfig, GridsterItem, GridType, CompactType, DisplayGrid } from 'angular-gridster2';
-import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, APP_DISPLAY_NAME } from '../../services/electron.service';
+import { ElectronService, AppStatus, WeatherStatus, WeatherForecast, PerryWeatherStatus, PjmStatus, GateLogEntry, GateLogStatus, MaximoLeadOpSummary, APP_DISPLAY_NAME } from '../../services/electron.service';
 import { DashboardLayoutService, WidgetPlacement, WidgetId, WIDGET_REGISTRY, LayoutPreset } from '../../services/dashboard-layout.service';
 import { FireImpairmentWidgetComponent } from './widgets/fire-impairment-widget.component';
 import { GateLogWidgetComponent } from './widgets/gate-log-widget.component';
 import { WeatherWidgetComponent } from './widgets/weather-widget.component';
 import { PjmWidgetComponent } from './widgets/pjm-widget.component';
 import { PermitsWidgetComponent } from './widgets/permits-widget.component';
+import { MaximoWidgetComponent } from './widgets/maximo-widget.component';
 import { ExternalLinksWidgetComponent } from './widgets/external-links-widget.component';
 import { ContactsWidgetComponent } from './widgets/contacts-widget.component';
 import { PagingWidgetComponent } from './widgets/paging-widget.component';
@@ -31,7 +32,7 @@ interface DashboardGridsterItem extends GridsterItem {
   imports: [
     CommonModule, RouterModule, GridsterModule,
     FireImpairmentWidgetComponent, GateLogWidgetComponent, WeatherWidgetComponent,
-    PjmWidgetComponent, PermitsWidgetComponent, ExternalLinksWidgetComponent,
+    PjmWidgetComponent, PermitsWidgetComponent, MaximoWidgetComponent, ExternalLinksWidgetComponent,
     ContactsWidgetComponent, PagingWidgetComponent, ClockWidgetComponent,
     NotesWidgetComponent, PersonnelWidgetComponent, ToiWidgetComponent,
     DashboardEditToolbarComponent,
@@ -134,6 +135,9 @@ interface DashboardGridsterItem extends GridsterItem {
             <app-permits-widget *ngSwitchCase="'permits'"
               [status]="status" [activeWorkRequestCount]="activeWorkRequestCount"
               [newWorkRequestCount]="newWorkRequestCount"
+              [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
+            <app-maximo-widget *ngSwitchCase="'maximo-lead-op'"
+              [status]="status" [summary]="maximoLeadOpSummary"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
             <app-external-links-widget *ngSwitchCase="'external-links'"
               [editMode]="editMode" [cols]="item.cols" [rows]="item.rows" />
@@ -283,6 +287,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   activeImpairmentCount: number | null = null;
   newWorkRequestCount: number | null = null;
   activeWorkRequestCount: number | null = null;
+  maximoLeadOpSummary: MaximoLeadOpSummary | null = null;
   weatherStatus: WeatherStatus | null = null;
   weatherForecast: WeatherForecast | null = null;
   perryStatus: PerryWeatherStatus | null = null;
@@ -471,6 +476,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (!wasRunning && s.state === 'running') {
         this.loadFireImpCount();
         this.loadWorkRequestCount();
+        this.loadMaximoLeadOpSummary();
       }
     });
 
@@ -583,6 +589,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.newWorkRequestCount = result.data.newCount;
         this.activeWorkRequestCount = result.data.activeCount;
       }
+    } catch {}
+  }
+
+  private async loadMaximoLeadOpSummary(): Promise<void> {
+    try {
+      const result = await this.electronService.maximoGetLeadOpSummary('APPR');
+      if (result.success && result.data) this.maximoLeadOpSummary = result.data;
     } catch {}
   }
 

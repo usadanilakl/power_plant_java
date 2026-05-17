@@ -159,6 +159,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getWorkRequestCount: (): Promise<IpcResult<{ newCount: number; activeCount: number }>> => ipcRenderer.invoke(events.IPC_WORK_REQUEST_COUNT),
   openPermitsMonitor: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_PERMITS_OPEN_MONITOR),
 
+  // Maximo bundles
+  maximoGetLeadOpSummary: (status?: string): Promise<IpcResult<{ count: number; top: any[] }>> =>
+    ipcRenderer.invoke(events.IPC_MAXIMO_LEAD_OP_SUMMARY, status),
+
   // Window Layout
   saveWindowLayout: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_LAYOUT_SAVE),
 

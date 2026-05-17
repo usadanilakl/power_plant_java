@@ -44,4 +44,9 @@ public interface UserRepo extends BaseRepository<User> {
     boolean existsByWindowsUsername(String windowsUsername);
 
     java.util.List<User> findByIsActiveTrue();
+
+    /** Find candidates for PIN step-up by signing initials prefix (case-insensitive). */
+    java.util.List<User> findBySigningInitialsIgnoreCase(String signingInitials);
+
+    boolean existsBySigningInitialsIgnoreCaseAndIdNot(String signingInitials, Long id);
 }
