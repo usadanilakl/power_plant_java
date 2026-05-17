@@ -19,6 +19,12 @@ export interface UserModel extends BaseModel {
   phone: string;
   company: string;
   signaturePath: string;
+  // PIN authentication (read-only)
+  signingInitials: string | null;
+  pinSetAt: string | null;
+  pinLockedUntil: string | null;
+  trainingCompletedAt: string | null;
+  trainingExpiresAt: string | null;
 }
 
 export class UserDto extends BaseDto implements UserModel {
@@ -34,6 +40,11 @@ export class UserDto extends BaseDto implements UserModel {
   phone: string;
   company: string;
   signaturePath: string;
+  signingInitials: string | null;
+  pinSetAt: string | null;
+  pinLockedUntil: string | null;
+  trainingCompletedAt: string | null;
+  trainingExpiresAt: string | null;
 
   constructor(data: Partial<UserModel> = {}) {
     super(data);
@@ -49,6 +60,11 @@ export class UserDto extends BaseDto implements UserModel {
     this.phone = data.phone ?? '';
     this.company = data.company ?? '';
     this.signaturePath = data.signaturePath ?? '';
+    this.signingInitials = data.signingInitials ?? null;
+    this.pinSetAt = data.pinSetAt ?? null;
+    this.pinLockedUntil = data.pinLockedUntil ?? null;
+    this.trainingCompletedAt = data.trainingCompletedAt ?? null;
+    this.trainingExpiresAt = data.trainingExpiresAt ?? null;
   }
 
   override toJson(): any {
@@ -85,6 +101,11 @@ export class UserDto extends BaseDto implements UserModel {
       phone: json.phone ?? '',
       company: json.company ?? '',
       signaturePath: json.signaturePath ?? '',
+      signingInitials: json.signingInitials ?? null,
+      pinSetAt: json.pinSetAt ?? null,
+      pinLockedUntil: json.pinLockedUntil ?? null,
+      trainingCompletedAt: json.trainingCompletedAt ?? null,
+      trainingExpiresAt: json.trainingExpiresAt ?? null,
     });
   }
 

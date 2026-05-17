@@ -47,6 +47,24 @@ export class UserService {
     return this.http.put<SpringApiResponse<UserDto>>(`${this.apiUrl}/${id}`, user);
   }
 
+  // ── PIN administration (admin-only endpoints under /api/auth/admin/users/:id) ──
+
+  /** Set or change a user's signing initials (2-3 letters). Admin-only. */
+  setSigningInitials(userId: number, initials: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${environment.apiUrl}/auth/admin/users/${userId}/initials`,
+      { initials },
+    );
+  }
+
+  /** Generate a fresh random PIN for a user. Returns the cleartext PIN ONCE. Admin-only. */
+  resetUserPin(userId: number): Observable<{ pin: string; message: string }> {
+    return this.http.post<{ pin: string; message: string }>(
+      `${environment.apiUrl}/auth/admin/users/${userId}/pin/reset`,
+      {},
+    );
+  }
+
   deleteUser(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }

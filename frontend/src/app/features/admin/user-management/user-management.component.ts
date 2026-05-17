@@ -127,7 +127,7 @@ interface UserForm {
               <th>Role</th>
               <th>Permission</th>
               <th>Status</th>
-              <th>Windows User</th>
+              <th>Sign-in code</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -138,7 +138,33 @@ interface UserForm {
               <td><span *ngFor="let r of user.roles" class="badge" [ngClass]="getRoleBadgeClass(r)" style="margin-right:4px">{{ formatRole(r) }}</span></td>
               <td><span class="badge" [ngClass]="getPermissionBadgeClass(user.permissionLevel)">{{ user.permissionLevel || 'NONE' }}</span></td>
               <td><span class="badge" [ngClass]="user.isActive ? 'badge-active' : 'badge-inactive'">{{ user.isActive ? 'Active' : 'Inactive' }}</span></td>
-              <td>{{ user.windowsUsername }}</td>
+              <td>
+                <!-- Initials inline editor + PIN status -->
+                <div class="pin-cell">
+                  <ng-container *ngIf="editingInitialsFor === user.id; else displayInitials">
+                    <input type="text" class="initials-input" maxlength="3"
+                           [(ngModel)]="initialsDraft"
+                           (keydown.enter)="saveInitials(user)"
+                           (keydown.escape)="cancelInitialsEdit()"
+                           autofocus placeholder="DK">
+                    <button class="btn-mini save" (click)="saveInitials(user)">✓</button>
+                    <button class="btn-mini cancel" (click)="cancelInitialsEdit()">×</button>
+                  </ng-container>
+                  <ng-template #displayInitials>
+                    <span class="initials" *ngIf="user.signingInitials; else noInitials">{{ user.signingInitials }}</span>
+                    <ng-template #noInitials><span class="initials none">—</span></ng-template>
+                    <button class="btn-mini" title="Edit initials" (click)="startInitialsEdit(user)">✎</button>
+                  </ng-template>
+                  <span class="pin-status" *ngIf="user.pinSetAt; else noPin">
+                    <span class="badge badge-pin-set">PIN set</span>
+                    <span *ngIf="isPinLocked(user)" class="badge badge-pin-locked">Locked</span>
+                  </span>
+                  <ng-template #noPin><span class="badge badge-pin-none">no PIN</span></ng-template>
+                  <button class="btn-mini reset" title="Generate new PIN" (click)="generatePin(user)" [disabled]="!user.signingInitials">
+                    🔄
+                  </button>
+                </div>
+              </td>
               <td>
                 <button class="btn edit" (click)="openEditForm(user)">Edit</button>
                 <button class="btn deny" (click)="confirmDelete(user)">Delete</button>
@@ -146,6 +172,22 @@ interface UserForm {
             </tr>
           </tbody>
         </table>
+
+        <!-- Generated-PIN one-time-display dialog -->
+        <div *ngIf="generatedPinUser" class="pin-dialog-backdrop" (click)="dismissPinDialog()">
+          <div class="pin-dialog" (click)="$event.stopPropagation()">
+            <h3>PIN generated for {{ generatedPinUser.name }}</h3>
+            <p class="pin-help">Read this aloud, write it down, or copy it now. It can't be shown again.</p>
+            <div class="pin-display">
+              <span class="pin-initials">{{ generatedPinUser.signingInitials }}</span><span class="pin-digits">{{ generatedPin }}</span>
+            </div>
+            <p class="pin-help-secondary">User will be prompted to change it on their first PIN-based action.</p>
+            <div class="form-actions">
+              <button class="btn approve" (click)="copyPinToClipboard()">Copy {{ generatedPinUser.signingInitials }}{{ generatedPin }}</button>
+              <button class="btn cancel" (click)="dismissPinDialog()">Done</button>
+            </div>
+          </div>
+        </div>
         <div *ngIf="filteredUsers.length === 0 && !isLoading" class="empty">No users found</div>
         <div *ngIf="isLoading" class="empty">Loading...</div>
 
@@ -284,6 +326,30 @@ interface UserForm {
     .role-checkbox input[type="checkbox"] { width: 14px; height: 14px; }
     .btn:hover { opacity: 0.85; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .pin-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .initials { font-family: 'Courier New', monospace; font-weight: 700; color: #82b1ff; background: #0a1a30; padding: 3px 8px; border-radius: 4px; letter-spacing: 1px; }
+    .initials.none { color: #555; background: transparent; padding: 0; }
+    .initials-input { width: 60px; padding: 4px 6px; border: 1px solid #533483; border-radius: 4px; background: #0f3460; color: #e0e0e0; font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 13px; }
+    .btn-mini { background: none; border: 1px solid #444; color: #aaa; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+    .btn-mini:hover { background: #2a2a3a; color: #fff; }
+    .btn-mini.save { color: #81c784; border-color: #2d8a4e; }
+    .btn-mini.cancel { color: #ef9a9a; border-color: #c0392b; }
+    .btn-mini.reset { color: #82b1ff; }
+    .btn-mini:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pin-status { display: inline-flex; gap: 4px; }
+    .badge-pin-set { background: rgba(45, 138, 78, 0.25); color: #81c784; }
+    .badge-pin-none { background: rgba(192, 57, 43, 0.18); color: #ef9a9a; }
+    .badge-pin-locked { background: rgba(230, 126, 34, 0.25); color: #ffb74d; }
+
+    .pin-dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .pin-dialog { background: #16213e; border: 2px solid #533483; border-radius: 10px; padding: 24px; min-width: 400px; box-shadow: 0 12px 36px rgba(0,0,0,0.6); }
+    .pin-dialog h3 { color: #82b1ff; margin: 0 0 8px; }
+    .pin-help { color: #aaa; font-size: 13px; margin: 0 0 16px; }
+    .pin-help-secondary { color: #888; font-size: 12px; font-style: italic; margin: 12px 0; }
+    .pin-display { text-align: center; padding: 16px; background: #0a1a30; border-radius: 6px; margin: 8px 0; }
+    .pin-initials { font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; color: #82b1ff; letter-spacing: 4px; }
+    .pin-digits { font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; color: #ffd54f; letter-spacing: 6px; margin-left: 4px; }
 
     .empty { color: #666; font-style: italic; padding: 20px 0; text-align: center; }
     .error-message {
@@ -465,6 +531,79 @@ export class UserManagementComponent implements OnInit {
     if (level === 'OPERATOR') return 'badge-admin';
     if (level === 'BASIC') return 'badge-employee';
     return 'badge-inactive';
+  }
+
+  // ── PIN administration ────────────────────────────────────────────────────
+  editingInitialsFor: number | null = null;
+  initialsDraft = '';
+  generatedPinUser: UserDto | null = null;
+  generatedPin = '';
+
+  startInitialsEdit(user: UserDto): void {
+    this.editingInitialsFor = user.id;
+    this.initialsDraft = (user.signingInitials ?? '').toUpperCase();
+  }
+
+  cancelInitialsEdit(): void {
+    this.editingInitialsFor = null;
+    this.initialsDraft = '';
+  }
+
+  saveInitials(user: UserDto): void {
+    const initials = (this.initialsDraft ?? '').trim().toUpperCase();
+    if (!/^[A-Z]{2,3}$/.test(initials)) {
+      this.errorMessage = 'Initials must be 2 or 3 letters';
+      return;
+    }
+    this.clearMessages();
+    this.userService.setSigningInitials(user.id, initials).subscribe({
+      next: () => {
+        user.signingInitials = initials;
+        this.cancelInitialsEdit();
+        this.successMessage = `Initials set to ${initials} for ${user.name}`;
+      },
+      error: (err) => {
+        this.errorMessage = err?.error?.message ?? 'Failed to save initials';
+      }
+    });
+  }
+
+  generatePin(user: UserDto): void {
+    if (!user.signingInitials) {
+      this.errorMessage = 'Assign initials before generating a PIN';
+      return;
+    }
+    if (!confirm(`Generate a new PIN for ${user.name}? Any existing PIN for this user will be invalidated.`)) return;
+    this.clearMessages();
+    this.userService.resetUserPin(user.id).subscribe({
+      next: (res) => {
+        this.generatedPinUser = user;
+        this.generatedPin = res.pin;
+        // Refresh user record so pinSetAt is reflected in the list
+        user.pinSetAt = new Date().toISOString();
+        user.pinLockedUntil = null;
+      },
+      error: (err) => {
+        this.errorMessage = err?.error?.message ?? 'Failed to generate PIN';
+      }
+    });
+  }
+
+  copyPinToClipboard(): void {
+    const code = `${this.generatedPinUser?.signingInitials ?? ''}${this.generatedPin}`;
+    if (navigator.clipboard && code) {
+      navigator.clipboard.writeText(code);
+    }
+  }
+
+  dismissPinDialog(): void {
+    this.generatedPinUser = null;
+    this.generatedPin = '';
+  }
+
+  isPinLocked(user: UserDto): boolean {
+    if (!user.pinLockedUntil) return false;
+    return new Date(user.pinLockedUntil) > new Date();
   }
 
   toggleRole(role: string, event: Event): void {

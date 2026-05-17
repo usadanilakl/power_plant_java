@@ -30,4 +30,10 @@ public class UserDto extends BaseDto {
     private String company;
     private String signaturePath;
 
+    // PIN authentication (read-only on the wire; password-equivalents are not exposed)
+    private String signingInitials;
+    private LocalDateTime pinSetAt;
+    private LocalDateTime pinLockedUntil;
+    private LocalDateTime trainingCompletedAt;
+    private LocalDateTime trainingExpiresAt;
 }
