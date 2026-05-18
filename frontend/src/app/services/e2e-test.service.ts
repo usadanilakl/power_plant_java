@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
@@ -210,5 +210,150 @@ export class E2eTestService {
   /** Fetch a loto point from a remote instance via public verification endpoint */
   getLotoPointFromRemote(remoteBaseUrl: string, lpId: string): Observable<SpringApiResponse<any>> {
     return this.http.get<SpringApiResponse<any>>(`${remoteBaseUrl}/ng/config/e2e-verify/loto-point/${lpId}`);
+  }
+
+  // ==================== Users (admin provisioning for the harness) ====================
+
+  /** Admin: create a user. Returns the created UserDto with the assigned id. */
+  createUser(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.baseUrl}/ng/users`, payload);
+  }
+
+  /** List active users — used by the harness to sweep stale `@e2e.local` accounts. */
+  listActiveUsers(): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(`${this.baseUrl}/ng/users/all-options`);
+  }
+
+  /** Admin: assign signing initials (2-3 letters) to a user. */
+  setSigningInitials(userId: number, initials: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/api/auth/admin/users/${userId}/initials`,
+      { initials }
+    );
+  }
+
+  /**
+   * Admin (test profile only): set a user's PIN to an exact value. Skips
+   * trivial-PIN and uniqueness checks so the harness can use deterministic
+   * codes like 1111. Gated server-side by `e2e.test-endpoints.enabled`.
+   */
+  setTestPin(userId: number, pin: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/api/auth/admin/users/${userId}/pin/set-test`,
+      { pin }
+    );
+  }
+
+  /** Admin (test profile only): clear PIN lockout for a user. */
+  unlockPin(userId: number): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.baseUrl}/api/auth/admin/users/${userId}/pin/unlock`,
+      {}
+    );
+  }
+
+  /** Admin: soft-delete a user. Used to clean up test users after a run. */
+  deleteUser(userId: number): Observable<SpringApiResponse<any>> {
+    return this.http.delete<SpringApiResponse<any>>(`${this.baseUrl}/ng/users/${userId}`);
+  }
+
+  // ==================== Step-up auth ====================
+
+  /**
+   * Exchange a combined initials+PIN code (e.g. "DK1111") for a single-use
+   * token. The token expires in ~90s and is consumed on first use.
+   */
+  authorizeStepUp(code: string): Observable<{ token: string; expiresAt: string }> {
+    return this.http.post<{ token: string; expiresAt: string }>(
+      `${this.baseUrl}/api/auth/step-up`,
+      { code }
+    );
+  }
+
+  // ==================== LOTO Standards ====================
+
+  createLotoStandard(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-standards`, payload);
+  }
+
+  getLotoStandard(id: string | number): Observable<SpringApiResponse<any>> {
+    return this.http.get<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-standards/${id}`);
+  }
+
+  /** Standard workflow transitions — all POST, all accept optional step-up token. */
+  workflowSubmitForVerification(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/submit-for-verification`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  workflowVerify(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/verify`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  workflowMarkWalkdownComplete(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/walkdown-complete`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  workflowMarkReadyForTesting(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/ready-for-testing`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  workflowApprove(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/approve`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  workflowSendBackToDraft(id: string | number, stepUpToken?: string | null, notes?: string): Observable<SpringApiResponse<any>> {
+    return this.http.post<SpringApiResponse<any>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/send-back-to-draft`,
+      { notes: notes ?? null },
+      this.stepUpOptions(stepUpToken)
+    );
+  }
+
+  getStandardWorkflowHistory(id: string | number): Observable<SpringApiResponse<any[]>> {
+    return this.http.get<SpringApiResponse<any[]>>(
+      `${this.baseUrl}/ng/loto-standards/${id}/workflow/history`
+    );
+  }
+
+  /** Update a LOTO Point — used by tests to trigger auto-invalidation on an APPROVED standard. */
+  updateLotoStandardPoint(payload: any): Observable<SpringApiResponse<any>> {
+    return this.http.put<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-points`, payload);
+  }
+
+  /** Soft-delete a LOTO standard (cleanup after a run). */
+  deleteLotoStandard(id: string | number): Observable<SpringApiResponse<any>> {
+    return this.http.delete<SpringApiResponse<any>>(`${this.baseUrl}/ng/loto-standards/${id}`);
+  }
+
+  // ==================== Helpers ====================
+
+  /**
+   * Build HTTP options that attach X-Sign-As-Token when a step-up token is
+   * provided, else no extra headers. Returned in the shape Angular's
+   * HttpClient.post accepts as its third arg.
+   */
+  private stepUpOptions(stepUpToken?: string | null): { headers?: HttpHeaders } {
+    if (!stepUpToken) return {};
+    return { headers: new HttpHeaders({ 'X-Sign-As-Token': stepUpToken }) };
   }
 }

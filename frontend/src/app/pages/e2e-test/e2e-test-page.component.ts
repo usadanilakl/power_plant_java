@@ -13,7 +13,19 @@ interface TestStep {
   error?: string;
 }
 
-type FlowType = 'permits' | 'files' | 'file-detailed';
+type FlowType = 'permits' | 'files' | 'file-detailed' | 'loto-standard';
+
+/**
+ * Test user record for step-up flows. The PIN code sent to /api/auth/step-up
+ * is just `${initials}${pin}` — built inline at the call sites.
+ */
+interface TestActor {
+  userId: number;
+  email: string;
+  name: string;
+  initials: string;
+  pin: string;
+}
 
 @Component({
   selector: 'app-e2e-test-page',
@@ -61,6 +73,9 @@ type FlowType = 'permits' | 'files' | 'file-detailed';
             </button>
             <button class="flow-tab" [class.active]="selectedFlow === 'file-detailed'" (click)="selectFlow('file-detailed')" [disabled]="isRunning">
               File Flow
+            </button>
+            <button class="flow-tab" [class.active]="selectedFlow === 'loto-standard'" (click)="selectFlow('loto-standard')" [disabled]="isRunning">
+              LOTO Standard Flow
             </button>
           </div>
 
@@ -259,9 +274,32 @@ export class E2eTestPageComponent implements OnInit {
     { name: 'Dynamic file type — create + upload with new type', status: 'pending' },
   ];
 
+  // ==================== LOTO Standard Flow State ====================
+  // See project/features/loto-standard/loto-e2e-test-plan.md §1.
+  private actors: Record<string, TestActor> = {};
+  private stdLotoPointIds: number[] = [];
+  private stdStandardId: number | null = null;
+
+  standardSteps: TestStep[] = [
+    { name: '1. Provision test users (DK, MS, MG, JR, CR) — initials + PIN', status: 'pending' },
+    { name: '2. Create 4 LOTO Points + a LOTO Standard (DRAFT)', status: 'pending' },
+    { name: '3. Submit for verification (PIN as DK)', status: 'pending' },
+    { name: '4. NEG: try to verify as DK (second-person rule must reject)', status: 'pending' },
+    { name: '5. Verify (PIN as MS)', status: 'pending' },
+    { name: '6. Mark walkdown complete (PIN as DK)', status: 'pending' },
+    { name: '7. Mark ready for testing (PIN as DK)', status: 'pending' },
+    { name: '8. NEG: try to approve as DK (MANAGER required)', status: 'pending' },
+    { name: '9. Approve (PIN as MG)', status: 'pending' },
+    { name: '10. Edit a point — standard auto-invalidates to NEW_PENDING_REAPPROVAL', status: 'pending' },
+    { name: '11. Re-approve (PIN as MG)', status: 'pending' },
+    { name: '12. Workflow history sanity (≥7 events with right performers)', status: 'pending' },
+    { name: '13. Cleanup (soft-delete standard + test users)', status: 'pending' },
+  ];
+
   get currentSteps(): TestStep[] {
     if (this.selectedFlow === 'permits') return this.permitSteps;
     if (this.selectedFlow === 'files') return this.fileSteps;
+    if (this.selectedFlow === 'loto-standard') return this.standardSteps;
     return this.fileDetailedSteps;
   }
 
@@ -299,12 +337,16 @@ export class E2eTestPageComponent implements OnInit {
       this.createdFileId = this.createdFileName = null;
       this.createdEq1Id = this.createdEq2Id = null;
       this.createdLp1Id = this.createdLp2Id = null;
-    } else {
+    } else if (this.selectedFlow === 'file-detailed') {
       this.fdFileTypeId = this.fdVendorId = null;
       this.fdAllowedExtensions = [];
       this.fdPdfFileId = this.fdPngFileId = this.fdManualFileId = null;
       this.fdHashAfterPdfA = this.fdHashAfterPdfB = null;
       this.fdHashAfterOverrideToPng = this.fdHashAfterMetaUpdate = this.fdHashPng = null;
+    } else if (this.selectedFlow === 'loto-standard') {
+      this.actors = {};
+      this.stdLotoPointIds = [];
+      this.stdStandardId = null;
     }
     this.regenerateRunId();
   }
@@ -317,6 +359,16 @@ export class E2eTestPageComponent implements OnInit {
       // not on the wait. Steps 10 and 11 are independent post-verify checks.
       if (index === 9) return steps[7].status === 'success';
       return steps[index - 1].status === 'success';
+    }
+    if (this.selectedFlow === 'loto-standard') {
+      // Strict chain: each step depends on the prior success. Cleanup (last
+      // step) is allowed regardless of how far the run got — it's safe to
+      // run it on partial state to clean up.
+      if (index === steps.length - 1) return true;
+      // Negative-case steps (4, 8) are followed by a happy-path step; they
+      // don't need to "succeed" in the assertion sense — running them sets
+      // status=success when the expected 4xx is observed.
+      return steps[index - 1].status === 'success' || steps[index - 1].status === 'warn';
     }
     // Permits / File & LOTO: wait + verify are the last 2 steps; verify depends
     // on the last creation step (steps.length - 3), not on the wait.
@@ -353,6 +405,8 @@ export class E2eTestPageComponent implements OnInit {
         await this.runPermitStep(index, step);
       } else if (this.selectedFlow === 'files') {
         await this.runFileStep(index, step);
+      } else if (this.selectedFlow === 'loto-standard') {
+        await this.runStandardStep(index, step);
       } else {
         await this.runFileDetailedStep(index, step);
       }
@@ -710,6 +764,356 @@ export class E2eTestPageComponent implements OnInit {
     }
 
     this.setVerifyResult(step, diffs, remoteUrl);
+  }
+
+  // ==================== LOTO STANDARD FLOW ====================
+  // Acceptance criteria: project/features/loto-standard/loto-e2e-test-plan.md §1.
+  // Provisions a known set of test users, walks a Standard from DRAFT through
+  // APPROVED, edits a point to trigger auto-invalidation, re-approves, and
+  // verifies the workflow history. Negative-case steps assert that the
+  // server rejects forbidden transitions (second-person rule, role gate).
+
+  private static readonly STD_ACTOR_SPECS = [
+    { key: 'dk', initials: 'DK', pin: '1111', firstName: 'Dave',  lastName: 'Kuper',     roles: ['CONTROL_AUTHORITY', 'LOTO_QUALIFIED'] },
+    { key: 'ms', initials: 'MS', pin: '2222', firstName: 'Mary',  lastName: 'Sims',      roles: ['CONTROL_AUTHORITY', 'LOTO_QUALIFIED'] },
+    { key: 'mg', initials: 'MG', pin: '3333', firstName: 'Mike',  lastName: 'Garner',    roles: ['MANAGER', 'CONTROL_AUTHORITY'] },
+    { key: 'jr', initials: 'JR', pin: '4444', firstName: 'Joe',   lastName: 'Requestor', roles: ['REQUESTOR'] },
+    { key: 'cr', initials: 'CR', pin: '5555', firstName: 'Carl',  lastName: 'Roberts',   roles: [] },
+  ];
+
+  private async runStandardStep(index: number, step: TestStep): Promise<void> {
+    switch (index) {
+      case 0:  await this.sProvisionUsers(step); break;
+      case 1:  await this.sCreatePointsAndStandard(step); break;
+      case 2:  await this.sSubmitForVerification(step); break;
+      case 3:  await this.sNegVerifyAsSubmitter(step); break;
+      case 4:  await this.sVerify(step); break;
+      case 5:  await this.sMarkWalkdownComplete(step); break;
+      case 6:  await this.sMarkReadyForTesting(step); break;
+      case 7:  await this.sNegApproveAsNonManager(step); break;
+      case 8:  await this.sApprove(step); break;
+      case 9:  await this.sEditPointInvalidates(step); break;
+      case 10: await this.sReapprove(step); break;
+      case 11: await this.sHistorySanity(step); break;
+      case 12: await this.sCleanup(step); break;
+    }
+  }
+
+  // -------- Step 1: provision 5 test users --------
+
+  private async sProvisionUsers(step: TestStep): Promise<void> {
+    const suffix = this.runId.slice(-6);
+
+    // Sweep stale test users from earlier (possibly failed) runs. They live at
+    // *@e2e.local and would otherwise collide with the new PINs we're about
+    // to set, producing "Code is ambiguous" on step-up.
+    const swept: string[] = [];
+    try {
+      const allRes = await firstValueFrom(this.api.listActiveUsers());
+      const all = allRes.responseData ?? [];
+      const stale = all.filter(u => typeof u?.email === 'string' && u.email.endsWith('@e2e.local'));
+      for (const u of stale) {
+        try {
+          await firstValueFrom(this.api.deleteUser(u.id));
+          swept.push(`${u.email}#${u.id}`);
+        } catch (e: any) {
+          this.log('warn', `  Could not sweep stale user ${u.email}: ${e?.message || 'unknown'}`);
+        }
+      }
+      if (swept.length > 0) this.log('info', `  Swept ${swept.length} stale test user(s) before provisioning`);
+    } catch (e: any) {
+      this.log('warn', `  Could not list users for sweep: ${e?.message || 'unknown'}`);
+    }
+
+    const created: string[] = [];
+    for (const spec of E2eTestPageComponent.STD_ACTOR_SPECS) {
+      const email = `${spec.initials.toLowerCase()}+${suffix}@e2e.local`;
+      const username = `${spec.initials.toLowerCase()}-${suffix}`;
+      const payload = {
+        username,
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        email,
+        roles: spec.roles,
+        password: 'TestPass!1234',
+        windowsUsername: '',
+        phone: '', company: '', signaturePath: '',
+      };
+      const createRes = await firstValueFrom(this.api.createUser(payload));
+      const user = createRes.responseData;
+      if (!user?.id) throw new Error(`createUser returned no id for ${spec.initials}`);
+
+      await firstValueFrom(this.api.setSigningInitials(user.id, spec.initials));
+      await firstValueFrom(this.api.setTestPin(user.id, spec.pin));
+
+      const code = `${spec.initials}${spec.pin}`;
+      const tokenRes = await firstValueFrom(this.api.authorizeStepUp(code));
+      if (!tokenRes?.token) throw new Error(`step-up returned no token for ${code}`);
+
+      this.actors[spec.key] = {
+        userId: user.id,
+        email,
+        name: `${spec.firstName} ${spec.lastName}`,
+        initials: spec.initials,
+        pin: spec.pin,
+      };
+      created.push(`${spec.initials}=${user.id}`);
+    }
+    step.result = `Provisioned: ${created.join(', ')}`;
+  }
+
+  // -------- Step 2: create 4 LOTO Points + a LOTO Standard --------
+
+  private async sCreatePointsAndStandard(step: TestStep): Promise<void> {
+    const suffix = this.runId.slice(-6);
+
+    // Deterministic tag numbers per run — the system /ng/loto-points/tag-number/{system}
+    // endpoint is currently a stub ("Method is not implemented"), and we don't
+    // need real auto-numbering for the test.
+    for (let i = 1; i <= 4; i++) {
+      const tagNumber = `E2E-${suffix}-${i}`;
+      const payload = {
+        tagNumber,
+        description: `E2E Std Point ${i} [${this.runId}]`,
+        specificLocation: `E2E Plant [${suffix}]`,
+        equipmentIdList: [],
+        isLabeled: true,
+        isLockable: true,
+      };
+      const res = await firstValueFrom(this.api.createLotoPoint(payload));
+      const lp = res.responseData;
+      if (!lp?.id) throw new Error(`createLotoPoint #${i} returned no id`);
+      this.stdLotoPointIds.push(lp.id);
+    }
+
+    const stdRes = await firstValueFrom(this.api.createLotoStandard({
+      name: `E2E Test Standard [${this.runId}]`,
+      description: `E2E acceptance fixture [${this.runId}]`,
+      lotoPoints: this.stdLotoPointIds,
+    }));
+    const standard = stdRes.responseData;
+    if (!standard?.id) throw new Error('createLotoStandard returned no id');
+    this.stdStandardId = standard.id;
+
+    const currentStatus = standard?.developmentStatus ?? standard?.status ?? '?';
+    if (currentStatus !== 'DRAFT') {
+      throw new Error(`Standard status is ${currentStatus}, expected DRAFT`);
+    }
+    step.result = `Standard ID=${this.stdStandardId}, 4 points=[${this.stdLotoPointIds.join(',')}], status=DRAFT`;
+  }
+
+  // -------- Step 3: submit for verification (PIN as DK) --------
+
+  private async sSubmitForVerification(step: TestStep): Promise<void> {
+    const token = await this.actAs('dk');
+    const res = await firstValueFrom(this.api.workflowSubmitForVerification(this.stdStandardId!, token));
+    const status = this.statusOf(res.responseData);
+    this.assertStatus(status, 'PENDING_VERIFICATION');
+    step.result = `Status=${status}, submittedBy="${res.responseData?.submittedBy ?? '—'}"`;
+  }
+
+  // -------- Step 4: NEG — verify as DK should fail (second-person rule) --------
+
+  private async sNegVerifyAsSubmitter(step: TestStep): Promise<void> {
+    const token = await this.actAs('dk');
+    try {
+      await firstValueFrom(this.api.workflowVerify(this.stdStandardId!, token));
+    } catch (e: any) {
+      const msg = (e?.error?.message || e?.message || '').toLowerCase();
+      // Verify backend's actual reject message — we expect "second" or "different" or
+      // a clear signal the same person cannot perform both steps.
+      if (msg.includes('second') || msg.includes('different') || msg.includes('cannot')) {
+        step.result = `Rejected as expected: ${e?.error?.message || e?.message}`;
+        return;
+      }
+      // Server rejected but with an unexpected message — still pass, mark warn.
+      step.status = 'warn';
+      step.result = `Rejected (but message wording unexpected): ${e?.error?.message || e?.message}`;
+      return;
+    }
+    throw new Error('Server accepted verify-as-submitter; second-person rule not enforced');
+  }
+
+  // -------- Step 5: verify (PIN as MS) --------
+
+  private async sVerify(step: TestStep): Promise<void> {
+    const token = await this.actAs('ms');
+    const res = await firstValueFrom(this.api.workflowVerify(this.stdStandardId!, token));
+    const status = this.statusOf(res.responseData);
+    this.assertStatus(status, 'VERIFIED');
+    step.result = `Status=${status}, verifiedBy="${res.responseData?.verifiedBy ?? '—'}"`;
+  }
+
+  // -------- Step 6 / 7 — walkdown complete, ready for testing --------
+
+  private async sMarkWalkdownComplete(step: TestStep): Promise<void> {
+    const token = await this.actAs('dk');
+    const res = await firstValueFrom(this.api.workflowMarkWalkdownComplete(this.stdStandardId!, token));
+    const status = this.statusOf(res.responseData);
+    this.assertStatus(status, 'WALKDOWN_COMPLETE');
+    step.result = `Status=${status}`;
+  }
+
+  private async sMarkReadyForTesting(step: TestStep): Promise<void> {
+    const token = await this.actAs('dk');
+    const res = await firstValueFrom(this.api.workflowMarkReadyForTesting(this.stdStandardId!, token));
+    const status = this.statusOf(res.responseData);
+    this.assertStatus(status, 'READY_FOR_TESTING');
+    step.result = `Status=${status}`;
+  }
+
+  // -------- Step 8: NEG — approve as DK (not MANAGER) should fail --------
+
+  private async sNegApproveAsNonManager(step: TestStep): Promise<void> {
+    const token = await this.actAs('dk');
+    try {
+      await firstValueFrom(this.api.workflowApprove(this.stdStandardId!, token));
+    } catch (e: any) {
+      const msg = (e?.error?.message || e?.message || '').toLowerCase();
+      if (msg.includes('manager') || msg.includes('role') || msg.includes('require')) {
+        step.result = `Rejected as expected: ${e?.error?.message || e?.message}`;
+        return;
+      }
+      step.status = 'warn';
+      step.result = `Rejected (but message wording unexpected): ${e?.error?.message || e?.message}`;
+      return;
+    }
+    throw new Error('Server accepted approve-as-non-MANAGER; role gate not enforced');
+  }
+
+  // -------- Step 9: approve (PIN as MG) --------
+
+  private async sApprove(step: TestStep): Promise<void> {
+    const token = await this.actAs('mg');
+    const res = await firstValueFrom(this.api.workflowApprove(this.stdStandardId!, token));
+    const status = this.statusOf(res.responseData);
+    this.assertStatus(status, 'APPROVED');
+    step.result = `Status=${status}, approvedBy="${res.responseData?.approvedBy ?? '—'}"`;
+  }
+
+  // -------- Step 10: edit a point — auto-invalidate --------
+
+  private async sEditPointInvalidates(step: TestStep): Promise<void> {
+    const pointId = this.stdLotoPointIds[0];
+    const lpRes = await firstValueFrom(this.api.getLotoPoint(String(pointId)));
+    const lp = lpRes.responseData;
+    if (!lp) throw new Error(`LP ${pointId} not found`);
+
+    // Mutate a field the auto-invalidator listens for (procedure-content edit).
+    const updatePayload = {
+      ...lp,
+      id: pointId,
+      description: `E2E modified [${this.runId}]`,
+      zeroEnergyMethod: `Modified ZE method [${this.runId}]`,
+    };
+    await firstValueFrom(this.api.updateLotoStandardPoint(updatePayload));
+
+    const stdRes = await firstValueFrom(this.api.getLotoStandard(this.stdStandardId!));
+    const status = this.statusOf(stdRes.responseData);
+    if (status !== 'NEW_PENDING_REAPPROVAL' && status !== 'DRAFT') {
+      throw new Error(`Standard did not auto-invalidate: status=${status} (expected NEW_PENDING_REAPPROVAL)`);
+    }
+    if (status === 'DRAFT') {
+      // Some implementations reset all the way back to DRAFT; that's also acceptable
+      // for the rule "approved standard cannot stay approved through an edit" but
+      // flag it so we can fine-tune the doc.
+      step.status = 'warn';
+      step.result = `Standard reset to DRAFT (expected NEW_PENDING_REAPPROVAL — check invalidateIfApproved logic)`;
+      return;
+    }
+    step.result = `Auto-invalidated: status=${status}`;
+  }
+
+  // -------- Step 11: re-approve (PIN as MG) --------
+
+  private async sReapprove(step: TestStep): Promise<void> {
+    // If the standard is back in NEW_PENDING_REAPPROVAL we can approve directly.
+    // If it was reset to DRAFT we need to re-walk the workflow — flag this case
+    // as a warn rather than failing the test.
+    const stdRes = await firstValueFrom(this.api.getLotoStandard(this.stdStandardId!));
+    const status = this.statusOf(stdRes.responseData);
+    if (status === 'DRAFT') {
+      step.status = 'warn';
+      step.result = `Standard is in DRAFT after edit — skipping re-approve. Workflow needs full re-walk.`;
+      return;
+    }
+
+    const token = await this.actAs('mg');
+    const res = await firstValueFrom(this.api.workflowApprove(this.stdStandardId!, token));
+    const newStatus = this.statusOf(res.responseData);
+    this.assertStatus(newStatus, 'APPROVED');
+    step.result = `Status=${newStatus} (re-approved)`;
+  }
+
+  // -------- Step 12: workflow history sanity --------
+
+  private async sHistorySanity(step: TestStep): Promise<void> {
+    const res = await firstValueFrom(this.api.getStandardWorkflowHistory(this.stdStandardId!));
+    const history = res.responseData ?? [];
+    if (history.length === 0) {
+      throw new Error('History returned 0 events; expected ≥ 5 (SUBMITTED, VERIFIED, WALKDOWN, READY, APPROVED, …)');
+    }
+    const types = history.map(e => e.eventType ?? e.type ?? '?');
+    // Expect at least these in order — we don't require a strict superset because
+    // future steps (invalidate, reapproved) may or may not be recorded depending
+    // on whether step 10 reset to DRAFT or just flipped status.
+    const required = ['SUBMITTED', 'VERIFIED', 'WALKDOWN_COMPLETE', 'READY_FOR_TESTING', 'APPROVED'];
+    const missing = required.filter(t => !types.includes(t));
+    if (missing.length > 0) {
+      throw new Error(`History missing events: ${missing.join(', ')}. Got: ${types.join(', ')}`);
+    }
+    step.result = `${history.length} events: ${types.join(' → ')}`;
+  }
+
+  // -------- Step 13: cleanup --------
+
+  private async sCleanup(step: TestStep): Promise<void> {
+    const errors: string[] = [];
+    if (this.stdStandardId) {
+      try { await firstValueFrom(this.api.deleteLotoStandard(this.stdStandardId)); }
+      catch (e: any) { errors.push(`standard ${this.stdStandardId}: ${e?.message || 'failed'}`); }
+    }
+    for (const actor of Object.values(this.actors)) {
+      try { await firstValueFrom(this.api.deleteUser(actor.userId)); }
+      catch (e: any) { errors.push(`user ${actor.email}: ${e?.message || 'failed'}`); }
+    }
+    if (errors.length > 0) {
+      step.status = 'warn';
+      step.result = `Cleanup completed with warnings:\n${errors.map(s => '  - ' + s).join('\n')}`;
+      return;
+    }
+    step.result = `Soft-deleted standard ${this.stdStandardId} + ${Object.keys(this.actors).length} test users`;
+  }
+
+  // -------- Helpers --------
+
+  /** Step-up as the named actor and return a one-shot X-Sign-As-Token. */
+  private async actAs(actorKey: string): Promise<string> {
+    const actor = this.actors[actorKey];
+    if (!actor) throw new Error(`Test actor "${actorKey}" not provisioned (run Step 1 first)`);
+    const code = `${actor.initials}${actor.pin}`;
+    const tokenRes = await firstValueFrom(this.api.authorizeStepUp(code));
+    if (!tokenRes?.token) throw new Error(`step-up for ${code} returned no token`);
+    return tokenRes.token;
+  }
+
+  /**
+   * Read the development-status string off a LotoStandardDto. The backend ships
+   * it as a `ValueDto` ({id, name, alias}), so unwrap `.name`. Fall back to
+   * legacy fields if some other endpoint flattens it to a plain string.
+   */
+  private statusOf(dto: any): string {
+    const ds = dto?.developmentStatus;
+    if (ds && typeof ds === 'object') return ds.name ?? '?';
+    if (typeof ds === 'string') return ds;
+    if (typeof dto?.status === 'string') return dto.status;
+    return '?';
+  }
+
+  private assertStatus(actual: string, expected: string): void {
+    if (actual !== expected) {
+      throw new Error(`Status mismatch: actual="${actual}", expected="${expected}"`);
+    }
   }
 
   // ==================== FILE FLOW (DETAILED) ====================

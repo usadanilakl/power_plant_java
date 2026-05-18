@@ -140,6 +140,41 @@ public class PinManagementService {
     }
 
     /**
+     * Test-only: set a user's PIN to an exact value, skipping format/trivial-PIN
+     * and per-initials-group uniqueness checks, and clearing pinMustChange so
+     * tests don't have to walk a change-flow before stepping up. Gated behind
+     * the {@code e2e.test-endpoints.enabled} property so production builds
+     * never expose it.
+     */
+    @Transactional
+    public void setPinForTesting(Long userId, String rawPin) {
+        if (rawPin == null || rawPin.isBlank()) throw new PinException("PIN required");
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new PinException("User not found"));
+        user.setPinHash(passwordEncoder.encode(rawPin));
+        user.setPinSetAt(LocalDateTime.now());
+        user.setFailedPinAttempts(0);
+        user.setPinLockedUntil(null);
+        user.setPinResetRequestedAt(null);
+        user.setPinMustChange(Boolean.FALSE);
+        userRepo.save(user);
+    }
+
+    /**
+     * Test-only: clear lockout state on a user. Mirrors what a successful PIN
+     * authorize() would do, but available to the admin without going through
+     * a full reset.
+     */
+    @Transactional
+    public void unlockForTesting(Long userId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new PinException("User not found"));
+        user.setPinLockedUntil(null);
+        user.setFailedPinAttempts(0);
+        userRepo.save(user);
+    }
+
+    /**
      * User self-service: flag the account as "I forgot my PIN — please reset".
      * No PIN/credential is mutated here; admin still has to one-click reset
      * (which clears the flag and issues a new PIN they hand back). Idempotent:

@@ -558,6 +558,47 @@ public class AuthController {
         }
     }
 
+    // ── Test-only admin endpoints ─────────────────────────────────────────────
+    // Gated behind e2e.test-endpoints.enabled (default false in prod). Used by
+    // the e2e harness to provision deterministic test users.
+
+    @Value("${e2e.test-endpoints.enabled:false}")
+    private boolean e2eTestEndpointsEnabled;
+
+    /**
+     * Set a user's PIN to an exact value. Skips trivial-PIN blocking and
+     * uniqueness checks so tests can use predictable codes (DK1111, etc).
+     */
+    @PostMapping("/admin/users/{userId}/pin/set-test")
+    public ResponseEntity<?> adminSetTestPin(@PathVariable Long userId, @RequestBody SetTestPinRequest req) {
+        if (!e2eTestEndpointsEnabled) {
+            return ResponseEntity.status(403).body(Map.of("message", "Test endpoints disabled"));
+        }
+        try {
+            pinManagementService.setPinForTesting(userId, req.pin());
+            log.info("security.pin.test_set userId={}", userId);
+            return ResponseEntity.ok(Map.of("message", "Test PIN set"));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** Clear lockout state on a user. Test-only counterpart to a successful PIN flow. */
+    @PostMapping("/admin/users/{userId}/pin/unlock")
+    public ResponseEntity<?> adminUnlockPin(@PathVariable Long userId) {
+        if (!e2eTestEndpointsEnabled) {
+            return ResponseEntity.status(403).body(Map.of("message", "Test endpoints disabled"));
+        }
+        try {
+            pinManagementService.unlockForTesting(userId);
+            return ResponseEntity.ok(Map.of("message", "Unlocked"));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    public record SetTestPinRequest(String pin) {}
+
     public record LoginRequest(String credential, String password) {}
     public record UpdateProfileRequest(String firstName, String lastName, String password) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
