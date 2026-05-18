@@ -48,11 +48,13 @@ export class UserService {
   }
 
   // ── PIN administration (admin-only endpoints under /api/auth/admin/users/:id) ──
+  // Note: /api/auth is hosted at baseApiUrl (root), not under the /ng prefix that
+  // environment.apiUrl points at. Use baseApiUrl to build these URLs.
 
   /** Set or change a user's signing initials (2-3 letters). Admin-only. */
   setSigningInitials(userId: number, initials: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(
-      `${environment.apiUrl}/auth/admin/users/${userId}/initials`,
+      `${environment.baseApiUrl}/api/auth/admin/users/${userId}/initials`,
       { initials },
     );
   }
@@ -60,7 +62,7 @@ export class UserService {
   /** Generate a fresh random PIN for a user. Returns the cleartext PIN ONCE. Admin-only. */
   resetUserPin(userId: number): Observable<{ pin: string; message: string }> {
     return this.http.post<{ pin: string; message: string }>(
-      `${environment.apiUrl}/auth/admin/users/${userId}/pin/reset`,
+      `${environment.baseApiUrl}/api/auth/admin/users/${userId}/pin/reset`,
       {},
     );
   }
@@ -79,8 +81,8 @@ export class UserService {
     return this.http.post<SpringApiResponse<void>>(`${this.apiUrl}/${id}/change-password`, payload);
   }
 
-  getRoles(): Observable<{ roles: string[] }> {
-    return this.http.get<{ roles: string[] }>(`${this.apiUrl}/roles`);
+  getRoles(): Observable<{ roles: string[]; accessRoles?: string[]; lotoRoles?: string[] }> {
+    return this.http.get<{ roles: string[]; accessRoles?: string[]; lotoRoles?: string[] }>(`${this.apiUrl}/roles`);
   }
 
   seedPlantUsers(): Observable<SpringApiResponse<{ created: string[], skipped: string[] }>> {

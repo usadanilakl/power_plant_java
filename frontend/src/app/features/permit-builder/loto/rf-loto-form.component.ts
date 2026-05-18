@@ -14,6 +14,8 @@ import { LotoPointsPanelComponent } from './loto-points-panel/loto-points-panel.
 import { LotoService } from '../../../services/loto/loto.service';
 import { LotoStandardService } from '../../../services/loto/loto-standard.service';
 import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
+import { RfUserOptionService } from '../../users/services/rf-user-option.service';
+import { GlobalMessageService } from '../../../shared/global-message/global-message.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -40,6 +42,11 @@ import { MatIconModule } from '@angular/material/icon';
       <div class="toolbar">
         <button mat-stroked-button (click)="newLoto()">
           <mat-icon>add</mat-icon> New LOTO
+        </button>
+        <button mat-icon-button
+                (click)="refreshRoles()"
+                [title]="'Refresh session roles (' + (authService.currentUser?.roles?.join(\', \') || 'none') + ')'">
+          <mat-icon>refresh</mat-icon>
         </button>
 
         @if (entity().id) {
@@ -181,9 +188,13 @@ import { MatIconModule } from '@angular/material/icon';
               [title]="'LOTO'"
               [submitButtonText]="'Update'"
               [deleteButtonText]="'Delete'"
+              (formValueChange)="onFormValueChange($event)"
               (formSubmit)="onSubmit($event)"
               (formDelete)="onDelete()"
             ></app-rf-reactive-form>
+            @if (autoSaveStatus()) {
+              <div class="autosave-indicator">{{ autoSaveStatus() }}</div>
+            }
           </mat-tab>
           <mat-tab label="LOTO Points">
             <app-loto-points-panel></app-loto-points-panel>
@@ -258,15 +269,20 @@ import { MatIconModule } from '@angular/material/icon';
                 <tbody>
                   <tr>
                     <td>CA Approved for Hanging</td>
-                    <td>{{ latestEvent('caApprovedForHangingBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('caApprovedForHangingBy')) }}</td>
                     <td>{{ formatTime(latestEvent('caApprovedForHangingAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('ca-approve-hanging')" (click)="recordCaApprovedForHanging()">Approve for Hanging</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpApproveHanging()"
+                              (click)="openStepUp('ca-approve-hanging', 'CA: Approve for Hanging')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                     </td>
                   </tr>
                   <tr>
                     <td>Hung By</td>
-                    <td>{{ latestEvent('hungBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('hungBy')) }}</td>
                     <td>{{ formatTime(latestEvent('hungAt')) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
@@ -277,12 +293,17 @@ import { MatIconModule } from '@angular/material/icon';
                       <button mat-stroked-button class="aggregate-btn"
                               [disabled]="!canRecord('hung')"
                               (click)="recordHung()">Sign as Hung</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpHung()"
+                              (click)="openStepUp('mark-hung', 'Sign LOTO as Hung')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                       <span class="progress-note">{{ pointsHungProgress() }}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Verified By</td>
-                    <td>{{ latestEvent('verifiedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('verifiedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('verifiedAt')) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
@@ -293,6 +314,15 @@ import { MatIconModule } from '@angular/material/icon';
                       <button mat-stroked-button class="aggregate-btn"
                               [disabled]="!canRecord('verified')"
                               (click)="recordVerified()">Sign as Verified</button>
+                      <!-- Step-up path: another qualified user walks up, enters
+                           initials+PIN, and signs as Verified without the logged-in
+                           hanger logging out. Always offered while a Verify is
+                           pending (so the verifier never needs the hanger's roles). -->
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpVerify()"
+                              (click)="openStepUpForVerify()">
+                        <mat-icon>vpn_key</mat-icon> Sign as Verified (PIN)
+                      </button>
                       <span class="progress-note">{{ pointsVerifiedProgress() }}</span>
                     </td>
                   </tr>
@@ -310,21 +340,26 @@ import { MatIconModule } from '@angular/material/icon';
                   </tr>
                   <tr>
                     <td>CA Activated</td>
-                    <td>{{ latestEvent('caActivatedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('caActivatedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('caActivatedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('ca-activate')" (click)="recordCaActivated()">Activate as CA</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpActivate()"
+                              (click)="openStepUp('ca-activate', 'CA: Activate LOTO')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                     </td>
                   </tr>
                   <tr>
                     <td>Test Started By</td>
-                    <td>{{ latestEvent('testStartedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('testStartedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('testStartedAt')) || '—' }}</td>
                     <td><span class="auto-note">(auto on Test)</span></td>
                   </tr>
                   <tr>
                     <td>Re-Activated By</td>
-                    <td>{{ latestEvent('reactivatedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('reactivatedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('reactivatedAt')) || '—' }}</td>
                     <td><span class="auto-note">(auto on Re-Activate)</span></td>
                   </tr>
@@ -342,7 +377,7 @@ import { MatIconModule } from '@angular/material/icon';
                   </tr>
                   <tr>
                     <td>Requestor Accepted By</td>
-                    <td>{{ latestEvent('acceptedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('acceptedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('acceptedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('accept')" (click)="recordAccepted()">Accept</button>
@@ -350,18 +385,28 @@ import { MatIconModule } from '@angular/material/icon';
                   </tr>
                   <tr>
                     <td>Requestor Released By</td>
-                    <td>{{ latestEvent('requestorReleasedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('requestorReleasedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('requestorReleasedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('release')" (click)="recordRequestorReleased()">Release</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpRelease()"
+                              (click)="openStepUp('release-requestor', 'Requestor: Release LOTO')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                     </td>
                   </tr>
                   <tr>
                     <td>CA Released By</td>
-                    <td>{{ latestEvent('controlAuthorityReleasedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('controlAuthorityReleasedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('controlAuthorityReleasedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('release-ca')" (click)="recordCAReleased()">Release CA</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpReleaseCa()"
+                              (click)="openStepUp('release-ca', 'CA: Release LOTO')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                     </td>
                   </tr>
                   <tr>
@@ -378,15 +423,20 @@ import { MatIconModule } from '@angular/material/icon';
                   </tr>
                   <tr>
                     <td>Locks Removed By</td>
-                    <td>{{ latestEvent('locksRemovedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('locksRemovedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('locksRemovedAt')) || '—' }}</td>
                     <td>
                       <button mat-stroked-button [disabled]="!canRecord('remove-locks')" (click)="recordLocksRemoved()">Remove Locks</button>
+                      <button mat-stroked-button class="aggregate-btn"
+                              [disabled]="!canStepUpRemoveLocks()"
+                              (click)="openStepUp('remove-locks', 'CA: Remove Locks')">
+                        <mat-icon>vpn_key</mat-icon> (PIN)
+                      </button>
                     </td>
                   </tr>
                   <tr>
                     <td>Closed By</td>
-                    <td>{{ latestEvent('closedBy') || '—' }}</td>
+                    <td>{{ formatAuditBy(latestEvent('closedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('closedAt')) || '—' }}</td>
                     <td><span class="auto-note">(auto on Close)</span></td>
                   </tr>
@@ -417,6 +467,11 @@ import { MatIconModule } from '@angular/material/icon';
                   }
                   <div class="dialog-actions">
                     <button mat-stroked-button (click)="showTransferDialog.set(false)">Cancel</button>
+                    <button mat-stroked-button
+                            [disabled]="!transferTo()"
+                            (click)="confirmTransferWithPin()">
+                      <mat-icon>vpn_key</mat-icon> Confirm with PIN
+                    </button>
                     <button mat-raised-button color="primary" [disabled]="!transferTo()" (click)="confirmTransfer()">Confirm Transfer</button>
                   </div>
                 </div>
@@ -555,6 +610,15 @@ import { MatIconModule } from '@angular/material/icon';
     .snapshot-panel { padding: 16px; }
     .empty-text { color: #666; font-style: italic; }
 
+    .autosave-indicator {
+      padding: 4px 12px;
+      font-size: 12px;
+      color: #82b1ff;
+      font-style: italic;
+      text-align: right;
+      margin: -4px 16px 8px;
+    }
+
     .lifecycle-panel { padding: 16px; }
     .lifecycle-table { width: 100%; border-collapse: collapse; }
     .lifecycle-table th, .lifecycle-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; font-size: 13px; }
@@ -562,6 +626,26 @@ import { MatIconModule } from '@angular/material/icon';
     .lifecycle-table td:first-child { color: #ccc; font-weight: 600; width: 22%; }
     .auto-note { color: #777; font-style: italic; font-size: 12px; }
     .progress-note { margin-left: 10px; color: #888; font-size: 12px; }
+
+    /* Material's default disabled button text is near-invisible on a dark
+       background. Make disabled lifecycle actions readable but still clearly
+       disabled (dimmer than the enabled state but legible). */
+    .lifecycle-table button.mat-mdc-button[disabled],
+    .lifecycle-table button.mat-mdc-raised-button[disabled],
+    .lifecycle-table button.mat-mdc-outlined-button[disabled],
+    .lifecycle-table button.mat-mdc-stroked-button[disabled],
+    .lifecycle-table button[disabled].mat-stroked-button,
+    .lifecycle-table button[disabled].mat-raised-button,
+    .lifecycle-table button[disabled] {
+      color: #888 !important;
+      border-color: #555 !important;
+      background: transparent !important;
+      opacity: 1;
+    }
+    .lifecycle-table button.mat-mdc-raised-button[disabled],
+    .lifecycle-table button[disabled].mat-raised-button {
+      background: #2a2a2a !important;
+    }
 
 
     .close-disposition {
@@ -612,7 +696,9 @@ export class RfLotoFormComponent {
   protected authService = inject(AuthService);
   private walkdownSessionService = inject(WalkdownSessionService);
   private lotoStandardService = inject(LotoStandardService);
+  private userOptionService = inject(RfUserOptionService);
   private router = inject(Router);
+  private messageService = inject(GlobalMessageService);
 
   showStandardSelector = signal(false);
   showSignOnForm = signal(false);
@@ -631,7 +717,21 @@ export class RfLotoFormComponent {
   });
 
   entity = computed(() => this.currentService.selectedItem() ?? new LotoDto());
-  fields = computed(() => LotoDto.toFormFields(this.entity()) as RfFormField[]);
+  fields = computed(() => {
+    // lotoRequestor is persisted as a name string — build options whose
+    // value equals the label so the existing storage format is preserved.
+    const reqOpts = this.userOptionService.getFilteredOptions('REQUESTOR');
+    const caOpts = this.userOptionService.getFilteredOptions('CONTROL_AUTHORITY');
+    const seen = new Set<string>();
+    const requestorOptions = [...reqOpts, ...caOpts]
+      .map(o => ({ value: o.label, label: o.label }))
+      .filter(o => {
+        if (!o.label || seen.has(o.label)) return false;
+        seen.add(o.label);
+        return true;
+      });
+    return LotoDto.toFormFields(this.entity(), { requestorOptions }) as RfFormField[];
+  });
   statusName = computed(() => this.entity().permitStatus?.name || 'Building');
 
   newLoto(): void {
@@ -639,8 +739,54 @@ export class RfLotoFormComponent {
     this.showStandardSelector.set(false);
   }
 
+  /** Re-fetch /me so newly-granted roles take effect without re-login. */
+  refreshRoles(): void {
+    this.authService.refreshCurrentUser().subscribe();
+  }
+
+  /** Auto-save indicator text. Empty string = hidden. */
+  autoSaveStatus = signal<string>('');
+  /** Memo of last persisted form-data signature, to skip no-op auto-saves. */
+  private lastAutoSaveSignature = '';
+
+  /**
+   * Auto-save handler — rf-reactive-form already debounces value changes by 1s
+   * and merges the form value with the entity (so id, snapshots, equipment,
+   * etc. are preserved). We send the merged payload through the same update
+   * path as the manual button.
+   */
+  onFormValueChange(mergedData: any): void {
+    if (!mergedData) return;
+    const id = mergedData.id ?? this.entity().id;
+    if (!id) return;  // never auto-save before the LOTO exists server-side
+    const payload = { ...mergedData, id };
+    const sig = this.signatureOf(payload);
+    if (sig === this.lastAutoSaveSignature) return;
+    this.lastAutoSaveSignature = sig;
+    this.autoSaveStatus.set('Saving…');
+    this.currentService.processLotoChanges(payload, () => this.autoSaveStatus.set('Saved'));
+    setTimeout(() => {
+      if (this.autoSaveStatus() === 'Saved') this.autoSaveStatus.set('');
+    }, 1500);
+  }
+
+  /** Cheap deep-string signature for the form-shaped fields we care about. */
+  private signatureOf(p: any): string {
+    return JSON.stringify({
+      eq: p.equipmentSystem ?? null,
+      rq: p.lotoRequestor ?? null,
+      d: p.date ?? null,
+      bn: p.boxNumber ?? null,
+      lb: p.lotoBox?.id ?? p.lotoBox ?? null,
+      lk: (p.locks ?? []).map((l: any) => l?.id ?? l).sort(),
+      lp: (p.lotoPoints ?? []).map((lp: any) => lp?.id ?? lp).sort(),
+    });
+  }
+
   onSubmit(formData: any): void {
-    this.currentService.processLotoChanges(formData);
+    const id = formData?.id ?? this.entity().id;
+    const payload = { ...formData, id };
+    this.currentService.processLotoChanges(payload);
   }
 
   onDelete(): void {
@@ -792,6 +938,26 @@ export class RfLotoFormComponent {
     return d.toLocaleString();
   }
 
+  /**
+   * Decorate an audit-field value (email, possibly suffixed with
+   * "via:sessionHolder" by step-up flows) with signing initials when we can
+   * resolve them from the user cache. Returns something like:
+   *   "alice@plant.com [AB]"             (direct action)
+   *   "verifier@plant.com [VK] via hanger@plant.com [HG]"  (step-up'd)
+   */
+  formatAuditBy(audit: string | null | undefined): string {
+    if (!audit) return '—';
+    const decorate = (name: string): string => {
+      const u = this.userOptionService.getUserByIdentity(name);
+      if (u && u.signingInitials) return `${name} [${u.signingInitials}]`;
+      return name;
+    };
+    // "actor via:sessionHolder"
+    const m = audit.match(/^(.+?)\s+via:(.+)$/);
+    if (m) return `${decorate(m[1].trim())} via ${decorate(m[2].trim())}`;
+    return decorate(audit);
+  }
+
   canRecord(event: 'ca-approve-hanging' | 'ca-activate' | 'hung' | 'verified' | 'point-hung' | 'point-verified' | 'transfer' | 'accept' | 'release' | 'release-ca' | 'remove-locks'): boolean {
     const s = this.statusName();
     if (s === 'Closed') return false;
@@ -812,9 +978,13 @@ export class RfLotoFormComponent {
       case 'point-verified':
         return s === 'Building' && this.authService.isLotoQualified();
       case 'verified':
+        // Separation of duty: the person finalizing "Verified" must themselves
+        // have verified at least one point. Without this, anyone with the role
+        // could sign off on work they didn't do.
         return s === 'Building'
           && this.allPointsVerified()
           && (this.entity().lotoPoints?.length ?? 0) > 0
+          && this.isCurrentUserAVerifier()
           && this.authService.isLotoQualified();
       case 'ca-activate':
         return s === 'Building'
@@ -878,25 +1048,46 @@ export class RfLotoFormComponent {
   isPointVerified(pointId: number): boolean { return !!this.pointVerifiedBy(pointId); }
   isPointWalkedDown(pointId: number): boolean { return !!this.latestPointMap('pointWalkdownBy')[pointId]; }
 
+  /**
+   * Identity keys for "is this me?" comparisons against audit fields. The
+   * backend writes audit fields using Spring's principal username (= email,
+   * see CustomUserDetails) — but newer requestor pickers store the user's
+   * display name. So match against both name AND email to cover both cases.
+   */
+  private myIdentityKeys(): string[] {
+    const u = this.authService.currentUser;
+    if (!u) return [];
+    return [u.name, u.email].filter((v): v is string => !!v && v.trim().length > 0);
+  }
+
   /** True when the authenticated user is one of the people who hung at least one point. */
   isCurrentUserAHanger(): boolean {
-    const me = this.authService.currentUser?.name;
-    if (!me) return false;
-    return Object.values(this.latestPointMap('pointHungBy')).includes(me);
+    const ids = this.myIdentityKeys();
+    if (ids.length === 0) return false;
+    const hung = Object.values(this.latestPointMap('pointHungBy'));
+    return hung.some(v => ids.includes(v));
+  }
+
+  /** True when the authenticated user is one of the people who verified at least one point. */
+  isCurrentUserAVerifier(): boolean {
+    const ids = this.myIdentityKeys();
+    if (ids.length === 0) return false;
+    const verified = Object.values(this.latestPointMap('pointVerifiedBy'));
+    return verified.some(v => ids.includes(v));
   }
 
   /** True when the authenticated user is the current requestor on this LOTO. */
   isCurrentUserRequestor(): boolean {
-    const me = this.authService.currentUser?.name;
-    return !!me && me === this.entity().lotoRequestor;
+    const ids = this.myIdentityKeys();
+    const req = this.entity().lotoRequestor;
+    return !!req && ids.includes(req);
   }
 
   /** True when the authenticated user is the named recipient of a pending transfer. */
   isCurrentUserPendingTransferee(): boolean {
-    const me = this.authService.currentUser?.name;
-    if (!me) return false;
+    const ids = this.myIdentityKeys();
     const to = this.latestEvent('transferredTo');
-    return !!to && to === me;
+    return !!to && ids.includes(to);
   }
 
   // ── Phase 4: Modification / Test resume gating ────────────────────────────
@@ -968,7 +1159,12 @@ export class RfLotoFormComponent {
   // ── Step-up authorization (one-shot PIN entry) ────────────────────────────
 
   /** What action a pending step-up should authorize. Null = no dialog open. */
-  stepUpContext = signal<{ kind: 'accept-transfer'; label: string } | null>(null);
+  stepUpContext = signal<{
+    kind: 'accept-transfer' | 'mark-verified' | 'ca-approve-hanging' | 'mark-hung'
+        | 'ca-activate' | 'transfer' | 'release-requestor' | 'release-ca' | 'remove-locks';
+    label: string;
+    payload?: any;
+  } | null>(null);
 
   openStepUpForAccept(): void {
     const recipient = this.pendingTransferTo();
@@ -979,20 +1175,139 @@ export class RfLotoFormComponent {
     });
   }
 
+  /**
+   * Show the PIN dialog so the verifier can sign as themselves under the
+   * hanger's logged-in session. Eligibility (status, all points verified) is
+   * checked by canStepUpVerify(); role authorization happens on the server
+   * against the PIN-bearer.
+   */
+  openStepUpForVerify(): void {
+    if (!this.canStepUpVerify()) return;
+    this.stepUpContext.set({
+      kind: 'mark-verified',
+      label: 'Sign LOTO as Verified',
+    });
+  }
+
+  /**
+   * Can the "Sign as Verified (PIN)" button be clicked? Mirrors canRecord('verified')
+   * but skips the current-session role check — the PIN bearer's role is checked
+   * server-side once their token authorizes the request.
+   */
+  canStepUpVerify(): boolean {
+    const s = this.statusName();
+    return s === 'Building'
+      && this.allPointsVerified()
+      && (this.entity().lotoPoints?.length ?? 0) > 0;
+  }
+
+  /** "Approve for Hanging" — CA role checked server-side under PIN bearer's identity. */
+  canStepUpApproveHanging(): boolean {
+    const s = this.statusName();
+    return s === 'Building' && !this.latestEvent('caApprovedForHangingBy');
+  }
+
+  /** "Sign as Hung (PIN)" — backend enforces separation-of-duty (PIN bearer must be a hanger). */
+  canStepUpHung(): boolean {
+    const s = this.statusName();
+    return s === 'Building'
+      && !!this.latestEvent('caApprovedForHangingBy')
+      && this.allPointsHung()
+      && (this.entity().lotoPoints?.length ?? 0) > 0;
+  }
+
+  /** "Activate as CA (PIN)" — CA role checked server-side. */
+  canStepUpActivate(): boolean {
+    const s = this.statusName();
+    return s === 'Building'
+      && !!this.latestEvent('hungBy')
+      && !!this.latestEvent('verifiedBy')
+      && !this.latestEvent('caActivatedBy');
+  }
+
+  /** "Transfer (PIN)" — requestor role + at-least-one candidate. */
+  canStepUpTransfer(): boolean {
+    const s = this.statusName();
+    return (s === 'Active' || s === 'Test' || s === 'Building')
+      && this.transferCandidates().length > 0;
+  }
+
+  /** "Release (PIN)" — requestor role checked server-side. */
+  canStepUpRelease(): boolean {
+    const s = this.statusName();
+    return s === 'Active' || s === 'Test' || s === 'Building';
+  }
+
+  /** "Release CA (PIN)" — CA role checked server-side. */
+  canStepUpReleaseCa(): boolean {
+    const s = this.statusName();
+    return s === 'Active' || s === 'Test' || s === 'Building';
+  }
+
+  /** "Remove Locks (PIN)" — CA role checked server-side. */
+  canStepUpRemoveLocks(): boolean {
+    const s = this.statusName();
+    return s === 'Active' || s === 'Test';
+  }
+
   onStepUpAuthorized(result: { token: string; expiresAt: string }): void {
     const ctx = this.stepUpContext();
     this.stepUpContext.set(null);
     if (!ctx) return;
     const id = this.entity().id;
     if (!id) return;
+    const token = result.token;
+    const ok = (verb: string) => (res: any) => {
+      this.applyLifecycleResponse(res);
+      this.messageService.showSuccess(`${verb} signed`);
+    };
+    const fail = (verb: string) => (err: any) =>
+      alert(err?.error?.message ?? err?.message ?? `${verb} failed`);
     switch (ctx.kind) {
       case 'accept-transfer':
-        this.lotoService.acceptRequestor(id, result.token).subscribe({
-          next: res => this.applyLifecycleResponse(res),
-          error: err => alert(err?.error?.message ?? err?.message ?? 'Accept failed'),
+        this.lotoService.acceptRequestor(id, token).subscribe({ next: ok('Accept'), error: fail('Accept') });
+        break;
+      case 'mark-verified':
+        this.lotoService.markVerified(id, token).subscribe({ next: ok('Sign as Verified'), error: fail('Verify') });
+        break;
+      case 'ca-approve-hanging':
+        this.lotoService.approveForHanging(id, token).subscribe({ next: ok('Approve for Hanging'), error: fail('Approve for Hanging') });
+        break;
+      case 'mark-hung':
+        this.lotoService.markHung(id, token).subscribe({ next: ok('Sign as Hung'), error: fail('Sign as Hung') });
+        break;
+      case 'ca-activate':
+        this.lotoService.caActivate(id, token).subscribe({ next: ok('Activate as CA'), error: fail('Activate as CA') });
+        break;
+      case 'transfer': {
+        const to = ctx.payload?.to as string;
+        if (!to) return;
+        this.lotoService.transferRequestor(id, this.entity().lotoRequestor ?? null, to, token).subscribe({
+          next: res => { ok('Transfer')(res); this.showTransferDialog.set(false); },
+          error: fail('Transfer'),
         });
         break;
+      }
+      case 'release-requestor':
+        this.lotoService.releaseByRequestor(id, token).subscribe({ next: ok('Release'), error: fail('Release') });
+        break;
+      case 'release-ca':
+        this.lotoService.releaseByControlAuthority(id, token).subscribe({ next: ok('Release CA'), error: fail('Release CA') });
+        break;
+      case 'remove-locks':
+        this.lotoService.removeLocks(id, token).subscribe({ next: ok('Remove Locks'), error: fail('Remove Locks') });
+        break;
     }
+  }
+
+  /** Open the PIN dialog for one of the lifecycle actions. */
+  openStepUp(
+    kind: 'accept-transfer' | 'mark-verified' | 'ca-approve-hanging' | 'mark-hung'
+        | 'ca-activate' | 'transfer' | 'release-requestor' | 'release-ca' | 'remove-locks',
+    label: string,
+    payload?: any
+  ): void {
+    this.stepUpContext.set({ kind, label, payload });
   }
 
   cancelPendingTransfer(): void {
@@ -1119,6 +1434,13 @@ export class RfLotoFormComponent {
       this.applyLifecycleResponse(res);
       this.showTransferDialog.set(false);
     });
+  }
+
+  /** Same as confirmTransfer but routes through step-up so a different requestor can sign in. */
+  confirmTransferWithPin(): void {
+    const to = this.transferTo();
+    if (!to) return;
+    this.openStepUp('transfer', `Transfer requestor → ${to}`, { to });
   }
 
   recordAccepted(): void {

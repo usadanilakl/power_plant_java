@@ -16,6 +16,10 @@ interface UserForm {
   windowsUsername: string;
   isActive: boolean;
   permissionLevel: string;
+  phone: string;
+  company: string;
+  signaturePath: string;
+  signingInitials: string;
 }
 
 @Component({
@@ -73,12 +77,13 @@ interface UserForm {
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Roles</label>
+                <label>Access roles <span class="hint">— web/admin access</span></label>
                 <div class="roles-checkboxes">
-                  <label *ngFor="let r of roles" class="role-checkbox">
+                  <label *ngFor="let r of accessRoles" class="role-checkbox">
                     <input type="checkbox" [checked]="form.roles.includes(r)" (change)="toggleRole(r, $event)" />
                     {{ formatRole(r) }}
                   </label>
+                  <span *ngIf="accessRoles.length === 0" class="empty-roles">Loading…</span>
                 </div>
               </div>
               <div class="form-group">
@@ -87,9 +92,21 @@ interface UserForm {
               </div>
             </div>
             <div class="form-row">
+              <div class="form-group" style="flex: 2">
+                <label>LOTO roles <span class="hint">— authorize LOTO operations</span></label>
+                <div class="roles-checkboxes">
+                  <label *ngFor="let r of lotoRoles" class="role-checkbox loto-role">
+                    <input type="checkbox" [checked]="form.roles.includes(r)" (change)="toggleRole(r, $event)" />
+                    <span [title]="lotoRoleTooltip(r)">{{ formatLotoRole(r) }}</span>
+                  </label>
+                  <span *ngIf="lotoRoles.length === 0" class="empty-roles">Loading…</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
               <div class="form-group">
-                <label>Windows Username</label>
-                <input type="text" [(ngModel)]="form.windowsUsername" name="windowsUsername" />
+                <label>Signing initials <span class="hint">— 2–3 letters, e.g. DK</span></label>
+                <input type="text" [(ngModel)]="form.signingInitials" name="signingInitials" maxlength="3" style="text-transform: uppercase; font-family: 'Courier New', monospace; letter-spacing: 1px;" placeholder="DK" />
               </div>
               <div class="form-group">
                 <label>Permission Level</label>
@@ -99,6 +116,26 @@ interface UserForm {
                   <option value="BASIC">BASIC</option>
                   <option value="OPERATOR">OPERATOR</option>
                 </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Windows Username</label>
+                <input type="text" [(ngModel)]="form.windowsUsername" name="windowsUsername" />
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="text" [(ngModel)]="form.phone" name="phone" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Company</label>
+                <input type="text" [(ngModel)]="form.company" name="company" />
+              </div>
+              <div class="form-group">
+                <label>Signature path <span class="hint">— stored signature image (optional)</span></label>
+                <input type="text" [(ngModel)]="form.signaturePath" name="signaturePath" />
               </div>
             </div>
             <div class="form-row" *ngIf="editingUser">
@@ -318,12 +355,16 @@ interface UserForm {
     .btn.deny { background: #c0392b; }
     .btn.cancel { background: #555; }
     .btn.seed { background: #e67e22; }
-    .roles-checkboxes { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+    .roles-checkboxes { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0; }
     .role-checkbox {
       display: flex; align-items: center; gap: 4px;
       color: #ddd; font-size: 12px; cursor: pointer;
     }
+    .role-checkbox.loto-role { background: rgba(83, 52, 131, 0.18); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(83, 52, 131, 0.5); }
+    .role-checkbox.loto-role:hover { background: rgba(83, 52, 131, 0.30); }
     .role-checkbox input[type="checkbox"] { width: 14px; height: 14px; }
+    .empty-roles { color: #888; font-style: italic; font-size: 12px; }
+    .hint { color: #888; font-weight: normal; font-size: 11px; font-style: italic; }
     .btn:hover { opacity: 0.85; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -372,7 +413,12 @@ interface UserForm {
 })
 export class UserManagementComponent implements OnInit {
   users: UserDto[] = [];
+  /** All known role names (access + LOTO). Kept for back-compat. */
   roles: string[] = [];
+  /** Spring access roles — ROLE_*. */
+  accessRoles: string[] = [];
+  /** LOTO role names — CONTROL_AUTHORITY / LOTO_QUALIFIED / REQUESTOR / MANAGER. */
+  lotoRoles: string[] = [];
   searchQuery = '';
   showForm = false;
   editingUser: UserDto | null = null;
@@ -416,9 +462,45 @@ export class UserManagementComponent implements OnInit {
 
   loadRoles(): void {
     this.userService.getRoles().subscribe({
-      next: (res) => this.roles = res.roles ?? [],
-      error: () => this.roles = ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_CONTRACTOR']
+      next: (res) => {
+        this.roles = res.roles ?? [];
+        // Prefer the server's split if present; otherwise derive locally.
+        this.accessRoles = res.accessRoles ?? this.roles.filter(r => r.startsWith('ROLE_'));
+        this.lotoRoles = res.lotoRoles ?? this.roles.filter(r => !r.startsWith('ROLE_'));
+      },
+      error: () => {
+        this.accessRoles = ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_CONTRACTOR', 'ROLE_PLANT'];
+        this.lotoRoles = ['CONTROL_AUTHORITY', 'LOTO_QUALIFIED', 'REQUESTOR', 'MANAGER'];
+        this.roles = [...this.accessRoles, ...this.lotoRoles];
+      }
     });
+  }
+
+  /** Friendly label for a LOTO role. */
+  formatLotoRole(role: string): string {
+    switch (role) {
+      case 'CONTROL_AUTHORITY': return 'Control Authority';
+      case 'LOTO_QUALIFIED':    return 'LOTO Qualified';
+      case 'REQUESTOR':         return 'Requestor';
+      case 'MANAGER':           return 'Manager';
+      default:                  return role;
+    }
+  }
+
+  /** Short permission summary shown as a tooltip on each LOTO-role checkbox. */
+  lotoRoleTooltip(role: string): string {
+    switch (role) {
+      case 'CONTROL_AUTHORITY':
+        return 'Develops standards, issues permits, approves hanging, activates, pauses, modifies, releases, closes. Can also hang/verify and be a requestor.';
+      case 'LOTO_QUALIFIED':
+        return 'Can hang, verify, walkdown, and remove points.';
+      case 'REQUESTOR':
+        return 'Can be assigned as a permit requestor — initiate transfer, accept transfer, release as requestor.';
+      case 'MANAGER':
+        return 'Final-approves a standard after testing.';
+      default:
+        return '';
+    }
   }
 
   formatRole(role: string): string {
@@ -449,7 +531,11 @@ export class UserManagementComponent implements OnInit {
       password: '',
       windowsUsername: user.windowsUsername,
       isActive: user.isActive,
-      permissionLevel: (user as any).permissionLevel || ''
+      permissionLevel: (user as any).permissionLevel || '',
+      phone: user.phone ?? '',
+      company: user.company ?? '',
+      signaturePath: user.signaturePath ?? '',
+      signingInitials: user.signingInitials ?? '',
     };
     this.showForm = true;
     this.clearMessages();
@@ -464,15 +550,27 @@ export class UserManagementComponent implements OnInit {
     this.clearMessages();
     this.isSubmitting = true;
 
+    // signingInitials lives on a separate admin endpoint (PIN auth concerns are
+    // kept under /auth/admin). After the main user save succeeds, persist the
+    // initials if changed.
+    const desiredInitials = (this.form.signingInitials ?? '').trim().toUpperCase();
+    const initialsChanged = (this.editingUser?.signingInitials ?? '') !== desiredInitials;
+
     if (this.editingUser) {
       const payload: any = { ...this.form };
       if (!payload.password) delete payload.password;
+      // Strip signingInitials before sending — main UpdateUserRequest doesn't accept it.
+      delete payload.signingInitials;
       this.userService.updateUser(String(this.editingUser.id), payload).subscribe({
         next: (res) => {
-          this.successMessage = res.message || 'User updated';
-          this.isSubmitting = false;
-          this.closeForm();
-          this.loadUsers();
+          if (initialsChanged && desiredInitials) {
+            this.persistInitialsThenFinish(this.editingUser!.id, desiredInitials, res.message || 'User updated');
+          } else {
+            this.successMessage = res.message || 'User updated';
+            this.isSubmitting = false;
+            this.closeForm();
+            this.loadUsers();
+          }
         },
         error: (err) => {
           this.errorMessage = err.error?.message || 'Failed to update user';
@@ -480,12 +578,19 @@ export class UserManagementComponent implements OnInit {
         }
       });
     } else {
-      this.userService.createUser(this.form as any).subscribe({
+      const payload: any = { ...this.form };
+      delete payload.signingInitials;
+      this.userService.createUser(payload).subscribe({
         next: (res) => {
-          this.successMessage = res.message || 'User created';
-          this.isSubmitting = false;
-          this.closeForm();
-          this.loadUsers();
+          const createdId = res.responseData?.id;
+          if (createdId && desiredInitials) {
+            this.persistInitialsThenFinish(createdId, desiredInitials, res.message || 'User created');
+          } else {
+            this.successMessage = res.message || 'User created';
+            this.isSubmitting = false;
+            this.closeForm();
+            this.loadUsers();
+          }
         },
         error: (err) => {
           this.errorMessage = err.error?.message || 'Failed to create user';
@@ -493,6 +598,24 @@ export class UserManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  /** Persist signing initials via the auth admin endpoint, then close the form. */
+  private persistInitialsThenFinish(userId: number, initials: string, baseMessage: string): void {
+    this.userService.setSigningInitials(userId, initials).subscribe({
+      next: () => {
+        this.successMessage = `${baseMessage} (initials: ${initials})`;
+        this.isSubmitting = false;
+        this.closeForm();
+        this.loadUsers();
+      },
+      error: (err) => {
+        // User was saved successfully but initials failed — surface that explicitly.
+        this.errorMessage = `User saved but initials failed: ${err?.error?.message || 'unknown error'}`;
+        this.isSubmitting = false;
+        this.loadUsers();
+      }
+    });
   }
 
   seedPlantUsers(): void {
@@ -619,7 +742,8 @@ export class UserManagementComponent implements OnInit {
     return {
       username: '', firstName: '', lastName: '',
       email: '', roles: [], password: '',
-      windowsUsername: '', isActive: true, permissionLevel: ''
+      windowsUsername: '', isActive: true, permissionLevel: '',
+      phone: '', company: '', signaturePath: '', signingInitials: '',
     };
   }
 

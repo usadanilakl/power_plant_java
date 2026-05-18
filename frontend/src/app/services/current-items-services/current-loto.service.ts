@@ -187,23 +187,36 @@ export class CurrentLotoService{
       this.allLotosSubject.next(updatedLotos);
     }
 
-    processLotoChanges(lotoDto: LotoDto) {
+    processLotoChanges(lotoDto: LotoDto, onSuccess?: () => void) {
       if(!lotoDto) return;
-      const lotoIdDto = new LotoDto(lotoDto).toIdModel();
+      // Force-include id on the source so new LotoDto(...) doesn't reset it
+      // to 0 (which the backend then treats as a CREATE).
+      const existingId = this.currentLotoSubject.value?.id;
+      const source: any = { ...(lotoDto as any), id: (lotoDto as any).id ?? existingId };
+      const wasNew = !source.id;
+      const lotoIdDto = new LotoDto(source).toIdModel();
+      (lotoIdDto as any).id = source.id ?? (lotoIdDto as any).id;
       console.log('[CurrentLotoService] processLotoChanges — sending:', lotoIdDto);
       this.lotoService.updateLoto(lotoIdDto).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: (response: SpringApiResponse<LotoDto>) => {
           console.log('[CurrentLotoService] update OK — server returned:', response?.responseData);
-          if(response){
-              const receivedLoto = this.normalizeLoto(response.responseData);
-              this.updateLotoInList(receivedLoto);
-              this.setCurrentLoto(receivedLoto);
-          }
-          else{
+          if(!response){
               console.error('Error updating Loto: empty response');
+              return;
           }
+          const receivedLoto = this.normalizeLoto(response.responseData);
+          this.updateLotoInList(receivedLoto);
+          // For a brand-new permit, swap the entity so future saves carry the
+          // assigned id. For an existing permit, DO NOT reset the subject —
+          // doing so re-fetches via setCurrentLoto → setCurrentLotoById → form
+          // rebuild, which clobbers anything the user has typed in the
+          // meantime (the autosave's "form resets to pre-saved state" bug).
+          if (wasNew) {
+            this.setCurrentLoto(receivedLoto);
+          }
+          onSuccess?.();
         },
         error: err => {
           console.error('[CurrentLotoService] update FAILED:', err);

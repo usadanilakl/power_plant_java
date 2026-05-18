@@ -217,6 +217,14 @@ public class AuthController {
         profile.put("isActive", user.getIsActive());
         profile.put("lastLoginDate", user.getLastLoginDate() != null ? user.getLastLoginDate().toString() : null);
         profile.put("windowsUsername", user.getWindowsUsername());
+        // PIN / signing fields — surfaced so the profile UI can render the
+        // signing-PIN management section without a second round-trip.
+        profile.put("signingInitials", user.getSigningInitials());
+        profile.put("pinSetAt", user.getPinSetAt() != null ? user.getPinSetAt().toString() : null);
+        profile.put("pinLockedUntil", user.getPinLockedUntil() != null ? user.getPinLockedUntil().toString() : null);
+        profile.put("pinResetRequestedAt", user.getPinResetRequestedAt() != null
+                ? user.getPinResetRequestedAt().toString() : null);
+        profile.put("pinMustChange", Boolean.TRUE.equals(user.getPinMustChange()));
         return ResponseEntity.ok(profile);
     }
 
@@ -500,6 +508,25 @@ public class AuthController {
         try {
             pinManagementService.changeOwnPin(me.getId(), req.currentPin(), req.newPin());
             return ResponseEntity.ok(Map.of("message", "PIN updated"));
+        } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * User self-service: flag the account as "I forgot my PIN — please reset".
+     * Requires a real session (so users authenticate with password+email first,
+     * not over the anonymous step-up endpoint). The admin sees the flag in the
+     * user list and one-click resets, which clears the flag.
+     */
+    @PostMapping("/pin/request-reset")
+    public ResponseEntity<?> requestPinReset() {
+        var me = getCurrentUserDetails();
+        if (me == null) return ResponseEntity.status(401).body(Map.of("message", "Authentication required"));
+        try {
+            pinManagementService.requestPinReset(me.getId());
+            log.info("security.pin.reset_requested userId={}", me.getId());
+            return ResponseEntity.ok(Map.of("message", "Reset request sent. An administrator will issue you a new PIN."));
         } catch (com.dk_power.power_plant_java.sevice.auth.PinManagementService.PinException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

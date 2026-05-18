@@ -132,6 +132,62 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
               {{ isSaving ? 'Changing...' : 'Change Password' }}
             </button>
           </div>
+
+          <!-- PIN section: signing-PIN management (separate credential from the
+               password; used by the X-Sign-As-Token / step-up flow). -->
+          <div class="security-card pin-card">
+            <h3>Signing PIN</h3>
+            <p class="section-desc" *ngIf="profile?.signingInitials">
+              Your sign-in code:
+              <strong class="initials">{{ profile?.signingInitials }}</strong>
+              + your 4-digit PIN.
+              Used on shared tablets to authorize signing actions without logging out.
+            </p>
+            <p class="section-desc" *ngIf="!profile?.signingInitials">
+              You don't have signing initials yet. Ask an administrator to set them before you can use the PIN flow.
+            </p>
+
+            <div *ngIf="profile?.pinMustChange" class="error-box must-change-banner">
+              ⚠ Your PIN was set by an administrator. Please change it now to one only you know.
+            </div>
+
+            <div *ngIf="profile?.signingInitials && profile?.pinResetRequestedAt" class="success-box">
+              Reset requested {{ profile?.pinResetRequestedAt | date:'short' }} — waiting for an administrator to issue a new PIN.
+            </div>
+
+            <div *ngIf="profile?.signingInitials">
+              <div class="form-group">
+                <label for="currentPin">Current PIN</label>
+                <input id="currentPin" type="password" inputmode="numeric" maxlength="6"
+                       [(ngModel)]="currentPin" placeholder="4-digit PIN" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label for="newPin">New PIN</label>
+                <input id="newPin" type="password" inputmode="numeric" maxlength="6"
+                       [(ngModel)]="newPin" placeholder="New 4-digit PIN" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label for="confirmPin">Confirm New PIN</label>
+                <input id="confirmPin" type="password" inputmode="numeric" maxlength="6"
+                       [(ngModel)]="confirmPin" placeholder="Re-enter new PIN" autocomplete="off" />
+              </div>
+
+              <div class="error-box" *ngIf="pinError">{{ pinError }}</div>
+              <div class="success-box" *ngIf="pinSuccess">{{ pinSuccess }}</div>
+
+              <button class="btn primary"
+                      (click)="submitPinChange()"
+                      [disabled]="isSavingPin || !currentPin || !newPin || !confirmPin">
+                {{ isSavingPin ? 'Updating...' : 'Update PIN' }}
+              </button>
+              <button class="btn secondary forgot-pin-btn"
+                      *ngIf="!profile?.pinResetRequestedAt"
+                      (click)="requestForgotPin()"
+                      [disabled]="isSavingPin">
+                Forgot PIN — request reset
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Tab 3: Sessions -->
@@ -595,6 +651,29 @@ import { GlobalMessageService } from '../../../shared/global-message/global-mess
       font-size: 13px;
     }
 
+    .success-box {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(46, 204, 113, 0.12);
+      border: 1px solid rgba(46, 204, 113, 0.35);
+      color: #81c784;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    /* Signing PIN section */
+    .pin-card { margin-top: 16px; }
+    .forgot-pin-btn { margin-left: 8px; }
+    .pin-card .initials {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #82b1ff;
+      background: rgba(82, 177, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 2px;
+    }
+
     .empty-state {
       text-align: center;
       color: var(--secondary-text, #888);
@@ -638,6 +717,14 @@ export class ProfileComponent implements OnInit {
   strengthLabel = '';
   strengthColor = '';
   requirements: { label: string; met: boolean }[] = [];
+
+  // Signing PIN
+  currentPin = '';
+  newPin = '';
+  confirmPin = '';
+  pinError = '';
+  pinSuccess = '';
+  isSavingPin = false;
 
   // Sessions
   sessions: AccessGrantSummary[] = [];
@@ -801,5 +888,61 @@ export class ProfileComponent implements OnInit {
   truncateDevice(device: string | null): string {
     if (!device) return '-';
     return device.length > 40 ? device.substring(0, 40) + '...' : device;
+  }
+
+  /**
+   * Submit a self-service PIN change. Mirrors changePassword but talks to the
+   * dedicated /api/auth/pin/change endpoint, which validates current PIN +
+   * format (4-digit, not trivial) on the server.
+   */
+  submitPinChange(): void {
+    this.pinError = '';
+    this.pinSuccess = '';
+
+    if (!/^\d{4,6}$/.test(this.newPin)) {
+      this.pinError = 'New PIN must be 4–6 digits';
+      return;
+    }
+    if (this.newPin !== this.confirmPin) {
+      this.pinError = 'PINs do not match';
+      return;
+    }
+    if (this.newPin === this.currentPin) {
+      this.pinError = 'New PIN must differ from current PIN';
+      return;
+    }
+
+    this.isSavingPin = true;
+    this.authService.changeOwnPin(this.currentPin, this.newPin).subscribe({
+      next: () => {
+        this.isSavingPin = false;
+        this.currentPin = '';
+        this.newPin = '';
+        this.confirmPin = '';
+        this.pinSuccess = 'PIN updated';
+        this.messageService.showSuccess('Signing PIN updated');
+      },
+      error: (err) => {
+        this.isSavingPin = false;
+        this.pinError = err?.error?.message ?? err?.message ?? 'Failed to change PIN';
+      }
+    });
+  }
+
+  /** Flag account for admin-driven PIN reset (forgot-PIN flow). */
+  requestForgotPin(): void {
+    if (!confirm('Send a PIN reset request to your administrator? They will generate a new PIN and hand it to you in person.')) return;
+    this.pinError = '';
+    this.pinSuccess = '';
+    this.authService.requestPinReset().subscribe({
+      next: res => {
+        this.pinSuccess = res.message ?? 'Reset request sent';
+        this.messageService.showSuccess('Reset request sent');
+        this.loadProfile();
+      },
+      error: err => {
+        this.pinError = err?.error?.message ?? err?.message ?? 'Failed to send reset request';
+      }
+    });
   }
 }

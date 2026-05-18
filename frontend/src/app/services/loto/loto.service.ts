@@ -134,12 +134,14 @@ export class LotoService {
 
   // ----- Lifecycle events -----
 
-  approveForHanging(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-approve-hanging`, {});
+  approveForHanging(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-approve-hanging`, {}, options);
   }
 
-  caActivate(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-activate`, {});
+  caActivate(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/ca-activate`, {}, options);
   }
 
   markPointHung(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
@@ -153,10 +155,12 @@ export class LotoService {
       `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/hung`);
   }
 
-  markPointVerified(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null): Observable<SpringApiResponse<LotoDto>> {
+  markPointVerified(lotoId: number, pointId: number, acknowledged: string[] = [], notes?: string | null, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
     return this.http.put<SpringApiResponse<LotoDto>>(
       `${this.apiUrl}/${lotoId}/lifecycle/point/${pointId}/verified`,
-      { acknowledged, notes: notes ?? null });
+      { acknowledged, notes: notes ?? null },
+      options);
   }
 
   unmarkPointVerified(lotoId: number, pointId: number): Observable<SpringApiResponse<LotoDto>> {
@@ -197,16 +201,19 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/prerequisites`, prerequisites);
   }
 
-  markHung(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/hung`, {});
+  markHung(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/hung`, {}, options);
   }
 
-  markVerified(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/verified`, {});
+  markVerified(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/verified`, {}, options);
   }
 
-  transferRequestor(lotoId: number, fromUser: string | null, toUser: string): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/transfer`, { fromUser, toUser });
+  transferRequestor(lotoId: number, fromUser: string | null, toUser: string, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/transfer`, { fromUser, toUser }, options);
   }
 
   acceptRequestor(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
@@ -218,15 +225,18 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/cancel-transfer`, {});
   }
 
-  releaseByRequestor(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-requestor`, {});
+  releaseByRequestor(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-requestor`, {}, options);
   }
 
-  releaseByControlAuthority(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-ca`, {});
+  releaseByControlAuthority(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/release-ca`, {}, options);
   }
 
-  removeLocks(lotoId: number): Observable<SpringApiResponse<LotoDto>> {
-    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/remove-locks`, {});
+  removeLocks(lotoId: number, stepUpToken?: string | null): Observable<SpringApiResponse<LotoDto>> {
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${lotoId}/lifecycle/remove-locks`, {}, options);
   }
 }

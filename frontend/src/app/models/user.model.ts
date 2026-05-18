@@ -23,6 +23,8 @@ export interface UserModel extends BaseModel {
   signingInitials: string | null;
   pinSetAt: string | null;
   pinLockedUntil: string | null;
+  pinResetRequestedAt: string | null;
+  pinMustChange: boolean;
   trainingCompletedAt: string | null;
   trainingExpiresAt: string | null;
 }
@@ -43,6 +45,8 @@ export class UserDto extends BaseDto implements UserModel {
   signingInitials: string | null;
   pinSetAt: string | null;
   pinLockedUntil: string | null;
+  pinResetRequestedAt: string | null;
+  pinMustChange: boolean;
   trainingCompletedAt: string | null;
   trainingExpiresAt: string | null;
 
@@ -63,6 +67,8 @@ export class UserDto extends BaseDto implements UserModel {
     this.signingInitials = data.signingInitials ?? null;
     this.pinSetAt = data.pinSetAt ?? null;
     this.pinLockedUntil = data.pinLockedUntil ?? null;
+    this.pinResetRequestedAt = data.pinResetRequestedAt ?? null;
+    this.pinMustChange = data.pinMustChange ?? false;
     this.trainingCompletedAt = data.trainingCompletedAt ?? null;
     this.trainingExpiresAt = data.trainingExpiresAt ?? null;
   }
@@ -104,6 +110,8 @@ export class UserDto extends BaseDto implements UserModel {
       signingInitials: json.signingInitials ?? null,
       pinSetAt: json.pinSetAt ?? null,
       pinLockedUntil: json.pinLockedUntil ?? null,
+      pinResetRequestedAt: json.pinResetRequestedAt ?? null,
+      pinMustChange: !!json.pinMustChange,
       trainingCompletedAt: json.trainingCompletedAt ?? null,
       trainingExpiresAt: json.trainingExpiresAt ?? null,
     });
@@ -117,7 +125,7 @@ export class UserDto extends BaseDto implements UserModel {
   }
 
   static toTableColumns(
-    fields: UserFieldName[] = ['name', 'email', 'username', 'role', 'permissionLevel', 'isActive', 'windowsUsername']
+    fields: UserFieldName[] = ['name', 'email', 'role', 'signingInitials', 'isActive', 'windowsUsername']
   ): Column[] {
     const allColumns: { [key in UserFieldName]?: Column } = {
       name: { id: 'name', header: 'Name', accessorKey: 'name', filterable: true },
@@ -146,6 +154,25 @@ export class UserDto extends BaseDto implements UserModel {
       lastName: { id: 'lastName', header: 'Last Name', accessorKey: 'lastName', filterable: true },
       phone: { id: 'phone', header: 'Phone', accessorKey: 'phone', filterable: true },
       company: { id: 'company', header: 'Company', accessorKey: 'company', filterable: true },
+      signingInitials: {
+        id: 'signingInitials',
+        header: 'Sign-in code',
+        filterable: true,
+        accessorFn: (item: UserDto) => {
+          const initials = item.signingInitials ?? '';
+          // pinResetRequestedAt takes priority — it's the actionable signal for the admin.
+          if (item.pinResetRequestedAt) {
+            return initials ? `${initials} ⚠ reset requested` : '⚠ reset requested';
+          }
+          if (!initials) return '— no initials';
+          if (!item.pinSetAt) return `${initials} — no PIN`;
+          if (item.pinLockedUntil && new Date(item.pinLockedUntil) > new Date()) {
+            return `${initials} ✓ locked`;
+          }
+          if (item.pinMustChange) return `${initials} ✓ PIN set (temp)`;
+          return `${initials} ✓ PIN set`;
+        },
+      },
     };
 
     return fields
@@ -156,13 +183,18 @@ export class UserDto extends BaseDto implements UserModel {
   static toFormFields(dto: UserDto, options?: { isNew?: boolean }): RfFormField[] {
     const isNew = options?.isNew ?? (!dto.id || dto.id === 0);
     const availableRoles: Option[] = [
+      // Web/admin access (Spring access roles)
       { value: 'ROLE_ADMIN', label: 'Admin' },
       { value: 'ROLE_EMPLOYEE', label: 'Employee' },
       { value: 'ROLE_CONTRACTOR', label: 'Contractor' },
       { value: 'ROLE_PLANT', label: 'Plant' },
-      // Plant job roles (no ROLE_ prefix — matches LotoRole convention).
-      // Used by MaximoBundleService to find users whose WOs to aggregate.
+      // Plant job roles (used by MaximoBundleService for WO aggregation)
       { value: 'LEAD_OPERATOR', label: 'Lead Operator' },
+      // LOTO roles — gate LOTO permit + standard operations (see LotoRole.java).
+      { value: 'CONTROL_AUTHORITY', label: 'Control Authority (LOTO)' },
+      { value: 'LOTO_QUALIFIED', label: 'LOTO Qualified (hang / verify)' },
+      { value: 'REQUESTOR', label: 'Requestor (LOTO)' },
+      { value: 'MANAGER', label: 'Manager (standard approver)' },
     ];
 
     const permissionOptions: Option[] = [
@@ -251,6 +283,12 @@ export class UserDto extends BaseDto implements UserModel {
         label: 'Signature Path',
         type: 'text',
         initialValue: dto.signaturePath,
+      },
+      {
+        name: 'signingInitials',
+        label: 'Signing initials (2–3 letters, e.g. DK)',
+        type: 'text',
+        initialValue: dto.signingInitials ?? '',
       },
     ];
   }

@@ -134,6 +134,17 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return mapper.convertToDto(entity);
     }
 
+    /**
+     * Update + convert inside one tx. The controller used to call update() then
+     * toDto() as separate calls — the second call ran in a fresh tx with the
+     * entity already detached, triggering LazyInit on locks/snapshots. Keep
+     * both inside the same persistence context.
+     */
+    @Transactional
+    public LotoDto updateAndConvert(LotoIdDto dto) {
+        return toDto(update(dto));
+    }
+
     @Transactional
     public Loto update(LotoIdDto dto) {
         Loto loto;
@@ -454,19 +465,66 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     /**
+     * Audit-friendly actor string. For ordinary requests this is just the
+     * authenticated user's name (their email under our Spring config). For
+     * step-up'd requests the StepUpAuthFilter has put {@code stepUpActor} and
+     * {@code stepUpSessionHolder} on the request, and we suffix the actor with
+     * {@code " via:<sessionHolder>"} so a hanger can't pretend to be the
+     * verifier just because the verifier signed on their device — both names
+     * appear in the audit field.
+     */
+    private String currentAuditActor() {
+        String actor = currentUserName();
+        try {
+            var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                var req = sra.getRequest();
+                Object holder = req.getAttribute("stepUpSessionHolder");
+                if (holder instanceof String s && !s.isBlank() && !s.equals(actor)) {
+                    return actor + " via:" + s;
+                }
+            }
+        } catch (Exception ignored) { /* fall through */ }
+        return actor;
+    }
+
+    /**
+     * Resolves the signed-in user from the Spring SecurityContext. Returns null
+     * if the request is unauthenticated. Spring's principal username is the
+     * user's email (see CustomUserDetails) — never the `username` column — so
+     * we look up by id from CustomUserDetails first, then fall back to email.
+     */
+    private com.dk_power.power_plant_java.entities.users.User currentUser() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) return null;
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails details) {
+                return userRepo.findById(details.getId()).orElse(null);
+            }
+            String name = auth.getName();
+            if (name == null || "anonymousUser".equalsIgnoreCase(name) || "anonymous".equalsIgnoreCase(name)) {
+                return null;
+            }
+            // Last-resort fallbacks (filter-based auth paths)
+            com.dk_power.power_plant_java.entities.users.User u = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(name);
+            if (u == null) u = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(name);
+            return u;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * Throws if the authenticated user has none of the supplied LOTO roles. Legacy
      * role names (QUALIFIED, AUTHORIZED) are accepted as aliases for the new ones.
      */
     @SuppressWarnings("deprecation")
     private void requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole... roles) {
-        String username = currentUserName();
-        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
-            throw new SecurityException("Authentication required");
-        }
-        com.dk_power.power_plant_java.entities.users.User user =
-                userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+        com.dk_power.power_plant_java.entities.users.User user = currentUser();
         if (user == null) {
-            throw new SecurityException("User not found: " + username);
+            throw new SecurityException("Authentication required");
         }
         for (var r : roles) {
             if (user.hasLotoRole(r)) return;
@@ -507,7 +565,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "CA approval for hanging", "Building");
-        LotoSnapshot s = loto.recordCaApprovedForHanging(currentUserName());
+        LotoSnapshot s = loto.recordCaApprovedForHanging(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -523,7 +581,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (!hung || !verified) {
             throw new IllegalStateException("LOTO must be Hung and Verified before Control Authority can activate it");
         }
-        LotoSnapshot s = loto.recordCaActivated(currentUserName());
+        LotoSnapshot s = loto.recordCaActivated(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -556,7 +614,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             throw new IllegalStateException(
                     "Only a user who hung at least one point can sign the LOTO as hung");
         }
-        LotoSnapshot s = loto.recordHung(me);
+        // SoD check uses plain actor; audit field captures dual attribution (via:sessionHolder).
+        LotoSnapshot s = loto.recordHung(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -934,7 +993,21 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         if (!verifiedPointIds.containsAll(requiredPointIds)) {
             throw new IllegalStateException("All LOTO points must be marked verified before the LOTO can be signed as verified");
         }
-        LotoSnapshot s = loto.recordVerified(currentUserName());
+        // Separation of duty: whoever signs the aggregate Verified must
+        // themselves have verified at least one of the points. Mirrors the
+        // hanger rule and prevents a third party (with the role but no actual
+        // verification work) from rubber-stamping the LOTO.
+        String actor = currentUserName();
+        LotoSnapshot latest = loto.getLatestSnapshot();
+        java.util.Collection<String> perPointVerifiers = latest != null
+                ? latest.getPointVerifiedBy().values()
+                : java.util.Collections.emptyList();
+        if (actor == null || !perPointVerifiers.contains(actor)) {
+            throw new SecurityException(
+                    "Only a user who verified at least one point can sign the LOTO as Verified");
+        }
+        // SoD check uses plain actor; audit field captures dual attribution (via:sessionHolder).
+        LotoSnapshot s = loto.recordVerified(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -1024,7 +1097,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             throw new IllegalStateException(
                     "Only " + pendingRecipient + " (the transfer recipient) can accept this transfer");
         }
-        LotoSnapshot s = loto.recordAccepted(me);
+        LotoSnapshot s = loto.recordAccepted(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -1049,7 +1122,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                     "Cannot release: " + stillOn.size() + " worker(s) still signed on (" +
                     stillOn.stream().map(PersonnelSignEntry::getPersonName).reduce((a, b) -> a + ", " + b).orElse("") + ")");
         }
-        LotoSnapshot s = loto.recordRequestorReleased(me);
+        LotoSnapshot s = loto.recordRequestorReleased(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -1059,7 +1132,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Control Authority release", "Building", "Active", "Test");
-        LotoSnapshot s = loto.recordControlAuthorityReleased(currentUserName());
+        LotoSnapshot s = loto.recordControlAuthorityReleased(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -1069,7 +1142,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
         requireStatusOneOf(loto, "Remove locks", "Active", "Test");
-        LotoSnapshot s = loto.recordLocksRemoved(currentUserName());
+        LotoSnapshot s = loto.recordLocksRemoved(currentAuditActor());
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }

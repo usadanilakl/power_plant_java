@@ -26,6 +26,13 @@ export interface UserProfile {
   isActive: boolean;
   lastLoginDate: string | null;
   windowsUsername: string;
+  // PIN / signing — populated when admin has assigned initials and the user
+  // has set (or had reset) a PIN at least once. Null until first assignment.
+  signingInitials?: string | null;
+  pinSetAt?: string | null;
+  pinLockedUntil?: string | null;
+  pinResetRequestedAt?: string | null;
+  pinMustChange?: boolean;
 }
 
 export interface UpdateProfileRequest {
@@ -108,21 +115,32 @@ export class AuthService {
   }
 
   checkAuthStatus(): void {
-    this.http.get<AuthUser>(`${this.authUrl}/me`, { withCredentials: true })
+    this.refreshCurrentUser().subscribe();
+  }
+
+  /**
+   * Re-fetch /me and update the current-user subject. Callers can subscribe
+   * to know when the refresh completes (e.g. after an admin grants new roles
+   * to the signed-in user and we want the UI to reflect them without a full
+   * page reload).
+   */
+  refreshCurrentUser(): Observable<AuthUser | null> {
+    const req$ = this.http.get<AuthUser>(`${this.authUrl}/me`, { withCredentials: true })
       .pipe(
         catchError(() => {
           this.currentUserSubject.next(null);
           this.isLoggedInSubject.next(false);
           return of(null);
+        }),
+        tap(user => {
+          if (user) {
+            this.currentUserSubject.next(user);
+            this.isLoggedInSubject.next(true);
+          }
+          this.authCheckedSubject.next(true);
         })
-      )
-      .subscribe(user => {
-        if (user) {
-          this.currentUserSubject.next(user);
-          this.isLoggedInSubject.next(true);
-        }
-        this.authCheckedSubject.next(true);
-      });
+      );
+    return req$;
   }
 
   requestAccess(): Observable<AccessStatus> {
@@ -153,6 +171,31 @@ export class AuthService {
 
   changePasswordVerified(req: ChangePasswordRequest): Observable<any> {
     return this.http.post(`${this.authUrl}/profile/change-password`, req, { withCredentials: true });
+  }
+
+  /**
+   * Change the signed-in user's own PIN. The current PIN is required so that
+   * a logged-in session can't change it without the owner physically present.
+   * Returns a generic message on success/failure (no detail leakage).
+   */
+  changeOwnPin(currentPin: string, newPin: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.authUrl}/pin/change`,
+      { currentPin, newPin },
+      { withCredentials: true }
+    );
+  }
+
+  /**
+   * Flag the signed-in user's account as "I forgot my PIN — please reset".
+   * An administrator's reset action clears the flag and issues a fresh PIN.
+   */
+  requestPinReset(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.authUrl}/pin/request-reset`,
+      {},
+      { withCredentials: true }
+    );
   }
 
   forgotPassword(email: string): Observable<any> {

@@ -44,6 +44,22 @@ export class RfUserOptionService {
     return this.allUsers().find(u => u.id === id);
   }
 
+  /**
+   * Look up a user by any of: email, username, display name. Used by the
+   * Lifecycle / Procedure Log tables to render signing initials next to
+   * audit field values (which are stored as the principal name = email).
+   */
+  getUserByIdentity(identity: string | null | undefined): UserDto | undefined {
+    if (!identity) return undefined;
+    if (!this.loaded) this.loadUsers();
+    const key = identity.trim().toLowerCase();
+    return this.allUsers().find(u =>
+      (u.email && u.email.toLowerCase() === key)
+      || (u.username && u.username.toLowerCase() === key)
+      || (u.name && u.name.toLowerCase() === key)
+    );
+  }
+
   /** Force reload from server */
   refreshUsers(): void {
     this.loaded = false;

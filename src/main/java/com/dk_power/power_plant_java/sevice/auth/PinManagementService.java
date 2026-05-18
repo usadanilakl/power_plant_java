@@ -72,6 +72,8 @@ public class PinManagementService {
         user.setPinSetAt(LocalDateTime.now());
         user.setFailedPinAttempts(0);
         user.setPinLockedUntil(null);
+        // User-chosen PIN — clear the "must change" nudge.
+        user.setPinMustChange(Boolean.FALSE);
         userRepo.save(user);
     }
 
@@ -101,6 +103,10 @@ public class PinManagementService {
             user.setPinSetAt(LocalDateTime.now());
             user.setFailedPinAttempts(0);
             user.setPinLockedUntil(null);
+            // Admin reset clears any pending forgot-PIN flag — the request is now actioned.
+            user.setPinResetRequestedAt(null);
+            // Admin-generated PINs are temporary — the user is nudged to change it.
+            user.setPinMustChange(Boolean.TRUE);
             userRepo.save(user);
             return candidate;
         }
@@ -131,6 +137,23 @@ public class PinManagementService {
         }
         user.setSigningInitials(normalized);
         userRepo.save(user);
+    }
+
+    /**
+     * User self-service: flag the account as "I forgot my PIN — please reset".
+     * No PIN/credential is mutated here; admin still has to one-click reset
+     * (which clears the flag and issues a new PIN they hand back). Idempotent:
+     * calling it twice keeps the earlier timestamp so we don't lose the
+     * original ask.
+     */
+    @Transactional
+    public void requestPinReset(Long userId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new PinException("User not found"));
+        if (user.getPinResetRequestedAt() == null) {
+            user.setPinResetRequestedAt(LocalDateTime.now());
+            userRepo.save(user);
+        }
     }
 
     /**

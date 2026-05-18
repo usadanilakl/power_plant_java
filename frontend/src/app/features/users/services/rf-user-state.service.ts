@@ -78,8 +78,15 @@ export class RfUserStateService {
     const selectedUser = this.selectedItem();
     const isNew = !selectedUser?.id || selectedUser.id === 0;
 
+    // signing_initials lives on a dedicated admin endpoint (/api/auth/admin/users/:id/initials).
+    // Pull it out of the main payload — it will be persisted as a follow-up call.
+    const desiredInitials = (formData.signingInitials ?? '').toString().trim().toUpperCase();
+    const initialsChanged = (selectedUser?.signingInitials ?? '') !== desiredInitials;
+    const mainPayload = { ...formData };
+    delete mainPayload.signingInitials;
+
     if (isNew) {
-      this.userService.createUser(formData).pipe(
+      this.userService.createUser(mainPayload).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: res => {
@@ -87,13 +94,17 @@ export class RfUserStateService {
             const created = UserDto.fromJson(res.responseData);
             this.userService.userUpdated$.next(created);
             this.userOptionService.refreshUsers();
-            this.closeForm();
+            if (desiredInitials) {
+              this.persistInitials(created.id, desiredInitials);
+            } else {
+              this.closeForm();
+            }
           }
         },
         error: err => console.error('[Users] Create failed:', err)
       });
     } else {
-      this.userService.updateUser(String(selectedUser.id), formData).pipe(
+      this.userService.updateUser(String(selectedUser.id), mainPayload).pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: res => {
@@ -101,12 +112,63 @@ export class RfUserStateService {
             const updated = UserDto.fromJson(res.responseData);
             this.userService.userUpdated$.next(updated);
             this.userOptionService.refreshUsers();
-            this.closeForm();
+            if (initialsChanged && desiredInitials) {
+              this.persistInitials(updated.id, desiredInitials);
+            } else {
+              this.closeForm();
+            }
           }
         },
         error: err => console.error('[Users] Update failed:', err)
       });
     }
+  }
+
+  /** Save initials via the dedicated admin endpoint after the main user save. */
+  private persistInitials(userId: number, initials: string): void {
+    this.userService.setSigningInitials(userId, initials).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        // Re-fetch the row so the table column reflects the new initials.
+        const current = this.allUsersSubject.value;
+        const u = current.find(x => x.id === userId);
+        if (u) {
+          u.signingInitials = initials;
+          this.allUsersSubject.next([...current]);
+        }
+        this.closeForm();
+      },
+      error: err => {
+        alert('User saved but initials failed: ' + (err?.error?.message ?? err?.message ?? 'unknown'));
+        this.closeForm();
+      }
+    });
+  }
+
+  /**
+   * Admin: generate a fresh PIN for a user. Returns a promise resolving to the
+   * one-time cleartext PIN. Caller is responsible for displaying it once.
+   */
+  generatePinForUser(userId: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.userService.resetUserPin(userId).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: res => {
+          // Refresh user in local cache so pin-status badge updates
+          const current = this.allUsersSubject.value;
+          const u = current.find(x => x.id === userId);
+          if (u) {
+            u.pinSetAt = new Date().toISOString();
+            u.pinLockedUntil = null;
+            this.allUsersSubject.next([...current]);
+          }
+          resolve(res.pin);
+        },
+        error: err => reject(err?.error?.message ?? err?.message ?? 'Failed to generate PIN')
+      });
+    });
   }
 
   deleteUser(id: number): void {

@@ -6,6 +6,7 @@ import { LotoIdDto } from './loto-id.model';
 import { LotoSnapshotDto } from './loto-snapshot.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
+import { Option } from '../option.model';
 import { Validators } from '@angular/forms';
 import { PersonnelSignEntry } from '../permits/dailt-permit-package.model';
 
@@ -129,7 +130,13 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     ];
   }
 
-  static toFormFields(dto: LotoDto): FormField[] {
+  /**
+   * Build form fields for a LOTO. Pass {@code requestorOptions} (users with
+   * REQUESTOR or CONTROL_AUTHORITY role) to render the requestor field as a
+   * select instead of a free-text input.
+   */
+  static toFormFields(dto: LotoDto, opts?: { requestorOptions?: Option[] }): FormField[] {
+    const requestorOptions = opts?.requestorOptions;
     const fields: FormField[] = [
       {
         name: 'equipmentSystem',
@@ -141,7 +148,11 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       {
         name: 'lotoRequestor',
         label: 'LOTO Requestor',
-        type: 'text',
+        // Select of users with REQUESTOR (or CONTROL_AUTHORITY) LOTO role.
+        // Options injected by the form component via `requestorOptions`; falls
+        // back to a free-text input when no options are supplied (e.g. tests).
+        type: requestorOptions && requestorOptions.length > 0 ? 'select' : 'text',
+        options: requestorOptions ?? [],
         initialValue: dto.lotoRequestor,
         validators: [Validators.required]
       },

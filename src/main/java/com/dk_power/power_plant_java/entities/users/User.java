@@ -96,6 +96,23 @@ public class User extends BaseAuditEntity {
     @Column(name = "failed_pin_attempts")
     private Integer failedPinAttempts;
 
+    /**
+     * When the user requested a PIN reset (because they forgot it). Null when no
+     * pending request. Cleared when admin resets the PIN (issuing a new one), so
+     * an outstanding flag is always actionable.
+     */
+    @Column(name = "pin_reset_requested_at")
+    private LocalDateTime pinResetRequestedAt;
+
+    /**
+     * True when the current PIN was admin-issued (initial assignment or reset)
+     * and the user hasn't changed it themselves yet. The profile UI surfaces a
+     * banner urging them to change it; once they do, the flag clears.
+     */
+    @lombok.Builder.Default
+    @Column(name = "pin_must_change")
+    private Boolean pinMustChange = Boolean.FALSE;
+
     /** Most recent safety-training completion timestamp. */
     @Column(name = "training_completed_at")
     private LocalDateTime trainingCompletedAt;

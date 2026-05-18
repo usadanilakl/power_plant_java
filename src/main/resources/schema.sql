@@ -57,7 +57,13 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_locked_until TIMESTAMP;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS failed_pin_attempts INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS training_completed_at TIMESTAMP;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS training_expires_at TIMESTAMP;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_reset_requested_at TIMESTAMP;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS pin_must_change BOOLEAN DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_users_signing_initials ON users(signing_initials);
+
+-- Confined Space: customer split CS into Reclassified vs Permit Required (Part B).
+-- Existing rows default to PERMIT_REQUIRED (the original form).
+ALTER TABLE IF EXISTS confined_space ADD COLUMN IF NOT EXISTS cs_type VARCHAR(32) DEFAULT 'PERMIT_REQUIRED';
 
 -- Instrumentation dedup and lookup indexes
 CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);

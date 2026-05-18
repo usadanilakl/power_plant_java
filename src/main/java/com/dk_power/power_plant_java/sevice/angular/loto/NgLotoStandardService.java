@@ -853,13 +853,9 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     /** Pass-if-any-of helper. CONTROL_AUTHORITY callers also satisfy legacy QUALIFIED gates. */
     @SuppressWarnings("deprecation")
     private void requireAnyRole(LotoRole... roles) {
-        String username = currentUserName();
-        if ("unknown".equals(username) || "anonymous".equalsIgnoreCase(username)) {
-            throw new SecurityException("Authentication required");
-        }
-        User user = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(username);
+        User user = currentUser();
         if (user == null) {
-            throw new SecurityException("User not found: " + username);
+            throw new SecurityException("Authentication required");
         }
         for (LotoRole r : roles) {
             if (user.hasLotoRole(r)) return;
@@ -880,6 +876,31 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
             return auth != null ? auth.getName() : "unknown";
         } catch (Exception e) {
             return "unknown";
+        }
+    }
+
+    /**
+     * Resolves the signed-in user. Spring's principal username equals the
+     * user's email (see CustomUserDetails), so we look up by id from
+     * CustomUserDetails first, then fall back to email lookup.
+     */
+    private User currentUser() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) return null;
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails details) {
+                return userRepo.findById(details.getId()).orElse(null);
+            }
+            String name = auth.getName();
+            if (name == null || "anonymousUser".equalsIgnoreCase(name) || "anonymous".equalsIgnoreCase(name)) {
+                return null;
+            }
+            User u = userRepo.findFirstByEmailIgnoreCaseOrderByIdAsc(name);
+            if (u == null) u = userRepo.findFirstByUsernameIgnoreCaseOrderByIdAsc(name);
+            return u;
+        } catch (Exception e) {
+            return null;
         }
     }
 }

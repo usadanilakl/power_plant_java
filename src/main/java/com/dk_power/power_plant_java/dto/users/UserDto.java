@@ -34,6 +34,10 @@ public class UserDto extends BaseDto {
     private String signingInitials;
     private LocalDateTime pinSetAt;
     private LocalDateTime pinLockedUntil;
+    /** Set when user has clicked Forgot PIN; cleared by admin reset. */
+    private LocalDateTime pinResetRequestedAt;
+    /** True when admin generated the current PIN; cleared on user-initiated change. */
+    private Boolean pinMustChange;
     private LocalDateTime trainingCompletedAt;
     private LocalDateTime trainingExpiresAt;
 }

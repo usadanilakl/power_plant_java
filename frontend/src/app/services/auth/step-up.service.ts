@@ -19,7 +19,7 @@ export class StepUpService {
 
   /** POST /api/auth/step-up — returns a token bound to the user the code resolves to. */
   authorize(code: string): Observable<StepUpTokenResponse> {
-    return this.http.post<StepUpTokenResponse>(`${environment.apiUrl}/auth/step-up`, { code });
+    return this.http.post<StepUpTokenResponse>(`${environment.baseApiUrl}/api/auth/step-up`, { code });
   }
 
   /** Promise variant for use inside async/await dialog flows. */

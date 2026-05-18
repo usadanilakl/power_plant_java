@@ -121,8 +121,10 @@ public class NgLotoController {
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<NgApiResponse<LotoDto>> updateLoto(@RequestBody LotoIdDto lotoDto) {
         try {
-            Loto updatedLoto = ngLotoService.update(lotoDto);
-            LotoDto updatedLotoDto = ngLotoService.toDto(updatedLoto);
+            // toDto must run in the same tx as update — lazy collections (locks,
+            // points, snapshots) close with the tx, so we delegate to a single
+            // service method that returns the DTO while still in-session.
+            LotoDto updatedLotoDto = ngLotoService.updateAndConvert(lotoDto);
             NgApiResponse<LotoDto> response = new NgApiResponse<>(updatedLotoDto, "LOTO updated successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {

@@ -157,8 +157,22 @@ public class NgUserController {
 
     @GetMapping("/roles")
     public ResponseEntity<?> getAvailableRoles() {
+        // Two categories returned together (frontend groups them):
+        //   - Spring access roles (ROLE_*) — gate web access and admin pages
+        //   - LOTO roles (CONTROL_AUTHORITY / LOTO_QUALIFIED / REQUESTOR / MANAGER) —
+        //     gate LOTO permit and standard operations. See LotoRole.java.
         return ResponseEntity.ok(Map.of(
-            "roles", new String[]{"ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT"}
+            "accessRoles", new String[]{
+                "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT"
+            },
+            "lotoRoles", new String[]{
+                "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
+            },
+            // Combined list for back-compat with the existing /roles consumer.
+            "roles", new String[]{
+                "ROLE_ADMIN", "ROLE_EMPLOYEE", "ROLE_CONTRACTOR", "ROLE_PLANT",
+                "CONTROL_AUTHORITY", "LOTO_QUALIFIED", "REQUESTOR", "MANAGER"
+            }
         ));
     }
 

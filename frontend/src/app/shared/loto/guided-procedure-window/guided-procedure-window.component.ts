@@ -9,6 +9,7 @@ import { LotoSnapshotDto, PointPrerequisiteDto } from '../../../models/loto/loto
 import { LotoService } from '../../../services/loto/loto.service';
 import { WalkdownSessionService } from '../../../services/loto/walkdown-session.service';
 import { WalkdownSessionDto } from '../../../models/loto/walkdown-session.model';
+import { StepUpDialogComponent } from '../../step-up/step-up-dialog.component';
 
 export type GuidedProcedureMode = 'HANG' | 'VERIFY' | 'WALKDOWN' | 'REMOVE';
 
@@ -29,7 +30,7 @@ interface RowState {
 @Component({
   selector: 'app-guided-procedure-window',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, RfFloatingWindowComponent],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, RfFloatingWindowComponent, StepUpDialogComponent],
   template: `
     <app-rf-floating-window
       [windowId]="'guided-procedure-' + mode()"
@@ -291,6 +292,14 @@ interface RowState {
         }
       </div>
     </app-rf-floating-window>
+
+    @if (stepUpRow()) {
+      <app-step-up-dialog
+        [actionLabel]="'Verify point ' + stepUpRow()!.tagNumber"
+        (authorized)="onStepUpAuthorized($event)"
+        (cancelled)="stepUpRow.set(null)">
+      </app-step-up-dialog>
+    }
   `,
   styles: [`
     .gpw-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; user-select: none; }
@@ -679,7 +688,33 @@ export class GuidedProcedureWindowComponent {
     return '';
   }
 
+  /**
+   * Tracks a pending VERIFY action waiting on PIN entry. Other modes (HANG,
+   * WALKDOWN, REMOVE) run directly under the logged-in user. VERIFY enforces
+   * separation of duty — the verifier signs in via PIN even if the hanger is
+   * the active session.
+   */
+  stepUpRow = signal<RowState | null>(null);
+
   act(row: RowState): void {
+    if (this.mode() === 'VERIFY') {
+      // Verifier identity must be confirmed via PIN, not inherited from the
+      // logged-in session. Open the step-up dialog; runVerify() runs after.
+      this.stepUpRow.set(row);
+      return;
+    }
+    this.runAction(row, null);
+  }
+
+  /** Called by step-up dialog on successful PIN entry. */
+  onStepUpAuthorized(result: { token: string; expiresAt: string }): void {
+    const row = this.stepUpRow();
+    this.stepUpRow.set(null);
+    if (!row) return;
+    this.runAction(row, result.token);
+  }
+
+  private runAction(row: RowState, stepUpToken: string | null): void {
     const lotoId = this.loto().id;
     if (!lotoId) return;
     const notes = this.notesDraft(row.pointId) || null;
@@ -687,7 +722,7 @@ export class GuidedProcedureWindowComponent {
 
     const obs =
       this.mode() === 'HANG'   ? this.lotoService.markPointHung(lotoId, row.pointId, ack, notes) :
-      this.mode() === 'VERIFY' ? this.lotoService.markPointVerified(lotoId, row.pointId, ack, notes) :
+      this.mode() === 'VERIFY' ? this.lotoService.markPointVerified(lotoId, row.pointId, ack, notes, stepUpToken) :
       this.mode() === 'REMOVE' ? this.lotoService.markPointRemoved(lotoId, row.pointId, ack, notes) :
                                   this.lotoService.markPointWalkdown(lotoId, row.pointId, notes);
 
