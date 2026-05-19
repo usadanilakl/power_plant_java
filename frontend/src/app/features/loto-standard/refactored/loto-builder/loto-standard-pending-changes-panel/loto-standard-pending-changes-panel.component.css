@@ -1,0 +1,127 @@
+.pending-changes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card, #fafafa);
+  border: 1px solid var(--border-color, #e4e4e7);
+  border-radius: 8px;
+  font-size: 12px;
+  /* Carousel arrows (.carousel-navigation) sit at z-index: 10 and are
+     vertically-centered over the slide — they would otherwise overlap this
+     panel's header + buttons. Position above them. */
+  position: relative;
+  z-index: 20;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e4e7;
+}
+.header-text strong { display: block; margin-bottom: 4px; color: #1f2937; }
+.counts { display: flex; gap: 6px; flex-wrap: wrap; }
+.count-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.count-pending { background: #fde68a; color: #78350f; }
+.count-kept { background: #bbf7d0; color: #14532d; }
+.count-dismissed { background: #e5e7eb; color: #4b5563; }
+
+.header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.btn:disabled { background: #d4d4d8 !important; color: #a1a1aa; cursor: not-allowed; }
+.btn-primary { background: #f97316; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #ea580c; }
+.btn-secondary { background: #e5e7eb; color: #1f2937; }
+.btn-secondary:hover { background: #d1d5db; }
+.btn-keep { background: #16a34a; color: #fff; padding: 4px 10px; font-size: 11px; }
+.btn-keep:hover { background: #15803d; }
+.btn-dismiss { background: #dc2626; color: #fff; padding: 4px 10px; font-size: 11px; margin-left: 4px; }
+.btn-dismiss:hover { background: #b91c1c; }
+/* Sibling "sign-as-someone-else" buttons. Visually quieter so they don't
+   compete with the primary action for already-authorized users; the 🔑
+   prefix in the label signals the step-up affordance. */
+.btn-escalate {
+  background: #f3f4f6; color: #4b5563;
+  padding: 4px 10px; font-size: 11px; margin-left: 4px;
+  border: 1px dashed #9ca3af;
+}
+.btn-escalate:hover { background: #e5e7eb; border-style: solid; }
+
+.loading, .empty, .error {
+  padding: 12px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+.error { color: #b91c1c; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; }
+
+.changes-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.changes-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e4e4e7;
+}
+.changes-table td {
+  padding: 8px;
+  vertical-align: top;
+  border-bottom: 1px solid #f3f4f6;
+}
+.changes-table tr.row-kept { background: rgba(34, 197, 94, 0.04); }
+.changes-table tr.row-dismissed { background: rgba(156, 163, 175, 0.06); opacity: 0.75; }
+
+.field-cell { font-weight: 600; color: #1f2937; }
+.point-cell { color: #6b7280; }
+
+.value-cell {
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 240px;
+}
+.value-old { background: #fef2f2; color: #991b1b; }
+.value-new { background: #f0fdf4; color: #14532d; }
+
+.meta-cell { color: #4b5563; }
+.meta-time { color: #9ca3af; font-size: 11px; margin-top: 2px; }
+
+.resolution-cell { white-space: nowrap; }
+.resolution-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.resolution-badge.row-pending { background: #fde68a; color: #78350f; }
+.resolution-badge.row-kept { background: #bbf7d0; color: #14532d; }
+.resolution-badge.row-dismissed { background: #e5e7eb; color: #4b5563; }
+
+.actions-col { white-space: nowrap; }

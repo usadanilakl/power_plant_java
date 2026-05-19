@@ -1,0 +1,137 @@
+<div class="pending-changes-panel" data-testid="pending-changes-panel">
+  <div class="panel-header">
+    <div class="header-text">
+      <strong>Pending Review — changes since last approval</strong>
+      <div class="counts">
+        <span class="count-badge count-pending" data-testid="count-pending">
+          {{ pendingCount() }} pending
+        </span>
+        <span class="count-badge count-kept" data-testid="count-kept">
+          {{ keptCount() }} kept
+        </span>
+        <span class="count-badge count-dismissed" data-testid="count-dismissed">
+          {{ dismissedCount() }} dismissed
+        </span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button
+        class="btn btn-primary"
+        data-testid="close-review-btn"
+        [disabled]="!readyToClose()"
+        [title]="readyToClose() ? 'Open close-review dialog' : 'Resolve all pending changes first'"
+        (click)="onCloseReviewClick()">
+        Close Review…
+      </button>
+      <button
+        class="btn btn-secondary"
+        data-testid="close-panel-btn"
+        (click)="onClosePanelClick()">
+        Hide
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading">Loading…</div>
+  } @else if (loadError()) {
+    <div class="error">{{ loadError() }}</div>
+  } @else if (changes().length === 0) {
+    <div class="empty">No pending changes recorded.</div>
+  } @else {
+    <table class="changes-table">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Point</th>
+          <th>Before</th>
+          <th>After</th>
+          <th>Edited</th>
+          <th>Resolution</th>
+          <th class="actions-col"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of changes(); track c.id) {
+          <tr [class]="rowClass(c.resolution)" [attr.data-testid]="testIdForChange(c)">
+            <td class="field-cell">{{ c.fieldName }}</td>
+            <td class="point-cell">{{ c.lotoPointId ?? '—' }}</td>
+            <td class="value-cell value-old">{{ displayValue(c.oldValue) }}</td>
+            <td class="value-cell value-new">{{ displayValue(c.newValue) }}</td>
+            <td class="meta-cell">
+              {{ c.editedBy }}
+              <div class="meta-time">{{ formatTimestamp(c.editedAt) }}</div>
+            </td>
+            <td class="resolution-cell">
+              <span class="resolution-badge" [class]="rowClass(c.resolution)">
+                {{ c.resolution }}
+              </span>
+              @if (c.resolution !== 'PENDING' && c.resolvedBy) {
+                <div class="meta-time">
+                  by {{ c.resolvedBy }} · {{ formatTimestamp(c.resolvedAt) }}
+                </div>
+              }
+            </td>
+            <td class="actions-col">
+              @if (c.resolution === 'PENDING') {
+                @if (canReviewDirectly()) {
+                  <button
+                    class="btn btn-keep"
+                    [attr.data-testid]="'keep-change-' + c.id"
+                    title="Keep this change (signed as you)"
+                    (click)="onKeepDirect(c)">
+                    Keep
+                  </button>
+                  <button
+                    class="btn btn-dismiss"
+                    [attr.data-testid]="'dismiss-change-' + c.id"
+                    title="Dismiss this change (signed as you)"
+                    (click)="onDismissDirect(c)">
+                    Dismiss
+                  </button>
+                  <button
+                    class="btn btn-escalate"
+                    [attr.data-testid]="'keep-change-pin-' + c.id"
+                    title="Sign Keep as a different reviewer"
+                    (click)="onKeepEscalate(c)">
+                    🔑 Keep
+                  </button>
+                  <button
+                    class="btn btn-escalate"
+                    [attr.data-testid]="'dismiss-change-pin-' + c.id"
+                    title="Sign Dismiss as a different reviewer"
+                    (click)="onDismissEscalate(c)">
+                    🔑 Dismiss
+                  </button>
+                } @else {
+                  <button
+                    class="btn btn-keep"
+                    [attr.data-testid]="'keep-change-' + c.id"
+                    title="Sign with a CA or Manager PIN to keep this change"
+                    (click)="onKeepEscalate(c)">
+                    🔑 Keep
+                  </button>
+                  <button
+                    class="btn btn-dismiss"
+                    [attr.data-testid]="'dismiss-change-' + c.id"
+                    title="Sign with a CA or Manager PIN to dismiss this change"
+                    (click)="onDismissEscalate(c)">
+                    🔑 Dismiss
+                  </button>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+@if (stepUpContext()) {
+  <app-step-up-dialog
+    [actionLabel]="stepUpLabel()"
+    (authorized)="onStepUpAuthorized($event)"
+    (cancelled)="onStepUpCancelled()">
+  </app-step-up-dialog>
+}

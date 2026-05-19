@@ -1,0 +1,110 @@
+<div class="dialog-backdrop" data-testid="close-review-dialog">
+  <div class="dialog-window">
+    <header class="dialog-header">
+      <strong>Close Pending Review</strong>
+      <button class="close-x" data-testid="close-review-cancel-x" (click)="onCancelClick()">×</button>
+    </header>
+
+    <section class="dialog-body">
+      <p class="summary">
+        <span class="count count-kept">{{ keptCount() }} kept</span>
+        +
+        <span class="count count-dismissed">{{ dismissedCount() }} dismissed</span>
+        on standard <strong>{{ standard().name }}</strong>.
+      </p>
+
+      <p class="prompt">Pick the right outcome for the kept changes:</p>
+
+      @if (hasStructuralKeptChange()) {
+        <div class="structural-warning" data-testid="structural-warning">
+          🔒 A kept change adds, removes, or reorders LOTO points. That's
+          structural — the standard must be re-approved before further use.
+          "Close as minor" is disabled.
+        </div>
+      }
+
+      <div
+        class="option"
+        role="radio"
+        [attr.aria-checked]="!requireReapproval()"
+        [class.selected]="!requireReapproval() && !hasStructuralKeptChange()"
+        [class.disabled]="hasStructuralKeptChange()"
+        (click)="hasStructuralKeptChange() ? null : requireReapproval.set(false)"
+        data-testid="close-review-option-minor">
+        <span class="option-radio" [class.checked]="!requireReapproval() && !hasStructuralKeptChange()"></span>
+        <div class="option-text">
+          <strong>Close as minor</strong>
+          <span class="option-detail">
+            Standard stays <code>APPROVED</code>. Pick this for typo fixes,
+            wording tweaks, or clarifications that don't change the
+            isolation logic.
+          </span>
+        </div>
+      </div>
+
+      <div
+        class="option"
+        role="radio"
+        [attr.aria-checked]="requireReapproval()"
+        [class.selected]="requireReapproval()"
+        (click)="requireReapproval.set(true)"
+        data-testid="close-review-option-substantive">
+        <span class="option-radio" [class.checked]="requireReapproval()"></span>
+        <div class="option-text">
+          <strong>Require re-approval</strong>
+          <span class="option-detail">
+            Standard flips to <code>NEW_PENDING_REAPPROVAL</code>. The full
+            verify → walkdown → ready → approve cycle must be walked again.
+            Pick this when isolation sequence, zero-energy method,
+            predecessors, or any safety-critical content changed.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="dialog-actions">
+      <button
+        class="btn btn-secondary"
+        data-testid="close-review-cancel-btn"
+        [disabled]="isSubmitting()"
+        (click)="onCancelClick()">
+        Cancel
+      </button>
+      @if (canCloseDirectly()) {
+        <button
+          class="btn btn-primary"
+          data-testid="close-review-confirm-btn"
+          title="Confirm and close (signed as you)"
+          [disabled]="isSubmitting()"
+          (click)="onConfirmDirect()">
+          {{ isSubmitting() ? 'Submitting…' : 'Confirm' }}
+        </button>
+        <button
+          class="btn btn-escalate"
+          data-testid="close-review-confirm-pin-btn"
+          title="Confirm and close by signing as a different reviewer"
+          [disabled]="isSubmitting()"
+          (click)="onConfirmEscalate()">
+          🔑 Sign as someone else
+        </button>
+      } @else {
+        <button
+          class="btn btn-primary"
+          data-testid="close-review-confirm-btn"
+          title="Sign with a CA or Manager PIN to close the review"
+          [disabled]="isSubmitting()"
+          (click)="onConfirmEscalate()">
+          {{ isSubmitting() ? 'Submitting…' : '🔑 Continue with PIN…' }}
+        </button>
+      }
+    </footer>
+  </div>
+</div>
+
+@if (awaitingStepUp()) {
+  <app-step-up-dialog
+    [actionLabel]="requireReapproval() ? 'Close review — require re-approval' : 'Close review as minor'"
+    (authorized)="onStepUpAuthorized($event)"
+    (cancelled)="onStepUpCancelled()">
+  </app-step-up-dialog>
+}
