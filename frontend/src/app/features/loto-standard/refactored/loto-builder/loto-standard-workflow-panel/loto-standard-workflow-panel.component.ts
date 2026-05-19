@@ -15,6 +15,7 @@ import {
 import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
+import { StepUpDialogComponent } from '../../../../../shared/step-up/step-up-dialog.component';
 
 interface ActionButton {
   targetStatus: string;
@@ -27,7 +28,7 @@ interface ActionButton {
 @Component({
   selector: 'app-loto-standard-workflow-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, StepUpDialogComponent],
   templateUrl: './loto-standard-workflow-panel.component.html',
   styleUrl: './loto-standard-workflow-panel.component.css',
 })
@@ -43,16 +44,33 @@ export class LotoStandardWorkflowPanelComponent {
   /** Emitted when a workflow transition completes — parent should refresh state. */
   standardUpdated = output<LotoStandardDto>();
 
+  /**
+   * Emitted when the user clicks "Review changes" on the pending-review banner.
+   * The parent should open the pending-changes panel (added in step 3 — for now
+   * the listener can no-op or log).
+   */
+  reviewChangesRequested = output<void>();
+
   isProcessing = signal(false);
   showHistory = signal(false);
   history = signal<LotoStandardApprovalEventDto[]>([]);
   historyLoaded = signal(false);
+
+  /**
+   * What action a pending step-up should authorize. Non-null = dialog open.
+   * When the user clicks the "(PIN)" variant of a workflow action we stash
+   * the action context here, mount the step-up dialog, and on authorize
+   * run the transition with the returned token.
+   */
+  stepUpContext = signal<{ action: ActionButton } | null>(null);
 
   currentStatusName = computed(() => this.standard().developmentStatus?.name ?? LotoStandardStatusName.DRAFT);
   currentStatusColor = computed(() => statusColor(this.currentStatusName()));
   isNewPendingReapproval = computed(() => this.currentStatusName() === LotoStandardStatusName.NEW_PENDING_REAPPROVAL);
   isApproved = computed(() => this.currentStatusName() === LotoStandardStatusName.APPROVED);
   isUnsaved = computed(() => !this.standard().id);
+  /** APPROVED standards with edits pending CA/Manager review show a yellow banner. */
+  isPendingReview = computed(() => !!this.standard().pendingReviewSince);
 
   actions = computed<ActionButton[]>(() => {
     const std = this.standard();
@@ -110,16 +128,71 @@ export class LotoStandardWorkflowPanelComponent {
 
   onActionClick(action: ActionButton): void {
     if (!action.enabled || this.isProcessing()) return;
+    this.runAction(action, /*stepUpToken*/ null);
+  }
+
+  /**
+   * Open the step-up dialog so a different qualified user can authorize this
+   * action on the current session's tablet. Always available (regardless of
+   * direct-button enabled state) once the standard has an id and the action
+   * has a valid endpoint segment — the role/SoD check happens server-side
+   * against the PIN bearer, not the logged-in user.
+   */
+  onStepUpClick(action: ActionButton): void {
+    if (this.isProcessing()) return;
+    const std = this.standard();
+    if (!std.id || !action.endpointSegment) return;
+    this.stepUpContext.set({ action });
+  }
+
+  onStepUpAuthorized(result: { token: string; expiresAt: string }): void {
+    const ctx = this.stepUpContext();
+    this.stepUpContext.set(null);
+    if (!ctx) return;
+    this.runAction(ctx.action, result.token);
+  }
+
+  onStepUpCancelled(): void {
+    this.stepUpContext.set(null);
+  }
+
+  /**
+   * Whether to show the "(PIN)" button for an action. We show it whenever the
+   * action has an endpoint segment, so a third party can sign in via PIN even
+   * if the direct button is disabled (wrong role, second-person rule, etc.).
+   */
+  canStepUp(action: ActionButton): boolean {
+    return !!action.endpointSegment && !this.isUnsaved() && !this.isProcessing();
+  }
+
+  /** Stable test id for the direct action button. */
+  testIdForAction(action: ActionButton): string {
+    return `workflow-action-${action.endpointSegment}`;
+  }
+
+  /** Stable test id for the "(PIN)" variant. */
+  testIdForStepUp(action: ActionButton): string {
+    return `workflow-action-${action.endpointSegment}-pin`;
+  }
+
+  /** Forward the review request to the parent. Wired up in step 3 to open the panel. */
+  onReviewChangesClick(): void {
+    this.reviewChangesRequested.emit();
+  }
+
+  /** Shared action runner — same logic for direct and step-up paths. */
+  private runAction(action: ActionButton, stepUpToken: string | null): void {
     const std = this.standard();
     if (!std.id || !action.endpointSegment) return;
 
-    const confirmMsg = `${action.label}?\n\nCurrent status: ${this.currentStatusName()}\nNew status: ${action.targetStatus}`;
+    const verb = stepUpToken ? `${action.label} (PIN)` : action.label;
+    const confirmMsg = `${verb}?\n\nCurrent status: ${this.currentStatusName()}\nNew status: ${action.targetStatus}`;
     if (!confirm(confirmMsg)) return;
 
     const notes = prompt('Optional notes for this transition (leave blank to skip):', '') || null;
 
     this.isProcessing.set(true);
-    this.apiService.workflowTransition(std.id, action.endpointSegment, notes)
+    this.apiService.workflowTransition(std.id, action.endpointSegment, notes, stepUpToken)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -127,7 +200,6 @@ export class LotoStandardWorkflowPanelComponent {
           const updated = LotoStandardDto.fromJson(response.responseData);
           this.messageService.showSuccess(`Standard ${action.label.toLowerCase()}`);
           this.standardUpdated.emit(updated);
-          // Refresh history if it was visible
           if (this.showHistory()) this.loadHistory();
         },
         error: (err) => {

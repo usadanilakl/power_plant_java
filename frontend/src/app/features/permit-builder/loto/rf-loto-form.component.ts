@@ -50,7 +50,7 @@ import { MatIconModule } from '@angular/material/icon';
         </button>
 
         @if (entity().id) {
-          <span class="status-chip" [class]="'status-' + statusName().toLowerCase()">
+          <span class="status-chip" data-testid="permit-status" [class]="'status-' + statusName().toLowerCase()">
             {{ statusName() }}
           </span>
           @if (entity().boxNumber) {
@@ -60,26 +60,29 @@ import { MatIconModule } from '@angular/material/icon';
           <!-- Status transition buttons (CA only) -->
           @if (authService.isControlAuthority()) {
             @if (statusName() === 'Building') {
-              <button mat-raised-button color="warn" (click)="changeStatus('Active')">Activate</button>
-              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+              <button mat-raised-button color="warn" data-testid="status-activate" (click)="changeStatus('Active')">Activate</button>
+              <button mat-stroked-button data-testid="status-close" (click)="changeStatus('Closed')">Close</button>
             }
             @if (statusName() === 'Active') {
               <button mat-raised-button color="accent"
+                      data-testid="status-test"
                       [disabled]="currentlySignedOnCount() > 0"
                       [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
                       (click)="changeStatus('Test')">Test</button>
               <button mat-stroked-button
+                      data-testid="status-modification"
                       [disabled]="currentlySignedOnCount() > 0"
                       [title]="currentlySignedOnCount() > 0 ? 'Sign everyone off first' : ''"
                       (click)="changeStatus('Modification')">Modify</button>
-              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+              <button mat-stroked-button data-testid="status-close" (click)="changeStatus('Closed')">Close</button>
             }
             @if (statusName() === 'Test' || statusName() === 'Modification') {
               <button mat-raised-button color="warn"
+                      data-testid="status-reactivate"
                       [disabled]="!canReactivate()"
                       [title]="canReactivate() ? '' : reactivateBlockedReason()"
                       (click)="changeStatus('Active')">Re-Activate</button>
-              <button mat-stroked-button (click)="changeStatus('Closed')">Close</button>
+              <button mat-stroked-button data-testid="status-close" (click)="changeStatus('Closed')">Close</button>
             }
           }
         }
@@ -126,10 +129,10 @@ import { MatIconModule } from '@angular/material/icon';
 
           @if (!showStandardSelector()) {
             <div class="create-actions">
-              <button mat-raised-button color="primary" (click)="loadStandardsAndShow()">
+              <button mat-raised-button color="primary" data-testid="create-from-standard-btn" (click)="loadStandardsAndShow()">
                 <mat-icon>library_books</mat-icon> From Standard
               </button>
-              <button mat-stroked-button (click)="createFromScratch()">
+              <button mat-stroked-button data-testid="create-from-scratch-btn" (click)="createFromScratch()">
                 <mat-icon>edit_note</mat-icon> From Scratch
               </button>
             </div>
@@ -150,7 +153,7 @@ import { MatIconModule } from '@angular/material/icon';
               } @else {
                 <div class="standard-list">
                   @for (std of standards(); track std.id) {
-                    <div class="standard-item" (click)="createFromStandard(std.id)">
+                    <div class="standard-item" [attr.data-testid]="'standard-item-' + std.id" (click)="createFromStandard(std.id)">
                       <mat-icon>checklist</mat-icon>
                       <div class="standard-info">
                         <span class="standard-name">{{ std.name || 'Standard #' + std.id }}</span>
@@ -272,8 +275,9 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatAuditBy(latestEvent('caApprovedForHangingBy')) }}</td>
                     <td>{{ formatTime(latestEvent('caApprovedForHangingAt')) || '—' }}</td>
                     <td>
-                      <button mat-stroked-button [disabled]="!canRecord('ca-approve-hanging')" (click)="recordCaApprovedForHanging()">Approve for Hanging</button>
+                      <button mat-stroked-button data-testid="ca-approve-hanging-btn" [disabled]="!canRecord('ca-approve-hanging')" (click)="recordCaApprovedForHanging()">Approve for Hanging</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="ca-approve-hanging-pin-btn"
                               [disabled]="!canStepUpApproveHanging()"
                               (click)="openStepUp('ca-approve-hanging', 'CA: Approve for Hanging')">
                         <mat-icon>vpn_key</mat-icon> (PIN)
@@ -286,14 +290,17 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatTime(latestEvent('hungAt')) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
+                              data-testid="start-hanging-btn"
                               [disabled]="!canStartProcedure('HANG')"
                               (click)="openProcedure('HANG')">
                         <mat-icon>lock</mat-icon> Start Hanging
                       </button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="mark-hung-btn"
                               [disabled]="!canRecord('hung')"
                               (click)="recordHung()">Sign as Hung</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="mark-hung-pin-btn"
                               [disabled]="!canStepUpHung()"
                               (click)="openStepUp('mark-hung', 'Sign LOTO as Hung')">
                         <mat-icon>vpn_key</mat-icon> (PIN)
@@ -307,11 +314,13 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatTime(latestEvent('verifiedAt')) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
+                              data-testid="start-verifying-btn"
                               [disabled]="!canStartProcedure('VERIFY')"
                               (click)="openProcedure('VERIFY')">
                         <mat-icon>verified_user</mat-icon> Start Verifying
                       </button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="mark-verified-btn"
                               [disabled]="!canRecord('verified')"
                               (click)="recordVerified()">Sign as Verified</button>
                       <!-- Step-up path: another qualified user walks up, enters
@@ -319,6 +328,7 @@ import { MatIconModule } from '@angular/material/icon';
                            hanger logging out. Always offered while a Verify is
                            pending (so the verifier never needs the hanger's roles). -->
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="mark-verified-pin-btn"
                               [disabled]="!canStepUpVerify()"
                               (click)="openStepUpForVerify()">
                         <mat-icon>vpn_key</mat-icon> Sign as Verified (PIN)
@@ -332,6 +342,7 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatTime(latestWalkdownAt()) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
+                              data-testid="start-walkdown-btn"
                               [disabled]="!canStartProcedure('WALKDOWN')"
                               (click)="openProcedure('WALKDOWN')">
                         <mat-icon>directions_walk</mat-icon> Start Walkdown
@@ -343,8 +354,9 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatAuditBy(latestEvent('caActivatedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('caActivatedAt')) || '—' }}</td>
                     <td>
-                      <button mat-stroked-button [disabled]="!canRecord('ca-activate')" (click)="recordCaActivated()">Activate as CA</button>
+                      <button mat-stroked-button data-testid="ca-activate-btn" [disabled]="!canRecord('ca-activate')" (click)="recordCaActivated()">Activate as CA</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="ca-activate-pin-btn"
                               [disabled]="!canStepUpActivate()"
                               (click)="openStepUp('ca-activate', 'CA: Activate LOTO')">
                         <mat-icon>vpn_key</mat-icon> (PIN)
@@ -388,8 +400,9 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatAuditBy(latestEvent('requestorReleasedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('requestorReleasedAt')) || '—' }}</td>
                     <td>
-                      <button mat-stroked-button [disabled]="!canRecord('release')" (click)="recordRequestorReleased()">Release</button>
+                      <button mat-stroked-button data-testid="release-requestor-btn" [disabled]="!canRecord('release')" (click)="recordRequestorReleased()">Release</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="release-requestor-pin-btn"
                               [disabled]="!canStepUpRelease()"
                               (click)="openStepUp('release-requestor', 'Requestor: Release LOTO')">
                         <mat-icon>vpn_key</mat-icon> (PIN)
@@ -401,8 +414,9 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatAuditBy(latestEvent('controlAuthorityReleasedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('controlAuthorityReleasedAt')) || '—' }}</td>
                     <td>
-                      <button mat-stroked-button [disabled]="!canRecord('release-ca')" (click)="recordCAReleased()">Release CA</button>
+                      <button mat-stroked-button data-testid="release-ca-btn" [disabled]="!canRecord('release-ca')" (click)="recordCAReleased()">Release CA</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="release-ca-pin-btn"
                               [disabled]="!canStepUpReleaseCa()"
                               (click)="openStepUp('release-ca', 'CA: Release LOTO')">
                         <mat-icon>vpn_key</mat-icon> (PIN)
@@ -415,6 +429,7 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatTime(latestRemovedAt()) || '—' }}</td>
                     <td>
                       <button mat-raised-button color="primary"
+                              data-testid="start-removal-btn"
                               [disabled]="!canStartProcedure('REMOVE')"
                               (click)="openProcedure('REMOVE')">
                         <mat-icon>lock_open</mat-icon> Start Removal
@@ -426,8 +441,9 @@ import { MatIconModule } from '@angular/material/icon';
                     <td>{{ formatAuditBy(latestEvent('locksRemovedBy')) }}</td>
                     <td>{{ formatTime(latestEvent('locksRemovedAt')) || '—' }}</td>
                     <td>
-                      <button mat-stroked-button [disabled]="!canRecord('remove-locks')" (click)="recordLocksRemoved()">Remove Locks</button>
+                      <button mat-stroked-button data-testid="remove-locks-btn" [disabled]="!canRecord('remove-locks')" (click)="recordLocksRemoved()">Remove Locks</button>
                       <button mat-stroked-button class="aggregate-btn"
+                              data-testid="remove-locks-pin-btn"
                               [disabled]="!canStepUpRemoveLocks()"
                               (click)="openStepUp('remove-locks', 'CA: Remove Locks')">
                         <mat-icon>vpn_key</mat-icon> (PIN)

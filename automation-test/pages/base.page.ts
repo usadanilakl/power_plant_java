@@ -1,4 +1,5 @@
 import { Page, Locator } from '@playwright/test';
+import { config } from '../test.config';
 
 /**
  * Base Page Object with reusable methods for all pages
@@ -13,8 +14,21 @@ export class BasePage {
 
   // ==================== NAVIGATION ====================
 
+  /**
+   * Navigate to a route under the Angular bundle. Builds the full URL from
+   * {@link config.frontendUrl} + {@link config.angularBasePath} + path so it
+   * works against both:
+   *  - Spring-Boot-served prod build (8082 + /angular/browser)
+   *  - `ng serve` dev server (4200 + /, when overridden via env)
+   *
+   * Leading slash on `path` is optional — both `goto('/home')` and
+   * `goto('home')` work.
+   */
   async goto(path: string) {
-    await this.page.goto(path);
+    const host = config.frontendUrl.replace(/\/+$/, '');
+    const base = config.angularBasePath.replace(/\/+$/, '');
+    const route = path.startsWith('/') ? path : '/' + path;
+    await this.page.goto(`${host}${base}${route}`);
   }
 
   async waitForPageLoad() {

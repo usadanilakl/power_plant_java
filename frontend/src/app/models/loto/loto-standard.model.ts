@@ -55,6 +55,8 @@ export class LotoStandardDto extends BaseDto {
   readyForTestingAt: string | null;
   managerApprovedBy: string | null;
   managerApprovedAt: string | null;
+  /** Non-null when there are unresolved edits on an APPROVED standard. See loto-procedure.md §3.3. */
+  pendingReviewSince: string | null;
 
   constructor(data: Partial<LotoStandardDto> = {}) {
     super(data);
@@ -82,6 +84,7 @@ export class LotoStandardDto extends BaseDto {
     this.readyForTestingAt = data.readyForTestingAt ?? null;
     this.managerApprovedBy = data.managerApprovedBy ?? null;
     this.managerApprovedAt = data.managerApprovedAt ?? null;
+    this.pendingReviewSince = data.pendingReviewSince ?? null;
   }
 
   // Serialization method
@@ -122,6 +125,7 @@ export class LotoStandardDto extends BaseDto {
       readyForTestingAt: json.readyForTestingAt ?? null,
       managerApprovedBy: json.managerApprovedBy ?? null,
       managerApprovedAt: json.managerApprovedAt ?? null,
+      pendingReviewSince: json.pendingReviewSince ?? null,
     });
   }
 

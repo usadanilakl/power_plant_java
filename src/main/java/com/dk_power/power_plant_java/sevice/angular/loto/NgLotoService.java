@@ -189,19 +189,26 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     public LotoDto addLotoPointToLoto(Long pointId, Long lotoId) {
+        // Add/remove/reorder reshape the permit. Only CA may do this, and only when
+        // the permit is structurally editable: Building (first build) or Modification
+        // (after the permit went Active and was paused for changes). Test is a
+        // pause-for-rehang, not a modification — adding/removing during Test is forbidden
+        // (loto-procedure.md §4.2).
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId)
                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStructurallyEditable(loto, "Add point to LOTO");
 
         LotoPoint point = lotoPointService.findById(pointId)
                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + pointId));
 
         loto.addLotoPoint(lotoPointService.toIdDto(point));
-        // Points added during Modification/Test must go through the re-hang flow before re-activation.
+        // Points added during Modification go through the re-hang flow before re-activation.
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
-        if ("Modification".equals(status) || "Test".equals(status)) {
+        if ("Modification".equals(status)) {
             loto.getLatestSnapshot().flagNeedsRehang(pointId);
         }
-        flagIfActiveModification(loto);
+        flagIfModificationStructuralEdit(loto);
 
         return toDto(save(loto));
     }
@@ -211,21 +218,37 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     public LotoDto removeLotoPointFromLoto(Long pointId, Long lotoId) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = repo.findById(lotoId)
                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+        requireStructurallyEditable(loto, "Remove point from LOTO");
         loto.removeLotoPoint(pointId);
-        flagIfActiveModification(loto);
+        flagIfModificationStructuralEdit(loto);
         return toDto(save(loto));
     }
 
     /**
-     * Flip {@code wasModifiedDuringActive} on the LOTO if the current permit status
-     * is Active or Test. Used by add/remove-point paths to record that the LOTO was
-     * mutated after first activation, which feeds the close-time disposition logic.
+     * Reject when permit is not in a state that allows structural edits
+     * (add/remove/reorder of points). Active permits are immutable; Test is a
+     * pause-for-rehang, not a modification window; Closed is terminal.
      */
-    private void flagIfActiveModification(Loto loto) {
+    private void requireStructurallyEditable(Loto loto, String operation) {
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
-        if ("Active".equals(status) || "Test".equals(status)) {
+        if (!"Building".equals(status) && !"Modification".equals(status)) {
+            throw new IllegalStateException(operation + " not allowed in status " + status
+                    + " (only Building or Modification permits structural edits)");
+        }
+    }
+
+    /**
+     * Flip {@code wasModifiedDuringActive} when an actual point add/remove happens during
+     * Modification. Only Modification flips this flag — Test pulls existing points for
+     * re-hang without touching the point list, so the permit hasn't been *modified* in
+     * the sense the close-time disposition cares about.
+     */
+    private void flagIfModificationStructuralEdit(Loto loto) {
+        String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
+        if ("Modification".equals(status)) {
             loto.setWasModifiedDuringActive(Boolean.TRUE);
         }
     }
@@ -247,12 +270,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     }
 
     public LotoDto reorderLotoPoints(Long currentLotoId, List<Long> lotoPoints) {
+        requireAnyRole(com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY);
         Loto loto = getEntityById(currentLotoId);
         if(loto == null) {
             throw new EntityNotFoundException("Loto not found");
         }
+        requireStructurallyEditable(loto, "Reorder LOTO points");
         loto.reorderLotoPoints(lotoPoints);
-        flagIfActiveModification(loto);
+        flagIfModificationStructuralEdit(loto);
         return toDto(save(loto));
     }
 
@@ -733,7 +758,9 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
                 com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Mark point walkdown", "Building");
+        // Walkdown is a post-verified action; Test/Modification re-hangs may need to
+        // re-walk a point too (loto-procedure.md §5.3).
+        requireStatusOneOf(loto, "Mark point walkdown", "Building", "Test", "Modification");
         LotoSnapshot latest = loto.getLatestSnapshot();
         // Walkdown is only available after every point has been verified.
         java.util.Set<Long> pointIds = new java.util.HashSet<>();
@@ -754,7 +781,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 com.dk_power.power_plant_java.entities.users.LotoRole.CONTROL_AUTHORITY,
                 com.dk_power.power_plant_java.entities.users.LotoRole.LOTO_QUALIFIED);
         Loto loto = repo.findById(lotoId).orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
-        requireStatusOneOf(loto, "Unmark point walkdown", "Building");
+        requireStatusOneOf(loto, "Unmark point walkdown", "Building", "Test", "Modification");
         LotoSnapshot s = loto.unmarkPointWalkdown(pointId);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
@@ -764,7 +791,10 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     /**
      * Gate for per-point removal operations. Removal is allowed when CA has released
-     * the LOTO (controlAuthorityReleasedBy set on any snapshot) and the LOTO isn't Closed.
+     * the LOTO (controlAuthorityReleasedBy set on any snapshot) and the LOTO isn't Closed
+     * and no personnel are still signed on. The personnel check is the safety-critical
+     * one — removing isolation while a worker is still on the permit is the canonical
+     * LOTO failure mode (loto-procedure.md §5.4).
      */
     private void requireCaReleasedAndOpen(Loto loto, String operation) {
         String status = loto.getPermitStatus() != null ? loto.getPermitStatus().getName() : null;
@@ -775,6 +805,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 .anyMatch(sn -> sn.getControlAuthorityReleasedBy() != null);
         if (!caReleased) {
             throw new IllegalStateException(operation + " not allowed: Control Authority has not released the LOTO");
+        }
+        java.util.List<PersonnelSignEntry> stillOn = loto.getSignedOnPersonnel();
+        if (stillOn != null && !stillOn.isEmpty()) {
+            throw new IllegalStateException(operation + " not allowed: "
+                    + stillOn.size() + " worker(s) still signed on (" +
+                    stillOn.stream().map(PersonnelSignEntry::getPersonName).reduce((a, b) -> a + ", " + b).orElse("")
+                    + ")");
         }
     }
 
@@ -975,7 +1012,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         }
         latest.setPointPrerequisites(normalized);
         lotoSnapshotRepo.save(latest);
-        flagIfActiveModification(loto);
+        flagIfModificationStructuralEdit(loto);
         return toDto(repo.save(loto));
     }
 
@@ -1097,7 +1134,14 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             throw new IllegalStateException(
                     "Only " + pendingRecipient + " (the transfer recipient) can accept this transfer");
         }
+        // recordAccepted writes both the audit field (acceptedBy = currentAuditActor() — includes
+        // the "via:<sessionHolder>" suffix when step-up was used) AND flips lotoRequestor. The
+        // identity stored in lotoRequestor must be the plain principal name, because every
+        // subsequent gate compares it against currentUserName() (e.g. releaseByRequestor).
         LotoSnapshot s = loto.recordAccepted(currentAuditActor());
+        // Override the requestor identity the entity just set to the audit string. The acceptedBy
+        // audit field still carries the via:sessionHolder context for traceability.
+        loto.setLotoRequestor(me);
         lotoSnapshotRepo.save(s);
         return toDto(repo.save(loto));
     }
@@ -1248,7 +1292,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             lockService.save(lock);
         }
 
-        flagIfActiveModification(loto);
+        flagIfModificationStructuralEdit(loto);
         repo.save(loto);
         return toDto(repo.findById(lotoId).orElseThrow());
     }

@@ -18,6 +18,8 @@ import { LotoService } from '../../../../services/loto/loto.service';
 import { LotoStandardDto, PointPrerequisiteDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/loto-standard-image-viewer.component';
@@ -25,6 +27,8 @@ import { CounterpartStandardDialogComponent } from '../counterpart-standard-dial
 import { BulkSearchDialogComponent } from '../../../loto-points/refactored/bulk-search-dialog/bulk-search-dialog.component';
 import { LotoPointDtoLight } from '../../../../models/loto/bulk-search-result.model';
 import { LotoStandardWorkflowPanelComponent } from '../loto-builder/loto-standard-workflow-panel/loto-standard-workflow-panel.component';
+import { LotoStandardPendingChangesPanelComponent } from '../loto-builder/loto-standard-pending-changes-panel/loto-standard-pending-changes-panel.component';
+import { LotoStandardCloseReviewDialogComponent } from '../loto-builder/loto-standard-close-review-dialog/loto-standard-close-review-dialog.component';
 import { PointPrerequisitesEditorComponent } from '../loto-builder/point-prerequisites-editor/point-prerequisites-editor.component';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
@@ -41,6 +45,8 @@ type LotoStandardFieldName = keyof LotoStandardDto;
     CounterpartStandardDialogComponent,
     BulkSearchDialogComponent,
     LotoStandardWorkflowPanelComponent,
+    LotoStandardPendingChangesPanelComponent,
+    LotoStandardCloseReviewDialogComponent,
     PointPrerequisitesEditorComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
@@ -423,6 +429,49 @@ export class RfLotoStandardFormComponent {
   proseSaving = signal(false);
   prereqSaving = signal(false);
 
+  /**
+   * Auto-save plumbing for the procedural-text textareas. Every keystroke
+   * pushes to {@link proseAutoSaveTrigger}; the debounced subscription fires
+   * a save 3s after the user pauses typing. The manual Save button still
+   * works as a flush-now affordance.
+   *
+   * <p>Status:
+   *  - {@code dirty} → user has typed since last save but the debounce hasn't fired
+   *  - {@code saving} → save request in flight
+   *  - {@code saved} → just succeeded; fades after 1.5s
+   *  - {@code error} → last save failed; stays until next keystroke or success
+   *  - {@code idle} → no unsaved changes, nothing to show
+   */
+  proseAutoSaveStatus = signal<'idle' | 'dirty' | 'saving' | 'saved' | 'proposed' | 'error'>('idle');
+  private proseAutoSaveTrigger = new Subject<void>();
+  private autoSaveDebounceMs = 3000;
+
+  /** Wire the debounced trigger → save. Subscription cleaned up by takeUntilDestroyed. */
+  private proseAutoSaveSub = this.proseAutoSaveTrigger
+      .pipe(debounceTime(this.autoSaveDebounceMs), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.proseDirty() && !this.proseSaving()) {
+          this.saveProse();
+        }
+      });
+
+  /**
+   * Whether the pending-changes review panel is open. Toggled by the workflow
+   * banner's "Review changes" button. The panel itself can close via its
+   * Hide button or by triggering the close-review dialog below.
+   */
+  showPendingChanges = signal(false);
+
+  /**
+   * Whether the close-review modal is open. Opened from the pending-changes
+   * panel once every PENDING row is resolved.
+   */
+  showCloseReviewDialog = signal(false);
+
+  /** Kept/dismissed counts forwarded from the panel into the close-review dialog. */
+  closeReviewKeptCount = signal(0);
+  closeReviewDismissedCount = signal(0);
+
   /** Tab selection for the Procedures slide — drives both prose section and per-point editor. */
   proseSide = signal<'INSTALL' | 'REMOVAL'>('INSTALL');
 
@@ -467,12 +516,18 @@ export class RfLotoStandardFormComponent {
 
   onProseChange(field: keyof ReturnType<typeof this.proseDraft>, value: string): void {
     this.proseDraft.set({ ...this.proseDraft(), [field]: value });
+    // Mark dirty immediately so the indicator shows "Unsaved" right away, even
+    // before the debounce fires. Skipped while a save is in flight (we'll go
+    // back to dirty if the user keeps typing during it).
+    if (!this.proseSaving()) this.proseAutoSaveStatus.set('dirty');
+    this.proseAutoSaveTrigger.next();
   }
 
   saveProse(): void {
     const id = this.entity().id;
     if (!id) return;
     this.proseSaving.set(true);
+    this.proseAutoSaveStatus.set('saving');
     this.apiService.updateProceduralText(id, this.proseDraft())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -480,12 +535,51 @@ export class RfLotoStandardFormComponent {
           this.proseSaving.set(false);
           const updated = LotoStandardDto.fromJson(response.responseData);
           this.stateService.setSelectedItem(updated);
+          // If user kept typing during the save, the draft is dirty against
+          // the just-arrived entity; leave status as 'dirty' and the trigger
+          // will fire another save. Otherwise reflect the right success state:
+          // 'proposed' when the standard is APPROVED (backend stored a pending
+          // proposal — entity content is unchanged on purpose), 'saved' otherwise.
+          if (this.proseDirty()) {
+            this.proseAutoSaveStatus.set('dirty');
+            this.proseAutoSaveTrigger.next();
+          } else if (this.isApprovedStandard(updated)) {
+            this.proseAutoSaveStatus.set('proposed');
+            // Proposed lingers longer than 'saved' — the user needs to read it.
+            setTimeout(() => {
+              if (this.proseAutoSaveStatus() === 'proposed') this.proseAutoSaveStatus.set('idle');
+            }, 4000);
+          } else {
+            this.proseAutoSaveStatus.set('saved');
+            setTimeout(() => {
+              if (this.proseAutoSaveStatus() === 'saved') this.proseAutoSaveStatus.set('idle');
+            }, 1500);
+          }
         },
         error: (err) => {
           this.proseSaving.set(false);
-          alert(`Failed to save procedural text: ${err?.error?.message ?? err?.message ?? 'Unknown'}`);
+          this.proseAutoSaveStatus.set('error');
+          // Replace the modal alert with the inline indicator so the user
+          // isn't interrupted mid-typing. The error state persists until the
+          // next keystroke or a successful retry.
+          console.error('Procedural text auto-save failed:', err);
         }
       });
+  }
+
+  /**
+   * True iff the given standard's developmentStatus is APPROVED. The DTO
+   * stores developmentStatus as either a ValueDto ({id, name}) or a plain
+   * string depending on serialization layer, so check both shapes.
+   */
+  private isApprovedStandard(s: LotoStandardDto | null | undefined): boolean {
+    if (!s) return false;
+    const ds: unknown = (s as { developmentStatus?: unknown }).developmentStatus;
+    if (typeof ds === 'string') return ds === 'APPROVED';
+    if (ds && typeof ds === 'object' && 'name' in (ds as Record<string, unknown>)) {
+      return (ds as { name?: unknown }).name === 'APPROVED';
+    }
+    return false;
   }
 
   resetProse(): void {
@@ -538,5 +632,26 @@ export class RfLotoStandardFormComponent {
 
   onStandardUpdatedFromWorkflow(updated: LotoStandardDto): void {
     this.stateService.setSelectedItem(updated);
+  }
+
+  /**
+   * Pending-changes panel asks us to open the close-review dialog. The panel
+   * also hands us the kept/dismissed counts so the dialog can summarize them.
+   */
+  onCloseReviewRequested(counts: { kept: number; dismissed: number }): void {
+    this.closeReviewKeptCount.set(counts.kept);
+    this.closeReviewDismissedCount.set(counts.dismissed);
+    this.showCloseReviewDialog.set(true);
+  }
+
+  /**
+   * Close-review dialog succeeded — refresh the standard from the response
+   * (so the banner disappears and developmentStatus is current), then
+   * collapse the review surface.
+   */
+  onReviewClosed(updated: LotoStandardDto): void {
+    this.stateService.setSelectedItem(updated);
+    this.showCloseReviewDialog.set(false);
+    this.showPendingChanges.set(false);
   }
 }

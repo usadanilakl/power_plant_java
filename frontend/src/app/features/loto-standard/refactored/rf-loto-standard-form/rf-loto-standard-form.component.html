@@ -157,10 +157,30 @@
               </div>
             }
 
+            <!-- Auto-save status — shown whenever there's something to report.
+                 Auto-save fires 3s after the last keystroke; the manual Save
+                 button below is a flush-now affordance. -->
+            @if (proseAutoSaveStatus() !== 'idle') {
+              <div class="prose-autosave-status"
+                   [class.status-dirty]="proseAutoSaveStatus() === 'dirty'"
+                   [class.status-saving]="proseAutoSaveStatus() === 'saving'"
+                   [class.status-saved]="proseAutoSaveStatus() === 'saved'"
+                   [class.status-proposed]="proseAutoSaveStatus() === 'proposed'"
+                   [class.status-error]="proseAutoSaveStatus() === 'error'">
+                @switch (proseAutoSaveStatus()) {
+                  @case ('dirty')    { <span>● Unsaved — auto-saving in a moment…</span> }
+                  @case ('saving')   { <span>↻ Saving…</span> }
+                  @case ('saved')    { <span>✓ Saved</span> }
+                  @case ('proposed') { <span>📝 Saved as a pending proposal — awaiting CA/Manager review</span> }
+                  @case ('error')    { <span>⚠ Save failed — keep typing or click Save to retry</span> }
+                }
+              </div>
+            }
+
             @if (proseDirty()) {
               <div class="prose-actions">
                 <button class="btn-save" (click)="saveProse()" [disabled]="proseSaving()">
-                  {{ proseSaving() ? 'Saving…' : 'Save Procedural Text' }}
+                  {{ proseSaving() ? 'Saving…' : 'Save now' }}
                 </button>
                 <button class="btn-cancel" (click)="resetProse()" [disabled]="proseSaving()">Discard</button>
               </div>
@@ -189,8 +209,33 @@
           @if (entity().id) {
             <app-loto-standard-workflow-panel
               [standard]="entity()"
-              (standardUpdated)="onStandardUpdatedFromWorkflow($event)">
+              (standardUpdated)="onStandardUpdatedFromWorkflow($event)"
+              (reviewChangesRequested)="showPendingChanges.set(true)">
             </app-loto-standard-workflow-panel>
+
+            <!-- Pending-changes review panel — opens when the workflow banner's
+                 "Review changes" button is clicked. Stays open until the user
+                 hides it or completes the close-review dialog. -->
+            @if (showPendingChanges()) {
+              <app-loto-standard-pending-changes-panel
+                [standard]="entity()"
+                (closeReviewRequested)="onCloseReviewRequested($event)"
+                (panelClosed)="showPendingChanges.set(false)">
+              </app-loto-standard-pending-changes-panel>
+            }
+
+            <!-- Close-review modal: pick minor vs require-reapproval, sign in
+                 with PIN, fire backend close-review which clears
+                 pendingReviewSince and optionally flips to NEW_PENDING_REAPPROVAL. -->
+            @if (showCloseReviewDialog()) {
+              <app-loto-standard-close-review-dialog
+                [standard]="entity()"
+                [keptCount]="closeReviewKeptCount()"
+                [dismissedCount]="closeReviewDismissedCount()"
+                (reviewClosed)="onReviewClosed($event)"
+                (cancelled)="showCloseReviewDialog.set(false)">
+              </app-loto-standard-close-review-dialog>
+            }
           } @else {
             <div class="empty-state">
               <p>Save the LOTO Standard first to advance through the workflow.</p>

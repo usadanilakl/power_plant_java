@@ -14,7 +14,11 @@
 # Maximo (Set up API with Maximo)
 # Field List and Inventory (Continue Field Lists feature - agent)
 # Schematics and Simulator
-# 3D plant
+# Visual Plant
+    - 3D Plant
+    - Equipment hierarchy
+    - Areas hierarchy
+    - shcematics
 # Files
 # Permits
     - WR

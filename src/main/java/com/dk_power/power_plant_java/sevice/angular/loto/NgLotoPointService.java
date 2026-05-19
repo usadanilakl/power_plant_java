@@ -42,6 +42,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final FuzzySearchService fuzzySearchService;
     private final TagNumberDetector tagNumberDetector;
     private final ObjectProvider<WorkAreaGitHubPublisher> gitHubPublisherProvider;
+    private final LotoStandardPendingChangeCaptureService pendingChangeCaptureService;
 
 
     @Override
@@ -217,6 +218,21 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
     @Transactional
     public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
+        // Snapshot the pre-edit state of any existing point so the
+        // pending-review capture service can compute a field-level diff
+        // against the post-save entity (see loto-procedure.md §3.3).
+        java.util.Map<String, String> beforeFields = null;
+        if (lotoPointDto != null && lotoPointDto.getId() != null && lotoPointDto.getId() != 0) {
+            LotoPoint existing = lotoPointRepo.findById(lotoPointDto.getId()).orElse(null);
+            if (existing != null) {
+                beforeFields = pendingChangeCaptureService.snapshotPointFields(existing);
+                // Detach so the snapshot survives the merge below — otherwise
+                // Hibernate returns the same managed instance with new values
+                // when we re-read via findById after save.
+                entityManager.detach(existing);
+            }
+        }
+
         LotoPoint entity = convertIdDtoToEntity(lotoPointDto);
         entity = lotoPointRepo.save(entity);
         Long savedLpId = entity.getId();
@@ -286,6 +302,12 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
         // Fetch with equipment list eagerly loaded (will reflect database state)
         LotoPoint result = lotoPointRepo.findByIdWithEquipment(savedLpId);
+
+        // Capture any field-level edits as pending-change rows on every APPROVED
+        // standard that contains this point. The capture service skips standards
+        // that aren't APPROVED, so this is a no-op for new/draft standards.
+        java.util.Map<String, String> afterFields = pendingChangeCaptureService.snapshotPointFields(result);
+        pendingChangeCaptureService.capturePointEditAcrossStandards(savedLpId, afterFields, beforeFields);
 
         // Publish loto points to GitHub Pages for PWA equipment picker
         WorkAreaGitHubPublisher publisher = gitHubPublisherProvider.getIfAvailable();

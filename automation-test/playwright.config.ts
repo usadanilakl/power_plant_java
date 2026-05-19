@@ -17,6 +17,10 @@ export default defineConfig({
   ],
 
   use: {
+    // Host of the served app. By default the Spring-Boot-served prod bundle
+    // (single port). Per-page navigation goes through BasePage.goto, which
+    // also prepends config.angularBasePath, so this is mainly used for
+    // Playwright's own response auto-resolution.
     baseURL: config.frontendUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

@@ -74,6 +74,7 @@ public class LotoStandardMapper implements BaseMapper {
         dto.setReadyForTestingAt(entity.getReadyForTestingAt());
         dto.setManagerApprovedBy(entity.getManagerApprovedBy());
         dto.setManagerApprovedAt(entity.getManagerApprovedAt());
+        dto.setPendingReviewSince(entity.getPendingReviewSince());
 
         dto.setPointPrerequisites(entity.getPointPrerequisites());
 

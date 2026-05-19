@@ -30,8 +30,15 @@ public class LotoStandardApprovalEvent extends BaseIdEntity {
         WALKDOWN_COMPLETE,
         READY_FOR_TESTING,
         APPROVED,
-        INVALIDATED,
-        REAPPROVED
+        /** @deprecated replaced by EDIT_PENDING_REVIEW / EDIT_ACCEPTED_AS_MINOR / EDIT_REQUIRES_REAPPROVAL. */
+        @Deprecated INVALIDATED,
+        REAPPROVED,
+        /** First edit to an APPROVED standard, opening the pending-review window. */
+        EDIT_PENDING_REVIEW,
+        /** Reviewer closed the review keeping the standard APPROVED. */
+        EDIT_ACCEPTED_AS_MINOR,
+        /** Reviewer closed the review and flipped to NEW_PENDING_REAPPROVAL. */
+        EDIT_REQUIRES_REAPPROVAL
     }
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -10,16 +10,20 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.entities.loto.LotoStandardApprovalEvent;
+import com.dk_power.power_plant_java.entities.loto.LotoStandardPendingChange;
 import com.dk_power.power_plant_java.entities.loto.LotoStandardStatus;
 import com.dk_power.power_plant_java.entities.users.LotoRole;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.mappers.permits.LotoStandardMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardApprovalEventRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoStandardPendingChangeRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.hibernate.SessionFactory;
@@ -45,18 +49,22 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     private final EntityManager entityManager;
     private final NgLotoPointService ngLotoPointService;
     private final LotoStandardApprovalEventRepo approvalEventRepo;
+    private final LotoStandardPendingChangeRepo pendingChangeRepo;
     private final NgValueService ngValueService;
     private final UserRepo userRepo;
+    private final ObjectMapper objectMapper;
 
-    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, NgValueService ngValueService, UserRepo userRepo) {
+    public NgLotoStandardService(LotoStandardRepo lotoStandardRepo, LotoStandardMapper lotoStandardMapper, SessionFactory sessionFactory, EntityManager entityManager, NgLotoPointService ngLotoPointService, LotoStandardApprovalEventRepo approvalEventRepo, LotoStandardPendingChangeRepo pendingChangeRepo, NgValueService ngValueService, UserRepo userRepo, ObjectMapper objectMapper) {
         this.lotoStandardRepo = lotoStandardRepo;
         this.lotoStandardMapper = lotoStandardMapper;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
         this.ngLotoPointService = ngLotoPointService;
         this.approvalEventRepo = approvalEventRepo;
+        this.pendingChangeRepo = pendingChangeRepo;
         this.ngValueService = ngValueService;
         this.userRepo = userRepo;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -152,21 +160,29 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                 throw new EntityNotFoundException("LotoStandard or LotoPoint not found");
             }
 
-            // Check if the LotoPoint is already in the standard
-            if (!standard.getLotoPoints().contains(lotoPoint)) {
-                invalidateIfApproved(standard, "LOTO point added: id=" + lotoPointId);
-                standard.addLotoPoint(lotoPoint);
-                lotoPoint.addLotoStandard(standard);
-
-                // Update lotoPointOrder to place new point at the end
-                Map<String, Integer> orderMap = standard.getLotoPointOrder();
-                int maxOrder = orderMap.values().stream().mapToInt(Integer::intValue).max().orElse(0);
-                orderMap.put(lotoPoint.getId().toString(), maxOrder + 1);
-                standard.setLotoPointOrder(orderMap);
+            if (standard.getLotoPoints().contains(lotoPoint)) {
+                return toDto(standard);
             }
 
-            LotoStandard savedStandard = save(standard);
-            return toDto(savedStandard);
+            if (isApproved(standard)) {
+                // Propose: simulate the would-be state without mutating the standard.
+                // closeReview applies KEPT proposals atomically when the review closes.
+                String oldIds = standardPointIdsSnapshot(standard);
+                List<Long> projected = new ArrayList<>(currentOrderedPointIds(standard));
+                projected.add(lotoPointId);
+                captureFieldProposal(standard, lotoPointId, "lotoPoints (add " + lotoPointId + ")",
+                        oldIds, projected.toString());
+                // No save() — the standard wasn't mutated.
+                return toDto(standard);
+            }
+
+            standard.addLotoPoint(lotoPoint);
+            lotoPoint.addLotoStandard(standard);
+            Map<String, Integer> orderMap = standard.getLotoPointOrder();
+            int maxOrder = orderMap.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+            orderMap.put(lotoPoint.getId().toString(), maxOrder + 1);
+            standard.setLotoPointOrder(orderMap);
+            return toDto(save(standard));
         } catch (Exception e) {
             throw new RuntimeException("Error adding LotoPoint to LotoStandard: " + e.getMessage(), e);
         }
@@ -182,15 +198,22 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
                 throw new EntityNotFoundException("LotoStandard or LotoPoint not found");
             }
 
-            // Check if the LotoPoint is already in the standard
-            if (standard.getLotoPoints().contains(lotoPoint)) {
-                invalidateIfApproved(standard, "LOTO point removed: id=" + lotoPointId);
-                standard.removeLotoPoint(lotoPoint);
-                lotoPoint.removeStandard(standard);
+            if (!standard.getLotoPoints().contains(lotoPoint)) {
+                return toDto(standard);
             }
 
-            LotoStandard savedStandard = save(standard);
-            return toDto(savedStandard);
+            if (isApproved(standard)) {
+                String oldIds = standardPointIdsSnapshot(standard);
+                List<Long> projected = new ArrayList<>(currentOrderedPointIds(standard));
+                projected.remove(lotoPointId);
+                captureFieldProposal(standard, lotoPointId, "lotoPoints (remove " + lotoPointId + ")",
+                        oldIds, projected.toString());
+                return toDto(standard);
+            }
+
+            standard.removeLotoPoint(lotoPoint);
+            lotoPoint.removeStandard(standard);
+            return toDto(save(standard));
         } catch (Exception e) {
             throw new RuntimeException("Error removing LotoPoint from LotoStandard: " + e.getMessage(), e);
         }
@@ -216,10 +239,18 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         if (standard == null) {
             throw new EntityNotFoundException("LotoStandard not found");
         }
-        invalidateIfApproved(standard, "LOTO points reordered");
+        String oldIds = standardPointIdsSnapshot(standard);
+
+        if (isApproved(standard)) {
+            // Skip-when-equal so a remove-then-reorder roundtrip with identical
+            // ID order doesn't generate a phantom proposal.
+            String projected = (lotoPoints == null ? List.<Long>of() : lotoPoints).toString();
+            captureFieldProposal(standard, null, "lotoPoints (reorder)", oldIds, projected);
+            return toDto(standard);
+        }
+
         standard.reorderLotoPoints(lotoPoints);
-        LotoStandard savedStandard = save(standard);
-        return toDto(savedStandard);
+        return toDto(save(standard));
     }
 
     /**
@@ -326,7 +357,13 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     /**
-     * Update existing LOTO standard
+     * Update existing LOTO standard.
+     *
+     * <p>When the standard is APPROVED, scalar edits (name/description) are
+     * captured as proposals instead of mutating the entity. Structural edits
+     * passed via this endpoint (lotoPoints, groups) are captured as proposals
+     * for lotoPoints; groups are not part of the pending-review model so
+     * they're always applied directly (groups don't affect procedure content).
      */
     @Transactional
     public LotoStandardDto updateStandard(LotoStandardIdDto standardIdDto) {
@@ -339,39 +376,59 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
             throw new EntityNotFoundException("LotoStandard not found with id: " + standardIdDto.getId());
         }
 
-        invalidateIfApproved(existing, "Standard fields edited");
+        boolean approved = isApproved(existing);
 
-        // Update fields on the existing managed entity instead of creating a new one
-        if (standardIdDto.getName() != null && !standardIdDto.getName().isEmpty()) {
-            existing.setName(standardIdDto.getName());
+        String oldName = existing.getName();
+        String oldDescription = existing.getDescription();
+        String requestedName = standardIdDto.getName();
+        String requestedDescription = standardIdDto.getDescription();
+
+        if (requestedName != null && !requestedName.isEmpty() && !Objects.equals(requestedName, oldName)) {
+            if (approved) {
+                captureFieldProposal(existing, null, "name", oldName, requestedName);
+            } else {
+                existing.setName(requestedName);
+            }
         }
-        if (standardIdDto.getDescription() != null && !standardIdDto.getDescription().isEmpty()) {
-            existing.setDescription(standardIdDto.getDescription());
+        if (requestedDescription != null && !requestedDescription.isEmpty() && !Objects.equals(requestedDescription, oldDescription)) {
+            if (approved) {
+                captureFieldProposal(existing, null, "description", oldDescription, requestedDescription);
+            } else {
+                existing.setDescription(requestedDescription);
+            }
         }
 
-        // Update loto points
+        // LOTO points list passed via the update payload — propose vs apply
         if (standardIdDto.getLotoPoints() != null) {
             List<LotoPoint> newPoints = standardIdDto.getLotoPoints().stream()
                 .filter(Objects::nonNull)
                 .map(ngLotoPointService::getEntityById)
                 .toList();
-            existing.setLotoPoints(newPoints);
+            List<Long> projectedIds = newPoints.stream()
+                .map(LotoPoint::getId)
+                .filter(Objects::nonNull)
+                .toList();
+            String oldIds = standardPointIdsSnapshot(existing);
+            String newIdsStr = projectedIds.toString();
+            if (!Objects.equals(oldIds, newIdsStr)) {
+                if (approved) {
+                    captureFieldProposal(existing, null, "lotoPoints (replace)", oldIds, newIdsStr);
+                } else {
+                    existing.setLotoPoints(newPoints);
+                }
+            }
         }
 
-        // Update groups - replace the collection with a new HashSet
+        // Groups never participate in pending review — applied directly regardless of status.
         if (standardIdDto.getGroups() != null) {
             Set<com.dk_power.power_plant_java.entities.categories.Value> newGroups = standardIdDto.getGroups().stream()
                 .filter(Objects::nonNull)
-                .map(id -> {
-                    return entityManager.find(com.dk_power.power_plant_java.entities.categories.Value.class, id);
-                })
+                .map(id -> entityManager.find(com.dk_power.power_plant_java.entities.categories.Value.class, id))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(HashSet::new));
-
             existing.setGroups(newGroups);
         }
 
-        // The entity is already managed, changes will be flushed automatically
         entityManager.flush();
         return lotoStandardMapper.convertToDto(existing);
     }
@@ -714,80 +771,92 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     }
 
     /**
-     * Replace the per-point prerequisites map on the standard. Treated as a content
-     * mutation, so an APPROVED standard gets flipped to NEW_PENDING_REAPPROVAL.
+     * Replace the per-point prerequisites map on the standard. When the
+     * standard is APPROVED, captured as a proposal (serialized as JSON so
+     * closeReview can deserialize and apply on accept). Otherwise applied
+     * directly.
      */
     @Transactional
     public LotoStandardDto updateStandardPrerequisites(Long standardId,
                                                        java.util.Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> prerequisites) {
         LotoStandard s = requireStandard(standardId);
-        s.setPointPrerequisites(prerequisites != null ? prerequisites : new java.util.HashMap<>());
-        invalidateIfApproved(s, "Point prerequisites edited");
+        Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> proposed =
+                prerequisites != null ? prerequisites : new HashMap<>();
+
+        if (isApproved(s)) {
+            String oldJson = toJson(s.getPointPrerequisites() != null ? s.getPointPrerequisites() : new HashMap<>());
+            String newJson = toJson(proposed);
+            captureFieldProposal(s, null, "pointPrerequisites", oldJson, newJson);
+            return toDto(s);
+        }
+
+        s.setPointPrerequisites(proposed);
         return toDto(save(s));
     }
 
     /**
-     * Update the procedural prose fields on the standard. Treated as a content mutation.
-     * Pass null on any field to leave it unchanged; pass empty string to clear it.
+     * Update the procedural prose fields on the standard. Pass null on any
+     * field to leave it unchanged; pass empty string to clear it. When the
+     * standard is APPROVED, each changed field is captured as a proposal
+     * (rolling-coalesced per (field, user)) instead of being applied.
      */
     @Transactional
     public LotoStandardDto updateStandardProceduralText(Long standardId,
                                                         java.util.Map<String, String> fields) {
         LotoStandard s = requireStandard(standardId);
-        boolean changed = false;
         if (fields == null) return toDto(s);
-        if (fields.containsKey("installPrerequisitesText")) {
-            String v = fields.get("installPrerequisitesText");
-            if (!java.util.Objects.equals(v, s.getInstallPrerequisitesText())) {
-                s.setInstallPrerequisitesText(v); changed = true;
-            }
+        boolean approved = isApproved(s);
+
+        proposeOrApplyText(s, approved, fields, "installPrerequisitesText",
+                s::getInstallPrerequisitesText, s::setInstallPrerequisitesText);
+        proposeOrApplyText(s, approved, fields, "installHazardControlText",
+                s::getInstallHazardControlText, s::setInstallHazardControlText);
+        proposeOrApplyText(s, approved, fields, "installProcedureText",
+                s::getInstallProcedureText, s::setInstallProcedureText);
+        proposeOrApplyText(s, approved, fields, "removalPrerequisitesText",
+                s::getRemovalPrerequisitesText, s::setRemovalPrerequisitesText);
+        proposeOrApplyText(s, approved, fields, "removalHazardControlText",
+                s::getRemovalHazardControlText, s::setRemovalHazardControlText);
+        proposeOrApplyText(s, approved, fields, "removalProcedureText",
+                s::getRemovalProcedureText, s::setRemovalProcedureText);
+
+        return toDto(approved ? s : save(s));
+    }
+
+    private void proposeOrApplyText(LotoStandard s, boolean approved,
+                                    Map<String, String> fields, String key,
+                                    java.util.function.Supplier<String> getter,
+                                    java.util.function.Consumer<String> setter) {
+        if (!fields.containsKey(key)) return;
+        String oldV = getter.get();
+        String newV = fields.get(key);
+        if (Objects.equals(oldV, newV)) return;
+        if (approved) {
+            captureFieldProposal(s, null, key, oldV, newV);
+        } else {
+            setter.accept(newV);
         }
-        if (fields.containsKey("installHazardControlText")) {
-            String v = fields.get("installHazardControlText");
-            if (!java.util.Objects.equals(v, s.getInstallHazardControlText())) {
-                s.setInstallHazardControlText(v); changed = true;
-            }
-        }
-        if (fields.containsKey("installProcedureText")) {
-            String v = fields.get("installProcedureText");
-            if (!java.util.Objects.equals(v, s.getInstallProcedureText())) {
-                s.setInstallProcedureText(v); changed = true;
-            }
-        }
-        if (fields.containsKey("removalPrerequisitesText")) {
-            String v = fields.get("removalPrerequisitesText");
-            if (!java.util.Objects.equals(v, s.getRemovalPrerequisitesText())) {
-                s.setRemovalPrerequisitesText(v); changed = true;
-            }
-        }
-        if (fields.containsKey("removalHazardControlText")) {
-            String v = fields.get("removalHazardControlText");
-            if (!java.util.Objects.equals(v, s.getRemovalHazardControlText())) {
-                s.setRemovalHazardControlText(v); changed = true;
-            }
-        }
-        if (fields.containsKey("removalProcedureText")) {
-            String v = fields.get("removalProcedureText");
-            if (!java.util.Objects.equals(v, s.getRemovalProcedureText())) {
-                s.setRemovalProcedureText(v); changed = true;
-            }
-        }
-        if (changed) invalidateIfApproved(s, "Procedural text edited");
-        return toDto(save(s));
     }
 
     /**
      * Toggle the standard's "removal reverses install order" flag. When true,
      * any point that does NOT have explicit removalRequiredPointIds inherits a
-     * reversed install graph for removal sequencing.
+     * reversed install graph for removal sequencing. When the standard is
+     * APPROVED, captured as a proposal.
      */
     @Transactional
     public LotoStandardDto setRemovalReversesInstallOrder(Long standardId, boolean reverse) {
         LotoStandard s = requireStandard(standardId);
-        if (s.isRemovalReversesInstallOrder() != reverse) {
-            s.setRemovalReversesInstallOrder(reverse);
-            invalidateIfApproved(s, "Removal order direction edited");
+        if (s.isRemovalReversesInstallOrder() == reverse) return toDto(s);
+        boolean oldVal = s.isRemovalReversesInstallOrder();
+
+        if (isApproved(s)) {
+            captureFieldProposal(s, null, "removalReversesInstallOrder",
+                    String.valueOf(oldVal), String.valueOf(reverse));
+            return toDto(s);
         }
+
+        s.setRemovalReversesInstallOrder(reverse);
         return toDto(save(s));
     }
 
@@ -806,19 +875,384 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return effectiveFrom;
     }
 
+    /** True iff the standard's development status is APPROVED. */
+    private boolean isApproved(LotoStandard s) {
+        return s.getDevelopmentStatus() != null
+                && LotoStandardStatus.APPROVED.equals(s.getDevelopmentStatus().getName());
+    }
+
+    /** JSON-serialize, never throwing — falls back to {@code String.valueOf} on encoding failure. */
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return String.valueOf(value);
+        }
+    }
+
     /**
-     * If the standard is currently APPROVED, flip it to NEW_PENDING_REAPPROVAL,
-     * clear approval attribution, bump the version, and log an INVALIDATED event.
-     * Called from every content-mutation path.
+     * Capture a proposal for an APPROVED standard. Asserts isApproved(s) — callers
+     * branch on isApproved themselves, so this method exists to make the propose
+     * path explicit at the call site. Delegates to the underlying coalescing
+     * capture which also handles the "first edit of cycle" event + skip-when-equal.
      */
-    private void invalidateIfApproved(LotoStandard s, String reason) {
+    private void captureFieldProposal(LotoStandard s, Long lotoPointId, String fieldName,
+                                       String oldValue, String newValue) {
+        captureFieldEditIfApproved(s, lotoPointId, fieldName, oldValue, newValue);
+    }
+
+    /**
+     * If the standard is currently APPROVED, capture this edit as a pending
+     * change and open the pending-review window (no status change). The CA
+     * or Manager later resolves each change as KEPT/DISMISSED and decides
+     * whether to close the review as minor or require re-approval. See
+     * loto-procedure.md §3.3.
+     *
+     * <p>Backwards-compatible signature: callers that previously called
+     * invalidateIfApproved(s, reason) now call flagForReviewIfApproved(s,
+     * reason) with the reason carried as the change's fieldName + a note.
+     * Most call sites also have access to richer info (which field, old/new
+     * values) — those should call {@link #captureFieldEditIfApproved} instead.
+     */
+    private void flagForReviewIfApproved(LotoStandard s, String reason) {
+        captureFieldEditIfApproved(s, /*lotoPointId*/ null, reason, /*oldValue*/ null, /*newValue*/ null);
+    }
+
+    /**
+     * Capture a single field-level edit on an APPROVED standard. Stores a
+     * PENDING row in {@code loto_standard_pending_change} with the old +
+     * new values, opens the pending-review window if not already open,
+     * and logs an {@code EDIT_PENDING_REVIEW} event on the first edit of
+     * the cycle. Does nothing if the standard isn't APPROVED.
+     */
+    private void captureFieldEditIfApproved(LotoStandard s, Long lotoPointId, String fieldName,
+                                             String oldValue, String newValue) {
         if (s.getDevelopmentStatus() == null) return;
         if (!LotoStandardStatus.APPROVED.equals(s.getDevelopmentStatus().getName())) return;
-        s.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.NEW_PENDING_REAPPROVAL));
-        s.setCurrentVersion((s.getCurrentVersion() == null ? 1 : s.getCurrentVersion()) + 1);
-        s.clearWorkflowAttribution();
-        recordEvent(s, LotoStandardApprovalEvent.Type.INVALIDATED, currentUserName(),
-                LotoStandardStatus.APPROVED, LotoStandardStatus.NEW_PENDING_REAPPROVAL, reason);
+
+        // Skip no-op edits — e.g. the FE sends a reorder request after a point
+        // remove, but the resulting point-id list is the same (the remove
+        // already shifted the order map). We don't want a "reordered" row that
+        // shows identical before/after.
+        if (java.util.Objects.equals(oldValue, newValue) && oldValue != null) return;
+
+        String actor = currentUserName();
+        String resolvedFieldName = fieldName == null ? "(unspecified)" : fieldName;
+
+        // Coalesce: if this same user already has a PENDING row on this same
+        // (standard, field, pointId), update its newValue + editedAt instead
+        // of creating a new row. Keeps the auto-save typing burst as one
+        // entry whose newValue tracks the latest state, with the original
+        // oldValue preserved (the pre-cycle baseline).
+        java.util.List<LotoStandardPendingChange> existing = pendingChangeRepo.findCoalesceTargets(
+                s.getId(), resolvedFieldName, lotoPointId, actor);
+        if (!existing.isEmpty()) {
+            LotoStandardPendingChange row = existing.get(0);
+            // If after coalescing the row becomes a no-op (newValue equals the
+            // ORIGINAL oldValue), discard it — user typed and reverted back.
+            if (java.util.Objects.equals(row.getOldValue(), newValue)) {
+                pendingChangeRepo.delete(row);
+                // If that was the only row, also clear the pending-review flag.
+                if (pendingChangeRepo.findByStandard_IdOrderByEditedAtAsc(s.getId()).isEmpty()) {
+                    s.setPendingReviewSince(null);
+                }
+                return;
+            }
+            row.setNewValue(newValue);
+            row.setEditedAt(LocalDateTime.now());
+            pendingChangeRepo.save(row);
+            return;
+        }
+
+        boolean firstEditOfCycle = (s.getPendingReviewSince() == null);
+        if (firstEditOfCycle) {
+            s.setPendingReviewSince(LocalDateTime.now());
+        }
+
+        LotoStandardPendingChange change = new LotoStandardPendingChange();
+        change.setStandard(s);
+        change.setLotoPointId(lotoPointId);
+        change.setFieldName(resolvedFieldName);
+        change.setOldValue(oldValue);
+        change.setNewValue(newValue);
+        change.setEditedBy(actor);
+        change.setEditedAt(LocalDateTime.now());
+        change.setResolution(LotoStandardPendingChange.Resolution.PENDING);
+        pendingChangeRepo.save(change);
+
+        if (firstEditOfCycle) {
+            recordEvent(s, LotoStandardApprovalEvent.Type.EDIT_PENDING_REVIEW, actor,
+                    LotoStandardStatus.APPROVED, LotoStandardStatus.APPROVED,
+                    "Pending review opened: " + change.getFieldName());
+        }
+    }
+
+    /**
+     * Helper: snapshot the current LotoStandard's point-id list as a JSON-ish
+     * string so add/remove/reorder edits get a meaningful before/after diff.
+     * We use the list ORDER from {@code lotoPointOrder} when available so a
+     * pure-reorder shows up correctly.
+     */
+    private String standardPointIdsSnapshot(LotoStandard s) {
+        return currentOrderedPointIds(s).toString();
+    }
+
+    /** Current point-id list in display order. Used to project would-be states for proposals. */
+    private List<Long> currentOrderedPointIds(LotoStandard s) {
+        Map<String, Integer> orderMap = s.getLotoPointOrder();
+        return s.getLotoPoints().stream()
+                .filter(Objects::nonNull)
+                .map(LotoPoint::getId)
+                .filter(Objects::nonNull)
+                .sorted((a, b) -> {
+                    Integer oa = orderMap.get(a.toString());
+                    Integer ob = orderMap.get(b.toString());
+                    if (oa == null && ob == null) return Long.compare(a, b);
+                    if (oa == null) return 1;
+                    if (ob == null) return -1;
+                    return Integer.compare(oa, ob);
+                })
+                .toList();
+    }
+
+    /**
+     * Backwards-compatible wrapper so existing call sites keep compiling. New
+     * code should call {@link #captureFieldEditIfApproved} with the actual
+     * field name + values.
+     *
+     * @deprecated use {@link #captureFieldEditIfApproved} instead.
+     */
+    @Deprecated
+    private void invalidateIfApproved(LotoStandard s, String reason) {
+        flagForReviewIfApproved(s, reason);
+    }
+
+    // ── Pending-review review actions ─────────────────────────────────────────
+
+    /**
+     * List every pending change for a standard, oldest first, regardless of
+     * resolution. Used by the review panel to render the diff list.
+     */
+    @Transactional(readOnly = true)
+    public List<LotoStandardPendingChange> getPendingChanges(Long standardId) {
+        requireStandard(standardId);
+        return pendingChangeRepo.findByStandard_IdOrderByEditedAtAsc(standardId);
+    }
+
+    /** Mark a PENDING change as KEPT — newValue stays on the underlying field. */
+    public LotoStandardPendingChange keepChange(Long changeId) {
+        requireAnyRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
+        LotoStandardPendingChange c = pendingChangeRepo.findById(changeId)
+                .orElseThrow(() -> new EntityNotFoundException("PendingChange not found: " + changeId));
+        c.setResolution(LotoStandardPendingChange.Resolution.KEPT);
+        c.setResolvedBy(currentUserName());
+        c.setResolvedAt(LocalDateTime.now());
+        return pendingChangeRepo.save(c);
+    }
+
+    /**
+     * Mark a PENDING change as DISMISSED. The reviewer is saying "revert this
+     * edit". Today we record the resolution; the actual revert of the field
+     * on the underlying entity is left to the caller / a follow-up that knows
+     * how to deserialize the oldValue for each field type. Storing the
+     * resolution + oldValue is enough for the audit trail and lets the UI
+     * surface "this change was dismissed".
+     */
+    public LotoStandardPendingChange dismissChange(Long changeId) {
+        requireAnyRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
+        LotoStandardPendingChange c = pendingChangeRepo.findById(changeId)
+                .orElseThrow(() -> new EntityNotFoundException("PendingChange not found: " + changeId));
+        c.setResolution(LotoStandardPendingChange.Resolution.DISMISSED);
+        c.setResolvedBy(currentUserName());
+        c.setResolvedAt(LocalDateTime.now());
+        return pendingChangeRepo.save(c);
+    }
+
+    /**
+     * Close the pending-review window. {@code requireReapproval=false} means
+     * "Close as minor" — the standard stays APPROVED; {@code true} flips it
+     * to NEW_PENDING_REAPPROVAL.
+     *
+     * <p>Model B2 semantics: KEPT proposals are <em>applied</em> to the
+     * standard here, atomically, before the transition. DISMISSED proposals
+     * are simply discarded (the standard never reflected them in the first
+     * place). For each canonical field, only the most recent KEPT proposal
+     * wins — earlier KEPT proposals on the same field are stepping stones
+     * whose final state is captured by the latest one.
+     *
+     * <p>Throws {@link IllegalStateException} if any PENDING rows remain
+     * unresolved.
+     */
+    public LotoStandardDto closeReview(Long standardId, boolean requireReapproval) {
+        requireAnyRole(LotoRole.CONTROL_AUTHORITY, LotoRole.MANAGER);
+        LotoStandard s = requireStandard(standardId);
+        if (s.getPendingReviewSince() == null) {
+            throw new IllegalStateException("Standard is not in pending review");
+        }
+        long stillPending = pendingChangeRepo.countByStandard_IdAndResolution(
+                standardId, LotoStandardPendingChange.Resolution.PENDING);
+        if (stillPending > 0) {
+            throw new IllegalStateException(stillPending + " pending changes must be resolved first");
+        }
+
+        List<LotoStandardPendingChange> keptOldestFirst = pendingChangeRepo
+                .findByStandard_IdAndResolutionOrderByEditedAtAsc(
+                        standardId, LotoStandardPendingChange.Resolution.KEPT);
+
+        // Safety: structural KEPT changes force require-reapproval.
+        if (!requireReapproval) {
+            boolean structuralKept = keptOldestFirst.stream()
+                    .map(LotoStandardPendingChange::getFieldName)
+                    .filter(Objects::nonNull)
+                    .anyMatch(name -> name.startsWith("lotoPoints"));
+            if (structuralKept) {
+                throw new IllegalStateException(
+                        "Cannot close as minor — a kept change adds, removes, or reorders LOTO points. " +
+                        "Re-approval is required for structural changes.");
+            }
+        }
+
+        // Apply KEPT proposals to the standard (Model B2 propose-then-apply).
+        applyKeptProposals(s, keptOldestFirst);
+
+        long dismissed = pendingChangeRepo.countByStandard_IdAndResolution(
+                standardId, LotoStandardPendingChange.Resolution.DISMISSED);
+        String summary = "Kept " + keptOldestFirst.size() + ", dismissed " + dismissed;
+
+        s.setPendingReviewSince(null);
+
+        if (requireReapproval) {
+            s.setDevelopmentStatus(getOrCreateStatus(LotoStandardStatus.NEW_PENDING_REAPPROVAL));
+            s.setCurrentVersion((s.getCurrentVersion() == null ? 1 : s.getCurrentVersion()) + 1);
+            s.clearWorkflowAttribution();
+            recordEvent(s, LotoStandardApprovalEvent.Type.EDIT_REQUIRES_REAPPROVAL, currentUserName(),
+                    LotoStandardStatus.APPROVED, LotoStandardStatus.NEW_PENDING_REAPPROVAL, summary);
+        } else {
+            recordEvent(s, LotoStandardApprovalEvent.Type.EDIT_ACCEPTED_AS_MINOR, currentUserName(),
+                    LotoStandardStatus.APPROVED, LotoStandardStatus.APPROVED, summary);
+        }
+
+        return toDto(save(s));
+    }
+
+    /**
+     * Apply KEPT proposals to a standard. For each canonical field key, the
+     * latest KEPT proposal in time order wins (earlier proposals are stepping
+     * stones whose intent is captured by the later snapshot).
+     *
+     * <p>Unknown field names are skipped — keeps the applier forward-compatible
+     * when new proposal types are added.
+     */
+    private void applyKeptProposals(LotoStandard s, List<LotoStandardPendingChange> keptOldestFirst) {
+        java.util.LinkedHashMap<String, LotoStandardPendingChange> latestPerField = new java.util.LinkedHashMap<>();
+        for (LotoStandardPendingChange c : keptOldestFirst) {
+            latestPerField.put(canonicalFieldKey(c), c);
+        }
+        for (LotoStandardPendingChange c : latestPerField.values()) {
+            applyOneProposal(s, c);
+        }
+    }
+
+    /**
+     * Build a stable grouping key so multiple proposals on the same field
+     * coalesce to a single apply step. Per-point fields are keyed by
+     * (fieldName, lotoPointId); structural lotoPoints variants all collapse
+     * to "lotoPoints".
+     */
+    private String canonicalFieldKey(LotoStandardPendingChange c) {
+        String name = c.getFieldName() == null ? "" : c.getFieldName();
+        if (name.startsWith("lotoPoints")) return "lotoPoints";
+        if (c.getLotoPointId() != null) return name + ":" + c.getLotoPointId();
+        return name;
+    }
+
+    private void applyOneProposal(LotoStandard s, LotoStandardPendingChange c) {
+        String f = c.getFieldName();
+        String v = c.getNewValue();
+        if (f == null) return;
+
+        switch (f) {
+            case "name": s.setName(v); return;
+            case "description": s.setDescription(v); return;
+            case "installPrerequisitesText": s.setInstallPrerequisitesText(v); return;
+            case "installHazardControlText": s.setInstallHazardControlText(v); return;
+            case "installProcedureText": s.setInstallProcedureText(v); return;
+            case "removalPrerequisitesText": s.setRemovalPrerequisitesText(v); return;
+            case "removalHazardControlText": s.setRemovalHazardControlText(v); return;
+            case "removalProcedureText": s.setRemovalProcedureText(v); return;
+            case "removalReversesInstallOrder":
+                s.setRemovalReversesInstallOrder(Boolean.parseBoolean(v));
+                return;
+            case "pointPrerequisites":
+                applyPointPrerequisitesProposal(s, v);
+                return;
+            default:
+                if (f.startsWith("lotoPoints")) {
+                    applyLotoPointsProposal(s, v);
+                }
+                // Unknown fieldName — silently skip (forward compat).
+        }
+    }
+
+    /** Apply a {@code lotoPoints} proposal whose newValue is a "[1, 2, 3]" id list. */
+    private void applyLotoPointsProposal(LotoStandard s, String newIdsList) {
+        List<Long> targetIds = parseLongList(newIdsList);
+        // Detach points the proposal drops
+        List<LotoPoint> current = new ArrayList<>(s.getLotoPoints() != null ? s.getLotoPoints() : List.of());
+        for (LotoPoint p : current) {
+            if (p.getId() != null && !targetIds.contains(p.getId())) {
+                s.removeLotoPoint(p);
+                p.removeStandard(s);
+            }
+        }
+        // Add points the proposal introduces
+        java.util.Set<Long> existing = s.getLotoPoints().stream()
+                .map(LotoPoint::getId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        for (Long id : targetIds) {
+            if (id == null || existing.contains(id)) continue;
+            LotoPoint p = ngLotoPointService.getEntityById(id);
+            if (p == null) continue;
+            s.addLotoPoint(p);
+            p.addLotoStandard(s);
+        }
+        // Reorder to match the proposal's order
+        List<Long> presentIds = s.getLotoPoints().stream()
+                .map(LotoPoint::getId).filter(Objects::nonNull)
+                .toList();
+        List<Long> ordered = targetIds.stream().filter(presentIds::contains).collect(Collectors.toList());
+        if (!ordered.isEmpty()) {
+            s.reorderLotoPoints(ordered);
+        }
+    }
+
+    private void applyPointPrerequisitesProposal(LotoStandard s, String json) {
+        try {
+            Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite> parsed =
+                    objectMapper.readValue(
+                            json == null ? "{}" : json,
+                            new TypeReference<Map<Long, com.dk_power.power_plant_java.entities.loto.PointPrerequisite>>() {});
+            s.setPointPrerequisites(parsed == null ? new HashMap<>() : parsed);
+        } catch (Exception e) {
+            // Bad JSON in proposal — leave the existing map untouched rather than corrupting state.
+        }
+    }
+
+    /** Parse a {@code List<Long>.toString()}-formatted string like "[1, 2, 3]". */
+    private List<Long> parseLongList(String value) {
+        if (value == null) return List.of();
+        String trimmed = value.trim();
+        if (trimmed.startsWith("[")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("]")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.isBlank()) return List.of();
+        List<Long> out = new ArrayList<>();
+        for (String piece : trimmed.split(",")) {
+            String p = piece.trim();
+            if (p.isEmpty()) continue;
+            try { out.add(Long.parseLong(p)); }
+            catch (NumberFormatException ignored) { /* skip */ }
+        }
+        return out;
     }
 
     private LotoStandard requireStandard(Long id) {

@@ -6,6 +6,7 @@ import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model'
 import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
+import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
 
 export type LeftMenuTab = 'file' | 'loto-point';
 export type DisplayMode = 'table' | 'toggle-menu';
@@ -22,6 +23,7 @@ export interface RelatedFileEntry {
 export class LotoBuilderStateService {
   private apiService = inject(RfLotoStandardApiService);
   private destroyRef = inject(DestroyRef);
+  private messageService = inject(GlobalMessageService);
   // ========== Left Panel State ==========
 
   /** Current active tab in left panel */
@@ -530,37 +532,63 @@ export class LotoBuilderStateService {
   }
 
   /**
-   * Add LOTO point to currently active standard
+   * Add LOTO point to currently active standard.
+   *
+   * <p>Model B2: when the active standard is APPROVED, the backend records a
+   * proposal instead of mutating the standard. Reflect that semantics in the
+   * UI — DON'T optimistically push the point into the local lotoPoints list
+   * (it would diverge from server truth and confuse the user about whether
+   * the change took effect). A toast tells the user the proposal was
+   * recorded; the point becomes visible only after a reviewer KEEPs the
+   * proposal and closes the review.
    */
   addLotoPointToActiveStandard(lotoPoint: LotoPointDto): void {
     const index = this.activeLotoStandardIndex();
     const standard = this.activeLotoStandard();
 
-    if (standard) {
-      const existingPoints = standard.lotoPoints || [];
+    if (!standard) return;
+    const existingPoints = standard.lotoPoints || [];
+    if (existingPoints.some(p => p.id === lotoPoint.id)) {
+      console.warn('LOTO point already exists in this standard');
+      return;
+    }
 
-      // Check if point already exists
-      if (existingPoints.some(p => p.id === lotoPoint.id)) {
-        console.warn('LOTO point already exists in this standard');
-        return;
-      }
+    const approved = this.isApprovedStandard(standard);
 
+    if (!approved) {
+      // Direct-apply path: optimistically update local state.
       const updatedStandard = new LotoStandardDto({
         ...standard,
         lotoPoints: [...existingPoints, lotoPoint]
       });
-
       this.updateLotoStandard(index, updatedStandard);
-
-      // If standard is saved (has ID), immediately persist to server
-      if (standard.id && lotoPoint.id) {
-        this.apiService.addLotoPointToStandard(standard.id, lotoPoint.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            error: (err) => console.error('Failed to add LOTO point to standard:', err)
-          });
-      }
     }
+
+    if (standard.id && lotoPoint.id) {
+      this.apiService.addLotoPointToStandard(standard.id, lotoPoint.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            if (approved) {
+              this.messageService.showInfo(
+                `"${lotoPoint.tagNumber ?? 'Point'}" recorded as a pending proposal — awaiting CA/Manager review.`
+              );
+            }
+          },
+          error: (err) => console.error('Failed to add LOTO point to standard:', err)
+        });
+    }
+  }
+
+  /** True iff the standard's developmentStatus is APPROVED (value object OR plain string). */
+  private isApprovedStandard(s: LotoStandardDto | null | undefined): boolean {
+    if (!s) return false;
+    const ds: unknown = (s as { developmentStatus?: unknown }).developmentStatus;
+    if (typeof ds === 'string') return ds === 'APPROVED';
+    if (ds && typeof ds === 'object' && 'name' in (ds as Record<string, unknown>)) {
+      return (ds as { name?: unknown }).name === 'APPROVED';
+    }
+    return false;
   }
 
   /**

@@ -18,7 +18,7 @@ import { StepUpService } from '../../services/auth/step-up.service';
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
   template: `
-    <div class="su-backdrop" (click)="onCancel()">
+    <div class="su-backdrop" data-testid="step-up-dialog" (click)="onCancel()">
       <div class="su-dialog" (click)="$event.stopPropagation()">
         <div class="su-header">
           <mat-icon>vpn_key</mat-icon>
@@ -32,6 +32,7 @@ import { StepUpService } from '../../services/auth/step-up.service';
           #codeInput
           type="text"
           class="su-input"
+          data-testid="step-up-code-input"
           autocomplete="off"
           inputmode="text"
           maxlength="7"
@@ -43,11 +44,11 @@ import { StepUpService } from '../../services/auth/step-up.service';
           placeholder="DK1234"
           autofocus>
         @if (errorMessage(); as msg) {
-          <div class="su-error">{{ msg }}</div>
+          <div class="su-error" data-testid="step-up-error">{{ msg }}</div>
         }
         <div class="su-actions">
-          <button mat-stroked-button type="button" (click)="onCancel()" [disabled]="submitting()">Cancel</button>
-          <button mat-raised-button color="primary" type="button" (click)="onSubmit()"
+          <button mat-stroked-button type="button" data-testid="step-up-cancel-btn" (click)="onCancel()" [disabled]="submitting()">Cancel</button>
+          <button mat-raised-button color="primary" type="button" data-testid="step-up-confirm-btn" (click)="onSubmit()"
                   [disabled]="!canSubmit() || submitting()">
             {{ submitting() ? 'Verifying…' : 'Authorize' }}
           </button>

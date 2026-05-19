@@ -127,18 +127,126 @@ Hanger logging out. The audit field records `actor via:sessionHolder`.
 The verifier must satisfy: `verifier ≠ creator AND verifier ≠ submitter`.
 Enforced server-side in `NgLotoStandardService.verify()`.
 
-### 3.3 Auto-invalidation
-Any of the following mutations on an `APPROVED` standard flip status to
-`NEW_PENDING_REAPPROVAL` and clear the workflow attribution (verifiedBy,
-walkdownCompletedBy, etc.) so the cycle restarts cleanly:
+### 3.3 Edits to an APPROVED standard — Propose-then-Apply Review
 
-- Add / remove / reorder LOTO points
-- Edit install or removal procedure on any point
-- Change predecessor graph
-- Edit zero-energy methods
-- Change prerequisites
+Auto-flipping every edit to `NEW_PENDING_REAPPROVAL` is too blunt: typo
+fixes and procedure clarifications shouldn't force a full re-walk through
+verify → walkdown → ready → approve. The system instead uses a
+**propose-then-apply** model: edits on an `APPROVED` standard are
+captured as proposals and **the standard is not mutated** until a
+reviewer accepts them. A CA or Manager decides per proposal whether to
+keep or dismiss it, then chooses overall whether the standard remains
+`APPROVED` or moves to `NEW_PENDING_REAPPROVAL`. Accepted proposals are
+applied atomically at close-time.
 
-Cosmetic edits (description, ownerCa) do NOT invalidate.
+#### Lifecycle of an edit
+1. CA edits a field on an `APPROVED` standard (procedural prose,
+   prerequisites, name/description, point list, etc.).
+2. **The standard is NOT mutated.** The system writes a
+   `LotoStandardPendingChange` row instead:
+   `{standardId, sourcePermitId?, lotoPointId?, fieldName, oldValue, newValue, editedBy, editedAt, resolution=PENDING}`.
+   `sourcePermitId` is nullable — populated when the proposal originated
+   from a derived permit's "send to standard" affordance (future), null
+   for direct edits on the standard form.
+3. `LotoStandard.pendingReviewSince` is set to the timestamp of the first
+   such proposal in the cycle. Subsequent edits accumulate.
+4. The standard's `developmentStatus` stays `APPROVED`. A banner on the
+   form shows "Pending Review — N proposals since last approval". The
+   editor sees a toast: "Saved as a pending proposal — waiting for
+   review." Until the reviewer accepts, other users still see the
+   standard's last-approved content.
+5. Repeated edits on the same `(field, lotoPointId, editedBy)` coalesce
+   into one row whose `newValue` tracks the latest typed state. The
+   original `oldValue` (the pre-cycle baseline) is preserved.
+
+#### Reviewing
+A CA or Manager opens the review panel and sees every PENDING proposal
+with `oldValue` vs `newValue` side-by-side. Per row:
+
+- **Keep** — proposal is accepted. Row marked `KEPT`. The new value will
+  be applied to the standard when the review is closed.
+- **Dismiss** — proposal is discarded. Row marked `DISMISSED`. The
+  standard is unaffected (the proposal never mutated it in the first
+  place).
+
+A reviewer can re-open a previously-resolved row before the review is
+closed (`KEPT → PENDING`, `DISMISSED → PENDING`). Switching resolutions
+before close has no side effects on the standard.
+
+#### Closing the review — KEPT proposals are applied here
+After every PENDING row is resolved, the reviewer closes the review.
+**This is the only point at which the standard is mutated.** For each
+distinct `(fieldName, lotoPointId)` group with at least one KEPT
+proposal, the most recent KEPT proposal's `newValue` is applied to the
+standard atomically before the transition is committed. Structural
+`lotoPoints*` variants (add/remove/reorder/replace) collapse to a single
+group; the latest KEPT proposal's snapshot wins.
+
+Then the reviewer picks the closeout disposition:
+
+- **Close as minor** — `pendingReviewSince` is cleared. The standard
+  stays `APPROVED`. `EDIT_ACCEPTED_AS_MINOR` event is appended with the
+  kept/dismissed count summary.
+- **Require re-approval** — `pendingReviewSince` is cleared, workflow
+  attribution is reset, `developmentStatus` flips to
+  `NEW_PENDING_REAPPROVAL`, and `currentVersion` increments. The cycle
+  restarts at submit-for-verification. `EDIT_REQUIRES_REAPPROVAL` event
+  records the decision.
+
+Safety rail: if any KEPT proposal is structural (touches the point list
+— add / remove / reorder / replace), **close-as-minor is rejected** with
+`409 — Cannot close as minor — a kept change adds, removes, or reorders
+LOTO points. Re-approval is required for structural changes.` Structural
+changes always force re-approval.
+
+If the reviewer tries to close while PENDING rows remain, the API
+rejects with `409 — N pending changes must be resolved first`.
+
+#### Edits while in pending review
+- Further edits accumulate into the same pending-review window (one
+  cycle, many proposals).
+- Edits are still allowed even after some proposals have been marked
+  `KEPT` — the new row is `PENDING` like any other.
+- New permits created from a standard in pending-review pick up the
+  **last-approved** definition (the standard hasn't been mutated yet).
+  This is the behavior change vs the prior "auto-apply" model: in-flight
+  proposals are not yet part of the standard's content. A future PR may
+  add a separate affordance to send permit-side edits back to the
+  standard as proposals using `sourcePermitId`.
+
+#### Who can do what
+- Anyone with `CONTROL_AUTHORITY` can edit, opening the pending-review
+  window if the standard was `APPROVED`.
+- `CONTROL_AUTHORITY` **or** `MANAGER` can keep / dismiss individual
+  proposals and close the review. The frontend offers direct buttons
+  (no PIN) when the logged-in user already has one of those roles, and
+  a PIN step-up affordance when escalation is needed.
+- Closing as "Require re-approval" doesn't itself require `MANAGER` —
+  but the eventual `approve` after the re-walk does.
+
+#### Apply semantics on close (Model B2)
+- **Scalar text/boolean** fields (`name`, `description`, prose texts,
+  `removalReversesInstallOrder`) — direct setter assignment of `newValue`.
+- **`pointPrerequisites`** — JSON-serialized at proposal time, parsed
+  back to `Map<Long, PointPrerequisite>` and assigned wholesale.
+- **`lotoPoints*`** — `newValue` is a `List<Long>.toString()` snapshot of
+  the proposed ordered point IDs. Applier removes dropped points, adds
+  new ones, then calls `reorderLotoPoints(targetIds)` to align order.
+- **Unknown field names** — silently skipped. Keeps the applier
+  forward-compatible when new proposal types are added.
+
+#### History events
+The `LotoStandardApprovalEvent` log gains three event types:
+
+- `EDIT_PENDING_REVIEW` — first proposal that opened the current
+  pending-review cycle. One per cycle.
+- `EDIT_ACCEPTED_AS_MINOR` — reviewer closed the review keeping the
+  standard `APPROVED`. The event's `notes` summarizes kept/dismissed counts.
+- `EDIT_REQUIRES_REAPPROVAL` — reviewer closed the review and flipped to
+  `NEW_PENDING_REAPPROVAL`. Same summary format.
+
+(The legacy `INVALIDATED` event type is no longer used by this flow —
+auto-invalidation is gone.)
 
 ### 3.4 Reapproval after permit closure (PLANNED — see §11)
 If a closed permit has `closeDisposition = NEEDS_REVIEW` (it was modified
@@ -227,10 +335,12 @@ timestamp.
 
 ### 5.2 Verify
 - **Pre-req**: aggregate "Hanging Complete" must be signed first.
-- **Who**: any `LOTO_QUALIFIED` user. **Step-up dialog ALWAYS opens** so
-  the verifier signs as themselves, even on the hanger's session. (This
-  also forces separation of duty at the per-point level in practice —
-  the hanger can't quickly re-PIN themselves.)
+- **Who**: any `LOTO_QUALIFIED` user. **Hard rule — hanger ≠ verifier
+  for the same point.** Enforced server-side in `markPointVerified`: a
+  per-point verify request signed by the same identity that signed the
+  hang is rejected with `400 — Verifier must be a different qualified
+  person than the hanger`. The UI also always opens the step-up dialog
+  so the verifier signs as themselves even on the hanger's session.
 - **Captured**: verifier identity (PIN bearer), timestamp, notes.
 
 ### 5.3 Walkdown
@@ -412,10 +522,9 @@ on. Each entry has: `personName`, `personRole`, `company`, `signOnTime`,
    Need an `@EventListener` or transition hook to flip the source
    Standard to `NEW_PENDING_REAPPROVAL` when a permit closes with that
    disposition.
-2. **Per-point hanger ≠ verifier hard rule**. Currently enforced by the
-   PIN dialog UX (hanger has to manually re-PIN as themselves), but not
-   server-side. Add to `markPointVerified`: reject if the actor is the
-   point's `pointHungBy[id]`.
+2. ~~**Per-point hanger ≠ verifier hard rule**.~~ **Resolved** — enforced
+   server-side in `NgLotoService.markPointVerified` (see §5.2). The PIN
+   dialog remains as a UX affordance; the rejection is now in the service.
 3. **Standard approval events lack dual-attribution**. `recordEvent` in
    `NgLotoStandardService` uses `currentUserName()` not
    `currentAuditActor()`. If a MANAGER step-up'd via PIN, the audit

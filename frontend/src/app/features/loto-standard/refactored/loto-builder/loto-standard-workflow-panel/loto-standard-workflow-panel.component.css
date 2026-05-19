@@ -7,6 +7,10 @@
   border: 1px solid var(--border-color, #e4e4e7);
   border-radius: 8px;
   font-size: 12px;
+  /* Sit above the carousel's nav arrows (z-index: 10) so the PIN buttons
+     and banner aren't covered. */
+  position: relative;
+  z-index: 20;
 }
 
 .reapproval-banner {
@@ -19,6 +23,32 @@
   border-radius: 6px;
   color: #78350f;
 }
+
+/* Pending-review banner: lighter than reapproval (the standard is still
+   APPROVED until a reviewer decides), but visually distinct. */
+.pending-review-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fb923c;
+  border-radius: 6px;
+  color: #7c2d12;
+}
+.pending-review-banner .banner-text { flex: 1; line-height: 1.4; }
+.pending-review-banner .review-btn {
+  padding: 6px 12px;
+  background: #f97316;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pending-review-banner .review-btn:hover { background: #ea580c; }
 .banner-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
 .banner-text { line-height: 1.4; }
 .banner-text strong { display: block; margin-bottom: 2px; }
@@ -98,6 +128,18 @@
   color: #a1a1aa;
   cursor: not-allowed;
 }
+
+/* Group the direct + (PIN) variant of an action so they read as one control. */
+.action-group {
+  display: inline-flex;
+  gap: 2px;
+}
+.action-btn-pin {
+  background: #6366f1;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.action-btn-pin:hover:not(:disabled) { background: #4f46e5; }
 
 .attribution {
   display: grid;

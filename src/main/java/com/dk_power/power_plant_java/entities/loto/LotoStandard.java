@@ -94,6 +94,14 @@ public class LotoStandard extends BaseAuditEntity {
     @Column(name = "current_version")
     private Integer currentVersion = 1;
 
+    /**
+     * Set on the first edit to an APPROVED standard; cleared when a CA/Manager
+     * closes the pending-review (either as minor or by requiring re-approval).
+     * Drives the "Pending Review" banner in the UI. See loto-procedure.md §3.3.
+     */
+    @Column(name = "pending_review_since")
+    private LocalDateTime pendingReviewSince;
+
     @Column(name = "submitted_for_verification_by", length = 128)
     private String submittedForVerificationBy;
     @Column(name = "submitted_for_verification_at")

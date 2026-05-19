@@ -73,7 +73,10 @@ export type LotoStandardApprovalEventType =
   | 'READY_FOR_TESTING'
   | 'APPROVED'
   | 'INVALIDATED'
-  | 'REAPPROVED';
+  | 'REAPPROVED'
+  | 'EDIT_PENDING_REVIEW'
+  | 'EDIT_ACCEPTED_AS_MINOR'
+  | 'EDIT_REQUIRES_REAPPROVAL';
 
 export interface LotoStandardApprovalEventDto {
   id: number;
@@ -85,6 +88,30 @@ export interface LotoStandardApprovalEventDto {
   fromStatus: string | null;
   toStatus: string | null;
   notes: string | null;
+}
+
+/** See loto-procedure.md §3.3. */
+export type LotoStandardPendingChangeResolution = 'PENDING' | 'KEPT' | 'DISMISSED';
+
+/**
+ * One field-level edit captured while a LotoStandard is APPROVED. The reviewer
+ * (CA or Manager) marks each row KEPT or DISMISSED and then closes the
+ * review either as minor (status stays APPROVED) or as substantive (status
+ * flips to NEW_PENDING_REAPPROVAL).
+ */
+export interface LotoStandardPendingChangeDto {
+  id: number;
+  standardId: number;
+  /** Null when the edit was on the standard itself (not on one of its points). */
+  lotoPointId: number | null;
+  fieldName: string;
+  oldValue: string | null;
+  newValue: string | null;
+  editedBy: string;
+  editedAt: string;
+  resolution: LotoStandardPendingChangeResolution;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
 }
 
 /** Friendly label for a target status, used on the action button. */

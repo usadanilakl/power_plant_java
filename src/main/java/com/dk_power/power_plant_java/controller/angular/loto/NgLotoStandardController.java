@@ -420,6 +420,72 @@ public class NgLotoStandardController {
         }
     }
 
+    // ── Pending-review (loto-procedure.md §3.3) ───────────────────────────────
+
+    /** List every pending-change row on a standard (oldest first), for the review panel. */
+    @GetMapping("/{id}/pending-changes")
+    public ResponseEntity<NgApiResponse<List<com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto>>>
+            getPendingChanges(@PathVariable Long id) {
+        try {
+            List<com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto> dtos =
+                    lotoStandardService.getPendingChanges(id).stream()
+                            .map(com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto::from)
+                            .toList();
+            return ResponseEntity.ok(new NgApiResponse<>(dtos, "Pending changes retrieved"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Mark a single pending change as KEPT (the newValue stays). */
+    @PostMapping("/pending-changes/{changeId}/keep")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto>>
+            keepPendingChange(@PathVariable Long changeId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto.from(
+                            lotoStandardService.keepChange(changeId)),
+                    "Change marked KEPT"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /** Mark a single pending change as DISMISSED (reviewer wants it reverted). */
+    @PostMapping("/pending-changes/{changeId}/dismiss")
+    public ResponseEntity<NgApiResponse<com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto>>
+            dismissPendingChange(@PathVariable Long changeId) {
+        try {
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardPendingChangeDto.from(
+                            lotoStandardService.dismissChange(changeId)),
+                    "Change marked DISMISSED"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Close the pending-review window. Body: {@code {"requireReapproval": boolean}}.
+     * false = "Close as minor" (status stays APPROVED).
+     * true  = flip to NEW_PENDING_REAPPROVAL.
+     */
+    @PostMapping("/{id}/workflow/close-review")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> closeReview(
+            @PathVariable Long id, @RequestBody CloseReviewRequest body) {
+        try {
+            boolean require = body != null && body.requireReapproval();
+            return ResponseEntity.ok(new NgApiResponse<>(
+                    lotoStandardService.closeReview(id, require),
+                    require ? "Review closed; standard requires re-approval"
+                            : "Review closed as minor; standard remains APPROVED"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    public record CloseReviewRequest(boolean requireReapproval) {}
+
     @PutMapping("/{id}/prerequisites")
     public ResponseEntity<NgApiResponse<LotoStandardDto>> updatePrerequisites(
             @PathVariable Long id,

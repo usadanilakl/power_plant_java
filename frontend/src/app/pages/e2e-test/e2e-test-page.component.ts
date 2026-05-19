@@ -895,9 +895,9 @@ export class E2eTestPageComponent implements OnInit {
     if (!standard?.id) throw new Error('createLotoStandard returned no id');
     this.stdStandardId = standard.id;
 
-    const currentStatus = standard?.developmentStatus ?? standard?.status ?? '?';
+    const currentStatus = this.statusOf(standard);
     if (currentStatus !== 'DRAFT') {
-      throw new Error(`Standard status is ${currentStatus}, expected DRAFT`);
+      throw new Error(`Standard status is "${currentStatus}", expected DRAFT`);
     }
     step.result = `Standard ID=${this.stdStandardId}, 4 points=[${this.stdLotoPointIds.join(',')}], status=DRAFT`;
   }

@@ -44,4 +44,7 @@ public class LotoStandardDto extends BaseDto {
     private LocalDateTime readyForTestingAt;
     private String managerApprovedBy;
     private LocalDateTime managerApprovedAt;
+
+    /** Non-null when there are unresolved edits on an APPROVED standard. See loto-procedure.md §3.3. */
+    private LocalDateTime pendingReviewSince;
 }

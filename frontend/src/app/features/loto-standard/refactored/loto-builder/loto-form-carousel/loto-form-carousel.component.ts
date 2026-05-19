@@ -123,53 +123,93 @@ export class LotoFormCarouselComponent implements OnInit {
   }
 
   /**
-   * Handle point removal from active standard
+   * Handle point removal from active standard.
+   *
+   * <p>Model B2: when the standard is APPROVED, the backend records a
+   * "remove" proposal — the standard's point list isn't actually trimmed
+   * until a reviewer keeps the proposal and closes the review. Skip the
+   * optimistic local update in that case and surface a toast.
    */
   onRemovePoint(point: LotoPointDto): void {
     const index = this.activeIndex();
     const standard = this.lotoStandards()[index];
-    if (standard && standard.lotoPoints) {
+    if (!standard || !standard.lotoPoints) return;
+
+    const approved = this.isApprovedStandard(standard);
+
+    if (!approved) {
       const updatedPoints = standard.lotoPoints.filter((p: LotoPointDto) => p.id !== point.id);
       const updated = new LotoStandardDto({
         ...standard,
         lotoPoints: updatedPoints,
       });
       this.standardUpdated.emit({ index, standard: updated });
+    }
 
-      // If standard is saved (has ID), immediately persist to server
-      if (standard.id && point.id) {
-        this.apiService.removeLotoPointFromStandard(standard.id, point.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            error: (err) => console.error('Failed to remove LOTO point:', err)
-          });
-      }
+    if (standard.id && point.id) {
+      this.apiService.removeLotoPointFromStandard(standard.id, point.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            if (approved) {
+              this.messageService.showInfo(
+                `Removal of "${point.tagNumber ?? 'point'}" recorded as a pending proposal — awaiting CA/Manager review.`
+              );
+            }
+          },
+          error: (err) => console.error('Failed to remove LOTO point:', err)
+        });
     }
   }
 
   /**
-   * Handle points reorder from active standard
+   * Handle points reorder from active standard.
+   *
+   * <p>Model B2: reorder on an APPROVED standard becomes a proposal. The
+   * visual order shouldn't optimistically flip because the backend will
+   * keep returning the pre-proposal order until close-review applies it.
    */
   onReorderPoints(reorderedPoints: LotoPointDto[]): void {
     const index = this.activeIndex();
     const standard = this.lotoStandards()[index];
-    if (standard) {
+    if (!standard) return;
+
+    const approved = this.isApprovedStandard(standard);
+
+    if (!approved) {
       const updated = new LotoStandardDto({
         ...standard,
         lotoPoints: reorderedPoints,
       });
       this.standardUpdated.emit({ index, standard: updated });
-
-      // If standard is saved (has ID), immediately persist to server
-      if (standard.id) {
-        const lotoPointIds = reorderedPoints.map(p => p.id!);
-        this.apiService.reorderLotoPoints(standard.id, lotoPointIds)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            error: (err) => console.error('Failed to reorder LOTO points:', err)
-          });
-      }
     }
+
+    if (standard.id) {
+      const lotoPointIds = reorderedPoints.map(p => p.id!);
+      this.apiService.reorderLotoPoints(standard.id, lotoPointIds)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            if (approved) {
+              this.messageService.showInfo(
+                'Reorder recorded as a pending proposal — awaiting CA/Manager review.'
+              );
+            }
+          },
+          error: (err) => console.error('Failed to reorder LOTO points:', err)
+        });
+    }
+  }
+
+  /** True iff the standard's developmentStatus is APPROVED. Handles both value-object and string shapes. */
+  private isApprovedStandard(s: LotoStandardDto | null | undefined): boolean {
+    if (!s) return false;
+    const ds: unknown = (s as { developmentStatus?: unknown }).developmentStatus;
+    if (typeof ds === 'string') return ds === 'APPROVED';
+    if (ds && typeof ds === 'object' && 'name' in (ds as Record<string, unknown>)) {
+      return (ds as { name?: unknown }).name === 'APPROVED';
+    }
+    return false;
   }
 
   /**

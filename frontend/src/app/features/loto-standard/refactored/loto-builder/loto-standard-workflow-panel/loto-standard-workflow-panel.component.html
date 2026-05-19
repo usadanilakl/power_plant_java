@@ -13,6 +13,25 @@
     </div>
   }
 
+  <!-- Pending review (edits captured on an APPROVED standard, awaiting CA/Manager decision). -->
+  @if (isPendingReview()) {
+    <div class="pending-review-banner" data-testid="pending-review-banner">
+      <span class="banner-icon">📝</span>
+      <div class="banner-text">
+        <strong>Pending Review</strong>
+        — this standard was edited after approval on
+        {{ formatTimestamp(standard().pendingReviewSince) }}.
+        A CA or Manager must review each change before the standard is locked again.
+      </div>
+      <button
+        class="review-btn"
+        data-testid="review-changes-btn"
+        (click)="onReviewChangesClick()">
+        Review changes
+      </button>
+    </div>
+  }
+
   <!-- Status badge + action buttons row -->
   <div class="status-row">
     <div class="status-block">
@@ -38,19 +57,45 @@
     } @else {
       <div class="actions">
         @for (action of actions(); track action.targetStatus) {
-          <button
-            class="action-btn"
-            [class.disabled]="!action.enabled"
-            [disabled]="!action.enabled || isProcessing()"
-            [title]="action.disabledReason || ''"
-            (click)="onActionClick(action)"
-          >
-            {{ action.label }}
-          </button>
+          <div class="action-group">
+            <!-- Direct: runs under the logged-in user (must have the right role). -->
+            <button
+              class="action-btn"
+              [class.disabled]="!action.enabled"
+              [disabled]="!action.enabled || isProcessing()"
+              [title]="action.disabledReason || ''"
+              [attr.data-testid]="testIdForAction(action)"
+              (click)="onActionClick(action)"
+            >
+              {{ action.label }}
+            </button>
+            <!-- PIN: opens step-up dialog so a different qualified user can
+                 authorize on the same session (e.g. verifier on submitter's
+                 tablet). Role + second-person checks run server-side against
+                 the PIN bearer. -->
+            <button
+              class="action-btn action-btn-pin"
+              [disabled]="!canStepUp(action)"
+              title="Sign with PIN as a different user"
+              [attr.data-testid]="testIdForStepUp(action)"
+              (click)="onStepUpClick(action)"
+            >
+              🔑 PIN
+            </button>
+          </div>
         }
       </div>
     }
   </div>
+
+  <!-- Step-up dialog: opened when a "(PIN)" button is clicked. -->
+  @if (stepUpContext(); as ctx) {
+    <app-step-up-dialog
+      [actionLabel]="ctx.action.label"
+      (authorized)="onStepUpAuthorized($event)"
+      (cancelled)="onStepUpCancelled()">
+    </app-step-up-dialog>
+  }
 
   <!-- Attribution summary -->
   @if (attribution().length > 0) {

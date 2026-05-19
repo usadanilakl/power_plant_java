@@ -65,6 +65,36 @@ CREATE INDEX IF NOT EXISTS idx_users_signing_initials ON users(signing_initials)
 -- Existing rows default to PERMIT_REQUIRED (the original form).
 ALTER TABLE IF EXISTS confined_space ADD COLUMN IF NOT EXISTS cs_type VARCHAR(32) DEFAULT 'PERMIT_REQUIRED';
 
+-- LotoStandard pending-review (see project/features/loto-standard/loto-procedure.md §3.3).
+-- pending_review_since is set on first edit to an APPROVED standard and
+-- cleared when a CA/Manager closes the review. The standard's
+-- developmentStatus does NOT change during the review window.
+ALTER TABLE IF EXISTS loto_standard ADD COLUMN IF NOT EXISTS pending_review_since TIMESTAMP;
+
+-- One row per field change made on an APPROVED standard while pending review.
+-- resolution = PENDING / KEPT / DISMISSED. Dismiss reverts the field on the
+-- underlying entity (point or standard).
+CREATE TABLE IF NOT EXISTS loto_standard_pending_change (
+    id BIGINT PRIMARY KEY,
+    standard_id BIGINT NOT NULL,
+    loto_point_id BIGINT,
+    source_permit_id BIGINT,
+    field_name VARCHAR(128) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    edited_by VARCHAR(255) NOT NULL,
+    edited_at TIMESTAMP NOT NULL,
+    resolution VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    resolved_by VARCHAR(255),
+    resolved_at TIMESTAMP,
+    deleted BOOLEAN DEFAULT FALSE,
+    date_created TIMESTAMP,
+    date_modified TIMESTAMP
+);
+ALTER TABLE IF EXISTS loto_standard_pending_change ADD COLUMN IF NOT EXISTS source_permit_id BIGINT;
+CREATE INDEX IF NOT EXISTS idx_pending_change_standard ON loto_standard_pending_change(standard_id);
+CREATE INDEX IF NOT EXISTS idx_pending_change_resolution ON loto_standard_pending_change(resolution);
+
 -- Instrumentation dedup and lookup indexes
 CREATE INDEX IF NOT EXISTS idx_instrument_sharepoint_id ON instrument(sharepoint_id);
 CREATE INDEX IF NOT EXISTS idx_instrument_local_uuid ON instrument(local_uuid);

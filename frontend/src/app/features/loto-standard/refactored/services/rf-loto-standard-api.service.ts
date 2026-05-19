@@ -8,7 +8,10 @@ import { CounterpartStandardPreviewDto } from '../../../../models/loto/counterpa
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoStandardIdDto } from '../../../../models/loto/loto-standard-id.model';
-import { LotoStandardApprovalEventDto } from '../../../../models/loto/loto-standard-workflow.model';
+import {
+  LotoStandardApprovalEventDto,
+  LotoStandardPendingChangeDto,
+} from '../../../../models/loto/loto-standard-workflow.model';
 import { LotoStandardMapperService } from './rf-loto-standard-mapper.service';
 
 @Injectable({
@@ -223,12 +226,15 @@ export class RfLotoStandardApiService {
   workflowTransition(
     standardId: number,
     endpointSegment: string,
-    notes: string | null
+    notes: string | null,
+    stepUpToken?: string | null
   ): Observable<SpringApiResponse<LotoStandardDto>> {
     const body = notes ? { notes } : {};
+    const options = stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {};
     return this.http.post<SpringApiResponse<LotoStandardDto>>(
       `${this.apiUrl}/${standardId}/workflow/${endpointSegment}`,
-      body
+      body,
+      options
     );
   }
 
@@ -236,6 +242,58 @@ export class RfLotoStandardApiService {
   getWorkflowHistory(standardId: number): Observable<SpringApiResponse<LotoStandardApprovalEventDto[]>> {
     return this.http.get<SpringApiResponse<LotoStandardApprovalEventDto[]>>(
       `${this.apiUrl}/${standardId}/workflow/history`
+    );
+  }
+
+  // ── Pending review (loto-procedure.md §3.3) ──────────────────────────────
+
+  /**
+   * List every pending-change row for a standard (oldest-first). Rows with
+   * resolution = PENDING are unresolved; KEPT / DISMISSED have already been
+   * acted on by a reviewer but are kept in the list for context.
+   */
+  getPendingChanges(standardId: number): Observable<SpringApiResponse<LotoStandardPendingChangeDto[]>> {
+    return this.http.get<SpringApiResponse<LotoStandardPendingChangeDto[]>>(
+      `${this.apiUrl}/${standardId}/pending-changes`
+    );
+  }
+
+  /**
+   * Mark a single change as KEPT — the newValue stays on the underlying entity.
+   * {@code stepUpToken} is optional: when the logged-in user already holds
+   * CA or Manager role they can call this without a sign-as token; the token
+   * is only needed to escalate as someone else.
+   */
+  keepPendingChange(changeId: number, stepUpToken?: string | null)
+      : Observable<SpringApiResponse<LotoStandardPendingChangeDto>> {
+    return this.http.post<SpringApiResponse<LotoStandardPendingChangeDto>>(
+      `${this.apiUrl}/pending-changes/${changeId}/keep`,
+      {},
+      stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {}
+    );
+  }
+
+  /** Mark a single change as DISMISSED — reviewer wants it reverted. */
+  dismissPendingChange(changeId: number, stepUpToken?: string | null)
+      : Observable<SpringApiResponse<LotoStandardPendingChangeDto>> {
+    return this.http.post<SpringApiResponse<LotoStandardPendingChangeDto>>(
+      `${this.apiUrl}/pending-changes/${changeId}/dismiss`,
+      {},
+      stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {}
+    );
+  }
+
+  /**
+   * Close the review window. {@code requireReapproval=false} → standard stays
+   * APPROVED. {@code true} → flips to NEW_PENDING_REAPPROVAL. Rejects if any
+   * PENDING rows remain. {@code stepUpToken} optional — see keepPendingChange.
+   */
+  closeReview(standardId: number, requireReapproval: boolean, stepUpToken?: string | null)
+      : Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.post<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/workflow/close-review`,
+      { requireReapproval },
+      stepUpToken ? { headers: { 'X-Sign-As-Token': stepUpToken } } : {}
     );
   }
 
