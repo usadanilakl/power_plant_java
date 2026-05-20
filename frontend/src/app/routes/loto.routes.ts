@@ -10,6 +10,8 @@ import { RfLotoStandardPageComponent } from '../features/loto-standard/refactore
 import { LotoBuilderContainerComponent } from '../features/loto-standard/refactored/loto-builder/loto-builder-container.component';
 import { LotoSideMenuComponent } from '../features/loto/loto-side-menu/loto-side-menu.component';
 import { LotoConflictContainerComponent } from '../features/loto-conflict/loto-conflict-container/loto-conflict-container.component';
+import { RedTagStandardListComponent } from '../features/loto-standard/red-tag-standards/red-tag-standard-list.component';
+import { RedTagStandardDetailComponent } from '../features/loto-standard/red-tag-standards/red-tag-standard-detail.component';
 
 export const LOTO_ROUTES: Routes = [
   {
@@ -32,6 +34,14 @@ export const LOTO_ROUTES: Routes = [
   {
     path: 'loto-standard',
     component: RfLotoStandardPageComponent,
+  },
+  {
+    path: 'red-tag-standards',
+    component: RedTagStandardListComponent,
+  },
+  {
+    path: 'red-tag-standards/:id',
+    component: RedTagStandardDetailComponent,
   },
   {
     path: 'loto-builder',

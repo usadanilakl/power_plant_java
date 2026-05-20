@@ -1,0 +1,4862 @@
+[
+ {
+  "name": "U2 Generator CCW",
+  "unit": "U2",
+  "image": "u2-generator-ccw.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY HEADER ISOLATION",
+    "pnid": "02-VCCW364",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN HEADER ISOLATION/THROTTLING",
+    "pnid": "02-VCCW349",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "THROTTLED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW320",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW330",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW332",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW334",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW336",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW338",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW342",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER SUPPLY ISOLATION",
+    "pnid": "02-VCCW344",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW361",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "THROTTLED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW351",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "THROTTLED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW318",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW400",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW403",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW408",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW372",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW373",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW374",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW375",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW376",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW377",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW378",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "GEN COOLER DRAIN",
+    "pnid": "02-VCCW379",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW398",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW319",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW348",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW371",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW399",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 30,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER INLET DRAIN",
+    "pnid": "02-VCCW401",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 31,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW363",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 32,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW402",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 33,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW359",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 34,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW404",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 35,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW357",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 36,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW405",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 37,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW355",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 38,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW406",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 39,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW353",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 40,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW407",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 41,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER RETURN ISOLATION/THROTTLING",
+    "pnid": "02-VCCW347",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 42,
+    "tagType": "Danger",
+    "description": "GENERATOR COOLER OUTLET DRAIN",
+    "pnid": "02-VCCW409",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ]
+ },
+ {
+  "name": "Unit 2 Generator",
+  "unit": "U2",
+  "image": "unit-2-generator.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2 GCB Disconnect 89G-2",
+    "pnid": "89G-1 Q91",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "SFC TO U2 GENERATOR DISCONNECT",
+    "pnid": "89SS-2",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2Generator Side Ground 57GG-2",
+    "pnid": "57GG-2",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "CO2 ACTUATION LINE ISOLATION VALVE",
+    "pnid": "02SGJ02AA001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "SLIP RING HOUSING ISOLATION VALVE",
+    "pnid": "02SGJ02AA202",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ]
+ },
+ {
+  "name": "Unit 2 GSU",
+  "unit": "U2",
+  "image": "unit-2-gsu.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2 Closing/Pri fuse for 02-SYD-BKR-01",
+    "pnid": "02-SYD-BKR-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect",
+    "pnid": "02-SYD-DSW-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect DC breaker",
+    "pnid": "02-SYD-DSW-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2 Generator Disconnect GCB 89G",
+    "pnid": "89G-2/Q9",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 GCB Ground (transformer side)",
+    "pnid": "Q82",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "MAIN FEED BREAKER",
+    "pnid": "00-UAT-XFR-2",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect",
+    "pnid": "02-SYD-DSW-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect DC breaker",
+    "pnid": "02-SYD-DSW-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ]
+ },
+ {
+  "name": "Unit 2 Seal Oil",
+  "unit": "U2",
+  "image": "unit-2-seal-oil.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "MAIN SEAL OIL PUMP",
+    "pnid": "02MKW01AP101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "SEAL OIL PUMP DISCONNECT",
+    "pnid": "02MKW04AP101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "SEAL OIL REGULATOR INLET",
+    "pnid": "MKW01AA110",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "SEAL OIL STRAINER OUTLET",
+    "pnid": "MKW01AA112",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "SEAL OIL REGULATOR OIL SUPPLY",
+    "pnid": "MKW01AA807",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "SEAL OIL REGULATOR H2 SUPPLY",
+    "pnid": "MKW02AA801",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "SEAL OIL FLOAT TRAP VENT",
+    "pnid": "MKW03AA901",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "SEAL OIL FLOAT TRAP INLET",
+    "pnid": "MKW03AA101",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "SEAL OIL FLOAT TRAP OUTLET",
+    "pnid": "MKW03AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "H2 ISOLATION",
+    "pnid": "02-VCMG103",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "H2 ISOLATION",
+    "pnid": "02-VCMG113",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "H2 VENT",
+    "pnid": "02-VCMG602",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "MINI BULK CO2 OUTLET ISO",
+    "pnid": "V-1",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ]
+ },
+ {
+  "name": "Unit 2 Lube oil",
+  "unit": "U2",
+  "image": "unit-2-lube-oil.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "TURNINGGEARMOTORVFD#1",
+    "pnid": "02MAK11AE101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "TURNING GEARMOTOR VFD#2",
+    "pnid": "02MAK11AE101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "UNIT 2MAIN LUBEOILPUMPMOTOR A",
+    "pnid": "02MPV01AP101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "JNIT 2MAIN LUBE OILPUMPMOTOR B",
+    "pnid": "02MPV01AP102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Emergency Lube Oil Pump Motor",
+    "pnid": "02MPV01AP401-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "LUBEOILVAPOREXTRACTORMOTOR\"A\"",
+    "pnid": "02MPV03AN101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "LUBE OIL VAPOR EXTRACTOR MOTOR 'B\"",
+    "pnid": "02MPV01AN102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "JACKING OIL PUMP A",
+    "pnid": "02MKV05AP201-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "JACKING OIL PUMP B",
+    "pnid": "02MKV05AP202-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "TURNINGGEARSUPPLY OILSOLENOIDVALVEBYPASSVALVE",
+    "pnid": "02MAV10AA101",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "TURNINGGEARSUPPLY OILSOLENOIDVALVEINLETVALVE",
+    "pnid": "02MAV10AA102",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "TURNINGGEARSUPPLYOILSOLENOIDVALVEOUTLETVALVE",
+    "pnid": "02MAV10AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "LUBE OIL HEATER (A)",
+    "pnid": "02MPV01AH101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "LUBE OIL HEATER (B)",
+    "pnid": "02MPV01AH102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "LUBE OIL HEATER (C)",
+    "pnid": "02MPV01AH103",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "LUBE OIL HEATER (D)",
+    "pnid": "02MPV01AH104",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Control oil",
+  "unit": "U2",
+  "image": "unit-2-control-oil.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "CONTROLOILPUMPMOTOR (A)",
+    "pnid": "02MPX01AP101-M03",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "CONTROL OIL PUMP MOTOR (B)",
+    "pnid": "02MPx01AP102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "CONTROL OTL POLISHANG PUME",
+    "pnid": "020Px11AP101-001",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "CONTROL OIL HEATER",
+    "pnid": "02MPX01AH101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 GT IGV Actuator Control oilinlet valve",
+    "pnid": "02MBX01AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2 GT IGV Actuator Control oil outet valve",
+    "pnid": "02MBX01AA203",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2 GT vv Actuator Control oil Inlet valve",
+    "pnid": "02MBX01AA104",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "Actuator Controloil outet valve",
+    "pnid": "02MBX01AA204",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Waterside",
+  "unit": "U2",
+  "image": "unit-2-waterside.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2 BOILER FEED WATER PUMP A",
+    "pnid": "02-BFW-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U2 BOILER FEED WATER PUMP B",
+    "pnid": "02-BFW-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 CONDENSATE PUMP A",
+    "pnid": "02-CND-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2 CONDENSATE PUMP B",
+    "pnid": "02-CND-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 CONDENSATE PUMP C",
+    "pnid": "02-CND-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "GT 2C/ECA RECIRCULATION PUMP (A)",
+    "pnid": "02LCA14AP 101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "GT 2C/ECA RECIRCULATION PUMP (B)",
+    "pnid": "02LCA14AP 102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "ACC 2 LRVP 01A",
+    "pnid": "02-ARM-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "ACC 2 LRVP 0 1B",
+    "pnid": "02-ARM-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "ACC 2 LRVP 01C",
+    "pnid": "02-ARM-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "ACC 2 LRVP 01D",
+    "pnid": "02-ARM-MPM-01D",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "ACC 2 LRVP 01E",
+    "pnid": "02-ARM-MPM-01E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "UNIT 2 LP DRAINS TANK PUMP MTR A",
+    "pnid": "02-STP-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "UNIT 2 LP DRAINS TANK PUMP MTR B",
+    "pnid": "02-STP-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "UNIT 2 PHOSPHATE & AMMONIA MAIN FEED DISCONNECT",
+    "pnid": "02-CCF-SKD-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND STOP CHECK",
+    "pnid": "02-VCND236",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND ISOLATION",
+    "pnid": "02-VCND238",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND DRAIN VALVE",
+    "pnid": "02-VCND237",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "U2 MAKE UP CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "02-VDWS638",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "U2 MAKE UP CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "02-VDWS639",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "U2 MAKE UP VALVE BYPASS",
+    "pnid": "02-VDWS636",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "U2 MAKE WATER DRAIN VALVE",
+    "pnid": "02-VDWS648",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "UNIT 2 EMERGENCY MAKE UP CONTROL VALVE MANUAL ISOLATION (.",
+    "pnid": "02-VDWS641",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "UNIT 2 EMERGENCY MAKE UP CONTROL VALVE MANUAL ISOLATION (...",
+    "pnid": "02-VDWS642",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "UNIT 2 EMERGENCY MAKE UP DRAIN VALVE",
+    "pnid": "02-VDWS643",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "AUX STEAM TO CONDENSOR DRIP LEG ISO",
+    "pnid": "02-VAXS200",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "Aux steam to U2 main iso",
+    "pnid": "02-VAXS630",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "Aux steam to U2 main block iso",
+    "pnid": "02-VAXS631",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "Aux steam to U2 main block bypass",
+    "pnid": "02-VAXS632",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 30,
+    "tagType": "Danger",
+    "description": "Aux steam to U2 main header vent",
+    "pnid": "02-VAXS633",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 31,
+    "tagType": "Danger",
+    "description": "02-VHHS971/983/984/985 02-HTT-HPL-2211",
+    "pnid": "Brker 30/32 CB 16",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 32,
+    "tagType": "Danger",
+    "description": "02-MOVHHS-907 - 02-HTT-HPL-2217",
+    "pnid": "Brker 1/3 CB 1",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 33,
+    "tagType": "Danger",
+    "description": "02-HHS-993 sparge 02-HTT-HPL-1216",
+    "pnid": "Brker 34/36 CB 18",
+    "isolatedPosition": "open",
+    "normalPosition": "dosed"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "U2 Fuel gas performance heater flow meter",
+  "unit": "U2",
+  "image": "u2-fuel-gas-performance-heater-flow-meter.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2 fgph flow meter upstream of bypass isolation",
+    "pnid": "02-V-FGS003-JG",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U2 GAS FLOW METER BYPASS",
+    "pnid": "02-VFGS122",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 GAS FLOW METER INLET",
+    "pnid": "02-VFGS113",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "UNIT 2 GAS FLOW METER VENT (SAMPLE)",
+    "pnid": "02-VFGS116",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "U2 CO2 fire protection",
+  "unit": "U2",
+  "image": "u2-co2-fire-protection.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "CO2 ACTUATION LINE ISOLATION VALVE",
+    "pnid": "02SGJ02AA001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "CO2 TO GAS TURBINE ENCLOSURE ISOLATION VALVE",
+    "pnid": "02SGJ02AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "SLIP RING HOUSING ISOLATION VALVE",
+    "pnid": "02SGJ02AA202",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Unit 2 Fireside (2024)",
+  "unit": "U2",
+  "image": "unit-2-fireside-2024.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "SFC TO U2 GENERATOR DISCONNECT",
+    "pnid": "98SS-2/Q91",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "DISCONNECT DOWNSTREAM OF GCB U2",
+    "pnid": "89G-2/Q81",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 GT ENHANCED AIR COMPRESSOR A",
+    "pnid": "02-MBH06AN101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2 GT ENHANCED AIR COMPRESSOR B",
+    "pnid": "02-MBH06AN102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A AUX OIL PUMP",
+    "pnid": "02MBH06AP 401-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B AUX OIL",
+    "pnid": "02MBH06AP 402-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A VAPOR EXTRACTOR (A)",
+    "pnid": "02MBH06AN 103-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A VAPOR EXTRACTOR (B)",
+    "pnid": "02MBH06AN104-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B VAPOR EXTRACTOR (A)",
+    "pnid": "02MBH06AN105-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B VAPOR EXTRACTOR (B)",
+    "pnid": "02MBH06AN 106-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A ENCLOSURE FAN (A)",
+    "pnid": "02MBH06AN 107-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A ENCLOSURE FAN (B)",
+    "pnid": "02MBH06AN 108-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B ENCLOSURE FAN (A)",
+    "pnid": "02MBH06AN 109-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B ENCLOSURE FAN (B)",
+    "pnid": "02MBH06AN110-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A OIL HEATER",
+    "pnid": "02MBH06AH101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B OIL HEATER",
+    "pnid": "02MBH06AH102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "GT PACKAGE VENTILATION FAN A",
+    "pnid": "02MBA11AN101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "GT PACKAGE VENTILATION FAN B",
+    "pnid": "02MBA11AN102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "GT CASING COOLING AIR FAN",
+    "pnid": "02QEF13AN101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "GT IGNITION EXCITER",
+    "pnid": "02MBM01GU001",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "HRSG 2 AMMONIA INJECTION BLOWER A",
+    "pnid": "02-SCR-MFN-100A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "HRSG2 AMMONIA INJECTION BLOWER B",
+    "pnid": "02-SCR-MFN-100B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "UNIT 2 HRSG DUCT BURNER COOLING SKID BLOWER 1",
+    "pnid": "02-BUR-MLB-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "UNIT 2 HRSG DUCT BURNER COOLING SKID BLOWER 2",
+    "pnid": "02-BUR-MLB-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "UNIT 2 DUCT BURNER CONTROL PANEL MAIN POWER",
+    "pnid": "02-BUR-CPL-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse #5",
+    "pnid": "Forney -B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse # 6",
+    "pnid": "Forney- B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse #8",
+    "pnid": "Forney- B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse # 9",
+    "pnid": "forney-B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 30,
+    "tagType": "Danger",
+    "description": "TB-AC1 fuse # 7",
+    "pnid": "Forney B10287-070-05A",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 31,
+    "tagType": "Danger",
+    "description": "U2 DUCT BURNER CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "02-VFGS179",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 32,
+    "tagType": "Danger",
+    "description": "U2 DUCT BURNER CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "02-VFGS176",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 33,
+    "tagType": "Danger",
+    "description": "DUCT BURNER SOV",
+    "pnid": "02-FGS-SOV293",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 34,
+    "tagType": "Danger",
+    "description": "U2 DUCT BURNER SKID VENT",
+    "pnid": "02-VFGS 120",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 35,
+    "tagType": "Danger",
+    "description": "U2 GAS FLOW METER INLET",
+    "pnid": "02-VFGS113",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 36,
+    "tagType": "Danger",
+    "description": "U2 GAS FLOW METER BYPASS",
+    "pnid": "02-VFGS122",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 37,
+    "tagType": "Danger",
+    "description": "U2 GAS FLOW METER OUTLET",
+    "pnid": "02-VFGS124",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 38,
+    "tagType": "Danger",
+    "description": "Fuel Gas Emergency Shut Off Valve Upstream of FGPH",
+    "pnid": "02MBP01AA701",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 39,
+    "tagType": "Danger",
+    "description": "CO2 ACTUATIONLINEISOLATION VALVE",
+    "pnid": "02SGJ02AA001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 40,
+    "tagType": "Danger",
+    "description": "",
+    "pnid": "025G.0244103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 41,
+    "tagType": "Danger",
+    "description": "SLIP RINGHOUSINGISOLATIONVALVE",
+    "pnid": "025G.024A202",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 42,
+    "tagType": "Danger",
+    "description": "J2GASTURBINEENCLOUSREFUELVENT",
+    "pnid": "02-VFGS177",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 43,
+    "tagType": "Danger",
+    "description": "J2GASTURBINEENCLOUSREFUELVENT",
+    "pnid": "02-0FG518",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 44,
+    "tagType": "Danger",
+    "description": "Ammonia injection manual isolation (upstream)",
+    "pnid": "02-VAOA800",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 45,
+    "tagType": "Danger",
+    "description": "Ammoniainjectionmanualisolation(downstream)",
+    "pnid": "02-VAQA818",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 46,
+    "tagType": "Danger",
+    "description": "Ammonia injection line drain",
+    "pnid": "02-VAOA813",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 IGV/VV Calibration",
+  "unit": "U2",
+  "image": "unit-2-igv-vv-calibration.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "CONTROLOILPUMPMOTOR (A)",
+    "pnid": "02MPX01AP101-M03",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "CONTROLOILPUMPMOTOR (B)",
+    "pnid": "02MPx01AP102-001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "D2GTIGyActuatorControloiloutetvalve",
+    "pnid": "02MBX01AA203",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Actuator Controloiloutlet valve",
+    "pnid": "02BX01AA204",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 GT IGy Actuator Controloilinlet valve",
+    "pnid": "02MBX01AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "S2GTActuatorControloilTnlet tvalve",
+    "pnid": "020BX01AA104",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 GSU AND COMED Outage",
+  "unit": "U2",
+  "image": "unit-2-gsu-and-comed-outage.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2Closing/Prifusefor 02-SYD-BKR-01",
+    "pnid": "02-S0D-8KR-03",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect",
+    "pnid": "02-SYD-DSW-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect Dc breaker",
+    "pnid": "02-SYD-DSW-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2 Generator Disconnect GCB 89G",
+    "pnid": "89G-2/Q9",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 GCB Ground (transformer side)",
+    "pnid": "Q82",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "MAINFEEDBREAKER",
+    "pnid": "00-UAT-XFR-2",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2 Switch Yard Disconnect",
+    "pnid": "02-SYD-DSW-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "D2SwitchYardDisconnectDcbreaker",
+    "pnid": "02-SYD-DSW-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 UPS System Annual PM",
+  "unit": "U2",
+  "image": "unit-2-ups-system-annual-pm.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "Unit 2 UPS Bypass Switch Q500",
+    "pnid": "02-LVF-UPS-01, SW Q500",
+    "isolatedPosition": "Bypass",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "02-LVF-UPS-01",
+    "pnid": "02-LVF-UPS-01, BR #4",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "02-LVF-UPS-01, Unit 2 UPS System, Fuse F6",
+    "pnid": "02-LVF-UPS-01, F6",
+    "isolatedPosition": "OFF",
+    "normalPosition": "ON"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Unit 2 TCP Rectifier",
+  "unit": "U2",
+  "image": "unit-2-tcp-rectifier.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "BRQ4,Unit 2Rectifier220 VdcFeed to BatteryBank",
+    "pnid": "02BTL01,BRQ4",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "BR Q5.1, Unit 2Rectifier 220 Vdc Feed to Load",
+    "pnid": "02BTL01, BR Q5.1",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "BR Q5.2, Unit 2Rectifier 220 Vdc Feed to Load",
+    "pnid": "02BTL01, BR Q5.2",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "BR Q5.3, Unit 2Rectifier 220 Vdc Feed to Load",
+    "pnid": "02BTL01,BR Q5.3",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "02BTL01 220T0RBE COTRO",
+    "pnid": "02BTL01220V DCRECT..",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "220V DC RECTFIERPANEL 028101",
+    "pnid": "220VDCRECTIFIERPA.",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Helen strainer",
+  "unit": "U2",
+  "image": "unit-2-helen-strainer.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "BEWSOCTION-PDREMISOLATIO3",
+    "pnid": "02-BFW152",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "",
+    "pnid": "02-VBFW152A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "BFP SUCTION FROM CONDENSATE ISO VALVE",
+    "pnid": "02-VBFW264",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "BFP SUCTIONISOFROMCONDENSATEBYPASS",
+    "pnid": "02-VBFW264A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "BFP ASUCTIONISOLATION",
+    "pnid": "02-VBFW265",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "2ABFPsuctionbypass",
+    "pnid": "02-/8F02654",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "BFP B SUCTIONISOLATIOR",
+    "pnid": "02-VBFW266",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "2BBFPsuctionbypass",
+    "pnid": "02-VBFW266A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Calcite contactor",
+  "unit": "U2",
+  "image": "unit-2-calcite-contactor.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "CALCTEEITERCO2NECTIONMODC-EISOLATIO",
+    "pnid": "02-VDWS07",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "CO2 oUtet to CALCTE EILTER ISOLATIOR",
+    "pnid": "02-/D0S106",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "D2 CALCITE BACKMASHMANRLE",
+    "pnid": "02-00105820",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "J2CALCTTECONTACTORDEMININLETISOVALVE",
+    "pnid": "02-FCV-VDWS100",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2 CALCITECONTACTORVESSEL\"T\"WATER OUTLET",
+    "pnid": "02-VDWNS813",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "J2 CALCTE CONTACTOR VESSEL \"2\"WATEROUTLET",
+    "pnid": "01-/DWS817",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "WATERMANODTLETISO",
+    "pnid": "02-000S819",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 ST building fire system water supply",
+  "unit": "U2",
+  "image": "unit-2-st-building-fire-system-water-supply.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U2Turbine Building isolation Post Indicating Valve",
+    "pnid": "00-1DV-EPS61",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U2 water supply iso for TB ground floor",
+    "pnid": "00-VPFS-814",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2 water supply iso for ST/cT lube oil tank",
+    "pnid": "00-VPFS-815",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2 Water supply iso for ST/GENERATOR Coupling",
+    "pnid": "00-0PES-816",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "INA supply VALVE Fire System U2 ST/Generator Coupling",
+    "pnid": "02-VINA198",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "INA Low point drain VALVE Fire System U2 ST/Generator Coupling",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2 Turbine building fire system header drain",
+    "pnid": "00-0PFS-825",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 LRVP Alpha",
+  "unit": "U2",
+  "image": "unit-2-lrvp-alpha.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC2LVRP01A",
+    "pnid": "02-ARM-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 2 SEAL WTR PMP 02A",
+    "pnid": "02-ARM-MPM-02A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2LRvP A seal water isolation valve to make up control valve",
+    "pnid": "V-888E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2LRvP A seal water isolation valve to make up control valve",
+    "pnid": "02-V888B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2LRvP A seal water isolation valve to bypass to tank",
+    "pnid": "02-V-888A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2LRVP A discharge isolation valve off seal water tank",
+    "pnid": "02-V-885A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2LRvP A seal water discharge isolation valve after heat exchan",
+    "pnid": "02-V-886A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2LRvP A isolation valve to seal water spray Valve",
+    "pnid": "02-V-886B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U2LRvP Anon condensable suction line",
+    "pnid": "02-V883",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "U2 LRvP A non condensable inlet isolation valve",
+    "pnid": "02-YV-883",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U2LRvP A seal water tank equalization isolation Valve",
+    "pnid": "02-V-884",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U2LRVP A INA-YV-883 air supply Valve",
+    "pnid": "02-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U2LRVP east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U2LRVPwestbellydrains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 LRVP Bravo",
+  "unit": "U2",
+  "image": "unit-2-lrvp-bravo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC2LRVP01B",
+    "pnid": "02-ARM-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 2 SEAL WTR PMP 02B",
+    "pnid": "02-ARM-MPM-02B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2LRVP 'B\" seal water isolation valve to make up control valve",
+    "pnid": "V-895E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2LRvP'B'seal water isolation valve to make up control valve",
+    "pnid": "02-V895B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2LRvP \"B\"seal water isolation Valve to bypass to tank",
+    "pnid": "02-V-895A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2LRvP \"B\"discharge isolation valve off seal water tank",
+    "pnid": "02-V-892A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2LRvP \"B\"seal water discharge isolation valve after heat exch",
+    "pnid": "02-V-893A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2LRvP 'B\" isolation Valve to seal water spray Valve",
+    "pnid": "02-V-893B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U2LRvP \"B\"non condensable suction line",
+    "pnid": "02-V890",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "U2LRvP \"B\"non condensable inletisolation valve",
+    "pnid": "02-YV-890",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U2LRvP\"B\"seal water tank equalization isolation Valve",
+    "pnid": "02-V-891",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U2LRVP \"B\" INA-YV-883 air supply Valve",
+    "pnid": "02-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U2 LRVP'B\" east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U2LRVP \"B\"west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 LRVP Charlie",
+  "unit": "U2",
+  "image": "unit-2-lrvp-charlie.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC2LRVP01C",
+    "pnid": "02-ARM-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 2 SEAL WTR PMP 02C",
+    "pnid": "02-ARM-MPM-02C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2LRvPc\"sealwater isolation valve to make up control valve",
+    "pnid": "02-V903B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2LRvPc\"sealwater isolation valve to make up control valve",
+    "pnid": "V-903E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2LRvP c\"seal water isolation valve to bypass to tank",
+    "pnid": "02-V-903A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2LRvP c\"discharge isolation valve off seal water tank",
+    "pnid": "02-V-900A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2LRvP c\"seal water discharge isolation valve after heat exch",
+    "pnid": "02-V-901A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2LRvPc\" isolation valve to seal water spray valve",
+    "pnid": "02-V-901B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U2 LRVP \"c\" non condensable suction line",
+    "pnid": "02-V898",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "U2 LRVP 'c\" non condensable inlet isolation valve",
+    "pnid": "02-YV-898",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U2LRvPc\"seal water tank equalization isolation Valve",
+    "pnid": "02-V-899",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U2LRVP \"c\" INA-YV-883 air supply Valve",
+    "pnid": "02-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U2LRVP 'c\" east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U2LRVP \"c\" west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 LRVP Delta",
+  "unit": "U2",
+  "image": "unit-2-lrvp-delta.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC2LRVP01D",
+    "pnid": "02-ARM-MPM-01D",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 2 SEAL WTR PMP 02D",
+    "pnid": "02-ARM-MPM-02D",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2LRvP\"D\"seal water isolation valve to make up control valve",
+    "pnid": "V-911E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2LRvP\"D\"seal water isolation valve to make up control valve",
+    "pnid": "02-V911B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2LRVP \"D\"seal water isolation Valve to bypass to tank",
+    "pnid": "02-V-911A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2LRvP\"D\"discharge isolation valve off seal water tank",
+    "pnid": "02-V-908A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2LRVP \"D\" seal water discharge isolation valve after heat exch",
+    "pnid": "02-V-909A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2LRvP\"D\" isolation valve to seal water spray valve",
+    "pnid": "02-V-909B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U2 LRVP \"D\"non condensable suction line",
+    "pnid": "02-V906",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "U2 LRVP \"D\" non condensable inlet isolation Valve",
+    "pnid": "02-YV-906",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U2 LRVP \"D\" seal water tank egualization isolation valve",
+    "pnid": "02-V-907",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U2LRVP \"D\" INA-YV-883 air supply Valve",
+    "pnid": "02-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U2LRVP \"D\"east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U2LRVP \"D\" west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 LRVP Echo",
+  "unit": "U2",
+  "image": "unit-2-lrvp-echo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC2LRVP01E",
+    "pnid": "02-ARM-MPM-01E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 2SEALWTRPMP 02E",
+    "pnid": "02-ARM-MPM-02E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U2LRvpEsealwaterisolationvalvetomakeupcontrolvalve",
+    "pnid": "V-919B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U2LRvP Esealwaterisolation valvetomakeupcontrolvalve",
+    "pnid": "V-919E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U2LRVP 'E\"seal water isolation Valve to bypass to tank",
+    "pnid": "V-919A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U2LRVP\"E\"discharge isolation Valve off seal water tank",
+    "pnid": "V-916A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "U2LRvP \"E\"seal water discharge isolation valve after heat exch",
+    "pnid": "V-917A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "U2LRvP \"E\" isolation valve to seal water spray Valve",
+    "pnid": "V-917B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U2LRVP'E\"non condensable suction line",
+    "pnid": "V914",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "U2LRvP\"E\"noncondensableinletisolationvalve",
+    "pnid": "YV-914",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U2LRVP \"E\" seal water tank equalization isolation valve",
+    "pnid": "V-915",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U2LRVP\"E\"INA-YV-883 air supply Valve",
+    "pnid": "",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U2LRVP\"E'eastbelydrains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U2LRVP\"E\"westbellydrains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Turning Gear (2026)",
+  "unit": "U2",
+  "image": "unit-2-turning-gear-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "O2MAKAE0-M0",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "O2MAKAE0-M0",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "O2-VSTG-00G",
+    "pnid": "OLOCKED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "02MAVFOAA08",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "O2MAV0AA2",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Ignitor 2026",
+  "unit": "U2",
+  "image": "unit-2-ignitor-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "GT IGNITION EXCITER",
+    "pnid": "02MBM01GU001",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "INA to GT ignitors",
+    "pnid": "02QFF11AA112",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Unit 2 CCW ACHE fans (2026)",
+  "unit": "U2",
+  "image": "unit-2-ccw-ache-fans-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-01A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-01B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "02-CCW-MFR-01C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-02A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-02B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-02C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-03A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-03B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "02-CCW-MFR-03C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-04A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-04B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-04C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-05A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-05B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "02-CCW-MFN-05C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 2 Air bowl Regulators",
+  "unit": "U2",
+  "image": "unit-2-air-bowl-regulators.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "02-V1NA268",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "02-VINA239",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "02-V1NA412",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "02-V1A264",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "02-V1NA140",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "02-V1NA143",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "02-V1A145",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "02-0A96",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "02-V1NA182",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 CCW ACHE fans (2026)",
+  "unit": "U1",
+  "image": "unit-1-ccw-ache-fans-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-01A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-01B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-01C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-02A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-02B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-02C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-03A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-03B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-03C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-04A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-04B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-04C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-05A",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "01-CCW-MFN-05B",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "01-CCW-MFR-05C",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Turning Gear",
+  "unit": "U1",
+  "image": "unit-1-turning-gear.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "OMAKAEO-MO",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "OMAKAEO-MO",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "O-VSTG-OOG",
+    "pnid": "ORLOCKED",
+    "isolatedPosition": "ON",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "01MAV10AA108",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "OMAVOAAF2",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Seal oil (2026)",
+  "unit": "U1",
+  "image": "unit-1-seal-oil-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "01MKW01AP101-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "01MKW04AP101-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "01MKW05AP201-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "01MKW05AP202-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "01-VCMG103",
+    "pnid": "OPEN",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "01-VCMG602",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "01-VCMG113",
+    "pnid": "OPEN",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "01-VCMG-009JG",
+    "pnid": "CLOSED",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "01-V-CMG004-JG",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "01-VCMG-007JG",
+    "pnid": "NSTALLED",
+    "isolatedPosition": "REMOVED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "01-VCMG-006JG",
+    "pnid": "NSTALLED",
+    "isolatedPosition": "REMOVED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "01MKW01AA101",
+    "pnid": "OPEN",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "01MKG03AT001",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Lube oil (2026)",
+  "unit": "U1",
+  "image": "unit-1-lube-oil-2026.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "01MPV01AP401-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "01MPV01AP101-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "01MPV01AP102-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "01MPVO3ANO1-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "01MPV03AN102-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "01MKV05AP201-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "01MKV05AP202-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "01MPV21AP101-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "01MKV04AN101-M01",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "OIMPVOIAHO",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "01MPV01AH102",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "01MPV01AH103",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "01MPV01AH104",
+    "pnid": "CLOSED",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Control Oil",
+  "unit": "U1",
+  "image": "unit-1-control-oil.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "CONTROLOILPUMPMOTOR A)",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "CONTROL OIL PUMP MOTOR (B)",
+    "pnid": "01MPX01AP102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "CONTROLOLPOLISHINGPUMP",
+    "pnid": "01MPx11AP101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "CONTROLOILHEATER",
+    "pnid": "01MPX01AH101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Ui GT IGv Actuator Control Oil Outietvalve",
+    "pnid": "01MBX01AA203",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "UiGTyvActuatorControl Oil Ouietvalve",
+    "pnid": "01MBX01AA204",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui GT IGv Actuator Control Oil Inet valve",
+    "pnid": "01MBX01AA103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "DiGTww Actuator ControloilInletValve",
+    "pnid": "01MBX01AA104",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 CO2 Fire System",
+  "unit": "U1",
+  "image": "unit-1-co2-fire-system.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "0SGT02AA00",
+    "pnid": "OPER",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "01SG102AA03",
+    "pnid": "OPER",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "01SG102AA202",
+    "pnid": "OPEN",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Helen strainer",
+  "unit": "U1",
+  "image": "unit-1-helen-strainer.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "BFWSUCTIONLPDRUMISOLATION",
+    "pnid": "01-BFW152",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "",
+    "pnid": "1-VBFW152A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "",
+    "pnid": "01-VBFW264",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "BFP SUCTIONISO FROMCONDENSATEBYPASS",
+    "pnid": "1-VBFW264A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "BFP A SUCTIONISOLATION",
+    "pnid": "01-VBFW265",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "1ABFPsuctionbypass",
+    "pnid": "01-08F02654",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "BFPB SUCTIONISOLATION",
+    "pnid": "01-VBFW266",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "1BBFPsuctionbypass",
+    "pnid": "01-VBFW266A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Air Bowl Regulators",
+  "unit": "U1",
+  "image": "unit-1-air-bowl-regulators.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "01-VINA268",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "01-VINA143",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "01-VIIA412",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "01-VINA264",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "01-VINA140",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "01-VINA145",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "01-VINA182",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "01-VINA196",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "01-VINA239",
+    "pnid": "OPEN",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Generator",
+  "unit": "U1",
+  "image": "unit-1-generator.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "GCBDisconnect89G-1",
+    "pnid": "89G-1/Q91",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "GeneratorSiteGround57GG-1",
+    "pnid": "Generator SiteGround...",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "SFCTOU1GENERATORDISCONNECT",
+    "pnid": "89SS-1",
+    "isolatedPosition": "OPEN",
+    "normalPosition": ""
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "CO2ACTUATION LINEISOLATIONVALVE",
+    "pnid": "01SGJ02AA001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "SLIPRINGHOUSINGISOLATIONVALVE",
+    "pnid": "01SGJ02AA202",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Fireside",
+  "unit": "U1",
+  "image": "unit-1-fireside.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "SFC TO U1 GENERATOR DISCONNECT",
+    "pnid": "89SS-1-1/Q91",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "DISCONNECT DOWNSTREAM OF GCB U1",
+    "pnid": "89G-1- 1/Q81",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U1 GT ENHANCED AIR COMPRESSOR A",
+    "pnid": "01-MBH06AN101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U1 GT ENHANCED AIR COMPRESSOR B",
+    "pnid": "01-MBH06AN102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A AUX OIL PUMP",
+    "pnid": "01MBH06AP 401-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B AUX OIL",
+    "pnid": "01MBH06AP 402-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A VAPOR EXTRACTOR (A)",
+    "pnid": "01MBH06AN103-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A VAPOR EXTRACTOR (B)",
+    "pnid": "01MBH06AN104-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B VAPOR EXTRACTOR (A)",
+    "pnid": "01MBH06AN105-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B VAPOR EXTRACTOR (B)",
+    "pnid": "01MBH06AN106-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR 'A\"ENCLOSURE FAN (A)",
+    "pnid": "01MBH06AN107-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR 'A'ENCLOSURE FAN ()",
+    "pnid": "01MBH06AN108-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR 'B\"ENCLOSURE (A)",
+    "pnid": "01MBH06AN109-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR 'B\"ENCLOSURE (B)",
+    "pnid": "01MBH06AN110-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR A OIL HEATER",
+    "pnid": "01MBH06AH101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "GT ECA COMPRESSOR B OIL HEATER",
+    "pnid": "0 1MBH06AH 102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "GT PACKAGE VENTILATION FAN A",
+    "pnid": "01MBA11AN 101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "GT PACKAGE VENTILATION FAN B",
+    "pnid": "01MBA11AN102-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "GT CASING COOLING AIR FAN",
+    "pnid": "01QEF13AN101-M01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "GT IGNITION EXCITER",
+    "pnid": "01MBM01GU001",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "HRSG 1 AMMONIA INJECTION BLOWER A",
+    "pnid": "01-SCR-MFN-100A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "HRSG 1 AMMONIA INJECTION BLOWER B",
+    "pnid": "01-SCR-MFN-100B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "UNIT 1HRSG DUCT BURNER COOLING SKID BLOWER 1",
+    "pnid": "01-BUR-MLB-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "UNIT 1 HRSG DUCT BURNER COOLING SKID BLOWER 2",
+    "pnid": "01-BUR-MLB-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "HRG 1DCT BNR MAIN 120VAC",
+    "pnid": "01-BUR-CPL-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse #5",
+    "pnid": "Forney -B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inse ted"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse # 6",
+    "pnid": "Forney- B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse # 8",
+    "pnid": "Forney- B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "TB-DC1 fuse # 9",
+    "pnid": "forney- B10287-070-06",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 30,
+    "tagType": "Danger",
+    "description": "TB-AC1 fuse # 7",
+    "pnid": "Forney B10287-070-05A",
+    "isolatedPosition": "pulled",
+    "normalPosition": "inserted"
+   },
+   {
+    "rowNumber": 31,
+    "tagType": "Danger",
+    "description": "UNIT 1 DUCT BURNER CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "01-VFGS179",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 32,
+    "tagType": "Danger",
+    "description": "UNIT 1 DUCT BURNER CONTROL VALVE MANUAL ISOLATION",
+    "pnid": "01-VFGS176",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 33,
+    "tagType": "Danger",
+    "description": "DUCT BURNER SOV INA SUPPLY",
+    "pnid": "01-VFGS922",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 34,
+    "tagType": "Danger",
+    "description": "UNIT 1 DUCT BURNER SKID VENT",
+    "pnid": "01-VFGS217",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 35,
+    "tagType": "Danger",
+    "description": "FLOW METER BYPASS",
+    "pnid": "01-VFGS122",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 36,
+    "tagType": "Danger",
+    "description": "GAS TURBINE FUEL GAS CARTRIDGE FILTER INLET",
+    "pnid": "01-VFGS174",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 37,
+    "tagType": "Danger",
+    "description": "EMERGENCY VENT VALVE BYPASS",
+    "pnid": "01-VFGS123",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 38,
+    "tagType": "Danger",
+    "description": "CO2 ACTUATION LINE ISOLATION VALVE",
+    "pnid": "01SGJ02AA001",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 39,
+    "tagType": "Danger",
+    "description": "CO2 TO GAS TURBINE ENCLOSDREISOLATIOVALVE",
+    "pnid": "015G.0244103",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 40,
+    "tagType": "Danger",
+    "description": "SLIP RINGHOUSINGISOLATIONVALVE",
+    "pnid": "01SGJ02AA 202",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 41,
+    "tagType": "Danger",
+    "description": "SNIT1GASTURBINEENCLOUSREFUELVEN",
+    "pnid": "01-0FGS177",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 42,
+    "tagType": "Danger",
+    "description": "SNIT1GASTURBINEENCLOUSREFUELVENT",
+    "pnid": "01-0FGS178",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 43,
+    "tagType": "Danger",
+    "description": "Ammonianjectionmanualisolation (upstream)",
+    "pnid": "01-VAOA800",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 44,
+    "tagType": "Danger",
+    "description": "Ammonia injection manualisolation (downstream)",
+    "pnid": "01-VAOA818",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 45,
+    "tagType": "Danger",
+    "description": "Ammoniainjection linedrain",
+    "pnid": "01-VAOA813",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 Waterside",
+  "unit": "U1",
+  "image": "unit-1-waterside.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U1BOILERFEED WATERPUMP A",
+    "pnid": "01-BFW-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "U1 BOILER FEED WATER PUMP B",
+    "pnid": "01-BFW-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "U1 CONDENSATE PUMP A",
+    "pnid": "01-CND-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "U1 CONDENSATE PUMP B",
+    "pnid": "01-CND-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U1 CONDENSATE PUMP C",
+    "pnid": "01-CND-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "GT 2C/ECA RECIRCULATION PUMP (A)",
+    "pnid": "01LCA14AP 101",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "GT 2C/ECA RECIRCULATION PUMP (B)",
+    "pnid": "01LCA14AP 102",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "ACC 1 LRVP 01A",
+    "pnid": "01-ARM-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "ACC 1 LRVP 01B",
+    "pnid": "01-ARM-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "ACC 1 LRVP 01C",
+    "pnid": "01-ARM-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "ACC 1 LRVP 01D",
+    "pnid": "01-ARM-MPM-01D",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "ACC 1 LRVP 01E",
+    "pnid": "01-ARM-MPM-01E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "UNIT 1 LP DRAINS TANK PUMP MTR A",
+    "pnid": "01-STP-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "UNIT 1 LP DRAINS TANK PUMP MTR B",
+    "pnid": "01-STP-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 15,
+    "tagType": "Danger",
+    "description": "UNIT 1 PHOSPHATE & AMMONIA MAIN FEED DISCONNECT",
+    "pnid": "01-CCF-SKD-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 16,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND STOP CHECK",
+    "pnid": "01-VCND236",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 17,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND DRAIN VALVE",
+    "pnid": "01-VCND237",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 18,
+    "tagType": "Danger",
+    "description": "DEMIN FILL TO CND ISOLATION",
+    "pnid": "01-VCND238",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 19,
+    "tagType": "Danger",
+    "description": "UNIT 1 MAKE UP VALVE BYPASS",
+    "pnid": "01-VDWS636",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 20,
+    "tagType": "Danger",
+    "description": "UNIT 1 MAKE UP CONTROL VALVE MANUAL ISOLATION (upstream)",
+    "pnid": "01-VDWS638",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 21,
+    "tagType": "Danger",
+    "description": "UNIT 1 MAKE UP CONTROL VALVE MANUAL ISOLATION (doWnstream)",
+    "pnid": "01-VDWS639",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 22,
+    "tagType": "Danger",
+    "description": "UNIT 1 EMERGENCY MAKE UP CONTROL VALVE MANUAL ISOLATION (...",
+    "pnid": "01-VDWS641",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 23,
+    "tagType": "Danger",
+    "description": "UNIT 1 EMERGENCY MAKE UP CONTROL VALVE MANUAL ISOLATION (...",
+    "pnid": "01-VDWS642",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 24,
+    "tagType": "Danger",
+    "description": "UNIT 1 EMERGENCY MAKE WATER DRAIN VALVE",
+    "pnid": "01-VDWS643",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 25,
+    "tagType": "Danger",
+    "description": "UNIT 1 NORMAL MAKE WATER DRAIN VALVE",
+    "pnid": "01-VDWS648",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 26,
+    "tagType": "Danger",
+    "description": "Aux steam to U1 main block iso",
+    "pnid": "01-VAXS631",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 27,
+    "tagType": "Danger",
+    "description": "Aux steam to U1 main iso",
+    "pnid": "01-VAXS630",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 28,
+    "tagType": "Danger",
+    "description": "Aux steam to U1 main block bypass",
+    "pnid": "01-VAXS632",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 29,
+    "tagType": "Danger",
+    "description": "Aux steam to U1 main header vent",
+    "pnid": "01-VAXS633",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 GSU",
+  "unit": "U1",
+  "image": "unit-1-gsu.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "U1Closing/Prifusefor01-SYD-BKR-01",
+    "pnid": "01-SYD-BKR-01",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "iswitcn Yard Disconnect",
+    "pnid": "01-SYD-DSN-02",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "DiSwitchYardDisconnectDcbreaker",
+    "pnid": "01-SYD-DSW-02",
+    "isolatedPosition": "Brker ... OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "3000A maig Breaker 52-1-m3",
+    "pnid": "00-UAT-XFR-1",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Generator Disconnect GcB 8gG",
+    "pnid": "01-808-GE1320",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Q1GCB57TG-1",
+    "pnid": "01-808-G08132E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 LRVP Alpha",
+  "unit": "U1",
+  "image": "unit-1-lrvp-alpha.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC1LRVP01A",
+    "pnid": "01-ARM-MPM-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 1SEAL WTR PMP 02A",
+    "pnid": "01-ARM-MPM-02A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "Ui LRvP A seal water isolation valve to make up control valve",
+    "pnid": "V-888E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Ui LRvP A seal water isolation valve to make up control valve",
+    "pnid": "01-V888B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Ui LRvP A seal water isolation valve to bypass to tank",
+    "pnid": "01-V-888A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Ui LRvP A discharge isolation valve off seal water tank",
+    "pnid": "01-V-885A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui LRvP A seal water discharge isolation valve after heat exchan",
+    "pnid": "01-V-886A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "Ui LRvP A isolation valve to sealwater spray valve",
+    "pnid": "01-V-886B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U1 LRVP A non condensable suction line",
+    "pnid": "01-V883",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "UiLRvP Anoncondensableinletisolationvalve",
+    "pnid": "01-YV-883",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "Ui LRvP A seal water tank equalization isolation valve",
+    "pnid": "01-V-884",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U1LRVP A INA-YV-883 air supply Valve",
+    "pnid": "01-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "UiLRVP east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U1LRVP west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 LRVP Bravo",
+  "unit": "U1",
+  "image": "unit-1-lrvp-bravo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC1LRVP01B",
+    "pnid": "01-ARM-MPM-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 1SEAL WTRPMP 02B",
+    "pnid": "01-ARM-MPM-02B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"B\"seal waterisolation valve to make up control valve",
+    "pnid": "V-895E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Ui LRvp\"B'seal water isolation valve to make up control valve",
+    "pnid": "01-V895B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Ui LRvP 'B\"seal water isolation valve to bypass to tank",
+    "pnid": "01-V-895A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"B\"discharge isolation valve off seal water tank",
+    "pnid": "01-V-892A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui LRvp \"B\"seal water discharge isolation valve after heat exch",
+    "pnid": "01-V-893A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"B\"isolation valve to sealwater spray valve",
+    "pnid": "01-V-893B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"B\"non condensable suction line",
+    "pnid": "01-V890",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "UiLRvp\"B\"noncondensableinletisolation valve",
+    "pnid": "01-YV-890",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"B\"seal water tank equalization isolation Valve",
+    "pnid": "01-V-891",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U1LRVP \"B\" INA-YV-883 air supply Valve",
+    "pnid": "01-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "U1 LRVP'B\" east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"B\" west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 LRVP Charlie",
+  "unit": "U1",
+  "image": "unit-1-lrvp-charlie.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC1LRVP01C",
+    "pnid": "01-ARM-MPM-01C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 1 SEAL WTR PMP 02C",
+    "pnid": "01-ARM-MPM-02C",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "UiLRvP\"c\"seal waterisolation valvetomake up control valve",
+    "pnid": "01-V903B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Ui LRvpc\"seal water isolation valve to make up control valve",
+    "pnid": "V-903E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Ui LRvP c\" seal water isolation valve to bypass to tank",
+    "pnid": "01-V-903A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Ui LRvP c\"discharge isolation valve off seal water tank",
+    "pnid": "01-V-900A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui LRvp c\"seal water discharge isolation valve after heat exch",
+    "pnid": "01-V-901A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "Ui LRvPc\" isolation valve to seal water spray valve",
+    "pnid": "0-V-901B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "Ui LRvp c\"non condensable suction line",
+    "pnid": "01-V898",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "UiLRvp\"c\"noncondensableinletisolationvalve",
+    "pnid": "01-YV-898",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "Ui LRvP c\"seal water tank equalization isolation valve",
+    "pnid": "01-V-899",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U1LRVP \"C\" INA-YV-883 air supply Valve",
+    "pnid": "01-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "Ui LRVP 'c\" east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "Ui LRVP c\"west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 LRVP Delta",
+  "unit": "U1",
+  "image": "unit-1-lrvp-delta.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC 1 SEAL WTR PMP 02D",
+    "pnid": "01-ARM-MPM-02D",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"D\"sealwater isolation valve to make up control valve",
+    "pnid": "V-911E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "UiLRvp\"D\"sealwaterisolationvalvetomakeupcontrolvalve",
+    "pnid": "01-V911B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Ui LRvP \"D\"seal water isolation valve to bypass to tank",
+    "pnid": "01-V-911A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"D\" discharge isolation valve off seal water tank",
+    "pnid": "01-V-908A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "Ui LRvp \"D\"seal water discharge isolation valve after heat exch",
+    "pnid": "01-V-909A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui LRvP \"D\" isolation valve to seal water spray valve",
+    "pnid": "01-V-909B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "UiLRvp\"D\"noncondensable suctionline",
+    "pnid": "01-V906",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"D\" non condensable inlet isolation valve",
+    "pnid": "01-YV-906",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "Ui LRvP\"D\"seal water tank equalization isolation valve",
+    "pnid": "01-V-907",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"D\"INA-YV-883 air supply Valve",
+    "pnid": "01-VINA131",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "Ui LRVP 'D\"east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "Ui LRvP \"D\"west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "Unit 1 LRVP Echo",
+  "unit": "U1",
+  "image": "unit-1-lrvp-echo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "ACC1LRVP01E",
+    "pnid": "01-ARM-MPM-01E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "ACC 1SEAL WTRPMP 02E",
+    "pnid": "01-ARM-MPM-02E",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "UiLRvP\"E\"sealwater isolation valve tomake upcontrol valve",
+    "pnid": "V-919B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "Ui LRvP E sealwater isolation valve to make up control valve",
+    "pnid": "V-919E",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 5,
+    "tagType": "Danger",
+    "description": "Ui LRvP 'E\"seal water isolation valve to bypass to tank",
+    "pnid": "V-919A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 6,
+    "tagType": "Danger",
+    "description": "U1 LRVP \"E\" discharge isolation valve off seal water tank",
+    "pnid": "V-916A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 7,
+    "tagType": "Danger",
+    "description": "Ui LRVP 'E' seal water discharge isolation valve after heat exch",
+    "pnid": "V-917A",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 8,
+    "tagType": "Danger",
+    "description": "UiLRvP\"E\"isolation Valve to sealwater spray valve",
+    "pnid": "V-917B",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 9,
+    "tagType": "Danger",
+    "description": "Ui LRvP 'E\"non condensable suction line",
+    "pnid": "V914",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 10,
+    "tagType": "Danger",
+    "description": "Ui LRvP 'E\"non condensable inlet isolation Valve",
+    "pnid": "YV-914",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "AUTO"
+   },
+   {
+    "rowNumber": 11,
+    "tagType": "Danger",
+    "description": "Ui LRvP'E\"seal water tank equalization isolation valve",
+    "pnid": "V-915",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 12,
+    "tagType": "Danger",
+    "description": "U1LRVP\"E\"INA-YV-883 air supply Valve",
+    "pnid": "",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 13,
+    "tagType": "Danger",
+    "description": "Ui LRVP 'E\"east belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 14,
+    "tagType": "Danger",
+    "description": "Ui LRVP 'E\"west belly drains",
+    "pnid": "",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": "OCR draft \u2014 verify rows against the source image."
+ },
+ {
+  "name": "U1 Fuel gas performance heater flow meter",
+  "unit": "U1",
+  "image": "u1-fuel-gas-performance-heater-flow-meter.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "UNIT 1 GAS FLOW METER INLET",
+    "pnid": "01-VFGS113",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "FLOW METER BYPASS",
+    "pnid": "01-VFGS122",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "UNIT 1 GAS TURBINE ENCLOSURE FUEL VENT",
+    "pnid": "01-VFGS177",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 4,
+    "tagType": "Danger",
+    "description": "UNIT 1 GAS TURBINE ENCLOSURE FUEL VENT",
+    "pnid": "01-VFGS178",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "BOP Air Compressor Alpha",
+  "unit": "BOP",
+  "image": "bop-air-compressor-alpha.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR A",
+    "pnid": "01-INA-PNL-01A",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR 01A ISOLATION",
+    "pnid": "00-VINA636",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "INSTRUMENT AIR DRAIN",
+    "pnid": "00-VINA670",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   }
+  ],
+  "importNotes": null
+ },
+ {
+  "name": "Air Compressor Bravo",
+  "unit": "BOP",
+  "image": "air-compressor-bravo.png",
+  "rows": [
+   {
+    "rowNumber": 1,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR B",
+    "pnid": "00-INA-CMP-01B",
+    "isolatedPosition": "OPEN",
+    "normalPosition": "CLOSED"
+   },
+   {
+    "rowNumber": 2,
+    "tagType": "Danger",
+    "description": "AIR COMPRESSOR 01B ISOLATION",
+    "pnid": "00-VINA648",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   },
+   {
+    "rowNumber": 3,
+    "tagType": "Danger",
+    "description": "COMPRESSED AIR DRAIN",
+    "pnid": "00-VINA615",
+    "isolatedPosition": "CLOSED",
+    "normalPosition": "OPEN"
+   }
+  ],
+  "importNotes": null
+ }
+]
