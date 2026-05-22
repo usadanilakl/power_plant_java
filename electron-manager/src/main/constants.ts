@@ -82,9 +82,27 @@ export const DEFAULT_WEBVIEW_AMS_CONFIG = {
   url: 'https://www.webviewams.com/reports.aspx',
   username: '',
   password: '',
-  reportName: 'Trend Table (Recurring Task Excel)',
-  savedSearch: 'Rounds',
   autoRefresh: false,
   dayShiftStartHour: 6,
-  nightShiftStartHour: 18
+  nightShiftStartHour: 18,
+  showScrapeWindow: false
 };
+
+// Reports the scraper pulls on each refresh. `reportName` is the row to pick in
+// the report-type dialog; `savedSearch` is the saved-search preset to apply.
+// `wireMode` controls how cells are pinned: 'column' wires a whole column
+// (latest reading), 'row' wires a whole row.
+export interface WebViewAmsReportDef {
+  key: string;
+  label: string;
+  reportName: string;
+  savedSearch: string;
+  wireMode: 'column' | 'row';
+}
+
+export const WEBVIEW_AMS_REPORTS: WebViewAmsReportDef[] = [
+  { key: 'rounds', label: 'Rounds',
+    reportName: 'Trend Table (Recurring Task Excel)', savedSearch: 'Rounds', wireMode: 'column' },
+  { key: 'alarms', label: 'Alarms',
+    reportName: 'Alarm List (Excel)', savedSearch: 'All active alarms', wireMode: 'row' }
+];

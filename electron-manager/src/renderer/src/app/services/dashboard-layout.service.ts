@@ -13,7 +13,8 @@ export type WidgetId =
   | 'clock'
   | 'notes'
   | 'personnel'
-  | 'toi';
+  | 'toi'
+  | 'web-view-ams';
 
 export interface WidgetDefinition {
   id: WidgetId;
@@ -64,6 +65,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'notes', title: 'Notes', icon: 'sticky_note_2', iconColor: '#f59e0b', description: 'Quick notes and reminders', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'personnel', title: 'Personnel', icon: 'groups', iconColor: '#8b5cf6', description: 'Shift schedule and roster', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
   { id: 'toi', title: 'TOI/TMOD', icon: 'description', iconColor: '#10b981', description: 'Active TOI/TMOD documents', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 1, requiresSpringBoot: false },
+  { id: 'web-view-ams', title: 'WebView AMS', icon: 'checklist', iconColor: '#14b8a6', description: 'Wired report values from WebView AMS', minCols: 1, minRows: 1, defaultCols: 1, defaultRows: 2, requiresSpringBoot: false },
 ];
 
 // 3-column grid, auto-placed top-to-bottom left-to-right
@@ -73,7 +75,7 @@ function buildDefaultPreset(): WidgetPlacement[] {
     'fire-impairment', 'gate-log', 'weather',
     'pjm', 'permits', 'maximo-lead-op',
     'external-links', 'contacts', 'paging-system',
-    'clock', 'notes', 'personnel', 'toi',
+    'clock', 'notes', 'personnel', 'toi', 'web-view-ams',
   ];
   return order.map((id, i) => ({
     widgetId: id,

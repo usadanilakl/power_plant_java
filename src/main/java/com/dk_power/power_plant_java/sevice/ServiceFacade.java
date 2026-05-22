@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.etapro.EtaProPoint;
 import com.dk_power.power_plant_java.entities.etapro.EtaProReading;
 import com.dk_power.power_plant_java.entities.etapro.EtaProScrapeJob;
+import com.dk_power.power_plant_java.entities.rounds.RoundsReport;
 import com.dk_power.power_plant_java.entities.field_list.FieldListItem;
 import com.dk_power.power_plant_java.entities.fire_impairment.FireImpairment;
 import com.dk_power.power_plant_java.entities.inventory.InventoryItem;
@@ -55,6 +56,7 @@ import com.dk_power.power_plant_java.sevice.instrumentation.InstrumentSyncServic
 import com.dk_power.power_plant_java.sevice.etapro.EtaProPointService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProReadingService;
 import com.dk_power.power_plant_java.sevice.etapro.EtaProScrapeJobService;
+import com.dk_power.power_plant_java.sevice.angular.rounds.NgRoundsService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.zero_energy.ZeroEnergyService;
 import org.springframework.context.annotation.Lazy;
@@ -134,7 +136,9 @@ public class ServiceFacade {
             @Lazy FieldListItemSyncService fieldListItemSyncService,
             // Inventory
             @Lazy InventoryItemSyncService inventoryItemSyncService,
-            @Lazy InventoryUsageSyncService inventoryUsageSyncService
+            @Lazy InventoryUsageSyncService inventoryUsageSyncService,
+            // Rounds (WebView AMS scraper)
+            @Lazy NgRoundsService ngRoundsService
     ) {
         // Categories
         serviceMap.put(Category.class.getSimpleName(), categoryService);
@@ -201,6 +205,8 @@ public class ServiceFacade {
         // Inventory
         serviceMap.put(InventoryItem.class.getSimpleName(), inventoryItemSyncService);
         serviceMap.put(InventoryUsage.class.getSimpleName(), inventoryUsageSyncService);
+        // Rounds (WebView AMS scraper)
+        serviceMap.put(RoundsReport.class.getSimpleName(), ngRoundsService);
     }
 
     public SyncableService getService(String entityClass) {

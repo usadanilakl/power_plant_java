@@ -130,14 +130,16 @@ export interface WebViewAmsConfig {
   url: string;
   username: string;
   password: string;
-  reportName: string;
-  savedSearch: string;
   autoRefresh: boolean;
   dayShiftStartHour: number;
   nightShiftStartHour: number;
+  showScrapeWindow: boolean;
 }
 
-export interface RoundsReport {
+export interface WebViewAmsReport {
+  reportKey: string;
+  reportLabel: string;
+  wireMode: 'column' | 'row';
   title: string;
   facility: string;
   generatedAt: string;
@@ -154,9 +156,26 @@ export interface WebViewAmsStatus {
   isRefreshing: boolean;
   configured: boolean;
   autoRefreshEnabled: boolean;
-  rowCount: number;
   currentShift: string | null;
+  reports: { key: string; label: string }[];
   error?: string;
+}
+
+export interface WebViewAmsWiredItem {
+  id: string;
+  reportKey: string;
+  reportLabel: string;
+  mode: 'column' | 'row';
+  key: string;
+  addedAt: string;
+}
+
+export interface WebViewAmsWiredValue extends WebViewAmsWiredItem {
+  found: boolean;
+  label: string;
+  value: string;
+  time: string;
+  fields: { name: string; value: string }[];
 }
 
 export interface GateLogConfig {
@@ -427,12 +446,17 @@ interface ElectronAPI {
   onGateLogPeopleUpdated: (callback: () => void) => () => void;
 
   // WebView AMS — Rounds report scraper
-  webViewAmsGetReport: () => Promise<IpcResult<RoundsReport | null>>;
+  webViewAmsGetReports: () => Promise<IpcResult<WebViewAmsReport[]>>;
   webViewAmsGetStatus: () => Promise<IpcResult<WebViewAmsStatus>>;
-  webViewAmsRefresh: () => Promise<IpcResult<RoundsReport | null>>;
+  webViewAmsRefresh: () => Promise<IpcResult<WebViewAmsReport[]>>;
   webViewAmsGetConfig: () => Promise<IpcResult<WebViewAmsConfig>>;
   webViewAmsSaveConfig: (config: WebViewAmsConfig) => Promise<IpcResult>;
   webViewAmsSetAutoRefresh: (enabled: boolean) => Promise<IpcResult>;
+  webViewAmsWiredGet: () => Promise<IpcResult<WebViewAmsWiredValue[]>>;
+  webViewAmsWiredAdd: (reportKey: string, mode: string, key: string) => Promise<IpcResult<WebViewAmsWiredValue[]>>;
+  webViewAmsWiredRemove: (id: string) => Promise<IpcResult<WebViewAmsWiredValue[]>>;
+  webViewAmsHistoryList: () => Promise<IpcResult<any[]>>;
+  webViewAmsHistoryGet: (id: number) => Promise<IpcResult<any>>;
   onWebViewAmsUpdated: (callback: () => void) => () => void;
 
   // Cold Resync
@@ -849,9 +873,9 @@ export class ElectronService implements OnDestroy {
 
   // WebView AMS — Rounds report scraper
 
-  async webViewAmsGetReport(): Promise<IpcResult<RoundsReport | null>> {
+  async webViewAmsGetReports(): Promise<IpcResult<WebViewAmsReport[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
-    return window.electronAPI!.webViewAmsGetReport();
+    return window.electronAPI!.webViewAmsGetReports();
   }
 
   async webViewAmsGetStatus(): Promise<IpcResult<WebViewAmsStatus>> {
@@ -859,7 +883,7 @@ export class ElectronService implements OnDestroy {
     return window.electronAPI!.webViewAmsGetStatus();
   }
 
-  async webViewAmsRefresh(): Promise<IpcResult<RoundsReport | null>> {
+  async webViewAmsRefresh(): Promise<IpcResult<WebViewAmsReport[]>> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.webViewAmsRefresh();
   }
@@ -877,6 +901,31 @@ export class ElectronService implements OnDestroy {
   async webViewAmsSetAutoRefresh(enabled: boolean): Promise<IpcResult> {
     if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
     return window.electronAPI!.webViewAmsSetAutoRefresh(enabled);
+  }
+
+  async webViewAmsWiredGet(): Promise<IpcResult<WebViewAmsWiredValue[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsWiredGet();
+  }
+
+  async webViewAmsWiredAdd(reportKey: string, mode: string, key: string): Promise<IpcResult<WebViewAmsWiredValue[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsWiredAdd(reportKey, mode, key);
+  }
+
+  async webViewAmsWiredRemove(id: string): Promise<IpcResult<WebViewAmsWiredValue[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsWiredRemove(id);
+  }
+
+  async webViewAmsHistoryList(): Promise<IpcResult<any[]>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsHistoryList();
+  }
+
+  async webViewAmsHistoryGet(id: number): Promise<IpcResult<any>> {
+    if (!this.isElectron) return { success: false, error: 'Not running in Electron' };
+    return window.electronAPI!.webViewAmsHistoryGet(id);
   }
 
   onWebViewAmsUpdated(callback: () => void): () => void {

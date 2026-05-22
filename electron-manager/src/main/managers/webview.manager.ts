@@ -58,7 +58,7 @@ export class WebViewManager {
 
     // Register auto-login listener BEFORE loadURL (loadURL resolves on did-finish-load,
     // so attaching the listener after await would miss the event — race condition)
-    if (target === 'gate-website' || target === 'onlocation' || target === 'perry-weather') {
+    if (target === 'gate-website' || target === 'onlocation' || target === 'perry-weather' || target === 'webview-ams') {
       win.webContents.once('did-finish-load', () => {
         console.log(`[WebView] ${target} page loaded, attempting auto-login...`);
         this.autoLogin(target).catch((err) => {
@@ -296,6 +296,58 @@ export class WebViewManager {
         if (btn) btn.click();
       `);
       console.log('[WebView] Perry Weather auto-login: submitted');
+
+    } else if (target === 'webview-ams') {
+      const wvFs = require('fs');
+      const wvPath = require('path');
+      const wvConfigPath = wvPath.join(getWorkingDir(), 'webview-ams-config.json');
+      let wvConfig: any = {};
+      try {
+        if (wvFs.existsSync(wvConfigPath)) {
+          wvConfig = JSON.parse(wvFs.readFileSync(wvConfigPath, 'utf-8'));
+        }
+      } catch { /* use empty config */ }
+
+      const wc = instance.window.webContents;
+      const hasForm = await wc.executeJavaScript(`!!document.querySelector('input[name="username"]')`);
+      if (!hasForm) {
+        console.log('[WebView] webview-ams: no login form — may already be logged in');
+        return;
+      }
+
+      // Fill credentials via insertText (DHTMLX validation ignores `.value=`)
+      await wc.executeJavaScript(`
+        var e = document.querySelector('input[name="username"]');
+        if (e) { e.focus(); e.click(); e.value = ''; }
+      `);
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await wc.insertText(wvConfig.username || '');
+
+      await wc.executeJavaScript(`
+        var e = document.querySelector('input[name="password"]');
+        if (e) { e.focus(); e.click(); e.value = ''; }
+      `);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await wc.insertText(wvConfig.password || '');
+
+      // Sign In is a DHTMLX <div> — dispatch a full mouse-event sequence
+      await wc.executeJavaScript(`
+        (function () {
+          function fire(el) {
+            var o = { bubbles: true, cancelable: true, view: window };
+            ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(function (t) {
+              el.dispatchEvent(new MouseEvent(t, o));
+            });
+          }
+          var btns = document.querySelectorAll('.dhxform_btn');
+          for (var i = 0; i < btns.length; i++) {
+            var t = btns[i].querySelector('.dhxform_btn_txt');
+            if (t && t.textContent.trim() === 'Sign In') { fire(btns[i]); return 'clicked'; }
+          }
+          return 'not-found';
+        })();
+      `);
+      console.log('[WebView] webview-ams auto-login: submitted');
     }
   }
 
@@ -611,7 +663,8 @@ export class WebViewManager {
       'onlocation': 'WhosOnLocation',
       'weather': 'Weather',
       'pjm': 'PJM',
-      'perry-weather': 'Perry Weather'
+      'perry-weather': 'Perry Weather',
+      'webview-ams': 'WebView AMS'
     };
     return titles[target] || target;
   }

@@ -105,7 +105,10 @@ public class EntityTableRegistry {
         // EtaPro
         Map.entry("EtaProPoint", "eta_pro_point"),
         Map.entry("EtaProReading", "eta_pro_reading"),
-        Map.entry("EtaProScrapeJob", "eta_pro_scrape_job")
+        Map.entry("EtaProScrapeJob", "eta_pro_scrape_job"),
+
+        // Rounds (WebView AMS scraper)
+        Map.entry("RoundsReport", "rounds_report")
     );
 
     /**
@@ -139,6 +142,7 @@ public class EntityTableRegistry {
         "EtaProPoint",
         "EtaProReading",
         "EtaProScrapeJob",
+        "RoundsReport",
         "EspDevice",
         "LedStrip",
         "WorkAreaMapShape",

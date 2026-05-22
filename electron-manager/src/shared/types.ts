@@ -17,7 +17,7 @@ export interface AppStatus {
 }
 
 // WebView targets
-export type WebViewTarget = 'fm-global' | 'gate-website' | 'onlocation' | 'weather' | 'pjm' | 'perry-weather';
+export type WebViewTarget = 'fm-global' | 'gate-website' | 'onlocation' | 'weather' | 'pjm' | 'perry-weather' | 'webview-ams';
 
 export interface WebViewRequest {
   target: WebViewTarget;
@@ -210,26 +210,29 @@ export interface PjmConfig {
   daEmailAddress?: string;        // mailbox UPN for PJM DA email polling via Graph API
 }
 
-// WebView AMS — "Rounds" Trend Table report scraper
+// WebView AMS — Excel report scraper (webviewams.com)
 export interface WebViewAmsConfig {
   url: string;                 // https://www.webviewams.com/reports.aspx
   username: string;
   password: string;
-  reportName: string;          // "Trend Table (Recurring Task Excel)"
-  savedSearch: string;         // "Rounds"
   autoRefresh: boolean;        // scrape once per shift when true
   dayShiftStartHour: number;   // 6  — Day shift begins
   nightShiftStartHour: number; // 18 — Night shift begins
+  showScrapeWindow: boolean;   // debug — show the scrape window (default headless)
 }
 
-// Parsed Trend Table report (one scrape)
-export interface RoundsReport {
-  title: string;        // "Trend Table (Recurring Task Excel)"
+// One parsed report from a single scrape. The scraper pulls a fixed set of
+// reports (see WEBVIEW_AMS_REPORTS in the main process) each refresh.
+export interface WebViewAmsReport {
+  reportKey: string;    // stable id — "rounds", "alarms"
+  reportLabel: string;  // display name — "Rounds", "Alarms"
+  wireMode: 'column' | 'row'; // how cells pin: column (latest reading) or row
+  title: string;        // "Trend Table (Recurring Task Excel)" / "Alarm List (Excel)"
   facility: string;     // "Jackson Generation"
   generatedAt: string;  // "Report generated on Thursday, May 21, 2026 at ..."
-  filterLine: string;   // "Date: This Week; Task Template: ...; Include: ACTIVE ONLY"
-  resultCount: number;  // 47
-  columns: string[];    // flattened question headers (first = "Response Date")
+  filterLine: string;   // report filter summary line
+  resultCount: number;  // "Results: N" count
+  columns: string[];    // header row
   rows: string[][];     // each row: cell strings aligned to columns
   scrapedAt: string;    // ISO timestamp of the scrape
   contentHash: string;  // sha256 of columns+rows — used to dedup unchanged reports
@@ -240,9 +243,31 @@ export interface WebViewAmsStatus {
   isRefreshing: boolean;
   configured: boolean;
   autoRefreshEnabled: boolean;
-  rowCount: number;
-  currentShift: string | null; // e.g. "2026-05-21-Day"
+  currentShift: string | null;              // e.g. "2026-05-21-Day"
+  reports: { key: string; label: string }[]; // known report definitions
   error?: string;
+}
+
+// A "wired" item the user pinned to the curated combined view. Stored
+// desktop-locally (webview-ams-wired.json). 'column' mode pins a report
+// column (Rounds — shows the latest reading); 'row' mode pins a report
+// row (Alarms — shows the row's description + fields).
+export interface WebViewAmsWiredItem {
+  id: string;
+  reportKey: string;            // 'rounds' | 'alarms'
+  reportLabel: string;
+  mode: 'column' | 'row';
+  key: string;                  // column header ('column' mode) or row key ('row' mode)
+  addedAt: string;              // ISO timestamp
+}
+
+// A wired item resolved against the latest scraped report.
+export interface WebViewAmsWiredValue extends WebViewAmsWiredItem {
+  found: boolean;               // false if the column/row no longer exists
+  label: string;                // column name, or the row's description
+  value: string;                // column: latest reading; row: status/condition
+  time: string;                 // column: timestamp of the reading; row: date created
+  fields: { name: string; value: string }[]; // row mode: the row's columns
 }
 
 // IPC Result wrapper

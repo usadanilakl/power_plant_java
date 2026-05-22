@@ -182,8 +182,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener(events.IPC_GATE_LOG_PEOPLE_UPDATED, sub); };
   },
 
-  // WebView AMS — Rounds report scraper
-  webViewAmsGetReport: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORT),
+  // WebView AMS — Excel report scraper
+  webViewAmsGetReports: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_REPORTS),
   webViewAmsGetStatus: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_STATUS),
   webViewAmsRefresh: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_REFRESH),
   webViewAmsGetConfig: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_GET_CONFIG),
@@ -191,6 +191,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_SAVE_CONFIG, config),
   webViewAmsSetAutoRefresh: (enabled: boolean): Promise<IpcResult> =>
     ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_SET_AUTO_REFRESH, enabled),
+  webViewAmsWiredGet: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_WIRED_GET),
+  webViewAmsWiredAdd: (reportKey: string, mode: string, key: string): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_WIRED_ADD, reportKey, mode, key),
+  webViewAmsWiredRemove: (id: string): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_WIRED_REMOVE, id),
+  webViewAmsHistoryList: (): Promise<IpcResult> => ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_HISTORY_LIST),
+  webViewAmsHistoryGet: (id: number): Promise<IpcResult> =>
+    ipcRenderer.invoke(events.IPC_WEBVIEW_AMS_HISTORY_GET, id),
   onWebViewAmsUpdated: (callback: () => void) => {
     const sub = () => callback();
     ipcRenderer.on(events.IPC_WEBVIEW_AMS_UPDATED, sub);

@@ -1,17 +1,15 @@
 /**
- * WebViewAmsManager - Scrapes the "Rounds" Trend Table report from webviewams.com.
+ * WebViewAmsManager - Scrapes Excel reports from webviewams.com.
  *
  * Headless BrowserWindow automation, modeled on GateLogManager.scrapeGateData():
- *   login -> Reports sidebar -> set Report Name (dialog) -> set Saved Search
- *   -> Run Report -> catch Excel download -> parse with XLSX.
+ *   login -> for each report def: Reports sidebar -> set Report Name (dialog)
+ *   -> set Saved Search -> Run Report -> catch Excel download -> parse with XLSX.
+ *
+ * The set of reports pulled each refresh is WEBVIEW_AMS_REPORTS (in constants).
+ * All reports are scraped within a single login session.
  *
  * webviewams.com is a DHTMLX app whose element IDs are randomized per session,
  * so every step matches by VISIBLE TEXT and stable `name` attributes — never by id.
- *
- * NOTE: selectors are verified against the saved HTML snapshots in
- * project/features/web-view-ams/. Steps marked [TUNE] interact with DHTMLX
- * widgets whose runtime click behavior can only be confirmed against the live
- * site — expect to adjust timing/selectors there on the first real run.
  */
 
 import { BrowserWindow } from 'electron';
@@ -19,10 +17,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
+import * as http from 'http';
 import * as XLSX from 'xlsx';
-import { DEFAULT_WEBVIEW_AMS_CONFIG } from '../constants';
+import { DEFAULT_WEBVIEW_AMS_CONFIG, DEFAULT_SPRING_BOOT_CONFIG, WEBVIEW_AMS_REPORTS } from '../constants';
+import type { WebViewAmsReportDef } from '../constants';
 import { getWorkingDir } from '../paths';
-import type { WebViewAmsConfig, WebViewAmsStatus, RoundsReport } from '../../shared/types';
+import type {
+  WebViewAmsConfig, WebViewAmsStatus, WebViewAmsReport,
+  WebViewAmsWiredItem, WebViewAmsWiredValue
+} from '../../shared/types';
 
 /**
  * JS helper injected into every automation script. DHTMLX widgets are <div>s
@@ -45,18 +48,22 @@ const FIRE_CLICK = `
 export class WebViewAmsManager {
   private config: WebViewAmsConfig;
   private configPath: string;
-  private cachedReport: RoundsReport | null = null;
+  /** Latest report per report key. */
+  private cachedReports: Record<string, WebViewAmsReport> = {};
   private lastUpdate: Date | null = null;
   private isRefreshing = false;
   private lastError: string | undefined;
   private lastScrapedShift: string | null = null;
   private shiftTimer: NodeJS.Timeout | null = null;
   private onReportUpdated: (() => void) | null = null;
+  /** Curated cells pinned by the user (desktop-local). */
+  private wiredItems: WebViewAmsWiredItem[] = [];
 
   constructor() {
     this.configPath = path.join(getWorkingDir(), 'webview-ams-config.json');
     this.config = this.loadConfig();
-    this.loadCachedReportFromDisk();
+    this.loadCachedReportsFromDisk();
+    this.loadWiredItemsFromDisk();
   }
 
   /** Called once after construction (mirrors WeatherManager.start()). */
@@ -66,7 +73,7 @@ export class WebViewAmsManager {
     }
   }
 
-  /** Callback invoked after a successful scrape (auto-refresh broadcasts). */
+  /** Callback invoked after a scrape completes (auto-refresh broadcasts). */
   public setOnReportUpdated(callback: () => void): void {
     this.onReportUpdated = callback;
   }
@@ -118,64 +125,144 @@ export class WebViewAmsManager {
       isRefreshing: this.isRefreshing,
       configured: this.isConfigured(),
       autoRefreshEnabled: this.config.autoRefresh,
-      rowCount: this.cachedReport?.rows.length ?? 0,
       currentShift: this.currentShiftKey(),
+      reports: WEBVIEW_AMS_REPORTS.map(d => ({ key: d.key, label: d.label })),
       error: this.lastError
     };
   }
 
-  public getCachedReport(): RoundsReport | null {
-    return this.cachedReport;
+  /** Cached reports, in WEBVIEW_AMS_REPORTS order, omitting any never scraped. */
+  public getCachedReports(): WebViewAmsReport[] {
+    return WEBVIEW_AMS_REPORTS
+      .map(d => this.cachedReports[d.key])
+      .filter((r): r is WebViewAmsReport => !!r);
   }
 
   // ─── Refresh ──────────────────────────────────────────────────────────
 
-  public async refresh(): Promise<RoundsReport | null> {
+  public async refresh(): Promise<WebViewAmsReport[]> {
     if (this.isRefreshing) {
-      return this.cachedReport;
+      return this.getCachedReports();
     }
     if (!this.isConfigured()) {
       this.lastError = 'Not configured — set webviewams.com credentials';
-      return this.cachedReport;
+      return this.getCachedReports();
     }
 
     this.isRefreshing = true;
     this.lastError = undefined;
 
     try {
-      console.log('[WebViewAMS] Starting scrape...');
-      const report = await this.scrapeReport();
+      console.log(`[WebViewAMS] Starting scrape of ${WEBVIEW_AMS_REPORTS.length} report(s)...`);
+      const { results, errors } = await this.scrapeAllReports();
 
-      this.cachedReport = report;
-      this.lastUpdate = new Date();
-      this.lastScrapedShift = this.currentShiftKey();
-      this.saveCachedReportToDisk();
+      // Merge fresh results — a failed report keeps its previously cached data
+      for (const [key, report] of Object.entries(results)) {
+        this.cachedReports[key] = report;
+      }
+      if (Object.keys(results).length > 0) {
+        this.lastUpdate = new Date();
+        this.lastScrapedShift = this.currentShiftKey();
+      }
+      this.lastError = errors.length ? errors.join(' | ') : undefined;
+      this.saveCachedReportsToDisk();
 
-      console.log(`[WebViewAMS] Scrape complete: ${report.rows.length} rows, ${report.columns.length} columns`);
+      console.log(`[WebViewAMS] Scrape complete: ${Object.keys(results).length} ok, ${errors.length} failed`);
       this.onReportUpdated?.();
-      return report;
+
+      // Stage 2: persist the "rounds" report to Spring Boot H2 (best-effort).
+      // Only the rounds report is persisted — others are Electron-only.
+      const rounds = results['rounds'];
+      if (rounds) {
+        this.pushToSpringBoot(rounds);
+      }
+      return this.getCachedReports();
     } catch (err: any) {
       this.lastError = err.message || 'Scrape failed';
       console.error('[WebViewAMS] Scrape failed:', err.message);
-      return this.cachedReport;
+      return this.getCachedReports();
     } finally {
       this.isRefreshing = false;
     }
   }
 
+  // ─── Stage 2: best-effort persistence to Spring Boot H2 ───────────────
+
+  /**
+   * Push the "rounds" report to the local Spring Boot instance for H2 storage.
+   * Best-effort: health-checks first and never throws into the scrape flow.
+   */
+  private pushToSpringBoot(report: WebViewAmsReport): void {
+    const port = DEFAULT_SPRING_BOOT_CONFIG.port;
+
+    const healthReq = http.request(
+      { hostname: '127.0.0.1', port, path: '/actuator/health', method: 'GET', timeout: 3000 },
+      (res) => {
+        res.resume();
+        if (res.statusCode && res.statusCode < 400) {
+          this.postReportToSpringBoot(port, report);
+        } else {
+          console.log(`[WebViewAMS] Spring Boot health ${res.statusCode} — skipping DB save`);
+        }
+      }
+    );
+    healthReq.on('error', () => console.log('[WebViewAMS] Spring Boot unavailable — skipping DB save'));
+    healthReq.on('timeout', () => { healthReq.destroy(); });
+    healthReq.end();
+  }
+
+  private postReportToSpringBoot(port: number, report: WebViewAmsReport): void {
+    const body = JSON.stringify(report);
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: '/ng/rounds/report',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body)
+        },
+        timeout: 15000
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode < 400) {
+            console.log('[WebViewAMS] Rounds report saved to Spring Boot H2');
+          } else {
+            console.warn(`[WebViewAMS] Spring Boot save failed: HTTP ${res.statusCode} ${data.slice(0, 200)}`);
+          }
+        });
+      }
+    );
+    req.on('error', (err) => console.warn('[WebViewAMS] Spring Boot save error:', err.message));
+    req.on('timeout', () => { req.destroy(); console.warn('[WebViewAMS] Spring Boot save timed out'); });
+    req.write(body);
+    req.end();
+  }
+
   // ─── Scraper ──────────────────────────────────────────────────────────
 
-  private async scrapeReport(): Promise<RoundsReport> {
+  /**
+   * Open one headless window, log in once, and scrape every report def.
+   * Per-report failures are collected so one bad report doesn't sink the rest.
+   */
+  private async scrapeAllReports(): Promise<{ results: Record<string, WebViewAmsReport>; errors: string[] }> {
     // persist: partition keeps the login cookie so repeat scrapes skip login.
-    // show:true during the tuning phase so the flow can be watched — flip to
-    // false once the selectors/timing are confirmed against the live site.
+    // Headless by default — config.showScrapeWindow flips it visible for debugging.
     const win = new BrowserWindow({
-      show: true,
+      show: this.config.showScrapeWindow === true,
       width: 1280,
       height: 900,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
+        // Headless windows are "backgrounded" by Chromium and have their JS
+        // timers throttled to ~1Hz — which stalls webviewams' heavy DHTMLX
+        // login/bootstrap. Disable throttling so headless runs full-speed.
+        backgroundThrottling: false,
         partition: 'persist:webview-ams'
       }
     });
@@ -185,11 +272,14 @@ export class WebViewAmsManager {
     // fires on the shared session's will-download event either way).
     win.webContents.setWindowOpenHandler(() => ({ action: 'allow' }));
 
+    const results: Record<string, WebViewAmsReport> = {};
+    const errors: string[] = [];
+
     try {
       await win.loadURL(this.config.url);
       await this.sleep(2500);
 
-      // ── Step 1: Login (only if the sign-in form is showing) ──────────
+      // ── Login (only if the sign-in form is showing) ──────────────────
       const hasLogin = await this.exec(win, `!!document.querySelector('input[name="username"]')`);
       if (hasLogin) {
         await this.doLogin(win);
@@ -197,180 +287,235 @@ export class WebViewAmsManager {
         console.log('[WebViewAMS] Already logged in (session cookie) — skipping login');
       }
 
-      // ── Step 2: Open the Reports sidebar item ────────────────────────
       await this.dumpDiagnostics(win, 'after-login');
       const sidebarReady = await this.waitForSelector(win, '.dhxsidebar_item_text', 25000);
       if (!sidebarReady) {
         await this.dumpDiagnostics(win, 'sidebar-timeout');
-        throw new Error('Reports sidebar did not load — see the DIAG line above for page state');
-      }
-      const reportsClick = await this.exec(win, `
-        ${FIRE_CLICK}
-        (function () {
-          var items = document.querySelectorAll('.dhxsidebar_item, .dhxsidebar_item_selected');
-          for (var i = 0; i < items.length; i++) {
-            var t = items[i].querySelector('.dhxsidebar_item_text');
-            if (t && t.textContent.trim() === 'Reports') { __fireClick(items[i]); return 'clicked'; }
-          }
-          return 'reports-item-not-found';
-        })()
-      `);
-      console.log(`[WebViewAMS] Reports sidebar: ${reportsClick}`);
-      await this.sleep(3000);
-
-      // ── Step 3: Open the "Report Name" chooser -> report-type dialog ──
-      const formReady = await this.waitForSelector(win, '.chooser-textfield', 20000);
-      if (!formReady) {
-        throw new Error('Report form did not load');
-      }
-      // The Report Name field is a "chooser" — activate the field, then click
-      // its "Set" button (a DHTMLX form button) to open the report-type dialog.
-      const chooserInfo = await this.exec(win, `
-        ${FIRE_CLICK}
-        (async function () {
-          function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-
-          var rows = document.querySelectorAll('.chooser-textfield');
-          var rnRow = null;
-          for (var i = 0; i < rows.length; i++) {
-            var lbl = rows[i].querySelector('label');
-            if (lbl && lbl.textContent.replace('*', '').trim() === 'Report Name') { rnRow = rows[i]; break; }
-          }
-          if (!rnRow) return { rnRowFound: false };
-
-          // 1. activate the Report Name row
-          var tpl = rnRow.querySelector('.dhxform_item_template');
-          __fireClick(tpl || rnRow);
-          await sleep(400);
-
-          // 2. collect every "Set" button (form buttons + toolbar buttons)
-          var sets = [];
-          var fb = document.querySelectorAll('.dhxform_btn');
-          for (var b = 0; b < fb.length; b++) {
-            var ft = fb[b].querySelector('.dhxform_btn_txt');
-            if (ft && ft.textContent.trim() === 'Set') sets.push(fb[b]);
-          }
-          var tb = document.querySelectorAll('.dhx_toolbar_btn');
-          for (var c = 0; c < tb.length; c++) {
-            var tt = tb[c].querySelector('.dhxtoolbar_text');
-            if (tt && tt.textContent.trim() === 'Set') sets.push(tb[c]);
-          }
-
-          // 3. click the first "Set" at/after the Report Name row in DOM order
-          var chosen = null;
-          for (var k = 0; k < sets.length; k++) {
-            if (rnRow.compareDocumentPosition(sets[k]) & Node.DOCUMENT_POSITION_FOLLOWING) {
-              chosen = sets[k];
-              break;
-            }
-          }
-          if (!chosen && sets.length > 0) chosen = sets[0];
-          if (chosen) __fireClick(chosen);
-
-          return { rnRowFound: true, setButtonCount: sets.length, clickedSet: !!chosen };
-        })()
-      `);
-      console.log(`[WebViewAMS] Report Name "Set": ${JSON.stringify(chooserInfo)}`);
-      if (!chooserInfo || !chooserInfo.rnRowFound) {
-        await this.dumpDiagnostics(win, 'chooser-not-found');
-        throw new Error('Report Name field not found on the report form');
-      }
-      if (!chooserInfo.clickedSet) {
-        await this.dumpDiagnostics(win, 'set-button-not-found');
-        throw new Error('"Set" button for Report Name not found — see the DIAG line above');
-      }
-      await this.sleep(3500);
-
-      // ── Step 4: [TUNE] Pick the report in the grid dialog, hit Select ─
-      const dialogReady = await this.waitForSelector(win, '.gridbox .objbox tr', 20000);
-      if (!dialogReady) {
-        await this.dumpDiagnostics(win, 'dialog-timeout');
-        throw new Error('Report-type dialog did not open — see the DIAG line above');
-      }
-      const rowResult = await this.exec(win, `
-        ${FIRE_CLICK}
-        (function () {
-          var name = ${JSON.stringify(this.config.reportName)};
-          var rows = document.querySelectorAll('.gridbox .objbox tr');
-          for (var i = 0; i < rows.length; i++) {
-            var cells = rows[i].querySelectorAll('td');
-            for (var j = 0; j < cells.length; j++) {
-              if (cells[j].textContent.trim() === name) {
-                __fireClick(cells[j]);
-                return { found: true };
-              }
-            }
-          }
-          return { found: false };
-        })()
-      `);
-      if (!rowResult || !rowResult.found) {
-        await this.dumpDiagnostics(win, 'report-row-not-found');
-        throw new Error(`Report "${this.config.reportName}" not found in the dialog grid`);
-      }
-      await this.sleep(800);
-      const rowSelected = await this.exec(win, `!!document.querySelector('.gridbox .objbox tr.rowselected')`);
-      console.log(`[WebViewAMS] Report-type row: clicked, selected=${rowSelected}`);
-
-      // Confirm via the dialog's "Select" toolbar button, then wait for the
-      // "Select Report" window to close.
-      const selectClick = await this.clickToolbarButton(win, 'Select');
-      console.log(`[WebViewAMS] Select button: ${selectClick}`);
-      const dialogClosed = await this.waitForExpr(win, `
-        !Array.from(document.querySelectorAll('.dhxwin_text_inside'))
-          .some(function (e) { return e.textContent.trim() === 'Select Report'; })
-      `, 10000);
-      console.log(`[WebViewAMS] Report-type dialog closed: ${dialogClosed}`);
-      if (!dialogClosed) {
-        await this.dumpDiagnostics(win, 'dialog-still-open');
-      }
-      await this.sleep(1500);
-
-      // ── Step 5: [TUNE] Set the "Saved Search" combo to "Rounds" ──────
-      const comboResult = await this.selectSavedSearch(win);
-      console.log(`[WebViewAMS] Saved Search combo: ${comboResult}`);
-      await this.sleep(1500);
-
-      // ── Step 6: Run Report and capture the Excel download ────────────
-      const tempPath = path.join(os.tmpdir(), `webview-ams-${Date.now()}.xlsx`);
-      const downloadPromise = new Promise<string>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          ses.removeAllListeners('will-download');
-          reject(new Error('Run Report download timed out after 90s'));
-        }, 90000);
-
-        ses.on('will-download', (_event, item) => {
-          item.setSavePath(tempPath);
-          item.once('done', (_e, state) => {
-            clearTimeout(timeout);
-            ses.removeAllListeners('will-download');
-            if (state === 'completed') {
-              resolve(tempPath);
-            } else {
-              reject(new Error(`Run Report download failed: ${state}`));
-            }
-          });
-        });
-      });
-
-      const runClick = await this.clickToolbarButton(win, 'Run Report');
-      console.log(`[WebViewAMS] Run Report button: ${runClick}`);
-      if (runClick !== 'clicked') {
-        throw new Error('Run Report button not found');
+        throw new Error('Reports sidebar did not load — login may have failed');
       }
 
-      const downloadedPath = await downloadPromise;
-      console.log(`[WebViewAMS] Excel downloaded: ${downloadedPath}`);
-
-      // ── Step 7: Parse the workbook ───────────────────────────────────
-      const report = this.parseWorkbook(downloadedPath);
-      try { fs.unlinkSync(downloadedPath); } catch { /* ignore */ }
-      return report;
+      // ── Scrape each report def in turn ───────────────────────────────
+      for (const def of WEBVIEW_AMS_REPORTS) {
+        try {
+          console.log(`[WebViewAMS] [${def.key}] scraping "${def.label}"...`);
+          const report = await this.scrapeOneReport(win, ses, def);
+          results[def.key] = report;
+          console.log(`[WebViewAMS] [${def.key}] done: ${report.rows.length} rows, ${report.columns.length} columns`);
+        } catch (err: any) {
+          console.error(`[WebViewAMS] [${def.key}] failed:`, err.message);
+          errors.push(`${def.label}: ${err.message}`);
+        }
+      }
+    } catch (err: any) {
+      // Login / sidebar failure affects all reports
+      errors.push(err.message || 'Scrape failed');
     } finally {
       if (!win.isDestroyed()) {
         win.destroy();
       }
     }
+
+    return { results, errors };
+  }
+
+  /**
+   * Scrape a single report: Reports sidebar -> Report Name dialog -> Saved
+   * Search -> Run Report -> download -> parse. Assumes the user is logged in.
+   */
+  private async scrapeOneReport(win: BrowserWindow, ses: Electron.Session, def: WebViewAmsReportDef): Promise<WebViewAmsReport> {
+    const tag = `[WebViewAMS] [${def.key}]`;
+
+    // ── Step 1: (re)open the Reports section for a fresh form ───────────
+    const reportsClick = await this.exec(win, `
+      ${FIRE_CLICK}
+      (function () {
+        var items = document.querySelectorAll('.dhxsidebar_item, .dhxsidebar_item_selected');
+        for (var i = 0; i < items.length; i++) {
+          var t = items[i].querySelector('.dhxsidebar_item_text');
+          if (t && t.textContent.trim() === 'Reports') { __fireClick(items[i]); return 'clicked'; }
+        }
+        return 'reports-item-not-found';
+      })()
+    `);
+    console.log(`${tag} Reports sidebar: ${reportsClick}`);
+    await this.sleep(3000);
+
+    // ── Step 2: open the "Report Name" chooser -> report-type dialog ────
+    const formReady = await this.waitForSelector(win, '.chooser-textfield', 20000);
+    if (!formReady) {
+      throw new Error('Report form did not load');
+    }
+    // The Report Name field is a "chooser" — activate the field, then click
+    // its "Set" button (a DHTMLX form button) to open the report-type dialog.
+    const chooserInfo = await this.exec(win, `
+      ${FIRE_CLICK}
+      (async function () {
+        function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+        var rows = document.querySelectorAll('.chooser-textfield');
+        var rnRow = null;
+        for (var i = 0; i < rows.length; i++) {
+          var lbl = rows[i].querySelector('label');
+          if (lbl && lbl.textContent.replace('*', '').trim() === 'Report Name') { rnRow = rows[i]; break; }
+        }
+        if (!rnRow) return { rnRowFound: false };
+
+        var tpl = rnRow.querySelector('.dhxform_item_template');
+        __fireClick(tpl || rnRow);
+        await sleep(400);
+
+        var sets = [];
+        var fb = document.querySelectorAll('.dhxform_btn');
+        for (var b = 0; b < fb.length; b++) {
+          var ft = fb[b].querySelector('.dhxform_btn_txt');
+          if (ft && ft.textContent.trim() === 'Set') sets.push(fb[b]);
+        }
+        var tb = document.querySelectorAll('.dhx_toolbar_btn');
+        for (var c = 0; c < tb.length; c++) {
+          var tt = tb[c].querySelector('.dhxtoolbar_text');
+          if (tt && tt.textContent.trim() === 'Set') sets.push(tb[c]);
+        }
+
+        var chosen = null;
+        for (var k = 0; k < sets.length; k++) {
+          if (rnRow.compareDocumentPosition(sets[k]) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            chosen = sets[k];
+            break;
+          }
+        }
+        if (!chosen && sets.length > 0) chosen = sets[0];
+        if (chosen) __fireClick(chosen);
+
+        return { rnRowFound: true, setButtonCount: sets.length, clickedSet: !!chosen };
+      })()
+    `);
+    console.log(`${tag} Report Name "Set": ${JSON.stringify(chooserInfo)}`);
+    if (!chooserInfo || !chooserInfo.rnRowFound) {
+      await this.dumpDiagnostics(win, `${def.key}-chooser-not-found`);
+      throw new Error('Report Name field not found on the report form');
+    }
+    if (!chooserInfo.clickedSet) {
+      await this.dumpDiagnostics(win, `${def.key}-set-button-not-found`);
+      throw new Error('"Set" button for Report Name not found');
+    }
+    await this.sleep(3500);
+
+    // ── Step 3: pick the report in the grid dialog, hit Select ─────────
+    const dialogReady = await this.waitForSelector(win, '.gridbox .objbox tr', 20000);
+    if (!dialogReady) {
+      await this.dumpDiagnostics(win, `${def.key}-dialog-timeout`);
+      throw new Error('Report-type dialog did not open');
+    }
+    // The dialog grid uses DHTMLX virtual rendering — only on-screen rows are
+    // in the DOM — so scroll the grid until the target report row renders.
+    const rowResult = await this.exec(win, `
+      ${FIRE_CLICK}
+      (async function () {
+        function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+        var name = ${JSON.stringify(def.reportName)};
+        var box = document.querySelector('.gridbox .objbox');
+        if (!box) return { found: false, reason: 'no-grid' };
+
+        function findCell() {
+          var cells = document.querySelectorAll('.gridbox .objbox td');
+          for (var i = 0; i < cells.length; i++) {
+            if (cells[i].textContent.trim() === name) return cells[i];
+          }
+          return null;
+        }
+
+        var cell = findCell();
+        var guard = 0;
+        while (!cell && guard < 120) {
+          var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 2;
+          box.scrollTop += 220;
+          box.dispatchEvent(new Event('scroll', { bubbles: true }));
+          await sleep(130);
+          cell = findCell();
+          if (atBottom) break;
+          guard++;
+        }
+        if (!cell) return { found: false, reason: 'not-in-grid' };
+
+        cell.scrollIntoView({ block: 'center' });
+        await sleep(250);
+        cell = findCell(); // re-find — scrollIntoView may have re-rendered the grid
+        if (!cell) return { found: false, reason: 'stale-after-scroll' };
+        __fireClick(cell);
+        return { found: true };
+      })()
+    `);
+    if (!rowResult || !rowResult.found) {
+      await this.dumpDiagnostics(win, `${def.key}-report-row-not-found`);
+      throw new Error(`Report "${def.reportName}" not found in the dialog grid (${rowResult ? rowResult.reason : 'exec-failed'})`);
+    }
+    await this.sleep(800);
+    const rowSelected = await this.exec(win, `!!document.querySelector('.gridbox .objbox tr.rowselected')`);
+    console.log(`${tag} report-type row: clicked, selected=${rowSelected}`);
+
+    const selectClick = await this.clickToolbarButton(win, 'Select');
+    console.log(`${tag} Select button: ${selectClick}`);
+    const dialogClosed = await this.waitForExpr(win, `
+      !Array.from(document.querySelectorAll('.dhxwin_text_inside'))
+        .some(function (e) { return e.textContent.trim() === 'Select Report'; })
+    `, 10000);
+    console.log(`${tag} report-type dialog closed: ${dialogClosed}`);
+    if (!dialogClosed) {
+      await this.dumpDiagnostics(win, `${def.key}-dialog-still-open`);
+    }
+    await this.sleep(1500);
+
+    // ── Step 4: set the "Saved Search" combo ───────────────────────────
+    const comboResult = await this.selectSavedSearch(win, def.savedSearch);
+    console.log(`${tag} Saved Search "${def.savedSearch}": ${JSON.stringify(comboResult)}`);
+    if (!comboResult || comboResult.result !== 'option-selected') {
+      // Running without the saved search would dump the whole unfiltered
+      // report — fail loudly with the available options instead.
+      await this.dumpDiagnostics(win, `${def.key}-saved-search-failed`);
+      const avail = comboResult && comboResult.options ? comboResult.options.join(' | ') : '?';
+      throw new Error(
+        `Saved Search "${def.savedSearch}" not applied ` +
+        `(${comboResult ? comboResult.result : 'exec-failed'}) — available: ${avail}`
+      );
+    }
+    await this.sleep(1500);
+
+    // ── Step 5: Run Report and capture the Excel download ──────────────
+    const tempPath = path.join(os.tmpdir(), `webview-ams-${def.key}-${Date.now()}.xlsx`);
+    const downloadPromise = new Promise<string>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        ses.removeAllListeners('will-download');
+        reject(new Error('Run Report download timed out after 90s'));
+      }, 90000);
+
+      ses.on('will-download', (_event, item) => {
+        item.setSavePath(tempPath);
+        item.once('done', (_e, state) => {
+          clearTimeout(timeout);
+          ses.removeAllListeners('will-download');
+          if (state === 'completed') {
+            resolve(tempPath);
+          } else {
+            reject(new Error(`Run Report download failed: ${state}`));
+          }
+        });
+      });
+    });
+
+    const runClick = await this.clickToolbarButton(win, 'Run Report');
+    console.log(`${tag} Run Report button: ${runClick}`);
+    if (runClick !== 'clicked') {
+      ses.removeAllListeners('will-download');
+      throw new Error('Run Report button not found');
+    }
+
+    const downloadedPath = await downloadPromise;
+    console.log(`${tag} Excel downloaded: ${downloadedPath}`);
+
+    // ── Step 6: parse the workbook ─────────────────────────────────────
+    const report = this.parseWorkbook(downloadedPath, def);
+    try { fs.unlinkSync(downloadedPath); } catch { /* ignore */ }
+    return report;
   }
 
   /** Fill the sign-in form via Chromium's input pipeline (insertText) and submit. */
@@ -398,8 +543,6 @@ export class WebViewAmsManager {
     await this.sleep(300);
     await wc.insertText(this.config.password);
 
-    // Confirm the fields actually took the typed text before submitting
-    // (logs lengths only — never the password value).
     const fillCheck = await wc.executeJavaScript(`
       (function () {
         var u = document.querySelector('input[name="username"]');
@@ -424,8 +567,6 @@ export class WebViewAmsManager {
     `);
     console.log(`[WebViewAMS] Sign In button: ${clicked}`);
 
-    // Wait for the sign-in form to disappear (= login accepted). If it is still
-    // present after 15s, login failed or there is another step (OTP / customer).
     const gone = await this.waitForGone(win, 'input[name="username"]', 15000);
     console.log(`[WebViewAMS] Login form after submit: ${gone
       ? 'closed (login accepted)'
@@ -434,17 +575,17 @@ export class WebViewAmsManager {
   }
 
   /**
-   * [TUNE] Open the "Saved Search" DHTMLX combo and click the configured option.
-   * DHTMLX combos render their dropdown list detached on <body>, so the list is
-   * queried document-wide after opening the combo.
+   * Open the "Saved Search" DHTMLX combo and click the given option.
+   * The combo repopulates after the report type changes, so the dropdown is
+   * polled until options appear. Returns { result, options } — `options` lists
+   * the available saved-search names (for diagnosing a mismatch).
    */
-  private selectSavedSearch(win: BrowserWindow): Promise<string> {
+  private selectSavedSearch(win: BrowserWindow, savedSearch: string): Promise<any> {
     return this.exec(win, `
       ${FIRE_CLICK}
       (async function () {
         function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-        // Locate the combo container next to the "Saved Search" label
         var combo = null;
         var labels = document.querySelectorAll('label');
         for (var i = 0; i < labels.length; i++) {
@@ -454,21 +595,41 @@ export class WebViewAmsManager {
             break;
           }
         }
-        if (!combo) return 'combo-not-found';
+        if (!combo) return { result: 'combo-not-found', options: [] };
 
         var btn = combo.querySelector('.dhxcombo_select_button');
         if (btn) __fireClick(btn);
-        await sleep(700);
 
-        var target = ${JSON.stringify(this.config.savedSearch)};
-        var lists = document.querySelectorAll('.dhxcombolist, .dhxcombolist_material');
-        for (var l = 0; l < lists.length; l++) {
-          var opts = lists[l].querySelectorAll('div, option');
-          for (var o = 0; o < opts.length; o++) {
-            if (opts[o].textContent.trim() === target) { __fireClick(opts[o]); return 'option-selected'; }
+        function readOptions() {
+          var out = [];
+          var lists = document.querySelectorAll('.dhxcombolist, .dhxcombolist_material');
+          for (var l = 0; l < lists.length; l++) {
+            var opts = lists[l].querySelectorAll('div, option');
+            for (var o = 0; o < opts.length; o++) {
+              var t = (opts[o].textContent || '').replace(/\\s+/g, ' ').trim();
+              if (t) out.push({ text: t, el: opts[o] });
+            }
+          }
+          return out;
+        }
+
+        // The combo reloads its options when the report type changes — poll.
+        var options = [];
+        for (var tries = 0; tries < 16; tries++) {
+          options = readOptions();
+          if (options.length > 0) break;
+          await sleep(300);
+        }
+
+        var names = options.map(function (o) { return o.text; });
+        var target = ${JSON.stringify(savedSearch)}.toLowerCase();
+        for (var k = 0; k < options.length; k++) {
+          if (options[k].text.toLowerCase() === target) {
+            __fireClick(options[k].el);
+            return { result: 'option-selected', options: names };
           }
         }
-        return 'option-not-found';
+        return { result: 'option-not-found', options: names };
       })()
     `);
   }
@@ -492,14 +653,14 @@ export class WebViewAmsManager {
   // ─── Workbook parsing ─────────────────────────────────────────────────
 
   /**
-   * Parse the Trend Table workbook into a RoundsReport.
-   * Layout (mirrors the saved CSV):
+   * Parse a WebView AMS Excel export into a WebViewAmsReport.
+   * All these reports share one template:
    *   row 0: title   row 1: facility   row 2: "Report generated on ..."
-   *   row 3: "Date: ...; Task Template: ...; Include: ..."   row 4: "Results: N"
-   *   header row: first row whose first cell is "Response Date"
+   *   row 3: filter line   row 4: "Results: N"
+   *   header row: the first row with more than one non-empty cell
    *   data rows: everything below the header
    */
-  private parseWorkbook(filePath: string): RoundsReport {
+  private parseWorkbook(filePath: string, def: WebViewAmsReportDef): WebViewAmsReport {
     const wb = XLSX.readFile(filePath);
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const aoa: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
@@ -514,7 +675,10 @@ export class WebViewAmsManager {
     const resultsLine = metaCell(4);
     const resultCount = parseInt((resultsLine.match(/\d+/) || ['0'])[0], 10);
 
-    let headerIdx = aoa.findIndex(r => r && String(r[0] || '').trim() === 'Response Date');
+    // Header = first row with >1 non-empty cell (metadata rows have exactly one).
+    let headerIdx = aoa.findIndex(
+      r => r && r.filter(c => String(c == null ? '' : c).trim()).length > 1
+    );
     if (headerIdx < 0) headerIdx = 5; // fallback to the known fixed layout
 
     const columns = (aoa[headerIdx] || []).map(c => String(c || '').replace(/\s+/g, ' ').trim());
@@ -532,10 +696,13 @@ export class WebViewAmsManager {
 
     const contentHash = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ columns, rows }))
+      .update(JSON.stringify({ key: def.key, columns, rows }))
       .digest('hex');
 
     return {
+      reportKey: def.key,
+      reportLabel: def.label,
+      wireMode: def.wireMode,
       title, facility, generatedAt, filterLine, resultCount,
       columns, rows,
       scrapedAt: new Date().toISOString(),
@@ -553,12 +720,10 @@ export class WebViewAmsManager {
   private startShiftTimer(): void {
     this.stopShiftTimer();
     console.log('[WebViewAMS] Shift auto-refresh enabled (checks every 15 min)');
-    // Re-check every 15 min — scrape when the shift key changes
     this.shiftTimer = setInterval(() => {
       this.maybeScrapeForShift().catch(err =>
         console.warn('[WebViewAMS] Shift scrape failed:', err.message));
     }, 15 * 60 * 1000);
-    // Initial check shortly after startup
     setTimeout(() => {
       this.maybeScrapeForShift().catch(err =>
         console.warn('[WebViewAMS] Initial shift scrape failed:', err.message));
@@ -592,7 +757,6 @@ export class WebViewAmsManager {
     if (h >= dayStart && h < nightStart) {
       return `${ymd(now)}-Day`;
     }
-    // Night shift — hours before dayStart belong to the previous calendar day's night
     if (h < dayStart) {
       const prev = new Date(now);
       prev.setDate(now.getDate() - 1);
@@ -607,33 +771,182 @@ export class WebViewAmsManager {
     return path.join(getWorkingDir(), 'webview-ams-report.json');
   }
 
-  private loadCachedReportFromDisk(): void {
+  private loadCachedReportsFromDisk(): void {
     try {
       if (fs.existsSync(this.reportCachePath)) {
         const raw = JSON.parse(fs.readFileSync(this.reportCachePath, 'utf-8'));
-        this.cachedReport = raw.report || null;
+        this.cachedReports = raw.reports || {};
         this.lastUpdate = raw.lastUpdate ? new Date(raw.lastUpdate) : null;
         this.lastScrapedShift = raw.lastScrapedShift || null;
       }
     } catch (err: any) {
-      console.warn('[WebViewAMS] Failed to load cached report:', err.message);
+      console.warn('[WebViewAMS] Failed to load cached reports:', err.message);
     }
   }
 
-  private saveCachedReportToDisk(): void {
+  private saveCachedReportsToDisk(): void {
     try {
       fs.writeFileSync(
         this.reportCachePath,
         JSON.stringify({
-          report: this.cachedReport,
+          reports: this.cachedReports,
           lastUpdate: this.lastUpdate?.toISOString() ?? null,
           lastScrapedShift: this.lastScrapedShift
         }),
         'utf-8'
       );
     } catch (err: any) {
-      console.warn('[WebViewAMS] Failed to save cached report:', err.message);
+      console.warn('[WebViewAMS] Failed to save cached reports:', err.message);
     }
+  }
+
+  // ─── Wired items (curated cells, desktop-local) ───────────────────────
+
+  private get wiredItemsPath(): string {
+    return path.join(getWorkingDir(), 'webview-ams-wired.json');
+  }
+
+  private loadWiredItemsFromDisk(): void {
+    try {
+      if (fs.existsSync(this.wiredItemsPath)) {
+        const raw = JSON.parse(fs.readFileSync(this.wiredItemsPath, 'utf-8'));
+        // Keep only current-format items (mode + key) — drops any old cell-based entries.
+        this.wiredItems = (Array.isArray(raw.items) ? raw.items : [])
+          .filter((i: any) => i && i.mode && i.key);
+      }
+    } catch (err: any) {
+      console.warn('[WebViewAMS] Failed to load wired items:', err.message);
+    }
+  }
+
+  private saveWiredItemsToDisk(): void {
+    try {
+      fs.writeFileSync(
+        this.wiredItemsPath,
+        JSON.stringify({ items: this.wiredItems }, null, 2),
+        'utf-8'
+      );
+    } catch (err: any) {
+      console.warn('[WebViewAMS] Failed to save wired items:', err.message);
+    }
+  }
+
+  /** Wired items resolved against the latest cached reports. */
+  public getWiredItems(): WebViewAmsWiredValue[] {
+    return this.wiredItems.map(item => {
+      const report = this.cachedReports[item.reportKey];
+      const base: WebViewAmsWiredValue = {
+        ...item, found: false, label: item.key, value: '', time: '', fields: []
+      };
+      if (!report) return base;
+
+      if (item.mode === 'column') {
+        // Latest non-empty reading in the column, scanning newest row first.
+        const colIdx = report.columns.indexOf(item.key);
+        if (colIdx < 0) return base;
+        for (let i = report.rows.length - 1; i >= 0; i--) {
+          const cell = (report.rows[i][colIdx] || '').trim();
+          if (cell) {
+            return { ...base, found: true, label: item.key, value: cell, time: report.rows[i][0] || '' };
+          }
+        }
+        return { ...base, found: true, label: item.key }; // column exists, no readings yet
+      }
+
+      // row mode — the whole row by its first-column key
+      const row = report.rows.find(r => r[0] === item.key);
+      if (!row) return base;
+      const fields = report.columns
+        .map((name, i) => ({ name, value: (row[i] || '').trim() }))
+        .filter(f => f.value);
+      const descIdx = report.columns.indexOf('Description');
+      const condIdx = report.columns.indexOf('Condition');
+      const dateIdx = report.columns.indexOf('Date Created');
+      return {
+        ...base,
+        found: true,
+        label: descIdx >= 0 ? (row[descIdx] || item.key) : (row[1] || item.key),
+        value: condIdx >= 0 ? (row[condIdx] || '') : '',
+        time: dateIdx >= 0 ? (row[dateIdx] || '') : '',
+        fields
+      };
+    });
+  }
+
+  /**
+   * Pin a report column ('column' mode) or row ('row' mode) to the curated
+   * view. Deduplicates on report + mode + key.
+   */
+  public addWiredItem(reportKey: string, mode: 'column' | 'row', key: string): WebViewAmsWiredValue[] {
+    const exists = this.wiredItems.some(
+      i => i.reportKey === reportKey && i.mode === mode && i.key === key
+    );
+    if (!exists) {
+      const def = WEBVIEW_AMS_REPORTS.find(d => d.key === reportKey);
+      this.wiredItems.push({
+        id: `w${Date.now()}${Math.floor(Math.random() * 1000)}`,
+        reportKey,
+        reportLabel: def ? def.label : reportKey,
+        mode,
+        key,
+        addedAt: new Date().toISOString()
+      });
+      this.saveWiredItemsToDisk();
+    }
+    return this.getWiredItems();
+  }
+
+  public removeWiredItem(id: string): WebViewAmsWiredValue[] {
+    this.wiredItems = this.wiredItems.filter(i => i.id !== id);
+    this.saveWiredItemsToDisk();
+    return this.getWiredItems();
+  }
+
+  // ─── Spring Boot history (read-only) ──────────────────────────────────
+
+  /** Fetch the stored report metadata list from the local Spring Boot. */
+  public getHistoryList(): Promise<any[]> {
+    return this.springBootGet('/ng/rounds/list')
+      .then(d => (Array.isArray(d) ? d : []))
+      .catch(() => []);
+  }
+
+  /** Fetch one stored report (full table) from the local Spring Boot. */
+  public getHistoryReport(id: number): Promise<any> {
+    return this.springBootGet(`/ng/rounds/${id}`).catch(() => null);
+  }
+
+  /** GET a Spring Boot endpoint, resolving to the NgApiResponse `responseData`. */
+  private springBootGet(apiPath: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: '127.0.0.1',
+          port: DEFAULT_SPRING_BOOT_CONFIG.port,
+          path: apiPath,
+          method: 'GET',
+          timeout: 8000
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            if (!res.statusCode || res.statusCode >= 400) {
+              reject(new Error(`HTTP ${res.statusCode}`));
+              return;
+            }
+            try {
+              resolve(JSON.parse(body).responseData);
+            } catch {
+              reject(new Error('bad JSON'));
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.end();
+    });
   }
 
   // ─── Cleanup ──────────────────────────────────────────────────────────
@@ -698,7 +1011,7 @@ export class WebViewAmsManager {
   /**
    * Log a snapshot of the current page — URL, key DHTMLX elements, button
    * labels, visible text — so scrape failures can be diagnosed without
-   * seeing the live site. Used during the selector tuning phase.
+   * seeing the live site.
    */
   private async dumpDiagnostics(win: BrowserWindow, label: string): Promise<void> {
     const info = await this.exec(win, `
@@ -716,9 +1029,8 @@ export class WebViewAmsManager {
           sidebarItems: list('.dhxsidebar_item_text'),
           toolbarButtons: list('.dhxtoolbar_text'),
           formButtons: list('.dhxform_btn_txt'),
-          iframeCount: document.querySelectorAll('iframe').length,
-          iframeSrcs: Array.from(document.querySelectorAll('iframe'))
-            .map(function (f) { return f.src || '(no src)'; }).slice(0, 8),
+          formMessages: list('.dhxform_item_template'),
+          statusBar: list('.dhx_cell_statusbar_text'),
           gridboxCount: document.querySelectorAll('.gridbox').length,
           gridRowCount: document.querySelectorAll('.gridbox .objbox tr').length,
           bodyText: (document.body ? document.body.innerText : '').replace(/\\s+/g, ' ').trim().slice(0, 600)

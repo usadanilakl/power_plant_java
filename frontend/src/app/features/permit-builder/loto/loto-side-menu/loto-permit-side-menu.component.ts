@@ -5,18 +5,20 @@ import { LotoPermitLeftMenuComponent } from '../loto-left-menu/loto-permit-left-
 import { PermitLeftPanelComponent } from '../../shared/permit-left-panel/permit-left-panel.component';
 import { CurrentLotoService } from '../../../../services/current-items-services/current-loto.service';
 import { LotoImportDialogComponent } from '../loto-import-dialog/loto-import-dialog.component';
-import { RedTagService } from '../../../../services/loto/red-tag.service';
+import { RedTagAutomationService } from '../../../../services/automation/red-tag-automation.service';
+import { RedTagAutomationPanelComponent } from '../../../../shared/automation/red-tag-automation-panel/red-tag-automation-panel.component';
 
 @Component({
   selector: 'app-loto-permit-side-menu',
   standalone: true,
-  imports: [LotoPermitTableComponent, LotoPermitLeftMenuComponent, PermitLeftPanelComponent, LotoImportDialogComponent],
+  imports: [LotoPermitTableComponent, LotoPermitLeftMenuComponent, PermitLeftPanelComponent,
+    LotoImportDialogComponent, RedTagAutomationPanelComponent],
   templateUrl: './loto-permit-side-menu.component.html',
   styleUrl: './loto-permit-side-menu.component.css'
 })
 export class LotoPermitSideMenuComponent {
   currentLotoService = inject(CurrentLotoService);
-  private redTagService = inject(RedTagService);
+  private redTagAutomation = inject(RedTagAutomationService);
   private destroyRef = inject(DestroyRef);
   showImportDialog = signal(false);
   isBuildingInRedTag = signal(false);
@@ -40,7 +42,7 @@ export class LotoPermitSideMenuComponent {
       return;
     }
     this.isBuildingInRedTag.set(true);
-    this.redTagService.fullBuild(loto.id).pipe(
+    this.redTagAutomation.buildLoto(loto.id).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => this.isBuildingInRedTag.set(false),

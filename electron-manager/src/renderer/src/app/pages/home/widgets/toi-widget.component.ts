@@ -91,7 +91,8 @@ export class ToiWidgetComponent implements OnInit {
     try {
       const result = await this.electronService.toiListFiles();
       if (result.success && result.data) {
-        this.files = result.data.sort((a, b) => a.name.localeCompare(b.name));
+        // Already sorted by the main process — trust that order.
+        this.files = result.data;
       } else {
         this.error = result.error || 'Failed to load';
       }

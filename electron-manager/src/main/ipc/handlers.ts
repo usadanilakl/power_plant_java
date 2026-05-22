@@ -977,9 +977,9 @@ export class IpcHandlers {
   }
 
   private registerWebViewAmsHandlers(): void {
-    ipcMain.handle(events.IPC_WEBVIEW_AMS_GET_REPORT, async () => {
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_GET_REPORTS, async () => {
       try {
-        return { success: true, data: this.webViewAmsManager.getCachedReport() };
+        return { success: true, data: this.webViewAmsManager.getCachedReports() };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
@@ -995,14 +995,14 @@ export class IpcHandlers {
 
     ipcMain.handle(events.IPC_WEBVIEW_AMS_REFRESH, async () => {
       try {
-        const report = await this.webViewAmsManager.refresh();
+        const reports = await this.webViewAmsManager.refresh();
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send(events.IPC_WEBVIEW_AMS_UPDATED);
         }
-        // A failed scrape returns the (possibly stale) cached report — surface
+        // A failed scrape returns the (possibly stale) cached reports — surface
         // the error so the renderer can show it instead of looking successful.
         const status = this.webViewAmsManager.getStatus();
-        return { success: !status.error, data: report, error: status.error };
+        return { success: !status.error, data: reports, error: status.error };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
@@ -1029,6 +1029,48 @@ export class IpcHandlers {
       try {
         this.webViewAmsManager.setAutoRefresh(enabled);
         return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_WIRED_GET, async () => {
+      try {
+        return { success: true, data: this.webViewAmsManager.getWiredItems() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_WIRED_ADD, async (
+      _event, reportKey: string, mode: 'column' | 'row', key: string
+    ) => {
+      try {
+        return { success: true, data: this.webViewAmsManager.addWiredItem(reportKey, mode, key) };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_WIRED_REMOVE, async (_event, id: string) => {
+      try {
+        return { success: true, data: this.webViewAmsManager.removeWiredItem(id) };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_HISTORY_LIST, async () => {
+      try {
+        return { success: true, data: await this.webViewAmsManager.getHistoryList() };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(events.IPC_WEBVIEW_AMS_HISTORY_GET, async (_event, id: number) => {
+      try {
+        return { success: true, data: await this.webViewAmsManager.getHistoryReport(id) };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
@@ -1665,6 +1707,15 @@ export class IpcHandlers {
             return { ...f, title: '', originator: '', date: '', instructions: '' };
           }
         }));
+        // Sort newest first by file name. Normalize first: filenames mix two
+        // conventions ("TOI- TMOD" with a space and "TOI-TMOD" without), and a
+        // raw compare would clump all space-variant names before the others.
+        // Stripping whitespace + lowercasing makes the year-number the real key.
+        // b vs a => descending => newest TOI/TMOD numbers on top.
+        const sortKey = (n: string) => n.replace(/\s+/g, '').toLowerCase();
+        enriched.sort((a, b) =>
+          sortKey(b.name).localeCompare(sortKey(a.name), undefined, { numeric: true })
+        );
         console.log(`[TOI] Loaded ${enriched.length} files with metadata`);
         return { success: true, data: enriched };
       } catch (err: any) {

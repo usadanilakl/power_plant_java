@@ -146,6 +146,10 @@ public class SecurityConfigSpring {
                 // App shutdown — localhost only, no auth (allows Electron to stop another user's instance)
                 .requestMatchers(localhostMatcher("/server/stop")).permitAll()
 
+                // Rounds report ingest — the desktop WebView AMS scraper POSTs
+                // snapshots from the same machine (no session cookie available)
+                .requestMatchers(localhostMatcher("/ng/rounds/")).permitAll()
+
                 // Everything else requires authentication
                 // (AccessGrantFilter handles full-access check for external requests)
                 .anyRequest().authenticated()
