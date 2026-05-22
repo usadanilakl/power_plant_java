@@ -32,7 +32,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Slf4j
-public class RedTagAutomationController {
+public class RedTagLotoAutomationController {
 
     private final RedTagLotoAutomationService automationService;
     private final RedTagProgressBroadcaster broadcaster;

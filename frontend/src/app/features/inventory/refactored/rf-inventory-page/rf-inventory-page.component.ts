@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { RfInventoryStateService } from '../services/rf-inventory-state.service';
 import { RfInventoryTableComponent } from '../rf-inventory-table/rf-inventory-table.component';
@@ -46,6 +46,7 @@ import { InventoryItemDto } from '../../../../models/inventory/inventory-item.mo
                       (click)="onTypeChange('Test Equipment')">Test Eq.</button>
             </div>
             <div class="actions">
+              <button class="btn-action" (click)="onAudit()">Audit</button>
               <button class="btn-action" (click)="onPrintSelected()" [disabled]="selected().length === 0">
                 Print Labels ({{ selected().length }})
               </button>
@@ -106,6 +107,7 @@ export class RfInventoryPageComponent implements OnInit {
   stateService = inject(RfInventoryStateService);
   private bradyModal = inject(BradyPrinterModalService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   private selectedItems: InventoryItemDto[] = [];
   selected = () => this.selectedItems;
@@ -142,6 +144,8 @@ export class RfInventoryPageComponent implements OnInit {
   }
 
   onSyncComplete(): void { this.stateService.loadAll(); }
+
+  onAudit(): void { this.router.navigate(['/inventory/audit']); }
 
   onPrintSelected(): void {
     if (this.selectedItems.length === 0) return;

@@ -6,10 +6,12 @@ import { environment } from '../../environments/environment';
 import { IAttachment } from '../models/permits/attachment.model';
 import { ServerApiService } from './server-api.service';
 
-export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory' | 'inventoryUsage';
+export type PaEntityType = 'workRequest' | 'jha' | 'confinedSpace' | 'instrumentLog' | 'instrument' | 'fieldList' | 'inventory';
 
 export interface PaV2Request {
   actionType: string;
+  /** Optional sub-entity discriminator for multi-list flows (e.g. Inventory: "item" | "usage"). */
+  entity?: string;
   id?: string;
   data: Record<string, any>;
   attachments?: { fileName: string; contentType: string; base64Content: string }[];

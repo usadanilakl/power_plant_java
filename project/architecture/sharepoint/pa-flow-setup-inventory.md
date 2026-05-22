@@ -1,45 +1,70 @@
 # Power Automate Flow Setup: Inventory
 
-Step-by-step guide to create the Inventory flow in Power Automate.
+One flow serves **both** Inventory SharePoint lists. The request carries an
+`entity` discriminator (`"item"` or `"usage"`) that routes to the correct list.
+
+- `entity: "item"` → **Inventory** list (the assets)
+- `entity: "usage"` → **Inventory Usage** list (checkout/checkin events)
 
 ---
 
-## Step 1: SharePoint List "Inventory"
+## Step 1: SharePoint Lists
 
-The list is auto-provisioned via Admin > SharePoint tab (`SharePointListProvisioner`). Verify these columns exist:
+Both lists are auto-provisioned via Admin > SharePoint tab. Verify columns.
 
-| Internal Name | Display Name | Type | Settings |
-|--------------|-------------|------|----------|
-| PwaId | PWA ID | Single line of text | UUID from PWA client |
-| ItemType | Item Type | Single line of text | e.g. "Tools", "Safety Equipment", "Spare Parts" |
-| Status | Status | Single line of text | "Available", "Checked Out", "Missing", "Retired" |
-| Location | Location | Single line of text | Home location of the item |
-| SerialNumber | Serial Number | Single line of text | |
-| Manufacturer | Manufacturer | Single line of text | |
-| Model | Model | Single line of text | |
-| Description | Description | Multiple lines of text | Plain text |
-| QrToken | QR Token | Single line of text | Server-generated unique token (12 chars) |
-| CurrentLocation | Current Location | Single line of text | Where the item currently is |
-| CurrentHolderName | Current Holder Name | Single line of text | Who has it now (if checked out) |
-| CurrentHolderEmail | Current Holder Email | Single line of text | |
-| SubmitterName | Submitter Name | Single line of text | |
-| SubmitterEmail | Submitter Email | Single line of text | |
-| SubmitterPhone | Submitter Phone | Single line of text | |
+### List "Inventory"
 
-**Note:** The built-in `Title` column will be auto-filled with the item's `title` field (e.g. "Fluke 87V Multimeter").
+| Internal Name | Display Name | Type |
+|--------------|-------------|------|
+| PwaId | PWA ID | Single line of text |
+| ItemType | Item Type | Single line of text |
+| Status | Status | Single line of text |
+| Location | Location | Single line of text |
+| SerialNumber | Serial Number | Single line of text |
+| Manufacturer | Manufacturer | Single line of text |
+| Model | Model | Single line of text |
+| Description | Description | Multiple lines of text |
+| QrToken | QR Token | Single line of text |
+| CurrentLocation | Current Location | Single line of text |
+| CurrentHolderName | Current Holder Name | Single line of text |
+| CurrentHolderEmail | Current Holder Email | Single line of text |
+| SubmitterName | Submitter Name | Single line of text |
+| SubmitterEmail | Submitter Email | Single line of text |
+| SubmitterPhone | Submitter Phone | Single line of text |
+
+`Title` (built-in) = the item name.
+
+### List "Inventory Usage"
+
+| Internal Name | Display Name | Type |
+|--------------|-------------|------|
+| PwaId | PWA ID | Single line of text |
+| InventoryItemId | Inventory Item Id | Single line of text |
+| QrToken | QR Token | Single line of text |
+| UserName | User Name | Single line of text |
+| UserEmail | User Email | Single line of text |
+| Location | Location | Single line of text |
+| Purpose | Purpose | Single line of text |
+| Comments | Comments | Multiple lines of text |
+| EventType | Event Type | Single line of text |
+| ScannedAt | Scanned At | Single line of text |
+| ReturnedAt | Returned At | Single line of text |
+
+`Title` (built-in) = a summary like `"abc123 — checkout by John Smith"`.
 
 ---
 
 ## Step 2: Create the Flow
 
-1. Go to **Power Automate** > **My flows** > **+ New flow** > **Instant cloud flow**
+1. **Power Automate** > **My flows** > **+ New flow** > **Instant cloud flow**
 2. Name: **Inventory V2**
 3. Trigger: **When an HTTP request is received**
-4. Click **Use sample payload to generate schema** and paste:
+4. **Use sample payload to generate schema**, paste:
 
 ```json
 {
   "actionType": "create",
+  "entity": "item",
   "id": null,
   "data": {
     "Title": "Fluke 87V Multimeter",
@@ -50,213 +75,128 @@ The list is auto-provisioned via Admin > SharePoint tab (`SharePointListProvisio
     "SerialNumber": "12345678",
     "Manufacturer": "Fluke",
     "Model": "87V",
-    "Description": "Industrial multimeter with True RMS",
+    "Description": "Industrial multimeter",
     "QrToken": "a1b2c3d4e5f6",
     "CurrentLocation": "Tool Crib B",
     "CurrentHolderName": "",
     "CurrentHolderEmail": "",
     "SubmitterName": "John Smith",
     "SubmitterEmail": "john@company.com",
-    "SubmitterPhone": "555-1234"
+    "SubmitterPhone": "555-1234",
+    "InventoryItemId": "42",
+    "UserName": "John Smith",
+    "UserEmail": "john@company.com",
+    "Purpose": "Inspection",
+    "Comments": "Notes",
+    "EventType": "checkout",
+    "ScannedAt": "2026-04-25T09:30:00Z",
+    "ReturnedAt": ""
   },
   "attachments": [
-    {
-      "fileName": "photo1.jpg",
-      "contentType": "image/jpeg",
-      "base64Content": "iVBORw0KGgo..."
-    }
+    { "fileName": "photo1.jpg", "contentType": "image/jpeg", "base64Content": "iVBORw0KGgo..." }
   ]
 }
 ```
 
-5. Click **Done** — the schema will be generated automatically
-6. Set **Method** to `POST`
-7. Copy the **HTTP POST URL** — this is your flow trigger URL
+> The sample payload merges all fields from both lists so the generated schema
+> accepts either. The flow only reads the fields relevant to the chosen `entity`.
+
+5. Method: `POST`. Copy the **HTTP POST URL** — this is the single Inventory flow URL.
 
 ---
 
 ## Step 3: Initialize Variables
 
-Add these actions right after the trigger:
-
-### 3a. Initialize `responseSuccess` (Boolean)
-- Name: `responseSuccess`
-- Type: Boolean
-- Value: `true`
-
-### 3b. Initialize `responseId` (String)
-- Name: `responseId`
-- Type: String
-- Value: (empty)
-
-### 3c. Initialize `responseMessage` (String)
-- Name: `responseMessage`
-- Type: String
-- Value: (empty)
-
-### 3d. Initialize `responseData` (Array)
-- Name: `responseData`
-- Type: Array
-- Value: `[]`
+After the trigger:
+- `responseSuccess` (Boolean = true)
+- `responseId` (String = "")
+- `responseMessage` (String = "")
+- `responseData` (Array = [])
 
 ---
 
-## Step 4: Add the Switch (actionType Router)
+## Step 4: Top-Level Switch on `entity`
 
-1. Add a **Switch** action
-2. On: `triggerBody()?['actionType']`
-3. Create these cases: `create`, `getAll`, `update`, `addAttachment`, `getAttachments`
+1. Add a **Switch** action, name it `Switch entity`
+2. On: `triggerBody()?['entity']`
+3. Two cases: `item`, `usage`
 
----
-
-## Step 5: Implement `create` Case
-
-### 5a. Create item in SharePoint
-
-1. Inside the `create` case, add **SharePoint > Create item**
-2. Site Address: (your SharePoint site)
-3. List Name: **Inventory**
-4. Map each field from the trigger body `data` object:
-
-| List Column (display name) | Expression / Dynamic Content |
-|-------------|------------------------------|
-| Title | `triggerBody()?['data']?['Title']` |
-| PWA ID | `triggerBody()?['data']?['PwaId']` |
-| Item Type | `triggerBody()?['data']?['ItemType']` |
-| Status | `triggerBody()?['data']?['Status']` |
-| Location | `triggerBody()?['data']?['Location']` |
-| Serial Number | `triggerBody()?['data']?['SerialNumber']` |
-| Manufacturer | `triggerBody()?['data']?['Manufacturer']` |
-| Model | `triggerBody()?['data']?['Model']` |
-| Description | `triggerBody()?['data']?['Description']` |
-| QR Token | `triggerBody()?['data']?['QrToken']` |
-| Current Location | `triggerBody()?['data']?['CurrentLocation']` |
-| Current Holder Name | `triggerBody()?['data']?['CurrentHolderName']` |
-| Current Holder Email | `triggerBody()?['data']?['CurrentHolderEmail']` |
-| Submitter Name | `triggerBody()?['data']?['SubmitterName']` |
-| Submitter Email | `triggerBody()?['data']?['SubmitterEmail']` |
-| Submitter Phone | `triggerBody()?['data']?['SubmitterPhone']` |
-
-### 5b. Set `responseId`
-
-After the Create item action:
-- **Set variable**: `responseId` = `string(body('Create_item')?['ID'])`
-
-### 5c. Process Attachments (if any)
-
-1. Add a **Condition**: `length(triggerBody()?['attachments'])` is greater than `0`
-2. If **Yes**:
-   - Add **Apply to each** over `triggerBody()?['attachments']`
-   - Inside the loop, add **SharePoint > Add attachment**:
-     - Site Address: (your site)
-     - List Name: **Inventory**
-     - Id: `body('Create_item')?['ID']`
-     - File Name: `items('Apply_to_each')?['fileName']`
-     - File Content: `base64ToBinary(items('Apply_to_each')?['base64Content'])`
+Inside **each** case you'll add a **nested Switch** on `actionType`.
 
 ---
 
-## Step 6: Implement `getAll` Case
+## Step 5: Case `item` — Nested Switch on actionType
 
-### 6a. Get items from SharePoint
+Inside the `item` case, add **Switch** on `triggerBody()?['actionType']` with cases
+`create`, `getAll`, `update`, `addAttachment`, `getAttachments`.
 
-1. Inside the `getAll` case, add **SharePoint > Get items**
-2. Site Address: (your site)
-3. List Name: **Inventory**
-4. Top Count: 5000
+### 5a. `create`
+1. **SharePoint > Create item** on list **Inventory**
+2. Map each column from `triggerBody()?['data']?['<Field>']`
+3. **Set variable** `responseId` = `string(body('Create_item')?['ID'])`
+4. **Condition** `length(triggerBody()?['attachments'])` > `0`:
+   - Yes → **Apply to each** `triggerBody()?['attachments']` → **Add attachment**
+     (Id = `body('Create_item')?['ID']`, File Content = `base64ToBinary(items('Apply_to_each')?['base64Content'])`)
 
-### 6b. Build response data array
+### 5b. `getAll`
+1. **SharePoint > Get items** on **Inventory**, Top Count 5000
+2. **Select** — map `ID`, `Title`, `PwaId`, `ItemType`, `Status`, `Location`,
+   `SerialNumber`, `Manufacturer`, `Model`, `Description`, `QrToken`,
+   `CurrentLocation`, `CurrentHolderName`, `CurrentHolderEmail`,
+   `SubmitterName`, `SubmitterEmail`, `SubmitterPhone`, `Modified`
+3. **Set variable** `responseData` = `body('Select')`
 
-1. Add **Select** action:
-   - From: `body('Get_items')?['value']`
-   - Use **Map mode** (key → value pairs):
+### 5c. `update`
+1. **SharePoint > Update item** on **Inventory**, Id = `triggerBody()?['id']`
+2. Map the same columns as `create`
+3. **Set variable** `responseId` = `triggerBody()?['id']`
 
-| Key | Value |
-|-----|-------|
-| ID | `string(item()?['ID'])` |
-| Title | `item()?['Title']` |
-| PwaId | `item()?['PwaId']` |
-| ItemType | `item()?['ItemType']` |
-| Status | `item()?['Status']` |
-| Location | `item()?['Location']` |
-| SerialNumber | `item()?['SerialNumber']` |
-| Manufacturer | `item()?['Manufacturer']` |
-| Model | `item()?['Model']` |
-| Description | `item()?['Description']` |
-| QrToken | `item()?['QrToken']` |
-| CurrentLocation | `item()?['CurrentLocation']` |
-| CurrentHolderName | `item()?['CurrentHolderName']` |
-| CurrentHolderEmail | `item()?['CurrentHolderEmail']` |
-| SubmitterName | `item()?['SubmitterName']` |
-| SubmitterEmail | `item()?['SubmitterEmail']` |
-| SubmitterPhone | `item()?['SubmitterPhone']` |
-| Modified | `item()?['Modified']` |
+### 5d. `addAttachment`
+1. **Apply to each** `triggerBody()?['attachments']` → **Add attachment** on **Inventory**
+   (Id = `triggerBody()?['id']`)
+2. **Set variable** `responseId` = `triggerBody()?['id']`
 
-2. Add **Set variable**: `responseData` = `body('Select')`
-
----
-
-## Step 7: Implement `update` Case
-
-1. Inside the `update` case, add **SharePoint > Update item**
-2. Site Address: (your site)
-3. List Name: **Inventory**
-4. Id: `triggerBody()?['id']`
-5. Map the same fields as in the `create` step (Step 5a), all from `triggerBody()?['data']`
-6. Set variable: `responseId` = `triggerBody()?['id']`
+### 5e. `getAttachments`
+1. **SharePoint > Get attachments** on **Inventory**, Id = `triggerBody()?['id']`
+2. **Apply to each** → **Get attachment content** → append `{fileName, contentType, base64Content}`
+   to a temp array
+3. **Set variable** `responseData` = the temp array
 
 ---
 
-## Step 8: Implement `addAttachment` Case
+## Step 6: Case `usage` — Nested Switch on actionType
 
-1. Inside the `addAttachment` case, add **Apply to each** over `triggerBody()?['attachments']`
-2. Inside the loop, add **SharePoint > Add attachment**:
-   - Site Address: (your site)
-   - List Name: **Inventory**
-   - Id: `triggerBody()?['id']`
-   - File Name: `items('Apply_to_each_2')?['fileName']`
-   - File Content: `base64ToBinary(items('Apply_to_each_2')?['base64Content'])`
-3. After the loop, set variable: `responseId` = `triggerBody()?['id']`
+Inside the `usage` case, add **Switch** on `triggerBody()?['actionType']` with cases
+`create`, `getAll`, `update`. (No attachment cases — usage events carry no files.)
 
----
+### 6a. `create`
+1. **SharePoint > Create item** on list **Inventory Usage**
+2. Map columns: `Title`, `PwaId`, `InventoryItemId`, `QrToken`, `UserName`,
+   `UserEmail`, `Location`, `Purpose`, `Comments`, `EventType`, `ScannedAt`, `ReturnedAt`
+   — all from `triggerBody()?['data']?['<Field>']`
+3. **Set variable** `responseId` = `string(body('Create_item_Usage')?['ID'])`
 
-## Step 9: Implement `getAttachments` Case
+### 6b. `getAll`
+1. **SharePoint > Get items** on **Inventory Usage**, Top Count 5000
+2. **Select** — map all the columns above + `ID` + `Modified`
+3. **Set variable** `responseData` = `body('Select_Usage')`
 
-1. Inside the `getAttachments` case, add **SharePoint > Get attachments**
-   - Site Address: (your site)
-   - List Name: **Inventory**
-   - Id: `triggerBody()?['id']`
-2. Add **Apply to each** over `body('Get_attachments')`
-3. Inside the loop, add **SharePoint > Get attachment content**:
-   - Site Address: (your site)
-   - List Name: **Inventory**
-   - Id: `triggerBody()?['id']`
-   - File Identifier: `items('Apply_to_each_3')?['Id']`
-4. After download, append to a temporary array variable with shape:
-   ```json
-   { "fileName": ..., "contentType": ..., "base64Content": "base64(...)" }
-   ```
-5. Set variable: `responseData` = the array of attachment objects
+### 6c. `update`
+1. **SharePoint > Update item** on **Inventory Usage**, Id = `triggerBody()?['id']`
+2. Map the same columns as `create`
+3. **Set variable** `responseId` = `triggerBody()?['id']`
+
+> **Tip:** Power Automate auto-suffixes duplicate action names. The two
+> "Create item" actions will be `Create_item` and `Create_item_2` (or rename
+> the usage one to `Create_item_Usage` for clarity). Verify names in expressions.
 
 ---
 
-## Step 10: Add Scope with Error Handling
+## Step 7: Scope + Error Handling
 
-Wrap the Switch block in a Scope. Success Response goes inside the Scope. Failure Response runs only when the Scope fails.
-
-### 10a. Create the Scope
-
-1. Add a **Scope** action, name it `Scope`
-2. Move the **Switch** action inside the Scope
-
-### 10b. Add success response inside the Scope
-
-After the Switch (still inside the Scope), add:
-
-1. **Response — Success** action:
-   - Status Code: `200`
-   - Headers: `Content-Type` = `application/json`
-   - Body:
+1. Add a **Scope** action; move the top-level `Switch entity` inside it.
+2. After the Switch (inside the Scope): **Response — Success**
+   - Status `200`, Header `Content-Type: application/json`, Body:
 ```json
 {
   "success": @{variables('responseSuccess')},
@@ -265,335 +205,89 @@ After the Switch (still inside the Scope), add:
   "message": "@{variables('responseMessage')}"
 }
 ```
-
-### 10c. Add failure branch after the Scope
-
-1. Click the `+` below the Scope → **Add a parallel branch**
-2. Click the **⋯** on the branch → **Configure run after** → check only **"has failed"** (uncheck "is successful")
-3. Add these actions sequentially in the failure branch:
-   - **Set variable**: `responseSuccess` = `false`
-   - **Set variable**: `responseMessage` = `result('Scope')?[0]?['error']?['message']`
-   - **Response — Failed** action:
-     - Status Code: `200`
-     - Headers: `Content-Type` = `application/json`
-     - Body: (same JSON structure as success response — variables now hold error values)
+3. Parallel branch after the Scope, **Configure run after → only "has failed"**:
+   - Set `responseSuccess` = false
+   - Set `responseMessage` = `result('Scope')?[0]?['error']?['message']`
+   - **Response — Failed** (200, same JSON body)
 
 ---
 
-## Step 11: Save and Configure
+## Step 8: Save and Configure
 
-### 11a. Save the flow
+### 8a. Save, copy the trigger URL.
 
-Click **Save** in Power Automate.
-
-### 11b. Copy the trigger URL
-
-Go back to the trigger step → copy the HTTP POST URL.
-
-### 11c. Configure the URL in the application
-
-The URL is already configured in `application.properties`:
+### 8b. Backend — `application.properties` (already set):
 ```properties
-pa.flow.inventory-url=https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms
+pa.flow.inventory-url=<your-flow-url>
 ```
 
-Same URL is configured in PWA `environment.ts` and `environment.prod.ts` under `paFlowUrls.inventory`.
+### 8c. PWA — `environment.ts` and `environment.prod.ts`:
+```ts
+paFlowUrls: { ..., inventory: '<your-flow-url>' }
+```
 
-### 11d. Test with curl
+Only **one** URL — used for both items and usage.
 
-**Test `create`:**
+### 8d. Test with curl
+
+**Create an item:**
 ```bash
-curl -X POST "<your-flow-url>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "actionType": "create",
-    "id": null,
-    "data": {
-      "Title": "Fluke 87V Multimeter",
-      "PwaId": "test-uuid-inventory-1234",
-      "ItemType": "Test Equipment",
-      "Status": "Available",
-      "Location": "Tool Crib B",
-      "SerialNumber": "12345678",
-      "Manufacturer": "Fluke",
-      "Model": "87V",
-      "Description": "Industrial multimeter",
-      "QrToken": "abc123def456",
-      "CurrentLocation": "Tool Crib B",
-      "CurrentHolderName": "",
-      "CurrentHolderEmail": "",
-      "SubmitterName": "Test User",
-      "SubmitterEmail": "test@example.com",
-      "SubmitterPhone": "555-0000"
-    },
-    "attachments": []
-  }'
+curl -X POST "<flow-url>" -H "Content-Type: application/json" -d '{
+  "actionType": "create", "entity": "item",
+  "data": { "Title": "Test Multimeter", "PwaId": "test-item-1",
+    "ItemType": "Test Equipment", "Status": "Available", "QrToken": "tok123" }
+}'
 ```
 
-Expected response:
-```json
-{
-  "success": true,
-  "id": "1",
-  "data": [],
-  "message": ""
-}
-```
-
-**Test `getAll`:**
+**Record a usage event:**
 ```bash
-curl -X POST "<your-flow-url>" \
-  -H "Content-Type: application/json" \
-  -d '{"actionType": "getAll"}'
+curl -X POST "<flow-url>" -H "Content-Type: application/json" -d '{
+  "actionType": "create", "entity": "usage",
+  "data": { "Title": "tok123 — checkout by Tester", "PwaId": "test-usage-1",
+    "InventoryItemId": "42", "QrToken": "tok123", "UserName": "Tester",
+    "EventType": "checkout", "ScannedAt": "2026-04-25T09:30:00Z" }
+}'
 ```
+
+Both return `{ "success": true, "id": "...", "data": [], "message": "" }`.
 
 ---
 
 ## Flow Structure Summary
 
 ```
-Trigger: When an HTTP request is received (manual)
+Trigger: When an HTTP request is received (POST)
 │
-├── InitializeResponseSuccess (Boolean = true)
-├── InitializeResponseId (String = "")
-├── InitializeResponseMessage (String = "")
-├── InitializeResponseData (Array = [])
+├── Initialize: responseSuccess, responseId, responseMessage, responseData
 │
 ├── Scope
-│   ├── Switch (actionType, 5 Cases)
-│   │   ├── Case: create
-│   │   │   ├── Create item (SharePoint → "Inventory")
-│   │   │   ├── Set variable: responseId
-│   │   │   └── Condition: has attachments?
-│   │   │       └── Yes: Apply to each → Add attachment
-│   │   │
-│   │   ├── Case: getAll
-│   │   │   ├── Get items (SharePoint, top 5000)
-│   │   │   ├── Select (map all fields)
-│   │   │   └── Set variable: responseData
-│   │   │
-│   │   ├── Case: update
-│   │   │   ├── Update item (SharePoint)
-│   │   │   └── Set variable: responseId
-│   │   │
-│   │   ├── Case: addAttachment
-│   │   │   ├── Apply to each → Add attachment
-│   │   │   └── Set variable: responseId
-│   │   │
-│   │   └── Case: getAttachments
-│   │       ├── Get attachments (SharePoint)
-│   │       ├── Apply to each → Get attachment content → append to temp array
-│   │       └── Set variable: responseData
-│   │
+│   └── Switch entity (triggerBody.entity)
+│       ├── Case "item"
+│       │   └── Switch actionType
+│       │       ├── create        → Create item (Inventory) → responseId → attachments
+│       │       ├── getAll        → Get items (Inventory) → Select → responseData
+│       │       ├── update        → Update item (Inventory) → responseId
+│       │       ├── addAttachment → Apply to each → Add attachment → responseId
+│       │       └── getAttachments→ Get attachments → contents → responseData
+│       │
+│       └── Case "usage"
+│           └── Switch actionType
+│               ├── create → Create item (Inventory Usage) → responseId
+│               ├── getAll → Get items (Inventory Usage) → Select → responseData
+│               └── update → Update item (Inventory Usage) → responseId
 │   └── Response Success (200, JSON)
 │
-└── [Failure branch — Configure run after: Scope "has failed"]
-    ├── SetResponseSuccess = false
-    ├── SetResponseMessage = error detail
+└── [Failure branch — run after Scope "has failed"]
+    ├── responseSuccess = false
+    ├── responseMessage = Scope error
     └── Response Failed (200, JSON)
 ```
-
----
-
-## Key Differences from Field Lists Flow
-
-1. **No DateTime column** — Inventory uses `lastCheckedOutAt` internally (Instant) but it's not exposed to SharePoint. All timestamps managed via `Modified` column.
-2. **More columns (15 vs 11)** — Inventory has serial/manufacturer/model/QR token + holder tracking fields.
-3. **`getAttachments` action** — included so the hub can pull SP-uploaded attachments back into local DB (matches Field List, JHA, Work Request pattern).
-4. **No special discriminator** — `ItemType` is just a category, not a hard discriminator like FieldList types are.
 
 ## Common Pitfalls
 
-1. **Column internal names.** If your Select expressions return null, the internal name may differ. Check via List Settings > click column > URL parameter `Field=`.
-2. **Get items default limit.** Default Top Count is 100. Set it to 5000 to get all items.
-3. **base64ToBinary expression.** For attachments, always use `base64ToBinary()` — not `decodeBase64`.
-4. **Apply to each naming.** PA auto-names them `Apply_to_each`, `Apply_to_each_2`, `Apply_to_each_3`. Verify the correct name in expressions.
-5. **HTTP Response must be last.** Place the Response action after the Switch, not inside a case.
-
----
-
-# Power Automate Flow Setup: Inventory Usage
-
-This is the **second** Inventory flow — a separate list and separate flow that tracks every checkout/checkin event for inventory items.
-
-## Step 1: SharePoint List "Inventory Usage"
-
-Auto-provisioned via Admin > SharePoint tab. Verify columns:
-
-| Internal Name | Display Name | Type | Settings |
-|--------------|-------------|------|----------|
-| PwaId | PWA ID | Single line of text | UUID from PWA client |
-| InventoryItemId | Inventory Item Id | Single line of text | Numeric ID of the inventory item (stringified) |
-| QrToken | QR Token | Single line of text | Mirror of the item's QR token for cross-reference |
-| UserName | User Name | Single line of text | Who scanned/checked out |
-| UserEmail | User Email | Single line of text | |
-| Location | Location | Single line of text | Where it's being taken / returned to |
-| Purpose | Purpose | Single line of text | What it's being used for |
-| Comments | Comments | Multiple lines of text | Optional notes |
-| EventType | Event Type | Single line of text | "checkout" or "checkin" |
-| ScannedAt | Scanned At | Single line of text | ISO 8601 timestamp |
-| ReturnedAt | Returned At | Single line of text | ISO 8601 timestamp (optional) |
-
-The built-in `Title` column is auto-filled with a summary like `"abc123def456 — checkout by John Smith"`.
-
----
-
-## Step 2: Create the Flow
-
-1. **Power Automate** > **My flows** > **+ New flow** > **Instant cloud flow**
-2. Name: **Inventory Usage V2**
-3. Trigger: **When an HTTP request is received**
-4. Use sample payload:
-
-```json
-{
-  "actionType": "create",
-  "id": null,
-  "data": {
-    "Title": "abc123def456 — checkout by John Smith",
-    "PwaId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "InventoryItemId": "42",
-    "QrToken": "abc123def456",
-    "UserName": "John Smith",
-    "UserEmail": "john@company.com",
-    "Location": "Unit 1 Boiler",
-    "Purpose": "Routine inspection",
-    "Comments": "Will return by EOD",
-    "EventType": "checkout",
-    "ScannedAt": "2026-04-25T09:30:00Z",
-    "ReturnedAt": ""
-  }
-}
-```
-
-5. Method: `POST`. Copy the trigger URL.
-
----
-
-## Step 3: Initialize Variables
-
-Same as the Inventory flow:
-- `responseSuccess` (Boolean = true)
-- `responseId` (String = "")
-- `responseMessage` (String = "")
-- `responseData` (Array = [])
-
----
-
-## Step 4: Add Switch (actionType Router)
-
-Cases: `create`, `getAll`, `update`
-
-(No `addAttachment` / `getAttachments` cases — usage events don't carry attachments.)
-
----
-
-## Step 5: Implement `create` Case
-
-1. **SharePoint > Create item** on list **Inventory Usage**
-2. Map all fields from `triggerBody()?['data']?[...]`
-3. Set `responseId` = `string(body('Create_item')?['ID'])`
-
----
-
-## Step 6: Implement `getAll` Case
-
-1. **SharePoint > Get items** on **Inventory Usage**, Top Count 5000
-2. **Select** action mapping each column to its key (mirror the `data` shape from the sample payload)
-3. Set `responseData` = `body('Select')`
-
----
-
-## Step 7: Implement `update` Case
-
-1. **SharePoint > Update item** on **Inventory Usage**, Id = `triggerBody()?['id']`
-2. Map fields from `triggerBody()?['data']?[...]`
-3. Set `responseId` = `triggerBody()?['id']`
-
----
-
-## Step 8: Add Scope + Error Handling
-
-Wrap the Switch in a Scope. Same pattern as the Inventory flow:
-- Inside Scope (after Switch): Response — Success (200, JSON body with the 4 variables)
-- Parallel branch with "run after Scope has failed": set `responseSuccess=false`, set `responseMessage` from the Scope error, Response — Failed
-
----
-
-## Step 9: Save and Configure
-
-### 9a. Save the flow.
-
-### 9b. Copy the trigger URL.
-
-### 9c. Configure in `application.properties`:
-
-```properties
-pa.flow.inventory-usage-url=<your-trigger-url>
-```
-
-Also paste the same URL in PWA `environment.ts` and `environment.prod.ts` under `paFlowUrls.inventoryUsage`.
-
-### 9d. Test with curl
-
-```bash
-curl -X POST "<your-flow-url>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "actionType": "create",
-    "data": {
-      "Title": "test — checkout by Test User",
-      "PwaId": "test-uuid-usage-1234",
-      "InventoryItemId": "42",
-      "QrToken": "abc123def456",
-      "UserName": "Test User",
-      "UserEmail": "test@example.com",
-      "Location": "Unit 1 Boiler",
-      "Purpose": "Inspection",
-      "Comments": "Test comment",
-      "EventType": "checkout",
-      "ScannedAt": "2026-04-25T09:30:00Z",
-      "ReturnedAt": ""
-    }
-  }'
-```
-
----
-
-## Flow Structure Summary (Inventory Usage)
-
-```
-Trigger: When an HTTP request is received (manual)
-│
-├── InitializeResponseSuccess (Boolean = true)
-├── InitializeResponseId (String = "")
-├── InitializeResponseMessage (String = "")
-├── InitializeResponseData (Array = [])
-│
-├── Scope
-│   ├── Switch (actionType, 3 Cases)
-│   │   ├── Case: create
-│   │   │   ├── Create item (SharePoint → "Inventory Usage")
-│   │   │   └── Set variable: responseId
-│   │   ├── Case: getAll
-│   │   │   ├── Get items (SharePoint, top 5000)
-│   │   │   ├── Select (map all fields)
-│   │   │   └── Set variable: responseData
-│   │   └── Case: update
-│   │       ├── Update item (SharePoint)
-│   │       └── Set variable: responseId
-│   │
-│   └── Response Success (200, JSON)
-│
-└── [Failure branch — Configure run after: Scope "has failed"]
-    ├── SetResponseSuccess = false
-    ├── SetResponseMessage = error detail
-    └── Response Failed (200, JSON)
-```
-
-## Notes
-
-- **No attachments** — usage events are pure data records. Photos belong on the parent inventory item, not on individual scan events.
-- **Cross-reference via `InventoryItemId` + `QrToken`** — both columns are populated to make manual SharePoint reporting easier without requiring a lookup column.
-- **Hub auto-pushes** — when a desktop client records a usage via `/ng/inventory-items/{id}/usage`, the hub also creates the SP row best-effort.
-- **PWA fallback chain** — server first → Power Automate (`inventoryUsage` URL) → email-as-last-resort.
+1. **`entity` must be top-level**, not inside `data` — the Switch reads `triggerBody()?['entity']`.
+2. **Column internal names** — if Select returns null, check List Settings → column → `Field=` URL param.
+3. **Get items default limit is 100** — set Top Count to 5000.
+4. **base64ToBinary** for attachments — not `decodeBase64`.
+5. **Duplicate action names** — `Create_item` vs `Create_item_2`; verify the name used in `body('...')` expressions.
+6. **Response must be last** — after the Switch, inside the Scope.

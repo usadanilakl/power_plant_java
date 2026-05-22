@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { ServerApiService } from '../../services/server-api.service';
 import { ServerStatusService } from '../../services/server-status.service';
 import { SubmissionOrchestratorService } from '../../services/submission-orchestrator.service';
@@ -221,6 +222,7 @@ export class InventoryComponent implements OnInit {
   private orchestrator = inject(SubmissionOrchestratorService);
   private userSetup = inject(UserSetupService);
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
   qrScannerService = inject(QrScannerService);
 
   mode = signal<ViewMode>('select');
@@ -239,6 +241,13 @@ export class InventoryComponent implements OnInit {
   ngOnInit(): void {
     this.loadTypes();
     this.fields.set(inventoryFormFields(this.typeOptions));
+
+    // Deep link: /inventory/form?scan={qrToken} — opened by scanning the QR
+    // label with a phone's native camera (hub redirects /qr/inv/{token} here).
+    const scanToken = this.route.snapshot.queryParamMap.get('scan');
+    if (scanToken) {
+      this.handleScan(scanToken);
+    }
   }
 
   private loadTypes(): void {
@@ -256,10 +265,23 @@ export class InventoryComponent implements OnInit {
     }
     this.serverApi.getInventoryTypes().subscribe({
       next: types => {
-        this.setTypeOptions(types);
-        localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
+        if (types && types.length > 0) {
+          this.setTypeOptions(types);
+          localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
+        }
       },
-      error: () => {}
+      error: () => {
+        // Server offline — fall back to static JSON published to GitHub Pages
+        this.http.get<{ id: number; name: string }[]>('data/inventory-types.json').subscribe({
+          next: types => {
+            if (types && types.length > 0) {
+              this.setTypeOptions(types);
+              localStorage.setItem('pwa_inventory_types', JSON.stringify(types));
+            }
+          },
+          error: () => { /* already showing cached/default values */ }
+        });
+      }
     });
   }
 

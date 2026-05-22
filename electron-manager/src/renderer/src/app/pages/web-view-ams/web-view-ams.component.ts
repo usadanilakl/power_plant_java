@@ -203,7 +203,7 @@ import {
             <button class="btn btn-secondary btn-sm" (click)="runSearch()">Search</button>
             <span class="search-result" *ngIf="searched">
               {{ searchMatches.length ? (searchIndex + 1) + ' of ' + searchMatches.length + ' found'
-                                      : 'no results' }}
+                                      : ('no results · scanned ' + searchScanInfo) }}
             </span>
             <button class="btn btn-icon btn-nav" (click)="prevMatch()"
                     [disabled]="searchMatches.length === 0" title="Previous match">
@@ -239,8 +239,6 @@ import {
                       [class.sticky-col]="c === 0"
                       [class.wireable]="report.wireMode === 'row' || c > 0"
                       [class.is-wired]="report.wireMode === 'column' && c > 0 && isColWired(report.reportKey, report.columns[c])"
-                      [class.search-match]="isSearchMatch(r, c)"
-                      [class.search-current]="isSearchCurrent(r, c)"
                       [title]="cellTitle(report, c)"
                       (click)="cellClick(report, row[0], c)">
                     {{ cell }}
@@ -360,8 +358,7 @@ import {
     .btn-nav { padding: 2px 6px; font-size: 16px; display: inline-flex; align-items: center; }
     .btn-nav:disabled { opacity: 0.4; cursor: default; }
     .cfg-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-    .data-table td.search-match { background: rgba(234,179,8,0.22); }
-    .data-table td.search-current { background: rgba(234,179,8,0.55); outline: 2px solid #eab308; outline-offset: -2px; }
+    .data-table td.search-now, .data-table th.search-now { background: rgba(234,179,8,0.6) !important; outline: 2px solid #eab308 !important; outline-offset: -2px; }
 
     .sticky-col { position: sticky; left: 0; z-index: 1; background: var(--bg-secondary); font-weight: 600; }
     th.sticky-col { z-index: 3; }
@@ -405,7 +402,7 @@ export class WebViewAmsComponent implements OnInit, OnDestroy {
   searched = false;
   searchMatches: { r: number; c: number }[] = [];
   searchIndex = 0;
-  private matchSet = new Set<string>();
+  searchScanInfo = '';
 
   private unsubscribeUpdated?: () => void;
 
@@ -480,34 +477,41 @@ export class WebViewAmsComponent implements OnInit, OnDestroy {
 
   runSearch(): void {
     const report = this.activeReport;
-    const q = this.searchQuery.trim().toLowerCase();
+    // Normalize whitespace (cells can contain \r\n) so search matches what the
+    // user sees on screen.
+    const norm = (s: any) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
+    const q = norm(this.searchQuery);
     this.searchMatches = [];
-    this.matchSet.clear();
     this.searchIndex = 0;
     this.searched = !!q;
-    if (!report || !q) return;
+    if (!report) { this.searchScanInfo = 'no report loaded'; this.clearHighlight(); return; }
+    this.searchScanInfo = `${report.rows.length} rows, ${report.columns.length} cols`;
+    if (!q) { this.clearHighlight(); return; }
+
+    // Scan the header row (r = -1) — for Rounds the question names live here.
+    for (let c = 0; c < report.columns.length; c++) {
+      if (norm(report.columns[c]).includes(q)) this.searchMatches.push({ r: -1, c });
+    }
+    // Scan the data cells.
     for (let r = 0; r < report.rows.length; r++) {
       const row = report.rows[r];
       for (let c = 0; c < row.length; c++) {
-        if ((row[c] || '').toLowerCase().includes(q)) {
-          this.searchMatches.push({ r, c });
-          this.matchSet.add(r + ',' + c);
-        }
+        if (norm(row[c]).includes(q)) this.searchMatches.push({ r, c });
       }
     }
-    if (this.searchMatches.length) this.scrollToCurrent();
+    this.highlightCurrent();
   }
 
   nextMatch(): void {
     if (!this.searchMatches.length) return;
     this.searchIndex = (this.searchIndex + 1) % this.searchMatches.length;
-    this.scrollToCurrent();
+    this.highlightCurrent();
   }
 
   prevMatch(): void {
     if (!this.searchMatches.length) return;
     this.searchIndex = (this.searchIndex - 1 + this.searchMatches.length) % this.searchMatches.length;
-    this.scrollToCurrent();
+    this.highlightCurrent();
   }
 
   clearSearch(): void {
@@ -515,24 +519,32 @@ export class WebViewAmsComponent implements OnInit, OnDestroy {
     this.searched = false;
     this.searchMatches = [];
     this.searchIndex = 0;
-    this.matchSet.clear();
+    this.clearHighlight();
   }
 
-  isSearchMatch(r: number, c: number): boolean {
-    return this.matchSet.has(r + ',' + c);
-  }
-
-  isSearchCurrent(r: number, c: number): boolean {
+  /**
+   * Highlight + scroll the current match via direct DOM (not Angular class
+   * bindings) — fast and reliable on the very large report tables.
+   */
+  private highlightCurrent(): void {
+    this.clearHighlight();
     const m = this.searchMatches[this.searchIndex];
-    return !!m && m.r === r && m.c === c;
+    if (!m) return;
+    setTimeout(() => {
+      const sel = m.r === -1
+        ? `.data-table thead th:nth-child(${m.c + 1})`
+        : `.data-table tbody tr:nth-child(${m.r + 1}) td:nth-child(${m.c + 1})`;
+      const cell = document.querySelector(sel) as HTMLElement | null;
+      if (cell) {
+        cell.classList.add('search-now');
+        cell.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      }
+    }, 0);
   }
 
-  /** Scroll the current match cell into view (after Angular renders the class). */
-  private scrollToCurrent(): void {
-    setTimeout(() => {
-      const el = document.querySelector('.data-table td.search-current');
-      if (el) el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
-    }, 0);
+  private clearHighlight(): void {
+    document.querySelectorAll('.data-table .search-now')
+      .forEach(e => e.classList.remove('search-now'));
   }
 
   // ── data loading ──────────────────────────────────────────────────

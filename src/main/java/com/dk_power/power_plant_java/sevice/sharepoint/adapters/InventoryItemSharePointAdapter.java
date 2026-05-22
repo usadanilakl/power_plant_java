@@ -76,6 +76,7 @@ public class InventoryItemSharePointAdapter {
                 () -> {
                     PaRequestDto req = new PaRequestDto();
                     req.setActionType("addAttachment");
+                    req.setEntity("item");
                     req.setId(sharepointId);
                     req.setData(Map.of());
                     req.setAttachments(List.of(attachment));
@@ -131,6 +132,7 @@ public class InventoryItemSharePointAdapter {
     private List<InventoryItemDto> paGetAll() {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("getAll");
+        req.setEntity("item");
         req.setData(Map.of());
 
         PaResponseDto resp = v2Client.inventory(req);
@@ -143,6 +145,7 @@ public class InventoryItemSharePointAdapter {
     private String paCreate(InventoryItemDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("create");
+        req.setEntity("item");
         req.setData(toMap(dto));
         PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 create Inventory failed: " + resp.getMessage());
@@ -152,6 +155,7 @@ public class InventoryItemSharePointAdapter {
     private void paUpdate(String sharepointId, InventoryItemDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("update");
+        req.setEntity("item");
         req.setId(sharepointId);
         req.setData(toMap(dto));
         PaResponseDto resp = v2Client.inventory(req);
@@ -161,6 +165,7 @@ public class InventoryItemSharePointAdapter {
     private void paChangeStatus(String sharepointId, String status) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("update");
+        req.setEntity("item");
         req.setId(sharepointId);
         req.setData(Map.of("Status", status));
         PaResponseDto resp = v2Client.inventory(req);
@@ -170,6 +175,7 @@ public class InventoryItemSharePointAdapter {
     private List<PaAttachmentDto> paGetAttachments(String sharepointId) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("getAttachments");
+        req.setEntity("item");
         req.setId(sharepointId);
         PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess() || resp.getData() == null) {

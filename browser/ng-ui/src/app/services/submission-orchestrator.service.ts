@@ -878,7 +878,7 @@ export class SubmissionOrchestratorService {
   }
 
   private tryPowerAutomateInventoryUsage(payload: any, localUuid: string): Observable<SubmissionResult> {
-    if (!this.powerAutomate.isV2Configured('inventoryUsage')) {
+    if (!this.powerAutomate.isV2Configured('inventory')) {
       return of({
         success: false,
         method: 'email' as const,
@@ -903,13 +903,15 @@ export class SubmissionOrchestratorService {
       ReturnedAt: payload.returnedAt || ''
     };
 
+    // Single Inventory flow — entity:"usage" routes to the "Inventory Usage" list
     const paRequest = {
       actionType: 'create',
+      entity: 'usage',
       data: paData,
       attachments: []
     };
 
-    return this.powerAutomate.submitV2('inventoryUsage', paRequest).pipe(
+    return this.powerAutomate.submitV2('inventory', paRequest).pipe(
       map(response => {
         const isSuccess = response.success === true || String(response.success).toLowerCase() === 'true';
         return {
@@ -967,6 +969,7 @@ export class SubmissionOrchestratorService {
 
     const paRequest = {
       actionType: payload.actionType || 'create',
+      entity: 'item',
       id: payload.sharepointId,
       data: paData,
       attachments: (payload.attachments || []).map((a: any) => ({

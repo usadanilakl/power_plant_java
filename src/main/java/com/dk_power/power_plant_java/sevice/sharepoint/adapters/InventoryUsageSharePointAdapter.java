@@ -79,8 +79,9 @@ public class InventoryUsageSharePointAdapter {
     private List<InventoryUsageDto> paGetAll() {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("getAll");
+        req.setEntity("usage");
         req.setData(Map.of());
-        PaResponseDto resp = v2Client.inventoryUsage(req);
+        PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess() || resp.getData() == null) {
             throw new RuntimeException("PA-V2 getAll InventoryUsage failed: " + resp.getMessage());
         }
@@ -90,8 +91,9 @@ public class InventoryUsageSharePointAdapter {
     private String paCreate(InventoryUsageDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("create");
+        req.setEntity("usage");
         req.setData(toMap(dto));
-        PaResponseDto resp = v2Client.inventoryUsage(req);
+        PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 create InventoryUsage failed: " + resp.getMessage());
         return resp.getId();
     }
@@ -99,9 +101,10 @@ public class InventoryUsageSharePointAdapter {
     private void paUpdate(String sharepointId, InventoryUsageDto dto) {
         PaRequestDto req = new PaRequestDto();
         req.setActionType("update");
+        req.setEntity("usage");
         req.setId(sharepointId);
         req.setData(toMap(dto));
-        PaResponseDto resp = v2Client.inventoryUsage(req);
+        PaResponseDto resp = v2Client.inventory(req);
         if (!resp.isSuccess()) throw new RuntimeException("PA-V2 update InventoryUsage failed: " + resp.getMessage());
     }
 

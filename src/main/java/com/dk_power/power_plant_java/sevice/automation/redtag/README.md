@@ -36,7 +36,7 @@ progress/  RedTagProgressBroadcaster    SSE progress to the browser
 RedTagLotoAutomationService             facade: turns a LotoDto into a session
 ```
 
-Controller: `controller/automation/redtag/RedTagAutomationController` at
+Controller: `controller/automation/redtag/RedTagLotoAutomationController` at
 `/ng/red-tag-automation/*`.
 
 ## Flow: build a LOTO

@@ -29,6 +29,15 @@ export class RfInventoryApiService {
     return this.http.get<SpringApiResponse<InventoryItemDto[]>>(`${this.apiUrl}/by-status/${status}`);
   }
 
+  getCheckedOut(minDaysOut?: number): Observable<SpringApiResponse<InventoryItemDto[]>> {
+    const params = minDaysOut != null ? `?minDaysOut=${minDaysOut}` : '';
+    return this.http.get<SpringApiResponse<InventoryItemDto[]>>(`${this.apiUrl}/audit/checked-out${params}`);
+  }
+
+  getMissing(): Observable<SpringApiResponse<InventoryItemDto[]>> {
+    return this.http.get<SpringApiResponse<InventoryItemDto[]>>(`${this.apiUrl}/audit/missing`);
+  }
+
   getById(id: number): Observable<SpringApiResponse<InventoryItemDto>> {
     return this.http.get<SpringApiResponse<InventoryItemDto>>(`${this.apiUrl}/get-by-id/${id}`);
   }

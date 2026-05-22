@@ -18,4 +18,11 @@
         - Isolated Postion - loto point isoPos.name
         - Normal Postion - loto point normPos.name
         - Click ok
-    - Click Continue
+    - Click Continue - loto details dialog should open
+    - fill out the following: 
+        - Lock Box Number - dropdown, but can type
+        - Primary Authorized Employee, or Owner of LOTO: dropdown - can type first letter but first and last names are mixed up, so better use dropdown, it is scrollable
+        - Why is this job being performed: the same as job description
+        - Requested By section - put the same requestor as owner of loto - the same type of dropdown. 
+    - Click ok - an error window pops up sometimes
+    - List of lotos will open. If list was grouped - then created item will appear in random place, to see it at the top of the list - ungroup the list - drag column from yellow band to table header - then newest item will be in the first row (unless someone else creates loto at the same time) here we need to capture the loto number (first column and associate it with our LOTO permit in the app)
